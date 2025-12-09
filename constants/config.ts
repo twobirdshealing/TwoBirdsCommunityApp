@@ -18,10 +18,9 @@
 
 // The base URL for all Fluent Community API calls
 // This is your WordPress site with Fluent Community installed
-export const API_URL = 'http://stageing.jzzqk4g1to-zng4pgkvv4dp.p.temp-site.link/wp-json/fluent-community/v2';
-
+export const API_URL = 'http://staging.twobirdschurch.com/wp-json/fluent-community/v2';
 // Your WordPress site URL (for non-API links, avatars, etc.)
-export const SITE_URL = 'http://stageing.jzzqk4g1to-zng4pgkvv4dp.p.temp-site.link';
+export const SITE_URL = 'http://staging.twobirdschurch.com';
 
 // -----------------------------------------------------------------------------
 // Authentication (TEMPORARY - will be replaced with proper login)
