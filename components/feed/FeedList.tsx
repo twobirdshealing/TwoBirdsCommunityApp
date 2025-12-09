@@ -1,24 +1,17 @@
 // =============================================================================
-// FEED LIST - Scrollable list of feed cards
+// FEED LIST - High-performance scrollable list of feed cards
 // =============================================================================
-// Handles loading, empty, and error states. Includes pull-to-refresh.
-//
-// Usage:
-//   <FeedList 
-//     feeds={feeds}
-//     loading={loading}
-//     error={error}
-//     onRefresh={refetch}
-//     onFeedPress={(feed) => navigate('feed', { id: feed.id })}
-//   />
+// Uses FlashList for better performance with complex feed items.
+// IMPORTANT: Do NOT enable pagingEnabled - causes scroll snapping issues.
 // =============================================================================
 
 import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
 import { colors } from '@/constants/colors';
-import { screen, spacing } from '@/constants/layout';
+import { spacing } from '@/constants/layout';
 import { Feed } from '@/types';
 import React from 'react';
-import { FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
+import { Platform, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { FeedCard } from './FeedCard';
 
 // -----------------------------------------------------------------------------
@@ -26,31 +19,18 @@ import { FeedCard } from './FeedCard';
 // -----------------------------------------------------------------------------
 
 interface FeedListProps {
-  // Array of feeds to display
   feeds: Feed[];
-  
-  // Loading state (initial load)
   loading?: boolean;
-  
-  // Refreshing state (pull to refresh)
   refreshing?: boolean;
-  
-  // Error message
   error?: string | null;
-  
-  // Callbacks
   onRefresh?: () => void;
   onFeedPress?: (feed: Feed) => void;
   onReact?: (feedId: number, type: 'like' | 'love') => void;
   onAuthorPress?: (username: string) => void;
   onSpacePress?: (spaceSlug: string) => void;
   onLoadMore?: () => void;
-  
-  // Custom empty state
   emptyMessage?: string;
   emptyIcon?: string;
-  
-  // Header component (optional)
   ListHeaderComponent?: React.ReactElement;
 }
 
@@ -122,40 +102,48 @@ export function FeedList({
   );
   
   return (
-    <FlatList
-      data={feeds}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.id.toString()}
-      style={styles.list}
-      contentContainerStyle={styles.content}
-      
-      // Pull to refresh
-      refreshControl={
-        onRefresh ? (
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        ) : undefined
-      }
-      
-      // Load more when reaching end
-      onEndReached={onLoadMore}
-      onEndReachedThreshold={0.5}
-      
-      // Header
-      ListHeaderComponent={ListHeaderComponent}
-      
-      // Performance optimizations
-      removeClippedSubviews={true}
-      maxToRenderPerBatch={10}
-      windowSize={10}
-      
-      // Item spacing
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-    />
+    <View style={styles.container}>
+      <FlashList
+        data={feeds}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id.toString()}
+        
+        // Performance: Estimate average card height
+        // Adjust based on your actual card sizes
+        estimatedItemSize={400}
+        
+        // Pull to refresh
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          ) : undefined
+        }
+        
+        // Infinite scroll
+        onEndReached={onLoadMore}
+        onEndReachedThreshold={0.3}
+        
+        // Header
+        ListHeaderComponent={ListHeaderComponent}
+        
+        // Content padding
+        contentContainerStyle={styles.content}
+        
+        // Item spacing
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        
+        // Smooth scrolling (important: do NOT set pagingEnabled or snapTo*)
+        showsVerticalScrollIndicator={true}
+        
+        // Scroll performance
+        removeClippedSubviews={Platform.OS === 'android'}
+      />
+    </View>
   );
 }
 
@@ -169,17 +157,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   
-  list: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  
   content: {
     paddingVertical: spacing.sm,
-    // Add extra bottom padding for Android to avoid system navigation bar overlap
-    paddingBottom: Platform.OS === 'android' 
-      ? spacing.sm + screen.bottomSafeArea 
-      : spacing.sm,
+    paddingBottom: Platform.OS === 'android' ? 100 : spacing.lg,
   },
   
   separator: {

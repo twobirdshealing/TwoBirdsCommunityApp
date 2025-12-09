@@ -2,7 +2,7 @@
 // HOME SCREEN - Main feed view
 // =============================================================================
 // The first screen users see. Shows all community posts.
-// Uses the new FeedList component and API service.
+// Tap a post to open full-screen Instagram-style view.
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -29,9 +29,9 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Fetch Feeds
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   
   const fetchFeeds = useCallback(async (isRefresh = false) => {
     try {
@@ -61,19 +61,17 @@ export default function HomeScreen() {
     fetchFeeds();
   }, [fetchFeeds]);
   
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Handlers
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   
   const handleRefresh = () => {
     fetchFeeds(true);
   };
   
+  // 🆕 UPDATED: Now navigates to full-screen post view!
   const handleFeedPress = (feed: Feed) => {
-    // Navigate to feed detail screen
-    // TODO: Implement in Phase 1
-    console.log('Navigate to feed:', feed.id);
-    // router.push(`/feed/${feed.id}`);
+    router.push(`/feed/${feed.id}`);
   };
   
   const handleReact = async (feedId: number, type: 'like' | 'love') => {
@@ -105,22 +103,18 @@ export default function HomeScreen() {
   };
   
   const handleAuthorPress = (username: string) => {
-    // Navigate to profile screen
-    // TODO: Implement in Phase 1
-    console.log('Navigate to profile:', username);
-    // router.push(`/profile/${username}`);
+    // Navigate to profile screen (will work when we build profile detail)
+    router.push(`/profile/${username}`);
   };
   
   const handleSpacePress = (spaceSlug: string) => {
-    // Navigate to space screen
-    // TODO: Implement in Phase 1
-    console.log('Navigate to space:', spaceSlug);
-    // router.push(`/space/${spaceSlug}`);
+    // Navigate to space screen (will work when we build space detail)
+    router.push(`/space/${spaceSlug}`);
   };
   
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   // Render
-  // -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
   
   return (
     <View style={styles.container}>

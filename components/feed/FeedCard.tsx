@@ -1,19 +1,19 @@
 // =============================================================================
 // FEED CARD - A single post/feed item in the list
 // =============================================================================
-// Displays author, content, reactions, and comments count.
-// Tap to view full post (Phase 1), tap reactions to react (Phase 1).
-//
-// Usage:
-//   <FeedCard 
-//     feed={feedItem} 
-//     onPress={() => navigate('feed', { id: feed.id })}
-//     onReact={(type) => handleReact(feed.id, type)}
-//   />
+// Displays author, content, media (images/YouTube), reactions, and comments.
+// Now properly detects media from meta.media_preview AND message content.
 // =============================================================================
 
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { 
+  ActivityIndicator,
+  Image, 
+  StyleSheet, 
+  Text, 
+  TouchableOpacity, 
+  View 
+} from 'react-native';
 import { colors } from '@/constants/colors';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { Feed } from '@/types';
@@ -23,26 +23,74 @@ import { stripHtmlTags, truncateText } from '@/utils/htmlToText';
 import { Avatar } from '@/components/common/Avatar';
 
 // -----------------------------------------------------------------------------
+// Media Detection Helper
+// -----------------------------------------------------------------------------
+
+interface MediaInfo {
+  type: 'image' | 'youtube' | 'none';
+  imageUrl?: string;
+  youtubeId?: string;
+}
+
+function detectMedia(feed: Feed): MediaInfo {
+  const message = feed.message || '';
+  const messageRendered = feed.message_rendered || '';
+  const meta = feed.meta || {};
+  
+  // 1. Check for uploaded image in meta.media_preview (most common)
+  if (meta.media_preview?.image) {
+    return {
+      type: 'image',
+      imageUrl: meta.media_preview.image,
+    };
+  }
+  
+  // 2. Check for featured_image
+  if (feed.featured_image) {
+    return {
+      type: 'image',
+      imageUrl: feed.featured_image,
+    };
+  }
+  
+  // 3. Check for YouTube in message
+  const youtubePatterns = [
+    /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+  ];
+  
+  for (const pattern of youtubePatterns) {
+    const match = message.match(pattern) || messageRendered.match(pattern);
+    if (match) {
+      return {
+        type: 'youtube',
+        youtubeId: match[1],
+      };
+    }
+  }
+  
+  return { type: 'none' };
+}
+
+// Remove URLs from display text
+function cleanMessageText(text: string): string {
+  return text
+    .replace(/https?:\/\/[^\s]+/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// -----------------------------------------------------------------------------
 // Props
 // -----------------------------------------------------------------------------
 
 interface FeedCardProps {
-  // The feed data
   feed: Feed;
-  
-  // Called when card is tapped (navigate to detail)
   onPress?: () => void;
-  
-  // Called when user taps reaction (Phase 1)
   onReact?: (type: 'like' | 'love') => void;
-  
-  // Called when user taps author (navigate to profile)
   onAuthorPress?: () => void;
-  
-  // Called when user taps space name (navigate to space)
   onSpacePress?: () => void;
-  
-  // Show full content or truncated preview
   showFullContent?: boolean;
 }
 
@@ -58,7 +106,10 @@ export function FeedCard({
   onSpacePress,
   showFullContent = false,
 }: FeedCardProps) {
-  // Extract data with safe defaults
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  
+  // Extract author data
   const author = feed.xprofile;
   const authorName = author?.display_name || 'Unknown';
   const authorAvatar = author?.avatar || null;
@@ -67,16 +118,27 @@ export function FeedCard({
   const spaceName = feed.space?.title;
   const timestamp = formatRelativeTime(feed.created_at);
   
-  const content = stripHtmlTags(feed.message_rendered || feed.message);
+  // Get content and clean it
+  const rawContent = stripHtmlTags(feed.message_rendered || feed.message);
+  const content = cleanMessageText(rawContent);
   const displayContent = showFullContent ? content : truncateText(content, 200);
   
+  // Detect media
+  const media = detectMedia(feed);
+  const hasImage = media.type === 'image' && media.imageUrl && !imageError;
+  const hasYouTube = media.type === 'youtube' && media.youtubeId;
+  
+  // Stats
   const commentsCount = typeof feed.comments_count === 'string' 
     ? parseInt(feed.comments_count, 10) 
     : feed.comments_count || 0;
   const reactionsCount = typeof feed.reactions_count === 'string'
     ? parseInt(feed.reactions_count, 10)
     : feed.reactions_count || 0;
-  
+
+  // Debug log (remove in production)
+  // console.log(`[FeedCard ${feed.id}] Media:`, media.type, media.imageUrl || media.youtubeId || 'none');
+
   return (
     <TouchableOpacity 
       style={styles.card} 
@@ -94,11 +156,9 @@ export function FeedCard({
           />
           
           <View style={styles.authorInfo}>
-            <View style={styles.authorNameRow}>
-              <Text style={styles.authorName} numberOfLines={1}>
-                {authorName}
-              </Text>
-            </View>
+            <Text style={styles.authorName} numberOfLines={1}>
+              {authorName}
+            </Text>
             
             <View style={styles.metaRow}>
               <Text style={styles.timestamp}>{timestamp}</Text>
@@ -117,7 +177,7 @@ export function FeedCard({
         </TouchableOpacity>
       </View>
       
-      {/* ===== Title (if exists) ===== */}
+      {/* ===== Title ===== */}
       {feed.title && (
         <Text style={styles.title} numberOfLines={2}>
           {feed.title}
@@ -125,22 +185,64 @@ export function FeedCard({
       )}
       
       {/* ===== Content ===== */}
-      <Text style={styles.content}>
-        {displayContent}
-      </Text>
+      {displayContent.length > 0 && (
+        <Text style={styles.content}>
+          {displayContent}
+        </Text>
+      )}
       
-      {/* ===== Featured Image (if exists) ===== */}
-      {feed.featured_image && (
-        <Image 
-          source={{ uri: feed.featured_image }}
-          style={styles.featuredImage}
-          resizeMode="cover"
-        />
+      {/* ===== Image Media ===== */}
+      {hasImage && (
+        <View style={styles.mediaContainer}>
+          {imageLoading && (
+            <View style={styles.mediaPlaceholder}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          )}
+          <Image 
+            source={{ uri: media.imageUrl }}
+            style={[styles.mediaImage, imageLoading && { opacity: 0 }]}
+            resizeMode="cover"
+            onLoadStart={() => setImageLoading(true)}
+            onLoadEnd={() => setImageLoading(false)}
+            onError={(e) => {
+              console.log('Image load error:', media.imageUrl, e.nativeEvent.error);
+              setImageError(true);
+              setImageLoading(false);
+            }}
+          />
+        </View>
+      )}
+      
+      {/* ===== Image Error State ===== */}
+      {media.type === 'image' && imageError && (
+        <View style={styles.mediaError}>
+          <Text style={styles.mediaErrorIcon}>🖼️</Text>
+          <Text style={styles.mediaErrorText}>Image unavailable</Text>
+        </View>
+      )}
+      
+      {/* ===== YouTube Thumbnail ===== */}
+      {hasYouTube && (
+        <View style={styles.youtubeContainer}>
+          <Image 
+            source={{ uri: `https://img.youtube.com/vi/${media.youtubeId}/hqdefault.jpg` }}
+            style={styles.youtubeThumbnail}
+            resizeMode="cover"
+          />
+          <View style={styles.youtubeOverlay}>
+            <View style={styles.youtubePlayButton}>
+              <Text style={styles.youtubePlayIcon}>▶</Text>
+            </View>
+          </View>
+          <View style={styles.youtubeLabel}>
+            <Text style={styles.youtubeLabelText}>YouTube</Text>
+          </View>
+        </View>
       )}
       
       {/* ===== Footer: Reactions + Comments ===== */}
       <View style={styles.footer}>
-        {/* Reaction Buttons */}
         <View style={styles.reactions}>
           <TouchableOpacity 
             style={styles.reactionButton}
@@ -162,7 +264,6 @@ export function FeedCard({
           </TouchableOpacity>
         </View>
         
-        {/* Comments Count */}
         <View style={styles.stats}>
           <Text style={styles.statIcon}>💬</Text>
           <Text style={styles.statCount}>
@@ -201,11 +302,6 @@ const styles = StyleSheet.create({
   authorInfo: {
     marginLeft: spacing.md,
     flex: 1,
-  },
-  
-  authorNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   
   authorName: {
@@ -249,16 +345,104 @@ const styles = StyleSheet.create({
   content: {
     fontSize: typography.size.md,
     color: colors.text,
-    lineHeight: typography.size.md * typography.lineHeight.normal,
+    lineHeight: typography.size.md * 1.5,
   },
   
-  // Featured Image
-  featuredImage: {
+  // Media Container
+  mediaContainer: {
+    marginTop: spacing.md,
+    borderRadius: sizing.borderRadius.md,
+    overflow: 'hidden',
+    backgroundColor: colors.skeleton,
+    minHeight: 200,
+  },
+  
+  mediaPlaceholder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.skeleton,
+  },
+  
+  mediaImage: {
     width: '100%',
     height: 200,
-    borderRadius: sizing.borderRadius.md,
+  },
+  
+  // Media Error
+  mediaError: {
     marginTop: spacing.md,
+    height: 200,
+    borderRadius: sizing.borderRadius.md,
     backgroundColor: colors.skeleton,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  mediaErrorIcon: {
+    fontSize: 40,
+    marginBottom: spacing.sm,
+  },
+  
+  mediaErrorText: {
+    fontSize: typography.size.sm,
+    color: colors.textTertiary,
+  },
+  
+  // YouTube
+  youtubeContainer: {
+    marginTop: spacing.md,
+    borderRadius: sizing.borderRadius.md,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  
+  youtubeThumbnail: {
+    width: '100%',
+    height: 200,
+    backgroundColor: colors.skeleton,
+  },
+  
+  youtubeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  
+  youtubePlayButton: {
+    width: 60,
+    height: 42,
+    backgroundColor: 'rgba(255,0,0,0.9)',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  youtubePlayIcon: {
+    color: '#fff',
+    fontSize: 20,
+    marginLeft: 3,
+  },
+  
+  youtubeLabel: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    left: spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  
+  youtubeLabelText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   
   // Footer
