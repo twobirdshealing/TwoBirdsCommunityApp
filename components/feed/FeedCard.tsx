@@ -179,14 +179,14 @@ export function FeedCard({
       
       {/* ===== Title ===== */}
       {feed.title && (
-        <Text style={styles.title} numberOfLines={2}>
+        <Text style={styles.title} numberOfLines={3}>
           {feed.title}
         </Text>
       )}
       
       {/* ===== Content ===== */}
       {displayContent.length > 0 && (
-        <Text style={styles.content}>
+        <Text style={styles.content} numberOfLines={6}>
           {displayContent}
         </Text>
       )}
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
     backgroundColor: colors.skeleton,
-    minHeight: 200,
+    height: 200,
   },
   
   mediaPlaceholder: {

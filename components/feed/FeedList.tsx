@@ -142,14 +142,15 @@ export function FeedList({
         getItemType={getItemType}
 
         // Estimate sizes based on item type:
-        // - Cards with media (image/YouTube): ~420px
-        // - Cards without media: ~250px
-        estimatedItemSize={250}
+        // - Cards with media (image/YouTube): ~460px
+        // - Cards without media: ~220px
+        // Heights include: margins(8) + padding(32) + header(52) + content + footer(65)
+        estimatedItemSize={220}
 
         // Provide more accurate estimates per item type
         overrideItemLayout={(layout, item) => {
           const itemHasMedia = hasMedia(item);
-          layout.size = itemHasMedia ? 420 : 250;
+          layout.size = itemHasMedia ? 460 : 220;
         }}
         
         // Pull to refresh
