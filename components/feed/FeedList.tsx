@@ -35,6 +35,30 @@ interface FeedListProps {
 }
 
 // -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+// Detect if feed has media (for better height estimation)
+function hasMedia(feed: Feed): boolean {
+  const message = feed.message || '';
+  const messageRendered = feed.message_rendered || '';
+  const meta = feed.meta || {};
+
+  // Check for image
+  if (meta.media_preview?.image || feed.featured_image) {
+    return true;
+  }
+
+  // Check for YouTube
+  const youtubePattern = /youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\//;
+  if (youtubePattern.test(message) || youtubePattern.test(messageRendered)) {
+    return true;
+  }
+
+  return false;
+}
+
+// -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
@@ -53,35 +77,40 @@ export function FeedList({
   emptyIcon = '📭',
   ListHeaderComponent,
 }: FeedListProps) {
-  
+
   // Initial loading state
   if (loading && feeds.length === 0) {
     return <LoadingSpinner message="Loading feed..." />;
   }
-  
+
   // Error state
   if (error && feeds.length === 0) {
     return (
-      <ErrorMessage 
-        message={error} 
+      <ErrorMessage
+        message={error}
         onRetry={onRefresh}
       />
     );
   }
-  
+
   // Empty state
   if (!loading && feeds.length === 0) {
     return (
       <View style={styles.container}>
         {ListHeaderComponent}
-        <EmptyState 
+        <EmptyState
           icon={emptyIcon}
           message={emptyMessage}
         />
       </View>
     );
   }
-  
+
+  // Get item type for better height estimation
+  const getItemType = (item: Feed) => {
+    return hasMedia(item) ? 'with-media' : 'without-media';
+  };
+
   // Render feed item
   const renderItem = ({ item }: { item: Feed }) => (
     <FeedCard
@@ -107,10 +136,21 @@ export function FeedList({
         data={feeds}
         renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
-        
-        // Performance: Estimate average card height
-        // Adjust based on your actual card sizes
-        estimatedItemSize={400}
+
+        // Performance: Categorize items by type for better height estimation
+        // This fixes scroll drift by helping FlashList predict item heights
+        getItemType={getItemType}
+
+        // Estimate sizes based on item type:
+        // - Cards with media (image/YouTube): ~420px
+        // - Cards without media: ~250px
+        estimatedItemSize={250}
+
+        // Provide more accurate estimates per item type
+        overrideItemLayout={(layout, item) => {
+          const itemHasMedia = hasMedia(item);
+          layout.size = itemHasMedia ? 420 : 250;
+        }}
         
         // Pull to refresh
         refreshControl={
