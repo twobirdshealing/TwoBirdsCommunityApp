@@ -1,5 +1,5 @@
 // =============================================================================
-// TAB LAYOUT - Simple 5-tab navigation
+// TAB LAYOUT - 5-tab bottom navigation
 // =============================================================================
 
 import { Tabs } from 'expo-router';
@@ -73,14 +73,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      
-      {/* Hide explore.tsx from tabs */}
-      <Tabs.Screen
-        name="explore"
-        options={{
-          href: null,
-        }}
-      />
     </Tabs>
   );
 }
@@ -90,9 +82,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopColor: '#E5E7EB',
     borderTopWidth: 1,
-    height: Platform.OS === 'ios' ? 88 : 90,
+    height: Platform.OS === 'ios' ? 88 : 70,
     paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 35,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
   },
   
   tabLabel: {
