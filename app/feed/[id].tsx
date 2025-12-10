@@ -7,13 +7,13 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { 
-  Dimensions,
   FlatList,
   StyleSheet, 
   View,
   StatusBar,
   ActivityIndicator,
   Text,
+  useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '@/constants/colors';
@@ -22,14 +22,14 @@ import { feedsApi } from '@/services/api';
 import { FullScreenPost } from '@/components/feed/FullScreenPost';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 
-// Get screen dimensions for full-screen posts
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
 export default function FeedDetailScreen() {
+  // Use dynamic dimensions - updates on rotation/resize
+  const { height: SCREEN_HEIGHT } = useWindowDimensions();
+  
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const flatListRef = useRef<FlatList>(null);
@@ -150,6 +150,16 @@ export default function FeedDetailScreen() {
   }).current;
 
   // ---------------------------------------------------------------------------
+  // Item layout calculator - must use current SCREEN_HEIGHT
+  // ---------------------------------------------------------------------------
+  
+  const getItemLayout = (_data: any, index: number) => ({
+    length: SCREEN_HEIGHT,
+    offset: SCREEN_HEIGHT * index,
+    index,
+  });
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
@@ -181,18 +191,20 @@ export default function FeedDetailScreen() {
         data={feeds}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item, index }) => (
-          <FullScreenPost
-            feed={item}
-            isActive={index === currentIndex}
-            onClose={handleClose}
-            onReact={(type) => handleReact(item.id, type)}
-            onCommentPress={() => handleOpenComments(item.id)}
-            onAuthorPress={() => {
-              if (item.xprofile?.username) {
-                handleAuthorPress(item.xprofile.username);
-              }
-            }}
-          />
+          <View style={{ height: SCREEN_HEIGHT }}>
+            <FullScreenPost
+              feed={item}
+              isActive={index === currentIndex}
+              onClose={handleClose}
+              onReact={(type) => handleReact(item.id, type)}
+              onCommentPress={() => handleOpenComments(item.id)}
+              onAuthorPress={() => {
+                if (item.xprofile?.username) {
+                  handleAuthorPress(item.xprofile.username);
+                }
+              }}
+            />
+          </View>
         )}
         
         // Vertical paging (swipe up/down)
@@ -201,30 +213,39 @@ export default function FeedDetailScreen() {
         showsVerticalScrollIndicator={false}
         
         // Each item is full screen height
-        getItemLayout={(data, index) => ({
-          length: SCREEN_HEIGHT,
-          offset: SCREEN_HEIGHT * index,
-          index,
-        })}
+        getItemLayout={getItemLayout}
         
         // Track current post
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         
+        // Snap behavior - prevents drift
+        snapToInterval={SCREEN_HEIGHT}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        
+        // Prevent bounce which can cause offset issues
+        bounces={false}
+        overScrollMode="never"
+        
         // Performance
         removeClippedSubviews={true}
-        maxToRenderPerBatch={3}
-        windowSize={5}
+        maxToRenderPerBatch={2}
+        windowSize={3}
         initialNumToRender={1}
         
         // Handle scroll errors gracefully
         onScrollToIndexFailed={(info) => {
+          flatListRef.current?.scrollToOffset({
+            offset: info.averageItemLength * info.index,
+            animated: false,
+          });
           setTimeout(() => {
             flatListRef.current?.scrollToIndex({
               index: info.index,
               animated: false,
             });
-          }, 500);
+          }, 100);
         }}
       />
 
