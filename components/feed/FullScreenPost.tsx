@@ -1,13 +1,12 @@
 // =============================================================================
 // FULL SCREEN POST - Instagram-style full-screen post viewer
 // =============================================================================
-// Shows post in full-screen with:
-// - Title + Message as main content (centered)
-// - Image as dimmed background (decorative) for image posts
-// - Clean white background for text-only posts
-// - Swipe LEFT/RIGHT to view full images (if post has images)
-// - Swipe UP/DOWN to navigate between posts
-// - Page indicators (dots) for multi-image posts
+// UI Layout:
+// - TOP LEFT: Avatar + Author name (prominent)
+// - TOP RIGHT: Close button (X)
+// - CENTER: Title + Message content
+// - RIGHT SIDE: Action buttons (like, comment, share, bookmark)
+// - BOTTOM: Thumbnail strip for images (if multiple), subtle scroll indicator
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
@@ -16,9 +15,10 @@ import { spacing, typography } from '@/constants/layout';
 import { Feed } from '@/types';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { formatCompactNumber } from '@/utils/formatNumber';
-import { stripHtmlTags } from '@/utils/htmlToText';
-import React, { useCallback, useRef, useState } from 'react';
+import { stripHtmlPreserveBreaks, truncateText } from '@/utils/htmlToText';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   FlatList,
   Image,
   NativeScrollEvent,
@@ -31,7 +31,7 @@ import {
 } from 'react-native';
 
 // -----------------------------------------------------------------------------
-// Media Detection - handles both single and multiple images
+// Media Detection
 // -----------------------------------------------------------------------------
 
 interface MediaInfo {
@@ -46,28 +46,20 @@ function detectMedia(feed: Feed): MediaInfo {
   const messageRendered = feed.message_rendered || '';
   const meta = feed.meta || {};
   
-  // 1. Check for multiple images in meta.media_items
+  // Check for multiple images in meta.media_items
   if (meta.media_items && Array.isArray(meta.media_items) && meta.media_items.length > 0) {
     const imageUrls = meta.media_items
       .filter((item: any) => item.type === 'image' && item.url)
       .map((item: any) => item.url);
     
     if (imageUrls.length > 1) {
-      return {
-        type: 'images',
-        imageUrls: imageUrls,
-        imageUrl: imageUrls[0],
-      };
+      return { type: 'images', imageUrls, imageUrl: imageUrls[0] };
     } else if (imageUrls.length === 1) {
-      return {
-        type: 'image',
-        imageUrl: imageUrls[0],
-        imageUrls: imageUrls,
-      };
+      return { type: 'image', imageUrl: imageUrls[0], imageUrls };
     }
   }
   
-  // 2. Check for single image in meta.media_preview
+  // Check for single image in meta.media_preview
   if (meta.media_preview?.image) {
     return { 
       type: 'image', 
@@ -76,7 +68,7 @@ function detectMedia(feed: Feed): MediaInfo {
     };
   }
   
-  // 3. Check for featured_image
+  // Check for featured_image
   if (feed.featured_image) {
     return { 
       type: 'image', 
@@ -85,7 +77,7 @@ function detectMedia(feed: Feed): MediaInfo {
     };
   }
   
-  // 4. Check for YouTube
+  // Check for YouTube
   const youtubePatterns = [
     /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
     /youtu\.be\/([a-zA-Z0-9_-]{11})/,
@@ -100,10 +92,6 @@ function detectMedia(feed: Feed): MediaInfo {
   }
   
   return { type: 'none' };
-}
-
-function cleanText(text: string): string {
-  return text.replace(/https?:\/\/[^\s]+/gi, '').replace(/\s+/g, ' ').trim();
 }
 
 // -----------------------------------------------------------------------------
@@ -135,6 +123,7 @@ export function FullScreenPost({
   const [liked, setLiked] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+  const bounceAnim = useRef(new Animated.Value(0)).current;
 
   // Extract data
   const author = feed.xprofile;
@@ -142,15 +131,34 @@ export function FullScreenPost({
   const authorAvatar = author?.avatar || null;
   const isVerified = author?.is_verified === 1;
   
-  const rawContent = stripHtmlTags(feed.message_rendered || feed.message);
-  const content = cleanText(rawContent);
+  // Preserve line breaks in content
+  const rawContent = stripHtmlPreserveBreaks(feed.message_rendered || feed.message);
+  // Remove URLs but keep line breaks
+  const content = rawContent.replace(/https?:\/\/[^\s]+/gi, '').trim();
+  // Truncate only if VERY long (800+ chars) - Instagram style
+  const displayContent = content.length > 800 ? truncateText(content, 800) : content;
   const timestamp = formatRelativeTime(feed.created_at);
+  
+  // Dynamic font size - fill the space better
+  const getMessageFontSize = () => {
+    const len = displayContent.length;
+    if (len < 50) return 32;      // Very short - big and bold
+    if (len < 100) return 26;     // Short - nice and readable
+    if (len < 200) return 22;     // Medium
+    if (len < 400) return 18;     // Longer
+    if (len < 600) return 16;     // Long
+    return 14;                     // Very long - compact
+  };
+  const messageFontSize = getMessageFontSize();
+  
+  // Title size scales with message
+  const titleFontSize = Math.min(36, messageFontSize + 8);
   
   // Media detection
   const media = detectMedia(feed);
   const hasImages = (media.type === 'image' || media.type === 'images') && media.imageUrls && media.imageUrls.length > 0;
   const imageCount = media.imageUrls?.length || 0;
-  const totalPages = hasImages ? 1 + imageCount : 1; // Text page + image pages
+  const totalPages = hasImages ? 1 + imageCount : 1;
   
   const commentsCount = typeof feed.comments_count === 'string'
     ? parseInt(feed.comments_count, 10)
@@ -158,6 +166,21 @@ export function FullScreenPost({
   const reactionsCount = typeof feed.reactions_count === 'string'
     ? parseInt(feed.reactions_count, 10)
     : feed.reactions_count || 0;
+
+  // Bounce animation for scroll hint
+  useEffect(() => {
+    if (isActive) {
+      const timer = setTimeout(() => {
+        Animated.sequence([
+          Animated.timing(bounceAnim, { toValue: 10, duration: 300, useNativeDriver: true }),
+          Animated.timing(bounceAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+          Animated.timing(bounceAnim, { toValue: 6, duration: 200, useNativeDriver: true }),
+          Animated.timing(bounceAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+        ]).start();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isActive, bounceAnim]);
 
   // Handle like
   const handleLike = useCallback(() => {
@@ -172,10 +195,15 @@ export function FullScreenPost({
     setCurrentPage(page);
   }, [SCREEN_WIDTH]);
 
+  // Jump to page from thumbnail
+  const jumpToPage = (index: number) => {
+    flatListRef.current?.scrollToIndex({ index: index + 1, animated: true });
+  };
+
   // Render text content page (page 0)
   const renderTextPage = () => (
     <View style={[styles.page, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}>
-      {/* Background image (dimmed, decorative) */}
+      {/* Background image (dimmed) */}
       {hasImages && media.imageUrl && (
         <>
           <Image
@@ -194,19 +222,26 @@ export function FullScreenPost({
       {/* Main Content - Title + Message */}
       <View style={styles.mainContent}>
         {feed.title && (
-          <Text style={[
-            styles.title,
-            !hasImages && styles.titleDark
-          ]}>
+          <Text 
+            style={[
+              styles.title, 
+              !hasImages && styles.titleDark,
+              { fontSize: titleFontSize }
+            ]} 
+            numberOfLines={2}
+          >
             {feed.title}
           </Text>
         )}
-        {content.length > 0 && (
-          <Text style={[
-            styles.message,
-            !hasImages && styles.messageDark
-          ]}>
-            {content}
+        {displayContent.length > 0 && (
+          <Text 
+            style={[
+              styles.message, 
+              !hasImages && styles.messageDark,
+              { fontSize: messageFontSize, lineHeight: messageFontSize * 1.4 }
+            ]}
+          >
+            {displayContent}
           </Text>
         )}
       </View>
@@ -236,6 +271,8 @@ export function FullScreenPost({
     ...(media.imageUrls || []).map((url, idx) => ({ type: 'image', url, key: `img-${idx}` })),
   ];
 
+  const isDarkMode = hasImages || currentPage > 0;
+
   return (
     <View style={[styles.container, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}>
       {/* Horizontal swipeable pages */}
@@ -257,7 +294,25 @@ export function FullScreenPost({
         }}
       />
 
-      {/* Close button - always visible */}
+      {/* TOP LEFT: Avatar + Author */}
+      <TouchableOpacity style={styles.authorContainer} onPress={onAuthorPress}>
+        <Avatar
+          source={authorAvatar}
+          size="lg"
+          verified={isVerified}
+          fallback={authorName}
+        />
+        <View style={styles.authorInfo}>
+          <Text style={[styles.authorName, !isDarkMode && styles.authorNameDark]}>
+            {authorName}
+          </Text>
+          <Text style={[styles.timestamp, !isDarkMode && styles.timestampDark]}>
+            {timestamp}
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* TOP RIGHT: Close button */}
       <TouchableOpacity 
         style={styles.closeButton} 
         onPress={onClose}
@@ -266,27 +321,26 @@ export function FullScreenPost({
         <Text style={styles.closeIcon}>✕</Text>
       </TouchableOpacity>
 
-      {/* Right Side Actions - always visible */}
+      {/* RIGHT SIDE: Action buttons */}
       <View style={styles.actionsColumn}>
         <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
           <Text style={styles.actionIcon}>
             {liked ? '❤️' : '🤍'}
           </Text>
-          <Text style={styles.actionCount}>
+          <Text style={[styles.actionCount, !isDarkMode && styles.actionCountDark]}>
             {formatCompactNumber(reactionsCount + (liked ? 1 : 0))}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={onCommentPress}>
           <Text style={styles.actionIcon}>💬</Text>
-          <Text style={styles.actionCount}>
+          <Text style={[styles.actionCount, !isDarkMode && styles.actionCountDark]}>
             {formatCompactNumber(commentsCount)}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton}>
           <Text style={styles.actionIcon}>📤</Text>
-          <Text style={styles.actionCount}>Share</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton}>
@@ -294,53 +348,52 @@ export function FullScreenPost({
         </TouchableOpacity>
       </View>
 
-      {/* Bottom area - Author info */}
-      <View style={styles.bottomArea}>
-        <TouchableOpacity style={styles.authorRow} onPress={onAuthorPress}>
-          <Avatar
-            source={authorAvatar}
-            size="md"
-            verified={isVerified}
-            fallback={authorName}
-          />
-          <View style={styles.authorInfo}>
-            <Text style={[styles.authorName, !hasImages && currentPage === 0 && styles.authorNameDark]}>
-              {authorName}
-            </Text>
-            <Text style={[styles.timestamp, !hasImages && currentPage === 0 && styles.timestampDark]}>
-              {timestamp}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Page indicators (dots) - only show if multiple pages */}
-        {totalPages > 1 && (
-          <View style={styles.pageIndicators}>
-            {pages.map((_, idx) => (
-              <View
-                key={idx}
+      {/* BOTTOM: Thumbnail strip (if multiple images) */}
+      {hasImages && imageCount > 0 && (
+        <View style={styles.thumbnailContainer}>
+          <View style={styles.thumbnailStrip}>
+            {/* Text page indicator */}
+            <TouchableOpacity
+              style={[
+                styles.thumbnailItem,
+                currentPage === 0 && styles.thumbnailActive,
+              ]}
+              onPress={() => flatListRef.current?.scrollToIndex({ index: 0, animated: true })}
+            >
+              <Text style={styles.thumbnailText}>Aa</Text>
+            </TouchableOpacity>
+            
+            {/* Image thumbnails */}
+            {media.imageUrls?.map((url, idx) => (
+              <TouchableOpacity
+                key={`thumb-${idx}-${url}`}
                 style={[
-                  styles.dot,
-                  idx === currentPage && styles.dotActive,
-                  !hasImages && currentPage === 0 && styles.dotDark,
+                  styles.thumbnailItem,
+                  currentPage === idx + 1 && styles.thumbnailActive,
                 ]}
-              />
+                onPress={() => jumpToPage(idx)}
+              >
+                <Image
+                  source={{ uri: url, cache: 'force-cache' }}
+                  style={styles.thumbnailImage}
+                  resizeMode="cover"
+                  defaultSource={{ uri: url }}
+                />
+              </TouchableOpacity>
             ))}
           </View>
-        )}
-
-        {/* Swipe hints */}
-        <View style={styles.swipeHints}>
-          {hasImages && (
-            <Text style={[styles.swipeHintText, !hasImages && currentPage === 0 && styles.swipeHintDark]}>
-              ← → {currentPage === 0 ? 'Swipe for images' : 'Swipe for more'}
-            </Text>
-          )}
-          <Text style={[styles.swipeHintText, !hasImages && currentPage === 0 && styles.swipeHintDark]}>
-            ↕ Swipe for more posts
-          </Text>
         </View>
-      </View>
+      )}
+
+      {/* BOTTOM: Scroll indicator (animated bounce) */}
+      <Animated.View 
+        style={[
+          styles.scrollIndicator,
+          { transform: [{ translateY: bounceAnim }] }
+        ]}
+      >
+        <Text style={[styles.scrollArrow, !isDarkMode && styles.scrollArrowDark]}>⌄</Text>
+      </Animated.View>
     </View>
   );
 }
@@ -374,12 +427,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 
-  // Main content (title + message)
+  // Main content
   mainContent: {
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxl,
-    maxWidth: '90%',
+    paddingTop: 140,
+    paddingBottom: 180,
+    maxWidth: '85%',
     alignItems: 'center',
+    maxHeight: '80%',
   },
 
   title: {
@@ -436,68 +491,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Close button
-  closeButton: {
+  // TOP LEFT: Author
+  authorContainer: {
     position: 'absolute',
-    top: 50,
+    top: 60,
     left: spacing.lg,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-
-  closeIcon: {
-    color: colors.textInverse,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-
-  // Right side actions
-  actionsColumn: {
-    position: 'absolute',
-    right: spacing.md,
-    top: '40%',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-
-  actionButton: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    padding: spacing.xs,
-  },
-
-  actionIcon: {
-    fontSize: 28,
-  },
-
-  actionCount: {
-    color: colors.textInverse,
-    fontSize: typography.size.sm,
-    marginTop: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-
-  // Bottom area
-  bottomArea: {
-    position: 'absolute',
-    bottom: 80,
-    left: 0,
-    right: 70,
-    paddingHorizontal: spacing.lg,
-    zIndex: 10,
-  },
-
-  authorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    zIndex: 10,
   },
 
   authorInfo: {
@@ -506,8 +507,8 @@ const styles = StyleSheet.create({
 
   authorName: {
     color: colors.textInverse,
-    fontSize: typography.size.md,
-    fontWeight: '600',
+    fontSize: typography.size.lg,
+    fontWeight: '700',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -519,8 +520,9 @@ const styles = StyleSheet.create({
   },
 
   timestamp: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: typography.size.sm,
+    marginTop: 2,
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -531,45 +533,122 @@ const styles = StyleSheet.create({
     textShadowColor: 'transparent',
   },
 
-  // Page indicators (dots)
-  pageIndicators: {
-    flexDirection: 'row',
+  // TOP RIGHT: Close button
+  closeButton: {
+    position: 'absolute',
+    top: 60,
+    right: spacing.lg,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    alignItems: 'center',
+    zIndex: 10,
   },
 
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  closeIcon: {
+    color: colors.textInverse,
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+
+  // RIGHT SIDE: Actions
+  actionsColumn: {
+    position: 'absolute',
+    right: spacing.md,
+    top: '35%',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+
+  actionButton: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+    padding: spacing.xs,
+  },
+
+  actionIcon: {
+    fontSize: 30,
+  },
+
+  actionCount: {
+    color: colors.textInverse,
+    fontSize: typography.size.sm,
+    fontWeight: '600',
+    marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+
+  actionCountDark: {
+    color: colors.text,
+    textShadowColor: 'transparent',
+  },
+
+  // BOTTOM: Thumbnail strip
+  thumbnailContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+
+  thumbnailStrip: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    padding: 6,
+  },
+
+  thumbnailItem: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
     marginHorizontal: 4,
-  },
-
-  dotActive: {
-    backgroundColor: colors.textInverse,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-
-  dotDark: {
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-  },
-
-  // Swipe hints
-  swipeHints: {
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
 
-  swipeHintText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: typography.size.sm,
-    marginBottom: 2,
+  thumbnailActive: {
+    borderWidth: 2,
+    borderColor: colors.textInverse,
   },
 
-  swipeHintDark: {
-    color: colors.textTertiary,
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  thumbnailText: {
+    color: colors.textInverse,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // BOTTOM: Scroll indicator
+  scrollIndicator: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 10,
+  },
+
+  scrollArrow: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 32,
+    fontWeight: '300',
+  },
+
+  scrollArrowDark: {
+    color: 'rgba(0, 0, 0, 0.3)',
   },
 });
 
