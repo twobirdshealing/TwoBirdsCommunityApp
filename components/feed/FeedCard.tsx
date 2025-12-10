@@ -2,33 +2,38 @@
 // FEED CARD - A single post/feed item in the list
 // =============================================================================
 // Displays author, content, media (images/YouTube), reactions, and comments.
-// Now properly detects media from meta.media_preview AND message content.
+// Properly detects media from:
+//   - meta.media_items (multiple images array)
+//   - meta.media_preview (single image)
+//   - message content (YouTube links)
 // =============================================================================
 
-import React, { useState } from 'react';
-import { 
-  ActivityIndicator,
-  Image, 
-  StyleSheet, 
-  Text, 
-  TouchableOpacity, 
-  View 
-} from 'react-native';
+import { Avatar } from '@/components/common/Avatar';
 import { colors } from '@/constants/colors';
-import { spacing, typography, sizing, shadows } from '@/constants/layout';
+import { shadows, sizing, spacing, typography } from '@/constants/layout';
 import { Feed } from '@/types';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { formatCompactNumber } from '@/utils/formatNumber';
 import { stripHtmlTags, truncateText } from '@/utils/htmlToText';
-import { Avatar } from '@/components/common/Avatar';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 // -----------------------------------------------------------------------------
 // Media Detection Helper
 // -----------------------------------------------------------------------------
 
 interface MediaInfo {
-  type: 'image' | 'youtube' | 'none';
+  type: 'image' | 'images' | 'youtube' | 'none';
   imageUrl?: string;
+  imageUrls?: string[];  // For multiple images
   youtubeId?: string;
 }
 
@@ -37,7 +42,27 @@ function detectMedia(feed: Feed): MediaInfo {
   const messageRendered = feed.message_rendered || '';
   const meta = feed.meta || {};
   
-  // 1. Check for uploaded image in meta.media_preview (most common)
+  // 1. Check for multiple images in meta.media_items (array of images)
+  if (meta.media_items && Array.isArray(meta.media_items) && meta.media_items.length > 0) {
+    const imageUrls = meta.media_items
+      .filter((item: any) => item.type === 'image' && item.url)
+      .map((item: any) => item.url);
+    
+    if (imageUrls.length > 1) {
+      return {
+        type: 'images',
+        imageUrls: imageUrls,
+        imageUrl: imageUrls[0], // First image as fallback
+      };
+    } else if (imageUrls.length === 1) {
+      return {
+        type: 'image',
+        imageUrl: imageUrls[0],
+      };
+    }
+  }
+  
+  // 2. Check for single uploaded image in meta.media_preview
   if (meta.media_preview?.image) {
     return {
       type: 'image',
@@ -45,7 +70,7 @@ function detectMedia(feed: Feed): MediaInfo {
     };
   }
   
-  // 2. Check for featured_image
+  // 3. Check for featured_image
   if (feed.featured_image) {
     return {
       type: 'image',
@@ -53,7 +78,7 @@ function detectMedia(feed: Feed): MediaInfo {
     };
   }
   
-  // 3. Check for YouTube in message
+  // 4. Check for YouTube in message
   const youtubePatterns = [
     /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
     /youtu\.be\/([a-zA-Z0-9_-]{11})/,
@@ -126,6 +151,7 @@ export function FeedCard({
   // Detect media
   const media = detectMedia(feed);
   const hasImage = media.type === 'image' && media.imageUrl && !imageError;
+  const hasImages = media.type === 'images' && media.imageUrls && media.imageUrls.length > 0;
   const hasYouTube = media.type === 'youtube' && media.youtubeId;
   
   // Stats
@@ -135,9 +161,6 @@ export function FeedCard({
   const reactionsCount = typeof feed.reactions_count === 'string'
     ? parseInt(feed.reactions_count, 10)
     : feed.reactions_count || 0;
-
-  // Debug log (remove in production)
-  // console.log(`[FeedCard ${feed.id}] Media:`, media.type, media.imageUrl || media.youtubeId || 'none');
 
   return (
     <TouchableOpacity 
@@ -191,7 +214,7 @@ export function FeedCard({
         </Text>
       )}
       
-      {/* ===== Image Media ===== */}
+      {/* ===== Single Image Media ===== */}
       {hasImage && (
         <View style={styles.mediaContainer}>
           {imageLoading && (
@@ -205,8 +228,7 @@ export function FeedCard({
             resizeMode="cover"
             onLoadStart={() => setImageLoading(true)}
             onLoadEnd={() => setImageLoading(false)}
-            onError={(e) => {
-              console.log('Image load error:', media.imageUrl, e.nativeEvent.error);
+            onError={() => {
               setImageError(true);
               setImageLoading(false);
             }}
@@ -214,15 +236,30 @@ export function FeedCard({
         </View>
       )}
       
-      {/* ===== Image Error State ===== */}
-      {media.type === 'image' && imageError && (
-        <View style={styles.mediaError}>
-          <Text style={styles.mediaErrorIcon}>🖼️</Text>
-          <Text style={styles.mediaErrorText}>Image unavailable</Text>
+      {/* ===== Multiple Images (Gallery) ===== */}
+      {hasImages && media.imageUrls && (
+        <View style={styles.galleryContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.galleryScroll}
+          >
+            {media.imageUrls.map((url, index) => (
+              <Image
+                key={index}
+                source={{ uri: url }}
+                style={styles.galleryImage}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+          <View style={styles.imageCountBadge}>
+            <Text style={styles.imageCountText}>{media.imageUrls.length} photos</Text>
+          </View>
         </View>
       )}
       
-      {/* ===== YouTube Thumbnail ===== */}
+      {/* ===== YouTube Media ===== */}
       {hasYouTube && (
         <View style={styles.youtubeContainer}>
           <Image 
@@ -238,6 +275,14 @@ export function FeedCard({
           <View style={styles.youtubeLabel}>
             <Text style={styles.youtubeLabelText}>YouTube</Text>
           </View>
+        </View>
+      )}
+      
+      {/* ===== Image Error State ===== */}
+      {imageError && media.type === 'image' && (
+        <View style={styles.mediaError}>
+          <Text style={styles.mediaErrorIcon}>🖼️</Text>
+          <Text style={styles.mediaErrorText}>Image unavailable</Text>
         </View>
       )}
       
@@ -306,7 +351,7 @@ const styles = StyleSheet.create({
   
   authorName: {
     fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
+    fontWeight: typography.weight.semibold as any,
     color: colors.text,
   },
   
@@ -336,7 +381,7 @@ const styles = StyleSheet.create({
   // Title
   title: {
     fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
+    fontWeight: typography.weight.semibold as any,
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -348,7 +393,7 @@ const styles = StyleSheet.create({
     lineHeight: typography.size.md * 1.5,
   },
   
-  // Media Container
+  // Single Image Media Container
   mediaContainer: {
     marginTop: spacing.md,
     borderRadius: sizing.borderRadius.md,
@@ -371,6 +416,40 @@ const styles = StyleSheet.create({
   mediaImage: {
     width: '100%',
     height: 200,
+  },
+  
+  // Gallery (Multiple Images)
+  galleryContainer: {
+    marginTop: spacing.md,
+    position: 'relative',
+  },
+  
+  galleryScroll: {
+    paddingRight: spacing.md,
+  },
+  
+  galleryImage: {
+    width: 200,
+    height: 200,
+    borderRadius: sizing.borderRadius.md,
+    marginRight: spacing.sm,
+    backgroundColor: colors.skeleton,
+  },
+  
+  imageCountBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  
+  imageCountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   
   // Media Error

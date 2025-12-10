@@ -1,8 +1,7 @@
 // =============================================================================
-// FEED LIST - High-performance scrollable list of feed cards
+// FEED LIST - Scrollable list of feed cards
 // =============================================================================
-// Uses FlashList for better performance with complex feed items.
-// IMPORTANT: Do NOT enable pagingEnabled - causes scroll snapping issues.
+// Uses FlatList for reliable cross-platform scrolling.
 // =============================================================================
 
 import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
@@ -10,8 +9,7 @@ import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/layout';
 import { Feed } from '@/types';
 import React from 'react';
-import { Platform, RefreshControl, StyleSheet, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
 import { FeedCard } from './FeedCard';
 
 // -----------------------------------------------------------------------------
@@ -32,30 +30,6 @@ interface FeedListProps {
   emptyMessage?: string;
   emptyIcon?: string;
   ListHeaderComponent?: React.ReactElement;
-}
-
-// -----------------------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------------------
-
-// Detect if feed has media (for better height estimation)
-function hasMedia(feed: Feed): boolean {
-  const message = feed.message || '';
-  const messageRendered = feed.message_rendered || '';
-  const meta = feed.meta || {};
-
-  // Check for image
-  if (meta.media_preview?.image || feed.featured_image) {
-    return true;
-  }
-
-  // Check for YouTube
-  const youtubePattern = /youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\//;
-  if (youtubePattern.test(message) || youtubePattern.test(messageRendered)) {
-    return true;
-  }
-
-  return false;
 }
 
 // -----------------------------------------------------------------------------
@@ -106,11 +80,6 @@ export function FeedList({
     );
   }
 
-  // Get item type for better height estimation
-  const getItemType = (item: Feed) => {
-    return hasMedia(item) ? 'with-media' : 'without-media';
-  };
-
   // Render feed item
   const renderItem = ({ item }: { item: Feed }) => (
     <FeedCard
@@ -132,26 +101,10 @@ export function FeedList({
   
   return (
     <View style={styles.container}>
-      <FlashList
+      <FlatList
         data={feeds}
         renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
-
-        // Performance: Categorize items by type for better height estimation
-        // This fixes scroll drift by helping FlashList predict item heights
-        getItemType={getItemType}
-
-        // Estimate sizes based on item type:
-        // - Cards with media (image/YouTube): ~460px
-        // - Cards without media: ~220px
-        // Heights include: margins(8) + padding(32) + header(52) + content + footer(65)
-        estimatedItemSize={220}
-
-        // Provide more accurate estimates per item type
-        overrideItemLayout={(layout, item) => {
-          const itemHasMedia = hasMedia(item);
-          layout.size = itemHasMedia ? 460 : 220;
-        }}
         
         // Pull to refresh
         refreshControl={
@@ -178,11 +131,13 @@ export function FeedList({
         // Item spacing
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         
-        // Smooth scrolling (important: do NOT set pagingEnabled or snapTo*)
+        // Smooth scrolling
         showsVerticalScrollIndicator={true}
         
-        // Scroll performance
+        // Performance
         removeClippedSubviews={Platform.OS === 'android'}
+        maxToRenderPerBatch={10}
+        windowSize={5}
       />
     </View>
   );

@@ -5,9 +5,9 @@
 // Uses the base API client for HTTP requests.
 // =============================================================================
 
-import { get, post, del } from './client';
-import { ENDPOINTS, DEFAULT_PER_PAGE } from '@/constants/config';
-import { Feed, FeedsResponse, FeedDetailResponse, ReactResponse, ReactionType } from '@/types';
+import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
+import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType } from '@/types';
+import { del, get, post } from './client';
 
 // -----------------------------------------------------------------------------
 // Request Options
@@ -40,7 +40,24 @@ export async function getFeeds(options: GetFeedsOptions = {}) {
     ...(options.disable_sticky && { disable_sticky: 'yes' }),
   };
   
-  return get<FeedsResponse>(ENDPOINTS.FEEDS, params);
+  const response = await get<FeedsResponse>(ENDPOINTS.FEEDS, params);
+  
+  // DEBUG: Log the first 5 feeds to see media structure
+  if (response.success && response.data?.feeds?.data) {
+    const feeds = response.data.feeds.data.slice(0, 5);
+    console.log('\n========== DEBUG: FEED MEDIA STRUCTURE ==========');
+    feeds.forEach((feed: Feed, index: number) => {
+      console.log(`\n[Feed ${index + 1}] ID: ${feed.id}`);
+      console.log(`  Title: ${feed.title || '(no title)'}`);
+      console.log(`  Message (first 100 chars): ${feed.message?.substring(0, 100) || '(empty)'}...`);
+      console.log(`  featured_image: ${feed.featured_image || 'null'}`);
+      console.log(`  content_type: ${feed.content_type}`);
+      console.log(`  meta:`, JSON.stringify(feed.meta, null, 2));
+    });
+    console.log('\n========== END DEBUG ==========\n');
+  }
+  
+  return response;
 }
 
 // -----------------------------------------------------------------------------
