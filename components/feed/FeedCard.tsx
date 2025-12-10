@@ -3,8 +3,8 @@
 // =============================================================================
 // Displays author, content, media (images/YouTube), reactions, and comments.
 // Properly detects media from:
-//   - meta.media_items (multiple images array)
 //   - meta.media_preview (single image)
+//   - meta.media_items (multiple images)
 //   - message content (YouTube links)
 // =============================================================================
 
@@ -19,7 +19,6 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -33,7 +32,7 @@ import {
 interface MediaInfo {
   type: 'image' | 'images' | 'youtube' | 'none';
   imageUrl?: string;
-  imageUrls?: string[];  // For multiple images
+  imageUrls?: string[];
   youtubeId?: string;
 }
 
@@ -42,7 +41,7 @@ function detectMedia(feed: Feed): MediaInfo {
   const messageRendered = feed.message_rendered || '';
   const meta = feed.meta || {};
   
-  // 1. Check for multiple images in meta.media_items (array of images)
+  // 1. Check for multiple images in meta.media_items
   if (meta.media_items && Array.isArray(meta.media_items) && meta.media_items.length > 0) {
     const imageUrls = meta.media_items
       .filter((item: any) => item.type === 'image' && item.url)
@@ -52,7 +51,7 @@ function detectMedia(feed: Feed): MediaInfo {
       return {
         type: 'images',
         imageUrls: imageUrls,
-        imageUrl: imageUrls[0], // First image as fallback
+        imageUrl: imageUrls[0],
       };
     } else if (imageUrls.length === 1) {
       return {
@@ -62,7 +61,7 @@ function detectMedia(feed: Feed): MediaInfo {
     }
   }
   
-  // 2. Check for single uploaded image in meta.media_preview
+  // 2. Check for single image in meta.media_preview
   if (meta.media_preview?.image) {
     return {
       type: 'image',
@@ -98,7 +97,6 @@ function detectMedia(feed: Feed): MediaInfo {
   return { type: 'none' };
 }
 
-// Remove URLs from display text
 function cleanMessageText(text: string): string {
   return text
     .replace(/https?:\/\/[^\s]+/gi, '')
@@ -162,6 +160,37 @@ export function FeedCard({
     ? parseInt(feed.reactions_count, 10)
     : feed.reactions_count || 0;
 
+  // Render multi-image grid (2 images side by side)
+  const renderImageGrid = () => {
+    if (!media.imageUrls) return null;
+    const images = media.imageUrls.slice(0, 2); // Show max 2 in preview
+    const remaining = media.imageUrls.length - 2;
+    
+    return (
+      <View style={styles.imageGrid}>
+        {images.map((url, index) => (
+          <View key={index} style={styles.gridImageContainer}>
+            <Image
+              source={{ uri: url }}
+              style={styles.gridImage}
+              resizeMode="cover"
+            />
+            {/* Show "+X" badge on second image if more images */}
+            {index === 1 && remaining > 0 && (
+              <View style={styles.moreImagesBadge}>
+                <Text style={styles.moreImagesText}>+{remaining}</Text>
+              </View>
+            )}
+          </View>
+        ))}
+        {/* Photo count badge */}
+        <View style={styles.photoCountBadge}>
+          <Text style={styles.photoCountText}>{media.imageUrls.length} photos</Text>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <TouchableOpacity 
       style={styles.card} 
@@ -214,7 +243,7 @@ export function FeedCard({
         </Text>
       )}
       
-      {/* ===== Single Image Media ===== */}
+      {/* ===== Single Image ===== */}
       {hasImage && (
         <View style={styles.mediaContainer}>
           {imageLoading && (
@@ -236,30 +265,10 @@ export function FeedCard({
         </View>
       )}
       
-      {/* ===== Multiple Images (Gallery) ===== */}
-      {hasImages && media.imageUrls && (
-        <View style={styles.galleryContainer}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.galleryScroll}
-          >
-            {media.imageUrls.map((url, index) => (
-              <Image
-                key={index}
-                source={{ uri: url }}
-                style={styles.galleryImage}
-                resizeMode="cover"
-              />
-            ))}
-          </ScrollView>
-          <View style={styles.imageCountBadge}>
-            <Text style={styles.imageCountText}>{media.imageUrls.length} photos</Text>
-          </View>
-        </View>
-      )}
+      {/* ===== Multiple Images Grid ===== */}
+      {hasImages && renderImageGrid()}
       
-      {/* ===== YouTube Media ===== */}
+      {/* ===== YouTube ===== */}
       {hasYouTube && (
         <View style={styles.youtubeContainer}>
           <Image 
@@ -351,7 +360,7 @@ const styles = StyleSheet.create({
   
   authorName: {
     fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold as any,
+    fontWeight: typography.weight.semibold,
     color: colors.text,
   },
   
@@ -381,7 +390,7 @@ const styles = StyleSheet.create({
   // Title
   title: {
     fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold as any,
+    fontWeight: typography.weight.semibold,
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -393,7 +402,7 @@ const styles = StyleSheet.create({
     lineHeight: typography.size.md * 1.5,
   },
   
-  // Single Image Media Container
+  // Single Image
   mediaContainer: {
     marginTop: spacing.md,
     borderRadius: sizing.borderRadius.md,
@@ -418,35 +427,51 @@ const styles = StyleSheet.create({
     height: 200,
   },
   
-  // Gallery (Multiple Images)
-  galleryContainer: {
+  // Multiple Images Grid
+  imageGrid: {
     marginTop: spacing.md,
+    flexDirection: 'row',
+    borderRadius: sizing.borderRadius.md,
+    overflow: 'hidden',
+    height: 200,
     position: 'relative',
   },
   
-  galleryScroll: {
-    paddingRight: spacing.md,
+  gridImageContainer: {
+    flex: 1,
+    marginRight: 2,
   },
   
-  galleryImage: {
-    width: 200,
-    height: 200,
-    borderRadius: sizing.borderRadius.md,
-    marginRight: spacing.sm,
+  gridImage: {
+    width: '100%',
+    height: '100%',
     backgroundColor: colors.skeleton,
   },
   
-  imageCountBadge: {
+  moreImagesBadge: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  moreImagesText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  
+  photoCountBadge: {
     position: 'absolute',
     top: spacing.sm,
     right: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 12,
   },
   
-  imageCountText: {
+  photoCountText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
@@ -490,13 +515,13 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   
   youtubePlayButton: {
     width: 60,
     height: 42,
-    backgroundColor: 'rgba(255,0,0,0.9)',
+    backgroundColor: 'rgba(255, 0, 0, 0.9)',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -512,7 +537,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: spacing.sm,
     left: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 4,
