@@ -1,77 +1,27 @@
 // =============================================================================
-// CONFIG - Central configuration for the app
+// CONFIG - App configuration and API settings
 // =============================================================================
-// This file contains all the settings that might change between environments
-// (development, staging, production) or need to be updated in one place.
-//
-// ⚠️  SECURITY NOTE: In a real production app, you would:
-//     1. Use environment variables (process.env.API_URL)
-//     2. Never commit credentials to git
-//     3. Use a proper auth system (JWT tokens from login)
-//
-// For now, we're using hardcoded values for development simplicity.
-// =============================================================================
+
+// -----------------------------------------------------------------------------
+// App Info
+// -----------------------------------------------------------------------------
+
+export const APP_NAME = 'Two Birds';
+export const APP_VERSION = '1.0.0';
 
 // -----------------------------------------------------------------------------
 // API Configuration
 // -----------------------------------------------------------------------------
 
-// The base URL for all Fluent Community API calls
-// This is your WordPress site with Fluent Community installed
-export const API_URL = 'http://staging.twobirdschurch.com/wp-json/fluent-community/v2';
-// Your WordPress site URL (for non-API links, avatars, etc.)
-export const SITE_URL = 'http://staging.twobirdschurch.com';
+// IMPORTANT: Use HTTPS to prevent auth header stripping on redirects
+export const SITE_URL = 'https://staging.twobirdschurch.com';
+export const API_URL = `${SITE_URL}/wp-json/fluent-community/v2`;
 
-// -----------------------------------------------------------------------------
-// Authentication (TEMPORARY - will be replaced with proper login)
-// -----------------------------------------------------------------------------
-
-// WordPress username with API access
-export const API_USERNAME = 'dfwaya';
-
-// WordPress Application Password (NOT your regular password)
-// Generate at: WordPress Dashboard → Users → Profile → Application Passwords
-export const API_PASSWORD = 'ujkF qKio WyOH AEDK GtXG YeCG';
-
-// -----------------------------------------------------------------------------
-// App Settings
-// -----------------------------------------------------------------------------
-
-// App display name
-export const APP_NAME = 'Two Birds Community';
-
-// Number of items to load per page
+// Default pagination
 export const DEFAULT_PER_PAGE = 20;
 
-// How long to cache data (in milliseconds)
-export const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
 // -----------------------------------------------------------------------------
-// Feature Flags (enable/disable features)
-// -----------------------------------------------------------------------------
-
-export const FEATURES = {
-  // Phase 1 - Currently building
-  FEED_VIEW: true,
-  FEED_DETAIL: true,
-  COMMENTS_VIEW: true,
-  SPACES_VIEW: true,
-  PROFILE_VIEW: true,
-  REACTIONS: true,
-  
-  // Phase 2 - Coming later (greyed out in UI)
-  CREATE_POST: false,
-  CREATE_COMMENT: false,
-  NOTIFICATIONS: false,
-  
-  // Phase 3 - Future
-  USER_AUTH: false,
-  MESSAGES: false,
-  PUSH_NOTIFICATIONS: false,
-};
-
-// -----------------------------------------------------------------------------
-// API Endpoints (for reference)
+// API Endpoints
 // -----------------------------------------------------------------------------
 
 export const ENDPOINTS = {
@@ -79,25 +29,46 @@ export const ENDPOINTS = {
   FEEDS: '/feeds',
   FEED_BY_ID: (id: number) => `/feeds/${id}/by-id`,
   FEED_BY_SLUG: (slug: string) => `/feeds/${slug}/by-slug`,
-  
-  // Comments
-  FEED_COMMENTS: (feedId: number) => `/feeds/${feedId}/comments`,
-  
-  // Reactions
-  FEED_REACT: (feedId: number) => `/feeds/${feedId}/react`,
+  FEED_COMMENTS: (id: number) => `/feeds/${id}/comments`,
+  FEED_REACT: (id: number) => `/feeds/${id}/react`,
+  FEED_REACTIONS: (id: number) => `/feeds/${id}/reactions`,
   
   // Spaces
   SPACES: '/spaces',
   SPACE_BY_SLUG: (slug: string) => `/spaces/${slug}/by-slug`,
-  SPACE_BY_ID: (id: number) => `/spaces/${id}/by-id`,
+  SPACE_JOIN: (slug: string) => `/spaces/${slug}/join`,
+  SPACE_LEAVE: (slug: string) => `/spaces/${slug}/leave`,
+  SPACE_MEMBERS: (slug: string) => `/spaces/${slug}/members`,
   
-  // Profiles
+  // Profile - Use username, NOT "me"
   PROFILE: (username: string) => `/profile/${username}`,
-  MY_PROFILE: '/profile/me',
+  PROFILE_SPACES: (username: string) => `/profile/${username}/spaces`,
+  PROFILE_COMMENTS: (username: string) => `/profile/${username}/comments`,
+  PROFILE_FOLLOW: (username: string) => `/profile/${username}/follow`,
+  PROFILE_UNFOLLOW: (username: string) => `/profile/${username}/unfollow`,
+  PROFILE_FOLLOWERS: (username: string) => `/profile/${username}/followers`,
+  PROFILE_FOLLOWING: (username: string) => `/profile/${username}/followings`,
+  
+  // Notifications
+  NOTIFICATIONS: '/notifications',
+  NOTIFICATIONS_UNREAD: '/notifications/unread',
+  NOTIFICATIONS_MARK_READ: (id: number) => `/notifications/mark-read/${id}`,
+  NOTIFICATIONS_MARK_ALL_READ: '/notifications/mark-all-read',
   
   // Members
   MEMBERS: '/members',
   
   // Activities
   ACTIVITIES: '/activities',
+};
+
+// -----------------------------------------------------------------------------
+// Feature Flags
+// -----------------------------------------------------------------------------
+
+export const FEATURES = {
+  DARK_MODE: false,        // Coming soon
+  PUSH_NOTIFICATIONS: false, // Coming soon
+  MESSAGING: false,        // Requires Fluent Messaging plugin
+  COURSES: false,          // Requires Fluent LMS
 };

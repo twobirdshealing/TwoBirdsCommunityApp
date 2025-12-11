@@ -1,44 +1,43 @@
 // =============================================================================
-// FEED TYPES - TypeScript definitions for feed/post data
-// =============================================================================
-// Based on Fluent Community Feeds API documentation
+// FEED TYPES - TypeScript definitions for feed-related data
 // =============================================================================
 
-import { XProfile } from './user';
+import { XProfile } from './profile';
 
 // -----------------------------------------------------------------------------
-// Feed - A post in the community
+// Main Feed Type
 // -----------------------------------------------------------------------------
 
 export interface Feed {
   id: number;
-  user_id: string | number;
-  parent_id: number | null;
+  user_id: number;
+  space_id: number | null;
+  privacy: 'public' | 'private';
+  type: FeedType;
+  content_type: ContentType;
   title: string | null;
   slug: string;
   message: string;
   message_rendered: string;
-  type: FeedType;
-  content_type: ContentType;
-  space_id: string | number;
-  privacy: 'public' | 'private';
-  status: FeedStatus;
+  is_sticky: boolean;
   featured_image: string | null;
-  meta: Record<string, any>;
-  is_sticky: number;  // 0 or 1
+  priority: number;
+  status: FeedStatus;
   comments_count: number | string;
   reactions_count: number | string;
-  priority: number;
-  expired_at: string | null;
-  scheduled_at: string | null;
   created_at: string;
-  updated_at?: string;
-  permalink: string;
+  updated_at: string;
+  scheduled_at: string | null;
   
-  // Related data (included in response)
+  // User reaction state (from API when authenticated)
+  has_user_react?: boolean;    // Whether current user has reacted
+  bookmarked?: boolean;        // Whether current user has bookmarked
+  
+  // Related data (may be included in response)
+  user?: XProfile;
   xprofile?: XProfile;
   space?: FeedSpace;
-  comments?: any[];  // Will define Comment type separately
+  comments?: any[];
   reactions?: Reaction[];
   terms?: any[];
 }
@@ -48,35 +47,35 @@ export interface Feed {
 // -----------------------------------------------------------------------------
 
 export type FeedType = 
-  | 'feed'          // Standard post (default)
-  | 'text'          // Text post
-  | 'announcement'  // Important announcement
-  | 'course_lesson' // Course lesson content
-  | 'question';     // Q&A post
+  | 'feed'
+  | 'text'
+  | 'announcement'
+  | 'course_lesson'
+  | 'question';
 
 // -----------------------------------------------------------------------------
 // Content Type - How is the content formatted?
 // -----------------------------------------------------------------------------
 
 export type ContentType =
-  | 'text'      // Plain text
-  | 'markdown'  // Markdown formatted
-  | 'html'      // HTML formatted
-  | 'document'  // Document library
-  | 'survey'    // Poll/survey
-  | 'video'     // Video content
-  | 'audio';    // Audio content
+  | 'text'
+  | 'markdown'
+  | 'html'
+  | 'document'
+  | 'survey'
+  | 'video'
+  | 'audio';
 
 // -----------------------------------------------------------------------------
 // Feed Status
 // -----------------------------------------------------------------------------
 
 export type FeedStatus =
-  | 'published'  // Live and visible
-  | 'draft'      // Not yet published
-  | 'scheduled'  // Scheduled for future
-  | 'pending'    // Awaiting moderation
-  | 'spam';      // Marked as spam
+  | 'published'
+  | 'draft'
+  | 'scheduled'
+  | 'pending'
+  | 'spam';
 
 // -----------------------------------------------------------------------------
 // Space info embedded in feed
@@ -130,10 +129,8 @@ export interface FeedDetailResponse {
 }
 
 // Response from POST /feeds/{id}/react
+// Actual API response (verified via curl)
 export interface ReactResponse {
   message: string;
-  data: {
-    reaction: Reaction;
-    action: 'added' | 'removed';
-  };
+  new_count: number;
 }

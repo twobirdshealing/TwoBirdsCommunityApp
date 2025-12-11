@@ -2,74 +2,107 @@
 // TAB LAYOUT - Bottom tab navigation
 // =============================================================================
 
+import React from 'react';
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors } from '@/constants/colors';
+
+// Tab icons as emoji (simple, no external deps)
+const TabIcon = ({ emoji, focused }: { emoji: string; focused: boolean }) => (
+  <View style={[styles.iconContainer, focused && styles.iconFocused]}>
+    <View style={styles.icon}>
+      <View style={{ opacity: focused ? 1 : 0.6 }}>
+        <View><Text style={{ fontSize: 24 }}>{emoji}</Text></View>
+      </View>
+    </View>
+  </View>
+);
+
+// Need to import Text
+import { Text } from 'react-native';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  
+  // Calculate tab bar height with safe area
+  const tabBarHeight = 60 + Math.max(insets.bottom, 10);
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: '#6366F1',
-        tabBarInactiveTintColor: '#9CA3AF',
-        tabBarShowLabel: true,
-        tabBarLabelStyle: styles.tabLabel,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textTertiary,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          height: tabBarHeight,
+          paddingTop: 8,
+          paddingBottom: Math.max(insets.bottom, 10),
+          // Ensure it's above Android nav
+          ...Platform.select({
+            android: {
+              elevation: 8,
+            },
+          }),
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
+          marginTop: 2,
+        },
       }}
     >
-      {/* Home Tab */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
           tabBarIcon: ({ focused }) => (
-            <Text style={styles.icon}>{focused ? '🏠' : '🏡'}</Text>
+            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.6 }}>🏠</Text>
           ),
         }}
       />
       
-      {/* Spaces Tab */}
       <Tabs.Screen
         name="spaces"
         options={{
           title: 'Spaces',
           tabBarIcon: ({ focused }) => (
-            <Text style={styles.icon}>{focused ? '👥' : '👤'}</Text>
+            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.6 }}>👥</Text>
           ),
         }}
       />
       
-      {/* Create Tab (Center) */}
       <Tabs.Screen
         name="create"
         options={{
           title: '',
-          tabBarIcon: () => (
+          tabBarIcon: ({ focused }) => (
             <View style={styles.createButton}>
-              <Text style={styles.createIcon}>+</Text>
+              <Text style={{ fontSize: 24, color: '#fff' }}>+</Text>
             </View>
           ),
         }}
       />
       
-      {/* Notifications Tab */}
       <Tabs.Screen
         name="notifications"
         options={{
           title: 'Alerts',
           tabBarIcon: ({ focused }) => (
-            <Text style={styles.icon}>{focused ? '🔔' : '🔕'}</Text>
+            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.6 }}>🔔</Text>
           ),
         }}
       />
       
-      {/* Profile Tab */}
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ focused }) => (
-            <Text style={styles.icon}>{focused ? '😊' : '🙂'}</Text>
+            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.6 }}>😊</Text>
           ),
         }}
       />
@@ -78,43 +111,30 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: '#FFFFFF',
-    borderTopColor: '#E5E7EB',
-    borderTopWidth: 1,
-    height: Platform.OS === 'ios' ? 88 : 70,
-    paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   
-  tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
+  iconFocused: {},
   
   icon: {
-    fontSize: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   
   createButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#6366F1',
-    justifyContent: 'center',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary,
     alignItems: 'center',
-    marginTop: -15,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  
-  createIcon: {
-    fontSize: 28,
-    color: '#FFFFFF',
-    fontWeight: '300',
-    marginTop: -2,
+    justifyContent: 'center',
+    marginTop: -20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
 });

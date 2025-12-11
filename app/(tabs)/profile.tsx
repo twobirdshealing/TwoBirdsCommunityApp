@@ -1,48 +1,91 @@
 // =============================================================================
-// PROFILE SCREEN - Current user's profile
+// PROFILE SCREEN - User profile with tabs
 // =============================================================================
-// Shows the logged-in user's profile info.
-// For now, shows the admin user's profile.
+// Matches native Fluent Community profile layout:
+// - Cover photo + avatar
+// - Display name, username, bio
+// - Following/Followers stats
+// - Tabs: About, Posts, Spaces, Comments
+// - Settings gear (own profile) with logout
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  FlatList,
+  ActivityIndicator,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/colors';
-import { spacing, typography, sizing } from '@/constants/layout';
-import { Profile } from '@/types';
-import { profilesApi } from '@/services/api';
-import { Avatar, LoadingSpinner, ErrorMessage } from '@/components/common';
-import { formatCompactNumber } from '@/utils/formatNumber';
-import { formatSmartDate } from '@/utils/formatDate';
+import { spacing, typography } from '@/constants/layout';
+import { Profile, Feed } from '@/types';
+import { profilesApi, feedsApi } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { LoadingSpinner, ErrorMessage } from '@/components/common';
+import { FeedCard } from '@/components/feed';
+import {
+  ProfileHeader,
+  ProfileTabs,
+  ProfileTab,
+  AboutTab,
+  SettingsModal,
+} from '@/components/profile';
 
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  
   // State
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // -----------------------------------------------------------------------------
-  // Fetch Profile
-  // -----------------------------------------------------------------------------
+  // Tabs
+  const [activeTab, setActiveTab] = useState<ProfileTab>('about');
   
+  // Tab content
+  const [posts, setPosts] = useState<Feed[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [spaces, setSpaces] = useState<any[]>([]);
+  const [spacesLoading, setSpacesLoading] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  
+  // Settings modal
+  const [showSettings, setShowSettings] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Fetch Profile
+  // ---------------------------------------------------------------------------
+
   const fetchProfile = useCallback(async (isRefresh = false) => {
+    if (!user?.username) {
+      setError('Not logged in');
+      setLoading(false);
+      return;
+    }
+
     try {
       if (isRefresh) {
         setRefreshing(true);
         setError(null);
       }
-      
-      const response = await profilesApi.getMyProfile();
-      
+
+      const response = await profilesApi.getProfile(user.username);
+
       if (response.success) {
         setProfile(response.data.profile);
       } else {
-        setError(response.error.message);
+        setError(response.error?.message || 'Failed to load profile');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -50,172 +93,244 @@ export default function ProfileScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
-  
+  }, [user?.username]);
+
+  // Initial load
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
-  
-  // -----------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // Tab Content Fetchers
+  // ---------------------------------------------------------------------------
+
+  const fetchPosts = useCallback(async () => {
+    if (!profile?.user_id) return;
+    
+    setPostsLoading(true);
+    try {
+      const response = await feedsApi.getFeeds({ user_id: profile.user_id });
+      if (response.success) {
+        setPosts(response.data.feeds.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch posts:', err);
+    } finally {
+      setPostsLoading(false);
+    }
+  }, [profile?.user_id]);
+
+  const fetchSpaces = useCallback(async () => {
+    if (!user?.username) return;
+    
+    setSpacesLoading(true);
+    try {
+      const response = await profilesApi.getUserSpaces(user.username);
+      if (response.success) {
+        setSpaces(response.data.spaces || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch spaces:', err);
+    } finally {
+      setSpacesLoading(false);
+    }
+  }, [user?.username]);
+
+  const fetchComments = useCallback(async () => {
+    if (!user?.username) return;
+    
+    setCommentsLoading(true);
+    try {
+      const response = await profilesApi.getUserComments(user.username);
+      if (response.success) {
+        setComments(response.data.comments || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch comments:', err);
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [user?.username]);
+
+  // Load tab content when tab changes
+  useEffect(() => {
+    if (!profile) return;
+    
+    switch (activeTab) {
+      case 'posts':
+        if (posts.length === 0) fetchPosts();
+        break;
+      case 'spaces':
+        if (spaces.length === 0) fetchSpaces();
+        break;
+      case 'comments':
+        if (comments.length === 0) fetchComments();
+        break;
+    }
+  }, [activeTab, profile, fetchPosts, fetchSpaces, fetchComments]);
+
+  // ---------------------------------------------------------------------------
   // Render States
-  // -----------------------------------------------------------------------------
-  
+  // ---------------------------------------------------------------------------
+
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingBottom: insets.bottom }]}>
         <LoadingSpinner message="Loading profile..." />
       </View>
     );
   }
-  
+
   if (error || !profile) {
     return (
-      <View style={styles.container}>
-        <ErrorMessage 
-          message={error || 'Profile not found'} 
-          onRetry={() => fetchProfile(true)} 
+      <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+        <ErrorMessage
+          message={error || 'Profile not found'}
+          onRetry={() => fetchProfile(true)}
         />
       </View>
     );
   }
-  
-  // -----------------------------------------------------------------------------
-  // Render Profile
-  // -----------------------------------------------------------------------------
-  
-  const isVerified = profile.is_verified === 1;
-  const memberSince = formatSmartDate(profile.created_at);
-  
-  return (
-    <ScrollView 
-      style={styles.container}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => fetchProfile(true)}
-          tintColor={colors.primary}
-          colors={[colors.primary]}
-        />
-      }
-    >
-      {/* Cover Photo */}
-      <View style={styles.coverContainer}>
-        {profile.cover_photo || profile.meta?.cover_photo ? (
-          <Image 
-            source={{ uri: profile.cover_photo || profile.meta?.cover_photo }} 
-            style={styles.coverPhoto}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={[styles.coverPhoto, styles.coverPlaceholder]} />
-        )}
-      </View>
-      
-      {/* Profile Info */}
-      <View style={styles.profileInfo}>
-        {/* Avatar */}
-        <View style={styles.avatarContainer}>
-          <Avatar 
-            source={profile.avatar} 
-            size="xxl" 
-            verified={isVerified}
-            fallback={profile.display_name}
-          />
-        </View>
-        
-        {/* Name */}
-        <Text style={styles.displayName}>{profile.display_name}</Text>
-        <Text style={styles.username}>@{profile.username}</Text>
-        
-        {/* Bio */}
-        {profile.short_description && (
-          <Text style={styles.bio}>{profile.short_description}</Text>
-        )}
-        
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>
-              {formatCompactNumber(profile.total_points || 0)}
-            </Text>
-            <Text style={styles.statLabel}>Points</Text>
-          </View>
-          
-          <View style={styles.statDivider} />
-          
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>
-              {formatCompactNumber(profile.followers_count || 0)}
-            </Text>
-            <Text style={styles.statLabel}>Followers</Text>
-          </View>
-          
-          <View style={styles.statDivider} />
-          
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>
-              {formatCompactNumber(profile.followings_count || 0)}
-            </Text>
-            <Text style={styles.statLabel}>Following</Text>
-          </View>
-        </View>
-        
-        {/* Meta Info */}
-        <View style={styles.metaSection}>
-          {profile.meta?.website && (
-            <View style={styles.metaItem}>
-              <Text style={styles.metaIcon}>🔗</Text>
-              <Text style={styles.metaText} numberOfLines={1}>
-                {profile.meta.website}
-              </Text>
+
+  // ---------------------------------------------------------------------------
+  // Render Tab Content
+  // ---------------------------------------------------------------------------
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'about':
+        return <AboutTab profile={profile} />;
+
+      case 'posts':
+        if (postsLoading) {
+          return (
+            <View style={styles.tabLoading}>
+              <ActivityIndicator color={colors.primary} />
             </View>
-          )}
-          
-          <View style={styles.metaItem}>
-            <Text style={styles.metaIcon}>📅</Text>
-            <Text style={styles.metaText}>
-              Member since {memberSince}
-            </Text>
+          );
+        }
+        if (posts.length === 0) {
+          return (
+            <View style={styles.emptyTab}>
+              <Text style={styles.emptyIcon}>📝</Text>
+              <Text style={styles.emptyText}>No posts yet</Text>
+            </View>
+          );
+        }
+        return (
+          <View style={styles.postsList}>
+            {posts.map((post) => (
+              <FeedCard
+                key={post.id}
+                feed={post}
+                onPress={() => {}}
+                onReact={() => {}}
+                variant="compact"
+              />
+            ))}
           </View>
-        </View>
-        
-        {/* Social Links */}
-        {profile.meta?.social_links && (
-          <View style={styles.socialLinks}>
-            {profile.meta.social_links.twitter && (
-              <View style={styles.socialBadge}>
-                <Text style={styles.socialIcon}>𝕏</Text>
+        );
+
+      case 'spaces':
+        if (spacesLoading) {
+          return (
+            <View style={styles.tabLoading}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          );
+        }
+        if (spaces.length === 0) {
+          return (
+            <View style={styles.emptyTab}>
+              <Text style={styles.emptyIcon}>🏠</Text>
+              <Text style={styles.emptyText}>No spaces joined</Text>
+            </View>
+          );
+        }
+        return (
+          <View style={styles.spacesList}>
+            {spaces.map((space) => (
+              <View key={space.id} style={styles.spaceItem}>
+                <Text style={styles.spaceTitle}>{space.title}</Text>
               </View>
-            )}
-            {profile.meta.social_links.linkedin && (
-              <View style={styles.socialBadge}>
-                <Text style={styles.socialIcon}>in</Text>
-              </View>
-            )}
-            {profile.meta.social_links.youtube && (
-              <View style={styles.socialBadge}>
-                <Text style={styles.socialIcon}>▶</Text>
-              </View>
-            )}
-            {profile.meta.social_links.instagram && (
-              <View style={styles.socialBadge}>
-                <Text style={styles.socialIcon}>📷</Text>
-              </View>
-            )}
+            ))}
           </View>
-        )}
-      </View>
-      
-      {/* Placeholder for user's posts */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
-        <View style={styles.placeholder}>
-          <Text style={styles.placeholderText}>
-            User's posts will appear here
-          </Text>
+        );
+
+      case 'comments':
+        if (commentsLoading) {
+          return (
+            <View style={styles.tabLoading}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          );
+        }
+        if (comments.length === 0) {
+          return (
+            <View style={styles.emptyTab}>
+              <Text style={styles.emptyIcon}>💬</Text>
+              <Text style={styles.emptyText}>No comments yet</Text>
+            </View>
+          );
+        }
+        return (
+          <View style={styles.commentsList}>
+            {comments.map((comment) => (
+              <View key={comment.id} style={styles.commentItem}>
+                <Text style={styles.commentText} numberOfLines={2}>
+                  {comment.message}
+                </Text>
+              </View>
+            ))}
+          </View>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Main Render
+  // ---------------------------------------------------------------------------
+
+  return (
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchProfile(true)}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
+        {/* Profile Header */}
+        <ProfileHeader
+          profile={profile}
+          isOwnProfile={true}
+          onSettingsPress={() => setShowSettings(true)}
+        />
+
+        {/* Tabs */}
+        <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {/* Tab Content */}
+        <View style={styles.tabContent}>
+          {renderTabContent()}
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        visible={showSettings}
+        onClose={() => setShowSettings(false)}
+        userName={profile.display_name}
+        userEmail={profile.email}
+      />
+    </View>
   );
 }
 
@@ -228,165 +343,69 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  
-  // Cover Photo
-  coverContainer: {
-    width: '100%',
-    height: 150,
+
+  scrollView: {
+    flex: 1,
   },
-  
-  coverPhoto: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: colors.skeleton,
+
+  tabContent: {
+    minHeight: 300,
   },
-  
-  coverPlaceholder: {
-    backgroundColor: colors.primary,
+
+  tabLoading: {
+    padding: spacing.xxl,
+    alignItems: 'center',
   },
-  
-  // Profile Info
-  profileInfo: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
-    borderBottomLeftRadius: sizing.borderRadius.xl,
-    borderBottomRightRadius: sizing.borderRadius.xl,
-    marginTop: -20,
+
+  emptyTab: {
+    padding: spacing.xxl,
+    alignItems: 'center',
   },
-  
-  avatarContainer: {
-    marginTop: -50,
+
+  emptyIcon: {
+    fontSize: 48,
     marginBottom: spacing.md,
-    alignSelf: 'center',
-    padding: 4,
+  },
+
+  emptyText: {
+    fontSize: typography.size.md,
+    color: colors.textSecondary,
+  },
+
+  postsList: {
+    padding: spacing.sm,
+  },
+
+  spacesList: {
+    padding: spacing.lg,
+  },
+
+  spaceItem: {
+    padding: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: 70,
-  },
-  
-  displayName: {
-    fontSize: typography.size.xxl,
-    fontWeight: typography.weight.bold,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  
-  username: {
-    fontSize: typography.size.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-  
-  bio: {
-    fontSize: typography.size.md,
-    color: colors.text,
-    textAlign: 'center',
-    marginTop: spacing.md,
-    lineHeight: typography.size.md * typography.lineHeight.normal,
-  },
-  
-  // Stats
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: spacing.xl,
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  
-  stat: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-  
-  statValue: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.bold,
-    color: colors.text,
-  },
-  
-  statLabel: {
-    fontSize: typography.size.sm,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: colors.borderLight,
-  },
-  
-  // Meta
-  metaSection: {
-    marginTop: spacing.lg,
-  },
-  
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 8,
     marginBottom: spacing.sm,
   },
-  
-  metaIcon: {
-    fontSize: 14,
-    marginRight: spacing.sm,
-  },
-  
-  metaText: {
-    fontSize: typography.size.sm,
-    color: colors.textSecondary,
-  },
-  
-  // Social Links
-  socialLinks: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: spacing.md,
-  },
-  
-  socialBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.backgroundSecondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: spacing.xs,
-  },
-  
-  socialIcon: {
-    fontSize: 14,
-    fontWeight: typography.weight.bold,
-    color: colors.textSecondary,
-  },
-  
-  // Sections
-  section: {
-    marginTop: spacing.lg,
-    paddingHorizontal: spacing.lg,
-  },
-  
-  sectionTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  
-  placeholder: {
-    backgroundColor: colors.surface,
-    padding: spacing.xxl,
-    borderRadius: sizing.borderRadius.md,
-    alignItems: 'center',
-  },
-  
-  placeholderText: {
-    color: colors.textTertiary,
+
+  spaceTitle: {
     fontSize: typography.size.md,
+    color: colors.text,
+    fontWeight: typography.weight.medium,
+  },
+
+  commentsList: {
+    padding: spacing.lg,
+  },
+
+  commentItem: {
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    marginBottom: spacing.sm,
+  },
+
+  commentText: {
+    fontSize: typography.size.sm,
+    color: colors.text,
   },
 });

@@ -1,9 +1,6 @@
 // =============================================================================
 // FEEDS API - All feed-related API calls
 // =============================================================================
-// This service handles fetching, creating, and managing feed posts.
-// Uses the base API client for HTTP requests.
-// =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
 import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType } from '@/types';
@@ -16,10 +13,10 @@ import { del, get, post } from './client';
 export interface GetFeedsOptions {
   page?: number;
   per_page?: number;
-  space?: string;         // Filter by space slug
-  user_id?: number;       // Filter by author
-  search?: string;        // Search in title/content
-  topic_slug?: string;    // Filter by topic
+  space?: string;
+  user_id?: number;
+  search?: string;
+  topic_slug?: string;
   order_by_type?: 'recent' | 'popular';
   disable_sticky?: boolean;
 }
@@ -60,7 +57,7 @@ export async function getFeedBySlug(slug: string) {
 }
 
 // -----------------------------------------------------------------------------
-// Create a New Feed Post (Phase 2)
+// Create a New Feed Post
 // -----------------------------------------------------------------------------
 
 export interface CreateFeedData {
@@ -80,7 +77,7 @@ export async function createFeed(data: CreateFeedData) {
 }
 
 // -----------------------------------------------------------------------------
-// Update a Feed Post (Phase 2)
+// Update a Feed Post
 // -----------------------------------------------------------------------------
 
 export async function updateFeed(id: number, data: Partial<CreateFeedData>) {
@@ -88,7 +85,7 @@ export async function updateFeed(id: number, data: Partial<CreateFeedData>) {
 }
 
 // -----------------------------------------------------------------------------
-// Delete a Feed Post (Phase 2)
+// Delete a Feed Post
 // -----------------------------------------------------------------------------
 
 export async function deleteFeed(id: number) {
@@ -98,9 +95,40 @@ export async function deleteFeed(id: number) {
 // -----------------------------------------------------------------------------
 // React to a Feed (like, love, etc.)
 // -----------------------------------------------------------------------------
+// IMPORTANT: The API uses react_type (not type) and remove: true to unreact
+// Discovered by reverse engineering app.js
 
-export async function reactToFeed(feedId: number, type: ReactionType) {
-  return post<ReactResponse>(ENDPOINTS.FEED_REACT(feedId), { type });
+export async function reactToFeed(
+  feedId: number, 
+  type: ReactionType, 
+  hasUserReact: boolean = false
+) {
+  const payload: { react_type: string; remove?: boolean } = { 
+    react_type: type 
+  };
+  
+  // If user already reacted, send remove: true to toggle off
+  if (hasUserReact) {
+    payload.remove = true;
+  }
+  
+  return post<ReactResponse>(ENDPOINTS.FEED_REACT(feedId), payload);
+}
+
+// -----------------------------------------------------------------------------
+// Bookmark a Feed (uses same react endpoint)
+// -----------------------------------------------------------------------------
+
+export async function toggleBookmark(feedId: number, isBookmarked: boolean) {
+  const payload: { react_type: string; remove?: boolean } = { 
+    react_type: 'bookmark' 
+  };
+  
+  if (isBookmarked) {
+    payload.remove = true;
+  }
+  
+  return post<ReactResponse>(ENDPOINTS.FEED_REACT(feedId), payload);
 }
 
 // -----------------------------------------------------------------------------
@@ -110,6 +138,14 @@ export async function reactToFeed(feedId: number, type: ReactionType) {
 export async function getFeedReactions(feedId: number, type?: ReactionType) {
   const params = type ? { type } : {};
   return get<{ reactions: any[] }>(`${ENDPOINTS.FEEDS}/${feedId}/reactions`, params);
+}
+
+// -----------------------------------------------------------------------------
+// Get User's Bookmarks
+// -----------------------------------------------------------------------------
+
+export async function getBookmarks() {
+  return get<FeedsResponse>(`${ENDPOINTS.FEEDS}/bookmarks`);
 }
 
 // -----------------------------------------------------------------------------
@@ -124,7 +160,9 @@ export const feedsApi = {
   updateFeed,
   deleteFeed,
   reactToFeed,
+  toggleBookmark,
   getFeedReactions,
+  getBookmarks,
 };
 
 export default feedsApi;

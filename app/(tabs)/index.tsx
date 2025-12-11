@@ -1,9 +1,6 @@
 // =============================================================================
 // HOME SCREEN - Main feed view
 // =============================================================================
-// The first screen users see. Shows all community posts.
-// Tap a post to open full-screen Instagram-style view.
-// =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -20,7 +17,6 @@ import { FeedList } from '@/components/feed';
 // -----------------------------------------------------------------------------
 
 export default function HomeScreen() {
-  // Navigation
   const router = useRouter();
   
   // State
@@ -40,7 +36,6 @@ export default function HomeScreen() {
         setError(null);
       }
       
-      // Call the API service
       const response = await feedsApi.getFeeds({ per_page: 20 });
       
       if (response.success) {
@@ -69,46 +64,71 @@ export default function HomeScreen() {
     fetchFeeds(true);
   };
   
-  // 🆕 UPDATED: Now navigates to full-screen post view!
   const handleFeedPress = (feed: Feed) => {
     router.push(`/feed/${feed.id}`);
   };
   
   const handleReact = async (feedId: number, type: 'like' | 'love') => {
+    // Find the feed to check current reaction state
+    const feed = feeds.find(f => f.id === feedId);
+    if (!feed) return;
+    
+    const hasUserReact = feed.has_user_react || false;
+    
+    // Optimistic update
+    setFeeds(prevFeeds => 
+      prevFeeds.map(f => {
+        if (f.id === feedId) {
+          const currentCount = typeof f.reactions_count === 'string'
+            ? parseInt(f.reactions_count, 10)
+            : f.reactions_count || 0;
+          
+          return {
+            ...f,
+            has_user_react: !hasUserReact,
+            reactions_count: hasUserReact ? currentCount - 1 : currentCount + 1
+          };
+        }
+        return f;
+      })
+    );
+    
     try {
-      const response = await feedsApi.reactToFeed(feedId, type);
+      // Call API with proper parameters
+      const response = await feedsApi.reactToFeed(feedId, type, hasUserReact);
       
       if (response.success) {
-        // Update the local state optimistically
+        // Update with server's actual count
         setFeeds(prevFeeds => 
-          prevFeeds.map(feed => {
-            if (feed.id === feedId) {
-              const currentCount = typeof feed.reactions_count === 'string'
-                ? parseInt(feed.reactions_count, 10)
-                : feed.reactions_count || 0;
-              
-              const newCount = response.data.data.action === 'added'
-                ? currentCount + 1
-                : Math.max(0, currentCount - 1);
-              
-              return { ...feed, reactions_count: newCount };
+          prevFeeds.map(f => 
+            f.id === feedId 
+              ? { ...f, reactions_count: response.data.new_count }
+              : f
+          )
+        );
+      } else {
+        // Revert on error
+        setFeeds(prevFeeds => 
+          prevFeeds.map(f => {
+            if (f.id === feedId) {
+              return { ...f, has_user_react: hasUserReact };
             }
-            return feed;
+            return f;
           })
         );
       }
     } catch (err) {
       console.error('Failed to react:', err);
+      // Revert optimistic update
+      fetchFeeds(true);
     }
   };
   
   const handleAuthorPress = (username: string) => {
-    // Navigate to profile screen (will work when we build profile detail)
     router.push(`/profile/${username}`);
   };
   
   const handleSpacePress = (spaceSlug: string) => {
-    // Navigate to space screen (will work when we build space detail)
     router.push(`/space/${spaceSlug}`);
   };
   
@@ -153,7 +173,7 @@ const styles = StyleSheet.create({
   
   header: {
     backgroundColor: colors.primary,
-    paddingTop: 60, // Status bar + padding
+    paddingTop: 60,
     paddingBottom: spacing.lg,
     paddingHorizontal: spacing.lg,
   },

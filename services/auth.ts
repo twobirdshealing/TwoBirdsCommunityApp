@@ -1,296 +1,169 @@
 // =============================================================================
-// AUTH SERVICE - Login, logout, and token management
-// =============================================================================
-// Uses expo-secure-store to securely store credentials on device.
-// Never stores passwords in plain AsyncStorage!
+// AUTH SERVICE - Authentication logic
 // =============================================================================
 
-import { SITE_URL } from '@/constants/config';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import { API_URL } from '@/constants/config';
 
 // -----------------------------------------------------------------------------
 // Constants
 // -----------------------------------------------------------------------------
 
-const AUTH_ENDPOINT = `${SITE_URL}/wp-json/tbc-ca/v1`;
+const AUTH_KEY = 'tbc_auth_basic';
+const USER_KEY = 'tbc_user_info';
 
-// SecureStore keys (prefixed for clarity)
-const STORAGE_KEYS = {
-  USERNAME: 'tbc_auth_username',
-  BASIC_AUTH: 'tbc_auth_basic',
-  APP_PASSWORD_UUID: 'tbc_auth_uuid',
-  USER_DATA: 'tbc_auth_user',
-};
-
-// Debug mode - set to false for production
-const DEBUG = true;
+const DEBUG = __DEV__;
 
 function log(...args: any[]) {
-  if (DEBUG) {
-    console.log('[Auth]', ...args);
-  }
+  if (DEBUG) console.log('[Auth]', ...args);
 }
 
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
 
-export interface AuthUser {
+interface User {
   id: number;
   username: string;
+  displayName: string;
   email: string;
-  display_name: string;
-  first_name: string;
-  last_name: string;
-  avatar: string;
-  registered: string;
-  roles: string[];
-  fluent_profile?: any;
+  avatar?: string;
 }
 
-export interface LoginResponse {
+interface LoginResult {
   success: boolean;
-  message: string;
-  user: AuthUser;
-  auth: {
-    username: string;
-    app_password: string;
-    app_password_uuid: string;
-    basic_auth: string;
-  };
-}
-
-export interface AuthState {
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  user: AuthUser | null;
-  basicAuth: string | null;
+  user?: User;
+  error?: string;
 }
 
 // -----------------------------------------------------------------------------
-// Secure Storage Helpers
+// Login
 // -----------------------------------------------------------------------------
 
-async function secureSet(key: string, value: string): Promise<void> {
-  try {
-    if (Platform.OS === 'web') {
-      localStorage.setItem(key, value);
-    } else {
-      await SecureStore.setItemAsync(key, value);
-    }
-    log(`Stored: ${key} (${value.length} chars)`);
-  } catch (error) {
-    log(`Error storing ${key}:`, error);
-    throw error;
-  }
-}
-
-async function secureGet(key: string): Promise<string | null> {
-  try {
-    let value: string | null;
-    if (Platform.OS === 'web') {
-      value = localStorage.getItem(key);
-    } else {
-      value = await SecureStore.getItemAsync(key);
-    }
-    log(`Retrieved: ${key} = ${value ? `(${value.length} chars)` : 'null'}`);
-    return value;
-  } catch (error) {
-    log(`Error retrieving ${key}:`, error);
-    return null;
-  }
-}
-
-async function secureDelete(key: string): Promise<void> {
-  try {
-    if (Platform.OS === 'web') {
-      localStorage.removeItem(key);
-    } else {
-      await SecureStore.deleteItemAsync(key);
-    }
-    log(`Deleted: ${key}`);
-  } catch (error) {
-    log(`Error deleting ${key}:`, error);
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Auth Functions
-// -----------------------------------------------------------------------------
-
-/**
- * Login with username/email and password
- */
-export async function login(
-  username: string,
-  password: string,
-  deviceName?: string
-): Promise<{ success: true; user: AuthUser } | { success: false; error: string }> {
+export async function login(username: string, password: string): Promise<LoginResult> {
   log('Login attempt for:', username);
   
   try {
-    const response = await fetch(`${AUTH_ENDPOINT}/login`, {
-      method: 'POST',
+    // Create Basic Auth token
+    const credentials = `${username}:${password}`;
+    const base64Credentials = btoa(credentials);
+    
+    // Validate credentials by calling an API endpoint
+    const response = await fetch(`${API_URL}/profile/${username}`, {
+      method: 'GET',
       headers: {
+        'Authorization': `Basic ${base64Credentials}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        username,
-        password,
-        device_name: deviceName || `Two Birds App - ${Platform.OS}`,
-      }),
     });
-
-    const data = await response.json();
-    log('Login response:', response.status, data.success ? 'SUCCESS' : 'FAILED');
-
-    if (!response.ok || !data.success) {
-      return {
-        success: false,
-        error: data.message || 'Login failed. Please try again.',
-      };
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      log('Login failed:', response.status, errorData);
+      
+      if (response.status === 401 || response.status === 403) {
+        return { success: false, error: 'Invalid username or password' };
+      }
+      
+      return { success: false, error: errorData.message || 'Login failed' };
     }
-
-    const loginData = data as LoginResponse;
-
-    // Store credentials securely
-    log('Storing credentials...');
-    await secureSet(STORAGE_KEYS.USERNAME, loginData.auth.username);
-    await secureSet(STORAGE_KEYS.BASIC_AUTH, loginData.auth.basic_auth);
-    await secureSet(STORAGE_KEYS.APP_PASSWORD_UUID, loginData.auth.app_password_uuid);
-    await secureSet(STORAGE_KEYS.USER_DATA, JSON.stringify(loginData.user));
-    log('Credentials stored successfully');
-
-    return {
-      success: true,
-      user: loginData.user,
+    
+    const data = await response.json();
+    log('Login successful, profile:', data.profile?.username);
+    
+    // Store credentials
+    await SecureStore.setItemAsync(AUTH_KEY, base64Credentials);
+    log('Credentials stored');
+    
+    // Extract and store user info
+    const user: User = {
+      id: data.profile?.user_id || 0,
+      username: data.profile?.username || username,
+      displayName: data.profile?.display_name || username,
+      email: data.profile?.email || '',
+      avatar: data.profile?.avatar || undefined,
     };
+    
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+    log('User info stored:', user.username);
+    
+    return { success: true, user };
+    
   } catch (error) {
     log('Login error:', error);
-    return {
-      success: false,
-      error: 'Network error. Please check your connection.',
-    };
+    return { success: false, error: 'Network error. Please try again.' };
   }
 }
 
-/**
- * Logout - revoke app password and clear stored credentials
- */
+// -----------------------------------------------------------------------------
+// Logout
+// -----------------------------------------------------------------------------
+
 export async function logout(): Promise<void> {
-  log('Logout initiated');
-  
-  try {
-    const basicAuth = await secureGet(STORAGE_KEYS.BASIC_AUTH);
-    const uuid = await secureGet(STORAGE_KEYS.APP_PASSWORD_UUID);
-
-    // Try to revoke the app password on the server
-    if (basicAuth && uuid) {
-      log('Revoking app password on server...');
-      await fetch(`${AUTH_ENDPOINT}/logout`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${basicAuth}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ app_password_uuid: uuid }),
-      }).catch((err) => {
-        log('Server logout failed (will clear local anyway):', err);
-      });
-    }
-  } finally {
-    // Always clear local storage
-    log('Clearing local storage...');
-    await secureDelete(STORAGE_KEYS.USERNAME);
-    await secureDelete(STORAGE_KEYS.BASIC_AUTH);
-    await secureDelete(STORAGE_KEYS.APP_PASSWORD_UUID);
-    await secureDelete(STORAGE_KEYS.USER_DATA);
-    log('Logout complete');
-  }
+  log('Logging out...');
+  await clearAuth();
 }
 
-/**
- * Check if user is logged in and load stored credentials
- */
-export async function getStoredAuth(): Promise<{
-  isAuthenticated: boolean;
-  user: AuthUser | null;
-  basicAuth: string | null;
-}> {
-  log('Loading stored auth...');
-  
-  try {
-    const basicAuth = await secureGet(STORAGE_KEYS.BASIC_AUTH);
-    const userDataStr = await secureGet(STORAGE_KEYS.USER_DATA);
+// -----------------------------------------------------------------------------
+// Storage Functions
+// -----------------------------------------------------------------------------
 
-    if (!basicAuth || !userDataStr) {
-      log('No stored auth found');
-      return { isAuthenticated: false, user: null, basicAuth: null };
-    }
-
-    const user = JSON.parse(userDataStr) as AuthUser;
-    log('Stored auth found for user:', user.username);
-    return { isAuthenticated: true, user, basicAuth };
-  } catch (error) {
-    log('Error loading stored auth:', error);
-    return { isAuthenticated: false, user: null, basicAuth: null };
-  }
-}
-
-/**
- * Validate that the stored token is still valid
- */
-export async function validateToken(): Promise<boolean> {
-  log('Validating token...');
-  
-  try {
-    const basicAuth = await secureGet(STORAGE_KEYS.BASIC_AUTH);
-    
-    if (!basicAuth) {
-      log('No token to validate');
-      return false;
-    }
-
-    const response = await fetch(`${AUTH_ENDPOINT}/validate`, {
-      headers: {
-        'Authorization': `Basic ${basicAuth}`,
-      },
-    });
-
-    const data = await response.json();
-    const isValid = data.valid === true;
-    log('Token validation result:', isValid);
-    return isValid;
-  } catch (error) {
-    log('Token validation error:', error);
-    return false;
-  }
-}
-
-/**
- * Get the stored Basic Auth header value for API calls
- */
 export async function getBasicAuth(): Promise<string | null> {
-  return await secureGet(STORAGE_KEYS.BASIC_AUTH);
-}
-
-/**
- * Get the stored user data
- */
-export async function getStoredUser(): Promise<AuthUser | null> {
   try {
-    const userDataStr = await secureGet(STORAGE_KEYS.USER_DATA);
-    if (!userDataStr) return null;
-    return JSON.parse(userDataStr) as AuthUser;
-  } catch {
+    const auth = await SecureStore.getItemAsync(AUTH_KEY);
+    if (auth) {
+      log('Retrieved auth token');
+    }
+    return auth;
+  } catch (error) {
+    log('Error getting auth:', error);
     return null;
   }
 }
 
-/**
- * Update stored user data (e.g., after profile update)
- */
-export async function updateStoredUser(user: AuthUser): Promise<void> {
-  await secureSet(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+export async function getStoredUser(): Promise<User | null> {
+  try {
+    const userJson = await SecureStore.getItemAsync(USER_KEY);
+    if (userJson) {
+      const user = JSON.parse(userJson);
+      log('Retrieved user:', user.username);
+      return user;
+    }
+    return null;
+  } catch (error) {
+    log('Error getting user:', error);
+    return null;
+  }
+}
+
+export async function hasStoredAuth(): Promise<boolean> {
+  const auth = await SecureStore.getItemAsync(AUTH_KEY);
+  return auth !== null;
+}
+
+export async function clearAuth(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(AUTH_KEY);
+    await SecureStore.deleteItemAsync(USER_KEY);
+    log('Auth cleared');
+  } catch (error) {
+    log('Error clearing auth:', error);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Update stored user (e.g., after profile edit)
+// -----------------------------------------------------------------------------
+
+export async function updateStoredUser(updates: Partial<User>): Promise<void> {
+  try {
+    const current = await getStoredUser();
+    if (current) {
+      const updated = { ...current, ...updates };
+      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(updated));
+      log('User info updated');
+    }
+  } catch (error) {
+    log('Error updating user:', error);
+  }
 }
