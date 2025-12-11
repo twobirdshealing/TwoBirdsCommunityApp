@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { ENDPOINTS } from '@/constants/config';
-import { Profile, Feed } from '@/types';
+import { Feed, Profile } from '@/types';
 import { get, post } from './client';
 
 // -----------------------------------------------------------------------------
@@ -19,7 +19,6 @@ export async function getProfile(username: string) {
 // -----------------------------------------------------------------------------
 
 export async function getUserFeeds(username: string, page: number = 1, perPage: number = 20) {
-  // User feeds are fetched via the main feeds endpoint with user filter
   return get<{ feeds: { data: Feed[]; has_more: boolean } }>(
     ENDPOINTS.FEEDS,
     { user_id: username, page, per_page: perPage }
@@ -36,10 +35,15 @@ export async function getUserSpaces(username: string) {
 
 // -----------------------------------------------------------------------------
 // Get User's Comments
+// Endpoint: GET /profile/{username}/comments?page=N&per_page=N
+// Response: { comments: { data: [...], total: N, ... }, xprofile: {...} }
 // -----------------------------------------------------------------------------
 
-export async function getUserComments(username: string, page: number = 1) {
-  return get<{ comments: any[] }>(`${ENDPOINTS.PROFILE(username)}/comments`, { page });
+export async function getUserComments(username: string, page: number = 1, perPage: number = 10) {
+  return get<any>(
+    `${ENDPOINTS.PROFILE(username)}/comments`,
+    { page, per_page: perPage }
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -62,20 +66,20 @@ export async function unfollowUser(username: string) {
 // Get Followers
 // -----------------------------------------------------------------------------
 
-export async function getFollowers(username: string) {
-  return get<{ followers: any[] }>(`${ENDPOINTS.PROFILE(username)}/followers`);
+export async function getFollowers(username: string, page: number = 1) {
+  return get<{ followers: any[] }>(`${ENDPOINTS.PROFILE(username)}/followers`, { page });
 }
 
 // -----------------------------------------------------------------------------
 // Get Following
 // -----------------------------------------------------------------------------
 
-export async function getFollowing(username: string) {
-  return get<{ followings: any[] }>(`${ENDPOINTS.PROFILE(username)}/followings`);
+export async function getFollowing(username: string, page: number = 1) {
+  return get<{ followings: any[] }>(`${ENDPOINTS.PROFILE(username)}/followings`, { page });
 }
 
 // -----------------------------------------------------------------------------
-// Export as object
+// Export as object for convenience (THIS IS WHAT WAS MISSING!)
 // -----------------------------------------------------------------------------
 
 export const profilesApi = {
