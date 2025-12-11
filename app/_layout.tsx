@@ -25,15 +25,12 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === 'login';
 
     if (!isAuthenticated && !inAuthGroup) {
-      // Redirect to login
       router.replace('/login');
     } else if (isAuthenticated && inAuthGroup) {
-      // Redirect to main app
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, isLoading, segments]);
 
-  // Show loading screen while checking auth
   if (isLoading) {
     return (
       <View style={styles.loading}>
