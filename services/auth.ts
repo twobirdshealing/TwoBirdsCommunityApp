@@ -5,9 +5,9 @@
 // Never stores passwords in plain AsyncStorage!
 // =============================================================================
 
+import { SITE_URL } from '@/constants/config';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
-import { SITE_URL } from '@/constants/config';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -22,6 +22,15 @@ const STORAGE_KEYS = {
   APP_PASSWORD_UUID: 'tbc_auth_uuid',
   USER_DATA: 'tbc_auth_user',
 };
+
+// Debug mode - set to false for production
+const DEBUG = true;
+
+function log(...args: any[]) {
+  if (DEBUG) {
+    console.log('[Auth]', ...args);
+  }
+}
 
 // -----------------------------------------------------------------------------
 // Types
@@ -63,31 +72,46 @@ export interface AuthState {
 // Secure Storage Helpers
 // -----------------------------------------------------------------------------
 
-/**
- * SecureStore doesn't work on web, so we fall back to localStorage
- * In production, you might want to handle web differently
- */
 async function secureSet(key: string, value: string): Promise<void> {
-  if (Platform.OS === 'web') {
-    localStorage.setItem(key, value);
-  } else {
-    await SecureStore.setItemAsync(key, value);
+  try {
+    if (Platform.OS === 'web') {
+      localStorage.setItem(key, value);
+    } else {
+      await SecureStore.setItemAsync(key, value);
+    }
+    log(`Stored: ${key} (${value.length} chars)`);
+  } catch (error) {
+    log(`Error storing ${key}:`, error);
+    throw error;
   }
 }
 
 async function secureGet(key: string): Promise<string | null> {
-  if (Platform.OS === 'web') {
-    return localStorage.getItem(key);
-  } else {
-    return await SecureStore.getItemAsync(key);
+  try {
+    let value: string | null;
+    if (Platform.OS === 'web') {
+      value = localStorage.getItem(key);
+    } else {
+      value = await SecureStore.getItemAsync(key);
+    }
+    log(`Retrieved: ${key} = ${value ? `(${value.length} chars)` : 'null'}`);
+    return value;
+  } catch (error) {
+    log(`Error retrieving ${key}:`, error);
+    return null;
   }
 }
 
 async function secureDelete(key: string): Promise<void> {
-  if (Platform.OS === 'web') {
-    localStorage.removeItem(key);
-  } else {
-    await SecureStore.deleteItemAsync(key);
+  try {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(key);
+    } else {
+      await SecureStore.deleteItemAsync(key);
+    }
+    log(`Deleted: ${key}`);
+  } catch (error) {
+    log(`Error deleting ${key}:`, error);
   }
 }
 
@@ -103,6 +127,8 @@ export async function login(
   password: string,
   deviceName?: string
 ): Promise<{ success: true; user: AuthUser } | { success: false; error: string }> {
+  log('Login attempt for:', username);
+  
   try {
     const response = await fetch(`${AUTH_ENDPOINT}/login`, {
       method: 'POST',
@@ -117,6 +143,7 @@ export async function login(
     });
 
     const data = await response.json();
+    log('Login response:', response.status, data.success ? 'SUCCESS' : 'FAILED');
 
     if (!response.ok || !data.success) {
       return {
@@ -128,17 +155,19 @@ export async function login(
     const loginData = data as LoginResponse;
 
     // Store credentials securely
+    log('Storing credentials...');
     await secureSet(STORAGE_KEYS.USERNAME, loginData.auth.username);
     await secureSet(STORAGE_KEYS.BASIC_AUTH, loginData.auth.basic_auth);
     await secureSet(STORAGE_KEYS.APP_PASSWORD_UUID, loginData.auth.app_password_uuid);
     await secureSet(STORAGE_KEYS.USER_DATA, JSON.stringify(loginData.user));
+    log('Credentials stored successfully');
 
     return {
       success: true,
       user: loginData.user,
     };
   } catch (error) {
-    console.error('[Auth] Login error:', error);
+    log('Login error:', error);
     return {
       success: false,
       error: 'Network error. Please check your connection.',
@@ -150,12 +179,15 @@ export async function login(
  * Logout - revoke app password and clear stored credentials
  */
 export async function logout(): Promise<void> {
+  log('Logout initiated');
+  
   try {
     const basicAuth = await secureGet(STORAGE_KEYS.BASIC_AUTH);
     const uuid = await secureGet(STORAGE_KEYS.APP_PASSWORD_UUID);
 
     // Try to revoke the app password on the server
     if (basicAuth && uuid) {
+      log('Revoking app password on server...');
       await fetch(`${AUTH_ENDPOINT}/logout`, {
         method: 'POST',
         headers: {
@@ -163,16 +195,18 @@ export async function logout(): Promise<void> {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ app_password_uuid: uuid }),
-      }).catch(() => {
-        // Ignore errors - we'll clear local storage anyway
+      }).catch((err) => {
+        log('Server logout failed (will clear local anyway):', err);
       });
     }
   } finally {
     // Always clear local storage
+    log('Clearing local storage...');
     await secureDelete(STORAGE_KEYS.USERNAME);
     await secureDelete(STORAGE_KEYS.BASIC_AUTH);
     await secureDelete(STORAGE_KEYS.APP_PASSWORD_UUID);
     await secureDelete(STORAGE_KEYS.USER_DATA);
+    log('Logout complete');
   }
 }
 
@@ -184,18 +218,22 @@ export async function getStoredAuth(): Promise<{
   user: AuthUser | null;
   basicAuth: string | null;
 }> {
+  log('Loading stored auth...');
+  
   try {
     const basicAuth = await secureGet(STORAGE_KEYS.BASIC_AUTH);
     const userDataStr = await secureGet(STORAGE_KEYS.USER_DATA);
 
     if (!basicAuth || !userDataStr) {
+      log('No stored auth found');
       return { isAuthenticated: false, user: null, basicAuth: null };
     }
 
     const user = JSON.parse(userDataStr) as AuthUser;
+    log('Stored auth found for user:', user.username);
     return { isAuthenticated: true, user, basicAuth };
   } catch (error) {
-    console.error('[Auth] Error loading stored auth:', error);
+    log('Error loading stored auth:', error);
     return { isAuthenticated: false, user: null, basicAuth: null };
   }
 }
@@ -204,10 +242,13 @@ export async function getStoredAuth(): Promise<{
  * Validate that the stored token is still valid
  */
 export async function validateToken(): Promise<boolean> {
+  log('Validating token...');
+  
   try {
     const basicAuth = await secureGet(STORAGE_KEYS.BASIC_AUTH);
     
     if (!basicAuth) {
+      log('No token to validate');
       return false;
     }
 
@@ -218,9 +259,11 @@ export async function validateToken(): Promise<boolean> {
     });
 
     const data = await response.json();
-    return data.valid === true;
+    const isValid = data.valid === true;
+    log('Token validation result:', isValid);
+    return isValid;
   } catch (error) {
-    console.error('[Auth] Token validation error:', error);
+    log('Token validation error:', error);
     return false;
   }
 }

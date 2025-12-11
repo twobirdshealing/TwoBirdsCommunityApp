@@ -1,35 +1,34 @@
 // =============================================================================
-// API CLIENT - Base HTTP client with authentication
+// API CLIENT - Base HTTP client with dynamic authentication
 // =============================================================================
-// This is the foundation of all API calls. It handles:
-//   - Adding authentication headers
-//   - Making HTTP requests
-//   - Parsing responses
-//   - Error handling
-//
-// All other API services (feeds.ts, spaces.ts, etc.) use this client.
+// Uses stored auth token from SecureStore.
+// Falls back to hardcoded credentials only if no user is logged in.
 // =============================================================================
 
 import { API_URL, API_USERNAME, API_PASSWORD } from '@/constants/config';
+import { getBasicAuth } from '@/services/auth';
 import { ApiError } from '@/types/api';
 
 // -----------------------------------------------------------------------------
-// Create Base64 credentials for Basic Auth
+// Debug
 // -----------------------------------------------------------------------------
 
-// btoa() converts "username:password" to Base64
-// This is how HTTP Basic Authentication works
-const credentials = btoa(`${API_USERNAME}:${API_PASSWORD}`);
+const DEBUG = true;
+function log(...args: any[]) {
+  if (DEBUG) console.log('[API]', ...args);
+}
 
 // -----------------------------------------------------------------------------
-// HTTP Methods
+// Fallback credentials (for development when not logged in)
+// -----------------------------------------------------------------------------
+
+const FALLBACK_CREDENTIALS = btoa(`${API_USERNAME}:${API_PASSWORD}`);
+
+// -----------------------------------------------------------------------------
+// Types
 // -----------------------------------------------------------------------------
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-
-// -----------------------------------------------------------------------------
-// Request Options
-// -----------------------------------------------------------------------------
 
 interface RequestConfig {
   method?: HttpMethod;
@@ -37,10 +36,6 @@ interface RequestConfig {
   params?: Record<string, any>;
   headers?: Record<string, string>;
 }
-
-// -----------------------------------------------------------------------------
-// API Response Type
-// -----------------------------------------------------------------------------
 
 type ApiResponse<T> = {
   success: true;
@@ -51,19 +46,34 @@ type ApiResponse<T> = {
 };
 
 // -----------------------------------------------------------------------------
+// Get Auth Header
+// -----------------------------------------------------------------------------
+
+async function getAuthHeader(): Promise<string> {
+  // Try to get stored auth token first
+  const storedAuth = await getBasicAuth();
+  
+  if (storedAuth) {
+    log('Using stored auth token');
+    return `Basic ${storedAuth}`;
+  }
+  
+  // Fall back to hardcoded credentials (dev mode)
+  log('Using fallback credentials - user not logged in');
+  return `Basic ${FALLBACK_CREDENTIALS}`;
+}
+
+// -----------------------------------------------------------------------------
 // Build URL with query parameters
 // -----------------------------------------------------------------------------
 
 function buildUrl(endpoint: string, params?: Record<string, any>): string {
-  // Start with base URL + endpoint
   let url = `${API_URL}${endpoint}`;
   
-  // Add query parameters if provided
   if (params && Object.keys(params).length > 0) {
     const searchParams = new URLSearchParams();
     
     Object.entries(params).forEach(([key, value]) => {
-      // Skip undefined/null values
       if (value !== undefined && value !== null) {
         searchParams.append(key, String(value));
       }
@@ -85,34 +95,28 @@ function buildUrl(endpoint: string, params?: Record<string, any>): string {
 async function request<T>(endpoint: string, config: RequestConfig = {}): Promise<ApiResponse<T>> {
   const { method = 'GET', body, params, headers = {} } = config;
   
-  // Build the full URL with query params
   const url = buildUrl(endpoint, params);
   
-  // Log for debugging (remove in production)
-  console.log(`[API] ${method} ${url}`);
+  log(`${method} ${url}`);
   
   try {
-    // Make the fetch request
+    // Get auth header (uses stored token or fallback)
+    const authHeader = await getAuthHeader();
+    
+    // Make the request
     const response = await fetch(url, {
       method,
       headers: {
-        // Always include auth header
-        'Authorization': `Basic ${credentials}`,
-        // Include Content-Type for requests with body
+        'Authorization': authHeader,
         ...(body ? { 'Content-Type': 'application/json' } : {}),
-        // Any additional headers
         ...headers,
       },
-      // Convert body to JSON string if provided
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     
-    // Parse the JSON response
     const data = await response.json();
     
-    // Check if the request was successful
     if (!response.ok) {
-      // API returned an error
       console.error('[API Error]', data);
       return {
         success: false,
@@ -120,14 +124,12 @@ async function request<T>(endpoint: string, config: RequestConfig = {}): Promise
       };
     }
     
-    // Success!
     return {
       success: true,
       data: data as T,
     };
     
   } catch (error) {
-    // Network error or JSON parsing error
     console.error('[API Network Error]', error);
     return {
       success: false,
@@ -141,7 +143,7 @@ async function request<T>(endpoint: string, config: RequestConfig = {}): Promise
 }
 
 // -----------------------------------------------------------------------------
-// Convenience Methods
+// Convenience Methods (SAME AS ORIGINAL - these are what feeds.ts imports)
 // -----------------------------------------------------------------------------
 
 // GET request
