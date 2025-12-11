@@ -5,10 +5,10 @@
 // Currently shows a "Coming Soon" message.
 // =============================================================================
 
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 export default function NotificationsScreen() {
   return (
