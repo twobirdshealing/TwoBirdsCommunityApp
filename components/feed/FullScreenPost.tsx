@@ -1,97 +1,115 @@
 // =============================================================================
 // FULL SCREEN POST - Instagram-style full-screen post viewer
 // =============================================================================
-// UI Layout:
-// - TOP LEFT: Avatar + Author name (prominent)
-// - TOP RIGHT: Close button (X)
-// - CENTER: Title + Message content
-// - RIGHT SIDE: Action buttons (like, comment, share, bookmark)
-// - BOTTOM: Thumbnail strip for images (if multiple), subtle scroll indicator
+// - Uses expo-image for better caching
+// - ScrollView for horizontal paging (no virtualization needed for few pages)
+// - Memoized thumbnails to prevent unnecessary re-renders
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
 import { colors } from '@/constants/colors';
-import { spacing, typography } from '@/constants/layout';
+import { spacing } from '@/constants/layout';
 import { Feed } from '@/types';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { formatCompactNumber } from '@/utils/formatNumber';
-import { stripHtmlPreserveBreaks, truncateText } from '@/utils/htmlToText';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { stripHtmlPreserveBreaks } from '@/utils/htmlToText';
+import { Image } from 'expo-image';
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  FlatList,
-  Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  useWindowDimensions
+  useWindowDimensions,
 } from 'react-native';
+
+// -----------------------------------------------------------------------------
+// Constants
+// -----------------------------------------------------------------------------
+
+const HEADER_HEIGHT = 120;
+const FOOTER_HEIGHT = 160;
+const ACTIONS_WIDTH = 60;
+
+// -----------------------------------------------------------------------------
+// Thumbnail Strip
+// -----------------------------------------------------------------------------
+
+interface ThumbnailStripProps {
+  imageUrls: string[];
+  currentPage: number;
+  onPageSelect: (index: number) => void;
+}
+
+// Memoized thumbnail image - prevents re-render when parent updates
+const ThumbImage = memo(({ url }: { url: string }) => (
+  <Image 
+    source={{ uri: url }}
+    style={styles.thumbImage}
+    contentFit="cover"
+    cachePolicy="memory-disk"
+  />
+), () => true);
+
+const ThumbnailStrip = ({ imageUrls, currentPage, onPageSelect }: ThumbnailStripProps) => (
+  <View style={styles.thumbnails}>
+    <View style={styles.thumbStrip}>
+      {/* Text page thumbnail */}
+      <TouchableOpacity
+        style={[styles.thumbItem, currentPage === 0 && styles.thumbActive]}
+        onPress={() => onPageSelect(0)}
+      >
+        <Text style={styles.thumbText}>Aa</Text>
+      </TouchableOpacity>
+      
+      {/* Image thumbnails */}
+      {imageUrls.map((url, i) => (
+        <TouchableOpacity
+          key={`thumb-${i}`}
+          style={[styles.thumbItem, currentPage === i + 1 && styles.thumbActive]}
+          onPress={() => onPageSelect(i + 1)}
+        >
+          <ThumbImage url={url} />
+        </TouchableOpacity>
+      ))}
+    </View>
+  </View>
+);
 
 // -----------------------------------------------------------------------------
 // Media Detection
 // -----------------------------------------------------------------------------
 
 interface MediaInfo {
-  type: 'image' | 'images' | 'youtube' | 'none';
   imageUrl?: string;
   imageUrls?: string[];
-  youtubeId?: string;
 }
 
 function detectMedia(feed: Feed): MediaInfo {
-  const message = feed.message || '';
-  const messageRendered = feed.message_rendered || '';
   const meta = feed.meta || {};
   
-  // Check for multiple images in meta.media_items
-  if (meta.media_items && Array.isArray(meta.media_items) && meta.media_items.length > 0) {
-    const imageUrls = meta.media_items
+  if (meta.media_items?.length > 0) {
+    const urls = meta.media_items
       .filter((item: any) => item.type === 'image' && item.url)
       .map((item: any) => item.url);
-    
-    if (imageUrls.length > 1) {
-      return { type: 'images', imageUrls, imageUrl: imageUrls[0] };
-    } else if (imageUrls.length === 1) {
-      return { type: 'image', imageUrl: imageUrls[0], imageUrls };
+    if (urls.length > 0) {
+      return { imageUrls: urls, imageUrl: urls[0] };
     }
   }
   
-  // Check for single image in meta.media_preview
   if (meta.media_preview?.image) {
-    return { 
-      type: 'image', 
-      imageUrl: meta.media_preview.image,
-      imageUrls: [meta.media_preview.image],
-    };
+    return { imageUrl: meta.media_preview.image, imageUrls: [meta.media_preview.image] };
   }
   
-  // Check for featured_image
   if (feed.featured_image) {
-    return { 
-      type: 'image', 
-      imageUrl: feed.featured_image,
-      imageUrls: [feed.featured_image],
-    };
+    return { imageUrl: feed.featured_image, imageUrls: [feed.featured_image] };
   }
   
-  // Check for YouTube
-  const youtubePatterns = [
-    /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
-    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-  ];
-  
-  for (const pattern of youtubePatterns) {
-    const match = message.match(pattern) || messageRendered.match(pattern);
-    if (match) {
-      return { type: 'youtube', youtubeId: match[1] };
-    }
-  }
-  
-  return { type: 'none' };
+  return {};
 }
 
 // -----------------------------------------------------------------------------
@@ -122,126 +140,102 @@ export function FullScreenPost({
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const [liked, setLiked] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
+  const scrollRef = useRef<ScrollView>(null);
   const bounceAnim = useRef(new Animated.Value(0)).current;
 
-  // Extract data
+  const CONTENT_HEIGHT = SCREEN_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT;
+  const CONTENT_WIDTH = SCREEN_WIDTH - ACTIONS_WIDTH - spacing.lg;
+
+  // Data
   const author = feed.xprofile;
   const authorName = author?.display_name || 'Unknown';
   const authorAvatar = author?.avatar || null;
   const isVerified = author?.is_verified === 1;
-  
-  // Preserve line breaks in content
-  const rawContent = stripHtmlPreserveBreaks(feed.message_rendered || feed.message);
-  // Remove URLs but keep line breaks
-  const content = rawContent.replace(/https?:\/\/[^\s]+/gi, '').trim();
-  // Truncate only if VERY long (800+ chars) - Instagram style
-  const displayContent = content.length > 800 ? truncateText(content, 800) : content;
   const timestamp = formatRelativeTime(feed.created_at);
   
-  // Dynamic font size - fill the space better
-  const getMessageFontSize = () => {
-    const len = displayContent.length;
-    if (len < 50) return 32;      // Very short - big and bold
-    if (len < 100) return 26;     // Short - nice and readable
-    if (len < 200) return 22;     // Medium
-    if (len < 400) return 18;     // Longer
-    if (len < 600) return 16;     // Long
-    return 14;                     // Very long - compact
-  };
-  const messageFontSize = getMessageFontSize();
+  const rawContent = stripHtmlPreserveBreaks(feed.message_rendered || feed.message);
+  const content = rawContent.replace(/https?:\/\/[^\s]+/gi, '').trim();
   
-  // Title size scales with message
-  const titleFontSize = Math.min(36, messageFontSize + 8);
+  // Dynamic font size
+  const totalChars = (feed.title?.length || 0) + content.length;
+  const fontSize = totalChars < 30 ? 34 : totalChars < 80 ? 28 : totalChars < 150 ? 24 : 
+                   totalChars < 300 ? 20 : totalChars < 500 ? 17 : totalChars < 800 ? 15 : 13;
+  const titleSize = Math.min(40, fontSize + 6);
   
-  // Media detection
+  // Media
   const media = detectMedia(feed);
-  const hasImages = (media.type === 'image' || media.type === 'images') && media.imageUrls && media.imageUrls.length > 0;
+  const hasImages = media.imageUrls && media.imageUrls.length > 0;
   const imageCount = media.imageUrls?.length || 0;
-  const totalPages = hasImages ? 1 + imageCount : 1;
   
-  const commentsCount = typeof feed.comments_count === 'string'
-    ? parseInt(feed.comments_count, 10)
-    : feed.comments_count || 0;
-  const reactionsCount = typeof feed.reactions_count === 'string'
-    ? parseInt(feed.reactions_count, 10)
-    : feed.reactions_count || 0;
+  // Stats
+  const commentsCount = parseInt(String(feed.comments_count || 0), 10);
+  const reactionsCount = parseInt(String(feed.reactions_count || 0), 10);
 
   // Bounce animation for scroll hint
   useEffect(() => {
     if (isActive) {
       const timer = setTimeout(() => {
         Animated.sequence([
-          Animated.timing(bounceAnim, { toValue: 10, duration: 300, useNativeDriver: true }),
-          Animated.timing(bounceAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
-          Animated.timing(bounceAnim, { toValue: 6, duration: 200, useNativeDriver: true }),
+          Animated.timing(bounceAnim, { toValue: 8, duration: 250, useNativeDriver: true }),
+          Animated.timing(bounceAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+          Animated.timing(bounceAnim, { toValue: 5, duration: 200, useNativeDriver: true }),
           Animated.timing(bounceAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
         ]).start();
-      }, 2000);
+      }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [isActive, bounceAnim]);
+  }, [isActive]);
 
-  // Handle like
   const handleLike = useCallback(() => {
     setLiked(prev => !prev);
     onReact('like');
   }, [onReact]);
 
-  // Handle horizontal scroll
   const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const page = Math.round(offsetX / SCREEN_WIDTH);
-    setCurrentPage(page);
+    const page = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    if (page !== currentPage) {
+      setCurrentPage(page);
+    }
+  }, [SCREEN_WIDTH, currentPage]);
+
+  const goToPage = useCallback((index: number) => {
+    scrollRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
   }, [SCREEN_WIDTH]);
 
-  // Jump to page from thumbnail
-  const jumpToPage = (index: number) => {
-    flatListRef.current?.scrollToIndex({ index: index + 1, animated: true });
-  };
+  const isDark = hasImages || currentPage > 0;
 
-  // Render text content page (page 0)
+  // Render text page
   const renderTextPage = () => (
     <View style={[styles.page, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}>
-      {/* Background image (dimmed) */}
-      {hasImages && media.imageUrl && (
+      {hasImages && media.imageUrl ? (
         <>
           <Image
             source={{ uri: media.imageUrl }}
-            style={styles.backgroundImage}
-            resizeMode="cover"
-            blurRadius={2}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            blurRadius={3}
+            cachePolicy="memory-disk"
           />
-          <View style={styles.backgroundOverlay} />
+          <View style={styles.overlay} />
         </>
+      ) : (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
       )}
       
-      {/* White background for text-only posts */}
-      {!hasImages && <View style={styles.whiteBackground} />}
-      
-      {/* Main Content - Title + Message */}
-      <View style={styles.mainContent}>
+      <View style={[styles.contentArea, { 
+        top: HEADER_HEIGHT, 
+        height: CONTENT_HEIGHT,
+        width: CONTENT_WIDTH,
+        left: spacing.lg,
+      }]}>
         {feed.title && (
-          <Text 
-            style={[
-              styles.title, 
-              !hasImages && styles.titleDark,
-              { fontSize: titleFontSize }
-            ]} 
-            numberOfLines={2}
-          >
+          <Text style={[styles.title, !isDark && styles.textDark, { fontSize: titleSize, lineHeight: titleSize * 1.2 }]}>
             {feed.title}
           </Text>
         )}
-        {displayContent.length > 0 && (
-          <Text 
-            style={[
-              styles.message, 
-              !hasImages && styles.messageDark,
-              { fontSize: messageFontSize, lineHeight: messageFontSize * 1.4 }
-            ]}
-          >
-            {displayContent}
+        {content.length > 0 && (
+          <Text style={[styles.message, !isDark && styles.textDark, { fontSize, lineHeight: fontSize * 1.4 }]}>
+            {content}
           </Text>
         )}
       </View>
@@ -249,150 +243,84 @@ export function FullScreenPost({
   );
 
   // Render image page
-  const renderImagePage = (imageUrl: string, index: number) => (
-    <View style={[styles.page, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]} key={index}>
-      <Image
-        source={{ uri: imageUrl }}
-        style={styles.fullImage}
-        resizeMode="contain"
+  const renderImagePage = (url: string, index: number) => (
+    <View key={`page-${index}`} style={[styles.page, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}>
+      <Image 
+        source={{ uri: url }} 
+        style={styles.fullImage} 
+        contentFit="contain"
+        cachePolicy="memory-disk"
+        transition={300}
       />
-      {/* Image counter */}
       <View style={styles.imageCounter}>
-        <Text style={styles.imageCounterText}>
-          {index + 1} / {imageCount}
-        </Text>
+        <Text style={styles.imageCounterText}>{index + 1} / {imageCount}</Text>
       </View>
     </View>
   );
 
-  // Build pages array
-  const pages = [
-    { type: 'text', key: 'text' },
-    ...(media.imageUrls || []).map((url, idx) => ({ type: 'image', url, key: `img-${idx}` })),
-  ];
-
-  const isDarkMode = hasImages || currentPage > 0;
-
   return (
     <View style={[styles.container, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}>
-      {/* Horizontal swipeable pages */}
-      <FlatList
-        ref={flatListRef}
-        data={pages}
+      {/* Horizontal pager */}
+      <ScrollView
+        ref={scrollRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
-        keyExtractor={(item) => item.key}
-        renderItem={({ item, index }) => {
-          if (item.type === 'text') {
-            return renderTextPage();
-          } else {
-            return renderImagePage(item.url!, index - 1);
-          }
-        }}
-      />
+      >
+        {renderTextPage()}
+        {media.imageUrls?.map((url, i) => renderImagePage(url, i))}
+      </ScrollView>
 
-      {/* TOP LEFT: Avatar + Author */}
-      <TouchableOpacity style={styles.authorContainer} onPress={onAuthorPress}>
-        <Avatar
-          source={authorAvatar}
-          size="lg"
-          verified={isVerified}
-          fallback={authorName}
-        />
+      {/* HEADER: Avatar + Author */}
+      <TouchableOpacity style={styles.header} onPress={onAuthorPress} activeOpacity={0.8}>
+        <Avatar source={authorAvatar} size="lg" verified={isVerified} fallback={authorName} />
         <View style={styles.authorInfo}>
-          <Text style={[styles.authorName, !isDarkMode && styles.authorNameDark]}>
-            {authorName}
-          </Text>
-          <Text style={[styles.timestamp, !isDarkMode && styles.timestampDark]}>
-            {timestamp}
-          </Text>
+          <Text style={[styles.authorName, !isDark && styles.textDark]}>{authorName}</Text>
+          <Text style={[styles.timestamp, !isDark && styles.timestampLight]}>{timestamp}</Text>
         </View>
       </TouchableOpacity>
 
-      {/* TOP RIGHT: Close button */}
-      <TouchableOpacity 
-        style={styles.closeButton} 
-        onPress={onClose}
-        activeOpacity={0.7}
-      >
+      {/* HEADER: Close button */}
+      <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.7}>
         <Text style={styles.closeIcon}>✕</Text>
       </TouchableOpacity>
 
-      {/* RIGHT SIDE: Action buttons */}
-      <View style={styles.actionsColumn}>
-        <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
-          <Text style={styles.actionIcon}>
-            {liked ? '❤️' : '🤍'}
-          </Text>
-          <Text style={[styles.actionCount, !isDarkMode && styles.actionCountDark]}>
+      {/* RIGHT: Actions */}
+      <View style={styles.actions}>
+        <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
+          <Text style={styles.actionIcon}>{liked ? '❤️' : '🤍'}</Text>
+          <Text style={[styles.actionCount, !isDark && styles.textDark]}>
             {formatCompactNumber(reactionsCount + (liked ? 1 : 0))}
           </Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton} onPress={onCommentPress}>
+        <TouchableOpacity style={styles.actionBtn} onPress={onCommentPress}>
           <Text style={styles.actionIcon}>💬</Text>
-          <Text style={[styles.actionCount, !isDarkMode && styles.actionCountDark]}>
+          <Text style={[styles.actionCount, !isDark && styles.textDark]}>
             {formatCompactNumber(commentsCount)}
           </Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionBtn}>
           <Text style={styles.actionIcon}>📤</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionBtn}>
           <Text style={styles.actionIcon}>🔖</Text>
         </TouchableOpacity>
       </View>
 
-      {/* BOTTOM: Thumbnail strip (if multiple images) */}
-      {hasImages && imageCount > 0 && (
-        <View style={styles.thumbnailContainer}>
-          <View style={styles.thumbnailStrip}>
-            {/* Text page indicator */}
-            <TouchableOpacity
-              style={[
-                styles.thumbnailItem,
-                currentPage === 0 && styles.thumbnailActive,
-              ]}
-              onPress={() => flatListRef.current?.scrollToIndex({ index: 0, animated: true })}
-            >
-              <Text style={styles.thumbnailText}>Aa</Text>
-            </TouchableOpacity>
-            
-            {/* Image thumbnails */}
-            {media.imageUrls?.map((url, idx) => (
-              <TouchableOpacity
-                key={`thumb-${idx}-${url}`}
-                style={[
-                  styles.thumbnailItem,
-                  currentPage === idx + 1 && styles.thumbnailActive,
-                ]}
-                onPress={() => jumpToPage(idx)}
-              >
-                <Image
-                  source={{ uri: url, cache: 'force-cache' }}
-                  style={styles.thumbnailImage}
-                  resizeMode="cover"
-                  defaultSource={{ uri: url }}
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+      {/* FOOTER: Thumbnails */}
+      {hasImages && media.imageUrls && (
+        <ThumbnailStrip 
+          imageUrls={media.imageUrls}
+          currentPage={currentPage}
+          onPageSelect={goToPage}
+        />
       )}
 
-      {/* BOTTOM: Scroll indicator (animated bounce) */}
-      <Animated.View 
-        style={[
-          styles.scrollIndicator,
-          { transform: [{ translateY: bounceAnim }] }
-        ]}
-      >
-        <Text style={[styles.scrollArrow, !isDarkMode && styles.scrollArrowDark]}>⌄</Text>
+      {/* FOOTER: Scroll indicator */}
+      <Animated.View style={[styles.scrollHint, { transform: [{ translateY: bounceAnim }] }]}>
+        <Text style={[styles.scrollArrow, !isDark && styles.scrollArrowLight]}>⌄</Text>
       </Animated.View>
     </View>
   );
@@ -406,249 +334,213 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#000',
   },
-
+  
   page: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // Backgrounds
-  backgroundImage: {
+  
+  overlay: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
-
-  backgroundOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  
+  contentArea: {
+    position: 'absolute',
+    justifyContent: 'center',
+    paddingRight: spacing.md,
   },
-
-  whiteBackground: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.background,
-  },
-
-  // Main content
-  mainContent: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: 140,
-    paddingBottom: 180,
-    maxWidth: '85%',
-    alignItems: 'center',
-    maxHeight: '80%',
-  },
-
+  
   title: {
-    fontSize: 28,
     fontWeight: '700',
-    color: colors.textInverse,
+    color: '#fff',
     textAlign: 'center',
-    marginBottom: spacing.md,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    marginBottom: spacing.sm,
+    textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-
-  titleDark: {
-    color: colors.text,
-    textShadowColor: 'transparent',
-  },
-
+  
   message: {
-    fontSize: 18,
-    color: colors.textInverse,
+    color: '#fff',
     textAlign: 'center',
-    lineHeight: 26,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
-
-  messageDark: {
+  
+  textDark: {
     color: colors.text,
     textShadowColor: 'transparent',
   },
-
-  // Full image view
+  
   fullImage: {
     width: '100%',
     height: '100%',
     backgroundColor: '#000',
   },
-
+  
   imageCounter: {
     position: 'absolute',
-    top: 100,
+    top: HEADER_HEIGHT,
     alignSelf: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
   },
-
+  
   imageCounterText: {
-    color: colors.textInverse,
+    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
   },
-
-  // TOP LEFT: Author
-  authorContainer: {
+  
+  header: {
     position: 'absolute',
-    top: 60,
+    top: 55,
     left: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 10,
   },
-
+  
   authorInfo: {
     marginLeft: spacing.md,
   },
-
+  
   authorName: {
-    color: colors.textInverse,
-    fontSize: typography.size.lg,
+    color: '#fff',
+    fontSize: 18,
     fontWeight: '700',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 3,
   },
-
-  authorNameDark: {
-    color: colors.text,
-    textShadowColor: 'transparent',
-  },
-
+  
   timestamp: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: typography.size.sm,
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
     marginTop: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 3,
   },
-
-  timestampDark: {
+  
+  timestampLight: {
     color: colors.textSecondary,
     textShadowColor: 'transparent',
   },
-
-  // TOP RIGHT: Close button
+  
   closeButton: {
     position: 'absolute',
-    top: 60,
+    top: 55,
     right: spacing.lg,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
-
+  
   closeIcon: {
-    color: colors.textInverse,
+    color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
   },
-
-  // RIGHT SIDE: Actions
-  actionsColumn: {
+  
+  actions: {
     position: 'absolute',
-    right: spacing.md,
-    top: '35%',
+    right: spacing.sm,
+    top: '32%',
     alignItems: 'center',
     zIndex: 10,
   },
-
-  actionButton: {
+  
+  actionBtn: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
-    padding: spacing.xs,
+    marginBottom: 20,
+    padding: 4,
   },
-
+  
   actionIcon: {
-    fontSize: 30,
+    fontSize: 28,
   },
-
+  
   actionCount: {
-    color: colors.textInverse,
-    fontSize: typography.size.sm,
+    color: '#fff',
+    fontSize: 13,
     fontWeight: '600',
-    marginTop: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    marginTop: 3,
+    textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-
-  actionCountDark: {
-    color: colors.text,
-    textShadowColor: 'transparent',
-  },
-
-  // BOTTOM: Thumbnail strip
-  thumbnailContainer: {
+  
+  thumbnails: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 90,
     left: 0,
     right: 0,
     alignItems: 'center',
     zIndex: 10,
   },
-
-  thumbnailStrip: {
+  
+  thumbStrip: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
-    padding: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 10,
+    padding: 5,
   },
-
-  thumbnailItem: {
+  
+  // IMPORTANT: Always have border (transparent when inactive) to prevent layout shift
+  thumbItem: {
     width: 44,
     height: 44,
     borderRadius: 8,
-    marginHorizontal: 4,
+    marginHorizontal: 3,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-
-  thumbnailActive: {
     borderWidth: 2,
-    borderColor: colors.textInverse,
+    borderColor: 'transparent',
   },
-
-  thumbnailImage: {
-    width: '100%',
-    height: '100%',
+  
+  thumbActive: {
+    borderColor: '#fff',
   },
-
-  thumbnailText: {
-    color: colors.textInverse,
-    fontSize: 16,
+  
+  thumbImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+  },
+  
+  thumbText: {
+    color: '#fff',
+    fontSize: 15,
     fontWeight: '600',
   },
-
-  // BOTTOM: Scroll indicator
-  scrollIndicator: {
+  
+  scrollHint: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 35,
     left: 0,
     right: 0,
     alignItems: 'center',
     zIndex: 10,
   },
-
+  
   scrollArrow: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 32,
-    fontWeight: '300',
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 30,
   },
-
-  scrollArrowDark: {
-    color: 'rgba(0, 0, 0, 0.3)',
+  
+  scrollArrowLight: {
+    color: 'rgba(0,0,0,0.25)',
   },
 });
 
