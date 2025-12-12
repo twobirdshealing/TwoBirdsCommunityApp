@@ -4,9 +4,9 @@
 // This service handles fetching and managing community spaces.
 // =============================================================================
 
-import { get, post, put, del } from './client';
-import { ENDPOINTS, DEFAULT_PER_PAGE } from '@/constants/config';
-import { Space, SpacesResponse, SpaceDetailResponse, SpaceGroupsResponse, JoinSpaceResponse } from '@/types';
+import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
+import { JoinSpaceResponse, SpaceDetailResponse, SpaceGroupsResponse, SpacesResponse } from '@/types';
+import { get, post } from './client';
 
 // -----------------------------------------------------------------------------
 // Request Options

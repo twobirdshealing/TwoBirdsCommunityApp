@@ -2,4 +2,5 @@
 // SPACE COMPONENTS - Barrel export
 // =============================================================================
 
-export { SpaceCard } from './SpaceCard';
+export { SpaceHeader } from './SpaceHeader';
+export { SpaceMenu } from './SpaceMenu';

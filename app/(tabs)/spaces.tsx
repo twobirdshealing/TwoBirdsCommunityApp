@@ -1,49 +1,54 @@
 // =============================================================================
-// SPACES SCREEN - List of community spaces/groups
+// SPACES SCREEN - List of all community spaces
 // =============================================================================
-// Shows all spaces the user can view or join.
+// Shows all available spaces the user can join or browse
+// Phase 1: Simple list, Phase 2: Add search, filters, categories
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/constants/colors';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { Space } from '@/types';
 import { spacesApi } from '@/services/api';
-import { SpaceCard } from '@/components/space';
-import { LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
-
-// -----------------------------------------------------------------------------
-// Component
-// -----------------------------------------------------------------------------
+import { LoadingSpinner, ErrorMessage } from '@/components/common';
+import { formatCompactNumber } from '@/utils/formatNumber';
 
 export default function SpacesScreen() {
   const router = useRouter();
-  
+
   // State
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // -----------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
   // Fetch Spaces
-  // -----------------------------------------------------------------------------
-  
+  // ---------------------------------------------------------------------------
+
   const fetchSpaces = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
         setError(null);
       }
-      
+
       const response = await spacesApi.getSpaces({ per_page: 50 });
-      
+
       if (response.success) {
-        setSpaces(response.data.spaces);
+        setSpaces(response.data.spaces || []);
       } else {
-        setError(response.error.message);
+        setError(response.error?.message || 'Failed to load spaces');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -52,141 +57,193 @@ export default function SpacesScreen() {
       setRefreshing(false);
     }
   }, []);
-  
+
+  // Initial load
   useEffect(() => {
     fetchSpaces();
   }, [fetchSpaces]);
-  
-  // -----------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
   // Handlers
-  // -----------------------------------------------------------------------------
-  
-  const handleRefresh = () => {
-    fetchSpaces(true);
-  };
-  
+  // ---------------------------------------------------------------------------
+
   const handleSpacePress = (space: Space) => {
-    // Navigate to space detail
-    console.log('Navigate to space:', space.slug);
-    // router.push(`/space/${space.slug}`);
+    router.push(`/space/${space.slug}`);
   };
-  
-  // -----------------------------------------------------------------------------
-  // Render
-  // -----------------------------------------------------------------------------
-  
-  // Loading state
+
+  // ---------------------------------------------------------------------------
+  // Render States
+  // ---------------------------------------------------------------------------
+
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Spaces</Text>
-        </View>
-        <LoadingSpinner message="Loading spaces..." />
-      </View>
-    );
+    return <LoadingSpinner message="Loading spaces..." />;
   }
-  
-  // Error state
-  if (error && spaces.length === 0) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Spaces</Text>
-        </View>
-        <ErrorMessage message={error} onRetry={handleRefresh} />
-      </View>
-    );
+
+  if (error) {
+    return <ErrorMessage message={error} onRetry={() => fetchSpaces(true)} />;
   }
-  
-  // Empty state
+
   if (spaces.length === 0) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Spaces</Text>
-        </View>
-        <EmptyState 
-          icon="👥"
-          title="No Spaces"
-          message="There are no spaces to show right now."
-        />
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>🏠</Text>
+        <Text style={styles.emptyText}>No spaces available</Text>
       </View>
     );
   }
-  
+
+  // ---------------------------------------------------------------------------
+  // Main Render
+  // ---------------------------------------------------------------------------
+
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Spaces</Text>
-        <Text style={styles.headerSubtitle}>
-          {spaces.length} {spaces.length === 1 ? 'space' : 'spaces'}
-        </Text>
-      </View>
-      
-      {/* Spaces List */}
-      <FlatList
-        data={spaces}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <SpaceCard 
-            space={item} 
-            onPress={() => handleSpacePress(item)}
-            variant="list"
-          />
-        )}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
-        contentContainerStyle={styles.list}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
-    </View>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => fetchSpaces(true)}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
+        />
+      }
+    >
+      {spaces.map((space) => {
+        const coverPhoto = space.cover_photo || space.logo;
+        const membersCount = space.members_count || 0;
+
+        return (
+          <TouchableOpacity
+            key={space.id}
+            style={styles.spaceCard}
+            onPress={() => handleSpacePress(space)}
+            activeOpacity={0.7}
+          >
+            {/* Cover Photo */}
+            {coverPhoto ? (
+              <Image
+                source={{ uri: coverPhoto }}
+                style={styles.spaceCover}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.spaceCover, styles.spaceCoverPlaceholder]}>
+                <Text style={styles.spaceCoverEmoji}>
+                  {space.settings?.emoji || '🏠'}
+                </Text>
+              </View>
+            )}
+
+            {/* Space Info */}
+            <View style={styles.spaceInfo}>
+              <Text style={styles.spaceTitle} numberOfLines={2}>
+                {space.title}
+              </Text>
+
+              {space.description && (
+                <Text style={styles.spaceDescription} numberOfLines={2}>
+                  {space.description}
+                </Text>
+              )}
+
+              {/* Members Count */}
+              <View style={styles.spaceMeta}>
+                <Text style={styles.spaceMetaIcon}>👥</Text>
+                <Text style={styles.spaceMetaText}>
+                  {formatCompactNumber(membersCount)} member{membersCount !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
   );
 }
-
-// -----------------------------------------------------------------------------
-// Styles
-// -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  
-  header: {
-    backgroundColor: colors.surface,
-    paddingTop: 60,
-    paddingBottom: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+
+  content: {
+    padding: spacing.lg,
   },
-  
-  headerTitle: {
-    fontSize: typography.size.xxl,
+
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xxl,
+  },
+
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+
+  emptyText: {
+    fontSize: typography.size.md,
+    color: colors.textSecondary,
+  },
+
+  spaceCard: {
+    backgroundColor: colors.surface,
+    borderRadius: sizing.borderRadius.lg,
+    marginBottom: spacing.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  spaceCover: {
+    width: '100%',
+    height: 120,
+    backgroundColor: colors.skeleton,
+  },
+
+  spaceCoverPlaceholder: {
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  spaceCoverEmoji: {
+    fontSize: 48,
+  },
+
+  spaceInfo: {
+    padding: spacing.lg,
+  },
+
+  spaceTitle: {
+    fontSize: typography.size.lg,
     fontWeight: typography.weight.bold,
     color: colors.text,
+    marginBottom: spacing.xs,
   },
-  
-  headerSubtitle: {
+
+  spaceDescription: {
     fontSize: typography.size.sm,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+    lineHeight: typography.size.sm * 1.5,
   },
-  
-  list: {
-    paddingVertical: spacing.sm,
+
+  spaceMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  
-  separator: {
-    height: spacing.xs,
+
+  spaceMetaIcon: {
+    fontSize: 14,
+    marginRight: spacing.xs,
+  },
+
+  spaceMetaText: {
+    fontSize: typography.size.sm,
+    color: colors.textSecondary,
   },
 });
