@@ -17,8 +17,10 @@ interface SpaceHeaderProps {
 
 export function SpaceHeader({ space }: SpaceHeaderProps) {
   const coverPhoto = space.cover_photo || space.logo;
-  const membersCount = space.members_count || 0;
-  const postsCount = space.posts_count || 0;
+  
+  // API doesn't include counts in by-slug response, so hide the stats for now
+  // Phase 2: Fetch member count from separate endpoint if needed
+  const showStats = false;
 
   return (
     <View style={styles.container}>
@@ -49,24 +51,22 @@ export function SpaceHeader({ space }: SpaceHeaderProps) {
           </Text>
         )}
 
-        {/* Stats */}
-        <View style={styles.stats}>
-          <View style={styles.stat}>
-            <Text style={styles.statIcon}>👥</Text>
-            <Text style={styles.statText}>
-              {formatCompactNumber(membersCount)} member{membersCount !== 1 ? 's' : ''}
-            </Text>
-          </View>
+        {/* Stats - Hidden for now, API doesn't return counts in by-slug */}
+        {showStats && (
+          <View style={styles.stats}>
+            <View style={styles.stat}>
+              <Text style={styles.statIcon}>👥</Text>
+              <Text style={styles.statText}>Members</Text>
+            </View>
 
-          <View style={styles.statDivider} />
+            <View style={styles.statDivider} />
 
-          <View style={styles.stat}>
-            <Text style={styles.statIcon}>📝</Text>
-            <Text style={styles.statText}>
-              {formatCompactNumber(postsCount)} post{postsCount !== 1 ? 's' : ''}
-            </Text>
+            <View style={styles.stat}>
+              <Text style={styles.statIcon}>📝</Text>
+              <Text style={styles.statText}>Posts</Text>
+            </View>
           </View>
-        </View>
+        )}
       </View>
     </View>
   );
@@ -110,12 +110,12 @@ const styles = StyleSheet.create({
     fontSize: typography.size.md,
     color: colors.textSecondary,
     lineHeight: typography.size.md * 1.5,
-    marginBottom: spacing.md,
   },
 
   stats: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: spacing.md,
   },
 
   stat: {
