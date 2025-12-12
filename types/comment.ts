@@ -1,7 +1,7 @@
 // =============================================================================
 // COMMENT TYPES - TypeScript definitions for comment data
 // =============================================================================
-// Based on Fluent Community Comments API documentation
+// Updated with ProfileComment type for user timeline
 // =============================================================================
 
 import { XProfile } from './user';
@@ -15,26 +15,49 @@ export interface Comment {
   id: number;
   user_id: string | number;
   post_id: string | number;
-  parent_id: number | null;  // For nested replies
+  parent_id: number | null;
   message: string;
   message_rendered: string;
   type: 'comment';
   content_type: 'text' | 'markdown' | 'html';
   status: CommentStatus;
   reactions_count: number | string;
-  is_sticky: number | string;  // 0 or 1
-  meta: Record<string, any>;
+  is_sticky: number | string;
+  meta: CommentMeta;
   created_at: string;
   updated_at: string;
   
-  // Author info
   xprofile?: XProfile;
-  
-  // Reactions on this comment
   reactions?: Reaction[];
-  
-  // Nested replies (if fetched)
   replies?: Comment[];
+}
+
+// -----------------------------------------------------------------------------
+// Profile Comment - Comment shown in user profile timeline
+// -----------------------------------------------------------------------------
+
+export interface ProfileComment extends Comment {
+  post: {
+    id: number;
+    title: string | null;
+    message: string;
+    message_rendered: string;
+    type: string;
+    permalink?: string;
+    slug?: string;
+  };
+}
+
+// -----------------------------------------------------------------------------
+// Comment Meta
+// -----------------------------------------------------------------------------
+
+export interface CommentMeta {
+  media_preview?: {
+    image?: string;
+    type?: 'image' | 'video' | 'link';
+  };
+  [key: string]: any;
 }
 
 // -----------------------------------------------------------------------------
@@ -42,26 +65,27 @@ export interface Comment {
 // -----------------------------------------------------------------------------
 
 export type CommentStatus = 
-  | 'published'  // Live and visible
-  | 'pending'    // Awaiting moderation
-  | 'spam';      // Marked as spam
+  | 'published'
+  | 'pending'
+  | 'spam';
 
 // -----------------------------------------------------------------------------
 // API Response Types
 // -----------------------------------------------------------------------------
 
-// Response from GET /feeds/{feed_id}/comments
 export interface CommentsResponse {
   comments: Comment[];
 }
 
-// Response from POST /feeds/{feed_id}/comments
+export interface UserCommentsResponse {
+  comments: ProfileComment[];
+}
+
 export interface CreateCommentResponse {
   message: string;
   data: Comment;
 }
 
-// Response from POST /feeds/{feed_id}/comments/{comment_id}
 export interface UpdateCommentResponse {
   message: string;
   data: Comment;

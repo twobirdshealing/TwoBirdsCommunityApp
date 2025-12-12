@@ -1,6 +1,8 @@
 // =============================================================================
 // PROFILE HEADER - Cover photo, avatar, name, stats
 // =============================================================================
+// Updated with clickable cover/avatar for editing (Phase 2 ready)
+// =============================================================================
 
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
@@ -16,6 +18,8 @@ interface ProfileHeaderProps {
   onSettingsPress?: () => void;
   onFollowersPress?: () => void;
   onFollowingPress?: () => void;
+  onCoverPhotoPress?: () => void;  // For editing cover (Phase 2)
+  onAvatarPress?: () => void;      // For editing avatar (Phase 2)
 }
 
 export function ProfileHeader({
@@ -24,14 +28,33 @@ export function ProfileHeader({
   onSettingsPress,
   onFollowersPress,
   onFollowingPress,
+  onCoverPhotoPress,
+  onAvatarPress,
 }: ProfileHeaderProps) {
   const isVerified = profile.is_verified === 1;
   const coverPhoto = profile.cover_photo || profile.meta?.cover_photo;
 
+  const handleCoverPress = () => {
+    if (isOwnProfile && onCoverPhotoPress) {
+      onCoverPhotoPress();
+    }
+  };
+
+  const handleAvatarPress = () => {
+    if (isOwnProfile && onAvatarPress) {
+      onAvatarPress();
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Cover Photo */}
-      <View style={styles.coverContainer}>
+      <TouchableOpacity
+        style={styles.coverContainer}
+        onPress={handleCoverPress}
+        activeOpacity={isOwnProfile ? 0.8 : 1}
+        disabled={!isOwnProfile}
+      >
         {coverPhoto ? (
           <Image
             source={{ uri: coverPhoto }}
@@ -42,25 +65,47 @@ export function ProfileHeader({
           <View style={[styles.coverPhoto, styles.coverPlaceholder]} />
         )}
         
+        {/* Edit Cover Hint (own profile only) */}
+        {isOwnProfile && onCoverPhotoPress && (
+          <View style={styles.editHint}>
+            <Text style={styles.editHintText}>📷 Tap to change cover</Text>
+          </View>
+        )}
+        
         {/* Settings Button (own profile only) */}
         {isOwnProfile && onSettingsPress && (
-          <TouchableOpacity style={styles.settingsButton} onPress={onSettingsPress}>
+          <TouchableOpacity 
+            style={styles.settingsButton} 
+            onPress={onSettingsPress}
+            activeOpacity={0.8}
+          >
             <Text style={styles.settingsIcon}>⚙️</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </TouchableOpacity>
 
       {/* Profile Info */}
       <View style={styles.infoContainer}>
         {/* Avatar */}
-        <View style={styles.avatarWrapper}>
+        <TouchableOpacity
+          style={styles.avatarWrapper}
+          onPress={handleAvatarPress}
+          activeOpacity={isOwnProfile ? 0.8 : 1}
+          disabled={!isOwnProfile}
+        >
           <Avatar
             source={profile.avatar}
             size="xxl"
             verified={isVerified}
             fallback={profile.display_name}
           />
-        </View>
+          {/* Edit Avatar Hint (own profile only) */}
+          {isOwnProfile && onAvatarPress && (
+            <View style={styles.avatarEditBadge}>
+              <Text style={styles.avatarEditIcon}>📷</Text>
+            </View>
+          )}
+        </TouchableOpacity>
 
         {/* Name & Username */}
         <Text style={styles.displayName}>{profile.display_name}</Text>
@@ -127,6 +172,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
 
+  editHint: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -75 }, { translateY: -15 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 20,
+  },
+
+  editHintText: {
+    color: colors.textInverse,
+    fontSize: typography.size.xs,
+  },
+
   settingsButton: {
     position: 'absolute',
     top: 50,
@@ -155,6 +216,25 @@ const styles = StyleSheet.create({
     padding: 4,
     backgroundColor: colors.surface,
     borderRadius: 60,
+    position: 'relative',
+  },
+
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+
+  avatarEditIcon: {
+    fontSize: 14,
   },
 
   displayName: {

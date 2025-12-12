@@ -1,5 +1,5 @@
 // =============================================================================
-// ABOUT TAB - Profile about section content
+// ABOUT TAB - Profile about section
 // =============================================================================
 
 import React from 'react';
@@ -7,106 +7,125 @@ import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native'
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { Profile } from '@/types';
-import { formatSmartDate } from '@/utils/formatDate';
 
 interface AboutTabProps {
   profile: Profile;
 }
 
 export function AboutTab({ profile }: AboutTabProps) {
-  const joinedDate = formatSmartDate(profile.created_at);
-  const lastSeen = profile.last_activity ? formatSmartDate(profile.last_activity) : null;
-  const socialLinks = profile.meta?.social_links;
+  const description = profile.short_description || profile.meta?.bio;
+  const website = profile.meta?.website;
+  const socialLinks = profile.meta?.social_links || {};
+  const hasSocial = Object.values(socialLinks).some(link => link);
+  
+  // Format joined date
+  const joinedDate = profile.created_at 
+    ? new Date(profile.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+    : null;
 
-  const openLink = (url: string) => {
-    if (url) {
-      Linking.openURL(url.startsWith('http') ? url : `https://${url}`);
+  const handleOpenLink = async (url: string) => {
+    if (!url) return;
+    const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+    const supported = await Linking.canOpenURL(fullUrl);
+    if (supported) {
+      await Linking.openURL(fullUrl);
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* About Section */}
+      {/* Description */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>About</Text>
-        
-        {profile.short_description ? (
-          <Text style={styles.description}>{profile.short_description}</Text>
+        {description ? (
+          <Text style={styles.description}>{description}</Text>
         ) : (
           <Text style={styles.placeholder}>No description added yet</Text>
         )}
       </View>
 
-      {/* Info Section */}
+      {/* Info */}
       <View style={styles.section}>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoIcon}>📅</Text>
-          <Text style={styles.infoText}>Joined {joinedDate}</Text>
-        </View>
+        <Text style={styles.sectionTitle}>Info</Text>
         
-        {lastSeen && (
+        {/* Joined Date */}
+        {joinedDate && (
           <View style={styles.infoRow}>
-            <Text style={styles.infoIcon}>🕐</Text>
-            <Text style={styles.infoText}>Last seen {lastSeen}</Text>
+            <Text style={styles.infoIcon}>📅</Text>
+            <Text style={styles.infoText}>Joined {joinedDate}</Text>
           </View>
         )}
-        
-        {profile.meta?.website && (
+
+        {/* Website */}
+        {website && (
           <TouchableOpacity 
-            style={styles.infoRow} 
-            onPress={() => openLink(profile.meta!.website!)}
+            style={styles.infoRow}
+            onPress={() => handleOpenLink(website)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.infoIcon}>🔗</Text>
+            <Text style={styles.infoIcon}>🌐</Text>
             <Text style={[styles.infoText, styles.link]} numberOfLines={1}>
-              {profile.meta.website}
+              {website.replace(/^https?:\/\//, '')}
             </Text>
           </TouchableOpacity>
+        )}
+
+        {/* Location */}
+        {profile.meta?.location && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoIcon}>📍</Text>
+            <Text style={styles.infoText}>{profile.meta.location}</Text>
+          </View>
         )}
       </View>
 
       {/* Social Links */}
-      {socialLinks && Object.keys(socialLinks).some(k => socialLinks[k as keyof typeof socialLinks]) && (
+      {hasSocial && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Social Links</Text>
+          <Text style={styles.sectionTitle}>Social</Text>
           <View style={styles.socialRow}>
             {socialLinks.twitter && (
-              <TouchableOpacity
+              <TouchableOpacity 
                 style={styles.socialButton}
-                onPress={() => openLink(`https://twitter.com/${socialLinks.twitter}`)}
+                onPress={() => handleOpenLink(socialLinks.twitter!)}
               >
-                <Text style={styles.socialIcon}>𝕏</Text>
+                <Text style={styles.socialIcon}>🐦</Text>
+              </TouchableOpacity>
+            )}
+            {socialLinks.fb && (
+              <TouchableOpacity 
+                style={styles.socialButton}
+                onPress={() => handleOpenLink(socialLinks.fb!)}
+              >
+                <Text style={styles.socialIcon}>📘</Text>
               </TouchableOpacity>
             )}
             {socialLinks.instagram && (
-              <TouchableOpacity
+              <TouchableOpacity 
                 style={styles.socialButton}
-                onPress={() => openLink(`https://instagram.com/${socialLinks.instagram}`)}
+                onPress={() => handleOpenLink(socialLinks.instagram!)}
               >
                 <Text style={styles.socialIcon}>📷</Text>
               </TouchableOpacity>
             )}
-            {socialLinks.youtube && (
-              <TouchableOpacity
-                style={styles.socialButton}
-                onPress={() => openLink(`https://youtube.com/${socialLinks.youtube}`)}
-              >
-                <Text style={styles.socialIcon}>▶️</Text>
-              </TouchableOpacity>
-            )}
             {socialLinks.linkedin && (
-              <TouchableOpacity
+              <TouchableOpacity 
                 style={styles.socialButton}
-                onPress={() => openLink(`https://linkedin.com/in/${socialLinks.linkedin}`)}
+                onPress={() => handleOpenLink(socialLinks.linkedin!)}
               >
                 <Text style={styles.socialIcon}>💼</Text>
               </TouchableOpacity>
             )}
-            {socialLinks.fb && (
-              <TouchableOpacity
+            {socialLinks.youtube && (
+              <TouchableOpacity 
                 style={styles.socialButton}
-                onPress={() => openLink(`https://facebook.com/${socialLinks.fb}`)}
+                onPress={() => handleOpenLink(socialLinks.youtube!)}
               >
-                <Text style={styles.socialIcon}>📘</Text>
+                <Text style={styles.socialIcon}>▶️</Text>
               </TouchableOpacity>
             )}
           </View>
