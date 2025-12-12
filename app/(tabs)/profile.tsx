@@ -244,8 +244,7 @@ export default function ProfileScreen() {
                 key={post.id}
                 feed={post}
                 onPress={() => {}}
-                onReact={() => {}}
-                variant="compact"
+                onReact={() => {}}                
               />
             ))}
           </View>
