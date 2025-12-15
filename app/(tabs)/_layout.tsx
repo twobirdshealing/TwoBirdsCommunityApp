@@ -1,7 +1,7 @@
 // =============================================================================
 // TAB LAYOUT - Bottom tab navigation
 // =============================================================================
-// Uses profilesApi to get real avatar - same as profile screen!
+// FIXED: Uses /profile/{username} like profile page does (NOT /profile/me)!
 // =============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -19,13 +19,15 @@ export default function TabLayout() {
   
   const tabBarHeight = 60 + Math.max(insets.bottom, 10);
 
-  // Fetch avatar - same way profile screen does it
+  // Fetch avatar - EXACT same way profile page does it!
   useEffect(() => {
     const fetchAvatar = async () => {
       if (!user?.username) return;
       
       try {
-        const response = await profilesApi.getUserProfile(user.username);
+        // Same as profile page: profilesApi.getProfile(user.username)
+        const response = await profilesApi.getProfile(user.username);
+        
         if (response.success && response.data.profile?.avatar) {
           setAvatar(response.data.profile.avatar);
         }
@@ -114,13 +116,12 @@ export default function TabLayout() {
         }}
       />
       
-      {/* Profile */}
+      {/* Profile - Shows user avatar */}
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
           tabBarIcon: ({ focused }) => {
-            // Show avatar if loaded
             if (avatar) {
               return (
                 <View style={[styles.avatarContainer, focused && styles.avatarFocused]}>
@@ -131,7 +132,6 @@ export default function TabLayout() {
                 </View>
               );
             }
-            // Fallback emoji
             return <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.6 }}>👤</Text>;
           },
         }}
