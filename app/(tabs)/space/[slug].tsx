@@ -2,8 +2,7 @@
 // SPACE PAGE - Individual space feed view
 // =============================================================================
 // Route: /(tabs)/space/[slug]
-// NOW INSIDE (tabs) folder = bottom nav visible!
-// Shows space header, menu, and feeds filtered to that space
+// Has bottom nav (in tabs) AND top nav (Stack.Screen)
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -169,7 +168,13 @@ export default function SpacePage() {
   if (loading && !space) {
     return (
       <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Loading...' }} />
+        {/* CRITICAL: Stack.Screen for top nav */}
+        <Stack.Screen 
+          options={{ 
+            headerShown: true,
+            title: 'Loading...' 
+          }} 
+        />
         <LoadingSpinner message="Loading space..." />
       </View>
     );
@@ -178,7 +183,13 @@ export default function SpacePage() {
   if (error && !space) {
     return (
       <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Error' }} />
+        {/* CRITICAL: Stack.Screen for top nav */}
+        <Stack.Screen 
+          options={{ 
+            headerShown: true,
+            title: 'Error' 
+          }} 
+        />
         <ErrorMessage message={error} onRetry={fetchSpaceDetails} />
       </View>
     );
@@ -187,7 +198,13 @@ export default function SpacePage() {
   if (!space) {
     return (
       <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Not Found' }} />
+        {/* CRITICAL: Stack.Screen for top nav */}
+        <Stack.Screen 
+          options={{ 
+            headerShown: true,
+            title: 'Not Found' 
+          }} 
+        />
         <ErrorMessage message="Space not found" />
       </View>
     );
@@ -199,9 +216,12 @@ export default function SpacePage() {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      {/* CRITICAL: Stack.Screen for top nav with back button and menu */}
       <Stack.Screen 
         options={{ 
+          headerShown: true,
           title: space.title,
+          headerBackTitle: 'Back',
           headerRight: () => (
             <SpaceMenu
               onPostsPress={handlePostsPress}

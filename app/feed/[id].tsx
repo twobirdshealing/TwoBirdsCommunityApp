@@ -2,8 +2,7 @@
 // FEED DETAIL SCREEN - Full-screen swipeable post viewer
 // =============================================================================
 // Route: /feed/{id}?space={slug}&context={space|home|profile}
-// Shows full-screen content with swipe navigation.
-// Supports different feed contexts (home, space, profile)
+// Full-screen modal - NO bottom tabs, HAS top nav with back button
 // =============================================================================
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -67,16 +66,13 @@ export default function FeedDetailScreen() {
       const params: any = { per_page: 50 };
       
       if (space) {
-        // Space context: Load feeds from this space
         params.space = space;
         setPageTitle(decodeURIComponent(space).split('-').map(w => 
           w.charAt(0).toUpperCase() + w.slice(1)
         ).join(' '));
       } else if (context === 'profile') {
-        // Profile context: Load user's feeds
         setPageTitle('Posts');
       } else {
-        // Home context
         setPageTitle('Feed');
       }
       
@@ -86,14 +82,12 @@ export default function FeedDetailScreen() {
         const allFeeds = response.data.feeds.data;
         setFeeds(allFeeds);
         
-        // Find the index of the tapped post
         const tappedIndex = allFeeds.findIndex(
           (feed) => feed.id.toString() === id
         );
         
         if (tappedIndex !== -1) {
           setCurrentIndex(tappedIndex);
-          // Scroll to the tapped post after a short delay
           setTimeout(() => {
             flatListRef.current?.scrollToIndex({
               index: tappedIndex,
@@ -124,7 +118,6 @@ export default function FeedDetailScreen() {
       const response = await feedsApi.reactToFeed(feedId, type);
       
       if (response.success) {
-        // Update local state
         setFeeds(prevFeeds =>
           prevFeeds.map(feed => {
             if (feed.id === feedId) {
@@ -161,7 +154,6 @@ export default function FeedDetailScreen() {
     router.push(`/profile/${username}`);
   };
 
-  // Track which post is currently visible
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       setCurrentIndex(viewableItems[0].index);
@@ -172,10 +164,6 @@ export default function FeedDetailScreen() {
     itemVisiblePercentThreshold: 50,
   }).current;
 
-  // ---------------------------------------------------------------------------
-  // Item layout calculator
-  // ---------------------------------------------------------------------------
-  
   const getItemLayout = (_data: any, index: number) => ({
     length: SCREEN_HEIGHT,
     offset: SCREEN_HEIGHT * index,
@@ -189,7 +177,14 @@ export default function FeedDetailScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <Stack.Screen options={{ title: pageTitle }} />
+        {/* CRITICAL: Stack.Screen for top nav */}
+        <Stack.Screen 
+          options={{ 
+            headerShown: true,
+            title: pageTitle,
+            headerBackTitle: 'Back',
+          }} 
+        />
         <StatusBar barStyle="light-content" />
         <ActivityIndicator size="large" color={colors.textInverse} />
       </View>
@@ -199,7 +194,14 @@ export default function FeedDetailScreen() {
   if (error || feeds.length === 0) {
     return (
       <View style={styles.errorContainer}>
-        <Stack.Screen options={{ title: pageTitle }} />
+        {/* CRITICAL: Stack.Screen for top nav */}
+        <Stack.Screen 
+          options={{ 
+            headerShown: true,
+            title: pageTitle,
+            headerBackTitle: 'Back',
+          }} 
+        />
         <StatusBar barStyle="light-content" />
         <Text style={styles.errorText}>{error || 'Post not found'}</Text>
       </View>
@@ -208,7 +210,14 @@ export default function FeedDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: pageTitle }} />
+      {/* CRITICAL: Stack.Screen for top nav with title */}
+      <Stack.Screen 
+        options={{ 
+          headerShown: true,
+          title: pageTitle,
+          headerBackTitle: 'Back',
+        }} 
+      />
       <StatusBar barStyle="light-content" />
       
       <FlatList
