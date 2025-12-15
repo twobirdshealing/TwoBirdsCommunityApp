@@ -1,84 +1,35 @@
 // =============================================================================
-// FULL SCREEN POST - Instagram-style full-screen post viewer
+// FULL SCREEN POST - TikTok-style swipeable post viewer  
 // =============================================================================
-// - Uses expo-image for better caching
-// - ScrollView for horizontal paging (no virtualization needed for few pages)
-// - Memoized thumbnails to prevent unnecessary re-renders
+// FIXES:
+// 1. Wrapped ALL emoji in <Text> tags (was causing crash)
+// 2. Added bottomInset for safe area padding
+// 3. Removed X close button
 // =============================================================================
 
-import { Avatar } from '@/components/common/Avatar';
+import React, { useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Animated,
+  useWindowDimensions,
+} from 'react-native';
+import { Image } from 'expo-image';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/layout';
 import { Feed } from '@/types';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { formatCompactNumber } from '@/utils/formatNumber';
-import { stripHtmlPreserveBreaks } from '@/utils/htmlToText';
-import { Image } from 'expo-image';
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { stripHtml } from '@/utils/profileUtils';
+import { Avatar } from '../common';
 
-// -----------------------------------------------------------------------------
-// Constants
-// -----------------------------------------------------------------------------
-
-const HEADER_HEIGHT = 120;
-const FOOTER_HEIGHT = 160;
-const ACTIONS_WIDTH = 60;
-
-// -----------------------------------------------------------------------------
-// Thumbnail Strip
-// -----------------------------------------------------------------------------
-
-interface ThumbnailStripProps {
-  imageUrls: string[];
-  currentPage: number;
-  onPageSelect: (index: number) => void;
-}
-
-// Memoized thumbnail image - prevents re-render when parent updates
-const ThumbImage = memo(({ url }: { url: string }) => (
-  <Image 
-    source={{ uri: url }}
-    style={styles.thumbImage}
-    contentFit="cover"
-    cachePolicy="memory-disk"
-  />
-), () => true);
-
-const ThumbnailStrip = ({ imageUrls, currentPage, onPageSelect }: ThumbnailStripProps) => (
-  <View style={styles.thumbnails}>
-    <View style={styles.thumbStrip}>
-      {/* Text page thumbnail */}
-      <TouchableOpacity
-        style={[styles.thumbItem, currentPage === 0 && styles.thumbActive]}
-        onPress={() => onPageSelect(0)}
-      >
-        <Text style={styles.thumbText}>Aa</Text>
-      </TouchableOpacity>
-      
-      {/* Image thumbnails */}
-      {imageUrls.map((url, i) => (
-        <TouchableOpacity
-          key={`thumb-${i}`}
-          style={[styles.thumbItem, currentPage === i + 1 && styles.thumbActive]}
-          onPress={() => onPageSelect(i + 1)}
-        >
-          <ThumbImage url={url} />
-        </TouchableOpacity>
-      ))}
-    </View>
-  </View>
-);
+// Layout constants
+const HEADER_HEIGHT = 80;
+const FOOTER_HEIGHT = 100;
+const ACTIONS_WIDTH = 80;
 
 // -----------------------------------------------------------------------------
 // Media Detection
@@ -123,6 +74,7 @@ interface FullScreenPostProps {
   onReact: (type: 'like' | 'love') => void;
   onCommentPress: () => void;
   onAuthorPress: () => void;
+  bottomInset?: number;
 }
 
 // -----------------------------------------------------------------------------
@@ -136,6 +88,7 @@ export function FullScreenPost({
   onReact,
   onCommentPress,
   onAuthorPress,
+  bottomInset = 0,
 }: FullScreenPostProps) {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const [liked, setLiked] = useState(false);
@@ -143,7 +96,7 @@ export function FullScreenPost({
   const scrollRef = useRef<ScrollView>(null);
   const bounceAnim = useRef(new Animated.Value(0)).current;
 
-  const CONTENT_HEIGHT = SCREEN_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT;
+  const CONTENT_HEIGHT = SCREEN_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - bottomInset;
   const CONTENT_WIDTH = SCREEN_WIDTH - ACTIONS_WIDTH - spacing.lg;
 
   // Data
@@ -153,61 +106,61 @@ export function FullScreenPost({
   const isVerified = author?.is_verified === 1;
   const timestamp = formatRelativeTime(feed.created_at);
   
-  const rawContent = stripHtmlPreserveBreaks(feed.message_rendered || feed.message);
+  const rawContent = stripHtml(feed.message_rendered || feed.message);
   const content = rawContent.replace(/https?:\/\/[^\s]+/gi, '').trim();
   
   // Dynamic font size
   const totalChars = (feed.title?.length || 0) + content.length;
   const fontSize = totalChars < 30 ? 34 : totalChars < 80 ? 28 : totalChars < 150 ? 24 : 
-                   totalChars < 300 ? 20 : totalChars < 500 ? 17 : totalChars < 800 ? 15 : 13;
-  const titleSize = Math.min(40, fontSize + 6);
+                   totalChars < 300 ? 20 : totalChars < 500 ? 17 : totalChars < 800 ? 15 : 14;
+  const titleSize = totalChars < 100 ? 28 : 24;
   
   // Media
   const media = detectMedia(feed);
-  const hasImages = media.imageUrls && media.imageUrls.length > 0;
   const imageCount = media.imageUrls?.length || 0;
+  const hasImages = imageCount > 0;
   
-  // Stats
-  const commentsCount = parseInt(String(feed.comments_count || 0), 10);
-  const reactionsCount = parseInt(String(feed.reactions_count || 0), 10);
+  // Dark text on light background
+  const isDark = !hasImages;
+  
+  // Reactions
+  const reactionsCount = typeof feed.reactions_count === 'string'
+    ? parseInt(feed.reactions_count, 10)
+    : feed.reactions_count || 0;
+  const commentsCount = typeof feed.comments_count === 'string'
+    ? parseInt(feed.comments_count, 10)
+    : feed.comments_count || 0;
 
-  // Bounce animation for scroll hint
-  useEffect(() => {
-    if (isActive) {
-      const timer = setTimeout(() => {
-        Animated.sequence([
-          Animated.timing(bounceAnim, { toValue: 8, duration: 250, useNativeDriver: true }),
-          Animated.timing(bounceAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
-          Animated.timing(bounceAnim, { toValue: 5, duration: 200, useNativeDriver: true }),
-          Animated.timing(bounceAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-        ]).start();
-      }, 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [isActive]);
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
 
-  const handleLike = useCallback(() => {
-    setLiked(prev => !prev);
+  const handleLike = () => {
+    setLiked(!liked);
     onReact('like');
-  }, [onReact]);
+    
+    // Bounce animation
+    Animated.sequence([
+      Animated.timing(bounceAnim, { toValue: 1.2, duration: 100, useNativeDriver: true }),
+      Animated.timing(bounceAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+    ]).start();
+  };
 
-  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const page = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-    if (page !== currentPage) {
-      setCurrentPage(page);
-    }
-  }, [SCREEN_WIDTH, currentPage]);
+  const onScroll = (event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const page = Math.round(offsetX / SCREEN_WIDTH);
+    setCurrentPage(page);
+  };
 
-  const goToPage = useCallback((index: number) => {
-    scrollRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
-  }, [SCREEN_WIDTH]);
-
-  const isDark = hasImages || currentPage > 0;
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   // Render text page
   const renderTextPage = () => (
-    <View style={[styles.page, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}>
-      {hasImages && media.imageUrl ? (
+    <View key="page-text" style={[styles.page, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}>
+      {/* Background */}
+      {media.imageUrl ? (
         <>
           <Image
             source={{ uri: media.imageUrl }}
@@ -282,46 +235,45 @@ export function FullScreenPost({
         </View>
       </TouchableOpacity>
 
-      {/* HEADER: Close button */}
-      <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.7}>
-        <Text style={styles.closeIcon}>✕</Text>
-      </TouchableOpacity>
-
       {/* RIGHT: Actions */}
-      <View style={styles.actions}>
+      <View style={[styles.actions, { bottom: FOOTER_HEIGHT + bottomInset }]}>
         <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
           <Text style={styles.actionIcon}>{liked ? '❤️' : '🤍'}</Text>
           <Text style={[styles.actionCount, !isDark && styles.textDark]}>
             {formatCompactNumber(reactionsCount + (liked ? 1 : 0))}
           </Text>
         </TouchableOpacity>
+        
         <TouchableOpacity style={styles.actionBtn} onPress={onCommentPress}>
           <Text style={styles.actionIcon}>💬</Text>
           <Text style={[styles.actionCount, !isDark && styles.textDark]}>
             {formatCompactNumber(commentsCount)}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn}>
-          <Text style={styles.actionIcon}>📤</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn}>
-          <Text style={styles.actionIcon}>🔖</Text>
-        </TouchableOpacity>
       </View>
 
-      {/* FOOTER: Thumbnails */}
-      {hasImages && media.imageUrls && (
-        <ThumbnailStrip 
-          imageUrls={media.imageUrls}
-          currentPage={currentPage}
-          onPageSelect={goToPage}
-        />
+      {/* Thumbnails for multiple images */}
+      {imageCount > 1 && (
+        <View style={[styles.thumbnails, { bottom: FOOTER_HEIGHT + bottomInset + 10 }]}>
+          <View style={styles.thumbStrip}>
+            <TouchableOpacity
+              style={[styles.thumbItem, currentPage === 0 && styles.thumbActive]}
+              onPress={() => scrollRef.current?.scrollTo({ x: 0, animated: true })}
+            >
+              <Text style={styles.thumbText}>Aa</Text>
+            </TouchableOpacity>
+            {media.imageUrls?.map((url, i) => (
+              <TouchableOpacity
+                key={i}
+                style={[styles.thumbItem, currentPage === i + 1 && styles.thumbActive]}
+                onPress={() => scrollRef.current?.scrollTo({ x: SCREEN_WIDTH * (i + 1), animated: true })}
+              >
+                <Image source={{ uri: url }} style={styles.thumbImage} contentFit="cover" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       )}
-
-      {/* FOOTER: Scroll indicator */}
-      <Animated.View style={[styles.scrollHint, { transform: [{ translateY: bounceAnim }] }]}>
-        <Text style={[styles.scrollArrow, !isDark && styles.scrollArrowLight]}>⌄</Text>
-      </Animated.View>
     </View>
   );
 }
@@ -336,13 +288,12 @@ const styles = StyleSheet.create({
   },
   
   page: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#000',
   },
   
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   
   contentArea: {
@@ -352,21 +303,20 @@ const styles = StyleSheet.create({
   },
   
   title: {
-    fontWeight: '700',
     color: '#fff',
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-    textShadowColor: 'rgba(0,0,0,0.6)',
+    fontWeight: '700',
+    marginBottom: spacing.md,
+    textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    textShadowRadius: 3,
   },
   
   message: {
     color: '#fff',
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.6)',
+    fontWeight: '400',
+    textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    textShadowRadius: 3,
   },
   
   textDark: {
@@ -377,54 +327,58 @@ const styles = StyleSheet.create({
   fullImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#000',
   },
   
   imageCounter: {
     position: 'absolute',
-    top: HEADER_HEIGHT,
-    alignSelf: 'center',
+    top: HEADER_HEIGHT + 10,
+    right: 15,
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 14,
+    borderRadius: 15,
   },
   
   imageCounterText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   
   header: {
     position: 'absolute',
-    top: 55,
-    left: spacing.lg,
+    top: 0,
+    left: 0,
+    right: ACTIONS_WIDTH,
+    height: HEADER_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: 10,
     zIndex: 10,
   },
   
   authorInfo: {
     marginLeft: spacing.md,
+    flex: 1,
   },
   
   authorName: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 2,
   },
   
   timestamp: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
+    fontSize: 13,
     marginTop: 2,
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 2,
   },
   
   timestampLight: {
@@ -432,29 +386,9 @@ const styles = StyleSheet.create({
     textShadowColor: 'transparent',
   },
   
-  closeButton: {
-    position: 'absolute',
-    top: 55,
-    right: spacing.lg,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  
-  closeIcon: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  
   actions: {
     position: 'absolute',
     right: spacing.sm,
-    top: '32%',
     alignItems: 'center',
     zIndex: 10,
   },
@@ -481,7 +415,6 @@ const styles = StyleSheet.create({
   
   thumbnails: {
     position: 'absolute',
-    bottom: 90,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -495,7 +428,6 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   
-  // IMPORTANT: Always have border (transparent when inactive) to prevent layout shift
   thumbItem: {
     width: 44,
     height: 44,
@@ -523,24 +455,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
-  },
-  
-  scrollHint: {
-    position: 'absolute',
-    bottom: 35,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  
-  scrollArrow: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 30,
-  },
-  
-  scrollArrowLight: {
-    color: 'rgba(0,0,0,0.25)',
   },
 });
 

@@ -1,8 +1,7 @@
 // =============================================================================
 // TAB LAYOUT - Bottom tab navigation
 // =============================================================================
-// Updated: Removed "+ Post" tab, added "Activity" tab
-// Posting is now done via inline composers on feed/space pages
+// Updated: Includes space/[slug] route so it has bottom nav
 // =============================================================================
 
 import React from 'react';
@@ -14,7 +13,6 @@ import { colors } from '@/constants/colors';
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   
-  // Calculate tab bar height with safe area
   const tabBarHeight = 60 + Math.max(insets.bottom, 10);
 
   return (
@@ -24,7 +22,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
         tabBarStyle: {
-          position: 'absolute', // Keep visible on all pages
+          position: 'absolute',
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.border,
@@ -72,7 +70,7 @@ export default function TabLayout() {
         }}
       />
       
-      {/* Activity - NEW! Replaces "+ Post" */}
+      {/* Activity */}
       <Tabs.Screen
         name="activity"
         options={{
@@ -105,11 +103,19 @@ export default function TabLayout() {
         }}
       />
       
-      {/* Hide old create tab */}
+      {/* Space Detail - Hidden from tab bar but has bottom nav */}
+      <Tabs.Screen
+        name="space/[slug]"
+        options={{
+          href: null, // Don't show in tab bar
+        }}
+      />
+      
+      {/* Old create tab - hidden */}
       <Tabs.Screen
         name="create"
         options={{
-          href: null, // Removes from tab bar
+          href: null,
         }}
       />
     </Tabs>

@@ -16,25 +16,21 @@ import {
   Text,
   useWindowDimensions,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/colors';
 import { Feed } from '@/types';
 import { feedsApi } from '@/services/api';
 import { FullScreenPost } from '@/components/feed/FullScreenPost';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 
-// Heights for UI elements
-const HEADER_HEIGHT = 0;
-const FOOTER_HEIGHT = 0;
-const ACTIONS_WIDTH = 80;
-
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
 export default function FeedDetailScreen() {
-  // Use dynamic dimensions - updates on rotation/resize
   const { height: SCREEN_HEIGHT } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   
   const router = useRouter();
   const { id, space, context } = useLocalSearchParams<{ 
@@ -49,6 +45,7 @@ export default function FeedDetailScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pageTitle, setPageTitle] = useState('Post');
   
   // Comment sheet state
   const [showComments, setShowComments] = useState(false);
@@ -72,11 +69,16 @@ export default function FeedDetailScreen() {
       if (space) {
         // Space context: Load feeds from this space
         params.space = space;
+        setPageTitle(decodeURIComponent(space).split('-').map(w => 
+          w.charAt(0).toUpperCase() + w.slice(1)
+        ).join(' '));
       } else if (context === 'profile') {
         // Profile context: Load user's feeds
-        // TODO: Add user_id param when available
+        setPageTitle('Posts');
+      } else {
+        // Home context
+        setPageTitle('Feed');
       }
-      // else: Load main feed
       
       const response = await feedsApi.getFeeds(params);
       
@@ -171,7 +173,7 @@ export default function FeedDetailScreen() {
   }).current;
 
   // ---------------------------------------------------------------------------
-  // Item layout calculator - must use current SCREEN_HEIGHT
+  // Item layout calculator
   // ---------------------------------------------------------------------------
   
   const getItemLayout = (_data: any, index: number) => ({
@@ -187,6 +189,7 @@ export default function FeedDetailScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
+        <Stack.Screen options={{ title: pageTitle }} />
         <StatusBar barStyle="light-content" />
         <ActivityIndicator size="large" color={colors.textInverse} />
       </View>
@@ -196,6 +199,7 @@ export default function FeedDetailScreen() {
   if (error || feeds.length === 0) {
     return (
       <View style={styles.errorContainer}>
+        <Stack.Screen options={{ title: pageTitle }} />
         <StatusBar barStyle="light-content" />
         <Text style={styles.errorText}>{error || 'Post not found'}</Text>
       </View>
@@ -204,9 +208,9 @@ export default function FeedDetailScreen() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={{ title: pageTitle }} />
       <StatusBar barStyle="light-content" />
       
-      {/* Swipeable Full-Screen Posts */}
       <FlatList
         ref={flatListRef}
         data={feeds}
@@ -224,37 +228,25 @@ export default function FeedDetailScreen() {
                   handleAuthorPress(item.xprofile.username);
                 }
               }}
+              bottomInset={insets.bottom}
             />
           </View>
         )}
-        
-        // Vertical paging (swipe up/down)
         pagingEnabled
         horizontal={false}
         showsVerticalScrollIndicator={false}
-        
-        // Each item is full screen height
         getItemLayout={getItemLayout}
-        
-        // Track current post
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
-        
-        // Snap behavior - prevents drift
         snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
         decelerationRate="fast"
-        
-        // Disable scroll bounce at edges
         bounces={false}
-        
-        // Prefetch nearby posts
         initialNumToRender={3}
         maxToRenderPerBatch={3}
         windowSize={5}
       />
       
-      {/* Comment Sheet */}
       {selectedFeedId && (
         <CommentSheet
           feedId={selectedFeedId}
@@ -265,10 +257,6 @@ export default function FeedDetailScreen() {
     </View>
   );
 }
-
-// -----------------------------------------------------------------------------
-// Styles
-// -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {

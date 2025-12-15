@@ -1,6 +1,8 @@
 // =============================================================================
 // ROOT LAYOUT - App-wide configuration with Authentication
 // =============================================================================
+// Updated: space/[slug] moved to (tabs), removed from Stack
+// =============================================================================
 
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -41,24 +43,75 @@ function RootLayoutNav() {
 
   return (
     <>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="login" />
+      <Stack>
+        {/* ============================================= */}
+        {/* TABS - Always visible base layer             */}
+        {/* ============================================= */}
+        <Stack.Screen 
+          name="(tabs)" 
+          options={{ headerShown: false }}
+        />
+        
+        {/* ============================================= */}
+        {/* AUTH                                          */}
+        {/* ============================================= */}
+        <Stack.Screen 
+          name="login" 
+          options={{ headerShown: false }}
+        />
+        
+        {/* ============================================= */}
+        {/* MODALS - Hide bottom tabs                     */}
+        {/* Full-screen immersive experiences             */}
+        {/* ============================================= */}
+        
+        {/* Full-screen post viewer */}
         <Stack.Screen 
           name="feed/[id]" 
           options={{ 
-            headerShown: true,
-            presentation: 'card',
+            presentation: 'fullScreenModal',
+            headerShown: false,
+            animation: 'slide_from_bottom',
           }} 
         />
+        
+        {/* Create post modal */}
         <Stack.Screen 
-          name="space/[slug]" 
+          name="create-post" 
           options={{ 
+            presentation: 'modal',
             headerShown: true,
-            presentation: 'card',
+            title: 'Create Post',
           }} 
         />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        
+        {/* Media viewer modal */}
+        <Stack.Screen 
+          name="media-viewer" 
+          options={{ 
+            presentation: 'fullScreenModal',
+            headerShown: false,
+          }} 
+        />
+        
+        {/* ============================================= */}
+        {/* CARD PAGES - Keep bottom tabs visible         */}
+        {/* ============================================= */}
+        
+        {/* Profile detail page (other users) */}
+        <Stack.Screen 
+          name="profile/[username]" 
+          options={{ 
+            presentation: 'card',
+            headerShown: true,
+          }} 
+        />
+        
+        {/* Generic modal fallback */}
+        <Stack.Screen 
+          name="modal" 
+          options={{ presentation: 'modal' }} 
+        />
       </Stack>
       <StatusBar style="dark" />
     </>

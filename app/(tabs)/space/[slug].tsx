@@ -1,14 +1,15 @@
 // =============================================================================
 // SPACE PAGE - Individual space feed view
 // =============================================================================
-// Route: /space/[slug]
+// Route: /(tabs)/space/[slug]
+// NOW INSIDE (tabs) folder = bottom nav visible!
 // Shows space header, menu, and feeds filtered to that space
-// When user clicks a post, passes space context to full-screen viewer
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/colors';
 import { Space, Feed } from '@/types';
 import { spacesApi, feedsApi } from '@/services/api';
@@ -19,6 +20,7 @@ import { LoadingSpinner, ErrorMessage } from '@/components/common';
 export default function SpacePage() {
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
+  const insets = useSafeAreaInsets();
 
   // State
   const [space, setSpace] = useState<Space | null>(null);
@@ -38,7 +40,6 @@ export default function SpacePage() {
       const response = await spacesApi.getSpaceBySlug(slug);
 
       if (response.success) {
-        // API returns { data: { space: {...} } } not { data: {...} }
         const spaceData = (response.data as any).space || response.data.data || response.data;
         setSpace(spaceData);
       } else {
@@ -62,7 +63,6 @@ export default function SpacePage() {
         setError(null);
       }
 
-      // Use existing feedsApi with space filter
       const response = await feedsApi.getFeeds({ 
         space: slug,
         per_page: 20,
@@ -99,7 +99,6 @@ export default function SpacePage() {
   };
 
   const handleFeedPress = (feed: Feed) => {
-    // Pass space slug as context so full-screen viewer shows space feeds
     router.push(`/feed/${feed.id}?space=${slug}&context=space`);
   };
 
@@ -199,8 +198,7 @@ export default function SpacePage() {
   // ---------------------------------------------------------------------------
 
   return (
-    <View style={styles.container}>
-      {/* Set page title */}
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <Stack.Screen 
         options={{ 
           title: space.title,
@@ -216,7 +214,6 @@ export default function SpacePage() {
         }} 
       />
 
-      {/* Space Header + Feed List */}
       <FeedList
         feeds={feeds}
         loading={loading}
