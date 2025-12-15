@@ -2,7 +2,6 @@
 // SPACES SCREEN - List of all community spaces
 // =============================================================================
 // Shows all available spaces the user can join or browse
-// Phase 1: Simple list, Phase 2: Add search, filters, categories
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -10,12 +9,13 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   RefreshControl,
   TouchableOpacity,
   Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/colors';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { Space } from '@/types';
@@ -25,6 +25,7 @@ import { formatCompactNumber } from '@/utils/formatNumber';
 
 export default function SpacesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // State
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -97,68 +98,78 @@ export default function SpacesScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => fetchSpaces(true)}
-          tintColor={colors.primary}
-          colors={[colors.primary]}
-        />
-      }
-    >
-      {spaces.map((space) => {
-        const coverPhoto = space.cover_photo || space.logo;
-        const membersCount = space.members_count || 0;
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Spaces</Text>
+        <Text style={styles.headerSubtitle}>
+          {spaces.length} {spaces.length === 1 ? 'space' : 'spaces'}
+        </Text>
+      </View>
 
-        return (
-          <TouchableOpacity
-            key={space.id}
-            style={styles.spaceCard}
-            onPress={() => handleSpacePress(space)}
-            activeOpacity={0.7}
-          >
-            {/* Cover Photo */}
-            {coverPhoto ? (
-              <Image
-                source={{ uri: coverPhoto }}
-                style={styles.spaceCover}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={[styles.spaceCover, styles.spaceCoverPlaceholder]}>
-                <Text style={styles.spaceCoverEmoji}>
-                  {space.settings?.emoji || '🏠'}
-                </Text>
-              </View>
-            )}
+      {/* Spaces List */}
+      <FlatList
+        data={spaces}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item: space }) => {
+          const coverPhoto = space.cover_photo || space.logo;
+          const membersCount = space.members_count || 0;
 
-            {/* Space Info */}
-            <View style={styles.spaceInfo}>
-              <Text style={styles.spaceTitle} numberOfLines={2}>
-                {space.title}
-              </Text>
-
-              {space.description && (
-                <Text style={styles.spaceDescription} numberOfLines={2}>
-                  {space.description}
-                </Text>
+          return (
+            <TouchableOpacity
+              style={styles.spaceCard}
+              onPress={() => handleSpacePress(space)}
+              activeOpacity={0.7}
+            >
+              {/* Cover Photo */}
+              {coverPhoto ? (
+                <Image
+                  source={{ uri: coverPhoto }}
+                  style={styles.spaceCover}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.spaceCover, styles.spaceCoverPlaceholder]}>
+                  <Text style={styles.spaceCoverEmoji}>
+                    {space.settings?.emoji || '🏠'}
+                  </Text>
+                </View>
               )}
 
-              {/* Members Count */}
-              <View style={styles.spaceMeta}>
-                <Text style={styles.spaceMetaIcon}>👥</Text>
-                <Text style={styles.spaceMetaText}>
-                  {formatCompactNumber(membersCount)} member{membersCount !== 1 ? 's' : ''}
+              {/* Space Info */}
+              <View style={styles.spaceInfo}>
+                <Text style={styles.spaceTitle} numberOfLines={2}>
+                  {space.title}
                 </Text>
+
+                {space.description && (
+                  <Text style={styles.spaceDescription} numberOfLines={2}>
+                    {space.description}
+                  </Text>
+                )}
+
+                {/* Members Count */}
+                <View style={styles.spaceMeta}>
+                  <Text style={styles.spaceMetaIcon}>👥</Text>
+                  <Text style={styles.spaceMetaText}>
+                    {formatCompactNumber(membersCount)} member{membersCount !== 1 ? 's' : ''}
+                  </Text>
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
+            </TouchableOpacity>
+          );
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchSpaces(true)}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+        contentContainerStyle={styles.list}
+      />
+    </View>
   );
 }
 
@@ -168,8 +179,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 
-  content: {
+  header: {
+    backgroundColor: colors.surface,
+    paddingTop: 60,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+
+  headerTitle: {
+    fontSize: typography.size.xxl,
+    fontWeight: typography.weight.bold,
+    color: colors.text,
+  },
+
+  headerSubtitle: {
+    fontSize: typography.size.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+
+  list: {
     padding: spacing.lg,
+    paddingBottom: 80, // Extra space for bottom tab bar
   },
 
   emptyContainer: {

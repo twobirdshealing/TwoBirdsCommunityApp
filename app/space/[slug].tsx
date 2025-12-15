@@ -3,7 +3,7 @@
 // =============================================================================
 // Route: /space/[slug]
 // Shows space header, menu, and feeds filtered to that space
-// Uses existing FeedList component with space filter
+// When user clicks a post, passes space context to full-screen viewer
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -99,7 +99,8 @@ export default function SpacePage() {
   };
 
   const handleFeedPress = (feed: Feed) => {
-    router.push(`/feed/${feed.id}`);
+    // Pass space slug as context so full-screen viewer shows space feeds
+    router.push(`/feed/${feed.id}?space=${slug}&context=space`);
   };
 
   const handleReact = async (feedId: number, type: 'like' | 'love') => {

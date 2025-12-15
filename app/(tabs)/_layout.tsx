@@ -1,26 +1,15 @@
 // =============================================================================
 // TAB LAYOUT - Bottom tab navigation
 // =============================================================================
+// Updated: Removed "+ Post" tab, added "Activity" tab
+// Posting is now done via inline composers on feed/space pages
+// =============================================================================
 
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/colors';
-
-// Tab icons as emoji (simple, no external deps)
-const TabIcon = ({ emoji, focused }: { emoji: string; focused: boolean }) => (
-  <View style={[styles.iconContainer, focused && styles.iconFocused]}>
-    <View style={styles.icon}>
-      <View style={{ opacity: focused ? 1 : 0.6 }}>
-        <View><Text style={{ fontSize: 24 }}>{emoji}</Text></View>
-      </View>
-    </View>
-  </View>
-);
-
-// Need to import Text
-import { Text } from 'react-native';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -35,16 +24,22 @@ export default function TabLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
         tabBarStyle: {
+          position: 'absolute', // Keep visible on all pages
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.border,
           height: tabBarHeight,
           paddingTop: 8,
           paddingBottom: Math.max(insets.bottom, 10),
-          // Ensure it's above Android nav
           ...Platform.select({
             android: {
               elevation: 8,
+            },
+            ios: {
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 3,
             },
           }),
         },
@@ -55,6 +50,7 @@ export default function TabLayout() {
         },
       }}
     >
+      {/* Home Feed */}
       <Tabs.Screen
         name="index"
         options={{
@@ -65,6 +61,7 @@ export default function TabLayout() {
         }}
       />
       
+      {/* Spaces */}
       <Tabs.Screen
         name="spaces"
         options={{
@@ -75,18 +72,18 @@ export default function TabLayout() {
         }}
       />
       
+      {/* Activity - NEW! Replaces "+ Post" */}
       <Tabs.Screen
-        name="create"
+        name="activity"
         options={{
-          title: '',
+          title: 'Activity',
           tabBarIcon: ({ focused }) => (
-            <View style={styles.createButton}>
-              <Text style={{ fontSize: 24, color: '#fff' }}>+</Text>
-            </View>
+            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.6 }}>📊</Text>
           ),
         }}
       />
       
+      {/* Notifications */}
       <Tabs.Screen
         name="notifications"
         options={{
@@ -97,6 +94,7 @@ export default function TabLayout() {
         }}
       />
       
+      {/* Profile */}
       <Tabs.Screen
         name="profile"
         options={{
@@ -104,6 +102,14 @@ export default function TabLayout() {
           tabBarIcon: ({ focused }) => (
             <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.6 }}>😊</Text>
           ),
+        }}
+      />
+      
+      {/* Hide old create tab */}
+      <Tabs.Screen
+        name="create"
+        options={{
+          href: null, // Removes from tab bar
         }}
       />
     </Tabs>
@@ -116,25 +122,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   
-  iconFocused: {},
-  
   icon: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  
-  createButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
   },
 });

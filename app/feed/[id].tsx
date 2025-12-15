@@ -1,8 +1,9 @@
 // =============================================================================
-// FEED DETAIL SCREEN - Full-screen Instagram-style post view
+// FEED DETAIL SCREEN - Full-screen swipeable post viewer
 // =============================================================================
-// Opens when user taps a post. Shows full-screen content with swipe navigation.
-// URL: /feed/123 (where 123 is the post ID)
+// Route: /feed/{id}?space={slug}&context={space|home|profile}
+// Shows full-screen content with swipe navigation.
+// Supports different feed contexts (home, space, profile)
 // =============================================================================
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -22,6 +23,11 @@ import { feedsApi } from '@/services/api';
 import { FullScreenPost } from '@/components/feed/FullScreenPost';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 
+// Heights for UI elements
+const HEADER_HEIGHT = 0;
+const FOOTER_HEIGHT = 0;
+const ACTIONS_WIDTH = 80;
+
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
@@ -31,7 +37,11 @@ export default function FeedDetailScreen() {
   const { height: SCREEN_HEIGHT } = useWindowDimensions();
   
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, space, context } = useLocalSearchParams<{ 
+    id: string;
+    space?: string;
+    context?: 'space' | 'home' | 'profile';
+  }>();
   const flatListRef = useRef<FlatList>(null);
   
   // State
@@ -45,19 +55,30 @@ export default function FeedDetailScreen() {
   const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
 
   // ---------------------------------------------------------------------------
-  // Fetch feeds (we load all feeds so user can swipe between them)
+  // Fetch feeds based on context
   // ---------------------------------------------------------------------------
   
   useEffect(() => {
     fetchFeeds();
-  }, [id]);
+  }, [id, space, context]);
 
   const fetchFeeds = async () => {
     try {
       setLoading(true);
       
-      // Fetch all feeds
-      const response = await feedsApi.getFeeds({ per_page: 50 });
+      // Build API params based on context
+      const params: any = { per_page: 50 };
+      
+      if (space) {
+        // Space context: Load feeds from this space
+        params.space = space;
+      } else if (context === 'profile') {
+        // Profile context: Load user's feeds
+        // TODO: Add user_id param when available
+      }
+      // else: Load main feed
+      
+      const response = await feedsApi.getFeeds(params);
       
       if (response.success && response.data.feeds.data) {
         const allFeeds = response.data.feeds.data;
@@ -224,37 +245,23 @@ export default function FeedDetailScreen() {
         snapToAlignment="start"
         decelerationRate="fast"
         
-        // Prevent bounce which can cause offset issues
+        // Disable scroll bounce at edges
         bounces={false}
-        overScrollMode="never"
         
-        // Performance
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={2}
-        windowSize={3}
-        initialNumToRender={1}
-        
-        // Handle scroll errors gracefully
-        onScrollToIndexFailed={(info) => {
-          flatListRef.current?.scrollToOffset({
-            offset: info.averageItemLength * info.index,
-            animated: false,
-          });
-          setTimeout(() => {
-            flatListRef.current?.scrollToIndex({
-              index: info.index,
-              animated: false,
-            });
-          }, 100);
-        }}
+        // Prefetch nearby posts
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={5}
       />
-
-      {/* Comment Sheet (slides up from bottom) */}
-      <CommentSheet
-        visible={showComments}
-        feedId={selectedFeedId}
-        onClose={handleCloseComments}
-      />
+      
+      {/* Comment Sheet */}
+      {selectedFeedId && (
+        <CommentSheet
+          feedId={selectedFeedId}
+          visible={showComments}
+          onClose={handleCloseComments}
+        />
+      )}
     </View>
   );
 }
