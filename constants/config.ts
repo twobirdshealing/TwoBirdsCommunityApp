@@ -35,6 +35,7 @@ export const ENDPOINTS = {
   
   // Spaces
   SPACES: '/spaces',
+  SPACE_BY_ID: (id: number) => `/spaces/${id}/by-id`,
   SPACE_BY_SLUG: (slug: string) => `/spaces/${slug}/by-slug`,
   SPACE_JOIN: (slug: string) => `/spaces/${slug}/join`,
   SPACE_LEAVE: (slug: string) => `/spaces/${slug}/leave`,

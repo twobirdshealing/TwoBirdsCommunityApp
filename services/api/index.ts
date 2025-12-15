@@ -1,9 +1,6 @@
 // =============================================================================
 // API SERVICES - Barrel export
 // =============================================================================
-// This file re-exports all API services so you can do:
-//   import { feedsApi, spacesApi, profilesApi } from '@/services/api';
-// =============================================================================
 
 export * from './client';
 export * from './feeds';

@@ -35,8 +35,6 @@ export async function getUserSpaces(username: string) {
 
 // -----------------------------------------------------------------------------
 // Get User's Comments
-// Endpoint: GET /profile/{username}/comments?page=N&per_page=N
-// Response: { comments: { data: [...], total: N, ... }, xprofile: {...} }
 // -----------------------------------------------------------------------------
 
 export async function getUserComments(username: string, page: number = 1, perPage: number = 10) {
@@ -79,7 +77,7 @@ export async function getFollowing(username: string, page: number = 1) {
 }
 
 // -----------------------------------------------------------------------------
-// Export as object for convenience (THIS IS WHAT WAS MISSING!)
+// Export as object for convenience
 // -----------------------------------------------------------------------------
 
 export const profilesApi = {
