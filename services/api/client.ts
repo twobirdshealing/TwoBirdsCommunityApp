@@ -2,11 +2,11 @@
 // API CLIENT - Base HTTP client with dynamic authentication
 // =============================================================================
 // Uses stored auth token from SecureStore.
-// Falls back to hardcoded credentials only if no user is logged in.
+// No fallback credentials. If auth is invalid, it is cleared immediately.
 // =============================================================================
 
-import { API_URL, API_USERNAME, API_PASSWORD } from '@/constants/config';
-import { getBasicAuth } from '@/services/auth';
+import { API_URL } from '@/constants/config';
+import { clearAuth, getBasicAuth } from '@/services/auth';
 import { ApiError } from '@/types/api';
 
 // -----------------------------------------------------------------------------
@@ -17,12 +17,6 @@ const DEBUG = true;
 function log(...args: any[]) {
   if (DEBUG) console.log('[API]', ...args);
 }
-
-// -----------------------------------------------------------------------------
-// Fallback credentials (for development when not logged in)
-// -----------------------------------------------------------------------------
-
-const FALLBACK_CREDENTIALS = btoa(`${API_USERNAME}:${API_PASSWORD}`);
 
 // -----------------------------------------------------------------------------
 // Types
@@ -37,30 +31,24 @@ interface RequestConfig {
   headers?: Record<string, string>;
 }
 
-type ApiResponse<T> = {
-  success: true;
-  data: T;
-} | {
-  success: false;
-  error: ApiError;
-};
+type ApiResponse<T> =
+  | { success: true; data: T }
+  | { success: false; error: ApiError };
 
 // -----------------------------------------------------------------------------
 // Get Auth Header
 // -----------------------------------------------------------------------------
 
-async function getAuthHeader(): Promise<string> {
-  // Try to get stored auth token first
+async function getAuthHeader(): Promise<string | null> {
   const storedAuth = await getBasicAuth();
-  
+
   if (storedAuth) {
     log('Using stored auth token');
     return `Basic ${storedAuth}`;
   }
-  
-  // Fall back to hardcoded credentials (dev mode)
-  log('Using fallback credentials - user not logged in');
-  return `Basic ${FALLBACK_CREDENTIALS}`;
+
+  // No auth available
+  return null;
 }
 
 // -----------------------------------------------------------------------------
@@ -69,22 +57,22 @@ async function getAuthHeader(): Promise<string> {
 
 function buildUrl(endpoint: string, params?: Record<string, any>): string {
   let url = `${API_URL}${endpoint}`;
-  
+
   if (params && Object.keys(params).length > 0) {
     const searchParams = new URLSearchParams();
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         searchParams.append(key, String(value));
       }
     });
-    
+
     const queryString = searchParams.toString();
     if (queryString) {
       url += `?${queryString}`;
     }
   }
-  
+
   return url;
 }
 
@@ -92,50 +80,63 @@ function buildUrl(endpoint: string, params?: Record<string, any>): string {
 // Main Request Function
 // -----------------------------------------------------------------------------
 
-async function request<T>(endpoint: string, config: RequestConfig = {}): Promise<ApiResponse<T>> {
+async function request<T>(
+  endpoint: string,
+  config: RequestConfig = {}
+): Promise<ApiResponse<T>> {
   const { method = 'GET', body, params, headers = {} } = config;
-  
+
   const url = buildUrl(endpoint, params);
-  
   log(`${method} ${url}`);
-  
+
   try {
-    // Get auth header (uses stored token or fallback)
     const authHeader = await getAuthHeader();
-    
-    // Make the request
+
     const response = await fetch(url, {
       method,
       headers: {
-        'Authorization': authHeader,
+        ...(authHeader ? { Authorization: authHeader } : {}),
         ...(body ? { 'Content-Type': 'application/json' } : {}),
         ...headers,
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
-    
+
     const data = await response.json();
-    
+
     if (!response.ok) {
       console.error('[API Error]', data);
+
+      // 🔥 HARD FAIL AUTH ON INVALID APP PASSWORD
+      if (
+        response.status === 401 &&
+        data?.code === 'incorrect_password'
+      ) {
+        console.warn('[Auth] Invalid application password — clearing auth');
+        await clearAuth();
+      }
+
       return {
         success: false,
         error: data as ApiError,
       };
     }
-    
+
     return {
       success: true,
       data: data as T,
     };
-    
   } catch (error) {
     console.error('[API Network Error]', error);
+
     return {
       success: false,
       error: {
         code: 'network_error',
-        message: error instanceof Error ? error.message : 'Network request failed',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Network request failed',
         data: { status: 0 },
       },
     };
@@ -143,36 +144,43 @@ async function request<T>(endpoint: string, config: RequestConfig = {}): Promise
 }
 
 // -----------------------------------------------------------------------------
-// Convenience Methods (SAME AS ORIGINAL - these are what feeds.ts imports)
+// Convenience Methods (unchanged public API)
 // -----------------------------------------------------------------------------
 
-// GET request
 export function get<T>(endpoint: string, params?: Record<string, any>) {
   return request<T>(endpoint, { method: 'GET', params });
 }
 
-// POST request
-export function post<T>(endpoint: string, body?: any, params?: Record<string, any>) {
+export function post<T>(
+  endpoint: string,
+  body?: any,
+  params?: Record<string, any>
+) {
   return request<T>(endpoint, { method: 'POST', body, params });
 }
 
-// PUT request
-export function put<T>(endpoint: string, body?: any, params?: Record<string, any>) {
+export function put<T>(
+  endpoint: string,
+  body?: any,
+  params?: Record<string, any>
+) {
   return request<T>(endpoint, { method: 'PUT', body, params });
 }
 
-// DELETE request
 export function del<T>(endpoint: string, params?: Record<string, any>) {
   return request<T>(endpoint, { method: 'DELETE', params });
 }
 
-// PATCH request
-export function patch<T>(endpoint: string, body?: any, params?: Record<string, any>) {
+export function patch<T>(
+  endpoint: string,
+  body?: any,
+  params?: Record<string, any>
+) {
   return request<T>(endpoint, { method: 'PATCH', body, params });
 }
 
 // -----------------------------------------------------------------------------
-// Export the client object for named import
+// Export client
 // -----------------------------------------------------------------------------
 
 export const apiClient = {
