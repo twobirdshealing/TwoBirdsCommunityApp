@@ -1,120 +1,131 @@
 // =============================================================================
-// SPACE MENU - Dropdown menu for space actions
+// SPACE MENU COMPONENT - Context menu for space actions
 // =============================================================================
-// Phase 1: UI only, no functionality
-// Phase 2: Wire up Posts, Members, Documents, About, Leave Space
+// Shows role-appropriate options:
+// - All members: Members list, Leave Space
+// - Moderators: Same as members (manage members in future)
+// - Admins: Same + Space Settings (in future)
 // =============================================================================
 
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  Modal, 
-  StyleSheet,
-  Pressable,
-  Platform,
-} from 'react-native';
-import { colors } from '@/constants/colors';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { Alert, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+import { spacesApi } from '@/services/api/spaces';
 
 interface SpaceMenuProps {
-  onPostsPress?: () => void;
-  onMembersPress?: () => void;
-  onDocumentsPress?: () => void;
-  onAboutPress?: () => void;
-  onLeavePress?: () => void;
+  slug: string;
+  role?: 'member' | 'moderator' | 'admin';
+  onLeaveSuccess?: () => void;
 }
 
-export function SpaceMenu({
-  onPostsPress,
-  onMembersPress,
-  onDocumentsPress,
-  onAboutPress,
-  onLeavePress,
-}: SpaceMenuProps) {
-  const [visible, setVisible] = useState(false);
+export function SpaceMenu({ slug, role, onLeaveSuccess }: SpaceMenuProps) {
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
 
-  const handlePress = (action?: () => void) => {
-    setVisible(false);
-    // Phase 2: Call the action
-    if (action) {
-      setTimeout(() => action(), 100);
-    }
+  const handleLeaveSpace = () => {
+    setMenuVisible(false);
+    
+    Alert.alert('Leave Space', 'Are you sure you want to leave this space?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Leave',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setIsLeaving(true);
+
+            await spacesApi.leaveSpace(slug);
+
+            // Navigate back and trigger success callback
+            router.back();
+            onLeaveSuccess?.();
+          } catch (error) {
+            console.error('Error leaving space:', error);
+            Alert.alert('Error', 'Failed to leave space. Please try again.');
+          } finally {
+            setIsLeaving(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleMembersPress = () => {
+    setMenuVisible(false);
+    router.push(`/space/${slug}/members`);
+  };
+
+  const handleSettingsPress = () => {
+    setMenuVisible(false);
+    // TODO: Implement space settings screen
+    Alert.alert('Coming Soon', 'Space settings will be available soon.');
   };
 
   return (
     <>
       {/* Menu Button */}
-      <TouchableOpacity 
-        style={styles.menuButton} 
-        onPress={() => setVisible(true)}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.menuIcon}>⋮</Text>
-      </TouchableOpacity>
+      <Pressable onPress={() => setMenuVisible(true)} style={styles.menuButton}>
+        <Text style={styles.menuIcon}>⋯</Text>
+      </Pressable>
 
-      {/* Dropdown Modal */}
+      {/* Menu Modal */}
       <Modal
-        visible={visible}
+        visible={menuVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setVisible(false)}
+        onRequestClose={() => setMenuVisible(false)}
       >
-        <Pressable 
-          style={styles.overlay} 
-          onPress={() => setVisible(false)}
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
         >
-          <View style={styles.dropdown}>
-            <TouchableOpacity 
+          <View style={styles.menuContainer}>
+            {/* Members List */}
+            <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => handlePress(onPostsPress)}
-            >
-              <Text style={styles.menuItemIcon}>📝</Text>
-              <Text style={styles.menuItemText}>Posts</Text>
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => handlePress(onMembersPress)}
+              onPress={handleMembersPress}
+              disabled={isLeaving}
             >
               <Text style={styles.menuItemIcon}>👥</Text>
               <Text style={styles.menuItemText}>Members</Text>
             </TouchableOpacity>
 
+            {/* Divider */}
             <View style={styles.divider} />
 
-            <TouchableOpacity 
+            {/* Leave Space (red/destructive) */}
+            <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => handlePress(onDocumentsPress)}
-            >
-              <Text style={styles.menuItemIcon}>📄</Text>
-              <Text style={styles.menuItemText}>Documents</Text>
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={() => handlePress(onAboutPress)}
-            >
-              <Text style={styles.menuItemIcon}>ℹ️</Text>
-              <Text style={styles.menuItemText}>About</Text>
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            <TouchableOpacity 
-              style={[styles.menuItem, styles.leaveItem]}
-              onPress={() => handlePress(onLeavePress)}
+              onPress={handleLeaveSpace}
+              disabled={isLeaving}
             >
               <Text style={styles.menuItemIcon}>🚪</Text>
-              <Text style={[styles.menuItemText, styles.leaveText]}>Leave Space</Text>
+              <Text style={[styles.menuItemText, styles.destructiveText]}>
+                {isLeaving ? 'Leaving...' : 'Leave Space'}
+              </Text>
             </TouchableOpacity>
+
+            {/* Admin: Space Settings (future) */}
+            {role === 'admin' && (
+              <>
+                <View style={styles.divider} />
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={handleSettingsPress}
+                  disabled={isLeaving}
+                >
+                  <Text style={styles.menuItemIcon}>⚙️</Text>
+                  <Text style={styles.menuItemText}>Space Settings</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
-        </Pressable>
+        </TouchableOpacity>
       </Modal>
     </>
   );
@@ -122,73 +133,55 @@ export function SpaceMenu({
 
 const styles = StyleSheet.create({
   menuButton: {
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-
   menuIcon: {
     fontSize: 24,
-    color: colors.text,
+    color: '#666',
+    fontWeight: 'bold',
   },
-
-  overlay: {
+  modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
     paddingTop: 60,
-    paddingRight: spacing.md,
+    paddingRight: 16,
   },
-
-  dropdown: {
-    backgroundColor: colors.surface,
-    borderRadius: sizing.borderRadius.md,
+  menuContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
     minWidth: 200,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
-
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-
   menuItemIcon: {
     fontSize: 18,
-    marginRight: spacing.md,
+    marginRight: 12,
   },
-
   menuItemText: {
-    fontSize: typography.size.md,
-    color: colors.text,
+    fontSize: 15,
+    color: '#1a1a1a',
   },
-
+  destructiveText: {
+    color: '#d32f2f',
+    fontWeight: '600',
+  },
   divider: {
     height: 1,
-    backgroundColor: colors.border,
-    marginHorizontal: spacing.md,
-  },
-
-  leaveItem: {
-    // Extra styling for leave action
-  },
-
-  leaveText: {
-    color: colors.error,
+    backgroundColor: '#e0e0e0',
+    marginHorizontal: 8,
   },
 });
-
-export default SpaceMenu;

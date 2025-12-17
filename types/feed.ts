@@ -28,12 +28,41 @@ export interface Feed {
   created_at: string;
   updated_at: string;
   scheduled_at: string | null;
-  
+
+  // ✅ Fluent meta payload (REAL)
+  meta?: {
+    bb_activity_id?: string;
+
+    video_url?: string;
+
+    media_preview?: {
+      image?: string;
+      url?: string;
+      provider?: 'youtube' | 'giphy' | 'external' | 'uploader';
+      type?: 'image' | 'video';
+      width?: number;
+      height?: number;
+      title?: string;
+    };
+
+    media_items?: {
+      media_id: number;
+      url: string;
+      type: 'image' | 'video';
+      width?: number;
+      height?: number;
+      provider?: string;
+      title?: string;
+    }[];
+
+    [key: string]: any;
+  };
+
   // User reaction state (from API when authenticated)
-  has_user_react?: boolean;    // Whether current user has reacted
-  bookmarked?: boolean;        // Whether current user has bookmarked
-  
-  // Related data (may be included in response)
+  has_user_react?: boolean;
+  bookmarked?: boolean;
+
+  // Related data
   user?: XProfile;
   xprofile?: XProfile;
   space?: FeedSpace;
@@ -43,10 +72,10 @@ export interface Feed {
 }
 
 // -----------------------------------------------------------------------------
-// Feed Type - What kind of post is this?
+// Feed Type
 // -----------------------------------------------------------------------------
 
-export type FeedType = 
+export type FeedType =
   | 'feed'
   | 'text'
   | 'announcement'
@@ -54,7 +83,7 @@ export type FeedType =
   | 'question';
 
 // -----------------------------------------------------------------------------
-// Content Type - How is the content formatted?
+// Content Type
 // -----------------------------------------------------------------------------
 
 export type ContentType =
@@ -78,7 +107,7 @@ export type FeedStatus =
   | 'spam';
 
 // -----------------------------------------------------------------------------
-// Space info embedded in feed
+// Space info
 // -----------------------------------------------------------------------------
 
 export interface FeedSpace {
@@ -89,7 +118,7 @@ export interface FeedSpace {
 }
 
 // -----------------------------------------------------------------------------
-// Reaction on a feed
+// Reaction
 // -----------------------------------------------------------------------------
 
 export interface Reaction {
@@ -102,13 +131,18 @@ export interface Reaction {
   xprofile?: XProfile;
 }
 
-export type ReactionType = 'like' | 'love' | 'laugh' | 'wow' | 'sad' | 'angry';
+export type ReactionType =
+  | 'like'
+  | 'love'
+  | 'laugh'
+  | 'wow'
+  | 'sad'
+  | 'angry';
 
 // -----------------------------------------------------------------------------
 // API Response Types
 // -----------------------------------------------------------------------------
 
-// Response from GET /feeds
 export interface FeedsResponse {
   feeds: {
     data: Feed[];
@@ -123,13 +157,10 @@ export interface FeedsResponse {
   execution_time: number;
 }
 
-// Response from GET /feeds/{id}/by-id
 export interface FeedDetailResponse {
   data: Feed;
 }
 
-// Response from POST /feeds/{id}/react
-// Actual API response (verified via curl)
 export interface ReactResponse {
   message: string;
   new_count: number;

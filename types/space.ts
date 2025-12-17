@@ -2,6 +2,7 @@
 // SPACE TYPES - TypeScript definitions for space/group data
 // =============================================================================
 // Based on Fluent Community Spaces API documentation
+// Updated to include 'secret' privacy level
 // =============================================================================
 
 import { XProfile } from './user';
@@ -13,29 +14,38 @@ import { XProfile } from './user';
 export interface Space {
   id: number;
   created_by: string | number;
-  parent_id: number | null;
+  parent_id: number | string | null;
   title: string;
   slug: string;
   logo: string | null;
   cover_photo: string | null;
   description: string | null;
   type: SpaceType;
-  privacy: 'public' | 'private';
+  privacy: 'public' | 'private' | 'secret';  // ✅ UPDATED: Added 'secret'
   status: 'published' | 'draft' | 'archived';
   serial: string | number;
   settings: SpaceSettings;
   created_at: string;
   updated_at: string;
   
-  // Stats
+  // Stats (from detail endpoint or profile endpoint)
   members_count?: number;
   posts_count?: number;
   
-  // Current user's relationship to this space
+  // Current user's relationship to this space (from detail endpoint)
   is_member?: boolean;
   role?: 'member' | 'moderator' | 'admin';
   
-  // Creator info
+  // User's relationship (from profile endpoint)
+  pivot?: {
+    user_id: string;
+    space_id: string;
+    role: 'member' | 'moderator' | 'admin';
+    status: 'active' | 'pending' | 'banned';
+    created_at: string;
+  };
+  
+  // Creator info (from detail endpoint)
   creator?: {
     id: number;
     username: string;
@@ -68,7 +78,14 @@ export interface SpaceSettings {
   links?: any[];
   topic_required?: 'yes' | 'no';
   hide_members_count?: 'yes' | 'no';
-  members_page_status?: 'public' | 'private';
+  members_page_status?: 'public' | 'private' | 'members_only';
+  show_paywalls?: 'yes' | 'no';
+  document_library?: 'yes' | 'no';
+  document_access?: 'members_only' | 'public';
+  document_upload?: 'members_only' | 'admin_only';
+  disable_post_sort_by?: 'yes' | 'no';
+  default_post_sort_by?: string;
+  onboard_redirect_url?: string;
   
   // Additional settings for functionality
   allow_posts?: boolean;
@@ -101,6 +118,21 @@ export interface SpaceGroup {
 }
 
 // -----------------------------------------------------------------------------
+// Space Member
+// -----------------------------------------------------------------------------
+
+export interface SpaceMember {
+  id: number;
+  space_id: number;
+  user_id: number;
+  role: 'member' | 'moderator' | 'admin';
+  status: 'active' | 'pending' | 'banned';
+  joined_at: string;
+  updated_at: string;
+  xprofile: XProfile;
+}
+
+// -----------------------------------------------------------------------------
 // API Response Types
 // -----------------------------------------------------------------------------
 
@@ -129,5 +161,16 @@ export interface JoinSpaceResponse {
     role: string;
     joined_at?: string;
     status?: 'pending';
+  };
+}
+
+// Response from GET /spaces/{slug}/members
+export interface SpaceMembersResponse {
+  data: SpaceMember[];
+  meta: {
+    total: number;
+    per_page: number;
+    current_page: number;
+    total_pages: number;
   };
 }
