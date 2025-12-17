@@ -1,11 +1,12 @@
 // =============================================================================
 // SPACE CARD COMPONENT - Unified card for all space displays
 // =============================================================================
+// Fixed: Removed broken placeholder URL, uses gradient fallback
 // Shows: title, description, privacy icon
-// Keeps member count and detailed stats for the space detail page
 // =============================================================================
 
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { Space } from '@/types';
 
@@ -33,19 +34,38 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
     return space.privacy.charAt(0).toUpperCase() + space.privacy.slice(1);
   };
 
-  // Default cover if none provided
-  const coverPhoto = space.cover_photo || 'https://via.placeholder.com/400x120/e0e0e0/666?text=Space';
+  // Use actual cover photo or fallback
+  const hasCoverPhoto = space.cover_photo && space.cover_photo.trim() !== '';
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
-      {/* Cover Photo */}
-      <Image source={{ uri: coverPhoto }} style={styles.cover} resizeMode="cover" />
+      {/* Cover Photo or Gradient Fallback */}
+      {hasCoverPhoto ? (
+        <Image source={{ uri: space.cover_photo }} style={styles.cover} resizeMode="cover" />
+      ) : (
+        <LinearGradient
+          colors={['#6366f1', '#8b5cf6', '#d946ef']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cover}
+        >
+          {space.settings?.emoji && (
+            <Text style={styles.coverEmoji}>{space.settings.emoji}</Text>
+          )}
+        </LinearGradient>
+      )}
 
-      {/* Logo Overlay (if exists) */}
-      {space.logo && <Image source={{ uri: space.logo }} style={styles.logo} resizeMode="cover" />}
+      {/* Logo Overlay (if exists and has cover photo) */}
+      {space.logo && hasCoverPhoto && (
+        <Image source={{ uri: space.logo }} style={styles.logo} resizeMode="cover" />
+      )}
 
-      {/* Emoji Badge (if exists) */}
-      {space.settings?.emoji && <Text style={styles.emoji}>{space.settings.emoji}</Text>}
+      {/* Emoji Badge (if exists and has cover photo) */}
+      {space.settings?.emoji && hasCoverPhoto && (
+        <View style={styles.emojiContainer}>
+          <Text style={styles.emoji}>{space.settings.emoji}</Text>
+        </View>
+      )}
 
       {/* Content */}
       <View style={styles.content}>
@@ -93,6 +113,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 120,
     backgroundColor: '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coverEmoji: {
+    fontSize: 48,
   },
   logo: {
     position: 'absolute',
@@ -105,17 +130,19 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
     backgroundColor: '#fff',
   },
-  emoji: {
+  emojiContainer: {
     position: 'absolute',
     top: 8,
     right: 8,
-    fontSize: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 16,
+    borderRadius: 20,
     width: 40,
     height: 40,
-    textAlign: 'center',
-    lineHeight: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emoji: {
+    fontSize: 20,
   },
   content: {
     padding: 16,

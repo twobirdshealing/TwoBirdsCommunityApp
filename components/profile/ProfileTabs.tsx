@@ -1,13 +1,16 @@
 // =============================================================================
 // PROFILE TABS - Tab navigation for profile sections
 // =============================================================================
+// UPDATED: Removed Spaces tab (redundant with main Spaces screen)
+// Now shows: About, Posts, Comments
+// =============================================================================
 
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 
-export type ProfileTab = 'about' | 'posts' | 'spaces' | 'comments';
+export type ProfileTab = 'about' | 'posts' | 'comments';
 
 interface ProfileTabsProps {
   activeTab: ProfileTab;
@@ -17,7 +20,6 @@ interface ProfileTabsProps {
 const TABS: { key: ProfileTab; label: string }[] = [
   { key: 'about', label: 'About' },
   { key: 'posts', label: 'Posts' },
-  { key: 'spaces', label: 'Spaces' },
   { key: 'comments', label: 'Comments' },
 ];
 

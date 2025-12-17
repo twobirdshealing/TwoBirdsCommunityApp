@@ -1,10 +1,11 @@
 // =============================================================================
-// PROFILE COMPONENTS - Barrel export
+// PROFILE COMPONENTS - Barrel Export
+// =============================================================================
+// UPDATED: Removed SpacesTab export (file deleted)
 // =============================================================================
 
+export { AboutTab } from './AboutTab';
+export { CommentsTab } from './CommentsTab';
 export { ProfileHeader } from './ProfileHeader';
 export { ProfileTabs, type ProfileTab } from './ProfileTabs';
-export { AboutTab } from './AboutTab';
-export { SpacesTab } from './SpacesTab';
-export { CommentsTab } from './CommentsTab';
 export { SettingsModal } from './SettingsModal';

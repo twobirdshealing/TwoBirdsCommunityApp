@@ -1,12 +1,8 @@
 // =============================================================================
 // PROFILE SCREEN - User profile with tabs
 // =============================================================================
-// Matches native Fluent Community profile layout:
-// - Cover photo + avatar (clickable for editing)
-// - Display name, username, bio
-// - Following/Followers stats
-// - Tabs: About, Posts, Spaces, Comments
-// - Settings gear (own profile) with logout
+// UPDATED: Removed Spaces tab (redundant with main Spaces screen)
+// Now shows: About, Posts, Comments
 // =============================================================================
 
 import { ErrorMessage, LoadingSpinner } from '@/components/common';
@@ -18,13 +14,12 @@ import {
   ProfileTab,
   ProfileTabs,
   SettingsModal,
-  SpacesTab,
 } from '@/components/profile';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
-import { feedsApi, profilesApi } from '@/services/api';
-import { Feed, Profile, ProfileComment, Space } from '@/types';
+import { profilesApi } from '@/services/api';
+import { Feed, Profile, ProfileComment } from '@/types';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -56,97 +51,86 @@ export default function ProfileScreen() {
   // Tab content
   const [posts, setPosts] = useState<Feed[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
-  const [spaces, setSpaces] = useState<Space[]>([]);
-  const [spacesLoading, setSpacesLoading] = useState(false);
   const [comments, setComments] = useState<ProfileComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   
-  // Settings modal
+  // Settings
   const [showSettings, setShowSettings] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Fetch Profile
   // ---------------------------------------------------------------------------
 
-  const fetchProfile = useCallback(async (isRefresh = false) => {
-    if (!user?.username) {
-      setError('Not logged in');
-      setLoading(false);
-      return;
-    }
+  const fetchProfile = useCallback(async (isRefresh: boolean = false) => {
+    if (!user?.username) return;
 
     try {
       if (isRefresh) {
         setRefreshing(true);
-        setError(null);
+      } else {
+        setLoading(true);
       }
+      setError(null);
 
       const response = await profilesApi.getProfile(user.username);
 
-      if (response.success) {
+      if (response.success && response.data.profile) {
         setProfile(response.data.profile);
       } else {
-        setError(response.error?.message || 'Failed to load profile');
+        throw new Error('Failed to load profile');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      console.error('Failed to fetch profile:', err);
+      setError('Failed to load profile');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [user?.username]);
 
-  // Initial load
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
 
   // ---------------------------------------------------------------------------
-  // Tab Content Fetchers
+  // Fetch Tab Content
   // ---------------------------------------------------------------------------
 
   const fetchPosts = useCallback(async () => {
-    if (!profile?.user_id) return;
-    
-    setPostsLoading(true);
+    if (!user?.username || postsLoading) return;
+
     try {
-      const response = await feedsApi.getFeeds({ user_id: profile.user_id });
-      if (response.success) {
-        setPosts(response.data.feeds.data);
+      setPostsLoading(true);
+      const response = await profilesApi.getUserPosts(user.username, {
+        page: 1,
+        per_page: 20,
+      });
+
+      if (response.success && response.data.feeds) {
+        setPosts(response.data.feeds);
+      } else {
+        setPosts([]);
       }
     } catch (err) {
       console.error('Failed to fetch posts:', err);
+      setPosts([]);
     } finally {
       setPostsLoading(false);
     }
-  }, [profile?.user_id]);
-
-  const fetchSpaces = useCallback(async () => {
-    if (!user?.username) return;
-    
-    setSpacesLoading(true);
-    try {
-      const response = await profilesApi.getUserSpaces(user.username);
-      if (response.success) {
-        setSpaces(response.data.spaces || []);
-      }
-    } catch (err) {
-      console.error('Failed to fetch spaces:', err);
-    } finally {
-      setSpacesLoading(false);
-    }
-  }, [user?.username]);
+  }, [user?.username, postsLoading]);
 
   const fetchComments = useCallback(async () => {
-    if (!user?.username) return;
-    
-    setCommentsLoading(true);
+    if (!user?.username || commentsLoading) return;
+
     try {
-      const response = await profilesApi.getUserComments(user.username);
-      
-      // FIXED: Comments are nested in response.data.comments.data
-      if (response.success && response.data.comments?.data) {
-        setComments(response.data.comments.data);
+      setCommentsLoading(true);
+      const response = await profilesApi.getUserComments(user.username, {
+        page: 1,
+        per_page: 20,
+      });
+
+      if (response.success && response.data.comments) {
+        setComments(response.data.comments);
       } else {
         setComments([]);
       }
@@ -156,7 +140,7 @@ export default function ProfileScreen() {
     } finally {
       setCommentsLoading(false);
     }
-  }, [user?.username]);
+  }, [user?.username, commentsLoading]);
 
   // Load tab content when tab changes
   useEffect(() => {
@@ -166,14 +150,11 @@ export default function ProfileScreen() {
       case 'posts':
         if (posts.length === 0) fetchPosts();
         break;
-      case 'spaces':
-        if (spaces.length === 0) fetchSpaces();
-        break;
       case 'comments':
         if (comments.length === 0) fetchComments();
         break;
     }
-  }, [activeTab, profile, fetchPosts, fetchSpaces, fetchComments]);
+  }, [activeTab, profile, fetchPosts, fetchComments]);
 
   // ---------------------------------------------------------------------------
   // Handlers (Phase 2 placeholders)
@@ -187,6 +168,57 @@ export default function ProfileScreen() {
   const handleAvatarPress = () => {
     // TODO Phase 2: Open image picker for avatar
     console.log('Edit avatar - Phase 2');
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render Tab Content
+  // ---------------------------------------------------------------------------
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'about':
+        return <AboutTab profile={profile} />;
+
+      case 'posts':
+        if (postsLoading) {
+          return (
+            <View style={styles.tabLoading}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          );
+        }
+
+        if (posts.length === 0) {
+          return (
+            <View style={styles.emptyTab}>
+              <Text style={styles.emptyIcon}>📝</Text>
+              <Text style={styles.emptyText}>No posts yet</Text>
+            </View>
+          );
+        }
+
+        return (
+          <View style={styles.postsList}>
+            {posts.map((post) => (
+              <FeedCard key={post.id} feed={post} />
+            ))}
+          </View>
+        );
+
+      case 'comments':
+        if (commentsLoading) {
+          return (
+            <View style={styles.tabLoading}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          );
+        }
+
+        return <CommentsTab comments={comments} loading={commentsLoading} />;
+
+      default:
+        return null;
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -206,63 +238,14 @@ export default function ProfileScreen() {
       <View style={[styles.container, { paddingBottom: insets.bottom }]}>
         <ErrorMessage
           message={error || 'Profile not found'}
-          onRetry={() => fetchProfile(true)}
+          onRetry={() => fetchProfile(false)}
         />
       </View>
     );
   }
 
   // ---------------------------------------------------------------------------
-  // Render Tab Content
-  // ---------------------------------------------------------------------------
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'about':
-        return <AboutTab profile={profile} />;
-
-      case 'posts':
-        if (postsLoading) {
-          return (
-            <View style={styles.tabLoading}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
-          );
-        }
-        if (posts.length === 0) {
-          return (
-            <View style={styles.emptyTab}>
-              <Text style={styles.emptyIcon}>📝</Text>
-              <Text style={styles.emptyText}>No posts yet</Text>
-            </View>
-          );
-        }
-        return (
-          <View style={styles.postsList}>
-            {posts.map((post) => (
-              <FeedCard
-                key={post.id}
-                feed={post}
-                onPress={() => {}}
-                onReact={() => {}}                
-              />
-            ))}
-          </View>
-        );
-
-      case 'spaces':
-        return <SpacesTab spaces={spaces} loading={spacesLoading} />;
-
-      case 'comments':
-        return <CommentsTab comments={comments} loading={commentsLoading} />;
-
-      default:
-        return null;
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Main Render
+  // Render
   // ---------------------------------------------------------------------------
 
   return (
