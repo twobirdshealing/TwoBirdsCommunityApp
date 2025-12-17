@@ -1,15 +1,12 @@
 // =============================================================================
 // MAIN SPACES SCREEN - Shows all spaces user is a member of
 // =============================================================================
-// Uses GET /spaces endpoint which returns:
-// - All public spaces user has joined
-// - All private spaces user has joined
-// - All secret spaces user is in
-// Server-side filtering ensures secret spaces user is NOT in are hidden
+// FIXED: Added top navigation header (was missing!)
+// Uses GET /spaces endpoint with proper pagination
 // =============================================================================
 
 import { FlashList } from '@shopify/flash-list';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
 
@@ -29,8 +26,6 @@ export default function SpacesScreen() {
     try {
       setLoading(true);
 
-      // ✅ Simple: Just use GET /spaces
-      // API automatically filters to show only spaces user is in
       const response = await spacesApi.getSpaces({
         page: pageNum,
         per_page: 20,
@@ -45,7 +40,6 @@ export default function SpacesScreen() {
         setSpaces(newSpaces);
       }
 
-      // Check if there are more pages
       setHasMore(newSpaces.length === 20);
     } catch (error) {
       console.error('Error fetching spaces:', error);
@@ -77,17 +71,34 @@ export default function SpacesScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <FlashList
-        data={spaces}
-        renderItem={({ item }) => <SpaceCard space={item} onPress={() => handleSpacePress(item)} />}
-        estimatedItemSize={140}
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        refreshControl={<RefreshControl refreshing={loading && page === 1} onRefresh={handleRefresh} />}
-        contentContainerStyle={styles.listContent}
+    <>
+      {/* ✅ TOP NAVIGATION - This was missing! */}
+      <Stack.Screen
+        options={{
+          title: 'Spaces',
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: '#fff',
+          },
+          headerTitleStyle: {
+            fontSize: 20,
+            fontWeight: '600',
+          },
+        }}
       />
-    </View>
+
+      <View style={styles.container}>
+        <FlashList
+          data={spaces}
+          renderItem={({ item }) => <SpaceCard space={item} onPress={() => handleSpacePress(item)} />}
+          estimatedItemSize={140}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          refreshControl={<RefreshControl refreshing={loading && page === 1} onRefresh={handleRefresh} />}
+          contentContainerStyle={styles.listContent}
+        />
+      </View>
+    </>
   );
 }
 

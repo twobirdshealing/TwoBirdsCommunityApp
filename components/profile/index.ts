@@ -1,7 +1,7 @@
 // =============================================================================
 // PROFILE COMPONENTS - Barrel Export
 // =============================================================================
-// UPDATED: Removed SpacesTab export (file deleted)
+// FIXED: Removed SpacesTab export (file deleted)
 // =============================================================================
 
 export { AboutTab } from './AboutTab';
