@@ -1,102 +1,220 @@
 // =============================================================================
 // MAIN SPACES SCREEN - Shows all spaces user is a member of
 // =============================================================================
-// FIXED: Added top navigation header (was missing!)
-// Uses GET /spaces endpoint with proper pagination
+// Note: API pagination doesn't work - returns all spaces at once
+// Implements client-side search filtering
 // =============================================================================
 
 import { FlashList } from '@shopify/flash-list';
 import { Stack, router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { RefreshControl, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { 
+  ActivityIndicator,
+  RefreshControl, 
+  StyleSheet, 
+  Text,
+  TextInput, 
+  View 
+} from 'react-native';
 
 import { SpaceCard } from '@/components/space/SpaceCard';
 import { spacesApi } from '@/services/api/spaces';
 import { Space } from '@/types';
+import { colors } from '@/constants/colors';
+import { spacing, typography } from '@/constants/layout';
 
 export default function SpacesScreen() {
   const [spaces, setSpaces] = useState<Space[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchSpaces = async (pageNum: number = 1, shouldAppend: boolean = false) => {
-    if (loading) return;
+  // ---------------------------------------------------------------------------
+  // Fetch All Spaces (API doesn't support pagination)
+  // ---------------------------------------------------------------------------
 
+  const fetchSpaces = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
 
       const response = await spacesApi.getSpaces({
-        page: pageNum,
-        per_page: 20,
         status: 'published',
       });
 
-      const newSpaces = response.data.spaces;
-
-      if (shouldAppend) {
-        setSpaces((prev) => [...prev, ...newSpaces]);
-      } else {
-        setSpaces(newSpaces);
+      if (!response.success) {
+        setError(response.error?.message || 'Failed to load spaces');
+        return;
       }
 
-      setHasMore(newSpaces.length === 20);
-    } catch (error) {
-      console.error('Error fetching spaces:', error);
+      const apiData = response.data as any;
+      const spacesList = apiData?.spaces || [];
+      
+      setSpaces(spacesList);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchSpaces(1, false);
+    fetchSpaces();
   }, []);
 
-  const handleRefresh = () => {
-    setPage(1);
-    setHasMore(true);
-    fetchSpaces(1, false);
-  };
+  // ---------------------------------------------------------------------------
+  // Client-side Search Filter
+  // ---------------------------------------------------------------------------
 
-  const handleLoadMore = () => {
-    if (!loading && hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchSpaces(nextPage, true);
+  const filteredSpaces = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return spaces;
     }
+
+    const query = searchQuery.toLowerCase().trim();
+    return spaces.filter(space => 
+      space.title?.toLowerCase().includes(query) ||
+      space.description?.toLowerCase().includes(query) ||
+      space.slug?.toLowerCase().includes(query)
+    );
+  }, [spaces, searchQuery]);
+
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
+
+  const handleRefresh = () => {
+    fetchSpaces(true);
   };
 
   const handleSpacePress = (space: Space) => {
     router.push(`/space/${space.slug}`);
   };
 
+  const handleClearSearch = () => {
+    setSearchQuery('');
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   return (
     <>
-      {/* ✅ TOP NAVIGATION - This was missing! */}
       <Stack.Screen
         options={{
           title: 'Spaces',
           headerShown: true,
           headerStyle: {
-            backgroundColor: '#fff',
+            backgroundColor: colors.surface,
           },
           headerTitleStyle: {
-            fontSize: 20,
+            fontSize: typography.size.lg,
             fontWeight: '600',
           },
         }}
       />
 
       <View style={styles.container}>
-        <FlashList
-          data={spaces}
-          renderItem={({ item }) => <SpaceCard space={item} onPress={() => handleSpacePress(item)} />}
-          estimatedItemSize={140}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
-          refreshControl={<RefreshControl refreshing={loading && page === 1} onRefresh={handleRefresh} />}
-          contentContainerStyle={styles.listContent}
-        />
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputContainer}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search spaces..."
+              placeholderTextColor={colors.textTertiary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+            />
+            {searchQuery.length > 0 && (
+              <Text style={styles.clearButton} onPress={handleClearSearch}>
+                ✕
+              </Text>
+            )}
+          </View>
+          
+          {/* Result count when searching */}
+          {searchQuery.length > 0 && (
+            <Text style={styles.resultCount}>
+              {filteredSpaces.length} of {spaces.length} spaces
+            </Text>
+          )}
+        </View>
+
+        {/* Error State */}
+        {error && !loading && spaces.length === 0 && (
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorIcon}>⚠️</Text>
+            <Text style={styles.errorText}>{error}</Text>
+            <Text style={styles.retryButton} onPress={handleRefresh}>
+              Tap to retry
+            </Text>
+          </View>
+        )}
+
+        {/* Loading State */}
+        {loading && spaces.length === 0 && (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading spaces...</Text>
+          </View>
+        )}
+
+        {/* Spaces List */}
+        {!loading && spaces.length > 0 && (
+          <FlashList
+            data={filteredSpaces}
+            renderItem={({ item }) => (
+              <SpaceCard space={item} onPress={() => handleSpacePress(item)} />
+            )}
+            estimatedItemSize={140}
+            refreshControl={
+              <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={handleRefresh}
+                tintColor={colors.primary}
+                colors={[colors.primary]}
+              />
+            }
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              searchQuery.length > 0 ? (
+                <View style={styles.centerContainer}>
+                  <Text style={styles.emptyIcon}>🔍</Text>
+                  <Text style={styles.emptyText}>
+                    No spaces match "{searchQuery}"
+                  </Text>
+                  <Text style={styles.clearSearchButton} onPress={handleClearSearch}>
+                    Clear search
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.centerContainer}>
+                  <Text style={styles.emptyIcon}>👥</Text>
+                  <Text style={styles.emptyText}>No spaces found</Text>
+                </View>
+              )
+            }
+          />
+        )}
+
+        {/* Empty State (no spaces at all) */}
+        {!loading && !error && spaces.length === 0 && (
+          <View style={styles.centerContainer}>
+            <Text style={styles.emptyIcon}>👥</Text>
+            <Text style={styles.emptyText}>You're not a member of any spaces yet</Text>
+          </View>
+        )}
       </View>
     </>
   );
@@ -105,9 +223,100 @@ export default function SpacesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
+
+  searchContainer: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: 10,
+    paddingHorizontal: spacing.sm,
+  },
+
+  searchIcon: {
+    fontSize: 16,
+    marginRight: spacing.xs,
+  },
+
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: typography.size.md,
+    color: colors.text,
+  },
+
+  clearButton: {
+    fontSize: 16,
+    color: colors.textTertiary,
+    padding: spacing.xs,
+  },
+
+  resultCount: {
+    fontSize: typography.size.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    textAlign: 'center',
+  },
+
   listContent: {
-    paddingVertical: 8,
+    paddingVertical: spacing.xs,
+  },
+
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: typography.size.md,
+    color: colors.textSecondary,
+  },
+
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+
+  errorText: {
+    fontSize: typography.size.md,
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+
+  retryButton: {
+    fontSize: typography.size.md,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+
+  emptyText: {
+    fontSize: typography.size.md,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+
+  clearSearchButton: {
+    fontSize: typography.size.md,
+    color: colors.primary,
+    fontWeight: '600',
+    marginTop: spacing.md,
   },
 });

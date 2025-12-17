@@ -2,7 +2,7 @@
 // COMPONENTS - Main barrel export
 // =============================================================================
 // Import all components from here:
-//   import { Avatar, FeedCard, SpaceCard, MediaRenderer } from '@/components';
+//   import { Avatar, FeedCard, SpaceCard, MemberCard } from '@/components';
 // =============================================================================
 
 // Common components
@@ -16,3 +16,6 @@ export * from './space';
 
 // Media components
 export * from './media';
+
+// Member components
+export * from './member';
