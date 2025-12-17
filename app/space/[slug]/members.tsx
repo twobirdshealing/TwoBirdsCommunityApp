@@ -1,6 +1,7 @@
 // =============================================================================
 // SPACE MEMBERS SCREEN - Shows list of space members
 // =============================================================================
+// Route: /space/[slug]/members
 // Accessible from space menu "Members" option
 // Shows member avatars, names, and roles
 // =============================================================================
@@ -79,18 +80,30 @@ export default function SpaceMembersScreen() {
   const renderMember = ({ item }: { item: SpaceMember }) => (
     <View style={styles.memberCard}>
       {/* Avatar */}
-      <Image source={{ uri: item.xprofile.avatar }} style={styles.avatar} />
+      <View style={styles.avatarContainer}>
+        {item.xprofile?.avatar ? (
+          <Image source={{ uri: item.xprofile.avatar }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+            <Text style={styles.avatarText}>
+              {(item.xprofile?.display_name || 'U').charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
+      </View>
 
-      {/* Member Info */}
+      {/* Info */}
       <View style={styles.memberInfo}>
-        <Text style={styles.displayName}>{item.xprofile.display_name}</Text>
-        <Text style={styles.username}>@{item.xprofile.username}</Text>
+        <Text style={styles.memberName}>{item.xprofile?.display_name || 'Unknown'}</Text>
+        <Text style={styles.memberUsername}>@{item.xprofile?.username || 'unknown'}</Text>
       </View>
 
       {/* Role Badge */}
       {item.role !== 'member' && (
         <View style={[styles.roleBadge, { backgroundColor: getRoleBadgeColor(item.role) }]}>
-          <Text style={styles.roleText}>{item.role.toUpperCase()}</Text>
+          <Text style={styles.roleBadgeText}>
+            {item.role.charAt(0).toUpperCase() + item.role.slice(1)}
+          </Text>
         </View>
       )}
     </View>
@@ -101,24 +114,41 @@ export default function SpaceMembersScreen() {
       <Stack.Screen
         options={{
           title: 'Members',
+          headerShown: true,
           headerBackTitle: 'Back',
         }}
       />
 
       <View style={styles.container}>
-        {loading && page === 1 ? (
+        {loading && members.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#1976d2" />
+            <Text style={styles.loadingText}>Loading members...</Text>
           </View>
         ) : (
           <FlashList
             data={members}
             renderItem={renderMember}
-            estimatedItemSize={70}
+            estimatedItemSize={72}
+            keyExtractor={(item) => item.id.toString()}
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.5}
-            refreshControl={<RefreshControl refreshing={loading && page === 1} onRefresh={handleRefresh} />}
-            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl refreshing={loading && page === 1} onRefresh={handleRefresh} />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>👥</Text>
+                <Text style={styles.emptyText}>No members found</Text>
+              </View>
+            }
+            ListFooterComponent={
+              loading && page > 1 ? (
+                <View style={styles.footerLoader}>
+                  <ActivityIndicator size="small" color="#1976d2" />
+                </View>
+              ) : null
+            }
           />
         )}
       </View>
@@ -131,52 +161,98 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  listContent: {
-    paddingVertical: 8,
+
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
   },
+
   memberCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginVertical: 4,
-    padding: 12,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
+
+  avatarContainer: {
+    marginRight: 12,
+  },
+
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#e0e0e0',
   },
+
+  avatarPlaceholder: {
+    backgroundColor: '#1976d2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  avatarText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
   memberInfo: {
     flex: 1,
-    marginLeft: 12,
   },
-  displayName: {
+
+  memberName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1a1a1a',
     marginBottom: 2,
   },
-  username: {
+
+  memberUsername: {
     fontSize: 14,
     color: '#666',
   },
+
   roleBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 12,
   },
-  roleText: {
-    fontSize: 11,
+
+  roleBadgeText: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#fff',
-    letterSpacing: 0.5,
+  },
+
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+  },
+
+  footerLoader: {
+    paddingVertical: 16,
+    alignItems: 'center',
   },
 });

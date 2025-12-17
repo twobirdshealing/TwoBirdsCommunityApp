@@ -1,7 +1,7 @@
 // =============================================================================
 // ROOT LAYOUT - App-wide configuration with Authentication
 // =============================================================================
-// Updated: space/[slug] moved to (tabs), removed from Stack
+// FIXED: Added space/[slug] route registration for proper navigation
 // =============================================================================
 
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -58,6 +58,18 @@ function RootLayoutNav() {
         <Stack.Screen 
           name="login" 
           options={{ headerShown: false }}
+        />
+        
+        {/* ============================================= */}
+        {/* SPACE ROUTES - Navigate from spaces list      */}
+        {/* ============================================= */}
+        
+        {/* Space detail page (dynamic route) */}
+        <Stack.Screen 
+          name="space/[slug]" 
+          options={{ 
+            headerShown: false,  // Header is controlled by the page itself
+          }} 
         />
         
         {/* ============================================= */}

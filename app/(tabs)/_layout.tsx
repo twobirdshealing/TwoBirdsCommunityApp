@@ -1,7 +1,8 @@
 // =============================================================================
 // TAB LAYOUT - Bottom tab navigation
 // =============================================================================
-// FIXED: Uses /profile/{username} like profile page does (NOT /profile/me)!
+// FIXED: Removed dead space/[slug] hidden route reference
+// Uses /profile/{username} like profile page does (NOT /profile/me)!
 // =============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -137,8 +138,7 @@ export default function TabLayout() {
         }}
       />
       
-      {/* Hidden routes */}
-      <Tabs.Screen name="space/[slug]" options={{ href: null }} />
+      {/* Hidden routes - screens that exist but shouldn't show in tab bar */}
       <Tabs.Screen name="activity" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="create" options={{ href: null }} />

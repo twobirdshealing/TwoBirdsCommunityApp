@@ -1,8 +1,8 @@
 // =============================================================================
 // SPACE PAGE - Individual space feed view
 // =============================================================================
-// Route: /(tabs)/space/[slug]
-// Has bottom nav (in tabs) AND top nav (Stack.Screen)
+// Route: /space/[slug]
+// FIXED: Corrected SpaceMenu props and removed dead handler functions
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -140,25 +140,10 @@ export default function SpacePage() {
     router.push(`/profile/${username}`);
   };
 
-  // Menu handlers (Phase 2)
-  const handlePostsPress = () => {
-    console.log('Posts - Phase 2');
-  };
-
-  const handleMembersPress = () => {
-    console.log('Members - Phase 2');
-  };
-
-  const handleDocumentsPress = () => {
-    console.log('Documents - Phase 2');
-  };
-
-  const handleAboutPress = () => {
-    console.log('About - Phase 2');
-  };
-
-  const handleLeavePress = () => {
-    console.log('Leave Space - Phase 2');
+  // Callback when user leaves the space
+  const handleLeaveSuccess = () => {
+    // Space has been left, the SpaceMenu already navigates back
+    // This callback can be used for additional cleanup if needed
   };
 
   // ---------------------------------------------------------------------------
@@ -168,7 +153,6 @@ export default function SpacePage() {
   if (loading && !space) {
     return (
       <View style={styles.container}>
-        {/* CRITICAL: Stack.Screen for top nav */}
         <Stack.Screen 
           options={{ 
             headerShown: true,
@@ -183,7 +167,6 @@ export default function SpacePage() {
   if (error && !space) {
     return (
       <View style={styles.container}>
-        {/* CRITICAL: Stack.Screen for top nav */}
         <Stack.Screen 
           options={{ 
             headerShown: true,
@@ -198,7 +181,6 @@ export default function SpacePage() {
   if (!space) {
     return (
       <View style={styles.container}>
-        {/* CRITICAL: Stack.Screen for top nav */}
         <Stack.Screen 
           options={{ 
             headerShown: true,
@@ -216,7 +198,7 @@ export default function SpacePage() {
 
   return (
     <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      {/* CRITICAL: Stack.Screen for top nav with back button and menu */}
+      {/* Top nav with back button and menu */}
       <Stack.Screen 
         options={{ 
           headerShown: true,
@@ -224,11 +206,9 @@ export default function SpacePage() {
           headerBackTitle: 'Back',
           headerRight: () => (
             <SpaceMenu
-              onPostsPress={handlePostsPress}
-              onMembersPress={handleMembersPress}
-              onDocumentsPress={handleDocumentsPress}
-              onAboutPress={handleAboutPress}
-              onLeavePress={handleLeavePress}
+              slug={slug}
+              role={space.role}
+              onLeaveSuccess={handleLeaveSuccess}
             />
           ),
         }} 
