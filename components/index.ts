@@ -22,3 +22,6 @@ export * from './member';
 
 // Navigation components
 export * from './navigation';
+
+// Composer components
+export * from './composer';

@@ -1,16 +1,18 @@
 // =============================================================================
-// ACTIVITY SCREEN - Main community feed
+// ACTIVITY SCREEN - Main community feed with post creation
 // =============================================================================
 // Shows all posts from spaces user is a member of
+// Includes QuickPostBox for creating new posts
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/constants/colors';
 import { Feed } from '@/types';
 import { feedsApi } from '@/services/api';
 import { FeedList } from '@/components/feed';
+import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/composer';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -24,6 +26,9 @@ export default function ActivityScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Modal state
+  const [showComposer, setShowComposer] = useState(false);
   
   // ---------------------------------------------------------------------------
   // Fetch Feeds
@@ -55,6 +60,33 @@ export default function ActivityScreen() {
   useEffect(() => {
     fetchFeeds();
   }, [fetchFeeds]);
+  
+  // ---------------------------------------------------------------------------
+  // Create Post
+  // ---------------------------------------------------------------------------
+  
+  const handleCreatePost = async (data: ComposerSubmitData) => {
+    try {
+      const response = await feedsApi.createFeed({
+        message: data.message,
+        title: data.title,
+        content_type: data.content_type,
+        space_id: data.space_id,
+        meta: data.meta,
+      });
+
+      if (response.success) {
+        // Refresh feed to show new post
+        fetchFeeds(true);
+        Alert.alert('Success', 'Your post has been published!');
+      } else {
+        throw new Error(response.error?.message || 'Failed to create post');
+      }
+    } catch (err) {
+      console.error('Create post error:', err);
+      throw err; // Re-throw to let modal handle it
+    }
+  };
   
   // ---------------------------------------------------------------------------
   // Handlers
@@ -134,12 +166,13 @@ export default function ActivityScreen() {
   
   return (
     <View style={styles.container}>
-      {/* TODO: Add QuickPostBox here */}
-      {/* <QuickPostBox 
+      {/* Quick Post Box */}
+      <QuickPostBox
         placeholder="What's happening?"
-        onPress={() => openComposer()}
-      /> */}
+        onPress={() => setShowComposer(true)}
+      />
 
+      {/* Feed List */}
       <FeedList
         feeds={feeds}
         loading={loading}
@@ -152,6 +185,13 @@ export default function ActivityScreen() {
         onSpacePress={handleSpacePress}
         emptyMessage="No posts yet. Be the first to share!"
         emptyIcon="🐦"
+      />
+
+      {/* Create Post Modal */}
+      <CreatePostModal
+        visible={showComposer}
+        onClose={() => setShowComposer(false)}
+        onSubmit={handleCreatePost}
       />
     </View>
   );
