@@ -1,8 +1,7 @@
 // =============================================================================
 // MESSAGES SCREEN - Direct messages list
 // =============================================================================
-// Route: /messages
-// Navigated from header mail icon
+// Route: /messages (ROOT LEVEL - accessed from header mail icon)
 // =============================================================================
 
 import React from 'react';
@@ -12,10 +11,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
-
-// -----------------------------------------------------------------------------
-// Component
-// -----------------------------------------------------------------------------
 
 export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
@@ -31,24 +26,19 @@ export default function MessagesScreen() {
       />
 
       <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-        {/* Empty State */}
         <View style={styles.emptyState}>
           <View style={styles.iconContainer}>
             <Ionicons name="mail-outline" size={64} color={colors.textTertiary} />
           </View>
           <Text style={styles.emptyTitle}>Messages Coming Soon</Text>
           <Text style={styles.emptyText}>
-            Direct messaging will be available in a future update. Stay tuned!
+            Direct messaging will be available in a future update.
           </Text>
         </View>
       </View>
     </>
   );
 }
-
-// -----------------------------------------------------------------------------
-// Styles
-// -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
@@ -78,14 +68,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.sm,
-    textAlign: 'center',
   },
 
   emptyText: {
     fontSize: typography.size.md,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
     maxWidth: 280,
   },
 });

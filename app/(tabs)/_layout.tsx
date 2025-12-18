@@ -1,13 +1,8 @@
 // =============================================================================
-// TAB LAYOUT - Bottom tab navigation (3 tabs) + Top Header
+// TAB LAYOUT - Bottom tab navigation (4 tabs) + Top Header
 // =============================================================================
-// Tabs: Home, Spaces, Calendar
+// Tabs: Home, Activity, Spaces, Calendar
 // Header: Logo + Messages + Notifications + Avatar Menu
-// 
-// IMPORTANT: Messages, Notifications, Profile are NO LONGER tabs!
-// They live at root level: app/messages.tsx, app/notifications.tsx, app/profile/
-// Delete any old files: app/(tabs)/messages.tsx, app/(tabs)/notifications.tsx, 
-//                       app/(tabs)/profile.tsx
 // =============================================================================
 
 import React from 'react';
@@ -55,7 +50,7 @@ export default function TabLayout() {
       {/* Tab Navigator */}
       <Tabs
         screenOptions={{
-          headerShown: false, // IMPORTANT: No headers - TopHeader handles it
+          headerShown: false,
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textTertiary,
           tabBarStyle: {
@@ -86,16 +81,27 @@ export default function TabLayout() {
         }}
       >
         {/* ============================================= */}
-        {/* VISIBLE TABS - Only these 3!                 */}
+        {/* 4 TABS: Home, Activity, Spaces, Calendar     */}
         {/* ============================================= */}
         
-        {/* Home Tab */}
+        {/* Home Tab - Welcome page */}
         <Tabs.Screen
           name="index"
           options={{
             title: 'Home',
             tabBarIcon: ({ focused }) => (
               <TabIcon name="home" nameOutline="home-outline" focused={focused} />
+            ),
+          }}
+        />
+
+        {/* Activity Tab - Main feed */}
+        <Tabs.Screen
+          name="activity"
+          options={{
+            title: 'Activity',
+            tabBarIcon: ({ focused }) => (
+              <TabIcon name="newspaper" nameOutline="newspaper-outline" focused={focused} />
             ),
           }}
         />
@@ -121,26 +127,6 @@ export default function TabLayout() {
             ),
           }}
         />
-
-        {/* ============================================= */}
-        {/* HIDDEN - Files that exist but aren't tabs    */}
-        {/* Only include if file exists in (tabs) folder */}
-        {/* ============================================= */}
-        
-        <Tabs.Screen name="activity" options={{ href: null }} />
-        <Tabs.Screen name="create" options={{ href: null }} />
-        
-        {/* 
-        DO NOT add these here - they're now at root level:
-        - notifications → app/notifications.tsx (NOT app/(tabs)/notifications.tsx)
-        - messages → app/messages.tsx (NOT app/(tabs)/messages.tsx)
-        - profile → app/profile/[username].tsx (NOT app/(tabs)/profile.tsx)
-        
-        If you see errors about missing routes, DELETE these files:
-        - app/(tabs)/notifications.tsx
-        - app/(tabs)/messages.tsx  
-        - app/(tabs)/profile.tsx
-        */}
       </Tabs>
     </View>
   );
