@@ -1,6 +1,7 @@
 // =============================================================================
 // CALENDAR SCREEN - Events and calendar
 // =============================================================================
+// UPDATED: Removed built-in header - TopHeader handles it now
 // Phase 1: Placeholder
 // Phase 2: Church events, ceremony dates, community calendar
 // =============================================================================
@@ -13,13 +14,7 @@ import { spacing, typography } from '@/constants/layout';
 export default function CalendarScreen() {
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Calendar</Text>
-        <Text style={styles.headerSubtitle}>
-          Community events and ceremonies
-        </Text>
-      </View>
+      {/* NO HEADER HERE - TopHeader in tabs layout handles it */}
 
       {/* Coming Soon */}
       <View style={styles.content}>
@@ -30,7 +25,7 @@ export default function CalendarScreen() {
           and community gatherings here.
         </Text>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>Phase 2</Text>
+          <Text style={styles.badgeText}>Coming Soon</Text>
         </View>
       </View>
     </View>
@@ -43,26 +38,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 
-  header: {
-    backgroundColor: colors.surface,
-    paddingTop: 60,
-    paddingBottom: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-
-  headerTitle: {
-    fontSize: typography.size.xxl,
-    fontWeight: typography.weight.bold,
-    color: colors.text,
-  },
-
-  headerSubtitle: {
-    fontSize: typography.size.sm,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
+  // REMOVED: header styles - TopHeader handles it now
 
   content: {
     flex: 1,
@@ -78,7 +54,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: typography.size.xxl,
-    fontWeight: typography.weight.bold,
+    fontWeight: '700',
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -92,15 +68,15 @@ const styles = StyleSheet.create({
 
   badge: {
     marginTop: spacing.xl,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.primaryLight || colors.primary + '20',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 20,
   },
 
   badgeText: {
-    color: colors.textInverse,
+    color: colors.primary,
     fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
+    fontWeight: '600',
   },
 });

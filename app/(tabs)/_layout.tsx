@@ -3,10 +3,15 @@
 // =============================================================================
 // Tabs: Home, Spaces, Calendar
 // Header: Logo + Messages + Notifications + Avatar Menu
+// 
+// IMPORTANT: Messages, Notifications, Profile are NO LONGER tabs!
+// They live at root level: app/messages.tsx, app/notifications.tsx, app/profile/
+// Delete any old files: app/(tabs)/messages.tsx, app/(tabs)/notifications.tsx, 
+//                       app/(tabs)/profile.tsx
 // =============================================================================
 
 import React from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,7 +55,7 @@ export default function TabLayout() {
       {/* Tab Navigator */}
       <Tabs
         screenOptions={{
-          headerShown: false, // Using custom TopHeader
+          headerShown: false, // IMPORTANT: No headers - TopHeader handles it
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textTertiary,
           tabBarStyle: {
@@ -80,6 +85,10 @@ export default function TabLayout() {
           },
         }}
       >
+        {/* ============================================= */}
+        {/* VISIBLE TABS - Only these 3!                 */}
+        {/* ============================================= */}
+        
         {/* Home Tab */}
         <Tabs.Screen
           name="index"
@@ -114,17 +123,24 @@ export default function TabLayout() {
         />
 
         {/* ============================================= */}
-        {/* HIDDEN SCREENS - Don't show in tab bar       */}
-        {/* These files exist but shouldn't be tabs      */}
+        {/* HIDDEN - Files that exist but aren't tabs    */}
+        {/* Only include if file exists in (tabs) folder */}
         {/* ============================================= */}
         
         <Tabs.Screen name="activity" options={{ href: null }} />
-        <Tabs.Screen name="notifications" options={{ href: null }} />
         <Tabs.Screen name="create" options={{ href: null }} />
         
-        {/* Old tabs - hide if files still exist during transition */}
-        <Tabs.Screen name="profile" options={{ href: null }} />
-        <Tabs.Screen name="messages" options={{ href: null }} />
+        {/* 
+        DO NOT add these here - they're now at root level:
+        - notifications → app/notifications.tsx (NOT app/(tabs)/notifications.tsx)
+        - messages → app/messages.tsx (NOT app/(tabs)/messages.tsx)
+        - profile → app/profile/[username].tsx (NOT app/(tabs)/profile.tsx)
+        
+        If you see errors about missing routes, DELETE these files:
+        - app/(tabs)/notifications.tsx
+        - app/(tabs)/messages.tsx  
+        - app/(tabs)/profile.tsx
+        */}
       </Tabs>
     </View>
   );

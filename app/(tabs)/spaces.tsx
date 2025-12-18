@@ -1,12 +1,13 @@
 // =============================================================================
 // MAIN SPACES SCREEN - Shows all spaces user is a member of
 // =============================================================================
+// UPDATED: Removed Stack.Screen header - TopHeader handles it now
 // Note: API pagination doesn't work - returns all spaces at once
 // Implements client-side search filtering
 // =============================================================================
 
 import { FlashList } from '@shopify/flash-list';
-import { Stack, router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { 
   ActivityIndicator,
@@ -24,6 +25,7 @@ import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 
 export default function SpacesScreen() {
+  const router = useRouter();
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -106,119 +108,105 @@ export default function SpacesScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: 'Spaces',
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: colors.surface,
-          },
-          headerTitleStyle: {
-            fontSize: typography.size.lg,
-            fontWeight: '600',
-          },
-        }}
-      />
-
-      <View style={styles.container}>
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchInputContainer}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search spaces..."
-              placeholderTextColor={colors.textTertiary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoCapitalize="none"
-              autoCorrect={false}
-              clearButtonMode="while-editing"
-            />
-            {searchQuery.length > 0 && (
-              <Text style={styles.clearButton} onPress={handleClearSearch}>
-                ✕
-              </Text>
-            )}
-          </View>
-          
-          {/* Result count when searching */}
+    <View style={styles.container}>
+      {/* NO Stack.Screen here - TopHeader in tabs layout handles header */}
+      
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search spaces..."
+            placeholderTextColor={colors.textTertiary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+          />
           {searchQuery.length > 0 && (
-            <Text style={styles.resultCount}>
-              {filteredSpaces.length} of {spaces.length} spaces
+            <Text style={styles.clearButton} onPress={handleClearSearch}>
+              ✕
             </Text>
           )}
         </View>
-
-        {/* Error State */}
-        {error && !loading && spaces.length === 0 && (
-          <View style={styles.centerContainer}>
-            <Text style={styles.errorIcon}>⚠️</Text>
-            <Text style={styles.errorText}>{error}</Text>
-            <Text style={styles.retryButton} onPress={handleRefresh}>
-              Tap to retry
-            </Text>
-          </View>
-        )}
-
-        {/* Loading State */}
-        {loading && spaces.length === 0 && (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading spaces...</Text>
-          </View>
-        )}
-
-        {/* Spaces List */}
-        {!loading && spaces.length > 0 && (
-          <FlashList
-            data={filteredSpaces}
-            renderItem={({ item }) => (
-              <SpaceCard space={item} onPress={() => handleSpacePress(item)} />
-            )}
-            estimatedItemSize={140}
-            refreshControl={
-              <RefreshControl 
-                refreshing={refreshing} 
-                onRefresh={handleRefresh}
-                tintColor={colors.primary}
-                colors={[colors.primary]}
-              />
-            }
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={
-              searchQuery.length > 0 ? (
-                <View style={styles.centerContainer}>
-                  <Text style={styles.emptyIcon}>🔍</Text>
-                  <Text style={styles.emptyText}>
-                    No spaces match "{searchQuery}"
-                  </Text>
-                  <Text style={styles.clearSearchButton} onPress={handleClearSearch}>
-                    Clear search
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.centerContainer}>
-                  <Text style={styles.emptyIcon}>👥</Text>
-                  <Text style={styles.emptyText}>No spaces found</Text>
-                </View>
-              )
-            }
-          />
-        )}
-
-        {/* Empty State (no spaces at all) */}
-        {!loading && !error && spaces.length === 0 && (
-          <View style={styles.centerContainer}>
-            <Text style={styles.emptyIcon}>👥</Text>
-            <Text style={styles.emptyText}>You're not a member of any spaces yet</Text>
-          </View>
+        
+        {/* Result count when searching */}
+        {searchQuery.length > 0 && (
+          <Text style={styles.resultCount}>
+            {filteredSpaces.length} of {spaces.length} spaces
+          </Text>
         )}
       </View>
-    </>
+
+      {/* Error State */}
+      {error && !loading && spaces.length === 0 && (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.retryButton} onPress={handleRefresh}>
+            Tap to retry
+          </Text>
+        </View>
+      )}
+
+      {/* Loading State */}
+      {loading && spaces.length === 0 && (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading spaces...</Text>
+        </View>
+      )}
+
+      {/* Spaces List */}
+      {!loading && spaces.length > 0 && (
+        <FlashList
+          data={filteredSpaces}
+          renderItem={({ item }) => (
+            <SpaceCard space={item} onPress={() => handleSpacePress(item)} />
+          )}
+          estimatedItemSize={140}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            searchQuery.length > 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>🔍</Text>
+                <Text style={styles.emptyText}>No spaces match "{searchQuery}"</Text>
+                <Text style={styles.clearSearchButton} onPress={handleClearSearch}>
+                  Clear search
+                </Text>
+              </View>
+            ) : null
+          }
+        />
+      )}
+
+      {/* Empty State (no spaces at all) */}
+      {!loading && !error && spaces.length === 0 && (
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyIcon}>👥</Text>
+          <Text style={styles.emptyText}>No spaces yet</Text>
+          <Text style={styles.emptySubtext}>
+            Join a space to see it here
+          </Text>
+        </View>
+      )}
+    </View>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Styles
+// -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
@@ -226,6 +214,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 
+  // Search Bar
   searchContainer: {
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
@@ -239,17 +228,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.backgroundSecondary,
     borderRadius: 10,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
 
   searchIcon: {
     fontSize: 16,
-    marginRight: spacing.xs,
+    marginRight: spacing.sm,
   },
 
   searchInput: {
     flex: 1,
-    height: 40,
+    paddingVertical: spacing.sm + 2,
     fontSize: typography.size.md,
     color: colors.text,
   },
@@ -263,14 +252,16 @@ const styles = StyleSheet.create({
   resultCount: {
     fontSize: typography.size.sm,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
     textAlign: 'center',
   },
 
+  // List
   listContent: {
-    paddingVertical: spacing.xs,
+    paddingBottom: 100, // Space for tab bar
   },
 
+  // States
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -293,13 +284,18 @@ const styles = StyleSheet.create({
     fontSize: typography.size.md,
     color: colors.error,
     textAlign: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
 
   retryButton: {
     fontSize: typography.size.md,
     color: colors.primary,
     fontWeight: '600',
+  },
+
+  emptyContainer: {
+    alignItems: 'center',
+    padding: spacing.xxl,
   },
 
   emptyIcon: {
@@ -311,6 +307,12 @@ const styles = StyleSheet.create({
     fontSize: typography.size.md,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+
+  emptySubtext: {
+    fontSize: typography.size.sm,
+    color: colors.textTertiary,
+    marginTop: spacing.xs,
   },
 
   clearSearchButton: {

@@ -1,13 +1,13 @@
 // =============================================================================
 // HOME SCREEN - Main feed view
 // =============================================================================
+// UPDATED: Removed built-in header - TopHeader handles it now
+// =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/constants/colors';
-import { spacing, typography } from '@/constants/layout';
-import { APP_NAME } from '@/constants/config';
 import { Feed } from '@/types';
 import { feedsApi } from '@/services/api';
 import { FeedList } from '@/components/feed';
@@ -138,10 +138,7 @@ export default function HomeScreen() {
   
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{APP_NAME}</Text>
-      </View>
+      {/* NO HEADER HERE - TopHeader in tabs layout handles it */}
       
       {/* Feed List */}
       <FeedList
@@ -171,16 +168,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   
-  header: {
-    backgroundColor: colors.primary,
-    paddingTop: 60,
-    paddingBottom: spacing.lg,
-    paddingHorizontal: spacing.lg,
-  },
-  
-  headerTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.bold,
-    color: colors.textInverse,
-  },
+  // REMOVED: header styles - TopHeader handles it now
 });
