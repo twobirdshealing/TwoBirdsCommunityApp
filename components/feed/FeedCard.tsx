@@ -2,10 +2,7 @@
 // FEED CARD - A single post/feed item in the list
 // =============================================================================
 // Displays author, content, media (images/YouTube), reactions, and comments.
-// Properly detects media from:
-//   - meta.media_preview (single image)
-//   - meta.media_items (multiple images)
-//   - message content (YouTube links)
+// Now includes onCommentPress for opening comment sheet directly!
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
@@ -77,31 +74,17 @@ function detectMedia(feed: Feed): MediaInfo {
     };
   }
   
-  // 4. Check for YouTube in message
-  const youtubePatterns = [
-    /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
-    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-  ];
-  
-  for (const pattern of youtubePatterns) {
-    const match = message.match(pattern) || messageRendered.match(pattern);
-    if (match) {
-      return {
-        type: 'youtube',
-        youtubeId: match[1],
-      };
-    }
+  // 4. Check for YouTube links in message
+  const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const youtubeMatch = message.match(youtubeRegex) || messageRendered.match(youtubeRegex);
+  if (youtubeMatch) {
+    return {
+      type: 'youtube',
+      youtubeId: youtubeMatch[1],
+    };
   }
   
   return { type: 'none' };
-}
-
-function cleanMessageText(text: string): string {
-  return text
-    .replace(/https?:\/\/[^\s]+/gi, '')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 // -----------------------------------------------------------------------------
@@ -114,7 +97,7 @@ interface FeedCardProps {
   onReact?: (type: 'like' | 'love') => void;
   onAuthorPress?: () => void;
   onSpacePress?: () => void;
-  showFullContent?: boolean;
+  onCommentPress?: () => void; // NEW: Open comment sheet directly
 }
 
 // -----------------------------------------------------------------------------
@@ -127,82 +110,53 @@ export function FeedCard({
   onReact,
   onAuthorPress,
   onSpacePress,
-  showFullContent = false,
+  onCommentPress,
 }: FeedCardProps) {
   const [imageLoading, setImageLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
   
-  // Extract author data
+  // Extract data
   const author = feed.xprofile;
   const authorName = author?.display_name || 'Unknown';
   const authorAvatar = author?.avatar || null;
   const isVerified = author?.is_verified === 1;
   
-  const spaceName = feed.space?.title;
+  const spaceName = feed.space?.title || null;
   const timestamp = formatRelativeTime(feed.created_at);
   
-  // Get content and clean it
-  const rawContent = stripHtmlTags(feed.message_rendered || feed.message);
-  const content = cleanMessageText(rawContent);
-  const displayContent = showFullContent ? content : truncateText(content, 200);
+  // Content processing
+  const rawContent = stripHtmlTags(feed.message_rendered || feed.message || '');
+  const displayContent = truncateText(rawContent, 300);
   
-  // Detect media
+  // Media detection
   const media = detectMedia(feed);
-  const hasImage = media.type === 'image' && media.imageUrl && !imageError;
-  const hasImages = media.type === 'images' && media.imageUrls && media.imageUrls.length > 0;
-  const hasYouTube = media.type === 'youtube' && media.youtubeId;
+  const hasImage = media.type === 'image' || media.type === 'images';
+  const hasYouTube = media.type === 'youtube';
   
   // Stats
-  const commentsCount = typeof feed.comments_count === 'string' 
-    ? parseInt(feed.comments_count, 10) 
-    : feed.comments_count || 0;
   const reactionsCount = typeof feed.reactions_count === 'string'
     ? parseInt(feed.reactions_count, 10)
     : feed.reactions_count || 0;
-
-  // Render multi-image grid (2 images side by side)
-  const renderImageGrid = () => {
-    if (!media.imageUrls) return null;
-    const images = media.imageUrls.slice(0, 2); // Show max 2 in preview
-    const remaining = media.imageUrls.length - 2;
-    
-    return (
-      <View style={styles.imageGrid}>
-        {images.map((url, index) => (
-          <View key={index} style={styles.gridImageContainer}>
-            <Image
-              source={{ uri: url }}
-              style={styles.gridImage}
-              resizeMode="cover"
-            />
-            {/* Show "+X" badge on second image if more images */}
-            {index === 1 && remaining > 0 && (
-              <View style={styles.moreImagesBadge}>
-                <Text style={styles.moreImagesText}>+{remaining}</Text>
-              </View>
-            )}
-          </View>
-        ))}
-        {/* Photo count badge */}
-        <View style={styles.photoCountBadge}>
-          <Text style={styles.photoCountText}>{media.imageUrls.length} photos</Text>
-        </View>
-      </View>
-    );
-  };
-
+  const commentsCount = typeof feed.comments_count === 'string'
+    ? parseInt(feed.comments_count, 10)
+    : feed.comments_count || 0;
+  const hasUserReact = feed.has_user_react || false;
+  
   return (
     <TouchableOpacity 
       style={styles.card} 
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.9}
     >
-      {/* ===== Header: Avatar + Author + Timestamp ===== */}
+      {/* ===== Header ===== */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onAuthorPress} style={styles.authorRow}>
+        <TouchableOpacity 
+          style={styles.authorRow}
+          onPress={onAuthorPress}
+          activeOpacity={0.7}
+        >
           <Avatar 
-            source={authorAvatar} 
-            size="md" 
+            source={authorAvatar}
+            size="md"
             verified={isVerified}
             fallback={authorName}
           />
@@ -257,49 +211,40 @@ export function FeedCard({
             resizeMode="cover"
             onLoadStart={() => setImageLoading(true)}
             onLoadEnd={() => setImageLoading(false)}
-            onError={() => {
-              setImageError(true);
-              setImageLoading(false);
-            }}
           />
+          {/* Multiple images indicator */}
+          {media.type === 'images' && media.imageUrls && media.imageUrls.length > 1 && (
+            <View style={styles.imageCount}>
+              <Text style={styles.imageCountText}>
+                +{media.imageUrls.length - 1}
+              </Text>
+            </View>
+          )}
         </View>
       )}
       
-      {/* ===== Multiple Images Grid ===== */}
-      {hasImages && renderImageGrid()}
-      
-      {/* ===== YouTube ===== */}
-      {hasYouTube && (
-        <View style={styles.youtubeContainer}>
+      {/* ===== YouTube Thumbnail ===== */}
+      {hasYouTube && media.youtubeId && (
+        <View style={styles.mediaContainer}>
           <Image 
             source={{ uri: `https://img.youtube.com/vi/${media.youtubeId}/hqdefault.jpg` }}
-            style={styles.youtubeThumbnail}
+            style={styles.mediaImage}
             resizeMode="cover"
           />
-          <View style={styles.youtubeOverlay}>
-            <View style={styles.youtubePlayButton}>
-              <Text style={styles.youtubePlayIcon}>▶</Text>
-            </View>
-          </View>
-          <View style={styles.youtubeLabel}>
-            <Text style={styles.youtubeLabelText}>YouTube</Text>
+          <View style={styles.playButton}>
+            <Text style={styles.playIcon}>▶️</Text>
           </View>
         </View>
       )}
       
-      {/* ===== Image Error State ===== */}
-      {imageError && media.type === 'image' && (
-        <View style={styles.mediaError}>
-          <Text style={styles.mediaErrorIcon}>🖼️</Text>
-          <Text style={styles.mediaErrorText}>Image unavailable</Text>
-        </View>
-      )}
-      
-      {/* ===== Footer: Reactions + Comments ===== */}
+      {/* ===== Footer ===== */}
       <View style={styles.footer}>
         <View style={styles.reactions}>
           <TouchableOpacity 
-            style={styles.reactionButton}
+            style={[
+              styles.reactionButton,
+              hasUserReact && styles.reactionButtonActive
+            ]}
             onPress={() => onReact?.('like')}
           >
             <Text style={styles.reactionIcon}>👍</Text>
@@ -318,12 +263,20 @@ export function FeedCard({
           </TouchableOpacity>
         </View>
         
-        <View style={styles.stats}>
+        {/* Comment button - NOW CLICKABLE! */}
+        <TouchableOpacity 
+          style={styles.commentButton}
+          onPress={(e) => {
+            e.stopPropagation(); // Prevent card press
+            onCommentPress?.();
+          }}
+          activeOpacity={0.7}
+        >
           <Text style={styles.statIcon}>💬</Text>
           <Text style={styles.statCount}>
             {formatCompactNumber(commentsCount)}
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -360,7 +313,7 @@ const styles = StyleSheet.create({
   
   authorName: {
     fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
+    fontWeight: '600',
     color: colors.text,
   },
   
@@ -390,7 +343,7 @@ const styles = StyleSheet.create({
   // Title
   title: {
     fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
+    fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -402,13 +355,13 @@ const styles = StyleSheet.create({
     lineHeight: typography.size.md * 1.5,
   },
   
-  // Single Image
+  // Media
   mediaContainer: {
     marginTop: spacing.md,
     borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
     backgroundColor: colors.skeleton,
-    height: 200,
+    position: 'relative',
   },
   
   mediaPlaceholder: {
@@ -427,126 +380,38 @@ const styles = StyleSheet.create({
     height: 200,
   },
   
-  // Multiple Images Grid
-  imageGrid: {
-    marginTop: spacing.md,
-    flexDirection: 'row',
-    borderRadius: sizing.borderRadius.md,
-    overflow: 'hidden',
-    height: 200,
-    position: 'relative',
-  },
-  
-  gridImageContainer: {
-    flex: 1,
-    marginRight: 2,
-  },
-  
-  gridImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: colors.skeleton,
-  },
-  
-  moreImagesBadge: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
-  moreImagesText: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  
-  photoCountBadge: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  
-  photoCountText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  
-  // Media Error
-  mediaError: {
-    marginTop: spacing.md,
-    height: 200,
-    borderRadius: sizing.borderRadius.md,
-    backgroundColor: colors.skeleton,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
-  mediaErrorIcon: {
-    fontSize: 40,
-    marginBottom: spacing.sm,
-  },
-  
-  mediaErrorText: {
-    fontSize: typography.size.sm,
-    color: colors.textTertiary,
-  },
-  
-  // YouTube
-  youtubeContainer: {
-    marginTop: spacing.md,
-    borderRadius: sizing.borderRadius.md,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  
-  youtubeThumbnail: {
-    width: '100%',
-    height: 200,
-    backgroundColor: colors.skeleton,
-  },
-  
-  youtubeOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  
-  youtubePlayButton: {
-    width: 60,
-    height: 42,
-    backgroundColor: 'rgba(255, 0, 0, 0.9)',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
-  youtubePlayIcon: {
-    color: '#fff',
-    fontSize: 20,
-    marginLeft: 3,
-  },
-  
-  youtubeLabel: {
+  imageCount: {
     position: 'absolute',
     bottom: spacing.sm,
-    left: spacing.sm,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    right: spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingVertical: spacing.xs,
+    borderRadius: sizing.borderRadius.sm,
   },
   
-  youtubeLabelText: {
+  imageCountText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: typography.size.sm,
     fontWeight: '600',
+  },
+  
+  playButton: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -25 }, { translateY: -25 }],
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  playIcon: {
+    fontSize: 24,
+    marginLeft: 4,
   },
   
   // Footer
@@ -568,31 +433,42 @@ const styles = StyleSheet.create({
   reactionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: spacing.lg,
-    padding: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    marginRight: spacing.sm,
+    borderRadius: sizing.borderRadius.full,
+  },
+  
+  reactionButtonActive: {
+    backgroundColor: colors.primaryLight + '30',
   },
   
   reactionIcon: {
     fontSize: 18,
+    marginRight: spacing.xs,
   },
   
   reactionCount: {
-    marginLeft: spacing.xs,
     fontSize: typography.size.sm,
     color: colors.textSecondary,
   },
   
-  stats: {
+  // Comment button
+  commentButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: sizing.borderRadius.full,
+    backgroundColor: colors.backgroundSecondary,
   },
   
   statIcon: {
-    fontSize: 16,
+    fontSize: 18,
+    marginRight: spacing.xs,
   },
   
   statCount: {
-    marginLeft: spacing.xs,
     fontSize: typography.size.sm,
     color: colors.textSecondary,
   },

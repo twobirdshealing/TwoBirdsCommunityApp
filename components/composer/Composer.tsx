@@ -2,15 +2,13 @@
 // COMPOSER - Reusable content creation component
 // =============================================================================
 // Used for: Creating feeds, comments, replies
-// Supports: Text, emojis, image attachments
+// Supports: Text, emojis, image attachments, space selection
 // =============================================================================
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -22,6 +20,7 @@ import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { MediaPreview } from './MediaPreview';
 import { ComposerToolbar } from './ComposerToolbar';
+import { SpaceSelector } from './SpaceSelector';
 import { MediaItem, mediaApi } from '@/services/api/media';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -42,8 +41,9 @@ export interface ComposerProps {
   feedId?: number;
   parentId?: number;
   
-  // For feeds
-  spaceId?: number;
+  // For feeds - can preset a space
+  initialSpaceId?: number;
+  initialSpaceName?: string;
   
   // Callbacks
   onSubmit: (data: ComposerSubmitData) => Promise<void>;
@@ -78,7 +78,8 @@ export function Composer({
   maxLength = 5000,
   feedId,
   parentId,
-  spaceId,
+  initialSpaceId,
+  initialSpaceName,
   onSubmit,
   onCancel,
   onFocus,
@@ -91,6 +92,10 @@ export function Composer({
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  
+  // Space selection (for feeds)
+  const [selectedSpaceId, setSelectedSpaceId] = useState<number | null>(initialSpaceId || null);
+  const [selectedSpaceName, setSelectedSpaceName] = useState<string | null>(initialSpaceName || null);
   
   const inputRef = useRef<TextInput>(null);
 
@@ -106,15 +111,25 @@ export function Composer({
 
   const defaultSubmitLabel = {
     feed: 'Post',
-    comment: 'Post Comment',
+    comment: 'Post',
     reply: 'Reply',
   }[mode];
 
   const showTitle = mode === 'feed';
+  const showSpaceSelector = mode === 'feed';
   const showToolbar = true;
   
   // ---------------------------------------------------------------------------
-  // Image Picker
+  // Space Selection
+  // ---------------------------------------------------------------------------
+
+  const handleSpaceSelect = (spaceId: number, spaceName: string) => {
+    setSelectedSpaceId(spaceId);
+    setSelectedSpaceName(spaceName);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Image Picker (Fixed deprecation)
   // ---------------------------------------------------------------------------
 
   const pickImage = async () => {
@@ -130,9 +145,9 @@ export function Composer({
         return;
       }
 
-      // Pick image
+      // Pick image - FIXED: Use MediaType instead of deprecated MediaTypeOptions
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'], // Fixed deprecation warning
         allowsEditing: false,
         quality: 0.8,
         allowsMultipleSelection: true,
@@ -197,6 +212,12 @@ export function Composer({
       return;
     }
 
+    // Validate space selection for feeds
+    if (mode === 'feed' && !selectedSpaceId) {
+      Alert.alert('Select a Space', 'Please select which space to post in.');
+      return;
+    }
+
     setIsSubmitting(true);
     Keyboard.dismiss();
 
@@ -212,8 +233,8 @@ export function Composer({
       }
 
       // Add space_id for feeds
-      if (mode === 'feed' && spaceId) {
-        submitData.space_id = spaceId;
+      if (mode === 'feed' && selectedSpaceId) {
+        submitData.space_id = selectedSpaceId;
       }
 
       // Add parent_id for replies
@@ -261,7 +282,9 @@ export function Composer({
   // Can Submit?
   // ---------------------------------------------------------------------------
 
-  const canSubmit = (message.trim().length > 0 || attachments.length > 0) && !isSubmitting && !isUploading;
+  const hasContent = message.trim().length > 0 || attachments.length > 0;
+  const hasSpace = mode !== 'feed' || selectedSpaceId !== null;
+  const canSubmit = hasContent && hasSpace && !isSubmitting && !isUploading;
 
   // ---------------------------------------------------------------------------
   // Render
@@ -269,6 +292,17 @@ export function Composer({
 
   return (
     <View style={styles.container}>
+      {/* Space Selector (feeds only) */}
+      {showSpaceSelector && (
+        <View style={styles.spaceRow}>
+          <SpaceSelector
+            selectedSpaceId={selectedSpaceId}
+            selectedSpaceName={selectedSpaceName}
+            onSelect={handleSpaceSelect}
+          />
+        </View>
+      )}
+
       {/* Title Input (feeds only) */}
       {showTitle && (
         <TextInput
@@ -287,6 +321,7 @@ export function Composer({
         style={[
           styles.messageInput,
           isFocused && styles.messageInputFocused,
+          mode === 'comment' && styles.messageInputCompact,
         ]}
         placeholder={placeholder || defaultPlaceholder}
         placeholderTextColor={colors.textTertiary}
@@ -314,8 +349,6 @@ export function Composer({
         <ComposerToolbar
           onImagePress={pickImage}
           onEmojiPress={() => {
-            // For now, show a simple emoji picker hint
-            // Can expand to full emoji picker later
             Alert.alert(
               'Tip',
               'Use your keyboard emoji picker! 😊\n\niOS: Press and hold 🌐\nAndroid: Tap the emoji icon on keyboard'
@@ -345,6 +378,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
+  spaceRow: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+
   titleInput: {
     fontSize: typography.size.md,
     fontWeight: '600',
@@ -362,12 +403,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     paddingBottom: spacing.md,
-    minHeight: 80,
+    minHeight: 100,
     maxHeight: 200,
   },
 
   messageInputFocused: {
     // Can add focus styling here
+  },
+
+  messageInputCompact: {
+    minHeight: 60,
+    maxHeight: 120,
   },
 });
 

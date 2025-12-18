@@ -1,7 +1,8 @@
 // =============================================================================
-// FEED LIST - Scrollable list of feed cards
+// FEED LIST - Scrollable list of feed cards with comment support
 // =============================================================================
 // Uses FlatList for reliable cross-platform scrolling.
+// Now supports onCommentPress for opening comments from any card!
 // =============================================================================
 
 import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
@@ -26,6 +27,7 @@ interface FeedListProps {
   onReact?: (feedId: number, type: 'like' | 'love') => void;
   onAuthorPress?: (username: string) => void;
   onSpacePress?: (spaceSlug: string) => void;
+  onCommentPress?: (feed: Feed) => void; // NEW: Open comment sheet
   onLoadMore?: () => void;
   emptyMessage?: string;
   emptyIcon?: string;
@@ -46,6 +48,7 @@ export function FeedList({
   onReact,
   onAuthorPress,
   onSpacePress,
+  onCommentPress,
   onLoadMore,
   emptyMessage = 'No posts yet',
   emptyIcon = '📭',
@@ -96,48 +99,36 @@ export function FeedList({
           onSpacePress?.(item.space.slug);
         }
       }}
+      onCommentPress={() => onCommentPress?.(item)}
     />
   );
-  
+
   return (
     <View style={styles.container}>
       <FlatList
         data={feeds}
-        renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
-        
-        // Pull to refresh
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={ListHeaderComponent}
         refreshControl={
           onRefresh ? (
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={colors.primary}
               colors={[colors.primary]}
+              tintColor={colors.primary}
             />
           ) : undefined
         }
-        
-        // Infinite scroll
         onEndReached={onLoadMore}
-        onEndReachedThreshold={0.3}
-        
-        // Header
-        ListHeaderComponent={ListHeaderComponent}
-        
-        // Content padding
-        contentContainerStyle={styles.content}
-        
-        // Item spacing
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        
-        // Smooth scrolling
-        showsVerticalScrollIndicator={true}
-        
-        // Performance
+        onEndReachedThreshold={0.5}
+        // Performance optimizations
         removeClippedSubviews={Platform.OS === 'android'}
         maxToRenderPerBatch={10}
-        windowSize={5}
+        windowSize={10}
+        initialNumToRender={10}
       />
     </View>
   );
@@ -153,13 +144,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   
-  content: {
+  list: {
     paddingVertical: spacing.sm,
-    paddingBottom: Platform.OS === 'android' ? 100 : spacing.lg,
-  },
-  
-  separator: {
-    height: spacing.xs,
+    paddingBottom: 100, // Extra padding for bottom tabs
   },
 });
 

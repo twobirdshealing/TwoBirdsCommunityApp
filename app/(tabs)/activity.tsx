@@ -1,8 +1,9 @@
 // =============================================================================
-// ACTIVITY SCREEN - Main community feed with post creation
+// ACTIVITY SCREEN - Main community feed with post/comment creation
 // =============================================================================
 // Shows all posts from spaces user is a member of
 // Includes QuickPostBox for creating new posts
+// Clicking comment icon opens CommentSheet directly!
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -11,7 +12,8 @@ import { useRouter } from 'expo-router';
 import { colors } from '@/constants/colors';
 import { Feed } from '@/types';
 import { feedsApi } from '@/services/api';
-import { FeedList } from '@/components/feed';
+import { FeedList } from '@/components/feed/FeedList';
+import { CommentSheet } from '@/components/feed/CommentSheet';
 import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/composer';
 
 // -----------------------------------------------------------------------------
@@ -21,14 +23,16 @@ import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/
 export default function ActivityScreen() {
   const router = useRouter();
   
-  // State
+  // Feed state
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Modal state
+  // Modal states
   const [showComposer, setShowComposer] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
   
   // ---------------------------------------------------------------------------
   // Fetch Feeds
@@ -98,6 +102,22 @@ export default function ActivityScreen() {
   
   const handleFeedPress = (feed: Feed) => {
     router.push(`/feed/${feed.id}`);
+  };
+  
+  // NEW: Open comment sheet directly
+  const handleCommentPress = (feed: Feed) => {
+    setSelectedFeedId(feed.id);
+    setShowComments(true);
+  };
+  
+  const handleCloseComments = () => {
+    setShowComments(false);
+    setSelectedFeedId(null);
+  };
+  
+  const handleCommentAdded = () => {
+    // Refresh feeds to update comment counts
+    fetchFeeds(true);
   };
   
   const handleReact = async (feedId: number, type: 'like' | 'love') => {
@@ -183,6 +203,7 @@ export default function ActivityScreen() {
         onReact={handleReact}
         onAuthorPress={handleAuthorPress}
         onSpacePress={handleSpacePress}
+        onCommentPress={handleCommentPress}
         emptyMessage="No posts yet. Be the first to share!"
         emptyIcon="🐦"
       />
@@ -192,6 +213,14 @@ export default function ActivityScreen() {
         visible={showComposer}
         onClose={() => setShowComposer(false)}
         onSubmit={handleCreatePost}
+      />
+
+      {/* Comment Sheet */}
+      <CommentSheet
+        visible={showComments}
+        feedId={selectedFeedId}
+        onClose={handleCloseComments}
+        onCommentAdded={handleCommentAdded}
       />
     </View>
   );

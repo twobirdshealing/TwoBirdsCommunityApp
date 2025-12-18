@@ -113,15 +113,18 @@ export async function uploadMedia(
       };
     }
 
+    // API returns { media: { url, width, height, type, media_key } }
+    const media = data.media || data;
+
     return {
       success: true,
       data: {
-        media_id: data.media_id || data.id,
-        url: data.url,
-        type: data.type || 'image',
-        width: data.width,
-        height: data.height,
-        mime_type: data.mime_type,
+        media_id: media.media_key || media.media_id || media.id || Date.now(),
+        url: media.url,
+        type: media.type?.startsWith('image') ? 'image' : media.type || 'image',
+        width: media.width,
+        height: media.height,
+        mime_type: media.type,
       },
     };
   } catch (error) {

@@ -1,16 +1,19 @@
 // =============================================================================
-// COMMENT SHEET - Slide-up comments panel
+// COMMENT SHEET - Slide-up comments panel with real input
 // =============================================================================
-// Displays comments for a post in a bottom sheet that slides up.
-// Instagram-style modal overlay.
+// Displays comments for a post in a bottom sheet.
+// Now includes REAL composer for adding comments!
 // =============================================================================
 
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -24,9 +27,10 @@ import { commentsApi } from '@/services/api';
 import { Avatar } from '@/components/common/Avatar';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { stripHtmlTags } from '@/utils/htmlToText';
+import { Composer, ComposerSubmitData } from '@/components/composer';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SHEET_HEIGHT = SCREEN_HEIGHT * 0.7;
+const SHEET_HEIGHT = SCREEN_HEIGHT * 0.75;
 
 // -----------------------------------------------------------------------------
 // Props
@@ -36,16 +40,18 @@ interface CommentSheetProps {
   visible: boolean;
   feedId: number | null;
   onClose: () => void;
+  onCommentAdded?: () => void; // Callback to refresh parent feed
 }
 
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
-export function CommentSheet({ visible, feedId, onClose }: CommentSheetProps) {
+export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: CommentSheetProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
 
   // ---------------------------------------------------------------------------
   // Fetch comments when sheet opens
@@ -54,6 +60,11 @@ export function CommentSheet({ visible, feedId, onClose }: CommentSheetProps) {
   useEffect(() => {
     if (visible && feedId) {
       fetchComments();
+    }
+    
+    // Reset when closed
+    if (!visible) {
+      setReplyingTo(null);
     }
   }, [visible, feedId]);
 
@@ -79,6 +90,50 @@ export function CommentSheet({ visible, feedId, onClose }: CommentSheetProps) {
   };
 
   // ---------------------------------------------------------------------------
+  // Create Comment
+  // ---------------------------------------------------------------------------
+
+  const handleSubmitComment = async (data: ComposerSubmitData) => {
+    if (!feedId) return;
+
+    try {
+      const response = await commentsApi.createComment(feedId, {
+        message: data.message,
+        content_type: data.content_type,
+        parent_id: data.parent_id,
+        // Note: meta with media_items if attachments exist
+        ...(data.meta && { meta: data.meta }),
+      });
+
+      if (response.success) {
+        // Refresh comments
+        fetchComments();
+        // Clear reply state
+        setReplyingTo(null);
+        // Notify parent
+        onCommentAdded?.();
+      } else {
+        throw new Error(response.error?.message || 'Failed to post comment');
+      }
+    } catch (err) {
+      console.error('Comment error:', err);
+      throw err;
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Reply to comment
+  // ---------------------------------------------------------------------------
+
+  const handleReply = (comment: Comment) => {
+    setReplyingTo(comment);
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  // ---------------------------------------------------------------------------
   // Render comment item
   // ---------------------------------------------------------------------------
 
@@ -89,9 +144,10 @@ export function CommentSheet({ visible, feedId, onClose }: CommentSheetProps) {
     const isVerified = author?.is_verified === 1;
     const content = stripHtmlTags(item.message_rendered || item.message);
     const timestamp = formatRelativeTime(item.created_at);
+    const isReply = item.parent_id !== null;
 
     return (
-      <View style={styles.commentItem}>
+      <View style={[styles.commentItem, isReply && styles.commentReply]}>
         <Avatar
           source={authorAvatar}
           size="sm"
@@ -110,7 +166,10 @@ export function CommentSheet({ visible, feedId, onClose }: CommentSheetProps) {
             <TouchableOpacity style={styles.commentAction}>
               <Text style={styles.commentActionText}>❤️ Like</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.commentAction}>
+            <TouchableOpacity 
+              style={styles.commentAction}
+              onPress={() => handleReply(item)}
+            >
               <Text style={styles.commentActionText}>↩️ Reply</Text>
             </TouchableOpacity>
           </View>
@@ -136,7 +195,10 @@ export function CommentSheet({ visible, feedId, onClose }: CommentSheetProps) {
       </TouchableWithoutFeedback>
 
       {/* Sheet */}
-      <View style={styles.sheet}>
+      <KeyboardAvoidingView
+        style={styles.sheet}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         {/* Handle */}
         <View style={styles.handleContainer}>
           <View style={styles.handle} />
@@ -178,15 +240,29 @@ export function CommentSheet({ visible, feedId, onClose }: CommentSheetProps) {
           />
         )}
 
-        {/* Comment Input (Phase 2 - placeholder for now) */}
-        <View style={styles.inputContainer}>
-          <View style={styles.inputPlaceholder}>
-            <Text style={styles.inputPlaceholderText}>
-              💬 Add a comment... (Coming in Phase 2)
+        {/* Reply indicator */}
+        {replyingTo && (
+          <View style={styles.replyIndicator}>
+            <Text style={styles.replyText}>
+              Replying to <Text style={styles.replyName}>{replyingTo.xprofile?.display_name}</Text>
             </Text>
+            <TouchableOpacity onPress={cancelReply}>
+              <Text style={styles.replyCancelText}>✕</Text>
+            </TouchableOpacity>
           </View>
+        )}
+
+        {/* Comment Input - REAL COMPOSER! */}
+        <View style={styles.inputContainer}>
+          <Composer
+            mode={replyingTo ? 'reply' : 'comment'}
+            feedId={feedId || undefined}
+            parentId={replyingTo?.id}
+            placeholder={replyingTo ? `Reply to ${replyingTo.xprofile?.display_name}...` : 'Write a comment...'}
+            onSubmit={handleSubmitComment}
+          />
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -236,7 +312,7 @@ const styles = StyleSheet.create({
 
   headerTitle: {
     fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
+    fontWeight: '600',
     color: colors.text,
   },
 
@@ -277,7 +353,7 @@ const styles = StyleSheet.create({
 
   retryText: {
     color: colors.textInverse,
-    fontWeight: typography.weight.semibold,
+    fontWeight: '600',
   },
 
   emptyIcon: {
@@ -287,7 +363,7 @@ const styles = StyleSheet.create({
 
   emptyTitle: {
     fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
+    fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.xs,
   },
@@ -299,11 +375,19 @@ const styles = StyleSheet.create({
 
   commentsList: {
     padding: spacing.lg,
+    paddingBottom: 100,
   },
 
   commentItem: {
     flexDirection: 'row',
     marginBottom: spacing.lg,
+  },
+
+  commentReply: {
+    marginLeft: spacing.xl,
+    paddingLeft: spacing.md,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.border,
   },
 
   commentContent: {
@@ -319,7 +403,7 @@ const styles = StyleSheet.create({
 
   commentAuthor: {
     fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
+    fontWeight: '600',
     color: colors.text,
     marginRight: spacing.sm,
   },
@@ -349,23 +433,41 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
 
+  // Reply indicator
+  replyIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.backgroundSecondary,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+
+  replyText: {
+    fontSize: typography.size.sm,
+    color: colors.textSecondary,
+  },
+
+  replyName: {
+    fontWeight: '600',
+    color: colors.text,
+  },
+
+  replyCancelText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    padding: spacing.sm,
+  },
+
+  // Input container
   inputContainer: {
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
-  },
-
-  inputPlaceholder: {
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: sizing.borderRadius.full,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-
-  inputPlaceholderText: {
-    color: colors.textTertiary,
-    fontSize: typography.size.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingBottom: spacing.lg,
   },
 });
 
