@@ -1,0 +1,303 @@
+// =============================================================================
+// TOP HEADER - App-wide header with logo, icons, and user menu
+// =============================================================================
+// Layout: [Logo]                    [Messages] [Notifications] [Avatar ▾]
+// =============================================================================
+
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Alert,
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { colors } from '@/constants/colors';
+import { spacing } from '@/constants/layout';
+import { useAuth } from '@/contexts/AuthContext';
+import { profilesApi } from '@/services/api';
+import { Profile } from '@/types';
+
+import { HeaderIconButton } from './HeaderIconButton';
+import { UserMenu } from './UserMenu';
+
+// -----------------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------------
+
+interface TopHeaderProps {
+  showLogo?: boolean;
+  title?: string;
+}
+
+// -----------------------------------------------------------------------------
+// Component
+// -----------------------------------------------------------------------------
+
+export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { user, logout } = useAuth();
+
+  // State
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  // ---------------------------------------------------------------------------
+  // Fetch Profile
+  // ---------------------------------------------------------------------------
+
+  const fetchProfile = useCallback(async () => {
+    if (!user?.username) return;
+
+    try {
+      const response = await profilesApi.getProfile(user.username);
+      if (response.success && response.data.profile) {
+        setProfile(response.data.profile);
+      }
+    } catch (err) {
+      // Silent fail
+    }
+  }, [user?.username]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  // TODO: Fetch unread counts from API
+  // useEffect(() => {
+  //   fetchUnreadCounts();
+  // }, []);
+
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
+
+  const handleMessagesPress = () => {
+    router.push('/messages');
+  };
+
+  const handleNotificationsPress = () => {
+    router.push('/notifications');
+  };
+
+  const handleProfilePress = () => {
+    if (user?.username) {
+      router.push(`/profile/${user.username}`);
+    }
+  };
+
+  const handleMySpacesPress = () => {
+    // Navigate to Spaces tab
+    router.push('/(tabs)/spaces');
+  };
+
+  const handleBookmarksPress = () => {
+    // TODO: Navigate to bookmarks screen
+    Alert.alert('Coming Soon', 'Bookmarks will be available in a future update.');
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => logout(),
+        },
+      ]
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
+  const avatar = profile?.avatar;
+  const displayName = profile?.display_name || user?.username || 'User';
+  const username = profile?.username || user?.username || 'user';
+  const email = profile?.email;
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.content}>
+        {/* Left: Logo or Title */}
+        <View style={styles.leftSection}>
+          {showLogo ? (
+            <Image
+              source={require('@/assets/images/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          ) : title ? (
+            <Text style={styles.title} numberOfLines={1}>
+              {title}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* Right: Icons + Avatar */}
+        <View style={styles.rightSection}>
+          {/* Messages */}
+          <HeaderIconButton
+            icon="mail-outline"
+            onPress={handleMessagesPress}
+            badgeCount={unreadMessages}
+          />
+
+          {/* Notifications */}
+          <HeaderIconButton
+            icon="notifications-outline"
+            onPress={handleNotificationsPress}
+            badgeCount={unreadNotifications}
+          />
+
+          {/* Avatar with dropdown arrow */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.avatarButton,
+              pressed && styles.avatarButtonPressed,
+            ]}
+            onPress={() => setMenuVisible(true)}
+          >
+            {avatar ? (
+              <Image source={{ uri: avatar }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Text style={styles.avatarText}>
+                  {displayName.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <Ionicons
+              name="chevron-down"
+              size={14}
+              color={colors.textSecondary}
+              style={styles.dropdownArrow}
+            />
+          </Pressable>
+        </View>
+      </View>
+
+      {/* User Menu Dropdown */}
+      <UserMenu
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        user={{
+          displayName,
+          username,
+          email,
+          avatar,
+        }}
+        onProfilePress={handleProfilePress}
+        onMySpacesPress={handleMySpacesPress}
+        onBookmarksPress={handleBookmarksPress}
+        onLogout={handleLogout}
+      />
+    </View>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Styles
+// -----------------------------------------------------------------------------
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    minHeight: 52,
+  },
+
+  // Left Section
+  leftSection: {
+    flex: 1,
+  },
+
+  logo: {
+    width: 140,
+    height: 36,
+  },
+
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+
+  // Right Section
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  // Avatar Button
+  avatarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: spacing.xs,
+    paddingLeft: spacing.xs,
+    paddingRight: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 20,
+  },
+
+  avatarButtonPressed: {
+    backgroundColor: colors.backgroundSecondary,
+  },
+
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.skeleton,
+  },
+
+  avatarPlaceholder: {
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  avatarText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  dropdownArrow: {
+    marginLeft: 4,
+  },
+});
+
+export default TopHeader;

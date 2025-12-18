@@ -1,7 +1,7 @@
 // =============================================================================
 // ROOT LAYOUT - App-wide configuration with Authentication
 // =============================================================================
-// FIXED: Route registrations match actual file structure
+// Routes: tabs, login, space, feed, profile, messages, notifications
 // =============================================================================
 
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -45,104 +45,88 @@ function RootLayoutNav() {
     <>
       <Stack>
         {/* ============================================= */}
-        {/* TABS - Always visible base layer             */}
+        {/* TABS - Main app screens                       */}
         {/* ============================================= */}
-        <Stack.Screen 
-          name="(tabs)" 
+        <Stack.Screen
+          name="(tabs)"
           options={{ headerShown: false }}
         />
-        
+
         {/* ============================================= */}
         {/* AUTH                                          */}
         {/* ============================================= */}
-        <Stack.Screen 
-          name="login" 
+        <Stack.Screen
+          name="login"
           options={{ headerShown: false }}
         />
-        
+
         {/* ============================================= */}
         {/* SPACE ROUTES                                  */}
-        {/* Folder: app/space/[slug]/                     */}
-        {/* - index.tsx = Space detail page               */}
-        {/* - members.tsx = Members list                  */}
         {/* ============================================= */}
-        
-        {/* Space detail - maps to app/space/[slug]/index.tsx */}
-        <Stack.Screen 
-          name="space/[slug]/index" 
-          options={{ 
+
+        {/* Space detail page */}
+        <Stack.Screen
+          name="space/[slug]/index"
+          options={{
             headerShown: false,
-          }} 
+          }}
         />
-        
-        {/* Space members - maps to app/space/[slug]/members.tsx */}
-        <Stack.Screen 
-          name="space/[slug]/members" 
-          options={{ 
+
+        {/* Space members */}
+        <Stack.Screen
+          name="space/[slug]/members"
+          options={{
             headerShown: true,
             title: 'Members',
-          }} 
+          }}
         />
-        
+
         {/* ============================================= */}
         {/* FEED DETAIL                                   */}
         {/* ============================================= */}
-        
-        {/* Full-screen post viewer */}
-        <Stack.Screen 
-          name="feed/[id]" 
-          options={{ 
+        <Stack.Screen
+          name="feed/[id]"
+          options={{
             presentation: 'fullScreenModal',
             headerShown: false,
             animation: 'slide_from_bottom',
-          }} 
+          }}
         />
-        
+
         {/* ============================================= */}
-        {/* PROFILE ROUTES                                */}
+        {/* PROFILE                                       */}
         {/* ============================================= */}
-        
-        {/* Profile detail page (other users) */}
-        {/* Maps to app/profile/[username].tsx */}
-        <Stack.Screen 
-          name="profile/[username]" 
-          options={{ 
+        <Stack.Screen
+          name="profile/[username]"
+          options={{
             presentation: 'card',
             headerShown: true,
-          }} 
+          }}
         />
-        
+
         {/* ============================================= */}
-        {/* MODALS (Uncomment when files exist)           */}
+        {/* MESSAGES (from header icon)                   */}
         {/* ============================================= */}
-        
-        {/* Create post modal - uncomment when app/create-post.tsx exists
-        <Stack.Screen 
-          name="create-post" 
-          options={{ 
-            presentation: 'modal',
+        <Stack.Screen
+          name="messages"
+          options={{
+            presentation: 'card',
             headerShown: true,
-            title: 'Create Post',
-          }} 
+            title: 'Messages',
+          }}
         />
-        */}
-        
-        {/* Media viewer modal - uncomment when app/media-viewer.tsx exists
-        <Stack.Screen 
-          name="media-viewer" 
-          options={{ 
-            presentation: 'fullScreenModal',
-            headerShown: false,
-          }} 
+
+        {/* ============================================= */}
+        {/* NOTIFICATIONS (from header icon)              */}
+        {/* ============================================= */}
+        <Stack.Screen
+          name="notifications"
+          options={{
+            presentation: 'card',
+            headerShown: true,
+            title: 'Notifications',
+          }}
         />
-        */}
-        
-        {/* Generic modal fallback - uncomment when app/modal.tsx exists
-        <Stack.Screen 
-          name="modal" 
-          options={{ presentation: 'modal' }} 
-        />
-        */}
       </Stack>
       <StatusBar style="dark" />
     </>

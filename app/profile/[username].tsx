@@ -1,9 +1,11 @@
 // =============================================================================
-// USER PROFILE SCREEN - View other users' profiles
+// USER PROFILE SCREEN - Unified profile view
 // =============================================================================
 // Route: /profile/[username]
-// This is for viewing OTHER users - not the logged-in user's own profile
-// (The user's own profile is at app/(tabs)/profile.tsx)
+// Works for viewing your OWN profile and OTHER users' profiles
+// Shows different actions based on isOwnProfile:
+//   - Own: Edit Profile
+//   - Other: Follow, Message
 // =============================================================================
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -20,12 +22,22 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { profilesApi } from '@/services/api';
-import { Profile, Feed } from '@/types';
+import { Profile, Feed, ProfileComment } from '@/types';
+
+// Import existing profile components
+import {
+  AboutTab,
+  CommentsTab,
+  ProfileHeader,
+  ProfileTab,
+  ProfileTabs,
+} from '@/components/profile';
+import { FeedCard } from '@/components/feed';
 
 // -----------------------------------------------------------------------------
 // Helper: Format numbers
@@ -46,19 +58,28 @@ export default function UserProfileScreen() {
   const insets = useSafeAreaInsets();
   const { username } = useLocalSearchParams<{ username: string }>();
   const { user: currentUser } = useAuth();
-  
+
+  // Check if viewing own profile
+  const isOwnProfile = currentUser?.username === username;
+
   // State
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Follow state
+
+  // Tabs
+  const [activeTab, setActiveTab] = useState<ProfileTab>('about');
+
+  // Tab content
+  const [posts, setPosts] = useState<Feed[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [comments, setComments] = useState<ProfileComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+
+  // Follow state (for other users only)
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
-  
-  // Check if viewing own profile (redirect to tabs profile)
-  const isOwnProfile = currentUser?.username === username;
 
   // ---------------------------------------------------------------------------
   // Fetch Profile
@@ -83,8 +104,6 @@ export default function UserProfileScreen() {
 
       if (response.success && response.data.profile) {
         setProfile(response.data.profile);
-        // TODO: Check if current user is following this user
-        // API doesn't seem to return this directly, may need separate call
       } else {
         setError('Failed to load profile');
       }
@@ -98,10 +117,72 @@ export default function UserProfileScreen() {
   }, [username]);
 
   useEffect(() => {
-    // If viewing own profile, could redirect to tabs profile
-    // But for now, just show it here too
     fetchProfile();
   }, [fetchProfile]);
+
+  // ---------------------------------------------------------------------------
+  // Fetch Tab Content
+  // ---------------------------------------------------------------------------
+
+  const fetchPosts = useCallback(async () => {
+    if (!username || postsLoading) return;
+
+    try {
+      setPostsLoading(true);
+      const response = await profilesApi.getUserPosts(username, {
+        page: 1,
+        per_page: 20,
+      });
+
+      if (response.success && response.data.feeds) {
+        setPosts(response.data.feeds);
+      } else {
+        setPosts([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch posts:', err);
+      setPosts([]);
+    } finally {
+      setPostsLoading(false);
+    }
+  }, [username, postsLoading]);
+
+  const fetchComments = useCallback(async () => {
+    if (!username || commentsLoading) return;
+
+    try {
+      setCommentsLoading(true);
+      const response = await profilesApi.getUserComments(username, {
+        page: 1,
+        per_page: 20,
+      });
+
+      if (response.success && response.data.comments) {
+        setComments(response.data.comments);
+      } else {
+        setComments([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch comments:', err);
+      setComments([]);
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [username, commentsLoading]);
+
+  // Load tab content when tab changes
+  useEffect(() => {
+    if (!profile) return;
+
+    switch (activeTab) {
+      case 'posts':
+        if (posts.length === 0) fetchPosts();
+        break;
+      case 'comments':
+        if (comments.length === 0) fetchComments();
+        break;
+    }
+  }, [activeTab, profile, fetchPosts, fetchComments]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -112,15 +193,14 @@ export default function UserProfileScreen() {
   };
 
   const handleFollowPress = async () => {
-    if (!username || followLoading) return;
-    
+    if (!username || followLoading || isOwnProfile) return;
+
     try {
       setFollowLoading(true);
-      
+
       if (isFollowing) {
         await profilesApi.unfollowUser(username);
         setIsFollowing(false);
-        // Update follower count optimistically
         if (profile) {
           setProfile({
             ...profile,
@@ -130,7 +210,6 @@ export default function UserProfileScreen() {
       } else {
         await profilesApi.followUser(username);
         setIsFollowing(true);
-        // Update follower count optimistically
         if (profile) {
           setProfile({
             ...profile,
@@ -154,6 +233,23 @@ export default function UserProfileScreen() {
     );
   };
 
+  const handleEditProfilePress = () => {
+    // TODO: Navigate to edit profile screen
+    Alert.alert('Coming Soon', 'Edit profile will be available soon.');
+  };
+
+  const handleCoverPhotoPress = () => {
+    if (isOwnProfile) {
+      Alert.alert('Coming Soon', 'Cover photo editing will be available soon.');
+    }
+  };
+
+  const handleAvatarPress = () => {
+    if (isOwnProfile) {
+      Alert.alert('Coming Soon', 'Avatar editing will be available soon.');
+    }
+  };
+
   const handleFollowersPress = () => {
     // TODO: Navigate to followers list
     Alert.alert('Coming Soon', 'Followers list will be available soon.');
@@ -162,6 +258,66 @@ export default function UserProfileScreen() {
   const handleFollowingPress = () => {
     // TODO: Navigate to following list
     Alert.alert('Coming Soon', 'Following list will be available soon.');
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render Tab Content
+  // ---------------------------------------------------------------------------
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'about':
+        return <AboutTab profile={profile!} />;
+
+      case 'posts':
+        if (postsLoading) {
+          return (
+            <View style={styles.tabLoading}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          );
+        }
+        if (posts.length === 0) {
+          return (
+            <View style={styles.emptyTab}>
+              <Text style={styles.emptyIcon}>📝</Text>
+              <Text style={styles.emptyText}>No posts yet</Text>
+            </View>
+          );
+        }
+        return (
+          <View style={styles.postsList}>
+            {posts.map((post) => (
+              <FeedCard
+                key={post.id}
+                feed={post}
+                onPress={() => router.push(`/feed/${post.id}`)}
+              />
+            ))}
+          </View>
+        );
+
+      case 'comments':
+        if (commentsLoading) {
+          return (
+            <View style={styles.tabLoading}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          );
+        }
+        if (comments.length === 0) {
+          return (
+            <View style={styles.emptyTab}>
+              <Text style={styles.emptyIcon}>💬</Text>
+              <Text style={styles.emptyText}>No comments yet</Text>
+            </View>
+          );
+        }
+        return <CommentsTab comments={comments} />;
+
+      default:
+        return null;
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -215,9 +371,6 @@ export default function UserProfileScreen() {
   // Render: Profile
   // ---------------------------------------------------------------------------
 
-  const isVerified = profile?.is_verified === 1;
-  const coverPhoto = profile?.cover_photo || profile?.meta?.cover_photo;
-
   return (
     <>
       <Stack.Screen
@@ -228,140 +381,78 @@ export default function UserProfileScreen() {
         }}
       />
 
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={[
-          styles.contentContainer,
-          { paddingBottom: insets.bottom + 20 },
-        ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
+      <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+        <ScrollView
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+        >
+          {/* Profile Header */}
+          <ProfileHeader
+            profile={profile!}
+            isOwnProfile={isOwnProfile}
+            onCoverPhotoPress={handleCoverPhotoPress}
+            onAvatarPress={handleAvatarPress}
+            onFollowersPress={handleFollowersPress}
+            onFollowingPress={handleFollowingPress}
           />
-        }
-      >
-        {/* Cover Photo */}
-        <View style={styles.coverContainer}>
-          {coverPhoto ? (
-            <Image source={{ uri: coverPhoto }} style={styles.coverPhoto} />
-          ) : (
-            <View style={[styles.coverPhoto, styles.coverPlaceholder]} />
-          )}
-        </View>
 
-        {/* Profile Info */}
-        <View style={styles.profileSection}>
-          {/* Avatar */}
-          <View style={styles.avatarContainer}>
-            {profile?.avatar ? (
-              <Image source={{ uri: profile.avatar }} style={styles.avatar} />
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            {isOwnProfile ? (
+              // Own Profile: Edit button
+              <Pressable style={styles.editButton} onPress={handleEditProfilePress}>
+                <Ionicons name="create-outline" size={18} color={colors.text} />
+                <Text style={styles.editButtonText}>Edit Profile</Text>
+              </Pressable>
             ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarText}>
-                  {(profile?.display_name || 'U').charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
-            {isVerified && (
-              <View style={styles.verifiedBadge}>
-                <Text style={styles.verifiedIcon}>✓</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Name & Username */}
-          <Text style={styles.displayName}>{profile?.display_name}</Text>
-          <Text style={styles.username}>@{profile?.username}</Text>
-
-          {/* Bio */}
-          {profile?.short_description && (
-            <Text style={styles.bio}>{profile.short_description}</Text>
-          )}
-
-          {/* Stats Row */}
-          <View style={styles.statsRow}>
-            <Pressable style={styles.stat} onPress={handleFollowingPress}>
-              <Text style={styles.statValue}>
-                {formatCompactNumber(profile?.followings_count || 0)}
-              </Text>
-              <Text style={styles.statLabel}>Following</Text>
-            </Pressable>
-
-            <View style={styles.statDivider} />
-
-            <Pressable style={styles.stat} onPress={handleFollowersPress}>
-              <Text style={styles.statValue}>
-                {formatCompactNumber(profile?.followers_count || 0)}
-              </Text>
-              <Text style={styles.statLabel}>Followers</Text>
-            </Pressable>
-
-            {(profile?.total_points || 0) > 0 && (
+              // Other's Profile: Follow + Message
               <>
-                <View style={styles.statDivider} />
-                <View style={styles.stat}>
-                  <Text style={styles.statValue}>
-                    {formatCompactNumber(profile?.total_points || 0)}
-                  </Text>
-                  <Text style={styles.statLabel}>Points</Text>
-                </View>
+                <Pressable
+                  style={[
+                    styles.followButton,
+                    isFollowing && styles.followingButton,
+                  ]}
+                  onPress={handleFollowPress}
+                  disabled={followLoading}
+                >
+                  {followLoading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={isFollowing ? colors.primary : '#fff'}
+                    />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.followButtonText,
+                        isFollowing && styles.followingButtonText,
+                      ]}
+                    >
+                      {isFollowing ? 'Following' : 'Follow'}
+                    </Text>
+                  )}
+                </Pressable>
+
+                <Pressable style={styles.messageButton} onPress={handleMessagePress}>
+                  <Ionicons name="mail-outline" size={20} color={colors.text} />
+                </Pressable>
               </>
             )}
           </View>
 
-          {/* Action Buttons */}
-          {!isOwnProfile && (
-            <View style={styles.actionButtons}>
-              {/* Follow Button */}
-              <Pressable
-                style={[
-                  styles.followButton,
-                  isFollowing && styles.followingButton,
-                ]}
-                onPress={handleFollowPress}
-                disabled={followLoading}
-              >
-                {followLoading ? (
-                  <ActivityIndicator size="small" color={isFollowing ? colors.primary : '#fff'} />
-                ) : (
-                  <Text
-                    style={[
-                      styles.followButtonText,
-                      isFollowing && styles.followingButtonText,
-                    ]}
-                  >
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </Text>
-                )}
-              </Pressable>
+          {/* Tabs */}
+          <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-              {/* Message Button */}
-              <Pressable style={styles.messageButton} onPress={handleMessagePress}>
-                <Text style={styles.messageButtonIcon}>💬</Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
-
-        {/* Member Since */}
-        {profile?.created_at && (
-          <View style={styles.infoSection}>
-            <Text style={styles.infoLabel}>
-              Member since {new Date(profile.created_at).toLocaleDateString('en-US', {
-                month: 'long',
-                year: 'numeric',
-              })}
-            </Text>
-          </View>
-        )}
-
-        {/* TODO: Add tabs for Posts, Comments, etc. */}
-        {/* For now, just show basic profile info */}
-        
-      </ScrollView>
+          {/* Tab Content */}
+          <View style={styles.tabContent}>{renderTabContent()}</View>
+        </ScrollView>
+      </View>
     </>
   );
 }
@@ -376,8 +467,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 
-  contentContainer: {
-    flexGrow: 1,
+  scrollView: {
+    flex: 1,
   },
 
   centerContainer: {
@@ -418,136 +509,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Cover Photo
-  coverContainer: {
-    height: 150,
-    backgroundColor: colors.backgroundSecondary,
-  },
-
-  coverPhoto: {
-    width: '100%',
-    height: '100%',
-  },
-
-  coverPlaceholder: {
-    backgroundColor: colors.primary + '30',
-  },
-
-  // Profile Section
-  profileSection: {
+  // Action Buttons
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
 
-  avatarContainer: {
-    marginTop: -50,
-    position: 'relative',
-  },
-
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 4,
-    borderColor: colors.surface,
-    backgroundColor: colors.skeleton,
-  },
-
-  avatarPlaceholder: {
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
+  editButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.backgroundSecondary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: 20,
+    gap: spacing.xs,
   },
 
-  avatarText: {
-    fontSize: 40,
+  editButtonText: {
+    fontSize: typography.size.md,
     fontWeight: '600',
-    color: '#fff',
-  },
-
-  verifiedBadge: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#1976d2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: colors.surface,
-  },
-
-  verifiedIcon: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-
-  displayName: {
-    fontSize: typography.size.xl,
-    fontWeight: '700',
     color: colors.text,
-    marginTop: spacing.sm,
-  },
-
-  username: {
-    fontSize: typography.size.md,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-
-  bio: {
-    fontSize: typography.size.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    lineHeight: 22,
-  },
-
-  // Stats
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-
-  stat: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-  },
-
-  statValue: {
-    fontSize: typography.size.lg,
-    fontWeight: '700',
-    color: colors.text,
-  },
-
-  statLabel: {
-    fontSize: typography.size.sm,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: colors.border,
-  },
-
-  // Action Buttons
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.md,
-    gap: spacing.sm,
   },
 
   followButton: {
@@ -584,20 +572,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  messageButtonIcon: {
-    fontSize: 20,
+  // Tab Content
+  tabContent: {
+    minHeight: 300,
   },
 
-  // Info Section
-  infoSection: {
-    padding: spacing.lg,
-    backgroundColor: colors.surface,
-    marginTop: spacing.sm,
+  tabLoading: {
+    padding: spacing.xxl,
+    alignItems: 'center',
   },
 
-  infoLabel: {
-    fontSize: typography.size.sm,
-    color: colors.textTertiary,
-    textAlign: 'center',
+  emptyTab: {
+    padding: spacing.xxl,
+    alignItems: 'center',
+  },
+
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+
+  emptyText: {
+    fontSize: typography.size.md,
+    color: colors.textSecondary,
+  },
+
+  postsList: {
+    padding: spacing.sm,
   },
 });
