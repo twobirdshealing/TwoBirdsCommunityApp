@@ -1,7 +1,7 @@
 // =============================================================================
 // ROOT LAYOUT - App-wide configuration with Authentication
 // =============================================================================
-// FIXED: Added space/[slug] route registration for proper navigation
+// FIXED: Route registrations match actual file structure
 // =============================================================================
 
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -61,20 +61,31 @@ function RootLayoutNav() {
         />
         
         {/* ============================================= */}
-        {/* SPACE ROUTES - Navigate from spaces list      */}
+        {/* SPACE ROUTES                                  */}
+        {/* Folder: app/space/[slug]/                     */}
+        {/* - index.tsx = Space detail page               */}
+        {/* - members.tsx = Members list                  */}
         {/* ============================================= */}
         
-        {/* Space detail page (dynamic route) */}
+        {/* Space detail - maps to app/space/[slug]/index.tsx */}
         <Stack.Screen 
-          name="space/[slug]" 
+          name="space/[slug]/index" 
           options={{ 
-            headerShown: false,  // Header is controlled by the page itself
+            headerShown: false,
+          }} 
+        />
+        
+        {/* Space members - maps to app/space/[slug]/members.tsx */}
+        <Stack.Screen 
+          name="space/[slug]/members" 
+          options={{ 
+            headerShown: true,
+            title: 'Members',
           }} 
         />
         
         {/* ============================================= */}
-        {/* MODALS - Hide bottom tabs                     */}
-        {/* Full-screen immersive experiences             */}
+        {/* FEED DETAIL                                   */}
         {/* ============================================= */}
         
         {/* Full-screen post viewer */}
@@ -87,30 +98,12 @@ function RootLayoutNav() {
           }} 
         />
         
-        {/* Create post modal */}
-        <Stack.Screen 
-          name="create-post" 
-          options={{ 
-            presentation: 'modal',
-            headerShown: true,
-            title: 'Create Post',
-          }} 
-        />
-        
-        {/* Media viewer modal */}
-        <Stack.Screen 
-          name="media-viewer" 
-          options={{ 
-            presentation: 'fullScreenModal',
-            headerShown: false,
-          }} 
-        />
-        
         {/* ============================================= */}
-        {/* CARD PAGES - Keep bottom tabs visible         */}
+        {/* PROFILE ROUTES                                */}
         {/* ============================================= */}
         
         {/* Profile detail page (other users) */}
+        {/* Maps to app/profile/[username].tsx */}
         <Stack.Screen 
           name="profile/[username]" 
           options={{ 
@@ -119,11 +112,37 @@ function RootLayoutNav() {
           }} 
         />
         
-        {/* Generic modal fallback */}
+        {/* ============================================= */}
+        {/* MODALS (Uncomment when files exist)           */}
+        {/* ============================================= */}
+        
+        {/* Create post modal - uncomment when app/create-post.tsx exists
+        <Stack.Screen 
+          name="create-post" 
+          options={{ 
+            presentation: 'modal',
+            headerShown: true,
+            title: 'Create Post',
+          }} 
+        />
+        */}
+        
+        {/* Media viewer modal - uncomment when app/media-viewer.tsx exists
+        <Stack.Screen 
+          name="media-viewer" 
+          options={{ 
+            presentation: 'fullScreenModal',
+            headerShown: false,
+          }} 
+        />
+        */}
+        
+        {/* Generic modal fallback - uncomment when app/modal.tsx exists
         <Stack.Screen 
           name="modal" 
           options={{ presentation: 'modal' }} 
         />
+        */}
       </Stack>
       <StatusBar style="dark" />
     </>
