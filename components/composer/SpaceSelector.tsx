@@ -57,9 +57,9 @@ export function SpaceSelector({
       const response = await spacesApi.getSpaces();
       
       if (response.success) {
-        // Filter to only spaces user can post in (joined spaces)
+        // FIXED: Use is_member instead of is_joined (matches Space type)
         const joinedSpaces = response.data.spaces.filter(
-          (s: Space) => s.is_joined
+          (s: Space) => s.is_member
         );
         setSpaces(joinedSpaces);
       }
@@ -132,10 +132,11 @@ export function SpaceSelector({
           size={18}
           color={selectedSpaceId ? colors.primary : colors.textSecondary}
         />
+        {/* FIXED: Proper style array to avoid type error */}
         <Text
           style={[
             styles.triggerText,
-            selectedSpaceId && styles.triggerTextSelected,
+            selectedSpaceId ? styles.triggerTextSelected : null,
           ]}
           numberOfLines={1}
         >

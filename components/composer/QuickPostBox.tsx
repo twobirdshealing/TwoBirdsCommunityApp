@@ -1,7 +1,7 @@
 // =============================================================================
 // QUICK POST BOX - Simple composer prompt at top of feed
 // =============================================================================
-// Shows avatar + "What's happening?" - taps to expand to full composer
+// Shows avatar + "What's happening?" - taps to open full composer
 // =============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -37,7 +37,7 @@ export function QuickPostBox({
   const { user } = useAuth();
   const [avatar, setAvatar] = useState<string | null>(null);
 
-  // Fetch avatar
+  // Fetch avatar from profile API
   useEffect(() => {
     const fetchAvatar = async () => {
       if (!user?.username) return;
@@ -48,14 +48,15 @@ export function QuickPostBox({
           setAvatar(response.data.profile.avatar);
         }
       } catch (err) {
-        // Silent fail
+        // Silent fail - will show fallback
       }
     };
 
     fetchAvatar();
   }, [user?.username]);
 
-  const displayName = user?.display_name || user?.username || 'User';
+  // FIXED: Use displayName (camelCase) to match User type in AuthContext
+  const displayName = user?.displayName || user?.username || 'User';
   const firstName = displayName.split(' ')[0];
 
   return (
@@ -77,11 +78,9 @@ export function QuickPostBox({
         )}
       </View>
 
-      {/* Input Placeholder */}
-      <View style={styles.inputContainer}>
-        <Text style={styles.placeholder}>
-          {placeholder.replace('{name}', firstName)}
-        </Text>
+      {/* Placeholder text */}
+      <View style={styles.inputPlaceholder}>
+        <Text style={styles.placeholderText}>{placeholder}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -96,10 +95,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    marginHorizontal: spacing.md,
+    marginVertical: spacing.sm,
+    padding: spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
 
   avatarContainer: {
@@ -110,7 +111,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.skeleton,
   },
 
   avatarPlaceholder: {
@@ -120,22 +120,22 @@ const styles = StyleSheet.create({
   },
 
   avatarText: {
-    fontSize: 16,
+    color: colors.textInverse,
+    fontSize: typography.size.md,
     fontWeight: '600',
-    color: '#fff',
   },
 
-  inputContainer: {
+  inputPlaceholder: {
     flex: 1,
     backgroundColor: colors.backgroundSecondary,
-    borderRadius: 20,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
   },
 
-  placeholder: {
-    fontSize: typography.size.md,
+  placeholderText: {
     color: colors.textTertiary,
+    fontSize: typography.size.md,
   },
 });
 

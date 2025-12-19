@@ -2,7 +2,7 @@
 // SPACE PAGE - Individual space feed view with post creation
 // =============================================================================
 // Route: /space/[slug]
-// UPDATED: Added QuickPostBox + CreatePostModal with space pre-selected
+// FIXED: Changed is_joined to is_member to match Space type
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -255,8 +255,8 @@ export default function SpacePage() {
   const ListHeader = (
     <>
       <SpaceHeader space={space} />
-      {/* Quick Post Box - only show if user is a member */}
-      {space.is_joined && (
+      {/* FIXED: Use is_member instead of is_joined */}
+      {space.is_member && (
         <QuickPostBox
           placeholder={`Post to ${space.title}...`}
           onPress={() => setShowComposer(true)}
