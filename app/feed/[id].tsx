@@ -3,6 +3,7 @@
 // =============================================================================
 // Route: /feed/{id}?space={slug}&context={space|home|profile}
 // Full-screen modal - NO bottom tabs, HAS top nav with back button
+// UPDATED: CommentSheet opens when tapping comment icon on FullScreenPost
 // =============================================================================
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -113,25 +114,30 @@ export default function FeedDetailScreen() {
     router.back();
   };
 
-  const handleReact = async (feedId: number, type: 'like' | 'love') => {
+  const handleReact = async (feedId: number, type: 'like') => {
+    const feed = feeds.find(f => f.id === feedId);
+    if (!feed) return;
+    
+    const hasUserReact = feed.has_user_react || false;
+
     try {
-      const response = await feedsApi.reactToFeed(feedId, type);
+      const response = await feedsApi.reactToFeed(feedId, type, hasUserReact);
       
       if (response.success) {
         setFeeds(prevFeeds =>
-          prevFeeds.map(feed => {
-            if (feed.id === feedId) {
-              const currentCount = typeof feed.reactions_count === 'string'
-                ? parseInt(feed.reactions_count, 10)
-                : feed.reactions_count || 0;
+          prevFeeds.map(f => {
+            if (f.id === feedId) {
+              const currentCount = typeof f.reactions_count === 'string'
+                ? parseInt(f.reactions_count, 10)
+                : f.reactions_count || 0;
               
-              const newCount = response.data.data.action === 'added'
-                ? currentCount + 1
-                : Math.max(0, currentCount - 1);
-              
-              return { ...feed, reactions_count: newCount };
+              return {
+                ...f,
+                has_user_react: !hasUserReact,
+                reactions_count: hasUserReact ? currentCount - 1 : currentCount + 1,
+              };
             }
-            return feed;
+            return f;
           })
         );
       }
@@ -140,7 +146,8 @@ export default function FeedDetailScreen() {
     }
   };
 
-  const handleOpenComments = (feedId: number) => {
+  // Open comment sheet for specific feed
+  const handleCommentPress = (feedId: number) => {
     setSelectedFeedId(feedId);
     setShowComments(true);
   };
@@ -150,71 +157,71 @@ export default function FeedDetailScreen() {
     setSelectedFeedId(null);
   };
 
+  const handleCommentAdded = () => {
+    // Refresh to update comment count
+    fetchFeeds();
+  };
+
   const handleAuthorPress = (username: string) => {
     router.push(`/profile/${username}`);
   };
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
-      setCurrentIndex(viewableItems[0].index);
-    }
-  }).current;
+  // ---------------------------------------------------------------------------
+  // Render item
+  // ---------------------------------------------------------------------------
 
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50,
-  }).current;
-
-  const getItemLayout = (_data: any, index: number) => ({
-    length: SCREEN_HEIGHT,
-    offset: SCREEN_HEIGHT * index,
-    index,
-  });
+  const renderItem = ({ item, index }: { item: Feed; index: number }) => (
+    <FullScreenPost
+      feed={item}
+      isActive={index === currentIndex}
+      onClose={handleClose}
+      onReact={(type) => handleReact(item.id, type)}
+      onCommentPress={() => handleCommentPress(item.id)}
+      onAuthorPress={() => handleAuthorPress(item.xprofile?.username || '')}
+      bottomInset={insets.bottom}
+    />
+  );
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Loading state
   // ---------------------------------------------------------------------------
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        {/* CRITICAL: Stack.Screen for top nav */}
-        <Stack.Screen 
-          options={{ 
-            headerShown: true,
-            title: pageTitle,
-            headerBackTitle: 'Back',
-          }} 
-        />
+      <View style={[styles.container, styles.centered]}>
+        <Stack.Screen options={{ headerShown: false }} />
         <StatusBar barStyle="light-content" />
-        <ActivityIndicator size="large" color={colors.textInverse} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Error state
+  // ---------------------------------------------------------------------------
 
   if (error || feeds.length === 0) {
     return (
-      <View style={styles.errorContainer}>
-        {/* CRITICAL: Stack.Screen for top nav */}
-        <Stack.Screen 
-          options={{ 
-            headerShown: true,
-            title: pageTitle,
-            headerBackTitle: 'Back',
-          }} 
-        />
+      <View style={[styles.container, styles.centered]}>
+        <Stack.Screen options={{ headerShown: false }} />
         <StatusBar barStyle="light-content" />
-        <Text style={styles.errorText}>{error || 'Post not found'}</Text>
+        <Text style={styles.errorText}>{error || 'No posts found'}</Text>
       </View>
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Main render
+  // ---------------------------------------------------------------------------
+
   return (
     <View style={styles.container}>
-      {/* CRITICAL: Stack.Screen for top nav with title */}
       <Stack.Screen 
         options={{ 
           headerShown: true,
           title: pageTitle,
+          headerStyle: { backgroundColor: '#000' },
+          headerTintColor: '#fff',
           headerBackTitle: 'Back',
         }} 
       />
@@ -224,48 +231,48 @@ export default function FeedDetailScreen() {
         ref={flatListRef}
         data={feeds}
         keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item, index }) => (
-          <View style={{ height: SCREEN_HEIGHT }}>
-            <FullScreenPost
-              feed={item}
-              isActive={index === currentIndex}
-              onClose={handleClose}
-              onReact={(type) => handleReact(item.id, type)}
-              onCommentPress={() => handleOpenComments(item.id)}
-              onAuthorPress={() => {
-                if (item.xprofile?.username) {
-                  handleAuthorPress(item.xprofile.username);
-                }
-              }}
-              bottomInset={insets.bottom}
-            />
-          </View>
-        )}
+        renderItem={renderItem}
         pagingEnabled
         horizontal={false}
         showsVerticalScrollIndicator={false}
-        getItemLayout={getItemLayout}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        snapToInterval={SCREEN_HEIGHT}
         snapToAlignment="start"
         decelerationRate="fast"
-        bounces={false}
-        initialNumToRender={3}
-        maxToRenderPerBatch={3}
-        windowSize={5}
+        snapToInterval={SCREEN_HEIGHT}
+        getItemLayout={(_, index) => ({
+          length: SCREEN_HEIGHT,
+          offset: SCREEN_HEIGHT * index,
+          index,
+        })}
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({
+              index: info.index,
+              animated: false,
+            });
+          }, 500);
+        }}
+        onMomentumScrollEnd={(event) => {
+          const index = Math.round(
+            event.nativeEvent.contentOffset.y / SCREEN_HEIGHT
+          );
+          setCurrentIndex(index);
+        }}
       />
-      
-      {selectedFeedId && (
-        <CommentSheet
-          feedId={selectedFeedId}
-          visible={showComments}
-          onClose={handleCloseComments}
-        />
-      )}
+
+      {/* Comment Sheet */}
+      <CommentSheet
+        visible={showComments}
+        feedId={selectedFeedId}
+        onClose={handleCloseComments}
+        onCommentAdded={handleCommentAdded}
+      />
     </View>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Styles
+// -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
@@ -273,24 +280,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: '#000',
+  centered: {
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  
-  errorContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
   
   errorText: {
-    color: colors.textInverse,
+    color: '#fff',
     fontSize: 16,
-    textAlign: 'center',
   },
 });

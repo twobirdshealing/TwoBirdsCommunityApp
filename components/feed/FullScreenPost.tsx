@@ -1,10 +1,7 @@
 // =============================================================================
 // FULL SCREEN POST - TikTok-style swipeable post viewer  
 // =============================================================================
-// FIXES:
-// 1. Wrapped ALL emoji in <Text> tags (was causing crash)
-// 2. Added bottomInset for safe area padding
-// 3. Removed X close button
+// UPDATED: Single thumbs up reaction only (no heart)
 // =============================================================================
 
 import React, { useRef, useState } from 'react';
@@ -71,7 +68,7 @@ interface FullScreenPostProps {
   feed: Feed;
   isActive: boolean;
   onClose: () => void;
-  onReact: (type: 'like' | 'love') => void;
+  onReact: (type: 'like') => void;
   onCommentPress: () => void;
   onAuthorPress: () => void;
   bottomInset?: number;
@@ -91,10 +88,10 @@ export function FullScreenPost({
   bottomInset = 0,
 }: FullScreenPostProps) {
   const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(feed.has_user_react || false);
   const [currentPage, setCurrentPage] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
-  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const bounceAnim = useRef(new Animated.Value(1)).current;
 
   const CONTENT_HEIGHT = SCREEN_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT - bottomInset;
   const CONTENT_WIDTH = SCREEN_WIDTH - ACTIONS_WIDTH - spacing.lg;
@@ -235,14 +232,16 @@ export function FullScreenPost({
         </View>
       </TouchableOpacity>
 
-      {/* RIGHT: Actions */}
+      {/* RIGHT: Actions - SINGLE LIKE BUTTON */}
       <View style={[styles.actions, { bottom: FOOTER_HEIGHT + bottomInset }]}>
-        <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
-          <Text style={styles.actionIcon}>{liked ? '❤️' : '🤍'}</Text>
-          <Text style={[styles.actionCount, !isDark && styles.textDark]}>
-            {formatCompactNumber(reactionsCount + (liked ? 1 : 0))}
-          </Text>
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: bounceAnim }] }}>
+          <TouchableOpacity style={styles.actionBtn} onPress={handleLike}>
+            <Text style={styles.actionIcon}>{liked ? '👍' : '👍'}</Text>
+            <Text style={[styles.actionCount, !isDark && styles.textDark, liked && styles.actionCountActive]}>
+              {formatCompactNumber(reactionsCount + (liked && !feed.has_user_react ? 1 : 0))}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
         
         <TouchableOpacity style={styles.actionBtn} onPress={onCommentPress}>
           <Text style={styles.actionIcon}>💬</Text>
@@ -411,6 +410,10 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  
+  actionCountActive: {
+    color: colors.primary,
   },
   
   thumbnails: {

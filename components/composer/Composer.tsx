@@ -3,6 +3,7 @@
 // =============================================================================
 // Used for: Creating feeds, comments, replies
 // Supports: Text, emojis, image attachments, space selection
+// UPDATED: Hides SpaceSelector when space is pre-selected
 // =============================================================================
 
 import React, { useState, useRef } from 'react';
@@ -116,7 +117,8 @@ export function Composer({
   }[mode];
 
   const showTitle = mode === 'feed';
-  const showSpaceSelector = mode === 'feed';
+  // Only show SpaceSelector if no space is pre-selected
+  const showSpaceSelector = mode === 'feed' && !initialSpaceId;
   const showToolbar = true;
   
   // ---------------------------------------------------------------------------
@@ -212,8 +214,8 @@ export function Composer({
       return;
     }
 
-    // Validate space selection for feeds
-    if (mode === 'feed' && !selectedSpaceId) {
+    // Validate space selection for feeds (only if not pre-selected)
+    if (mode === 'feed' && !selectedSpaceId && !initialSpaceId) {
       Alert.alert('Select a Space', 'Please select which space to post in.');
       return;
     }
@@ -232,9 +234,9 @@ export function Composer({
         submitData.title = title.trim();
       }
 
-      // Add space_id for feeds
-      if (mode === 'feed' && selectedSpaceId) {
-        submitData.space_id = selectedSpaceId;
+      // Add space_id for feeds (use initial if provided, otherwise selected)
+      if (mode === 'feed') {
+        submitData.space_id = initialSpaceId || selectedSpaceId || undefined;
       }
 
       // Add parent_id for replies
@@ -283,7 +285,7 @@ export function Composer({
   // ---------------------------------------------------------------------------
 
   const hasContent = message.trim().length > 0 || attachments.length > 0;
-  const hasSpace = mode !== 'feed' || selectedSpaceId !== null;
+  const hasSpace = mode !== 'feed' || selectedSpaceId !== null || initialSpaceId !== null;
   const canSubmit = hasContent && hasSpace && !isSubmitting && !isUploading;
 
   // ---------------------------------------------------------------------------
@@ -292,7 +294,7 @@ export function Composer({
 
   return (
     <View style={styles.container}>
-      {/* Space Selector (feeds only) */}
+      {/* Space Selector (feeds only, not when pre-selected) */}
       {showSpaceSelector && (
         <View style={styles.spaceRow}>
           <SpaceSelector

@@ -2,6 +2,7 @@
 // CREATE POST MODAL - Full screen post composer
 // =============================================================================
 // Modal that shows when user taps QuickPostBox
+// UPDATED: Properly passes space pre-selection to Composer
 // =============================================================================
 
 import React from 'react';
@@ -49,6 +50,14 @@ export function CreatePostModal({
     onClose();
   };
 
+  // If space is pre-selected, override the space_id in submit data
+  const handleSubmitWithSpace = async (data: ComposerSubmitData) => {
+    const finalData = spaceId 
+      ? { ...data, space_id: spaceId }
+      : data;
+    await handleSubmit(finalData);
+  };
+
   return (
     <Modal
       visible={visible}
@@ -76,11 +85,11 @@ export function CreatePostModal({
             <View style={styles.headerSpacer} />
           </View>
 
-          {/* Space indicator */}
+          {/* Space indicator - shown when space is pre-selected */}
           {spaceName && (
             <View style={styles.spaceIndicator}>
-              <Ionicons name="people-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.spaceText}>Posting to {spaceName}</Text>
+              <Ionicons name="people-outline" size={16} color={colors.primary} />
+              <Text style={styles.spaceText}>Posting to <Text style={styles.spaceName}>{spaceName}</Text></Text>
             </View>
           )}
 
@@ -91,8 +100,9 @@ export function CreatePostModal({
               placeholder="What's happening?"
               submitLabel="Post"
               autoFocus={true}
-              spaceId={spaceId}
-              onSubmit={handleSubmit}
+              initialSpaceId={spaceId}
+              initialSpaceName={spaceName}
+              onSubmit={handleSubmitWithSpace}
               onCancel={onClose}
             />
           </View>
@@ -149,13 +159,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.primaryLight + '20',
     gap: spacing.xs,
   },
 
   spaceText: {
     fontSize: typography.size.sm,
     color: colors.textSecondary,
+  },
+
+  spaceName: {
+    fontWeight: '600',
+    color: colors.primary,
   },
 
   composerContainer: {

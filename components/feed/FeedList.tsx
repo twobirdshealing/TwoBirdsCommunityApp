@@ -2,7 +2,7 @@
 // FEED LIST - Scrollable list of feed cards with comment support
 // =============================================================================
 // Uses FlatList for reliable cross-platform scrolling.
-// Now supports onCommentPress for opening comments from any card!
+// UPDATED: Single like reaction type, comment support
 // =============================================================================
 
 import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
@@ -24,10 +24,10 @@ interface FeedListProps {
   error?: string | null;
   onRefresh?: () => void;
   onFeedPress?: (feed: Feed) => void;
-  onReact?: (feedId: number, type: 'like' | 'love') => void;
+  onReact?: (feedId: number, type: 'like') => void;
   onAuthorPress?: (username: string) => void;
   onSpacePress?: (spaceSlug: string) => void;
-  onCommentPress?: (feed: Feed) => void; // NEW: Open comment sheet
+  onCommentPress?: (feed: Feed) => void;
   onLoadMore?: () => void;
   emptyMessage?: string;
   emptyIcon?: string;

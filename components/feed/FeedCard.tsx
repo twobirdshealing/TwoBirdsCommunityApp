@@ -2,7 +2,7 @@
 // FEED CARD - A single post/feed item in the list
 // =============================================================================
 // Displays author, content, media (images/YouTube), reactions, and comments.
-// Now includes onCommentPress for opening comment sheet directly!
+// UPDATED: Single like button only (no heart), comment opens sheet directly
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
@@ -94,10 +94,10 @@ function detectMedia(feed: Feed): MediaInfo {
 interface FeedCardProps {
   feed: Feed;
   onPress?: () => void;
-  onReact?: (type: 'like' | 'love') => void;
+  onReact?: (type: 'like') => void;
   onAuthorPress?: () => void;
   onSpacePress?: () => void;
-  onCommentPress?: () => void; // NEW: Open comment sheet directly
+  onCommentPress?: () => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -239,42 +239,32 @@ export function FeedCard({
       
       {/* ===== Footer ===== */}
       <View style={styles.footer}>
-        <View style={styles.reactions}>
-          <TouchableOpacity 
-            style={[
-              styles.reactionButton,
-              hasUserReact && styles.reactionButtonActive
-            ]}
-            onPress={() => onReact?.('like')}
-          >
-            <Text style={styles.reactionIcon}>👍</Text>
-            {reactionsCount > 0 && (
-              <Text style={styles.reactionCount}>
-                {formatCompactNumber(reactionsCount)}
-              </Text>
-            )}
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.reactionButton}
-            onPress={() => onReact?.('love')}
-          >
-            <Text style={styles.reactionIcon}>❤️</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Single Like Button - No heart */}
+        <TouchableOpacity 
+          style={[
+            styles.reactionButton,
+            hasUserReact && styles.reactionButtonActive
+          ]}
+          onPress={() => onReact?.('like')}
+        >
+          <Text style={styles.reactionIcon}>{hasUserReact ? '👍' : '👍'}</Text>
+          <Text style={[styles.reactionCount, hasUserReact && styles.reactionCountActive]}>
+            {reactionsCount > 0 ? formatCompactNumber(reactionsCount) : 'Like'}
+          </Text>
+        </TouchableOpacity>
         
-        {/* Comment button - NOW CLICKABLE! */}
+        {/* Comment button */}
         <TouchableOpacity 
           style={styles.commentButton}
           onPress={(e) => {
-            e.stopPropagation(); // Prevent card press
+            e.stopPropagation();
             onCommentPress?.();
           }}
           activeOpacity={0.7}
         >
           <Text style={styles.statIcon}>💬</Text>
           <Text style={styles.statCount}>
-            {formatCompactNumber(commentsCount)}
+            {commentsCount > 0 ? formatCompactNumber(commentsCount) : 'Comment'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -425,18 +415,14 @@ const styles = StyleSheet.create({
     borderTopColor: colors.borderLight,
   },
   
-  reactions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  
+  // Single reaction button
   reactionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    marginRight: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderRadius: sizing.borderRadius.full,
+    backgroundColor: colors.backgroundSecondary,
   },
   
   reactionButtonActive: {
@@ -451,14 +437,19 @@ const styles = StyleSheet.create({
   reactionCount: {
     fontSize: typography.size.sm,
     color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  
+  reactionCountActive: {
+    color: colors.primary,
   },
   
   // Comment button
   commentButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderRadius: sizing.borderRadius.full,
     backgroundColor: colors.backgroundSecondary,
   },
@@ -471,6 +462,7 @@ const styles = StyleSheet.create({
   statCount: {
     fontSize: typography.size.sm,
     color: colors.textSecondary,
+    fontWeight: '500',
   },
 });
 

@@ -4,6 +4,7 @@
 // Shows all posts from spaces user is a member of
 // Includes QuickPostBox for creating new posts
 // Clicking comment icon opens CommentSheet directly!
+// UPDATED: Single like reaction type
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -104,7 +105,7 @@ export default function ActivityScreen() {
     router.push(`/feed/${feed.id}`);
   };
   
-  // NEW: Open comment sheet directly
+  // Open comment sheet directly
   const handleCommentPress = (feed: Feed) => {
     setSelectedFeedId(feed.id);
     setShowComments(true);
@@ -120,7 +121,8 @@ export default function ActivityScreen() {
     fetchFeeds(true);
   };
   
-  const handleReact = async (feedId: number, type: 'like' | 'love') => {
+  // Single like reaction
+  const handleReact = async (feedId: number, type: 'like') => {
     const feed = feeds.find(f => f.id === feedId);
     if (!feed) return;
     

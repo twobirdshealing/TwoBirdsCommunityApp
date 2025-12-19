@@ -1,20 +1,22 @@
 // =============================================================================
-// SPACE PAGE - Individual space feed view
+// SPACE PAGE - Individual space feed view with post creation
 // =============================================================================
 // Route: /space/[slug]
-// FIXED: Corrected SpaceMenu props and removed dead handler functions
+// UPDATED: Added QuickPostBox + CreatePostModal with space pre-selected
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Alert, View, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/constants/colors';
 import { Space, Feed } from '@/types';
 import { spacesApi, feedsApi } from '@/services/api';
 import { FeedList } from '@/components/feed';
+import { CommentSheet } from '@/components/feed/CommentSheet';
 import { SpaceHeader, SpaceMenu } from '@/components/space';
 import { LoadingSpinner, ErrorMessage } from '@/components/common';
+import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/composer';
 
 export default function SpacePage() {
   const router = useRouter();
@@ -27,6 +29,11 @@ export default function SpacePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal states
+  const [showComposer, setShowComposer] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
 
   // ---------------------------------------------------------------------------
   // Fetch Space Details
@@ -80,14 +87,46 @@ export default function SpacePage() {
     }
   }, [slug]);
 
-  // Initial load
+  // ---------------------------------------------------------------------------
+  // Initial Load
+  // ---------------------------------------------------------------------------
+
   useEffect(() => {
-    const loadData = async () => {
+    const loadAll = async () => {
+      setLoading(true);
       await fetchSpaceDetails();
       await fetchSpaceFeeds();
     };
-    loadData();
+    loadAll();
   }, [fetchSpaceDetails, fetchSpaceFeeds]);
+
+  // ---------------------------------------------------------------------------
+  // Create Post (to this space)
+  // ---------------------------------------------------------------------------
+
+  const handleCreatePost = async (data: ComposerSubmitData) => {
+    if (!space) return;
+
+    try {
+      const response = await feedsApi.createFeed({
+        message: data.message,
+        title: data.title,
+        content_type: data.content_type,
+        space_id: space.id, // Always post to this space
+        meta: data.meta,
+      });
+
+      if (response.success) {
+        fetchSpaceFeeds(true);
+        Alert.alert('Success', 'Your post has been published!');
+      } else {
+        throw new Error(response.error?.message || 'Failed to create post');
+      }
+    } catch (err) {
+      console.error('Create post error:', err);
+      throw err;
+    }
+  };
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -98,10 +137,28 @@ export default function SpacePage() {
   };
 
   const handleFeedPress = (feed: Feed) => {
-    router.push(`/feed/${feed.id}?space=${slug}&context=space`);
+    router.push({
+      pathname: '/feed/[id]',
+      params: { id: feed.id.toString(), space: slug, context: 'space' },
+    });
   };
 
-  const handleReact = async (feedId: number, type: 'like' | 'love') => {
+  // Open comment sheet
+  const handleCommentPress = (feed: Feed) => {
+    setSelectedFeedId(feed.id);
+    setShowComments(true);
+  };
+
+  const handleCloseComments = () => {
+    setShowComments(false);
+    setSelectedFeedId(null);
+  };
+
+  const handleCommentAdded = () => {
+    fetchSpaceFeeds(true);
+  };
+
+  const handleReact = async (feedId: number, type: 'like') => {
     const feed = feeds.find(f => f.id === feedId);
     if (!feed) return;
 
@@ -143,7 +200,6 @@ export default function SpacePage() {
   // Callback when user leaves the space
   const handleLeaveSuccess = () => {
     // Space has been left, the SpaceMenu already navigates back
-    // This callback can be used for additional cleanup if needed
   };
 
   // ---------------------------------------------------------------------------
@@ -193,6 +249,23 @@ export default function SpacePage() {
   }
 
   // ---------------------------------------------------------------------------
+  // List Header - SpaceHeader + QuickPostBox
+  // ---------------------------------------------------------------------------
+
+  const ListHeader = (
+    <>
+      <SpaceHeader space={space} />
+      {/* Quick Post Box - only show if user is a member */}
+      {space.is_joined && (
+        <QuickPostBox
+          placeholder={`Post to ${space.title}...`}
+          onPress={() => setShowComposer(true)}
+        />
+      )}
+    </>
+  );
+
+  // ---------------------------------------------------------------------------
   // Main Render
   // ---------------------------------------------------------------------------
 
@@ -223,9 +296,27 @@ export default function SpacePage() {
         onFeedPress={handleFeedPress}
         onReact={handleReact}
         onAuthorPress={handleAuthorPress}
+        onCommentPress={handleCommentPress}
         emptyMessage="No posts in this space yet"
         emptyIcon="📭"
-        ListHeaderComponent={<SpaceHeader space={space} />}
+        ListHeaderComponent={ListHeader}
+      />
+
+      {/* Create Post Modal - space pre-selected */}
+      <CreatePostModal
+        visible={showComposer}
+        onClose={() => setShowComposer(false)}
+        onSubmit={handleCreatePost}
+        spaceId={space.id}
+        spaceName={space.title}
+      />
+
+      {/* Comment Sheet */}
+      <CommentSheet
+        visible={showComments}
+        feedId={selectedFeedId}
+        onClose={handleCloseComments}
+        onCommentAdded={handleCommentAdded}
       />
     </View>
   );
