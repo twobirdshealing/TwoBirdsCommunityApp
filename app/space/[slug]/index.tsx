@@ -2,7 +2,8 @@
 // SPACE PAGE - Individual space feed view with post creation
 // =============================================================================
 // Route: /space/[slug]
-// FIXED: Changed is_joined to is_member to match Space type
+// FIXED: Use 'space' (slug) instead of 'space_id' for post creation
+// FIXED: Always show QuickPostBox - server handles permissions
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -101,19 +102,19 @@ export default function SpacePage() {
   }, [fetchSpaceDetails, fetchSpaceFeeds]);
 
   // ---------------------------------------------------------------------------
-  // Create Post (to this space)
+  // Create Post - FIXED: Use 'space' (slug) instead of 'space_id'
   // ---------------------------------------------------------------------------
 
   const handleCreatePost = async (data: ComposerSubmitData) => {
-    if (!space) return;
+    if (!slug) return;
 
     try {
       const response = await feedsApi.createFeed({
         message: data.message,
         title: data.title,
         content_type: data.content_type,
-        space_id: space.id, // Always post to this space
-        meta: data.meta,
+        space: slug,
+        media_images: data.media_images,
       });
 
       if (response.success) {
@@ -255,13 +256,12 @@ export default function SpacePage() {
   const ListHeader = (
     <>
       <SpaceHeader space={space} />
-      {/* FIXED: Use is_member instead of is_joined */}
-      {space.is_member && (
-        <QuickPostBox
-          placeholder={`Post to ${space.title}...`}
-          onPress={() => setShowComposer(true)}
-        />
-      )}
+      {/* FIXED: Always show QuickPostBox - if user can view space, they can post */}
+      {/* Server handles actual permission validation */}
+      <QuickPostBox
+        placeholder={`Post to ${space.title}...`}
+        onPress={() => setShowComposer(true)}
+      />
     </>
   );
 
@@ -302,12 +302,12 @@ export default function SpacePage() {
         ListHeaderComponent={ListHeader}
       />
 
-      {/* Create Post Modal - space pre-selected */}
+      {/* Create Post Modal - FIXED: Use spaceSlug instead of spaceId */}
       <CreatePostModal
         visible={showComposer}
         onClose={() => setShowComposer(false)}
         onSubmit={handleCreatePost}
-        spaceId={space.id}
+        spaceSlug={slug}
         spaceName={space.title}
       />
 

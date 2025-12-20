@@ -1,9 +1,8 @@
 // =============================================================================
 // COMPOSER - Reusable content creation component
 // =============================================================================
-// Used for: Creating feeds, comments, replies
-// Supports: Text, emojis, image attachments, space selection
-// UPDATED: Hides SpaceSelector when space is pre-selected
+// FIXED: Track space SLUG instead of ID for posting
+// Native web app uses: {"space": "book-club"} NOT {"space_id": 50}
 // =============================================================================
 
 import React, { useState, useRef } from 'react';
@@ -42,8 +41,8 @@ export interface ComposerProps {
   feedId?: number;
   parentId?: number;
   
-  // For feeds - can preset a space
-  initialSpaceId?: number;
+  // For feeds - can preset a space (use SLUG not ID!)
+  initialSpaceSlug?: string;
   initialSpaceName?: string;
   
   // Callbacks
@@ -57,14 +56,19 @@ export interface ComposerSubmitData {
   message: string;
   title?: string;
   content_type: 'text' | 'markdown';
-  meta?: {
-    media_items?: any[];
-    media_preview?: any;
-  };
-  // For feeds
-  space_id?: number;
+  // For feeds - use SLUG not ID!
+  space?: string;
+  // Media - web app format: media_images array
+  media_images?: Array<{
+    url: string;
+    type: string;
+    width: number;
+    height: number;
+    provider: string;
+  }>;
   // For comments
   parent_id?: number;
+  meta?: Record<string, any>;
 }
 
 // -----------------------------------------------------------------------------
@@ -79,7 +83,7 @@ export function Composer({
   maxLength = 5000,
   feedId,
   parentId,
-  initialSpaceId,
+  initialSpaceSlug,
   initialSpaceName,
   onSubmit,
   onCancel,
@@ -94,8 +98,8 @@ export function Composer({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   
-  // Space selection (for feeds)
-  const [selectedSpaceId, setSelectedSpaceId] = useState<number | null>(initialSpaceId || null);
+  // Space selection - track SLUG not ID!
+  const [selectedSpaceSlug, setSelectedSpaceSlug] = useState<string | null>(initialSpaceSlug || null);
   const [selectedSpaceName, setSelectedSpaceName] = useState<string | null>(initialSpaceName || null);
   
   const inputRef = useRef<TextInput>(null);
@@ -108,66 +112,76 @@ export function Composer({
     feed: "What's happening?",
     comment: 'Write a comment...',
     reply: 'Write a reply...',
-  }[mode];
+  };
 
   const defaultSubmitLabel = {
     feed: 'Post',
-    comment: 'Post',
+    comment: 'Comment',
     reply: 'Reply',
-  }[mode];
+  };
 
+  const showSpaceSelector = mode === 'feed' && !initialSpaceSlug;
   const showTitle = mode === 'feed';
-  // Only show SpaceSelector if no space is pre-selected
-  const showSpaceSelector = mode === 'feed' && !initialSpaceId;
-  const showToolbar = true;
-  
+  const actualPlaceholder = placeholder || defaultPlaceholder[mode];
+  const actualSubmitLabel = submitLabel || defaultSubmitLabel[mode];
+
   // ---------------------------------------------------------------------------
-  // Space Selection
+  // Handle Space Selection - now receives SLUG
   // ---------------------------------------------------------------------------
 
-  const handleSpaceSelect = (spaceId: number, spaceName: string) => {
-    setSelectedSpaceId(spaceId);
+  const handleSpaceSelect = (spaceSlug: string, spaceName: string) => {
+    console.log('[Composer] Space selected:', { spaceSlug, spaceName });
+    setSelectedSpaceSlug(spaceSlug);
     setSelectedSpaceName(spaceName);
   };
 
   // ---------------------------------------------------------------------------
-  // Image Picker (Fixed deprecation)
+  // Handle Focus
   // ---------------------------------------------------------------------------
 
-  const pickImage = async () => {
+  const handleFocus = () => {
+    setIsFocused(true);
+    onFocus?.();
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    onBlur?.();
+  };
+
+  // ---------------------------------------------------------------------------
+  // Handle Image Picker
+  // ---------------------------------------------------------------------------
+
+  const handleImagePicker = async () => {
     try {
-      // Request permission
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission Required',
-          'Please allow access to your photo library to attach images.'
-        );
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your photos to add images.');
         return;
       }
 
-      // Pick image - FIXED: Use MediaType instead of deprecated MediaTypeOptions
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'], // Fixed deprecation warning
-        allowsEditing: false,
-        quality: 0.8,
+        mediaTypes: ['images'],
         allowsMultipleSelection: true,
-        selectionLimit: 4,
+        quality: 0.8,
+        selectionLimit: 4 - attachments.length,
       });
 
-      if (result.canceled) return;
+      if (result.canceled || !result.assets?.length) {
+        return;
+      }
 
-      // Upload each selected image
       setIsUploading(true);
-      
+
       for (const asset of result.assets) {
         const fileName = asset.uri.split('/').pop() || 'image.jpg';
-        const type = asset.mimeType || 'image/jpeg';
-        
+        const fileType = asset.mimeType || 'image/jpeg';
+
         const response = await mediaApi.uploadMedia(
           asset.uri,
-          type,
+          fileType,
           fileName,
           mode === 'feed' ? 'feed' : 'comment'
         );
@@ -215,7 +229,7 @@ export function Composer({
     }
 
     // Validate space selection for feeds (only if not pre-selected)
-    if (mode === 'feed' && !selectedSpaceId && !initialSpaceId) {
+    if (mode === 'feed' && !selectedSpaceSlug && !initialSpaceSlug) {
       Alert.alert('Select a Space', 'Please select which space to post in.');
       return;
     }
@@ -234,9 +248,10 @@ export function Composer({
         submitData.title = title.trim();
       }
 
-      // Add space_id for feeds (use initial if provided, otherwise selected)
+      // Add space SLUG for feeds (use initial if provided, otherwise selected)
       if (mode === 'feed') {
-        submitData.space_id = initialSpaceId || selectedSpaceId || undefined;
+        submitData.space = initialSpaceSlug || selectedSpaceSlug || undefined;
+        console.log('[Composer] Setting space slug:', submitData.space);
       }
 
       // Add parent_id for replies
@@ -244,13 +259,18 @@ export function Composer({
         submitData.parent_id = parentId;
       }
 
-      // Add media meta if attachments exist
+      // Add media_images - EXACT format from web app
       if (attachments.length > 0) {
-        submitData.meta = {
-          media_items: mediaApi.buildMediaItems(attachments),
-          media_preview: mediaApi.buildMediaPreview(attachments),
-        };
+        submitData.media_images = attachments.map(item => ({
+          url: item.url,
+          type: 'image',
+          width: 0,       // Web app sends 0
+          height: 0,      // Web app sends 0
+          provider: 'uploader',
+        }));
       }
+
+      console.log('[Composer] Final submitData:', JSON.stringify(submitData, null, 2));
 
       await onSubmit(submitData);
 
@@ -267,26 +287,22 @@ export function Composer({
   };
 
   // ---------------------------------------------------------------------------
-  // Focus Management
+  // Character Count
   // ---------------------------------------------------------------------------
 
-  const handleFocus = () => {
-    setIsFocused(true);
-    onFocus?.();
-  };
-
-  const handleBlur = () => {
-    setIsFocused(false);
-    onBlur?.();
-  };
+  const charCount = message.length;
+  const isOverLimit = charCount > maxLength;
+  const showCharCount = charCount > maxLength * 0.8;
 
   // ---------------------------------------------------------------------------
-  // Can Submit?
+  // Can Submit
   // ---------------------------------------------------------------------------
 
-  const hasContent = message.trim().length > 0 || attachments.length > 0;
-  const hasSpace = mode !== 'feed' || selectedSpaceId !== null || initialSpaceId !== null;
-  const canSubmit = hasContent && hasSpace && !isSubmitting && !isUploading;
+  const canSubmit = 
+    !isSubmitting && 
+    !isUploading && 
+    !isOverLimit &&
+    (message.trim().length > 0 || attachments.length > 0);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -294,18 +310,18 @@ export function Composer({
 
   return (
     <View style={styles.container}>
-      {/* Space Selector (feeds only, not when pre-selected) */}
+      {/* Space Selector (only for feeds without preset space) */}
       {showSpaceSelector && (
         <View style={styles.spaceRow}>
           <SpaceSelector
-            selectedSpaceId={selectedSpaceId}
+            selectedSpaceSlug={selectedSpaceSlug}
             selectedSpaceName={selectedSpaceName}
             onSelect={handleSpaceSelect}
           />
         </View>
       )}
 
-      {/* Title Input (feeds only) */}
+      {/* Title Input (for feeds) */}
       {showTitle && (
         <TextInput
           style={styles.titleInput}
@@ -323,21 +339,19 @@ export function Composer({
         style={[
           styles.messageInput,
           isFocused && styles.messageInputFocused,
-          mode === 'comment' && styles.messageInputCompact,
         ]}
-        placeholder={placeholder || defaultPlaceholder}
+        placeholder={actualPlaceholder}
         placeholderTextColor={colors.textTertiary}
         value={message}
         onChangeText={setMessage}
         onFocus={handleFocus}
         onBlur={handleBlur}
         multiline
-        maxLength={maxLength}
         autoFocus={autoFocus}
-        textAlignVertical="top"
+        maxLength={maxLength + 100}
       />
 
-      {/* Media Previews */}
+      {/* Media Preview */}
       {attachments.length > 0 && (
         <MediaPreview
           items={attachments}
@@ -346,23 +360,24 @@ export function Composer({
         />
       )}
 
-      {/* Toolbar */}
-      {showToolbar && (
-        <ComposerToolbar
-          onImagePress={pickImage}
-          onEmojiPress={() => {
-            Alert.alert(
-              'Tip',
-              'Use your keyboard emoji picker! 😊\n\niOS: Press and hold 🌐\nAndroid: Tap the emoji icon on keyboard'
-            );
-          }}
-          isUploading={isUploading}
-          canSubmit={canSubmit}
-          submitLabel={submitLabel || defaultSubmitLabel}
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-        />
+      {/* Character Count */}
+      {showCharCount && (
+        <Text style={[styles.charCount, isOverLimit && styles.charCountOver]}>
+          {charCount}/{maxLength}
+        </Text>
       )}
+
+      {/* Toolbar */}
+      <ComposerToolbar
+        onImagePress={handleImagePicker}
+        onSubmit={handleSubmit}
+        submitLabel={actualSubmitLabel}
+        canSubmit={canSubmit}
+        isSubmitting={isSubmitting}
+        isUploading={isUploading}
+        attachmentCount={attachments.length}
+        maxAttachments={4}
+      />
     </View>
   );
 }
@@ -373,49 +388,51 @@ export function Composer({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
   },
 
   spaceRow: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
 
   titleInput: {
-    fontSize: typography.size.md,
+    fontSize: typography.size.lg,
     fontWeight: '600',
     color: colors.text,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
 
   messageInput: {
+    flex: 1,
     fontSize: typography.size.md,
     color: colors.text,
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-    minHeight: 100,
-    maxHeight: 200,
+    paddingVertical: spacing.md,
+    textAlignVertical: 'top',
+    minHeight: 120,
   },
 
   messageInputFocused: {
-    // Can add focus styling here
+    // Optional focus styling
   },
 
-  messageInputCompact: {
-    minHeight: 60,
-    maxHeight: 120,
+  charCount: {
+    fontSize: typography.size.xs,
+    color: colors.textTertiary,
+    textAlign: 'right',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+
+  charCountOver: {
+    color: colors.error,
   },
 });
 

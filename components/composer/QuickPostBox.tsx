@@ -1,7 +1,7 @@
 // =============================================================================
 // QUICK POST BOX - Simple composer prompt at top of feed
 // =============================================================================
-// Shows avatar + "What's happening?" - taps to open full composer
+// Shows avatar + placeholder - taps to open full composer
 // =============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -55,7 +55,7 @@ export function QuickPostBox({
     fetchAvatar();
   }, [user?.username]);
 
-  // FIXED: Use displayName (camelCase) to match User type in AuthContext
+  // AuthContext User type uses displayName (camelCase)
   const displayName = user?.displayName || user?.username || 'User';
   const firstName = displayName.split(' ')[0];
 

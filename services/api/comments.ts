@@ -1,7 +1,8 @@
 // =============================================================================
 // COMMENTS API - All comment-related API calls
 // =============================================================================
-// This service handles fetching and managing comments on feeds.
+// FIXED: Use 'comment' not 'message' - matches what web app sends
+// FIXED: Add media_images support for image comments
 // =============================================================================
 
 import { get, post, del } from './client';
@@ -15,7 +16,7 @@ import { Comment, CommentsResponse, CreateCommentResponse } from '@/types';
 export interface GetCommentsOptions {
   page?: number;
   per_page?: number;
-  parent_id?: number;     // 0 for top-level, or parent comment ID for replies
+  parent_id?: number;
   orderby?: 'created_at';
   order?: 'asc' | 'desc';
 }
@@ -27,7 +28,7 @@ export interface GetCommentsOptions {
 export async function getComments(feedId: number, options: GetCommentsOptions = {}) {
   const params = {
     page: options.page || 1,
-    per_page: options.per_page || 50,  // Comments usually load more
+    per_page: options.per_page || 50,
     ...(options.parent_id !== undefined && { parent_id: options.parent_id }),
     ...(options.orderby && { orderby: options.orderby }),
     ...(options.order && { order: options.order }),
@@ -45,21 +46,53 @@ export async function getComment(commentId: number) {
 }
 
 // -----------------------------------------------------------------------------
-// Create a Comment (Phase 2)
+// Create a Comment
+// -----------------------------------------------------------------------------
+// FIXED: Web app sends 'comment' not 'message'!
+// FIXED: Added media_images support
 // -----------------------------------------------------------------------------
 
 export interface CreateCommentData {
-  message: string;
+  comment: string;  // FIXED: Web app uses 'comment' not 'message'
   content_type?: 'text' | 'markdown' | 'html';
-  parent_id?: number;  // For replies to other comments
+  parent_id?: number;
+  media_images?: Array<{
+    url: string;
+    type: string;
+    width: number;
+    height: number;
+    provider: string;
+  }>;
 }
 
 export async function createComment(feedId: number, data: CreateCommentData) {
-  return post<CreateCommentResponse>(ENDPOINTS.FEED_COMMENTS(feedId), data);
+  // Build request matching EXACTLY what web app sends
+  const requestData: Record<string, any> = {
+    comment: data.comment,  // FIXED: 'comment' not 'message'
+    meta: null,             // Web app sends this
+  };
+  
+  // Optional fields
+  if (data.content_type) {
+    requestData.content_type = data.content_type;
+  }
+  
+  if (data.parent_id) {
+    requestData.parent_id = data.parent_id;
+  }
+  
+  // Media images at top level (like feeds)
+  if (data.media_images && data.media_images.length > 0) {
+    requestData.media_images = data.media_images;
+  }
+  
+  console.log('[CommentsAPI] Creating comment with:', JSON.stringify(requestData, null, 2));
+  
+  return post<CreateCommentResponse>(ENDPOINTS.FEED_COMMENTS(feedId), requestData);
 }
 
 // -----------------------------------------------------------------------------
-// Update a Comment (Phase 2)
+// Update a Comment
 // -----------------------------------------------------------------------------
 
 export async function updateComment(feedId: number, commentId: number, data: Partial<CreateCommentData>) {
@@ -70,7 +103,7 @@ export async function updateComment(feedId: number, commentId: number, data: Par
 }
 
 // -----------------------------------------------------------------------------
-// Delete a Comment (Phase 2)
+// Delete a Comment
 // -----------------------------------------------------------------------------
 
 export async function deleteComment(feedId: number, commentId: number) {

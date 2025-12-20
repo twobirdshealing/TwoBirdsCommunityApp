@@ -4,7 +4,7 @@
 // Shows all posts from spaces user is a member of
 // Includes QuickPostBox for creating new posts
 // Clicking comment icon opens CommentSheet directly!
-// UPDATED: Single like reaction type
+// FIXED: Use 'space' (slug) instead of 'space_id' for post creation
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -67,7 +67,7 @@ export default function ActivityScreen() {
   }, [fetchFeeds]);
   
   // ---------------------------------------------------------------------------
-  // Create Post
+  // Create Post - FIXED: Use 'space' (slug) instead of 'space_id'
   // ---------------------------------------------------------------------------
   
   const handleCreatePost = async (data: ComposerSubmitData) => {
@@ -76,8 +76,8 @@ export default function ActivityScreen() {
         message: data.message,
         title: data.title,
         content_type: data.content_type,
-        space_id: data.space_id,
-        meta: data.meta,
+        space: data.space,
+        media_images: data.media_images,
       });
 
       if (response.success) {

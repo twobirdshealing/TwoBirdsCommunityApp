@@ -1,6 +1,9 @@
 // =============================================================================
 // FEEDS API - All feed-related API calls
 // =============================================================================
+// FIXED: Send 'space' (slug) instead of 'space_id' (number)
+// Native web app uses: {"space": "book-club", ...} NOT {"space_id": 50, ...}
+// =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
 import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType } from '@/types';
@@ -59,21 +62,69 @@ export async function getFeedBySlug(slug: string) {
 // -----------------------------------------------------------------------------
 // Create a New Feed Post
 // -----------------------------------------------------------------------------
+// FIXED: Use 'space' (slug) instead of 'space_id'
+// This matches what the native web app sends
+// -----------------------------------------------------------------------------
 
 export interface CreateFeedData {
   message: string;
   title?: string;
-  space_id?: number;
+  space?: string;  // SLUG, not ID!
+  type?: 'text' | 'feed';
   content_type?: 'text' | 'markdown' | 'html';
   privacy?: 'public' | 'private';
   status?: 'published' | 'draft';
   featured_image?: string;
   scheduled_at?: string;
+  // Media - web app uses media_images array
+  media_images?: Array<{
+    url: string;
+    type: string;
+    width: number;
+    height: number;
+    provider: string;
+  }>;
   meta?: Record<string, any>;
 }
 
 export async function createFeed(data: CreateFeedData) {
-  return post<{ message: string; data: Feed }>(ENDPOINTS.FEEDS, data);
+  // Build request matching EXACTLY what web app sends
+  const requestData: Record<string, any> = {
+    type: data.type || 'text',
+    message: data.message,
+    media: null,           // Web app sends this
+    media_image: '',       // Web app sends this
+    topic_ids: [],         // Web app sends this
+    send_announcement_email: 'no',  // Web app sends this
+  };
+  
+  // CRITICAL: Use 'space' (slug) not 'space_id'
+  if (data.space) {
+    requestData.space = data.space;
+  }
+  
+  // Optional fields
+  if (data.title) {
+    requestData.title = data.title;
+  }
+  if (data.content_type) {
+    requestData.content_type = data.content_type;
+  }
+  if (data.privacy) {
+    requestData.privacy = data.privacy;
+  }
+  if (data.status) {
+    requestData.status = data.status;
+  }
+  
+  // CRITICAL: media_images at TOP LEVEL - EXACT format from web app
+  if (data.media_images && data.media_images.length > 0) {
+    requestData.media_images = data.media_images;
+  }
+  
+  console.log('[FeedsAPI] Creating feed with:', JSON.stringify(requestData, null, 2));
+  
+  return post<{ message: string; data: Feed }>(ENDPOINTS.FEEDS, requestData);
 }
 
 // -----------------------------------------------------------------------------
@@ -95,8 +146,6 @@ export async function deleteFeed(id: number) {
 // -----------------------------------------------------------------------------
 // React to a Feed (like, love, etc.)
 // -----------------------------------------------------------------------------
-// IMPORTANT: The API uses react_type (not type) and remove: true to unreact
-// Discovered by reverse engineering app.js
 
 export async function reactToFeed(
   feedId: number, 
@@ -107,7 +156,6 @@ export async function reactToFeed(
     react_type: type 
   };
   
-  // If user already reacted, send remove: true to toggle off
   if (hasUserReact) {
     payload.remove = true;
   }
@@ -116,7 +164,7 @@ export async function reactToFeed(
 }
 
 // -----------------------------------------------------------------------------
-// Bookmark a Feed (uses same react endpoint)
+// Bookmark a Feed
 // -----------------------------------------------------------------------------
 
 export async function toggleBookmark(feedId: number, isBookmarked: boolean) {
@@ -137,19 +185,11 @@ export async function toggleBookmark(feedId: number, isBookmarked: boolean) {
 
 export async function getFeedReactions(feedId: number, type?: ReactionType) {
   const params = type ? { type } : {};
-  return get<{ reactions: any[] }>(`${ENDPOINTS.FEEDS}/${feedId}/reactions`, params);
+  return get<any>(ENDPOINTS.FEED_REACTIONS(feedId), params);
 }
 
 // -----------------------------------------------------------------------------
-// Get User's Bookmarks
-// -----------------------------------------------------------------------------
-
-export async function getBookmarks() {
-  return get<FeedsResponse>(`${ENDPOINTS.FEEDS}/bookmarks`);
-}
-
-// -----------------------------------------------------------------------------
-// Export as object for convenience
+// Export as object
 // -----------------------------------------------------------------------------
 
 export const feedsApi = {
@@ -162,7 +202,6 @@ export const feedsApi = {
   reactToFeed,
   toggleBookmark,
   getFeedReactions,
-  getBookmarks,
 };
 
 export default feedsApi;

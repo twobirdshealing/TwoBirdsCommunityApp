@@ -1,8 +1,8 @@
 // =============================================================================
 // CREATE POST MODAL - Full screen post composer
 // =============================================================================
-// Modal that shows when user taps QuickPostBox
-// UPDATED: Properly passes space pre-selection to Composer
+// FIXED: Use space SLUG instead of ID
+// Native web app uses: {"space": "book-club"} NOT {"space_id": 50}
 // =============================================================================
 
 import React from 'react';
@@ -29,7 +29,7 @@ interface CreatePostModalProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (data: ComposerSubmitData) => Promise<void>;
-  spaceId?: number;
+  spaceSlug?: string;  // SLUG not ID!
   spaceName?: string;
 }
 
@@ -41,7 +41,7 @@ export function CreatePostModal({
   visible,
   onClose,
   onSubmit,
-  spaceId,
+  spaceSlug,
   spaceName,
 }: CreatePostModalProps) {
   
@@ -50,11 +50,13 @@ export function CreatePostModal({
     onClose();
   };
 
-  // If space is pre-selected, override the space_id in submit data
+  // If space is pre-selected, ensure the space slug is in submit data
   const handleSubmitWithSpace = async (data: ComposerSubmitData) => {
-    const finalData = spaceId 
-      ? { ...data, space_id: spaceId }
+    const finalData = spaceSlug 
+      ? { ...data, space: spaceSlug }
       : data;
+    
+    console.log('[CreatePostModal] Submitting:', JSON.stringify(finalData, null, 2));
     await handleSubmit(finalData);
   };
 
@@ -100,7 +102,7 @@ export function CreatePostModal({
               placeholder="What's happening?"
               submitLabel="Post"
               autoFocus={true}
-              initialSpaceId={spaceId}
+              initialSpaceSlug={spaceSlug}
               initialSpaceName={spaceName}
               onSubmit={handleSubmitWithSpace}
               onCancel={onClose}
@@ -119,7 +121,7 @@ export function CreatePostModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
 
   keyboardView: {
@@ -131,10 +133,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
   },
 
   closeButton: {
@@ -157,7 +158,7 @@ const styles = StyleSheet.create({
   spaceIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     backgroundColor: colors.primaryLight + '20',
     gap: spacing.xs,
@@ -169,13 +170,12 @@ const styles = StyleSheet.create({
   },
 
   spaceName: {
-    fontWeight: '600',
     color: colors.primary,
+    fontWeight: '600',
   },
 
   composerContainer: {
     flex: 1,
-    padding: spacing.md,
   },
 });
 
