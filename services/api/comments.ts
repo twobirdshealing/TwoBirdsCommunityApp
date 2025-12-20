@@ -113,9 +113,18 @@ export async function deleteComment(feedId: number, commentId: number) {
 // -----------------------------------------------------------------------------
 // React to a Comment
 // -----------------------------------------------------------------------------
+// FIXED: Web app sends {state: 1} to toggle reaction on/off
+// state: 1 = add reaction, state: 0 = remove reaction (toggle)
 
-export async function reactToComment(feedId: number, commentId: number, type: string) {
-  return post<any>(`${ENDPOINTS.FEED_COMMENTS(feedId)}/${commentId}/reactions`, { type });
+export async function reactToComment(feedId: number, commentId: number, hasReacted: boolean = false) {
+  // Web app format: {state: 1} to react, {state: 0} to unreact
+  const payload = {
+    state: hasReacted ? 0 : 1,
+  };
+  
+  console.log('[CommentsAPI] Reacting to comment:', { feedId, commentId, payload });
+  
+  return post<any>(`${ENDPOINTS.FEED_COMMENTS(feedId)}/${commentId}/reactions`, payload);
 }
 
 // -----------------------------------------------------------------------------

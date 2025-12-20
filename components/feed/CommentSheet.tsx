@@ -3,17 +3,21 @@
 // =============================================================================
 // FIXED: Use 'comment' not 'message' for API
 // FIXED: Add media_images support for image comments
+// FIXED: Comment reactions use {state: 1} format
+// FIXED: Swipe down on handle to close
 // =============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
   FlatList,
   Image,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   StyleSheet,
   Text,
@@ -67,6 +71,51 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Swipe to close
+  const translateY = useRef(new Animated.Value(0)).current;
+  
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to downward swipes
+        return gestureState.dy > 10;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow downward movement
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped down more than 100px, close the sheet
+        if (gestureState.dy > 100) {
+          Animated.timing(translateY, {
+            toValue: SHEET_HEIGHT,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            onClose();
+            translateY.setValue(0);
+          });
+        } else {
+          // Snap back
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  // Reset position when opening
+  useEffect(() => {
+    if (visible) {
+      translateY.setValue(0);
+    }
+  }, [visible]);
 
   // ---------------------------------------------------------------------------
   // Fetch comments when sheet opens
@@ -194,9 +243,19 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
           }))
         : undefined;
 
+      const parentId = getReplyParentId();
+      
+      console.log('[CommentSheet] Submitting comment:', {
+        comment: trimmedText,
+        parent_id: parentId,
+        replyingToId: replyingTo?.id,
+        replyingToParentId: replyingTo?.parent_id,
+        hasImages: !!media_images,
+      });
+
       const response = await commentsApi.createComment(feedId, {
         comment: trimmedText,  // FIXED: Use 'comment' not 'message'
-        parent_id: replyingTo?.id,
+        parent_id: parentId,  // FIXED: Use top-level parent for nested replies
         media_images,
       });
 
@@ -221,15 +280,79 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
   };
 
   // ---------------------------------------------------------------------------
-  // Reply to comment
+  // Reply to comment - FIXED: Always reply to top-level parent
   // ---------------------------------------------------------------------------
 
   const handleReply = (comment: Comment) => {
+    // If this comment has a parent_id, it's already a reply
+    // We should reply to the TOP-LEVEL comment, not nest deeper
+    // Also pre-fill with @username mention
     setReplyingTo(comment);
+    
+    // Add @username mention to input
+    const username = comment.xprofile?.username || comment.xprofile?.display_name || '';
+    if (username) {
+      setCommentText(`@${username} `);
+    }
   };
 
   const cancelReply = () => {
     setReplyingTo(null);
+    setCommentText('');
+  };
+
+  // Get the correct parent_id for replies
+  // If replying to a reply, use the reply's parent_id (top-level comment)
+  // If replying to a top-level comment, use its ID
+  const getReplyParentId = (): number | undefined => {
+    if (!replyingTo) return undefined;
+    
+    // If the comment we're replying to already has a parent_id,
+    // use THAT parent_id (the top-level comment)
+    if (replyingTo.parent_id) {
+      return replyingTo.parent_id;
+    }
+    
+    // Otherwise this IS a top-level comment, use its ID
+    return replyingTo.id;
+  };
+
+  // ---------------------------------------------------------------------------
+  // Handle Comment Reaction - FIXED: Uses {state: 1} format
+  // ---------------------------------------------------------------------------
+
+  const handleCommentReaction = async (comment: Comment) => {
+    if (!feedId) return;
+    
+    const hasReacted = comment.has_user_react || false;
+    
+    // Optimistic update
+    setComments(prevComments =>
+      prevComments.map(c => {
+        if (c.id === comment.id) {
+          const currentCount = typeof c.reactions_count === 'string'
+            ? parseInt(c.reactions_count, 10)
+            : c.reactions_count || 0;
+          
+          return {
+            ...c,
+            has_user_react: !hasReacted,
+            reactions_count: hasReacted ? currentCount - 1 : currentCount + 1,
+          };
+        }
+        return c;
+      })
+    );
+    
+    try {
+      await commentsApi.reactToComment(feedId, comment.id, hasReacted);
+    } catch (err) {
+      console.error('[CommentSheet] Reaction error:', err);
+      // Revert on error
+      setComments(prevComments =>
+        prevComments.map(c => c.id === comment.id ? comment : c)
+      );
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -245,8 +368,18 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
     const timestamp = formatRelativeTime(item.created_at);
     const isReply = item.parent_id !== null;
 
-    // Check for images in comment
-    const commentImages = item.meta?.media_images || [];
+    // Check for images in comment - multiple possible locations
+    // API might return as media_images, media_items, or media_preview
+    const meta = item.meta || {};
+    let commentImages: Array<{ url: string }> = [];
+    
+    if (meta.media_images && Array.isArray(meta.media_images)) {
+      commentImages = meta.media_images;
+    } else if (meta.media_items && Array.isArray(meta.media_items)) {
+      commentImages = meta.media_items;
+    } else if (meta.media_preview?.image) {
+      commentImages = [{ url: meta.media_preview.image }];
+    }
 
     return (
       <View style={[styles.commentItem, isReply && styles.commentReply]}>
@@ -277,10 +410,22 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
             </View>
           )}
           
-          {/* Comment actions */}
+          {/* Comment actions - FIXED: Working reactions */}
           <View style={styles.commentActions}>
-            <TouchableOpacity style={styles.commentAction}>
-              <Text style={styles.commentActionText}>❤️ Like</Text>
+            <TouchableOpacity 
+              style={styles.commentAction}
+              onPress={() => handleCommentReaction(item)}
+            >
+              <Text style={[
+                styles.commentActionText,
+                item.has_user_react && styles.commentActionActive
+              ]}>
+                {item.has_user_react ? '❤️' : '🤍'} {
+                  typeof item.reactions_count === 'string'
+                    ? parseInt(item.reactions_count, 10) || ''
+                    : item.reactions_count || ''
+                }
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.commentAction}
@@ -316,15 +461,21 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
         <View style={styles.backdrop} />
       </TouchableWithoutFeedback>
 
-      {/* Sheet */}
-      <KeyboardAvoidingView
-        style={styles.sheet}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      {/* Sheet - Now animated for swipe */}
+      <Animated.View
+        style={[
+          styles.sheet,
+          { transform: [{ translateY }] }
+        ]}
       >
-        {/* Handle */}
-        <View style={styles.handleContainer}>
-          <View style={styles.handle} />
-        </View>
+        <KeyboardAvoidingView
+          style={styles.sheetInner}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          {/* Handle - Swipeable */}
+          <View style={styles.handleContainer} {...panResponder.panHandlers}>
+            <View style={styles.handle} />
+          </View>
 
         {/* Header */}
         <View style={styles.header}>
@@ -362,11 +513,11 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
           />
         )}
 
-        {/* Reply indicator */}
+        {/* Reply indicator - shows who you're mentioning */}
         {replyingTo && (
           <View style={styles.replyIndicator}>
             <Text style={styles.replyText}>
-              Replying to <Text style={styles.replyName}>{replyingTo.xprofile?.display_name}</Text>
+              Replying to <Text style={styles.replyName}>@{replyingTo.xprofile?.username || replyingTo.xprofile?.display_name}</Text>
             </Text>
             <TouchableOpacity onPress={cancelReply}>
               <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
@@ -414,7 +565,7 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
           {/* Text input */}
           <TextInput
             style={styles.textInput}
-            placeholder={replyingTo ? `Reply to ${replyingTo.xprofile?.display_name}...` : 'Write a comment...'}
+            placeholder={replyingTo ? 'Write your reply...' : 'Write a comment...'}
             placeholderTextColor={colors.textTertiary}
             value={commentText}
             onChangeText={setCommentText}
@@ -435,7 +586,8 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </Animated.View>
     </Modal>
   );
 }
@@ -461,16 +613,21 @@ const styles = StyleSheet.create({
     borderTopRightRadius: sizing.borderRadius.xl,
   },
 
+  sheetInner: {
+    flex: 1,
+  },
+
   handleContainer: {
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
+    cursor: 'grab',
   },
 
   handle: {
     width: 40,
-    height: 4,
+    height: 5,
     backgroundColor: colors.border,
-    borderRadius: 2,
+    borderRadius: 3,
   },
 
   header: {
@@ -613,6 +770,11 @@ const styles = StyleSheet.create({
   commentActionText: {
     fontSize: typography.size.sm,
     color: colors.textSecondary,
+  },
+
+  commentActionActive: {
+    color: colors.error,
+    fontWeight: '600',
   },
 
   replyIndicator: {
