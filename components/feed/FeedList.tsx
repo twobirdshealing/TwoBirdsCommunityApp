@@ -1,8 +1,7 @@
 // =============================================================================
-// FEED LIST - Scrollable list of feed cards with comment support
+// FEED LIST - Scrollable list of feed cards with all features
 // =============================================================================
-// Uses FlatList for reliable cross-platform scrolling.
-// UPDATED: Single like reaction type, comment support
+// UPDATED: Added bookmark, edit, delete callbacks
 // =============================================================================
 
 import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
@@ -28,6 +27,9 @@ interface FeedListProps {
   onAuthorPress?: (username: string) => void;
   onSpacePress?: (spaceSlug: string) => void;
   onCommentPress?: (feed: Feed) => void;
+  onBookmarkToggle?: (feed: Feed, isBookmarked: boolean) => void;
+  onEdit?: (feed: Feed) => void;
+  onDelete?: (feed: Feed) => void;
   onLoadMore?: () => void;
   emptyMessage?: string;
   emptyIcon?: string;
@@ -49,6 +51,9 @@ export function FeedList({
   onAuthorPress,
   onSpacePress,
   onCommentPress,
+  onBookmarkToggle,
+  onEdit,
+  onDelete,
   onLoadMore,
   emptyMessage = 'No posts yet',
   emptyIcon = '📭',
@@ -100,37 +105,38 @@ export function FeedList({
         }
       }}
       onCommentPress={() => onCommentPress?.(item)}
+      onBookmarkToggle={(isBookmarked) => onBookmarkToggle?.(item, isBookmarked)}
+      onEdit={() => onEdit?.(item)}
+      onDelete={() => onDelete?.(item)}
     />
   );
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={feeds}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderItem}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={ListHeaderComponent}
-        refreshControl={
-          onRefresh ? (
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
-            />
-          ) : undefined
-        }
-        onEndReached={onLoadMore}
-        onEndReachedThreshold={0.5}
-        // Performance optimizations
-        removeClippedSubviews={Platform.OS === 'android'}
-        maxToRenderPerBatch={10}
-        windowSize={10}
-        initialNumToRender={10}
-      />
-    </View>
+    <FlatList
+      data={feeds}
+      keyExtractor={(item) => item.id.toString()}
+      renderItem={renderItem}
+      contentContainerStyle={styles.list}
+      showsVerticalScrollIndicator={false}
+      ListHeaderComponent={ListHeaderComponent}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        ) : undefined
+      }
+      onEndReached={onLoadMore}
+      onEndReachedThreshold={0.5}
+      // Performance optimizations
+      removeClippedSubviews={Platform.OS === 'android'}
+      maxToRenderPerBatch={10}
+      windowSize={10}
+      initialNumToRender={5}
+    />
   );
 }
 
@@ -146,7 +152,7 @@ const styles = StyleSheet.create({
   
   list: {
     paddingVertical: spacing.sm,
-    paddingBottom: 100, // Extra padding for bottom tabs
+    paddingBottom: 100,
   },
 });
 

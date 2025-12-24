@@ -5,10 +5,13 @@
 // FIXED: Add media_images support for image comments
 // FIXED: Comment reactions use {state: 1} format
 // FIXED: Swipe down on handle to close
+// FIXED: Reply uses top-level parent_id with @mention
+// ADDED: 3-dot menu with Copy Link, Edit, Delete
 // =============================================================================
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Animated,
@@ -26,6 +29,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '@/constants/colors';
@@ -35,6 +39,8 @@ import { commentsApi, mediaApi } from '@/services/api';
 import { Avatar } from '@/components/common/Avatar';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { stripHtmlTags } from '@/utils/htmlToText';
+import { useAuth } from '@/contexts/AuthContext';
+import { SITE_URL } from '@/constants/config';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_HEIGHT = SCREEN_HEIGHT * 0.75;
@@ -46,6 +52,7 @@ const SHEET_HEIGHT = SCREEN_HEIGHT * 0.75;
 interface CommentSheetProps {
   visible: boolean;
   feedId: number | null;
+  feedSlug?: string;  // For copy link URL
   onClose: () => void;
   onCommentAdded?: () => void;
 }
@@ -60,7 +67,8 @@ interface AttachedImage {
 // Component
 // -----------------------------------------------------------------------------
 
-export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: CommentSheetProps) {
+export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdded }: CommentSheetProps) {
+  const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +79,9 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Edit mode state
+  const [editingComment, setEditingComment] = useState<Comment | null>(null);
 
   // Swipe to close
   const translateY = useRef(new Animated.Value(0)).current;
@@ -129,6 +140,7 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
     // Reset when closed
     if (!visible) {
       setReplyingTo(null);
+      setEditingComment(null);
       setCommentText('');
       setAttachedImages([]);
     }
@@ -219,6 +231,7 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
 
   // ---------------------------------------------------------------------------
   // Submit Comment - FIXED: Use 'comment' not 'message'
+  // Now supports both create and edit modes
   // ---------------------------------------------------------------------------
 
   const handleSubmitComment = async () => {
@@ -232,6 +245,30 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
     setIsSubmitting(true);
 
     try {
+      // EDIT MODE
+      if (editingComment) {
+        console.log('[CommentSheet] Updating comment:', editingComment.id);
+        
+        const response = await commentsApi.updateComment(feedId, editingComment.id, {
+          comment: trimmedText,
+        });
+
+        if (response.success) {
+          // Update in local state
+          setComments(prev => prev.map(c => 
+            c.id === editingComment.id 
+              ? { ...c, message: trimmedText, message_rendered: `<p>${trimmedText}</p>` }
+              : c
+          ));
+          setCommentText('');
+          setEditingComment(null);
+        } else {
+          throw new Error(response.error?.message || 'Failed to update comment');
+        }
+        return;
+      }
+
+      // CREATE MODE
       // Build media_images array if we have attachments
       const media_images = attachedImages.length > 0
         ? attachedImages.map(img => ({
@@ -254,8 +291,8 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
       });
 
       const response = await commentsApi.createComment(feedId, {
-        comment: trimmedText,  // FIXED: Use 'comment' not 'message'
-        parent_id: parentId,  // FIXED: Use top-level parent for nested replies
+        comment: trimmedText,
+        parent_id: parentId,
         media_images,
       });
 
@@ -356,6 +393,110 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
   };
 
   // ---------------------------------------------------------------------------
+  // Comment Menu Actions
+  // ---------------------------------------------------------------------------
+
+  const handleCommentMenu = (comment: Comment) => {
+    const isOwner = user?.id === Number(comment.user_id);
+    
+    if (Platform.OS === 'ios') {
+      const options = ['Cancel', 'Copy Link'];
+      if (isOwner) {
+        options.push('Edit', 'Delete');
+      }
+      
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex: 0,
+          destructiveButtonIndex: isOwner ? options.indexOf('Delete') : undefined,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) handleCopyLink(comment);
+          else if (isOwner && buttonIndex === 2) handleEditComment(comment);
+          else if (isOwner && buttonIndex === 3) handleDeleteComment(comment);
+        }
+      );
+    } else {
+      // Android - use Alert as simple menu
+      const buttons: any[] = [
+        { text: 'Copy Link', onPress: () => handleCopyLink(comment) },
+      ];
+      
+      if (isOwner) {
+        buttons.push({ text: 'Edit', onPress: () => handleEditComment(comment) });
+        buttons.push({ 
+          text: 'Delete', 
+          onPress: () => handleDeleteComment(comment),
+          style: 'destructive'
+        });
+      }
+      
+      buttons.push({ text: 'Cancel', style: 'cancel' });
+      
+      Alert.alert('Comment Options', '', buttons);
+    }
+  };
+
+  const handleCopyLink = async (comment: Comment) => {
+    // Build URL like: https://site.com/portal/post/feed-slug?comment_id=123
+    const slug = feedSlug || `feed-${feedId}`;
+    const url = `${SITE_URL}/portal/post/${slug}?comment_id=${comment.id}`;
+    
+    try {
+      await Clipboard.setStringAsync(url);
+      Alert.alert('Copied!', 'Link copied to clipboard');
+    } catch (err) {
+      // If clipboard fails, show URL so user can manually copy
+      console.error('Copy failed:', err);
+      Alert.alert('Comment Link', url);
+    }
+  };
+
+  const handleEditComment = (comment: Comment) => {
+    setEditingComment(comment);
+    setCommentText(stripHtmlTags(comment.message_rendered || comment.message));
+    setReplyingTo(null);
+  };
+
+  const handleDeleteComment = (comment: Comment) => {
+    Alert.alert(
+      'Delete Comment',
+      'Are you sure you want to delete this comment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!feedId) return;
+            
+            try {
+              const response = await commentsApi.deleteComment(feedId, comment.id);
+              
+              if (response.success) {
+                // Remove from local state
+                setComments(prev => prev.filter(c => c.id !== comment.id));
+                onCommentAdded?.(); // Refresh parent
+              } else {
+                Alert.alert('Error', response.error?.message || 'Failed to delete');
+              }
+            } catch (err) {
+              console.error('Delete error:', err);
+              Alert.alert('Error', 'Failed to delete comment');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const cancelEdit = () => {
+    setEditingComment(null);
+    setCommentText('');
+  };
+
+  // ---------------------------------------------------------------------------
   // Render comment item
   // ---------------------------------------------------------------------------
 
@@ -391,8 +532,18 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
         />
         <View style={styles.commentContent}>
           <View style={styles.commentHeader}>
-            <Text style={styles.commentAuthor}>{authorName}</Text>
-            <Text style={styles.commentTime}>{timestamp}</Text>
+            <View style={styles.commentHeaderLeft}>
+              <Text style={styles.commentAuthor}>{authorName}</Text>
+              <Text style={styles.commentTime}>{timestamp}</Text>
+            </View>
+            {/* 3-dot menu */}
+            <TouchableOpacity
+              style={styles.commentMenuButton}
+              onPress={() => handleCommentMenu(item)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="ellipsis-vertical" size={16} color={colors.textTertiary} />
+            </TouchableOpacity>
           </View>
           <Text style={styles.commentText}>{content}</Text>
           
@@ -514,12 +665,24 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
         )}
 
         {/* Reply indicator - shows who you're mentioning */}
-        {replyingTo && (
+        {replyingTo && !editingComment && (
           <View style={styles.replyIndicator}>
             <Text style={styles.replyText}>
               Replying to <Text style={styles.replyName}>@{replyingTo.xprofile?.username || replyingTo.xprofile?.display_name}</Text>
             </Text>
             <TouchableOpacity onPress={cancelReply}>
+              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Edit indicator */}
+        {editingComment && (
+          <View style={[styles.replyIndicator, styles.editIndicator]}>
+            <Text style={styles.replyText}>
+              Editing comment
+            </Text>
+            <TouchableOpacity onPress={cancelEdit}>
               <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -582,7 +745,7 @@ export function CommentSheet({ visible, feedId, onClose, onCommentAdded }: Comme
             {isSubmitting ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Ionicons name="send" size={20} color="#fff" />
+              <Ionicons name={editingComment ? "checkmark" : "send"} size={20} color="#fff" />
             )}
           </TouchableOpacity>
         </View>
@@ -723,7 +886,18 @@ const styles = StyleSheet.create({
   commentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
+  },
+
+  commentHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  commentMenuButton: {
+    padding: 4,
   },
 
   commentAuthor: {
@@ -794,6 +968,10 @@ const styles = StyleSheet.create({
   replyName: {
     fontWeight: '600',
     color: colors.primary,
+  },
+
+  editIndicator: {
+    backgroundColor: colors.warning + '20',
   },
 
   attachedImagesContainer: {

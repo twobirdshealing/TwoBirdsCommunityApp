@@ -1,84 +1,94 @@
 // =============================================================================
-// SPACE PAGE - Individual space feed view with post creation
+// SPACE PAGE - Individual space view with feeds
 // =============================================================================
-// Route: /space/[slug]
-// FIXED: Use 'space' (slug) instead of 'space_id' for post creation
-// FIXED: Always show QuickPostBox - server handles permissions
+// UPDATED: Sticky posts, bookmark, edit/delete support
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Alert, View, StyleSheet } from 'react-native';
+import {
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
-import { Space, Feed } from '@/types';
-import { spacesApi, feedsApi } from '@/services/api';
-import { FeedList } from '@/components/feed';
+import { spacing, typography, sizing, shadows } from '@/constants/layout';
+import { Feed, Space } from '@/types';
+import { feedsApi, spacesApi } from '@/services/api';
+import { FeedList } from '@/components/feed/FeedList';
 import { CommentSheet } from '@/components/feed/CommentSheet';
-import { SpaceHeader, SpaceMenu } from '@/components/space';
-import { LoadingSpinner, ErrorMessage } from '@/components/common';
 import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/composer';
 
-export default function SpacePage() {
-  const router = useRouter();
-  const { slug } = useLocalSearchParams<{ slug: string }>();
-  const insets = useSafeAreaInsets();
+// -----------------------------------------------------------------------------
+// Component
+// -----------------------------------------------------------------------------
 
-  // State
+export default function SpacePage() {
+  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const router = useRouter();
+  
+  // Space state
   const [space, setSpace] = useState<Space | null>(null);
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  
   // Modal states
   const [showComposer, setShowComposer] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
-
+  const [selectedFeedSlug, setSelectedFeedSlug] = useState<string | undefined>(undefined);
+  
   // ---------------------------------------------------------------------------
-  // Fetch Space Details
+  // Fetch Space Data
   // ---------------------------------------------------------------------------
-
-  const fetchSpaceDetails = useCallback(async () => {
+  
+  const fetchSpace = useCallback(async () => {
     if (!slug) return;
-
+    
     try {
       const response = await spacesApi.getSpaceBySlug(slug);
-
       if (response.success) {
-        const spaceData = (response.data as any).space || response.data.data || response.data;
-        setSpace(spaceData);
-      } else {
-        setError(response.error?.message || 'Failed to load space');
+        setSpace(response.data.space);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      console.error('Failed to load space:', err);
     }
   }, [slug]);
-
+  
   // ---------------------------------------------------------------------------
-  // Fetch Space Feeds
+  // Fetch Feeds - Now merges sticky posts at top!
   // ---------------------------------------------------------------------------
-
-  const fetchSpaceFeeds = useCallback(async (isRefresh = false) => {
+  
+  const fetchFeeds = useCallback(async (isRefresh = false) => {
     if (!slug) return;
-
+    
     try {
       if (isRefresh) {
         setRefreshing(true);
         setError(null);
       }
-
-      const response = await feedsApi.getFeeds({ 
-        space: slug,
-        per_page: 20,
-      });
-
+      
+      const response = await feedsApi.getFeeds({ space: slug, per_page: 20 });
+      
       if (response.success) {
-        setFeeds(response.data.feeds.data);
+        // Merge sticky posts at top!
+        const stickyPosts = response.data.sticky || [];
+        const regularFeeds = response.data.feeds.data || [];
+        
+        // Remove duplicates
+        const stickyIds = new Set(stickyPosts.map(f => f.id));
+        const filteredRegular = regularFeeds.filter(f => !stickyIds.has(f.id));
+        
+        setFeeds([...stickyPosts, ...filteredRegular]);
       } else {
-        setError(response.error?.message || 'Failed to load posts');
+        setError(response.error.message);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -87,82 +97,32 @@ export default function SpacePage() {
       setRefreshing(false);
     }
   }, [slug]);
-
-  // ---------------------------------------------------------------------------
-  // Initial Load
-  // ---------------------------------------------------------------------------
-
+  
+  // Initial load
   useEffect(() => {
-    const loadAll = async () => {
-      setLoading(true);
-      await fetchSpaceDetails();
-      await fetchSpaceFeeds();
-    };
-    loadAll();
-  }, [fetchSpaceDetails, fetchSpaceFeeds]);
-
-  // ---------------------------------------------------------------------------
-  // Create Post - FIXED: Use 'space' (slug) instead of 'space_id'
-  // ---------------------------------------------------------------------------
-
-  const handleCreatePost = async (data: ComposerSubmitData) => {
-    if (!slug) return;
-
-    try {
-      const response = await feedsApi.createFeed({
-        message: data.message,
-        title: data.title,
-        content_type: data.content_type,
-        space: slug,
-        media_images: data.media_images,
-      });
-
-      if (response.success) {
-        fetchSpaceFeeds(true);
-        Alert.alert('Success', 'Your post has been published!');
-      } else {
-        throw new Error(response.error?.message || 'Failed to create post');
-      }
-    } catch (err) {
-      console.error('Create post error:', err);
-      throw err;
-    }
-  };
-
+    fetchSpace();
+    fetchFeeds();
+  }, [fetchSpace, fetchFeeds]);
+  
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
-
+  
   const handleRefresh = () => {
-    fetchSpaceFeeds(true);
+    fetchFeeds(true);
   };
-
+  
   const handleFeedPress = (feed: Feed) => {
     router.push({
       pathname: '/feed/[id]',
-      params: { id: feed.id.toString(), space: slug, context: 'space' },
+      params: { id: feed.id.toString(), space: slug },
     });
   };
-
-  // Open comment sheet
-  const handleCommentPress = (feed: Feed) => {
-    setSelectedFeedId(feed.id);
-    setShowComments(true);
-  };
-
-  const handleCloseComments = () => {
-    setShowComments(false);
-    setSelectedFeedId(null);
-  };
-
-  const handleCommentAdded = () => {
-    fetchSpaceFeeds(true);
-  };
-
+  
   const handleReact = async (feedId: number, type: 'like') => {
     const feed = feeds.find(f => f.id === feedId);
     if (!feed) return;
-
+    
     const hasUserReact = feed.has_user_react || false;
 
     // Optimistic update
@@ -172,7 +132,7 @@ export default function SpacePage() {
           const currentCount = typeof f.reactions_count === 'string'
             ? parseInt(f.reactions_count, 10)
             : f.reactions_count || 0;
-
+          
           return {
             ...f,
             has_user_react: !hasUserReact,
@@ -183,148 +143,290 @@ export default function SpacePage() {
       })
     );
 
-    // API call
     try {
       await feedsApi.reactToFeed(feedId, type, hasUserReact);
     } catch (err) {
-      // Revert on error
       setFeeds(prevFeeds =>
-        prevFeeds.map(f => f.id === feedId ? feed : f)
+        prevFeeds.map(f => (f.id === feedId ? feed : f))
       );
     }
   };
-
+  
   const handleAuthorPress = (username: string) => {
-    router.push(`/profile/${username}`);
+    router.push({
+      pathname: '/profile/[username]',
+      params: { username },
+    });
+  };
+  
+  // Open comment sheet
+  const handleCommentPress = (feed: Feed) => {
+    setSelectedFeedId(feed.id);
+    setSelectedFeedSlug(feed.slug);
+    setShowComments(true);
   };
 
-  // Callback when user leaves the space
-  const handleLeaveSuccess = () => {
-    // Space has been left, the SpaceMenu already navigates back
+  const handleCloseComments = () => {
+    setShowComments(false);
+    setSelectedFeedId(null);
+    setSelectedFeedSlug(undefined);
+  };
+  
+  const handleCommentAdded = () => {
+    fetchFeeds(true);
   };
 
   // ---------------------------------------------------------------------------
-  // Render States
+  // Bookmark Toggle
   // ---------------------------------------------------------------------------
 
-  if (loading && !space) {
-    return (
-      <View style={styles.container}>
-        <Stack.Screen 
-          options={{ 
-            headerShown: true,
-            title: 'Loading...' 
-          }} 
-        />
-        <LoadingSpinner message="Loading space..." />
-      </View>
-    );
-  }
-
-  if (error && !space) {
-    return (
-      <View style={styles.container}>
-        <Stack.Screen 
-          options={{ 
-            headerShown: true,
-            title: 'Error' 
-          }} 
-        />
-        <ErrorMessage message={error} onRetry={fetchSpaceDetails} />
-      </View>
-    );
-  }
-
-  if (!space) {
-    return (
-      <View style={styles.container}>
-        <Stack.Screen 
-          options={{ 
-            headerShown: true,
-            title: 'Not Found' 
-          }} 
-        />
-        <ErrorMessage message="Space not found" />
-      </View>
-    );
-  }
+  const handleBookmarkToggle = async (feed: Feed, isBookmarked: boolean) => {
+    try {
+      await feedsApi.toggleBookmark(feed.id, !isBookmarked);
+      
+      setFeeds(prevFeeds =>
+        prevFeeds.map(f => 
+          f.id === feed.id ? { ...f, bookmarked: isBookmarked } : f
+        )
+      );
+    } catch (err) {
+      console.error('Bookmark error:', err);
+      Alert.alert('Error', 'Failed to update bookmark');
+    }
+  };
 
   // ---------------------------------------------------------------------------
-  // List Header - SpaceHeader + QuickPostBox
+  // Edit Feed
   // ---------------------------------------------------------------------------
 
-  const ListHeader = (
+  const handleEdit = (feed: Feed) => {
+    Alert.alert(
+      'Edit Post',
+      'Edit functionality coming soon!',
+      [{ text: 'OK' }]
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Delete Feed
+  // ---------------------------------------------------------------------------
+
+  const handleDelete = async (feed: Feed) => {
+    try {
+      const response = await feedsApi.deleteFeed(feed.id);
+      
+      if (response.success) {
+        setFeeds(prevFeeds => prevFeeds.filter(f => f.id !== feed.id));
+        Alert.alert('Deleted', 'Post deleted successfully');
+      } else {
+        Alert.alert('Error', response.error?.message || 'Failed to delete post');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      Alert.alert('Error', 'Failed to delete post');
+    }
+  };
+  
+  // ---------------------------------------------------------------------------
+  // Create Post
+  // ---------------------------------------------------------------------------
+  
+  const handleCreatePost = async (data: ComposerSubmitData) => {
+    try {
+      const response = await feedsApi.createFeed({
+        message: data.message,
+        space: data.space || slug,
+        content_type: data.content_type,
+        media_images: data.media_images,
+      });
+      
+      if (response.success) {
+        setShowComposer(false);
+        fetchFeeds(true);
+      } else {
+        Alert.alert('Error', response.error?.message || 'Failed to create post');
+      }
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to create post');
+    }
+  };
+  
+  // ---------------------------------------------------------------------------
+  // Space Header Component
+  // ---------------------------------------------------------------------------
+  
+  const SpaceHeader = () => {
+    if (!space) return null;
+    
+    return (
+      <View style={styles.spaceHeader}>
+        {/* Cover Image */}
+        {space.cover_photo && (
+          <Image
+            source={{ uri: space.cover_photo }}
+            style={styles.coverImage}
+            resizeMode="cover"
+          />
+        )}
+        
+        {/* Space Info */}
+        <View style={styles.spaceInfo}>
+          {space.logo && (
+            <Image
+              source={{ uri: space.logo }}
+              style={styles.spaceLogo}
+              resizeMode="cover"
+            />
+          )}
+          
+          <Text style={styles.spaceTitle}>{space.title}</Text>
+          
+          {space.description && (
+            <Text style={styles.spaceDescription} numberOfLines={2}>
+              {space.description}
+            </Text>
+          )}
+          
+          <View style={styles.spaceStats}>
+            <View style={styles.statItem}>
+              <Ionicons name="people-outline" size={16} color={colors.textSecondary} />
+              <Text style={styles.statText}>{space.members_count || 0} members</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Ionicons name="document-text-outline" size={16} color={colors.textSecondary} />
+              <Text style={styles.statText}>{space.feeds_count || 0} posts</Text>
+            </View>
+          </View>
+        </View>
+        
+        {/* Quick Post Box - Always show for spaces */}
+        <QuickPostBox
+          onPress={() => setShowComposer(true)}
+          placeholder={`Post in ${space.title}...`}
+        />
+      </View>
+    );
+  };
+  
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+  
+  return (
     <>
-      <SpaceHeader space={space} />
-      {/* FIXED: Always show QuickPostBox - if user can view space, they can post */}
-      {/* Server handles actual permission validation */}
-      <QuickPostBox
-        placeholder={`Post to ${space.title}...`}
-        onPress={() => setShowComposer(true)}
+      <Stack.Screen
+        options={{
+          title: space?.title || 'Space',
+          headerBackTitle: 'Back',
+        }}
       />
+      
+      <View style={styles.container}>
+        <FeedList
+          feeds={feeds}
+          loading={loading}
+          refreshing={refreshing}
+          error={error}
+          onRefresh={handleRefresh}
+          onFeedPress={handleFeedPress}
+          onReact={handleReact}
+          onAuthorPress={handleAuthorPress}
+          onCommentPress={handleCommentPress}
+          onBookmarkToggle={handleBookmarkToggle}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          ListHeaderComponent={<SpaceHeader />}
+          emptyMessage="No posts in this space yet"
+          emptyIcon="📝"
+        />
+        
+        {/* Create Post Modal */}
+        <CreatePostModal
+          visible={showComposer}
+          onClose={() => setShowComposer(false)}
+          onSubmit={handleCreatePost}
+          spaceSlug={slug}
+        />
+        
+        {/* Comment Sheet */}
+        <CommentSheet
+          visible={showComments}
+          feedId={selectedFeedId}
+          feedSlug={selectedFeedSlug}
+          onClose={handleCloseComments}
+          onCommentAdded={handleCommentAdded}
+        />
+      </View>
     </>
   );
-
-  // ---------------------------------------------------------------------------
-  // Main Render
-  // ---------------------------------------------------------------------------
-
-  return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      {/* Top nav with back button and menu */}
-      <Stack.Screen 
-        options={{ 
-          headerShown: true,
-          title: space.title,
-          headerBackTitle: 'Back',
-          headerRight: () => (
-            <SpaceMenu
-              slug={slug}
-              role={space.role}
-              onLeaveSuccess={handleLeaveSuccess}
-            />
-          ),
-        }} 
-      />
-
-      <FeedList
-        feeds={feeds}
-        loading={loading}
-        refreshing={refreshing}
-        error={error}
-        onRefresh={handleRefresh}
-        onFeedPress={handleFeedPress}
-        onReact={handleReact}
-        onAuthorPress={handleAuthorPress}
-        onCommentPress={handleCommentPress}
-        emptyMessage="No posts in this space yet"
-        emptyIcon="📭"
-        ListHeaderComponent={ListHeader}
-      />
-
-      {/* Create Post Modal - FIXED: Use spaceSlug instead of spaceId */}
-      <CreatePostModal
-        visible={showComposer}
-        onClose={() => setShowComposer(false)}
-        onSubmit={handleCreatePost}
-        spaceSlug={slug}
-        spaceName={space.title}
-      />
-
-      {/* Comment Sheet */}
-      <CommentSheet
-        visible={showComments}
-        feedId={selectedFeedId}
-        onClose={handleCloseComments}
-        onCommentAdded={handleCommentAdded}
-      />
-    </View>
-  );
 }
+
+// -----------------------------------------------------------------------------
+// Styles
+// -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  
+  spaceHeader: {
+    backgroundColor: colors.surface,
+    marginBottom: spacing.md,
+  },
+  
+  coverImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: colors.primary,
+  },
+  
+  spaceInfo: {
+    padding: spacing.lg,
+    alignItems: 'center',
+  },
+  
+  spaceLogo: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginTop: -40,
+    borderWidth: 3,
+    borderColor: colors.surface,
+    backgroundColor: colors.background,
+  },
+  
+  spaceTitle: {
+    fontSize: typography.size.xl,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  
+  spaceDescription: {
+    fontSize: typography.size.md,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.lg,
+  },
+  
+  spaceStats: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+  },
+  
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  
+  statText: {
+    fontSize: typography.size.sm,
+    color: colors.textSecondary,
   },
 });

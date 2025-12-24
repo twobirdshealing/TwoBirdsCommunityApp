@@ -94,8 +94,16 @@ export async function createComment(feedId: number, data: CreateCommentData) {
 // -----------------------------------------------------------------------------
 // Update a Comment
 // -----------------------------------------------------------------------------
+// FIXED: Use 'comment' not 'message' to match web app
 
-export async function updateComment(feedId: number, commentId: number, data: Partial<CreateCommentData>) {
+export interface UpdateCommentData {
+  comment: string;  // FIXED: Use 'comment' not 'message'
+  content_type?: 'text' | 'markdown' | 'html';
+}
+
+export async function updateComment(feedId: number, commentId: number, data: UpdateCommentData) {
+  console.log('[CommentsAPI] Updating comment:', { feedId, commentId, data });
+  
   return post<{ message: string; data: Comment }>(
     `${ENDPOINTS.FEED_COMMENTS(feedId)}/${commentId}`,
     data

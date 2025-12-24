@@ -1,10 +1,26 @@
 // =============================================================================
 // FEED CARD - A single post/feed item in the list
 // =============================================================================
-// Displays author, content, media (images/YouTube), reactions, and comments.
-// UPDATED: Single like button only (no heart), comment opens sheet directly
+// UPDATED: Added bookmark icon, 3-dot menu, sticky indicator
+// - Bookmark: Toggle save for later
+// - Menu: Copy Link, Edit (owner), Delete (owner)
+// - Sticky: Pin icon for pinned posts
 // =============================================================================
 
+import React, { useState } from 'react';
+import {
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { Avatar } from '@/components/common/Avatar';
 import { colors } from '@/constants/colors';
 import { shadows, sizing, spacing, typography } from '@/constants/layout';
@@ -12,15 +28,8 @@ import { Feed } from '@/types';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { formatCompactNumber } from '@/utils/formatNumber';
 import { stripHtmlTags, truncateText } from '@/utils/htmlToText';
-import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
+import { SITE_URL } from '@/constants/config';
 
 // -----------------------------------------------------------------------------
 // Media Detection Helper
@@ -45,43 +54,27 @@ function detectMedia(feed: Feed): MediaInfo {
       .map((item: any) => item.url);
     
     if (imageUrls.length > 1) {
-      return {
-        type: 'images',
-        imageUrls: imageUrls,
-        imageUrl: imageUrls[0],
-      };
+      return { type: 'images', imageUrls, imageUrl: imageUrls[0] };
     } else if (imageUrls.length === 1) {
-      return {
-        type: 'image',
-        imageUrl: imageUrls[0],
-      };
+      return { type: 'image', imageUrl: imageUrls[0] };
     }
   }
   
   // 2. Check for single image in meta.media_preview
   if (meta.media_preview?.image) {
-    return {
-      type: 'image',
-      imageUrl: meta.media_preview.image,
-    };
+    return { type: 'image', imageUrl: meta.media_preview.image };
   }
   
   // 3. Check for featured_image
   if (feed.featured_image) {
-    return {
-      type: 'image',
-      imageUrl: feed.featured_image,
-    };
+    return { type: 'image', imageUrl: feed.featured_image };
   }
   
   // 4. Check for YouTube links in message
   const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
   const youtubeMatch = message.match(youtubeRegex) || messageRendered.match(youtubeRegex);
   if (youtubeMatch) {
-    return {
-      type: 'youtube',
-      youtubeId: youtubeMatch[1],
-    };
+    return { type: 'youtube', youtubeId: youtubeMatch[1] };
   }
   
   return { type: 'none' };
@@ -98,6 +91,9 @@ interface FeedCardProps {
   onAuthorPress?: () => void;
   onSpacePress?: () => void;
   onCommentPress?: () => void;
+  onBookmarkToggle?: (isBookmarked: boolean) => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -111,14 +107,21 @@ export function FeedCard({
   onAuthorPress,
   onSpacePress,
   onCommentPress,
+  onBookmarkToggle,
+  onEdit,
+  onDelete,
 }: FeedCardProps) {
+  const { user } = useAuth();
   const [imageLoading, setImageLoading] = useState(true);
+  const [isBookmarked, setIsBookmarked] = useState(feed.bookmarked || false);
   
   // Extract data
   const author = feed.xprofile;
   const authorName = author?.display_name || 'Unknown';
   const authorAvatar = author?.avatar || null;
   const isVerified = author?.is_verified === 1;
+  const isOwner = user?.id === Number(feed.user_id);
+  const isSticky = feed.is_sticky === true || feed.is_sticky === 1;
   
   const spaceName = feed.space?.title || null;
   const timestamp = formatRelativeTime(feed.created_at);
@@ -140,6 +143,77 @@ export function FeedCard({
     ? parseInt(feed.comments_count, 10)
     : feed.comments_count || 0;
   const hasUserReact = feed.has_user_react || false;
+
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
+
+  const handleBookmarkPress = () => {
+    const newState = !isBookmarked;
+    setIsBookmarked(newState);
+    onBookmarkToggle?.(newState);
+  };
+
+  const handleCopyLink = async () => {
+    const url = `${SITE_URL}/portal/post/${feed.slug}`;
+    try {
+      await Clipboard.setStringAsync(url);
+      Alert.alert('Copied!', 'Link copied to clipboard');
+    } catch (err) {
+      Alert.alert('Link', url);
+    }
+  };
+
+  const handleMenuPress = () => {
+    if (Platform.OS === 'ios') {
+      const options = ['Cancel', 'Copy Link'];
+      if (isOwner) {
+        options.push('Edit', 'Delete');
+      }
+      
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex: 0,
+          destructiveButtonIndex: isOwner ? options.indexOf('Delete') : undefined,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) handleCopyLink();
+          else if (isOwner && buttonIndex === 2) onEdit?.();
+          else if (isOwner && buttonIndex === 3) handleDelete();
+        }
+      );
+    } else {
+      // Android
+      const buttons: any[] = [
+        { text: 'Copy Link', onPress: handleCopyLink },
+      ];
+      
+      if (isOwner) {
+        buttons.push({ text: 'Edit', onPress: onEdit });
+        buttons.push({ text: 'Delete', onPress: handleDelete, style: 'destructive' });
+      }
+      
+      buttons.push({ text: 'Cancel', style: 'cancel' });
+      
+      Alert.alert('Post Options', '', buttons);
+    }
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: onDelete },
+      ]
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   
   return (
     <TouchableOpacity 
@@ -147,6 +221,14 @@ export function FeedCard({
       onPress={onPress}
       activeOpacity={0.9}
     >
+      {/* ===== Sticky Indicator ===== */}
+      {isSticky && (
+        <View style={styles.stickyBadge}>
+          <Ionicons name="pin" size={12} color={colors.primary} />
+          <Text style={styles.stickyText}>Pinned</Text>
+        </View>
+      )}
+
       {/* ===== Header ===== */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -181,6 +263,29 @@ export function FeedCard({
             </View>
           </View>
         </TouchableOpacity>
+
+        {/* Header Actions: Bookmark + Menu */}
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleBookmarkPress}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons
+              name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+              size={20}
+              color={isBookmarked ? colors.primary : colors.textSecondary}
+            />
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleMenuPress}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
       
       {/* ===== Title ===== */}
@@ -212,6 +317,7 @@ export function FeedCard({
             onLoadStart={() => setImageLoading(true)}
             onLoadEnd={() => setImageLoading(false)}
           />
+          
           {/* Multiple images indicator */}
           {media.type === 'images' && media.imageUrls && media.imageUrls.length > 1 && (
             <View style={styles.imageCount}>
@@ -239,7 +345,7 @@ export function FeedCard({
       
       {/* ===== Footer ===== */}
       <View style={styles.footer}>
-        {/* Single Like Button - No heart */}
+        {/* Single Like Button */}
         <TouchableOpacity 
           style={[
             styles.reactionButton,
@@ -285,15 +391,37 @@ const styles = StyleSheet.create({
     borderRadius: sizing.borderRadius.lg,
     ...shadows.sm,
   },
+
+  // Sticky badge
+  stickyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.primaryLight + '20',
+    borderRadius: sizing.borderRadius.sm,
+    alignSelf: 'flex-start',
+  },
+
+  stickyText: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
+    color: colors.primary,
+    marginLeft: 4,
+  },
   
   // Header
   header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     marginBottom: spacing.md,
   },
   
   authorRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   
   authorInfo: {
@@ -329,6 +457,17 @@ const styles = StyleSheet.create({
     color: colors.primary,
     maxWidth: 150,
   },
+
+  // Header actions
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+
+  headerButton: {
+    padding: spacing.xs,
+  },
   
   // Title
   title: {
@@ -336,43 +475,40 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.sm,
+    lineHeight: 24,
   },
   
   // Content
   content: {
     fontSize: typography.size.md,
-    color: colors.text,
-    lineHeight: typography.size.md * 1.5,
+    color: colors.textSecondary,
+    lineHeight: 22,
+    marginBottom: spacing.md,
   },
   
   // Media
   mediaContainer: {
-    marginTop: spacing.md,
-    borderRadius: sizing.borderRadius.md,
-    overflow: 'hidden',
-    backgroundColor: colors.skeleton,
-    position: 'relative',
+    marginHorizontal: -spacing.lg,
+    marginBottom: spacing.md,
+    height: 200,
+    backgroundColor: colors.background,
   },
   
   mediaPlaceholder: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.skeleton,
+    backgroundColor: colors.background,
   },
   
   mediaImage: {
     width: '100%',
-    height: 200,
+    height: '100%',
   },
   
   imageCount: {
     position: 'absolute',
-    bottom: spacing.sm,
+    top: spacing.sm,
     right: spacing.sm,
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: spacing.sm,
@@ -401,32 +537,28 @@ const styles = StyleSheet.create({
   
   playIcon: {
     fontSize: 24,
-    marginLeft: 4,
   },
   
   // Footer
   footer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
+    gap: spacing.lg,
   },
   
-  // Single reaction button
   reactionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: sizing.borderRadius.full,
-    backgroundColor: colors.backgroundSecondary,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: sizing.borderRadius.md,
   },
   
   reactionButtonActive: {
-    backgroundColor: colors.primaryLight + '30',
+    backgroundColor: colors.primaryLight + '20',
   },
   
   reactionIcon: {
@@ -437,21 +569,18 @@ const styles = StyleSheet.create({
   reactionCount: {
     fontSize: typography.size.sm,
     color: colors.textSecondary,
-    fontWeight: '500',
   },
   
   reactionCountActive: {
     color: colors.primary,
+    fontWeight: '600',
   },
   
-  // Comment button
   commentButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: sizing.borderRadius.full,
-    backgroundColor: colors.backgroundSecondary,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
   },
   
   statIcon: {
@@ -462,7 +591,6 @@ const styles = StyleSheet.create({
   statCount: {
     fontSize: typography.size.sm,
     color: colors.textSecondary,
-    fontWeight: '500',
   },
 });
 
