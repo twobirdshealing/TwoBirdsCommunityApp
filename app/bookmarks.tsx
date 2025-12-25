@@ -1,65 +1,76 @@
 // =============================================================================
-// ACTIVITY SCREEN - Main community feed with all features
+// BOOKMARKS SCREEN - Shows user's saved posts
 // =============================================================================
-// UPDATED: Added pin support for admins
+// Accessible from avatar dropdown menu
+// Uses GET /feeds/bookmarks endpoint
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import {
+  Alert,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useRouter, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
+import { spacing, typography } from '@/constants/layout';
 import { Feed } from '@/types';
 import { feedsApi } from '@/services/api';
 import { FeedList } from '@/components/feed/FeedList';
 import { CommentSheet } from '@/components/feed/CommentSheet';
-import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/composer';
-import { useAuth } from '@/contexts/AuthContext';
 
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
-export default function ActivityScreen() {
+export default function BookmarksScreen() {
   const router = useRouter();
-  const { user } = useAuth();
   
-  // Feed state
+  // State
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Modal states
-  const [showComposer, setShowComposer] = useState(false);
+  // Comment sheet state
   const [showComments, setShowComments] = useState(false);
   const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
   const [selectedFeedSlug, setSelectedFeedSlug] = useState<string | undefined>(undefined);
   
   // ---------------------------------------------------------------------------
-  // Fetch Feeds - Now merges sticky posts at top!
+  // Fetch Bookmarks
   // ---------------------------------------------------------------------------
   
-  const fetchFeeds = useCallback(async (isRefresh = false) => {
+  const fetchBookmarks = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
         setError(null);
       }
       
-      const response = await feedsApi.getFeeds({ per_page: 20 });
+      const response = await feedsApi.getBookmarks();
       
       if (response.success) {
-        // Merge sticky posts at top of feed!
-        const stickyPosts = response.data.sticky || [];
-        const regularFeeds = response.data.feeds.data || [];
+        // Bookmarks API returns { data: [...] } with feed objects
+        // Each bookmark has a feed property containing the full feed
+        const bookmarkData = response.data.data || response.data || [];
         
-        // Remove duplicates (sticky might also appear in regular feeds)
-        const stickyIds = new Set(stickyPosts.map(f => f.id));
-        const filteredRegular = regularFeeds.filter(f => !stickyIds.has(f.id));
+        // Extract feeds from bookmarks (handle both formats)
+        const feedList = bookmarkData.map((item: any) => {
+          // If item has a feed property, use it; otherwise assume item IS the feed
+          const feed = item.feed || item;
+          // Mark as bookmarked
+          return { ...feed, bookmarked: true };
+        });
         
-        setFeeds([...stickyPosts, ...filteredRegular]);
+        setFeeds(feedList);
       } else {
-        setError(response.error.message);
+        setError(response.error?.message || 'Failed to load bookmarks');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -71,15 +82,15 @@ export default function ActivityScreen() {
   
   // Initial load
   useEffect(() => {
-    fetchFeeds();
-  }, [fetchFeeds]);
+    fetchBookmarks();
+  }, [fetchBookmarks]);
   
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
   
   const handleRefresh = () => {
-    fetchFeeds(true);
+    fetchBookmarks(true);
   };
   
   const handleFeedPress = (feed: Feed) => {
@@ -137,7 +148,7 @@ export default function ActivityScreen() {
     });
   };
   
-  // Open comment sheet
+  // Comment handlers
   const handleCommentPress = (feed: Feed) => {
     setSelectedFeedId(feed.id);
     setSelectedFeedSlug(feed.slug);
@@ -151,24 +162,29 @@ export default function ActivityScreen() {
   };
   
   const handleCommentAdded = () => {
-    // Refresh to update comment count
-    fetchFeeds(true);
+    fetchBookmarks(true);
   };
 
   // ---------------------------------------------------------------------------
-  // Bookmark Toggle
+  // Bookmark Toggle (Remove from bookmarks)
   // ---------------------------------------------------------------------------
 
   const handleBookmarkToggle = async (feed: Feed, isBookmarked: boolean) => {
     try {
+      // When toggled OFF, remove from bookmarks
       await feedsApi.toggleBookmark(feed.id, !isBookmarked);
       
-      // Update local state
-      setFeeds(prevFeeds =>
-        prevFeeds.map(f => 
-          f.id === feed.id ? { ...f, bookmarked: isBookmarked } : f
-        )
-      );
+      if (!isBookmarked) {
+        // Removed bookmark - remove from list
+        setFeeds(prevFeeds => prevFeeds.filter(f => f.id !== feed.id));
+      } else {
+        // Re-added bookmark (shouldn't happen in this screen but handle it)
+        setFeeds(prevFeeds =>
+          prevFeeds.map(f => 
+            f.id === feed.id ? { ...f, bookmarked: isBookmarked } : f
+          )
+        );
+      }
     } catch (err) {
       console.error('Bookmark error:', err);
       Alert.alert('Error', 'Failed to update bookmark');
@@ -176,53 +192,7 @@ export default function ActivityScreen() {
   };
 
   // ---------------------------------------------------------------------------
-  // Pin Handler (for admins - on activity feed, user must be admin of the space)
-  // ---------------------------------------------------------------------------
-
-  const handlePin = async (feed: Feed) => {
-    // On activity feed, we can only pin if user owns the post
-    // (Space-level admin pinning is handled in space page)
-    if (Number(feed.user_id) !== user?.id) {
-      Alert.alert('Cannot Pin', 'You can only pin your own posts from this view. Go to the space to pin other posts.');
-      return;
-    }
-
-    try {
-      const newStickyState = !feed.is_sticky;
-      
-      // Optimistic update
-      setFeeds(prevFeeds =>
-        prevFeeds.map(f => 
-          f.id === feed.id ? { ...f, is_sticky: newStickyState } : f
-        )
-      );
-
-      const response = await feedsApi.updateFeed(feed.id, { is_sticky: newStickyState });
-      
-      if (response.success) {
-        Alert.alert(
-          newStickyState ? 'Pinned' : 'Unpinned',
-          newStickyState ? 'Post pinned to top' : 'Post unpinned'
-        );
-        // Refresh to get correct order
-        fetchFeeds(true);
-      } else {
-        // Revert
-        setFeeds(prevFeeds =>
-          prevFeeds.map(f => 
-            f.id === feed.id ? { ...f, is_sticky: !newStickyState } : f
-          )
-        );
-        Alert.alert('Error', response.error?.message || 'Failed to update pin');
-      }
-    } catch (err) {
-      console.error('Pin error:', err);
-      Alert.alert('Error', 'Failed to pin post');
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Edit Feed
+  // Edit/Delete Handlers
   // ---------------------------------------------------------------------------
 
   const handleEdit = (feed: Feed) => {
@@ -233,16 +203,11 @@ export default function ActivityScreen() {
     );
   };
 
-  // ---------------------------------------------------------------------------
-  // Delete Feed
-  // ---------------------------------------------------------------------------
-
   const handleDelete = async (feed: Feed) => {
     try {
       const response = await feedsApi.deleteFeed(feed.id);
       
       if (response.success) {
-        // Remove from local state
         setFeeds(prevFeeds => prevFeeds.filter(f => f.id !== feed.id));
         Alert.alert('Deleted', 'Post deleted successfully');
       } else {
@@ -253,76 +218,64 @@ export default function ActivityScreen() {
       Alert.alert('Error', 'Failed to delete post');
     }
   };
-  
+
   // ---------------------------------------------------------------------------
-  // Create Post
+  // Header Component
   // ---------------------------------------------------------------------------
-  
-  const handleCreatePost = async (data: ComposerSubmitData) => {
-    try {
-      const response = await feedsApi.createFeed({
-        message: data.message,
-        space: data.space,
-        content_type: data.content_type,
-        media_images: data.media_images,
-      });
-      
-      if (response.success) {
-        setShowComposer(false);
-        fetchFeeds(true);
-      } else {
-        Alert.alert('Error', response.error?.message || 'Failed to create post');
-      }
-    } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to create post');
-    }
-  };
+
+  const BookmarksHeader = () => (
+    <View style={styles.headerInfo}>
+      <Ionicons name="bookmark" size={48} color={colors.primary} />
+      <Text style={styles.headerTitle}>Saved Posts</Text>
+      <Text style={styles.headerSubtitle}>
+        {feeds.length} {feeds.length === 1 ? 'post' : 'posts'} saved
+      </Text>
+    </View>
+  );
   
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
   
   return (
-    <View style={styles.container}>
-      <FeedList
-        feeds={feeds}
-        loading={loading}
-        refreshing={refreshing}
-        error={error}
-        onRefresh={handleRefresh}
-        onFeedPress={handleFeedPress}
-        onReact={handleReact}
-        onAuthorPress={handleAuthorPress}
-        onSpacePress={handleSpacePress}
-        onCommentPress={handleCommentPress}
-        onBookmarkToggle={handleBookmarkToggle}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        // Note: On activity feed, pin only shows for own posts
-        // Space admins should go to the space to pin others' posts
-        ListHeaderComponent={
-          <QuickPostBox
-            onPress={() => setShowComposer(true)}
-          />
-        }
+    <>
+      <Stack.Screen
+        options={{
+          title: 'Bookmarks',
+          headerBackTitle: 'Back',
+        }}
       />
       
-      {/* Create Post Modal */}
-      <CreatePostModal
-        visible={showComposer}
-        onClose={() => setShowComposer(false)}
-        onSubmit={handleCreatePost}
-      />
-      
-      {/* Comment Sheet */}
-      <CommentSheet
-        visible={showComments}
-        feedId={selectedFeedId}
-        feedSlug={selectedFeedSlug}
-        onClose={handleCloseComments}
-        onCommentAdded={handleCommentAdded}
-      />
-    </View>
+      <View style={styles.container}>
+        <FeedList
+          feeds={feeds}
+          loading={loading}
+          refreshing={refreshing}
+          error={error}
+          onRefresh={handleRefresh}
+          onFeedPress={handleFeedPress}
+          onReact={handleReact}
+          onAuthorPress={handleAuthorPress}
+          onSpacePress={handleSpacePress}
+          onCommentPress={handleCommentPress}
+          onBookmarkToggle={handleBookmarkToggle}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          ListHeaderComponent={<BookmarksHeader />}
+          emptyMessage="No saved posts yet. Tap the bookmark icon on any post to save it here."
+          emptyIcon="🔖"
+        />
+        
+        {/* Comment Sheet */}
+        <CommentSheet
+          visible={showComments}
+          feedId={selectedFeedId}
+          feedSlug={selectedFeedSlug}
+          onClose={handleCloseComments}
+          onCommentAdded={handleCommentAdded}
+        />
+      </View>
+    </>
   );
 }
 
@@ -334,5 +287,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+
+  headerInfo: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.md,
+  },
+
+  headerTitle: {
+    fontSize: typography.size.xl,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: spacing.md,
+  },
+
+  headerSubtitle: {
+    fontSize: typography.size.md,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
 });

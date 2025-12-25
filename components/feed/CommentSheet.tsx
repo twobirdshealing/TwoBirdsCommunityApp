@@ -418,8 +418,9 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         }
       );
     } else {
-      // Android - use Alert as simple menu
+      // Android - Cancel first so it appears at bottom
       const buttons: any[] = [
+        { text: 'Cancel', style: 'cancel' },
         { text: 'Copy Link', onPress: () => handleCopyLink(comment) },
       ];
       
@@ -432,9 +433,12 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         });
       }
       
-      buttons.push({ text: 'Cancel', style: 'cancel' });
-      
-      Alert.alert('Comment Options', '', buttons);
+      Alert.alert(
+        'Comment Options',
+        'Choose an action',
+        buttons,
+        { cancelable: true }
+      );
     }
   };
 

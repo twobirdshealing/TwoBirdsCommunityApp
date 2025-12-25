@@ -1,33 +1,24 @@
 // =============================================================================
-// TOP HEADER - App-wide header with logo, icons, and user menu
+// TOP HEADER - Main navigation header with logo, icons, and avatar menu
 // =============================================================================
-// Layout: [Logo]                    [Messages] [Notifications] [Avatar ▾]
+// FIXED: Bookmarks now navigates to /bookmarks instead of showing "Coming Soon"
 // =============================================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Alert,
-  Image,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
-import { spacing } from '@/constants/layout';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { profilesApi } from '@/services/api';
 import { Profile } from '@/types';
-
+import { colors } from '@/constants/colors';
+import { spacing } from '@/constants/layout';
+import { Ionicons } from '@expo/vector-icons';
 import { HeaderIconButton } from './HeaderIconButton';
 import { UserMenu } from './UserMenu';
 
 // -----------------------------------------------------------------------------
-// Types
+// Props
 // -----------------------------------------------------------------------------
 
 interface TopHeaderProps {
@@ -71,11 +62,6 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     fetchProfile();
   }, [fetchProfile]);
 
-  // TODO: Fetch unread counts from API
-  // useEffect(() => {
-  //   fetchUnreadCounts();
-  // }, []);
-
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
@@ -89,22 +75,25 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   };
 
   const handleProfilePress = () => {
+    setMenuVisible(false);
     if (user?.username) {
       router.push(`/profile/${user.username}`);
     }
   };
 
   const handleMySpacesPress = () => {
-    // Navigate to Spaces tab
+    setMenuVisible(false);
     router.push('/(tabs)/spaces');
   };
 
   const handleBookmarksPress = () => {
-    // TODO: Navigate to bookmarks screen
-    Alert.alert('Coming Soon', 'Bookmarks will be available in a future update.');
+    setMenuVisible(false);
+    // Navigate to bookmarks screen
+    router.push('/bookmarks');
   };
 
   const handleLogout = () => {
+    setMenuVisible(false);
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',

@@ -1,27 +1,33 @@
 // =============================================================================
 // SPACE PAGE - Individual space view with feeds
 // =============================================================================
-// UPDATED: Sticky posts, bookmark, edit/delete support
+// FIXED: 
+// - Header padding matches TopHeader (uses useSafeAreaInsets properly)
+// - Stats read from correct fields (members_count, posts_count/feeds_count)
+// - SpaceMenu in header
+// - Sticky posts, bookmark, edit, delete, PIN support
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Alert,
   Image,
-  ScrollView,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
-import { spacing, typography, sizing, shadows } from '@/constants/layout';
+import { spacing, typography } from '@/constants/layout';
 import { Feed, Space } from '@/types';
 import { feedsApi, spacesApi } from '@/services/api';
 import { FeedList } from '@/components/feed/FeedList';
 import { CommentSheet } from '@/components/feed/CommentSheet';
+import { SpaceMenu } from '@/components/space/SpaceMenu';
 import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/composer';
 
 // -----------------------------------------------------------------------------
@@ -31,6 +37,7 @@ import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/
 export default function SpacePage() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   
   // Space state
   const [space, setSpace] = useState<Space | null>(null);
@@ -54,16 +61,40 @@ export default function SpacePage() {
     
     try {
       const response = await spacesApi.getSpaceBySlug(slug);
+      console.log('[SPACE DEBUG] Raw API response:', JSON.stringify(response, null, 2));
+      
       if (response.success) {
-        setSpace(response.data.space);
+        // API returns { data: { space: Space } } or { data: Space }
+        const spaceData = response.data.space || response.data;
+        console.log('[SPACE DEBUG] Extracted space data:', JSON.stringify(spaceData, null, 2));
+        setSpace(spaceData);
+        
+        // Check if counts are in response (docs say they should be!)
+        if (spaceData.members_count) {
+          setMembersCount(spaceData.members_count);
+        }
+        if (spaceData.posts_count) {
+          setPostsCount(spaceData.posts_count);
+        }
       }
+      
+      // Also fetch members count (since API doesn't return it reliably)
+      try {
+        const membersResponse = await spacesApi.getSpaceMembers(slug, { per_page: 1 });
+        if (membersResponse.success && membersResponse.data?.meta?.total) {
+          setMembersCount(membersResponse.data.meta.total);
+        }
+      } catch (err) {
+        console.log('[STATS] Could not fetch members count');
+      }
+      
     } catch (err) {
       console.error('Failed to load space:', err);
     }
   }, [slug]);
   
   // ---------------------------------------------------------------------------
-  // Fetch Feeds - Now merges sticky posts at top!
+  // Fetch Feeds - Merges sticky posts at top
   // ---------------------------------------------------------------------------
   
   const fetchFeeds = useCallback(async (isRefresh = false) => {
@@ -81,6 +112,10 @@ export default function SpacePage() {
         // Merge sticky posts at top!
         const stickyPosts = response.data.sticky || [];
         const regularFeeds = response.data.feeds.data || [];
+        
+        // Get total posts count from response
+        const totalPosts = response.data.feeds.total || regularFeeds.length + stickyPosts.length;
+        setPostsCount(totalPosts);
         
         // Remove duplicates
         const stickyIds = new Set(stickyPosts.map(f => f.id));
@@ -105,10 +140,11 @@ export default function SpacePage() {
   }, [fetchSpace, fetchFeeds]);
   
   // ---------------------------------------------------------------------------
-  // Handlers
+  // Navigation Handlers
   // ---------------------------------------------------------------------------
   
   const handleRefresh = () => {
+    fetchSpace(); // Also refresh space stats
     fetchFeeds(true);
   };
   
@@ -118,6 +154,17 @@ export default function SpacePage() {
       params: { id: feed.id.toString(), space: slug },
     });
   };
+  
+  const handleAuthorPress = (username: string) => {
+    router.push({
+      pathname: '/profile/[username]',
+      params: { username },
+    });
+  };
+
+  // ---------------------------------------------------------------------------
+  // Reaction Handler
+  // ---------------------------------------------------------------------------
   
   const handleReact = async (feedId: number, type: 'like') => {
     const feed = feeds.find(f => f.id === feedId);
@@ -146,20 +193,17 @@ export default function SpacePage() {
     try {
       await feedsApi.reactToFeed(feedId, type, hasUserReact);
     } catch (err) {
+      // Revert on error
       setFeeds(prevFeeds =>
         prevFeeds.map(f => (f.id === feedId ? feed : f))
       );
     }
   };
   
-  const handleAuthorPress = (username: string) => {
-    router.push({
-      pathname: '/profile/[username]',
-      params: { username },
-    });
-  };
+  // ---------------------------------------------------------------------------
+  // Comment Handlers
+  // ---------------------------------------------------------------------------
   
-  // Open comment sheet
   const handleCommentPress = (feed: Feed) => {
     setSelectedFeedId(feed.id);
     setSelectedFeedSlug(feed.slug);
@@ -177,7 +221,7 @@ export default function SpacePage() {
   };
 
   // ---------------------------------------------------------------------------
-  // Bookmark Toggle
+  // Bookmark Handler
   // ---------------------------------------------------------------------------
 
   const handleBookmarkToggle = async (feed: Feed, isBookmarked: boolean) => {
@@ -196,7 +240,58 @@ export default function SpacePage() {
   };
 
   // ---------------------------------------------------------------------------
-  // Edit Feed
+  // Pin Handler (for admins)
+  // ---------------------------------------------------------------------------
+
+  const handlePin = async (feed: Feed) => {
+    try {
+      const newStickyState = !feed.is_sticky;
+      
+      console.log('[PIN] Toggling sticky for feed:', {
+        id: feed.id,
+        title: feed.title,
+        currentSticky: feed.is_sticky,
+        newSticky: newStickyState,
+      });
+      
+      // Optimistic update
+      setFeeds(prevFeeds =>
+        prevFeeds.map(f => 
+          f.id === feed.id ? { ...f, is_sticky: newStickyState } : f
+        )
+      );
+
+      // Use toggleSticky with POST - matches web app exactly
+      // Web app sends: {is_sticky: 1, query_timestamp: ...}
+      const response = await feedsApi.toggleSticky(feed.id, newStickyState);
+      
+      console.log('[PIN] API Response:', JSON.stringify(response, null, 2));
+      
+      if (response.success) {
+        Alert.alert(
+          newStickyState ? 'Pinned' : 'Unpinned',
+          newStickyState ? 'Post pinned to top' : 'Post unpinned'
+        );
+        // Refresh to get correct order
+        fetchFeeds(true);
+      } else {
+        console.error('[PIN] Failed:', response.error);
+        // Revert
+        setFeeds(prevFeeds =>
+          prevFeeds.map(f => 
+            f.id === feed.id ? { ...f, is_sticky: !newStickyState } : f
+          )
+        );
+        Alert.alert('Error', response.error?.message || 'Failed to update pin');
+      }
+    } catch (err) {
+      console.error('[PIN] Exception:', err);
+      Alert.alert('Error', 'Failed to pin post');
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Edit/Delete Handlers
   // ---------------------------------------------------------------------------
 
   const handleEdit = (feed: Feed) => {
@@ -206,10 +301,6 @@ export default function SpacePage() {
       [{ text: 'OK' }]
     );
   };
-
-  // ---------------------------------------------------------------------------
-  // Delete Feed
-  // ---------------------------------------------------------------------------
 
   const handleDelete = async (feed: Feed) => {
     try {
@@ -228,7 +319,7 @@ export default function SpacePage() {
   };
   
   // ---------------------------------------------------------------------------
-  // Create Post
+  // Create Post Handler
   // ---------------------------------------------------------------------------
   
   const handleCreatePost = async (data: ComposerSubmitData) => {
@@ -250,23 +341,112 @@ export default function SpacePage() {
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to create post');
     }
   };
+
+  // ---------------------------------------------------------------------------
+  // Leave Space Handler (for SpaceMenu)
+  // ---------------------------------------------------------------------------
+
+  const handleLeaveSuccess = () => {
+    Alert.alert('Left Space', 'You have left this space.');
+  };
+
+  // ---------------------------------------------------------------------------
+  // Stats - API doesn't return counts in space detail endpoint (bug?)
+  // Docs say it should, but it doesn't. Work around:
+  // - posts_count: Get from feeds API response (has total)
+  // - members_count: Get from members API response (has meta.total)
+  // ---------------------------------------------------------------------------
+
+  const [membersCount, setMembersCount] = useState<number>(0);
+  const [postsCount, setPostsCount] = useState<number>(0);
+
+  // ---------------------------------------------------------------------------
+  // Check if user can pin (admin/moderator of space)
+  // ---------------------------------------------------------------------------
+
+  const canPin = () => {
+    if (!space) {
+      console.log('[PIN DEBUG] No space loaded yet');
+      return false;
+    }
+    
+    // API returns role in membership.pivot.role
+    // AND permissions object with community_admin, community_moderator, edit_any_feed
+    const membershipRole = (space as any).membership?.pivot?.role;
+    const permissions = (space as any).permissions;
+    
+    console.log('[PIN DEBUG] membershipRole:', membershipRole);
+    console.log('[PIN DEBUG] permissions:', permissions ? {
+      community_admin: permissions.community_admin,
+      community_moderator: permissions.community_moderator,
+      edit_any_feed: permissions.edit_any_feed,
+    } : 'none');
+    
+    // Check if user has admin/mod role OR has edit_any_feed permission
+    const hasRole = membershipRole === 'admin' || membershipRole === 'moderator';
+    const hasPermission = permissions?.community_admin || 
+                          permissions?.community_moderator || 
+                          permissions?.edit_any_feed;
+    
+    const result = hasRole || hasPermission;
+    console.log('[PIN DEBUG] canPin result:', result, '(hasRole:', hasRole, ', hasPermission:', hasPermission, ')');
+    
+    return result;
+  };
+
+  // ---------------------------------------------------------------------------
+  // Custom Header (matches TopHeader padding exactly)
+  // ---------------------------------------------------------------------------
+
+  const SpacePageHeader = () => (
+    <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
+      <View style={styles.headerContent}>
+        {/* Back Button */}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+
+        {/* Title */}
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {space?.title || 'Space'}
+        </Text>
+
+        {/* Space Menu */}
+        <View style={styles.headerRight}>
+          {slug && (
+            <SpaceMenu 
+              slug={slug} 
+              role={space?.role}
+              onLeaveSuccess={handleLeaveSuccess}
+            />
+          )}
+        </View>
+      </View>
+    </View>
+  );
   
   // ---------------------------------------------------------------------------
-  // Space Header Component
+  // Space Info Header (inside FeedList)
   // ---------------------------------------------------------------------------
   
-  const SpaceHeader = () => {
+  const SpaceInfoHeader = () => {
     if (!space) return null;
     
     return (
       <View style={styles.spaceHeader}>
         {/* Cover Image */}
-        {space.cover_photo && (
+        {space.cover_photo ? (
           <Image
             source={{ uri: space.cover_photo }}
             style={styles.coverImage}
             resizeMode="cover"
           />
+        ) : (
+          <View style={[styles.coverImage, styles.coverPlaceholder]} />
         )}
         
         {/* Space Info */}
@@ -290,16 +470,16 @@ export default function SpacePage() {
           <View style={styles.spaceStats}>
             <View style={styles.statItem}>
               <Ionicons name="people-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.statText}>{space.members_count || 0} members</Text>
+              <Text style={styles.statText}>{membersCount} members</Text>
             </View>
             <View style={styles.statItem}>
               <Ionicons name="document-text-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.statText}>{space.feeds_count || 0} posts</Text>
+              <Text style={styles.statText}>{postsCount} posts</Text>
             </View>
           </View>
         </View>
         
-        {/* Quick Post Box - Always show for spaces */}
+        {/* Quick Post Box */}
         <QuickPostBox
           onPress={() => setShowComposer(true)}
           placeholder={`Post in ${space.title}...`}
@@ -311,58 +491,58 @@ export default function SpacePage() {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  // Debug: Log canPin result on each render
+  const canPinResult = canPin();
+  console.log('[SPACE PAGE RENDER] canPin():', canPinResult);
   
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: space?.title || 'Space',
-          headerBackTitle: 'Back',
-        }}
+    <View style={styles.container}>
+      {/* Custom Header - matches TopHeader padding */}
+      <SpacePageHeader />
+      
+      {/* Feed List */}
+      <FeedList
+        feeds={feeds}
+        loading={loading}
+        refreshing={refreshing}
+        error={error}
+        onRefresh={handleRefresh}
+        onFeedPress={handleFeedPress}
+        onReact={handleReact}
+        onAuthorPress={handleAuthorPress}
+        onCommentPress={handleCommentPress}
+        onBookmarkToggle={handleBookmarkToggle}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onPin={canPinResult ? handlePin : undefined}
+        ListHeaderComponent={<SpaceInfoHeader />}
+        emptyMessage="No posts in this space yet"
+        emptyIcon="📝"
       />
       
-      <View style={styles.container}>
-        <FeedList
-          feeds={feeds}
-          loading={loading}
-          refreshing={refreshing}
-          error={error}
-          onRefresh={handleRefresh}
-          onFeedPress={handleFeedPress}
-          onReact={handleReact}
-          onAuthorPress={handleAuthorPress}
-          onCommentPress={handleCommentPress}
-          onBookmarkToggle={handleBookmarkToggle}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          ListHeaderComponent={<SpaceHeader />}
-          emptyMessage="No posts in this space yet"
-          emptyIcon="📝"
-        />
-        
-        {/* Create Post Modal */}
-        <CreatePostModal
-          visible={showComposer}
-          onClose={() => setShowComposer(false)}
-          onSubmit={handleCreatePost}
-          spaceSlug={slug}
-        />
-        
-        {/* Comment Sheet */}
-        <CommentSheet
-          visible={showComments}
-          feedId={selectedFeedId}
-          feedSlug={selectedFeedSlug}
-          onClose={handleCloseComments}
-          onCommentAdded={handleCommentAdded}
-        />
-      </View>
-    </>
+      {/* Create Post Modal */}
+      <CreatePostModal
+        visible={showComposer}
+        onClose={() => setShowComposer(false)}
+        onSubmit={handleCreatePost}
+        spaceSlug={slug}
+      />
+      
+      {/* Comment Sheet */}
+      <CommentSheet
+        visible={showComments}
+        feedId={selectedFeedId}
+        feedSlug={selectedFeedSlug}
+        onClose={handleCloseComments}
+        onCommentAdded={handleCommentAdded}
+      />
+    </View>
   );
 }
 
 // -----------------------------------------------------------------------------
-// Styles
+// Styles - Header matches TopHeader exactly
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
@@ -370,7 +550,56 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+
+  // Header - matches TopHeader styles exactly
+  headerContainer: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    minHeight: 52,
+  },
+
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+
+  headerTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+    marginHorizontal: spacing.sm,
+  },
+
+  headerRight: {
+    width: 40,
+    alignItems: 'flex-end',
+  },
   
+  // Space Header (inside FeedList)
   spaceHeader: {
     backgroundColor: colors.surface,
     marginBottom: spacing.md,
@@ -379,6 +608,9 @@ const styles = StyleSheet.create({
   coverImage: {
     width: '100%',
     height: 120,
+  },
+
+  coverPlaceholder: {
     backgroundColor: colors.primary,
   },
   

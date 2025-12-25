@@ -1,7 +1,7 @@
 // =============================================================================
 // FEED LIST - Scrollable list of feed cards with all features
 // =============================================================================
-// UPDATED: Added bookmark, edit, delete callbacks
+// UPDATED: Added onPin callback for pin functionality
 // =============================================================================
 
 import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
@@ -30,6 +30,7 @@ interface FeedListProps {
   onBookmarkToggle?: (feed: Feed, isBookmarked: boolean) => void;
   onEdit?: (feed: Feed) => void;
   onDelete?: (feed: Feed) => void;
+  onPin?: (feed: Feed) => void;  // NEW: Pin callback
   onLoadMore?: () => void;
   emptyMessage?: string;
   emptyIcon?: string;
@@ -54,6 +55,7 @@ export function FeedList({
   onBookmarkToggle,
   onEdit,
   onDelete,
+  onPin,
   onLoadMore,
   emptyMessage = 'No posts yet',
   emptyIcon = '📭',
@@ -89,27 +91,35 @@ export function FeedList({
   }
 
   // Render feed item
-  const renderItem = ({ item }: { item: Feed }) => (
-    <FeedCard
-      feed={item}
-      onPress={() => onFeedPress?.(item)}
-      onReact={(type) => onReact?.(item.id, type)}
-      onAuthorPress={() => {
-        if (item.xprofile?.username) {
-          onAuthorPress?.(item.xprofile.username);
-        }
-      }}
-      onSpacePress={() => {
-        if (item.space?.slug) {
-          onSpacePress?.(item.space.slug);
-        }
-      }}
-      onCommentPress={() => onCommentPress?.(item)}
-      onBookmarkToggle={(isBookmarked) => onBookmarkToggle?.(item, isBookmarked)}
-      onEdit={() => onEdit?.(item)}
-      onDelete={() => onDelete?.(item)}
-    />
-  );
+  const renderItem = ({ item }: { item: Feed }) => {
+    // Debug: Log if onPin is being passed
+    if (onPin) {
+      console.log('[FEEDLIST DEBUG] onPin callback provided for feed:', item.id);
+    }
+    
+    return (
+      <FeedCard
+        feed={item}
+        onPress={() => onFeedPress?.(item)}
+        onReact={(type) => onReact?.(item.id, type)}
+        onAuthorPress={() => {
+          if (item.xprofile?.username) {
+            onAuthorPress?.(item.xprofile.username);
+          }
+        }}
+        onSpacePress={() => {
+          if (item.space?.slug) {
+            onSpacePress?.(item.space.slug);
+          }
+        }}
+        onCommentPress={() => onCommentPress?.(item)}
+        onBookmarkToggle={(isBookmarked) => onBookmarkToggle?.(item, isBookmarked)}
+        onEdit={() => onEdit?.(item)}
+        onDelete={() => onDelete?.(item)}
+        onPin={onPin ? () => onPin(item) : undefined}  // Only pass if parent provides it
+      />
+    );
+  };
 
   return (
     <FlatList

@@ -3,6 +3,7 @@
 // =============================================================================
 // Uses expo-secure-store to securely store credentials on device.
 // Uses our custom WordPress plugin (tbc-ca) for authentication.
+// IMPROVED: Better error messages for common issues
 // =============================================================================
 
 import { SITE_URL } from '@/constants/config';
@@ -71,6 +72,61 @@ interface LoginResponse {
 }
 
 // -----------------------------------------------------------------------------
+// Error Message Helper
+// -----------------------------------------------------------------------------
+
+function getReadableErrorMessage(status: number, data: any): string {
+  // Handle specific error codes
+  if (data?.code) {
+    switch (data.code) {
+      case 'rest_no_route':
+        return 'Unable to connect to login service. The TBC Community App plugin may be deactivated on the server. Please contact support.';
+      
+      case 'invalid_username':
+        return 'Username not found. Please check your username and try again.';
+      
+      case 'incorrect_password':
+        return 'Incorrect password. Please try again.';
+      
+      case 'invalid_email':
+        return 'Invalid email address. Please check and try again.';
+      
+      case 'empty_username':
+        return 'Please enter your username.';
+      
+      case 'empty_password':
+        return 'Please enter your password.';
+      
+      default:
+        break;
+    }
+  }
+
+  // Handle HTTP status codes
+  switch (status) {
+    case 401:
+      return 'Invalid username or password. Please try again.';
+    
+    case 403:
+      return 'Access denied. Your account may be restricted.';
+    
+    case 404:
+      return 'Login service unavailable. Please try again later or contact support.';
+    
+    case 500:
+    case 502:
+    case 503:
+      return 'Server error. Please try again later.';
+    
+    case 0:
+      return 'Network error. Please check your internet connection.';
+    
+    default:
+      return data?.message || 'Login failed. Please try again.';
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Auth Functions
 // -----------------------------------------------------------------------------
 
@@ -100,9 +156,13 @@ export async function login(username: string, password: string): Promise<LoginRe
 
     if (!response.ok || !data.success) {
       log('Login failed:', data);
+      
+      // Get user-friendly error message
+      const errorMessage = getReadableErrorMessage(response.status, data);
+      
       return {
         success: false,
-        error: data.message || 'Login failed. Please try again.',
+        error: errorMessage,
       };
     }
 
@@ -129,9 +189,18 @@ export async function login(username: string, password: string): Promise<LoginRe
     
   } catch (error) {
     log('Login error:', error);
+    
+    // Check for network errors
+    if (error instanceof TypeError && error.message.includes('Network')) {
+      return {
+        success: false,
+        error: 'Network error. Please check your internet connection.',
+      };
+    }
+    
     return {
       success: false,
-      error: 'Network error. Please check your connection.',
+      error: 'Unable to connect. Please check your internet connection and try again.',
     };
   }
 }

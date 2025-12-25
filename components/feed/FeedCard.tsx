@@ -1,10 +1,10 @@
 // =============================================================================
 // FEED CARD - A single post/feed item in the list
 // =============================================================================
-// UPDATED: Added bookmark icon, 3-dot menu, sticky indicator
-// - Bookmark: Toggle save for later
-// - Menu: Copy Link, Edit (owner), Delete (owner)
-// - Sticky: Pin icon for pinned posts
+// UPDATED: Added PIN TO TOP option in menu for admins
+// - Bookmark icon
+// - 3-dot menu: Copy Link, Pin (admin), Edit (owner), Delete (owner)
+// - Sticky badge for pinned posts
 // =============================================================================
 
 import React, { useState } from 'react';
@@ -94,6 +94,7 @@ interface FeedCardProps {
   onBookmarkToggle?: (isBookmarked: boolean) => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onPin?: () => void;  // NEW: Pin callback (only passed if user can pin)
 }
 
 // -----------------------------------------------------------------------------
@@ -110,6 +111,7 @@ export function FeedCard({
   onBookmarkToggle,
   onEdit,
   onDelete,
+  onPin,
 }: FeedCardProps) {
   const { user } = useAuth();
   const [imageLoading, setImageLoading] = useState(true);
@@ -122,6 +124,7 @@ export function FeedCard({
   const isVerified = author?.is_verified === 1;
   const isOwner = user?.id === Number(feed.user_id);
   const isSticky = feed.is_sticky === true || feed.is_sticky === 1;
+  const canPin = !!onPin; // If onPin is passed, user can pin
   
   const spaceName = feed.space?.title || null;
   const timestamp = formatRelativeTime(feed.created_at);
@@ -165,38 +168,76 @@ export function FeedCard({
   };
 
   const handleMenuPress = () => {
+    // Debug: Log what options will be shown
+    console.log('[FEEDCARD MENU DEBUG]', {
+      isOwner,
+      canPin,
+      onPinProvided: !!onPin,
+      isSticky,
+      feedId: feed.id,
+      userId: user?.id,
+      feedUserId: feed.user_id,
+    });
+
     if (Platform.OS === 'ios') {
-      const options = ['Cancel', 'Copy Link'];
+      // Build options array
+      const options: string[] = ['Cancel', 'Copy Link'];
+      
+      // Pin option (for admins/mods)
+      if (canPin) {
+        options.push(isSticky ? 'Unpin from Top' : 'Pin to Top');
+      }
+      
+      // Owner options
       if (isOwner) {
         options.push('Edit', 'Delete');
       }
       
+      const cancelIndex = 0;
+      const destructiveIndex = isOwner ? options.indexOf('Delete') : undefined;
+      
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options,
-          cancelButtonIndex: 0,
-          destructiveButtonIndex: isOwner ? options.indexOf('Delete') : undefined,
+          cancelButtonIndex: cancelIndex,
+          destructiveButtonIndex: destructiveIndex,
         },
         (buttonIndex) => {
-          if (buttonIndex === 1) handleCopyLink();
-          else if (isOwner && buttonIndex === 2) onEdit?.();
-          else if (isOwner && buttonIndex === 3) handleDelete();
+          const selectedOption = options[buttonIndex];
+          
+          if (selectedOption === 'Copy Link') handleCopyLink();
+          else if (selectedOption === 'Pin to Top' || selectedOption === 'Unpin from Top') onPin?.();
+          else if (selectedOption === 'Edit') onEdit?.();
+          else if (selectedOption === 'Delete') handleDelete();
         }
       );
     } else {
-      // Android
+      // Android - Build buttons array
       const buttons: any[] = [
+        { text: 'Cancel', style: 'cancel' },
         { text: 'Copy Link', onPress: handleCopyLink },
       ];
       
+      // Pin option (for admins/mods)
+      if (canPin) {
+        buttons.push({ 
+          text: isSticky ? 'Unpin from Top' : 'Pin to Top', 
+          onPress: onPin 
+        });
+      }
+      
+      // Owner options
       if (isOwner) {
         buttons.push({ text: 'Edit', onPress: onEdit });
         buttons.push({ text: 'Delete', onPress: handleDelete, style: 'destructive' });
       }
       
-      buttons.push({ text: 'Cancel', style: 'cancel' });
-      
-      Alert.alert('Post Options', '', buttons);
+      Alert.alert(
+        'Post Options',
+        'Choose an action',
+        buttons,
+        { cancelable: true }
+      );
     }
   };
 

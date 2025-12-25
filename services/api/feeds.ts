@@ -7,7 +7,7 @@
 
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
 import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType } from '@/types';
-import { del, get, post } from './client';
+import { del, get, patch, post } from './client';
 
 // -----------------------------------------------------------------------------
 // Request Options
@@ -136,6 +136,21 @@ export async function updateFeed(id: number, data: Partial<CreateFeedData>) {
 }
 
 // -----------------------------------------------------------------------------
+// Toggle Sticky/Pin Status
+// -----------------------------------------------------------------------------
+// Web app sends: {is_sticky: 1, query_timestamp: ...} via POST (not PATCH!)
+// Only sends is_sticky, NOT message (to avoid corrupting post)
+
+export async function toggleSticky(id: number, isSticky: boolean) {
+  console.log('[FeedsAPI] toggleSticky:', { id, isSticky: isSticky ? 1 : 0 });
+  
+  return post<{ message: string; data: Feed }>(`${ENDPOINTS.FEEDS}/${id}`, {
+    is_sticky: isSticky ? 1 : 0,
+    query_timestamp: Date.now(),
+  });
+}
+
+// -----------------------------------------------------------------------------
 // Delete a Feed Post
 // -----------------------------------------------------------------------------
 
@@ -180,6 +195,27 @@ export async function toggleBookmark(feedId: number, isBookmarked: boolean) {
 }
 
 // -----------------------------------------------------------------------------
+// Get Bookmarked Feeds
+// -----------------------------------------------------------------------------
+// GET /feeds/bookmarks - returns user's saved posts
+
+export interface GetBookmarksOptions {
+  page?: number;
+  per_page?: number;
+  order_by_type?: 'latest' | 'oldest' | 'new_activity' | 'likes' | 'popular';
+}
+
+export async function getBookmarks(options: GetBookmarksOptions = {}) {
+  const params = {
+    page: options.page || 1,
+    per_page: options.per_page || DEFAULT_PER_PAGE,
+    ...(options.order_by_type && { order_by_type: options.order_by_type }),
+  };
+  
+  return get<any>(`${ENDPOINTS.FEEDS}/bookmarks`, params);
+}
+
+// -----------------------------------------------------------------------------
 // Get Reactions for a Feed
 // -----------------------------------------------------------------------------
 
@@ -198,9 +234,11 @@ export const feedsApi = {
   getFeedBySlug,
   createFeed,
   updateFeed,
+  toggleSticky,
   deleteFeed,
   reactToFeed,
   toggleBookmark,
+  getBookmarks,
   getFeedReactions,
 };
 
