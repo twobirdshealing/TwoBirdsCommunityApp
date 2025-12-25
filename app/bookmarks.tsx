@@ -55,10 +55,31 @@ export default function BookmarksScreen() {
       
       const response = await feedsApi.getBookmarks();
       
-      if (response.success) {
-        // Bookmarks API returns { data: [...] } with feed objects
-        // Each bookmark has a feed property containing the full feed
-        const bookmarkData = response.data.data || response.data || [];
+      console.log('[BOOKMARKS] Raw response:', JSON.stringify(response, null, 2).substring(0, 500));
+      
+      if (response.success && response.data) {
+        // Bookmarks API might return different formats
+        // Try: response.data.data, response.data.feeds, response.data directly
+        let bookmarkData: any[] = [];
+        
+        if (Array.isArray(response.data)) {
+          bookmarkData = response.data;
+        } else if (Array.isArray(response.data.data)) {
+          bookmarkData = response.data.data;
+        } else if (Array.isArray(response.data.feeds)) {
+          bookmarkData = response.data.feeds;
+        } else if (response.data.feeds?.data && Array.isArray(response.data.feeds.data)) {
+          bookmarkData = response.data.feeds.data;
+        }
+        
+        console.log('[BOOKMARKS] Extracted data count:', bookmarkData.length);
+        
+        // BULLETPROOF: Make sure it's an array before mapping
+        if (!Array.isArray(bookmarkData)) {
+          console.warn('[BOOKMARKS] bookmarkData is not an array:', typeof bookmarkData);
+          setFeeds([]);
+          return;
+        }
         
         // Extract feeds from bookmarks (handle both formats)
         const feedList = bookmarkData.map((item: any) => {
@@ -68,11 +89,13 @@ export default function BookmarksScreen() {
           return { ...feed, bookmarked: true };
         });
         
+        console.log('[BOOKMARKS] Final feed count:', feedList.length);
         setFeeds(feedList);
       } else {
         setError(response.error?.message || 'Failed to load bookmarks');
       }
     } catch (err) {
+      console.error('[BOOKMARKS] Error:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);

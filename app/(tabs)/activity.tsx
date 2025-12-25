@@ -48,18 +48,45 @@ export default function ActivityScreen() {
       
       const response = await feedsApi.getFeeds({ per_page: 20 });
       
-      if (response.success) {
-        // Merge sticky posts at top of feed!
-        const stickyPosts = response.data.sticky || [];
-        const regularFeeds = response.data.feeds.data || [];
+      if (response.success && response.data) {
+        // BULLETPROOF: sticky can be null, undefined, object, or array
+        let stickyPosts: Feed[] = [];
+        const rawSticky = response.data.sticky;
+        
+        if (rawSticky) {
+          if (Array.isArray(rawSticky)) {
+            stickyPosts = rawSticky;
+          } else if (typeof rawSticky === 'object') {
+            // Handle object format
+            if (Array.isArray((rawSticky as any).data)) {
+              stickyPosts = (rawSticky as any).data;
+            } else if ((rawSticky as any).id) {
+              stickyPosts = [rawSticky as Feed];
+            } else {
+              const values = Object.values(rawSticky);
+              if (values.length > 0 && (values[0] as any)?.id) {
+                stickyPosts = values as Feed[];
+              }
+            }
+          }
+        }
+        
+        // BULLETPROOF: feeds.data can also be missing
+        let regularFeeds: Feed[] = [];
+        if (response.data.feeds?.data && Array.isArray(response.data.feeds.data)) {
+          regularFeeds = response.data.feeds.data;
+        }
         
         // Remove duplicates (sticky might also appear in regular feeds)
         const stickyIds = new Set(stickyPosts.map(f => f.id));
         const filteredRegular = regularFeeds.filter(f => !stickyIds.has(f.id));
         
-        setFeeds([...stickyPosts, ...filteredRegular]);
+        // Ensure sticky posts are marked
+        const markedSticky = stickyPosts.map(f => ({ ...f, is_sticky: true }));
+        
+        setFeeds([...markedSticky, ...filteredRegular]);
       } else {
-        setError(response.error.message);
+        setError(response.error?.message || 'Failed to load feeds');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -197,7 +224,8 @@ export default function ActivityScreen() {
         )
       );
 
-      const response = await feedsApi.updateFeed(feed.id, { is_sticky: newStickyState });
+      // Use toggleSticky with PATCH - doesn't require message field
+      const response = await feedsApi.toggleSticky(feed.id, newStickyState);
       
       if (response.success) {
         Alert.alert(

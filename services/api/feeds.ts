@@ -138,13 +138,15 @@ export async function updateFeed(id: number, data: Partial<CreateFeedData>) {
 // -----------------------------------------------------------------------------
 // Toggle Sticky/Pin Status
 // -----------------------------------------------------------------------------
-// Web app sends: {is_sticky: 1, query_timestamp: ...} via POST (not PATCH!)
-// Only sends is_sticky, NOT message (to avoid corrupting post)
+// POST requires 'message' field even for partial updates
+// PATCH should allow partial updates without all required fields
+// Web app sends: {is_sticky: 1, query_timestamp: ...}
 
 export async function toggleSticky(id: number, isSticky: boolean) {
-  console.log('[FeedsAPI] toggleSticky:', { id, isSticky: isSticky ? 1 : 0 });
+  console.log('[FeedsAPI] toggleSticky using PATCH:', { id, isSticky: isSticky ? 1 : 0 });
   
-  return post<{ message: string; data: Feed }>(`${ENDPOINTS.FEEDS}/${id}`, {
+  // Use PATCH for partial update (doesn't require all fields)
+  return patch<{ message: string; data: Feed }>(`${ENDPOINTS.FEEDS}/${id}`, {
     is_sticky: isSticky ? 1 : 0,
     query_timestamp: Date.now(),
   });

@@ -1,7 +1,7 @@
 // =============================================================================
 // ROOT LAYOUT - App-wide configuration with Authentication
 // =============================================================================
-// Routes: tabs, login, space, feed, profile, messages, notifications
+// Routes: tabs, login, space, feed, profile, messages, notifications, bookmarks
 // =============================================================================
 
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -125,6 +125,18 @@ function RootLayoutNav() {
             presentation: 'card',
             headerShown: true,
             title: 'Notifications',
+          }}
+        />
+
+        {/* ============================================= */}
+        {/* BOOKMARKS (from avatar dropdown)              */}
+        {/* ============================================= */}
+        <Stack.Screen
+          name="bookmarks"
+          options={{
+            presentation: 'card',
+            headerShown: true,
+            title: 'Bookmarks',
           }}
         />
       </Stack>

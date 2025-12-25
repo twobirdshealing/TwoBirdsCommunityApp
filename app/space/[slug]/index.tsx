@@ -107,25 +107,65 @@ export default function SpacePage() {
       }
       
       const response = await feedsApi.getFeeds({ space: slug, per_page: 20 });
+      console.log('[FEEDS] Raw response type:', typeof response.data);
       
-      if (response.success) {
-        // Merge sticky posts at top!
-        const stickyPosts = response.data.sticky || [];
-        const regularFeeds = response.data.feeds.data || [];
+      if (response.success && response.data) {
+        // BULLETPROOF: sticky can be null, undefined, object, or array
+        let stickyPosts: Feed[] = [];
+        const rawSticky = response.data.sticky;
+        
+        console.log('[FEEDS] rawSticky:', JSON.stringify(rawSticky)?.substring(0, 200));
+        
+        if (rawSticky) {
+          if (Array.isArray(rawSticky)) {
+            // It's already an array
+            stickyPosts = rawSticky;
+          } else if (typeof rawSticky === 'object') {
+            // It might be an object with data array, or a single feed
+            if (Array.isArray((rawSticky as any).data)) {
+              stickyPosts = (rawSticky as any).data;
+            } else if ((rawSticky as any).id) {
+              // Single feed object
+              stickyPosts = [rawSticky as Feed];
+            } else {
+              // Try to get values if it's an object like {0: feed, 1: feed}
+              const values = Object.values(rawSticky);
+              if (values.length > 0 && (values[0] as any)?.id) {
+                stickyPosts = values as Feed[];
+              }
+            }
+          }
+        }
+        
+        // BULLETPROOF: feeds.data can also be missing
+        let regularFeeds: Feed[] = [];
+        if (response.data.feeds?.data) {
+          if (Array.isArray(response.data.feeds.data)) {
+            regularFeeds = response.data.feeds.data;
+          } else {
+            console.warn('[FEEDS] feeds.data is not an array:', typeof response.data.feeds.data);
+          }
+        }
+        
+        console.log('[FEEDS] sticky count:', stickyPosts.length, 'regular count:', regularFeeds.length);
         
         // Get total posts count from response
-        const totalPosts = response.data.feeds.total || regularFeeds.length + stickyPosts.length;
+        const totalPosts = response.data.feeds?.total || regularFeeds.length + stickyPosts.length;
         setPostsCount(totalPosts);
         
-        // Remove duplicates
+        // Remove duplicates (sticky might also appear in regular feeds)
         const stickyIds = new Set(stickyPosts.map(f => f.id));
         const filteredRegular = regularFeeds.filter(f => !stickyIds.has(f.id));
         
-        setFeeds([...stickyPosts, ...filteredRegular]);
+        // Ensure sticky posts are marked
+        const markedSticky = stickyPosts.map(f => ({ ...f, is_sticky: true }));
+        
+        setFeeds([...markedSticky, ...filteredRegular]);
       } else {
-        setError(response.error.message);
+        setError(response.error?.message || 'Failed to load feeds');
       }
     } catch (err) {
+      console.error('[FEEDS] Error:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
@@ -261,8 +301,7 @@ export default function SpacePage() {
         )
       );
 
-      // Use toggleSticky with POST - matches web app exactly
-      // Web app sends: {is_sticky: 1, query_timestamp: ...}
+      // Use toggleSticky with PATCH - doesn't require message field
       const response = await feedsApi.toggleSticky(feed.id, newStickyState);
       
       console.log('[PIN] API Response:', JSON.stringify(response, null, 2));
