@@ -6,6 +6,8 @@
 // FIXED: Comment reactions use {state: 1} format
 // FIXED: Swipe down on handle to close
 // FIXED: Reply uses top-level parent_id with @mention
+// FIXED: Mentions are now clickable and link to profiles
+// FIXED: Reply button no longer has emoji (cleaner look)
 // ADDED: 3-dot menu with Copy Link, Edit, Delete
 // =============================================================================
 
@@ -32,6 +34,7 @@ import {
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { colors } from '@/constants/colors';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { Comment } from '@/types';
@@ -64,10 +67,81 @@ interface AttachedImage {
 }
 
 // -----------------------------------------------------------------------------
+// Mention Parsing Helper
+// -----------------------------------------------------------------------------
+
+interface TextPart {
+  type: 'text' | 'mention';
+  content: string;
+  username?: string;
+  displayName?: string;
+}
+
+/**
+ * Parse HTML to extract mentions and plain text
+ * API returns: <a href="https://site.com/portal/u/username/">Display Name</a> some text
+ * We need to make mentions clickable
+ */
+function parseCommentContent(html: string): TextPart[] {
+  if (!html) return [];
+  
+  const parts: TextPart[] = [];
+  
+  // Regex to match profile links in format:
+  // <a href="https://staging.twobirdschurch.com/portal/u/bluejay/">James Elrod</a>
+  // Captures: username from URL, display name from link text
+  const mentionRegex = /<a\s+href=["'](?:https?:\/\/[^\/]+)?\/portal\/u\/([^"'\/]+)\/?["'][^>]*>([^<]+)<\/a>/gi;
+  
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = mentionRegex.exec(html)) !== null) {
+    // Add text before this match
+    if (match.index > lastIndex) {
+      const textBefore = html.substring(lastIndex, match.index);
+      const strippedText = stripHtmlTags(textBefore);
+      if (strippedText) {
+        parts.push({ type: 'text', content: strippedText });
+      }
+    }
+    
+    // Add the mention
+    parts.push({
+      type: 'mention',
+      content: match[2], // Display name
+      username: match[1], // Username from URL
+      displayName: match[2],
+    });
+    
+    lastIndex = match.index + match[0].length;
+  }
+  
+  // Add remaining text after last match
+  if (lastIndex < html.length) {
+    const remainingText = html.substring(lastIndex);
+    const strippedText = stripHtmlTags(remainingText);
+    if (strippedText) {
+      parts.push({ type: 'text', content: strippedText });
+    }
+  }
+  
+  // If no mentions found, just return stripped text
+  if (parts.length === 0) {
+    const stripped = stripHtmlTags(html);
+    if (stripped) {
+      parts.push({ type: 'text', content: stripped });
+    }
+  }
+  
+  return parts;
+}
+
+// -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
 export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdded }: CommentSheetProps) {
+  const router = useRouter();
   const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -121,44 +195,36 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
     })
   ).current;
 
-  // Reset position when opening
-  useEffect(() => {
-    if (visible) {
-      translateY.setValue(0);
-    }
-  }, [visible]);
-
   // ---------------------------------------------------------------------------
-  // Fetch comments when sheet opens
+  // Fetch Comments
   // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    if (visible && feedId) {
-      fetchComments();
-    }
-    
-    // Reset when closed
-    if (!visible) {
-      setReplyingTo(null);
-      setEditingComment(null);
-      setCommentText('');
-      setAttachedImages([]);
-    }
-  }, [visible, feedId]);
 
   const fetchComments = async () => {
     if (!feedId) return;
     
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
-      setError(null);
-      
       const response = await commentsApi.getComments(feedId);
       
-      if (response.success) {
-        setComments(response.data.comments || []);
+      if (response.success && response.data) {
+        // Flatten nested comments for display
+        const allComments: Comment[] = [];
+        
+        response.data.comments?.forEach((comment: Comment) => {
+          allComments.push(comment);
+          // Add replies after parent
+          if (comment.replies && comment.replies.length > 0) {
+            comment.replies.forEach((reply: Comment) => {
+              allComments.push(reply);
+            });
+          }
+        });
+        
+        setComments(allComments);
       } else {
-        setError('Failed to load comments');
+        setError(response.error?.message || 'Failed to load comments');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -167,40 +233,33 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
     }
   };
 
+  useEffect(() => {
+    if (visible && feedId) {
+      fetchComments();
+      translateY.setValue(0);
+    }
+  }, [visible, feedId]);
+
   // ---------------------------------------------------------------------------
-  // Image Picker
+  // Handle Image Pick
   // ---------------------------------------------------------------------------
 
   const handlePickImage = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please allow access to your photos.');
-        return;
-      }
-
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsMultipleSelection: true,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
         quality: 0.8,
-        selectionLimit: 4 - attachedImages.length,
       });
 
-      if (result.canceled || !result.assets?.length) {
-        return;
-      }
-
-      setIsUploading(true);
-
-      for (const asset of result.assets) {
-        const fileName = asset.uri.split('/').pop() || 'image.jpg';
-        const fileType = asset.mimeType || 'image/jpeg';
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setIsUploading(true);
 
         const response = await mediaApi.uploadMedia(
           asset.uri,
-          fileType,
-          fileName,
+          asset.mimeType || 'image/jpeg',
+          asset.fileName || 'comment-image.jpg',
           'comment'
         );
 
@@ -230,33 +289,28 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   };
 
   // ---------------------------------------------------------------------------
-  // Submit Comment - FIXED: Use 'comment' not 'message'
-  // Now supports both create and edit modes
+  // Submit Comment
   // ---------------------------------------------------------------------------
 
   const handleSubmitComment = async () => {
     if (!feedId) return;
     
     const trimmedText = commentText.trim();
-    if (!trimmedText && attachedImages.length === 0) {
-      return;
-    }
+    if (!trimmedText && attachedImages.length === 0) return;
 
     setIsSubmitting(true);
 
     try {
       // EDIT MODE
       if (editingComment) {
-        console.log('[CommentSheet] Updating comment:', editingComment.id);
-        
         const response = await commentsApi.updateComment(feedId, editingComment.id, {
           comment: trimmedText,
         });
-
+        
         if (response.success) {
-          // Update in local state
+          // Update local state
           setComments(prev => prev.map(c => 
-            c.id === editingComment.id 
+            c.id === editingComment.id
               ? { ...c, message: trimmedText, message_rendered: `<p>${trimmedText}</p>` }
               : c
           ));
@@ -501,6 +555,57 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   };
 
   // ---------------------------------------------------------------------------
+  // Navigate to profile
+  // ---------------------------------------------------------------------------
+
+  const handleMentionPress = (username: string) => {
+    onClose(); // Close comment sheet first
+    router.push({
+      pathname: '/profile/[username]',
+      params: { username },
+    });
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render comment text with clickable mentions
+  // ---------------------------------------------------------------------------
+
+  const renderCommentText = (html: string) => {
+    const parts = parseCommentContent(html);
+    
+    if (parts.length === 0) {
+      return null;
+    }
+    
+    // If only one text part, render simple Text
+    if (parts.length === 1 && parts[0].type === 'text') {
+      return <Text style={styles.commentText}>{parts[0].content}</Text>;
+    }
+    
+    // Render with clickable mentions
+    return (
+      <Text style={styles.commentText}>
+        {parts.map((part, index) => {
+          if (part.type === 'mention' && part.username) {
+            return (
+              <Text
+                key={index}
+                style={styles.mentionText}
+                onPress={() => handleMentionPress(part.username!)}
+              >
+                {part.content}
+                {/* Add space after mention for natural reading */}
+                <Text style={styles.commentText}> </Text>
+              </Text>
+            );
+          }
+          return <Text key={index}>{part.content}</Text>;
+        })}
+      </Text>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
   // Render comment item
   // ---------------------------------------------------------------------------
 
@@ -509,7 +614,6 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
     const authorName = author?.display_name || 'Unknown';
     const authorAvatar = author?.avatar || null;
     const isVerified = author?.is_verified === 1;
-    const content = stripHtmlTags(item.message_rendered || item.message);
     const timestamp = formatRelativeTime(item.created_at);
     const isReply = item.parent_id !== null;
 
@@ -549,7 +653,9 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
               <Ionicons name="ellipsis-vertical" size={16} color={colors.textTertiary} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.commentText}>{content}</Text>
+          
+          {/* Comment text with clickable mentions */}
+          {renderCommentText(item.message_rendered || item.message)}
           
           {/* Comment images */}
           {commentImages.length > 0 && (
@@ -565,7 +671,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
             </View>
           )}
           
-          {/* Comment actions - FIXED: Working reactions */}
+          {/* Comment actions - FIXED: Working reactions, clean Reply button */}
           <View style={styles.commentActions}>
             <TouchableOpacity 
               style={styles.commentAction}
@@ -586,7 +692,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
               style={styles.commentAction}
               onPress={() => handleReply(item)}
             >
-              <Text style={styles.commentActionText}>↩️ Reply</Text>
+              <Text style={styles.commentActionText}>Reply</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -787,7 +893,6 @@ const styles = StyleSheet.create({
   handleContainer: {
     alignItems: 'center',
     paddingVertical: spacing.md,
-    cursor: 'grab',
   },
 
   handle: {
@@ -920,6 +1025,11 @@ const styles = StyleSheet.create({
     fontSize: typography.size.md,
     color: colors.text,
     lineHeight: 20,
+  },
+
+  mentionText: {
+    color: colors.primary,
+    fontWeight: '600',
   },
 
   commentImages: {
