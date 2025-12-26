@@ -1,6 +1,7 @@
 // =============================================================================
 // ACTIVITY SCREEN - Main community feed with all features
 // =============================================================================
+// UPDATED: Added Welcome Banner support
 // UPDATED: Added pin support for admins
 // =============================================================================
 
@@ -8,9 +9,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@/constants/colors';
-import { Feed } from '@/types';
+import { Feed, WelcomeBanner as WelcomeBannerType } from '@/types';
 import { feedsApi } from '@/services/api';
 import { FeedList } from '@/components/feed/FeedList';
+import { WelcomeBanner } from '@/components/feed/WelcomeBanner';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/composer';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,11 +31,31 @@ export default function ActivityScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Welcome banner state
+  const [welcomeBanner, setWelcomeBanner] = useState<WelcomeBannerType | null>(null);
+  
   // Modal states
   const [showComposer, setShowComposer] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
   const [selectedFeedSlug, setSelectedFeedSlug] = useState<string | undefined>(undefined);
+  
+  // ---------------------------------------------------------------------------
+  // Fetch Welcome Banner
+  // ---------------------------------------------------------------------------
+  
+  const fetchWelcomeBanner = useCallback(async () => {
+    try {
+      const response = await feedsApi.getWelcomeBanner();
+      
+      if (response.success && response.data?.welcome_banner) {
+        setWelcomeBanner(response.data.welcome_banner);
+      }
+    } catch (err) {
+      // Silent fail - banner is optional
+      console.log('[BANNER] Failed to fetch welcome banner:', err);
+    }
+  }, []);
   
   // ---------------------------------------------------------------------------
   // Fetch Feeds - Now merges sticky posts at top!
@@ -98,14 +120,16 @@ export default function ActivityScreen() {
   
   // Initial load
   useEffect(() => {
+    fetchWelcomeBanner();
     fetchFeeds();
-  }, [fetchFeeds]);
+  }, [fetchWelcomeBanner, fetchFeeds]);
   
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
   
   const handleRefresh = () => {
+    fetchWelcomeBanner(); // Also refresh banner
     fetchFeeds(true);
   };
   
@@ -230,9 +254,9 @@ export default function ActivityScreen() {
       if (response.success) {
         Alert.alert(
           newStickyState ? 'Pinned' : 'Unpinned',
-          newStickyState ? 'Post pinned to top' : 'Post unpinned'
+          newStickyState ? 'Post pinned to top!' : 'Post unpinned'
         );
-        // Refresh to get correct order
+        // Refresh to get proper order
         fetchFeeds(true);
       } else {
         // Revert
@@ -241,16 +265,16 @@ export default function ActivityScreen() {
             f.id === feed.id ? { ...f, is_sticky: !newStickyState } : f
           )
         );
-        Alert.alert('Error', response.error?.message || 'Failed to update pin');
+        Alert.alert('Error', response.error?.message || 'Failed to update pin status');
       }
     } catch (err) {
       console.error('Pin error:', err);
-      Alert.alert('Error', 'Failed to pin post');
+      Alert.alert('Error', 'Failed to update pin status');
     }
   };
 
   // ---------------------------------------------------------------------------
-  // Edit Feed
+  // Edit & Delete Handlers
   // ---------------------------------------------------------------------------
 
   const handleEdit = (feed: Feed) => {
@@ -261,50 +285,78 @@ export default function ActivityScreen() {
     );
   };
 
+  const handleDelete = async (feed: Feed) => {
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await feedsApi.deleteFeed(feed.id);
+              
+              if (response.success) {
+                setFeeds(prevFeeds => prevFeeds.filter(f => f.id !== feed.id));
+                Alert.alert('Deleted', 'Post deleted successfully');
+              } else {
+                Alert.alert('Error', response.error?.message || 'Failed to delete post');
+              }
+            } catch (err) {
+              console.error('Delete error:', err);
+              Alert.alert('Error', 'Failed to delete post');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // ---------------------------------------------------------------------------
-  // Delete Feed
+  // Create Post Handler
   // ---------------------------------------------------------------------------
 
-  const handleDelete = async (feed: Feed) => {
-    try {
-      const response = await feedsApi.deleteFeed(feed.id);
-      
-      if (response.success) {
-        // Remove from local state
-        setFeeds(prevFeeds => prevFeeds.filter(f => f.id !== feed.id));
-        Alert.alert('Deleted', 'Post deleted successfully');
-      } else {
-        Alert.alert('Error', response.error?.message || 'Failed to delete post');
-      }
-    } catch (err) {
-      console.error('Delete error:', err);
-      Alert.alert('Error', 'Failed to delete post');
-    }
-  };
-  
-  // ---------------------------------------------------------------------------
-  // Create Post
-  // ---------------------------------------------------------------------------
-  
   const handleCreatePost = async (data: ComposerSubmitData) => {
     try {
       const response = await feedsApi.createFeed({
         message: data.message,
+        title: data.title,
         space: data.space,
         content_type: data.content_type,
         media_images: data.media_images,
       });
       
-      if (response.success) {
-        setShowComposer(false);
-        fetchFeeds(true);
+      if (response.success && response.data?.data) {
+        // Add new post to top of feed
+        setFeeds(prevFeeds => [response.data!.data, ...prevFeeds]);
       } else {
-        Alert.alert('Error', response.error?.message || 'Failed to create post');
+        throw new Error(response.error?.message || 'Failed to create post');
       }
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to create post');
+      console.error('Create post error:', err);
+      throw new Error(err instanceof Error ? err.message : 'Failed to create post');
     }
   };
+
+  // ---------------------------------------------------------------------------
+  // Header Component with Welcome Banner
+  // ---------------------------------------------------------------------------
+
+  const FeedHeader = () => (
+    <>
+      {/* Welcome Banner - shown above QuickPostBox */}
+      {welcomeBanner && welcomeBanner.enabled === 'yes' && (
+        <WelcomeBanner banner={welcomeBanner} />
+      )}
+      
+      {/* Quick Post Box */}
+      <QuickPostBox
+        onPress={() => setShowComposer(true)}
+      />
+    </>
+  );
   
   // ---------------------------------------------------------------------------
   // Render
@@ -328,11 +380,7 @@ export default function ActivityScreen() {
         onDelete={handleDelete}
         // Note: On activity feed, pin only shows for own posts
         // Space admins should go to the space to pin others' posts
-        ListHeaderComponent={
-          <QuickPostBox
-            onPress={() => setShowComposer(true)}
-          />
-        }
+        ListHeaderComponent={<FeedHeader />}
       />
       
       {/* Create Post Modal */}

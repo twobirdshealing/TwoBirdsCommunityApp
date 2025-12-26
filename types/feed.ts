@@ -165,3 +165,33 @@ export interface ReactResponse {
   message: string;
   new_count: number;
 }
+
+// -----------------------------------------------------------------------------
+// Welcome Banner Types
+// -----------------------------------------------------------------------------
+
+export interface WelcomeBannerButton {
+  label: string;
+  link: string;
+  type: 'primary' | 'secondary' | 'text' | 'link';
+  newTab: 'yes' | 'no';
+}
+
+export interface WelcomeBanner {
+  enabled: 'yes' | 'no';
+  mediaType: 'image' | 'video';
+  bannerImage?: string;
+  bannerVideo?: {
+    type: string;
+    url?: string;
+    html?: string;
+  };
+  title: string;
+  description_rendered: string;
+  ctaButtons: WelcomeBannerButton[];
+  allowClose: 'yes' | 'no';
+}
+
+export interface WelcomeBannerResponse {
+  welcome_banner: WelcomeBanner;
+}

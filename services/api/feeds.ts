@@ -3,10 +3,11 @@
 // =============================================================================
 // FIXED: Send 'space' (slug) instead of 'space_id' (number)
 // Native web app uses: {"space": "book-club", ...} NOT {"space_id": 50, ...}
+// ADDED: getWelcomeBanner() for welcome banner feature
 // =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
-import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType } from '@/types';
+import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType, WelcomeBannerResponse } from '@/types';
 import { del, get, patch, post } from './client';
 
 // -----------------------------------------------------------------------------
@@ -57,6 +58,15 @@ export async function getFeedById(id: number) {
 
 export async function getFeedBySlug(slug: string) {
   return get<FeedDetailResponse>(ENDPOINTS.FEED_BY_SLUG(slug));
+}
+
+// -----------------------------------------------------------------------------
+// Get Welcome Banner
+// -----------------------------------------------------------------------------
+// GET /feeds/welcome-banner - returns welcome banner configuration
+
+export async function getWelcomeBanner() {
+  return get<WelcomeBannerResponse>(ENDPOINTS.WELCOME_BANNER);
 }
 
 // -----------------------------------------------------------------------------
@@ -234,6 +244,7 @@ export const feedsApi = {
   getFeeds,
   getFeedById,
   getFeedBySlug,
+  getWelcomeBanner,
   createFeed,
   updateFeed,
   toggleSticky,

@@ -32,6 +32,7 @@ export const ENDPOINTS = {
   FEED_COMMENTS: (id: number) => `/feeds/${id}/comments`,
   FEED_REACT: (id: number) => `/feeds/${id}/react`,
   FEED_REACTIONS: (id: number) => `/feeds/${id}/reactions`,
+  WELCOME_BANNER: '/feeds/welcome-banner',
   
   // Spaces
   SPACES: '/spaces',
