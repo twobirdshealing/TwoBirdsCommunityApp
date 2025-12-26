@@ -25,3 +25,6 @@ export * from './navigation';
 
 // Composer components
 export * from './composer';
+
+// Calendar components
+export * from './calendar';

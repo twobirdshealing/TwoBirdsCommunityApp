@@ -7,3 +7,4 @@ export * from './feed';
 export * from './comment';
 export * from './space';
 export * from './api';
+export * from './calendar';
