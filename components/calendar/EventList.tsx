@@ -1,18 +1,13 @@
 // =============================================================================
 // EVENT LIST - Scrollable list of event cards
 // =============================================================================
-// Renders a FlashList of EventCard components with:
-// - Pull to refresh
-// - Loading states
-// - Empty state
-// - Error handling
+// Uses FlashList for performance with modern EventCard design
 // =============================================================================
 
 import React from 'react';
-import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { colors } from '@/constants/colors';
-import { spacing, typography } from '@/constants/layout';
 import { CalendarEvent } from '@/types/calendar';
 import { EventCard } from './EventCard';
 import { LoadingSpinner, EmptyState, ErrorMessage } from '@/components/common';
@@ -28,10 +23,9 @@ interface EventListProps {
   error?: string | null;
   onRefresh?: () => void;
   onEventPress?: (event: CalendarEvent) => void;
-  onWaitlistToggle?: (event: CalendarEvent) => void;
   ListHeaderComponent?: React.ReactElement;
   emptyMessage?: string;
-  emptyIcon?: string;
+  compact?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -45,10 +39,9 @@ export function EventList({
   error = null,
   onRefresh,
   onEventPress,
-  onWaitlistToggle,
   ListHeaderComponent,
   emptyMessage = 'No events scheduled',
-  emptyIcon = '📅',
+  compact = false,
 }: EventListProps) {
   // Initial loading state
   if (loading && events.length === 0) {
@@ -75,27 +68,24 @@ export function EventList({
     return (
       <View style={styles.container}>
         {ListHeaderComponent}
-        <EmptyState icon={emptyIcon} message={emptyMessage} />
+        <EmptyState icon="📅" message={emptyMessage} />
       </View>
     );
   }
-
-  // Render event item
-  const renderItem = ({ item }: { item: CalendarEvent }) => (
-    <EventCard
-      event={item}
-      onPress={() => onEventPress?.(item)}
-      onWaitlistToggle={() => onWaitlistToggle?.(item)}
-    />
-  );
 
   return (
     <View style={styles.container}>
       <FlashList
         data={events}
         keyExtractor={(item) => `${item.product_id}-${item.start}`}
-        renderItem={renderItem}
-        estimatedItemSize={200}
+        renderItem={({ item }) => (
+          <EventCard
+            event={item}
+            onPress={() => onEventPress?.(item)}
+            compact={compact}
+          />
+        )}
+        estimatedItemSize={compact ? 80 : 260}
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -125,7 +115,7 @@ const styles = StyleSheet.create({
   },
 
   listContent: {
-    paddingBottom: 100, // Space for tab bar
+    paddingBottom: 100,
   },
 });
 

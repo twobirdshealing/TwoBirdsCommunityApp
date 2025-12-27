@@ -1,8 +1,7 @@
 // =============================================================================
-// CALENDAR HEADER - Month navigation and view toggle
+// CALENDAR HEADER - Modern compact month navigation
 // =============================================================================
-// Shows: ◀ DECEMBER 2025 ▶   [List] [Month]
-// Matches the web calendar's navigation bar
+// Slim single-row design with month selector and view toggle
 // =============================================================================
 
 import React from 'react';
@@ -36,7 +35,7 @@ function formatMonthYear(monthString: string): string {
   return date.toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric',
-  }).toUpperCase();
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -56,46 +55,39 @@ export function CalendarHeader({
 
   return (
     <View style={styles.container}>
-      {/* Month Navigation Row */}
-      <View style={styles.navRow}>
-        {/* Previous Month Button */}
+      {/* Month Navigation */}
+      <View style={styles.monthNav}>
         <TouchableOpacity
-          style={[styles.navButton, !canGoPrev && styles.navButtonDisabled]}
+          style={styles.navButton}
           onPress={onPrevMonth}
           disabled={!canGoPrev}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons
             name="chevron-back"
-            size={18}
-            color={canGoPrev ? '#fff' : 'rgba(255,255,255,0.4)'}
+            size={22}
+            color={canGoPrev ? colors.primary : colors.textTertiary}
           />
-          <Text style={[styles.navButtonText, !canGoPrev && styles.navButtonTextDisabled]}>
-            BACK
-          </Text>
         </TouchableOpacity>
 
-        {/* Current Month */}
         <Text style={styles.monthText}>{monthDisplay}</Text>
 
-        {/* Next Month Button */}
         <TouchableOpacity
-          style={[styles.navButton, !canGoNext && styles.navButtonDisabled]}
+          style={styles.navButton}
           onPress={onNextMonth}
           disabled={!canGoNext}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={[styles.navButtonText, !canGoNext && styles.navButtonTextDisabled]}>
-            NEXT
-          </Text>
           <Ionicons
             name="chevron-forward"
-            size={18}
-            color={canGoNext ? '#fff' : 'rgba(255,255,255,0.4)'}
+            size={22}
+            color={canGoNext ? colors.primary : colors.textTertiary}
           />
         </TouchableOpacity>
       </View>
 
-      {/* View Toggle Row */}
-      <View style={styles.toggleRow}>
+      {/* View Toggle */}
+      <View style={styles.viewToggle}>
         <TouchableOpacity
           style={[
             styles.toggleButton,
@@ -106,16 +98,8 @@ export function CalendarHeader({
           <Ionicons
             name="list"
             size={18}
-            color={viewMode === 'list' ? colors.primary : colors.textSecondary}
+            color={viewMode === 'list' ? colors.surface : colors.textSecondary}
           />
-          <Text
-            style={[
-              styles.toggleText,
-              viewMode === 'list' && styles.toggleTextActive,
-            ]}
-          >
-            List
-          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -126,18 +110,10 @@ export function CalendarHeader({
           onPress={() => onViewModeChange('month')}
         >
           <Ionicons
-            name="calendar"
+            name="grid-outline"
             size={18}
-            color={viewMode === 'month' ? colors.primary : colors.textSecondary}
+            color={viewMode === 'month' ? colors.surface : colors.textSecondary}
           />
-          <Text
-            style={[
-              styles.toggleText,
-              viewMode === 'month' && styles.toggleTextActive,
-            ]}
-          >
-            Month
-          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -150,85 +126,49 @@ export function CalendarHeader({
 
 const styles = StyleSheet.create({
   container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
 
-  navRow: {
+  monthNav: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#00a2e8',  // Match web calendar blue
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
   },
 
   navButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-    borderRadius: 16,
-    minWidth: 80,
-    justifyContent: 'center',
-  },
-
-  navButtonDisabled: {
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-
-  navButtonText: {
-    color: '#fff',
-    fontSize: typography.size.xs,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginHorizontal: spacing.xs,
-  },
-
-  navButtonTextDisabled: {
-    color: 'rgba(255,255,255,0.4)',
+    padding: spacing.xs,
   },
 
   monthText: {
-    color: '#fff',
     fontSize: typography.size.lg,
-    fontWeight: '700',
-    letterSpacing: 1,
+    fontWeight: '600',
+    color: colors.text,
+    minWidth: 160,
+    textAlign: 'center',
   },
 
-  toggleRow: {
+  viewToggle: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: 8,
+    padding: 2,
   },
 
   toggleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: 20,
-    backgroundColor: colors.backgroundSecondary,
-    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: 6,
   },
 
   toggleButtonActive: {
-    backgroundColor: colors.primaryLight + '30',
-  },
-
-  toggleText: {
-    fontSize: typography.size.sm,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-
-  toggleTextActive: {
-    color: colors.primary,
-    fontWeight: '600',
+    backgroundColor: colors.primary,
   },
 });
 

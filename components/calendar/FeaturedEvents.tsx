@@ -1,8 +1,7 @@
 // =============================================================================
-// FEATURED EVENTS - Horizontal scrolling featured event cards
+// FEATURED EVENTS - Compact horizontal scroll (Instagram stories style)
 // =============================================================================
-// Displays featured/highlighted events in a horizontal scroll
-// Similar to web version's "Featured Events" section
+// Modern mobile design: Small circular/compact cards that don't dominate screen
 // =============================================================================
 
 import React from 'react';
@@ -14,11 +13,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '@/constants/colors';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { spacing, typography } from '@/constants/layout';
 import { CalendarEvent } from '@/types/calendar';
-import { DateBadge } from './DateBadge';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -31,48 +29,51 @@ interface FeaturedEventsProps {
 }
 
 // -----------------------------------------------------------------------------
-// Featured Card Component
+// Helper
 // -----------------------------------------------------------------------------
 
-interface FeaturedCardProps {
+function formatShortDate(dateString: string): string {
+  const date = new Date(dateString + 'T12:00:00');
+  const month = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  const day = date.getDate();
+  return `${month} ${day}`;
+}
+
+// -----------------------------------------------------------------------------
+// Featured Item Component (Stories style)
+// -----------------------------------------------------------------------------
+
+interface FeaturedItemProps {
   event: CalendarEvent;
   onPress?: () => void;
 }
 
-function FeaturedCard({ event, onPress }: FeaturedCardProps) {
+function FeaturedItem({ event, onPress }: FeaturedItemProps) {
+  const borderColor = event.calendar_color || colors.primary;
+  
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      {/* Event Image */}
-      {event.image ? (
-        <Image
-          source={{ uri: event.image }}
-          style={styles.cardImage}
-          resizeMode="cover"
-        />
-      ) : (
-        <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
-          <Ionicons name="calendar" size={40} color={colors.textTertiary} />
-        </View>
-      )}
-
-      {/* Event Title */}
-      <Text style={styles.cardTitle} numberOfLines={2}>
-        {event.title}
-      </Text>
-
-      {/* Date Badge */}
-      <View style={styles.dateBadgeContainer}>
-        <DateBadge date={event.start} size="sm" />
+    <TouchableOpacity style={styles.item} onPress={onPress} activeOpacity={0.8}>
+      {/* Colored ring around image */}
+      <View style={[styles.imageRing, { borderColor }]}>
+        {event.image ? (
+          <Image source={{ uri: event.image }} style={styles.itemImage} />
+        ) : (
+          <LinearGradient
+            colors={[borderColor, borderColor + '80']}
+            style={styles.itemImage}
+          >
+            <Text style={styles.placeholderEmoji}>📅</Text>
+          </LinearGradient>
+        )}
       </View>
-
-      {/* Learn More */}
-      <TouchableOpacity style={styles.learnMoreButton} onPress={onPress}>
-        <Text style={styles.learnMoreText}>Learn More</Text>
-      </TouchableOpacity>
+      
+      {/* Event title (truncated) */}
+      <Text style={styles.itemTitle} numberOfLines={1}>
+        {event.title.replace(/\s*[\u{1F300}-\u{1F9FF}]/gu, '')}
+      </Text>
+      
+      {/* Date */}
+      <Text style={styles.itemDate}>{formatShortDate(event.start)}</Text>
     </TouchableOpacity>
   );
 }
@@ -82,24 +83,16 @@ function FeaturedCard({ event, onPress }: FeaturedCardProps) {
 // -----------------------------------------------------------------------------
 
 export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEventsProps) {
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.sectionTitle}>Featured Events</Text>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading featured events...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (!events || events.length === 0) {
-    return null; // Don't show section if no featured events
+  if (loading || !events || events.length === 0) {
+    return null; // Don't show section if empty or loading
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Featured Events</Text>
+      <View style={styles.header}>
+        <Text style={styles.sectionTitle}>Featured</Text>
+        <View style={styles.headerLine} />
+      </View>
       
       <FlatList
         data={events}
@@ -107,10 +100,8 @@ export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEvents
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        snapToInterval={CARD_WIDTH + spacing.md}
-        decelerationRate="fast"
         renderItem={({ item }) => (
-          <FeaturedCard
+          <FeaturedItem
             event={item}
             onPress={() => onEventPress?.(item)}
           />
@@ -121,27 +112,39 @@ export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEvents
 }
 
 // -----------------------------------------------------------------------------
-// Constants
-// -----------------------------------------------------------------------------
-
-const CARD_WIDTH = 160;
-
-// -----------------------------------------------------------------------------
 // Styles
 // -----------------------------------------------------------------------------
 
+const ITEM_SIZE = 72;
+
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: spacing.md,
-    backgroundColor: colors.background,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
   },
 
   sectionTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: '700',
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.md,
+    fontSize: typography.size.sm,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  headerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+    marginLeft: spacing.sm,
   },
 
   listContent: {
@@ -149,65 +152,44 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
 
-  card: {
-    width: CARD_WIDTH,
-    backgroundColor: colors.surface,
-    borderRadius: sizing.borderRadius.lg,
-    padding: spacing.md,
+  item: {
     alignItems: 'center',
-    // Shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    width: ITEM_SIZE,
   },
 
-  cardImage: {
-    width: CARD_WIDTH - spacing.md * 2,
-    height: 80,
-    borderRadius: sizing.borderRadius.md,
-    marginBottom: spacing.sm,
+  imageRing: {
+    width: ITEM_SIZE,
+    height: ITEM_SIZE,
+    borderRadius: ITEM_SIZE / 2,
+    borderWidth: 2.5,
+    padding: 2,
+    marginBottom: spacing.xs,
   },
 
-  cardImagePlaceholder: {
-    backgroundColor: colors.backgroundSecondary,
+  itemImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: (ITEM_SIZE - 8) / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  cardTitle: {
-    fontSize: typography.size.md,
-    fontWeight: '600',
+  placeholderEmoji: {
+    fontSize: 24,
+  },
+
+  itemTitle: {
+    fontSize: typography.size.xs,
+    fontWeight: '500',
     color: colors.text,
     textAlign: 'center',
-    marginBottom: spacing.sm,
-    minHeight: 40, // Reserve space for 2 lines
+    width: ITEM_SIZE + 8,
   },
 
-  dateBadgeContainer: {
-    marginBottom: spacing.sm,
-  },
-
-  learnMoreButton: {
-    paddingVertical: spacing.xs,
-  },
-
-  learnMoreText: {
-    fontSize: typography.size.sm,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-
-  loadingContainer: {
-    height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  loadingText: {
-    fontSize: typography.size.sm,
-    color: colors.textSecondary,
+  itemDate: {
+    fontSize: 10,
+    color: colors.textTertiary,
+    textAlign: 'center',
   },
 });
 

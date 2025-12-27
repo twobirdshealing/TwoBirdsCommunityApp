@@ -1,23 +1,26 @@
 // =============================================================================
-// CALENDAR SCREEN - Native events calendar
+// CALENDAR SCREEN - Modern native events calendar
 // =============================================================================
-// Phase 1: Native calendar with list view
-// - Featured events horizontal scroll
-// - Month navigation
-// - Event list with status badges
+// Features:
+// - Compact featured events (Instagram stories style)
+// - Slim month navigation header
+// - List view: Full-width event cards
+// - Month view: Grid with event dots + selected day events
 // - Pull to refresh
-// - Tap event shows "Coming Soon" (WebView in Phase 2)
 // =============================================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, ScrollView, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@/constants/colors';
+import { spacing, typography } from '@/constants/layout';
 import { calendarApi } from '@/services/api/calendar';
 import { CalendarEvent, CalendarViewMode } from '@/types/calendar';
 import {
   CalendarHeader,
+  EventCard,
   EventList,
   FeaturedEvents,
+  MonthGrid,
 } from '@/components/calendar';
 
 // -----------------------------------------------------------------------------
@@ -39,6 +42,15 @@ function addMonths(monthString: string, count: number): string {
   return `${newYear}-${newMonth}`;
 }
 
+function formatSelectedDate(dateString: string): string {
+  const date = new Date(dateString + 'T12:00:00');
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
@@ -47,6 +59,7 @@ export default function CalendarScreen() {
   // State
   const [viewMode, setViewMode] = useState<CalendarViewMode>('list');
   const [currentMonth, setCurrentMonth] = useState(getCurrentMonth());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [featuredEvents, setFeaturedEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,6 +70,16 @@ export default function CalendarScreen() {
   // Calculate month limits (current month to +2 months like web)
   const minMonth = getCurrentMonth();
   const maxMonth = addMonths(getCurrentMonth(), 2);
+
+  // Get events for selected date (month view)
+  const selectedDateEvents = useMemo(() => {
+    if (!selectedDate) return [];
+    return events.filter(event => {
+      const startDate = event.start;
+      const endDate = event.end;
+      return selectedDate >= startDate && selectedDate <= endDate;
+    });
+  }, [events, selectedDate]);
 
   // ---------------------------------------------------------------------------
   // Fetch Events
@@ -99,14 +122,13 @@ export default function CalendarScreen() {
     try {
       setFeaturedLoading(true);
 
-      const response = await calendarApi.getFeaturedEvents(3);
+      const response = await calendarApi.getFeaturedEvents(5);
 
       if (response.success) {
         setFeaturedEvents(response.data.events || []);
       }
     } catch (err) {
       console.error('[Calendar] Error fetching featured events:', err);
-      // Don't show error for featured - just don't display them
     } finally {
       setFeaturedLoading(false);
     }
@@ -116,15 +138,18 @@ export default function CalendarScreen() {
   // Effects
   // ---------------------------------------------------------------------------
 
-  // Fetch events when month changes
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
 
-  // Fetch featured events on mount
   useEffect(() => {
     fetchFeaturedEvents();
   }, [fetchFeaturedEvents]);
+
+  // Reset selected date when month changes
+  useEffect(() => {
+    setSelectedDate(null);
+  }, [currentMonth]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -153,51 +178,26 @@ export default function CalendarScreen() {
     // Phase 1: Show coming soon alert
     // Phase 2: Open WebView with event.url
     Alert.alert(
-      event.title,
-      'Event details and booking will be available soon.\n\n' +
-      `📅 ${event.start}\n` +
-      (event.location?.business_name ? `📍 ${event.location.business_name}\n` : '') +
-      (event.price_raw === 0 ? '💝 Love Donations' : `💳 $${event.price_raw}`),
+      event.title.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim(),
+      'Event booking will open in a future update.\n\n' +
+        `📅 ${formatSelectedDate(event.start)}\n` +
+        (event.start_time ? `🕐 ${event.start_time}\n` : '') +
+        (event.location?.business_name ? `📍 ${event.location.business_name}\n` : '') +
+        (event.price_raw === 0 ? '💝 Love Donation' : `💳 $${event.price_raw}`),
       [{ text: 'OK' }]
     );
   };
 
-  const handleWaitlistToggle = async (event: CalendarEvent) => {
-    if (!event.user) {
-      Alert.alert('Login Required', 'Please log in to join the waitlist.');
-      return;
-    }
-
-    try {
-      if (event.user.is_on_waitlist) {
-        const response = await calendarApi.leaveWaitlist(event.product_id, event.start);
-        if (response.success) {
-          Alert.alert('Success', 'Removed from waitlist');
-          fetchEvents(true);
-        } else {
-          Alert.alert('Error', response.error?.message || 'Failed to leave waitlist');
-        }
-      } else {
-        const response = await calendarApi.joinWaitlist(event.product_id, event.start);
-        if (response.success) {
-          Alert.alert('Success', 'Added to waitlist');
-          fetchEvents(true);
-        } else {
-          Alert.alert('Error', response.error?.message || 'Failed to join waitlist');
-        }
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Something went wrong');
-    }
+  const handleSelectDate = (date: string) => {
+    setSelectedDate(date === selectedDate ? null : date);
   };
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Render Header (shared between views)
   // ---------------------------------------------------------------------------
 
-  // List Header Component (Featured Events + Calendar Header)
-  const ListHeader = (
-    <View>
+  const renderHeader = () => (
+    <>
       {/* Featured Events */}
       <FeaturedEvents
         events={featuredEvents}
@@ -215,32 +215,86 @@ export default function CalendarScreen() {
         canGoPrev={currentMonth > minMonth}
         canGoNext={currentMonth < maxMonth}
       />
-    </View>
+    </>
   );
+
+  // ---------------------------------------------------------------------------
+  // Render Month View
+  // ---------------------------------------------------------------------------
+
+  const renderMonthView = () => (
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
+        />
+      }
+    >
+      {renderHeader()}
+
+      {/* Month Grid */}
+      <MonthGrid
+        month={currentMonth}
+        events={events}
+        selectedDate={selectedDate}
+        onSelectDate={handleSelectDate}
+      />
+
+      {/* Selected Day Events */}
+      {selectedDate && (
+        <View style={styles.selectedDaySection}>
+          <Text style={styles.selectedDayTitle}>
+            {formatSelectedDate(selectedDate)}
+          </Text>
+          
+          {selectedDateEvents.length === 0 ? (
+            <Text style={styles.noEventsText}>No events on this day</Text>
+          ) : (
+            selectedDateEvents.map(event => (
+              <EventCard
+                key={`${event.product_id}-${event.start}`}
+                event={event}
+                onPress={() => handleEventPress(event)}
+                compact
+              />
+            ))
+          )}
+        </View>
+      )}
+
+      {/* Bottom padding */}
+      <View style={styles.bottomPadding} />
+    </ScrollView>
+  );
+
+  // ---------------------------------------------------------------------------
+  // Render List View
+  // ---------------------------------------------------------------------------
+
+  const renderListView = () => (
+    <EventList
+      events={events}
+      loading={loading}
+      refreshing={refreshing}
+      error={error}
+      onRefresh={handleRefresh}
+      onEventPress={handleEventPress}
+      ListHeaderComponent={renderHeader()}
+      emptyMessage={`No events in ${new Date(currentMonth + '-01').toLocaleDateString('en-US', { month: 'long' })}`}
+    />
+  );
+
+  // ---------------------------------------------------------------------------
+  // Main Render
+  // ---------------------------------------------------------------------------
 
   return (
     <View style={styles.container}>
-      {viewMode === 'list' ? (
-        <EventList
-          events={events}
-          loading={loading}
-          refreshing={refreshing}
-          error={error}
-          onRefresh={handleRefresh}
-          onEventPress={handleEventPress}
-          onWaitlistToggle={handleWaitlistToggle}
-          ListHeaderComponent={ListHeader}
-          emptyMessage={`No events scheduled for ${new Date(currentMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`}
-        />
-      ) : (
-        // Month view - Phase 2
-        <View style={styles.container}>
-          {ListHeader}
-          <View style={styles.comingSoon}>
-            {/* Month grid will go here in Phase 2 */}
-          </View>
-        </View>
-      )}
+      {viewMode === 'month' ? renderMonthView() : renderListView()}
     </View>
   );
 }
@@ -255,9 +309,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 
-  comingSoon: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  selectedDaySection: {
+    backgroundColor: colors.surface,
+    marginTop: spacing.sm,
+    paddingTop: spacing.md,
+  },
+
+  selectedDayTitle: {
+    fontSize: typography.size.md,
+    fontWeight: '600',
+    color: colors.text,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+
+  noEventsText: {
+    fontSize: typography.size.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: spacing.xl,
+  },
+
+  bottomPadding: {
+    height: 100,
   },
 });
