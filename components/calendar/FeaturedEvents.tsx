@@ -1,11 +1,14 @@
 // =============================================================================
-// FEATURED EVENTS - Compact horizontal scroll (Instagram stories style)
+// FEATURED EVENTS - Instagram stories style with short titles from tags
 // =============================================================================
-// Modern mobile design: Small circular/compact cards that don't dominate screen
+// - Uses tags[0] as short title (URL decoded)
+// - 3 items centered evenly across screen
+// - Subtle shimmer animation
 // =============================================================================
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
+  Dimensions,
   FlatList,
   Image,
   StyleSheet,
@@ -13,7 +16,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  Easing,
+} from 'react-native-reanimated';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { CalendarEvent } from '@/types/calendar';
@@ -29,7 +40,20 @@ interface FeaturedEventsProps {
 }
 
 // -----------------------------------------------------------------------------
-// Helper
+// Constants - Calculate for exactly 3 centered items
+// -----------------------------------------------------------------------------
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const HORIZONTAL_PADDING = spacing.md * 2;
+const AVAILABLE_WIDTH = SCREEN_WIDTH - HORIZONTAL_PADDING;
+const NUM_ITEMS = 3;
+const GAP = spacing.md;
+const TOTAL_GAPS = (NUM_ITEMS - 1) * GAP;
+const ITEM_WIDTH = Math.floor((AVAILABLE_WIDTH - TOTAL_GAPS) / NUM_ITEMS);
+const IMAGE_SIZE = Math.min(ITEM_WIDTH - 10, 90);
+
+// -----------------------------------------------------------------------------
+// Helpers
 // -----------------------------------------------------------------------------
 
 function formatShortDate(dateString: string): string {
@@ -39,37 +63,117 @@ function formatShortDate(dateString: string): string {
   return `${month} ${day}`;
 }
 
+/**
+ * Get short title from tags[0] or fallback to cleaned title
+ * Decodes URL encoding and converts to Title Case
+ * 
+ * "kambo-%f0%9f%90%b8" → "Kambo 🐸"
+ * "sacred-ceremony" → "Sacred Ceremony"
+ */
+function getShortTitle(event: CalendarEvent): string {
+  const tag = event.tags?.[0];
+  
+  if (tag) {
+    try {
+      // Decode URL encoding (handles emoji like %f0%9f%90%b8)
+      const decoded = decodeURIComponent(tag);
+      
+      // Convert dashes to spaces and title case
+      return decoded
+        .split('-')
+        .map(word => {
+          // Don't capitalize emoji-only segments
+          if (/^[\u{1F300}-\u{1F9FF}]+$/u.test(word)) return word;
+          return word.charAt(0).toUpperCase() + word.slice(1);
+        })
+        .join(' ');
+    } catch {
+      // If decoding fails, fall back
+    }
+  }
+  
+  // Fallback: clean emoji from title and truncate
+  return event.title.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
+}
+
 // -----------------------------------------------------------------------------
-// Featured Item Component (Stories style)
+// Featured Item with Shimmer
 // -----------------------------------------------------------------------------
 
 interface FeaturedItemProps {
   event: CalendarEvent;
+  index: number;
+  activeIndex: number;
   onPress?: () => void;
 }
 
-function FeaturedItem({ event, onPress }: FeaturedItemProps) {
+function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps) {
   const borderColor = event.calendar_color || colors.primary;
+  const isActive = index === activeIndex;
+  const shortTitle = getShortTitle(event);
+  
+  // Shimmer animation - more subtle
+  const shimmerOpacity = useSharedValue(0);
+  const shimmerRotation = useSharedValue(0);
+  
+  useEffect(() => {
+    if (isActive) {
+      shimmerOpacity.value = withSequence(
+        withTiming(0.4, { duration: 400 }),  // Lower opacity
+        withTiming(0, { duration: 1000 })    // Slower fade
+      );
+      shimmerRotation.value = withTiming(360, { 
+        duration: 1400,  // Slower rotation
+        easing: Easing.out(Easing.cubic) 
+      });
+    } else {
+      shimmerOpacity.value = 0;
+      shimmerRotation.value = 0;
+    }
+  }, [isActive]);
+  
+  const shimmerStyle = useAnimatedStyle(() => ({
+    opacity: shimmerOpacity.value,
+    transform: [{ rotate: `${shimmerRotation.value}deg` }],
+  }));
+  
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress?.();
+  };
   
   return (
-    <TouchableOpacity style={styles.item} onPress={onPress} activeOpacity={0.8}>
-      {/* Colored ring around image */}
-      <View style={[styles.imageRing, { borderColor }]}>
-        {event.image ? (
-          <Image source={{ uri: event.image }} style={styles.itemImage} />
-        ) : (
+    <TouchableOpacity style={styles.item} onPress={handlePress} activeOpacity={0.8}>
+      {/* Image container with ring */}
+      <View style={styles.imageContainer}>
+        {/* Base ring */}
+        <View style={[styles.imageRing, { borderColor }]}>
+          {event.image ? (
+            <Image source={{ uri: event.image }} style={styles.itemImage} />
+          ) : (
+            <LinearGradient
+              colors={[borderColor, borderColor + '80']}
+              style={styles.itemImage}
+            >
+              <Text style={styles.placeholderEmoji}>📅</Text>
+            </LinearGradient>
+          )}
+        </View>
+        
+        {/* Shimmer overlay */}
+        <Animated.View style={[styles.shimmerRing, shimmerStyle]}>
           <LinearGradient
-            colors={[borderColor, borderColor + '80']}
-            style={styles.itemImage}
-          >
-            <Text style={styles.placeholderEmoji}>📅</Text>
-          </LinearGradient>
-        )}
+            colors={['transparent', 'rgba(255,255,255,0.8)', 'transparent']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.shimmerGradient}
+          />
+        </Animated.View>
       </View>
       
-      {/* Event title (truncated) */}
-      <Text style={styles.itemTitle} numberOfLines={1}>
-        {event.title.replace(/\s*[\u{1F300}-\u{1F9FF}]/gu, '')}
+      {/* Short title from tag */}
+      <Text style={styles.itemTitle} numberOfLines={2}>
+        {shortTitle}
       </Text>
       
       {/* Date */}
@@ -83,30 +187,58 @@ function FeaturedItem({ event, onPress }: FeaturedItemProps) {
 // -----------------------------------------------------------------------------
 
 export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEventsProps) {
+  const [activeIndexState, setActiveIndexState] = React.useState(-1); // Start with none active
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cycle shimmer through items
+  useEffect(() => {
+    if (!events || events.length === 0) return;
+    
+    const cycleShimmer = () => {
+      setActiveIndexState(prev => {
+        // Pick a different random index
+        let next = Math.floor(Math.random() * events.length);
+        while (next === prev && events.length > 1) {
+          next = Math.floor(Math.random() * events.length);
+        }
+        return next;
+      });
+    };
+    
+    // Start after delay
+    const initialTimeout = setTimeout(cycleShimmer, 2000);
+    
+    // Continue cycling every 4 seconds (slower)
+    intervalRef.current = setInterval(cycleShimmer, 4000);
+    
+    return () => {
+      clearTimeout(initialTimeout);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [events?.length]);
+
   if (loading || !events || events.length === 0) {
-    return null; // Don't show section if empty or loading
+    return null;
   }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>Featured</Text>
+        <Text style={styles.sectionTitle}>FEATURED</Text>
         <View style={styles.headerLine} />
       </View>
       
-      <FlatList
-        data={events}
-        keyExtractor={(item) => `featured-${item.product_id}-${item.start}`}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
+      <View style={styles.listContainer}>
+        {events.slice(0, 4).map((item, index) => (
           <FeaturedItem
+            key={`featured-${item.product_id}-${item.start}`}
             event={item}
+            index={index}
+            activeIndex={activeIndexState}
             onPress={() => onEventPress?.(item)}
           />
-        )}
-      />
+        ))}
+      </View>
     </View>
   );
 }
@@ -114,8 +246,6 @@ export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEvents
 // -----------------------------------------------------------------------------
 // Styles
 // -----------------------------------------------------------------------------
-
-const ITEM_SIZE = 72;
 
 const styles = StyleSheet.create({
   container: {
@@ -136,7 +266,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     fontWeight: '600',
     color: colors.textSecondary,
-    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
 
@@ -147,49 +276,78 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
 
-  listContent: {
-    paddingHorizontal: spacing.md,
-    gap: spacing.md,
+  // Use flexbox for even distribution instead of FlatList
+  listContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'flex-start',
+    paddingHorizontal: spacing.sm,
   },
 
   item: {
     alignItems: 'center',
-    width: ITEM_SIZE,
+    width: ITEM_WIDTH,
   },
 
-  imageRing: {
-    width: ITEM_SIZE,
-    height: ITEM_SIZE,
-    borderRadius: ITEM_SIZE / 2,
-    borderWidth: 2.5,
-    padding: 2,
+  imageContainer: {
+    position: 'relative',
+    width: IMAGE_SIZE + 8,
+    height: IMAGE_SIZE + 8,
     marginBottom: spacing.xs,
   },
 
+  imageRing: {
+    width: IMAGE_SIZE + 8,
+    height: IMAGE_SIZE + 8,
+    borderRadius: (IMAGE_SIZE + 8) / 2,
+    borderWidth: 3,
+    padding: 3,
+    backgroundColor: colors.surface,
+  },
+
   itemImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: (ITEM_SIZE - 8) / 2,
+    width: IMAGE_SIZE - 4,
+    height: IMAGE_SIZE - 4,
+    borderRadius: (IMAGE_SIZE - 4) / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
+  shimmerRing: {
+    position: 'absolute',
+    top: -3,
+    left: -3,
+    width: IMAGE_SIZE + 14,
+    height: IMAGE_SIZE + 14,
+    borderRadius: (IMAGE_SIZE + 14) / 2,
+    overflow: 'hidden',
+  },
+
+  shimmerGradient: {
+    width: '100%',
+    height: '100%',
+  },
+
   placeholderEmoji: {
-    fontSize: 24,
+    fontSize: 32,
   },
 
   itemTitle: {
-    fontSize: typography.size.xs,
-    fontWeight: '500',
+    fontSize: typography.size.sm,  // Slightly larger
+    fontWeight: '600',
     color: colors.text,
     textAlign: 'center',
-    width: ITEM_SIZE + 8,
+    lineHeight: 16,
+    minHeight: 32,
+    width: ITEM_WIDTH - 4,
   },
 
   itemDate: {
-    fontSize: 10,
+    fontSize: typography.size.xs,
     color: colors.textTertiary,
+    fontWeight: '500',
     textAlign: 'center',
+    marginTop: 2,
   },
 });
 

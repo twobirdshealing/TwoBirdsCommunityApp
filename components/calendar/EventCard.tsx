@@ -1,15 +1,27 @@
 // =============================================================================
 // EVENT CARD - Modern full-width event card
 // =============================================================================
-// Instagram-style design:
-// - Full-width hero image
-// - Compact info layout
-// - Small status pill badge
-// - Clean typography
+// Features:
+// - Full-width hero image with status badge
+// - Haptic feedback on press
+// - Deposit display when applicable
+// - "Waitlist" status (not "Full")
 // =============================================================================
 
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '@/constants/colors';
@@ -23,7 +35,7 @@ import { CalendarEvent } from '@/types/calendar';
 interface EventCardProps {
   event: CalendarEvent;
   onPress?: () => void;
-  compact?: boolean;  // For month view selected day
+  compact?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -61,16 +73,36 @@ function formatEventDate(start: string, end: string, startTime: string | null): 
 
 function getStatusConfig(event: CalendarEvent) {
   if (event.user?.is_booked) {
-    return { label: 'Registered', color: colors.success, bg: colors.successLight };
+    return { label: 'Registered', color: '#22C55E', bg: '#DCFCE7' };
   }
   if (event.user?.is_on_waitlist) {
-    return { label: 'Waitlist', color: colors.warning, bg: colors.warningLight };
+    return { label: 'On Waitlist', color: '#F59E0B', bg: '#FEF3C7' };
   }
   if (event.status === 'closed') {
-    return { label: 'Full', color: colors.error, bg: colors.errorLight };
+    return { label: 'Waitlist', color: '#EF4444', bg: '#FEE2E2' };  // Changed from "Full"
   }
-  return { label: 'Available', color: colors.info, bg: colors.infoLight };
+  return { label: 'Available', color: '#3B82F6', bg: '#DBEAFE' };
 }
+
+function formatPrice(priceRaw: number, deposit: number | null): string {
+  if (priceRaw === 0) {
+    return '💝 Love Donation';
+  }
+  
+  const price = `$${priceRaw}`;
+  
+  if (deposit && deposit > 0) {
+    return `${price} • $${deposit} deposit`;
+  }
+  
+  return price;
+}
+
+// -----------------------------------------------------------------------------
+// Animated Pressable Card
+// -----------------------------------------------------------------------------
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // -----------------------------------------------------------------------------
 // Component
@@ -80,15 +112,37 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
   const status = getStatusConfig(event);
   const eventDate = formatEventDate(event.start, event.end, event.start_time);
   const calendarColor = event.calendar_color || colors.primary;
-
-  // Build location string
   const location = event.location?.business_name || event.location?.address;
+  
+  // Animation for press feedback
+  const scale = useSharedValue(1);
+  
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
+  const handlePressIn = () => {
+    scale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+  };
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress?.();
+  };
+
+  // Compact card for month view
   if (compact) {
-    // Compact card for month view
     return (
-      <TouchableOpacity style={styles.compactCard} onPress={onPress} activeOpacity={0.7}>
-        {/* Color indicator */}
+      <Pressable
+        style={styles.compactCard}
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
         <View style={[styles.colorBar, { backgroundColor: calendarColor }]} />
         
         <View style={styles.compactContent}>
@@ -109,13 +163,18 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
         </View>
         
         <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-      </TouchableOpacity>
+      </Pressable>
     );
   }
 
   // Full card for list view
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.95}>
+    <AnimatedPressable
+      style={[styles.card, animatedStyle]}
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
       {/* Hero Image */}
       <View style={styles.imageContainer}>
         {event.image ? (
@@ -129,7 +188,7 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
           </LinearGradient>
         )}
         
-        {/* Status Badge (overlay) */}
+        {/* Status Badge */}
         <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
           <Text style={[styles.statusBadgeText, { color: status.color }]}>
             {status.label}
@@ -158,13 +217,12 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
           </View>
         )}
         
-        {/* Price */}
+        {/* Price + RSVP */}
         <View style={styles.footer}>
           <Text style={styles.price}>
-            {event.price_raw === 0 ? '💝 Love Donation' : `$${event.price_raw}`}
+            {formatPrice(event.price_raw, event.deposit ?? null)}
           </Text>
           
-          {/* RSVP countdown */}
           {event.rsvp?.show_countdown && !event.rsvp.deadline_passed && (
             <View style={styles.rsvpBadge}>
               <Text style={styles.rsvpText}>
@@ -174,14 +232,17 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
           )}
         </View>
         
-        {/* Progress bar if applicable */}
-        {event.progress && event.progress.show_percentage && (
+        {/* Progress bar */}
+        {event.progress && (
           <View style={styles.progressContainer}>
             <View style={styles.progressBar}>
               <View 
                 style={[
                   styles.progressFill, 
-                  { width: `${event.progress.percentage}%`, backgroundColor: calendarColor }
+                  { 
+                    width: `${Math.min(event.progress.percentage, 100)}%`, 
+                    backgroundColor: calendarColor 
+                  }
                 ]} 
               />
             </View>
@@ -191,7 +252,7 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 
@@ -216,7 +277,7 @@ const styles = StyleSheet.create({
 
   imageContainer: {
     position: 'relative',
-    height: 140,
+    height: 150,
   },
 
   image: {
@@ -249,7 +310,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 3,
+    height: 4,
   },
 
   content: {
@@ -293,16 +354,16 @@ const styles = StyleSheet.create({
   },
 
   rsvpBadge: {
-    backgroundColor: colors.warningLight,
+    backgroundColor: '#FEF3C7',
     paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 10,
   },
 
   rsvpText: {
     fontSize: typography.size.xs,
     fontWeight: '600',
-    color: colors.warning,
+    color: '#D97706',
   },
 
   progressContainer: {
@@ -327,7 +388,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Compact Card (for month view)
+  // Compact Card
   compactCard: {
     flexDirection: 'row',
     alignItems: 'center',

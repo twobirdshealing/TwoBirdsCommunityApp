@@ -21,11 +21,13 @@ export interface CalendarEvent {
   excerpt: string | null;
   price: string;                    // HTML formatted price
   price_raw: number;
+  deposit: number | null;           // Non-refundable deposit amount
   image: string | null;
-  categories: string[];
+  categories: string[];             // Category slugs
+  tags: string[];                   // Product tag slugs (used for short titles)
   url: string;                      // WebView destination
   recurring_type: 'single' | 'individual' | 'interval';
-  calendar_color?: string;          // Hex color for calendar display (optional)
+  calendar_color?: string;          // Hex color for calendar display
   rsvp: EventRSVP | null;
   progress: EventProgress | null;
   user: EventUserStatus | null;     // Only when authenticated
@@ -86,7 +88,6 @@ export interface EventUserStatus {
 // API Response Types
 // -----------------------------------------------------------------------------
 
-// Response from GET /events and GET /events/featured
 export interface EventsResponse {
   events: CalendarEvent[];
   meta: EventsMeta;
@@ -103,7 +104,6 @@ export interface EventsMeta {
   };
 }
 
-// Response from GET /user/waitlist
 export interface WaitlistEntry {
   product_id: number;
   title: string;
@@ -121,7 +121,6 @@ export interface UserWaitlistResponse {
   };
 }
 
-// Response from POST /waitlist/join and POST /waitlist/leave
 export interface WaitlistActionResponse {
   success: boolean;
   message: string;
@@ -136,20 +135,18 @@ export interface WaitlistActionResponse {
 // -----------------------------------------------------------------------------
 
 export interface GetEventsOptions {
-  month?: string;           // "YYYY-MM"
+  month?: string;
   limit?: number;
   category?: string;
-  product_id?: number;      // For series view
+  product_id?: number;
 }
 
 // -----------------------------------------------------------------------------
 // Helper Types for UI
 // -----------------------------------------------------------------------------
 
-// Events grouped by date for month view
 export interface EventsByDate {
   [date: string]: CalendarEvent[];
 }
 
-// View mode toggle
 export type CalendarViewMode = 'list' | 'month';
