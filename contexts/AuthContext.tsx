@@ -1,9 +1,9 @@
-npx expo start --clear// =============================================================================
+// =============================================================================
 // AUTH CONTEXT - Global authentication state
 // =============================================================================
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as authService from '@/services/auth';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 // -----------------------------------------------------------------------------
 // Types

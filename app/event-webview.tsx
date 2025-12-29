@@ -3,6 +3,7 @@
 // =============================================================================
 // Route: /event-webview?eventUrl={url}&title={title}
 // SIMPLIFIED: Just creates session and shows WebView
+// UPDATED: Custom User-Agent for app view detection
 // =============================================================================
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -23,6 +24,13 @@ import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { SITE_URL } from '@/constants/config';
 import { appApi } from '@/services/api/app';
+
+// -----------------------------------------------------------------------------
+// Constants
+// -----------------------------------------------------------------------------
+
+// Custom User-Agent for WordPress to detect app WebView
+const APP_USER_AGENT = 'TBCCommunityApp/1.0';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -229,12 +237,13 @@ export default function WebViewScreen() {
         </Pressable>
       </View>
       
-      {/* WebView */}
+      {/* WebView with custom User-Agent */}
       {sessionUrl && (
         <WebView
           ref={webViewRef}
           source={{ uri: sessionUrl }}
           style={styles.webView}
+          userAgent={APP_USER_AGENT}
           onNavigationStateChange={handleNavigationChange}
           sharedCookiesEnabled={true}
           thirdPartyCookiesEnabled={true}
