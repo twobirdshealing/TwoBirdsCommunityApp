@@ -2,7 +2,7 @@
 // SPACE PAGE - Individual space view with feeds
 // =============================================================================
 // FIXED: 
-// - Header padding matches TopHeader (uses useSafeAreaInsets properly)
+// - Uses PageHeader component for consistent styling
 // - Stats read from correct fields (members_count, posts_count/feeds_count)
 // - SpaceMenu in header
 // - Sticky posts, bookmark, edit, delete, PIN support
@@ -12,10 +12,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   Alert,
   Image,
-  Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -28,6 +26,7 @@ import { feedsApi, spacesApi } from '@/services/api';
 import { FeedList } from '@/components/feed/FeedList';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { SpaceMenu } from '@/components/space/SpaceMenu';
+import { PageHeader } from '@/components/navigation';
 import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/composer';
 
 // -----------------------------------------------------------------------------
@@ -51,6 +50,10 @@ export default function SpacePage() {
   const [showComments, setShowComments] = useState(false);
   const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
   const [selectedFeedSlug, setSelectedFeedSlug] = useState<string | undefined>(undefined);
+  
+  // Stats - API doesn't return counts reliably
+  const [membersCount, setMembersCount] = useState<number>(0);
+  const [postsCount, setPostsCount] = useState<number>(0);
   
   // ---------------------------------------------------------------------------
   // Fetch Space Data
@@ -110,62 +113,33 @@ export default function SpacePage() {
       console.log('[FEEDS] Raw response type:', typeof response.data);
       
       if (response.success && response.data) {
-        // BULLETPROOF: sticky can be null, undefined, object, or array
-        let stickyPosts: Feed[] = [];
-        const rawSticky = response.data.sticky;
+        // Handle the response structure
+        let feedsData: Feed[] = [];
         
-        console.log('[FEEDS] rawSticky:', JSON.stringify(rawSticky)?.substring(0, 200));
-        
-        if (rawSticky) {
-          if (Array.isArray(rawSticky)) {
-            // It's already an array
-            stickyPosts = rawSticky;
-          } else if (typeof rawSticky === 'object') {
-            // It might be an object with data array, or a single feed
-            if (Array.isArray((rawSticky as any).data)) {
-              stickyPosts = (rawSticky as any).data;
-            } else if ((rawSticky as any).id) {
-              // Single feed object
-              stickyPosts = [rawSticky as Feed];
-            } else {
-              // Try to get values if it's an object like {0: feed, 1: feed}
-              const values = Object.values(rawSticky);
-              if (values.length > 0 && (values[0] as any)?.id) {
-                stickyPosts = values as Feed[];
-              }
-            }
-          }
-        }
-        
-        // BULLETPROOF: feeds.data can also be missing
-        let regularFeeds: Feed[] = [];
         if (response.data.feeds?.data) {
-          if (Array.isArray(response.data.feeds.data)) {
-            regularFeeds = response.data.feeds.data;
-          } else {
-            console.warn('[FEEDS] feeds.data is not an array:', typeof response.data.feeds.data);
-          }
+          feedsData = response.data.feeds.data;
+        } else if (Array.isArray(response.data.feeds)) {
+          feedsData = response.data.feeds;
+        } else if (Array.isArray(response.data)) {
+          feedsData = response.data;
         }
         
-        console.log('[FEEDS] sticky count:', stickyPosts.length, 'regular count:', regularFeeds.length);
+        // Sort: sticky first, then by date
+        const sortedFeeds = [...feedsData].sort((a, b) => {
+          if (a.is_sticky && !b.is_sticky) return -1;
+          if (!a.is_sticky && b.is_sticky) return 1;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
         
-        // Get total posts count from response
-        const totalPosts = response.data.feeds?.total || regularFeeds.length + stickyPosts.length;
-        setPostsCount(totalPosts);
+        setFeeds(sortedFeeds);
         
-        // Remove duplicates (sticky might also appear in regular feeds)
-        const stickyIds = new Set(stickyPosts.map(f => f.id));
-        const filteredRegular = regularFeeds.filter(f => !stickyIds.has(f.id));
-        
-        // Ensure sticky posts are marked
-        const markedSticky = stickyPosts.map(f => ({ ...f, is_sticky: true }));
-        
-        setFeeds([...markedSticky, ...filteredRegular]);
-      } else {
-        setError(response.error?.message || 'Failed to load feeds');
+        // Update posts count from meta if available
+        if (response.data.feeds?.total) {
+          setPostsCount(response.data.feeds.total);
+        }
       }
     } catch (err) {
-      console.error('[FEEDS] Error:', err);
+      console.error('Fetch feeds error:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
@@ -270,54 +244,48 @@ export default function SpacePage() {
       
       setFeeds(prevFeeds =>
         prevFeeds.map(f => 
-          f.id === feed.id ? { ...f, bookmarked: isBookmarked } : f
+          f.id === feed.id 
+            ? { ...f, is_bookmarked: !isBookmarked } 
+            : f
         )
       );
     } catch (err) {
-      console.error('Bookmark error:', err);
-      Alert.alert('Error', 'Failed to update bookmark');
+      console.error('Bookmark toggle error:', err);
     }
   };
 
   // ---------------------------------------------------------------------------
-  // Pin Handler (for admins)
+  // Pin Handler
   // ---------------------------------------------------------------------------
 
   const handlePin = async (feed: Feed) => {
-    try {
-      const newStickyState = !feed.is_sticky;
-      
-      console.log('[PIN] Toggling sticky for feed:', {
-        id: feed.id,
-        title: feed.title,
-        currentSticky: feed.is_sticky,
-        newSticky: newStickyState,
-      });
-      
-      // Optimistic update
-      setFeeds(prevFeeds =>
-        prevFeeds.map(f => 
-          f.id === feed.id ? { ...f, is_sticky: newStickyState } : f
-        )
+    const newStickyState = !feed.is_sticky;
+    
+    console.log('[PIN] Toggling sticky for feed:', feed.id, '-> sticky:', newStickyState);
+    
+    // Optimistic update
+    setFeeds(prevFeeds => {
+      const updated = prevFeeds.map(f =>
+        f.id === feed.id ? { ...f, is_sticky: newStickyState } : f
       );
-
-      // Use toggleSticky with PATCH - doesn't require message field
+      
+      // Re-sort: sticky first
+      return updated.sort((a, b) => {
+        if (a.is_sticky && !b.is_sticky) return -1;
+        if (!a.is_sticky && b.is_sticky) return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+    });
+    
+    try {
       const response = await feedsApi.toggleSticky(feed.id, newStickyState);
       
-      console.log('[PIN] API Response:', JSON.stringify(response, null, 2));
+      console.log('[PIN] API response:', response);
       
-      if (response.success) {
-        Alert.alert(
-          newStickyState ? 'Pinned' : 'Unpinned',
-          newStickyState ? 'Post pinned to top' : 'Post unpinned'
-        );
-        // Refresh to get correct order
-        fetchFeeds(true);
-      } else {
-        console.error('[PIN] Failed:', response.error);
-        // Revert
+      if (!response.success) {
+        // Revert on error
         setFeeds(prevFeeds =>
-          prevFeeds.map(f => 
+          prevFeeds.map(f =>
             f.id === feed.id ? { ...f, is_sticky: !newStickyState } : f
           )
         );
@@ -390,16 +358,6 @@ export default function SpacePage() {
   };
 
   // ---------------------------------------------------------------------------
-  // Stats - API doesn't return counts in space detail endpoint (bug?)
-  // Docs say it should, but it doesn't. Work around:
-  // - posts_count: Get from feeds API response (has total)
-  // - members_count: Get from members API response (has meta.total)
-  // ---------------------------------------------------------------------------
-
-  const [membersCount, setMembersCount] = useState<number>(0);
-  const [postsCount, setPostsCount] = useState<number>(0);
-
-  // ---------------------------------------------------------------------------
   // Check if user can pin (admin/moderator of space)
   // ---------------------------------------------------------------------------
 
@@ -433,41 +391,6 @@ export default function SpacePage() {
     return result;
   };
 
-  // ---------------------------------------------------------------------------
-  // Custom Header (matches TopHeader padding exactly)
-  // ---------------------------------------------------------------------------
-
-  const SpacePageHeader = () => (
-    <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
-      <View style={styles.headerContent}>
-        {/* Back Button */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-
-        {/* Title */}
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {space?.title || 'Space'}
-        </Text>
-
-        {/* Space Menu */}
-        <View style={styles.headerRight}>
-          {slug && (
-            <SpaceMenu 
-              slug={slug} 
-              role={space?.role}
-              onLeaveSuccess={handleLeaveSuccess}
-            />
-          )}
-        </View>
-      </View>
-    </View>
-  );
-  
   // ---------------------------------------------------------------------------
   // Space Info Header (inside FeedList)
   // ---------------------------------------------------------------------------
@@ -537,8 +460,23 @@ export default function SpacePage() {
   
   return (
     <View style={styles.container}>
-      {/* Custom Header - matches TopHeader padding */}
-      <SpacePageHeader />
+      {/* Header - Using PageHeader with SpaceMenu */}
+      <View style={{ paddingTop: insets.top }}>
+        <PageHeader
+          leftAction="back"
+          onLeftPress={() => router.back()}
+          title={space?.title || 'Space'}
+          rightElement={
+            slug ? (
+              <SpaceMenu 
+                slug={slug} 
+                role={space?.role}
+                onLeaveSuccess={handleLeaveSuccess}
+              />
+            ) : undefined
+          }
+        />
+      </View>
       
       {/* Feed List */}
       <FeedList
@@ -581,7 +519,7 @@ export default function SpacePage() {
 }
 
 // -----------------------------------------------------------------------------
-// Styles - Header matches TopHeader exactly
+// Styles (header styles removed - now in PageHeader component)
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
@@ -590,54 +528,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 
-  // Header - matches TopHeader styles exactly
-  headerContainer: {
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    minHeight: 52,
-  },
-
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-
-  headerTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    textAlign: 'center',
-    marginHorizontal: spacing.sm,
-  },
-
-  headerRight: {
-    width: 40,
-    alignItems: 'flex-end',
-  },
-  
   // Space Header (inside FeedList)
   spaceHeader: {
     backgroundColor: colors.surface,
@@ -646,48 +536,46 @@ const styles = StyleSheet.create({
   
   coverImage: {
     width: '100%',
-    height: 120,
+    height: 150,
+    backgroundColor: colors.skeleton,
   },
-
+  
   coverPlaceholder: {
     backgroundColor: colors.primary,
   },
   
   spaceInfo: {
-    padding: spacing.lg,
-    alignItems: 'center',
+    padding: spacing.md,
   },
   
   spaceLogo: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    marginTop: -40,
+    marginTop: -32,
+    marginBottom: spacing.sm,
     borderWidth: 3,
     borderColor: colors.surface,
-    backgroundColor: colors.background,
+    backgroundColor: colors.skeleton,
   },
   
   spaceTitle: {
     fontSize: typography.size.xl,
     fontWeight: '700',
     color: colors.text,
-    marginTop: spacing.sm,
-    textAlign: 'center',
+    marginBottom: spacing.xs,
   },
   
   spaceDescription: {
     fontSize: typography.size.md,
     color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-    paddingHorizontal: spacing.lg,
+    lineHeight: typography.size.md * 1.4,
+    marginBottom: spacing.sm,
   },
   
   spaceStats: {
     flexDirection: 'row',
     gap: spacing.lg,
-    marginTop: spacing.md,
   },
   
   statItem: {

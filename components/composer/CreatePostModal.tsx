@@ -2,7 +2,7 @@
 // CREATE POST MODAL - Full screen post composer
 // =============================================================================
 // FIXED: Use space SLUG instead of ID
-// Native web app uses: {"space": "book-club"} NOT {"space_id": 50}
+// UPDATED: Uses PageHeader component for consistent styling
 // =============================================================================
 
 import React from 'react';
@@ -13,12 +13,12 @@ import {
   SafeAreaView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { PageHeader } from '@/components/navigation';
 import { Composer, ComposerSubmitData } from './Composer';
 
 // -----------------------------------------------------------------------------
@@ -72,20 +72,12 @@ export function CreatePostModal({
           style={styles.keyboardView}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={onClose}
-            >
-              <Ionicons name="close" size={28} color={colors.text} />
-            </TouchableOpacity>
-            
-            <Text style={styles.headerTitle}>Create Post</Text>
-            
-            {/* Spacer for alignment */}
-            <View style={styles.headerSpacer} />
-          </View>
+          {/* Header - Using PageHeader component */}
+          <PageHeader
+            leftAction="close"
+            onLeftPress={onClose}
+            title="Create Post"
+          />
 
           {/* Space indicator - shown when space is pre-selected */}
           {spaceName && (
@@ -115,7 +107,7 @@ export function CreatePostModal({
 }
 
 // -----------------------------------------------------------------------------
-// Styles
+// Styles (header styles removed - now in PageHeader component)
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
@@ -126,33 +118,6 @@ const styles = StyleSheet.create({
 
   keyboardView: {
     flex: 1,
-  },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-
-  closeButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  headerTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: '600',
-    color: colors.text,
-  },
-
-  headerSpacer: {
-    width: 40,
   },
 
   spaceIndicator: {

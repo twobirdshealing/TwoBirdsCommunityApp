@@ -2,15 +2,12 @@
 // WEBVIEW SCREEN - Authenticated WebView for events, cart, etc.
 // =============================================================================
 // Route: /event-webview?eventUrl={url}&title={title}
-// SIMPLIFIED: Just creates session and shows WebView
-// UPDATED: Custom User-Agent for app view detection
+// Uses PageHeader for consistent header styling
 // =============================================================================
 
 import React, { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
-  Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -24,6 +21,7 @@ import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { SITE_URL } from '@/constants/config';
 import { appApi } from '@/services/api/app';
+import { PageHeader } from '@/components/navigation';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -98,8 +96,6 @@ export default function WebViewScreen() {
   // ---------------------------------------------------------------------------
 
   const handleBack = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
     if (canGoBack && webViewRef.current) {
       webViewRef.current.goBack();
     } else {
@@ -108,7 +104,6 @@ export default function WebViewScreen() {
   };
 
   const handleClose = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
   };
 
@@ -166,24 +161,19 @@ export default function WebViewScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         
         {/* Header */}
-        <View style={styles.header}>
-          <Pressable onPress={handleClose} style={styles.headerButton}>
-            <Ionicons name="close" size={24} color={colors.text} />
-          </Pressable>
-          <Text style={styles.headerTitle}>Error</Text>
-          <View style={styles.headerButton} />
-        </View>
+        <PageHeader
+          leftAction="close"
+          onLeftPress={handleClose}
+          title="Error"
+        />
         
-        {/* Error */}
+        {/* Error Content */}
         <View style={styles.centered}>
           <View style={styles.errorIcon}>
             <Ionicons name="alert-circle-outline" size={64} color={colors.textTertiary} />
           </View>
           <Text style={styles.errorTitle}>Something went wrong</Text>
           <Text style={styles.errorText}>{error}</Text>
-          <Pressable style={styles.button} onPress={handleClose}>
-            <Text style={styles.buttonText}>Go Back</Text>
-          </Pressable>
         </View>
       </View>
     );
@@ -197,45 +187,15 @@ export default function WebViewScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <Stack.Screen options={{ headerShown: false }} />
       
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable 
-          onPress={handleBack} 
-          style={({ pressed }) => [
-            styles.headerButton,
-            pressed && styles.headerButtonPressed,
-          ]}
-        >
-          <Ionicons 
-            name={canGoBack ? "chevron-back" : "close"} 
-            size={24} 
-            color={colors.text} 
-          />
-        </Pressable>
-        
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {pageTitle}
-          </Text>
-          {pageLoading && (
-            <ActivityIndicator 
-              size="small" 
-              color={colors.primary} 
-              style={styles.headerLoader} 
-            />
-          )}
-        </View>
-        
-        <Pressable 
-          onPress={handleCartPress} 
-          style={({ pressed }) => [
-            styles.headerButton,
-            pressed && styles.headerButtonPressed,
-          ]}
-        >
-          <Ionicons name="cart-outline" size={24} color={colors.text} />
-        </Pressable>
-      </View>
+      {/* Header - Using PageHeader component */}
+      <PageHeader
+        leftAction={canGoBack ? 'back' : 'close'}
+        onLeftPress={handleBack}
+        title={pageTitle}
+        showLoader={pageLoading}
+        rightIcon="cart-outline"
+        onRightPress={handleCartPress}
+      />
       
       {/* WebView with custom User-Agent */}
       {sessionUrl && (
@@ -262,7 +222,7 @@ export default function WebViewScreen() {
 }
 
 // -----------------------------------------------------------------------------
-// Styles
+// Styles (header styles removed - now in PageHeader component)
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
@@ -276,60 +236,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xl,
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    minHeight: 52,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-
-  headerButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-  },
-
-  headerButtonPressed: {
-    backgroundColor: colors.backgroundSecondary,
-  },
-
-  headerCenter: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: spacing.sm,
-  },
-
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-
-  headerLoader: {
-    marginLeft: spacing.xs,
   },
 
   // Loading
@@ -362,19 +268,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.lg,
-  },
-
-  button: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-  },
-
-  buttonText: {
-    color: '#fff',
-    fontSize: typography.size.md,
-    fontWeight: '600',
   },
 
   // WebView
