@@ -1,18 +1,14 @@
 // =============================================================================
 // BOOKMARKS SCREEN - Shows user's saved posts
 // =============================================================================
-// Accessible from avatar dropdown menu
-// Uses GET /feeds/bookmarks endpoint
+// DEBUG VERSION - Added logging to trace 401 issue
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Alert,
-  SafeAreaView,
-  StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
@@ -53,13 +49,18 @@ export default function BookmarksScreen() {
         setError(null);
       }
       
+      console.log('[BOOKMARKS DEBUG] Starting fetchBookmarks...');
+      
       const response = await feedsApi.getBookmarks();
       
-      console.log('[BOOKMARKS] Raw response:', JSON.stringify(response, null, 2).substring(0, 500));
+      // DEBUG: Log full response
+      console.log('[BOOKMARKS DEBUG] Full response:', JSON.stringify(response, null, 2).substring(0, 1500));
+      console.log('[BOOKMARKS DEBUG] response.success:', response.success);
       
       if (response.success && response.data) {
+        console.log('[BOOKMARKS DEBUG] Response data keys:', Object.keys(response.data));
+        
         // Bookmarks API might return different formats
-        // Try: response.data.data, response.data.feeds, response.data directly
         let bookmarkData: any[] = [];
         
         if (Array.isArray(response.data)) {
@@ -72,30 +73,29 @@ export default function BookmarksScreen() {
           bookmarkData = response.data.feeds.data;
         }
         
-        console.log('[BOOKMARKS] Extracted data count:', bookmarkData.length);
+        console.log('[BOOKMARKS DEBUG] Extracted data count:', bookmarkData.length);
         
-        // BULLETPROOF: Make sure it's an array before mapping
         if (!Array.isArray(bookmarkData)) {
-          console.warn('[BOOKMARKS] bookmarkData is not an array:', typeof bookmarkData);
+          console.warn('[BOOKMARKS DEBUG] bookmarkData is not an array:', typeof bookmarkData);
           setFeeds([]);
           return;
         }
         
-        // Extract feeds from bookmarks (handle both formats)
+        // Extract feeds from bookmarks
         const feedList = bookmarkData.map((item: any) => {
-          // If item has a feed property, use it; otherwise assume item IS the feed
           const feed = item.feed || item;
-          // Mark as bookmarked
           return { ...feed, bookmarked: true };
         });
         
-        console.log('[BOOKMARKS] Final feed count:', feedList.length);
+        console.log('[BOOKMARKS DEBUG] Final feed count:', feedList.length);
         setFeeds(feedList);
       } else {
+        console.log('[BOOKMARKS DEBUG] Response NOT successful');
+        console.log('[BOOKMARKS DEBUG] Error:', response.error);
         setError(response.error?.message || 'Failed to load bookmarks');
       }
     } catch (err) {
-      console.error('[BOOKMARKS] Error:', err);
+      console.error('[BOOKMARKS DEBUG] CAUGHT ERROR:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
@@ -194,14 +194,11 @@ export default function BookmarksScreen() {
 
   const handleBookmarkToggle = async (feed: Feed, isBookmarked: boolean) => {
     try {
-      // When toggled OFF, remove from bookmarks
       await feedsApi.toggleBookmark(feed.id, !isBookmarked);
       
       if (!isBookmarked) {
-        // Removed bookmark - remove from list
         setFeeds(prevFeeds => prevFeeds.filter(f => f.id !== feed.id));
       } else {
-        // Re-added bookmark (shouldn't happen in this screen but handle it)
         setFeeds(prevFeeds =>
           prevFeeds.map(f => 
             f.id === feed.id ? { ...f, bookmarked: isBookmarked } : f
@@ -286,7 +283,7 @@ export default function BookmarksScreen() {
           onDelete={handleDelete}
           ListHeaderComponent={<BookmarksHeader />}
           emptyMessage="No saved posts yet. Tap the bookmark icon on any post to save it here."
-          emptyIcon="🔖"
+          emptyIcon="📖"
         />
         
         {/* Comment Sheet */}

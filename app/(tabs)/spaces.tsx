@@ -1,9 +1,7 @@
 // =============================================================================
 // MAIN SPACES SCREEN - Shows all spaces user is a member of
 // =============================================================================
-// UPDATED: Removed Stack.Screen header - TopHeader handles it now
-// Note: API pagination doesn't work - returns all spaces at once
-// Implements client-side search filtering
+// DEBUG VERSION - Added extensive logging to trace 401 issue
 // =============================================================================
 
 import { FlashList } from '@shopify/flash-list';
@@ -45,20 +43,38 @@ export default function SpacesScreen() {
       }
       setError(null);
 
+      console.log('[SPACES DEBUG] Starting fetchSpaces...');
+
       const response = await spacesApi.getSpaces({
         status: 'published',
       });
 
+      // DEBUG: Log the FULL response
+      console.log('[SPACES DEBUG] Full response:', JSON.stringify(response, null, 2).substring(0, 1500));
+      console.log('[SPACES DEBUG] response.success:', response.success);
+
       if (!response.success) {
+        console.log('[SPACES DEBUG] Response NOT successful');
+        console.log('[SPACES DEBUG] Error:', response.error);
         setError(response.error?.message || 'Failed to load spaces');
         return;
       }
 
       const apiData = response.data as any;
+      console.log('[SPACES DEBUG] apiData keys:', apiData ? Object.keys(apiData) : 'null');
+      
       const spacesList = apiData?.spaces || [];
+      console.log('[SPACES DEBUG] spacesList length:', spacesList.length);
+      console.log('[SPACES DEBUG] spacesList type:', typeof spacesList);
+      console.log('[SPACES DEBUG] Is array:', Array.isArray(spacesList));
+      
+      if (spacesList.length > 0) {
+        console.log('[SPACES DEBUG] First space:', JSON.stringify(spacesList[0], null, 2).substring(0, 300));
+      }
       
       setSpaces(spacesList);
     } catch (err) {
+      console.log('[SPACES DEBUG] CAUGHT ERROR:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
@@ -109,8 +125,6 @@ export default function SpacesScreen() {
 
   return (
     <View style={styles.container}>
-      {/* NO Stack.Screen here - TopHeader in tabs layout handles header */}
-      
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
