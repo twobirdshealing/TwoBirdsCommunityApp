@@ -4,21 +4,21 @@
 // DEBUG VERSION - Added logging to trace 401 issue
 // =============================================================================
 
-import React, { useEffect, useState, useCallback } from 'react';
+import { CommentSheet } from '@/components/feed/CommentSheet';
+import { FeedList } from '@/components/feed/FeedList';
+import { colors } from '@/constants/colors';
+import { spacing, typography } from '@/constants/layout';
+import { feedsApi } from '@/services/api';
+import { Feed } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { Stack, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
-import { spacing, typography } from '@/constants/layout';
-import { Feed } from '@/types';
-import { feedsApi } from '@/services/api';
-import { FeedList } from '@/components/feed/FeedList';
-import { CommentSheet } from '@/components/feed/CommentSheet';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -57,43 +57,46 @@ export default function BookmarksScreen() {
       console.log('[BOOKMARKS DEBUG] Full response:', JSON.stringify(response, null, 2).substring(0, 1500));
       console.log('[BOOKMARKS DEBUG] response.success:', response.success);
       
-      if (response.success && response.data) {
-        console.log('[BOOKMARKS DEBUG] Response data keys:', Object.keys(response.data));
-        
-        // Bookmarks API might return different formats
-        let bookmarkData: any[] = [];
-        
-        if (Array.isArray(response.data)) {
-          bookmarkData = response.data;
-        } else if (Array.isArray(response.data.data)) {
-          bookmarkData = response.data.data;
-        } else if (Array.isArray(response.data.feeds)) {
-          bookmarkData = response.data.feeds;
-        } else if (response.data.feeds?.data && Array.isArray(response.data.feeds.data)) {
-          bookmarkData = response.data.feeds.data;
-        }
-        
-        console.log('[BOOKMARKS DEBUG] Extracted data count:', bookmarkData.length);
-        
-        if (!Array.isArray(bookmarkData)) {
-          console.warn('[BOOKMARKS DEBUG] bookmarkData is not an array:', typeof bookmarkData);
-          setFeeds([]);
-          return;
-        }
-        
-        // Extract feeds from bookmarks
-        const feedList = bookmarkData.map((item: any) => {
-          const feed = item.feed || item;
-          return { ...feed, bookmarked: true };
-        });
-        
-        console.log('[BOOKMARKS DEBUG] Final feed count:', feedList.length);
-        setFeeds(feedList);
-      } else {
+      // FIXED: Check for failure first to properly narrow the discriminated union
+      if (!response.success) {
         console.log('[BOOKMARKS DEBUG] Response NOT successful');
         console.log('[BOOKMARKS DEBUG] Error:', response.error);
         setError(response.error?.message || 'Failed to load bookmarks');
+        return;
       }
+      
+      // Now TypeScript knows response.success === true, so response.data exists
+      console.log('[BOOKMARKS DEBUG] Response data keys:', Object.keys(response.data));
+      
+      // Bookmarks API might return different formats
+      let bookmarkData: any[] = [];
+      
+      if (Array.isArray(response.data)) {
+        bookmarkData = response.data;
+      } else if (Array.isArray(response.data.data)) {
+        bookmarkData = response.data.data;
+      } else if (Array.isArray(response.data.feeds)) {
+        bookmarkData = response.data.feeds;
+      } else if (response.data.feeds?.data && Array.isArray(response.data.feeds.data)) {
+        bookmarkData = response.data.feeds.data;
+      }
+      
+      console.log('[BOOKMARKS DEBUG] Extracted data count:', bookmarkData.length);
+      
+      if (!Array.isArray(bookmarkData)) {
+        console.warn('[BOOKMARKS DEBUG] bookmarkData is not an array:', typeof bookmarkData);
+        setFeeds([]);
+        return;
+      }
+      
+      // Extract feeds from bookmarks
+      const feedList = bookmarkData.map((item: any) => {
+        const feed = item.feed || item;
+        return { ...feed, bookmarked: true };
+      });
+      
+      console.log('[BOOKMARKS DEBUG] Final feed count:', feedList.length);
+      setFeeds(feedList);
     } catch (err) {
       console.error('[BOOKMARKS DEBUG] CAUGHT ERROR:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
