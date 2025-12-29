@@ -1,8 +1,7 @@
 // =============================================================================
 // ROOT LAYOUT - App-wide configuration with Authentication
 // =============================================================================
-// Routes: tabs, login, space, feed, profile, messages, notifications, 
-//         bookmarks, event-webview
+// SIMPLIFIED: No CartProvider
 // =============================================================================
 
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -11,7 +10,6 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { CartProvider } from '@/contexts/CartContext';
 import { colors } from '@/constants/colors';
 
 // -----------------------------------------------------------------------------
@@ -46,46 +44,29 @@ function RootLayoutNav() {
   return (
     <>
       <Stack>
-        {/* ============================================= */}
-        {/* TABS - Main app screens                       */}
-        {/* ============================================= */}
+        {/* TABS */}
         <Stack.Screen
           name="(tabs)"
           options={{ headerShown: false }}
         />
 
-        {/* ============================================= */}
-        {/* AUTH                                          */}
-        {/* ============================================= */}
+        {/* AUTH */}
         <Stack.Screen
           name="login"
           options={{ headerShown: false }}
         />
 
-        {/* ============================================= */}
-        {/* SPACE ROUTES                                  */}
-        {/* ============================================= */}
-
-        {/* Space detail page */}
+        {/* SPACE ROUTES */}
         <Stack.Screen
           name="space/[slug]/index"
-          options={{
-            headerShown: false,
-          }}
+          options={{ headerShown: false }}
         />
-
-        {/* Space members */}
         <Stack.Screen
           name="space/[slug]/members"
-          options={{
-            headerShown: true,
-            title: 'Members',
-          }}
+          options={{ headerShown: true, title: 'Members' }}
         />
 
-        {/* ============================================= */}
-        {/* FEED DETAIL                                   */}
-        {/* ============================================= */}
+        {/* FEED DETAIL */}
         <Stack.Screen
           name="feed/[id]"
           options={{
@@ -95,56 +76,31 @@ function RootLayoutNav() {
           }}
         />
 
-        {/* ============================================= */}
-        {/* PROFILE                                       */}
-        {/* ============================================= */}
+        {/* PROFILE */}
         <Stack.Screen
           name="profile/[username]"
-          options={{
-            presentation: 'card',
-            headerShown: true,
-          }}
+          options={{ presentation: 'card', headerShown: true }}
         />
 
-        {/* ============================================= */}
-        {/* MESSAGES (from header icon)                   */}
-        {/* ============================================= */}
+        {/* MESSAGES */}
         <Stack.Screen
           name="messages"
-          options={{
-            presentation: 'card',
-            headerShown: true,
-            title: 'Messages',
-          }}
+          options={{ presentation: 'card', headerShown: true, title: 'Messages' }}
         />
 
-        {/* ============================================= */}
-        {/* NOTIFICATIONS (from header icon)              */}
-        {/* ============================================= */}
+        {/* NOTIFICATIONS */}
         <Stack.Screen
           name="notifications"
-          options={{
-            presentation: 'card',
-            headerShown: true,
-            title: 'Notifications',
-          }}
+          options={{ presentation: 'card', headerShown: true, title: 'Notifications' }}
         />
 
-        {/* ============================================= */}
-        {/* BOOKMARKS (from avatar dropdown)              */}
-        {/* ============================================= */}
+        {/* BOOKMARKS */}
         <Stack.Screen
           name="bookmarks"
-          options={{
-            presentation: 'card',
-            headerShown: true,
-            title: 'Bookmarks',
-          }}
+          options={{ presentation: 'card', headerShown: true, title: 'Bookmarks' }}
         />
 
-        {/* ============================================= */}
-        {/* EVENT WEBVIEW (from calendar)                 */}
-        {/* ============================================= */}
+        {/* WEBVIEW - for events, cart, etc */}
         <Stack.Screen
           name="event-webview"
           options={{
@@ -166,9 +122,7 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <RootLayoutNav />
-      </CartProvider>
+      <RootLayoutNav />
     </AuthProvider>
   );
 }

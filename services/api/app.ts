@@ -1,8 +1,7 @@
 // =============================================================================
 // APP API SERVICE - TBC Community App specific endpoints
 // =============================================================================
-// Handles: Web sessions (for WebView auth), Cart info
-// Base: /wp-json/tbc-ca/v1
+// SIMPLIFIED: Only web session creation for WebView authentication
 // =============================================================================
 
 import { SITE_URL } from '@/constants/config';
@@ -11,7 +10,7 @@ import { getBasicAuth } from '@/services/auth';
 const APP_API_URL = `${SITE_URL}/wp-json/tbc-ca/v1`;
 
 // -----------------------------------------------------------------------------
-// Debug Logging
+// Debug
 // -----------------------------------------------------------------------------
 
 const DEBUG = true;
@@ -29,136 +28,62 @@ export interface WebSessionResponse {
   expires_in: number;
 }
 
-export interface CartItem {
-  key: string;
-  product_id: number;
-  name: string;
-  quantity: number;
-  price: string;
-  image: string | null;
-}
-
-export interface CartResponse {
-  success: boolean;
-  cart: {
-    count: number;
-    total: string;
-    items: CartItem[];
-    cart_url: string;
-    checkout_url: string;
-  };
-}
-
 // -----------------------------------------------------------------------------
-// API Helper
+// Create Web Session
 // -----------------------------------------------------------------------------
 
-async function appRequest<T>(
-  endpoint: string,
-  options: {
-    method?: 'GET' | 'POST';
-    body?: Record<string, unknown>;
-  } = {}
-): Promise<T> {
-  const { method = 'GET', body } = options;
-  
-  const url = `${APP_API_URL}${endpoint}`;
-  log(`${method} ${url}`);
+/**
+ * Create a one-time login URL for WebView
+ * The URL will automatically log the user in when opened
+ * 
+ * @param redirectUrl - Where to redirect after login
+ */
+export async function createWebSession(redirectUrl: string): Promise<WebSessionResponse> {
+  const url = `${APP_API_URL}/create-web-session`;
+  log('POST', url);
+  log('Redirect URL:', redirectUrl);
   
   const basicAuth = await getBasicAuth();
   
   if (!basicAuth) {
-    log('ERROR: No auth token available');
+    log('ERROR: No auth token');
     throw new Error('Not authenticated');
   }
   
-  log('Auth token retrieved, length:', basicAuth.length);
-  
-  const headers: HeadersInit = {
-    'Authorization': `Basic ${basicAuth}`,
-    'Content-Type': 'application/json',
-  };
-  
-  const config: RequestInit = {
-    method,
-    headers,
-  };
-  
-  if (body && method === 'POST') {
-    config.body = JSON.stringify(body);
-    log('Request body:', JSON.stringify(body));
-  }
+  log('Auth token length:', basicAuth.length);
   
   try {
-    log('Sending request...');
-    const response = await fetch(url, config);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${basicAuth}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ redirect_url: redirectUrl }),
+    });
     
     log('Response status:', response.status);
     
-    const responseText = await response.text();
-    log('Response text:', responseText.substring(0, 500));
+    const data = await response.json();
+    log('Response:', JSON.stringify(data).substring(0, 200));
     
     if (!response.ok) {
-      let errorMessage = `Request failed: ${response.status}`;
-      try {
-        const errorData = JSON.parse(responseText);
-        errorMessage = errorData.message || errorMessage;
-        log('Error data:', errorData);
-      } catch {
-        log('Could not parse error response');
-      }
-      throw new Error(errorMessage);
+      throw new Error(data.message || `Request failed: ${response.status}`);
     }
     
-    // Parse successful response
-    const data = JSON.parse(responseText);
-    log('Success:', JSON.stringify(data).substring(0, 200));
     return data;
   } catch (error) {
-    log('Request error:', error);
+    log('Error:', error);
     throw error;
   }
 }
 
 // -----------------------------------------------------------------------------
-// Web Session (for WebView authentication)
-// -----------------------------------------------------------------------------
-
-/**
- * Create a one-time login URL for WebView
- * Opens the URL in WebView to automatically log user in
- * 
- * @param redirectUrl - Where to redirect after login (e.g., event URL)
- * @returns Promise with the auto-login URL
- */
-export async function createWebSession(redirectUrl: string): Promise<WebSessionResponse> {
-  return appRequest<WebSessionResponse>('/create-web-session', {
-    method: 'POST',
-    body: { redirect_url: redirectUrl },
-  });
-}
-
-// -----------------------------------------------------------------------------
-// Cart
-// -----------------------------------------------------------------------------
-
-/**
- * Get current user's WooCommerce cart info
- * Used to show cart badge count in the app
- * 
- * @returns Promise with cart data
- */
-export async function getCart(): Promise<CartResponse> {
-  return appRequest<CartResponse>('/cart');
-}
-
-// -----------------------------------------------------------------------------
-// Exports
+// Export
 // -----------------------------------------------------------------------------
 
 export const appApi = {
   createWebSession,
-  getCart,
 };
 
 export default appApi;

@@ -1,7 +1,7 @@
 // =============================================================================
 // TOP HEADER - Main navigation header with logo, icons, and avatar menu
 // =============================================================================
-// Icons: Messages, Notifications, Cart, Avatar Menu
+// SIMPLIFIED: No cart badge, just icon that opens WebView
 // =============================================================================
 
 import { Alert, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -9,7 +9,6 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCart } from '@/contexts/CartContext';
 import { profilesApi } from '@/services/api';
 import { Profile } from '@/types';
 import { colors } from '@/constants/colors';
@@ -36,7 +35,6 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const { count: cartCount } = useCart();
 
   // State
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -78,15 +76,11 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   };
 
   const handleCartPress = () => {
-    console.log('[TopHeader] Cart pressed, navigating to cart WebView');
-    const cartUrl = `${SITE_URL}/cart/`;
-    console.log('[TopHeader] Cart URL:', cartUrl);
-    
-    // Open cart in WebView with authenticated session
+    // Open cart page in WebView
     router.push({
       pathname: '/event-webview',
       params: {
-        eventUrl: cartUrl,
+        eventUrl: `${SITE_URL}/cart/`,
         title: 'Cart',
       },
     });
@@ -168,11 +162,10 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             badgeCount={unreadNotifications}
           />
 
-          {/* Cart */}
+          {/* Cart - no badge, just icon */}
           <HeaderIconButton
             icon="cart-outline"
             onPress={handleCartPress}
-            badgeCount={cartCount}
           />
 
           {/* Avatar with dropdown arrow */}
@@ -252,7 +245,6 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
 
-  // Left Section
   leftSection: {
     flex: 1,
   },
@@ -268,13 +260,11 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
 
-  // Right Section
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
 
-  // Avatar Button
   avatarButton: {
     flexDirection: 'row',
     alignItems: 'center',
