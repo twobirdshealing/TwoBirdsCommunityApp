@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { SITE_URL } from '@/constants/config';
 import { appApi } from '@/services/api/app';
 
 // -----------------------------------------------------------------------------
@@ -101,6 +102,26 @@ export default function WebViewScreen() {
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
+  };
+
+  const handleCartPress = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    try {
+      // Create new session for cart page
+      const cartUrl = `${SITE_URL}/cart/`;
+      const response = await appApi.createWebSession(cartUrl);
+      
+      if (response.success && response.url && webViewRef.current) {
+        // Navigate WebView to cart
+        webViewRef.current.injectJavaScript(
+          `window.location.href = '${response.url}'; true;`
+        );
+        setPageTitle('Cart');
+      }
+    } catch (err) {
+      console.log('[WebView] Cart error:', err);
+    }
   };
 
   const handleNavigationChange = (navState: WebViewNavigation) => {
@@ -198,13 +219,13 @@ export default function WebViewScreen() {
         </View>
         
         <Pressable 
-          onPress={handleClose} 
+          onPress={handleCartPress} 
           style={({ pressed }) => [
             styles.headerButton,
             pressed && styles.headerButtonPressed,
           ]}
         >
-          <Ionicons name="close" size={24} color={colors.text} />
+          <Ionicons name="cart-outline" size={24} color={colors.text} />
         </Pressable>
       </View>
       
