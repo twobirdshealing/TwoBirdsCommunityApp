@@ -1,6 +1,7 @@
 // =============================================================================
 // FEATURED EVENTS - Instagram stories style with short titles from tags
 // =============================================================================
+// - Date ABOVE the circle (more visible/prominent)
 // - Uses tags[0] as short title (URL decoded)
 // - 3 items centered evenly across screen
 // - Subtle shimmer animation
@@ -9,7 +10,6 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Dimensions,
-  FlatList,
   Image,
   StyleSheet,
   Text,
@@ -40,7 +40,7 @@ interface FeaturedEventsProps {
 }
 
 // -----------------------------------------------------------------------------
-// Constants - Calculate for exactly 3 centered items
+// Constants
 // -----------------------------------------------------------------------------
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -51,6 +51,9 @@ const GAP = spacing.md;
 const TOTAL_GAPS = (NUM_ITEMS - 1) * GAP;
 const ITEM_WIDTH = Math.floor((AVAILABLE_WIDTH - TOTAL_GAPS) / NUM_ITEMS);
 const IMAGE_SIZE = Math.min(ITEM_WIDTH - 10, 90);
+
+const TITLE_LINE_HEIGHT = 18;
+const TITLE_HEIGHT = 40;
 
 // -----------------------------------------------------------------------------
 // Helpers
@@ -63,41 +66,29 @@ function formatShortDate(dateString: string): string {
   return `${month} ${day}`;
 }
 
-/**
- * Get short title from tags[0] or fallback to cleaned title
- * Decodes URL encoding and converts to Title Case
- * 
- * "kambo-%f0%9f%90%b8" → "Kambo 🐸"
- * "sacred-ceremony" → "Sacred Ceremony"
- */
 function getShortTitle(event: CalendarEvent): string {
   const tag = event.tags?.[0];
   
   if (tag) {
     try {
-      // Decode URL encoding (handles emoji like %f0%9f%90%b8)
       const decoded = decodeURIComponent(tag);
-      
-      // Convert dashes to spaces and title case
       return decoded
         .split('-')
         .map(word => {
-          // Don't capitalize emoji-only segments
           if (/^[\u{1F300}-\u{1F9FF}]+$/u.test(word)) return word;
           return word.charAt(0).toUpperCase() + word.slice(1);
         })
         .join(' ');
     } catch {
-      // If decoding fails, fall back
+      // Fall through
     }
   }
   
-  // Fallback: clean emoji from title and truncate
   return event.title.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
 }
 
 // -----------------------------------------------------------------------------
-// Featured Item with Shimmer
+// Featured Item
 // -----------------------------------------------------------------------------
 
 interface FeaturedItemProps {
@@ -112,18 +103,17 @@ function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps)
   const isActive = index === activeIndex;
   const shortTitle = getShortTitle(event);
   
-  // Shimmer animation - more subtle
   const shimmerOpacity = useSharedValue(0);
   const shimmerRotation = useSharedValue(0);
   
   useEffect(() => {
     if (isActive) {
       shimmerOpacity.value = withSequence(
-        withTiming(0.4, { duration: 400 }),  // Lower opacity
-        withTiming(0, { duration: 1000 })    // Slower fade
+        withTiming(0.4, { duration: 400 }),
+        withTiming(0, { duration: 1000 })
       );
       shimmerRotation.value = withTiming(360, { 
-        duration: 1400,  // Slower rotation
+        duration: 1400,
         easing: Easing.out(Easing.cubic) 
       });
     } else {
@@ -144,9 +134,11 @@ function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps)
   
   return (
     <TouchableOpacity style={styles.item} onPress={handlePress} activeOpacity={0.8}>
+      {/* Date - NOW ON TOP */}
+      <Text style={styles.itemDate}>{formatShortDate(event.start)}</Text>
+      
       {/* Image container with ring */}
       <View style={styles.imageContainer}>
-        {/* Base ring */}
         <View style={[styles.imageRing, { borderColor }]}>
           {event.image ? (
             <Image source={{ uri: event.image }} style={styles.itemImage} />
@@ -171,13 +163,12 @@ function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps)
         </Animated.View>
       </View>
       
-      {/* Short title from tag */}
-      <Text style={styles.itemTitle} numberOfLines={2}>
-        {shortTitle}
-      </Text>
-      
-      {/* Date */}
-      <Text style={styles.itemDate}>{formatShortDate(event.start)}</Text>
+      {/* Title below image */}
+      <View style={styles.titleContainer}>
+        <Text style={styles.itemTitle} numberOfLines={2}>
+          {shortTitle}
+        </Text>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -187,16 +178,14 @@ function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps)
 // -----------------------------------------------------------------------------
 
 export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEventsProps) {
-  const [activeIndexState, setActiveIndexState] = React.useState(-1); // Start with none active
+  const [activeIndexState, setActiveIndexState] = React.useState(-1);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Cycle shimmer through items
   useEffect(() => {
     if (!events || events.length === 0) return;
     
     const cycleShimmer = () => {
       setActiveIndexState(prev => {
-        // Pick a different random index
         let next = Math.floor(Math.random() * events.length);
         while (next === prev && events.length > 1) {
           next = Math.floor(Math.random() * events.length);
@@ -205,10 +194,7 @@ export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEvents
       });
     };
     
-    // Start after delay
     const initialTimeout = setTimeout(cycleShimmer, 2000);
-    
-    // Continue cycling every 4 seconds (slower)
     intervalRef.current = setInterval(cycleShimmer, 4000);
     
     return () => {
@@ -276,7 +262,6 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
 
-  // Use flexbox for even distribution instead of FlatList
   listContainer: {
     flexDirection: 'row',
     justifyContent: 'space-evenly',
@@ -287,6 +272,16 @@ const styles = StyleSheet.create({
   item: {
     alignItems: 'center',
     width: ITEM_WIDTH,
+  },
+
+  // Date on top - more prominent
+  itemDate: {
+    fontSize: typography.size.xs,
+    color: colors.primary,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+    letterSpacing: 0.5,
   },
 
   imageContainer: {
@@ -332,22 +327,19 @@ const styles = StyleSheet.create({
     fontSize: 32,
   },
 
-  itemTitle: {
-    fontSize: typography.size.sm,  // Slightly larger
-    fontWeight: '600',
-    color: colors.text,
-    textAlign: 'center',
-    lineHeight: 16,
-    minHeight: 32,
+  titleContainer: {
+    height: TITLE_HEIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
     width: ITEM_WIDTH - 4,
   },
 
-  itemDate: {
-    fontSize: typography.size.xs,
-    color: colors.textTertiary,
-    fontWeight: '500',
+  itemTitle: {
+    fontSize: typography.size.sm,
+    fontWeight: '600',
+    color: colors.text,
     textAlign: 'center',
-    marginTop: 2,
+    lineHeight: TITLE_LINE_HEIGHT,
   },
 });
 
