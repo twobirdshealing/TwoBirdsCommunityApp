@@ -1,6 +1,5 @@
 // =============================================================================
-// CONTEXTS - Barrel export
+// HOOKS - Barrel export
 // =============================================================================
 
-export { AuthProvider, useAuth } from './AuthContext';
-export { CartProvider, useCart } from './CartContext';
+export { useEventWebView } from './useEventWebView';

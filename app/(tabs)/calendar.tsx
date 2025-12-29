@@ -7,14 +7,16 @@
 // - List view: Full-width event cards
 // - Month view: Grid with event dots + selected day events
 // - Pull to refresh
+// - WebView integration for event booking (Phase 2)
 // =============================================================================
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { calendarApi } from '@/services/api/calendar';
 import { CalendarEvent, CalendarViewMode } from '@/types/calendar';
+import { useEventWebView } from '@/hooks/useEventWebView';
 import {
   CalendarHeader,
   EventCard,
@@ -56,6 +58,9 @@ function formatSelectedDate(dateString: string): string {
 // -----------------------------------------------------------------------------
 
 export default function CalendarScreen() {
+  // WebView hook for opening events
+  const { openEvent } = useEventWebView();
+
   // State
   const [viewMode, setViewMode] = useState<CalendarViewMode>('list');
   const [currentMonth, setCurrentMonth] = useState(getCurrentMonth());
@@ -174,18 +179,9 @@ export default function CalendarScreen() {
     }
   };
 
+  // Open event in authenticated WebView
   const handleEventPress = (event: CalendarEvent) => {
-    // Phase 1: Show coming soon alert
-    // Phase 2: Open WebView with event.url
-    Alert.alert(
-      event.title.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim(),
-      'Event booking will open in a future update.\n\n' +
-        `📅 ${formatSelectedDate(event.start)}\n` +
-        (event.start_time ? `🕐 ${event.start_time}\n` : '') +
-        (event.location?.business_name ? `📍 ${event.location.business_name}\n` : '') +
-        (event.price_raw === 0 ? '💝 Love Donation' : `💳 $${event.price_raw}`),
-      [{ text: 'OK' }]
-    );
+    openEvent(event);
   };
 
   const handleSelectDate = (date: string) => {
@@ -310,16 +306,15 @@ const styles = StyleSheet.create({
   },
 
   selectedDaySection: {
-    backgroundColor: colors.surface,
-    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
 
   selectedDayTitle: {
     fontSize: typography.size.md,
     fontWeight: '600',
     color: colors.text,
-    paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
   },
 
@@ -327,10 +322,10 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
     color: colors.textSecondary,
     textAlign: 'center',
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.lg,
   },
 
   bottomPadding: {
-    height: 100,
+    height: spacing.xl,
   },
 });

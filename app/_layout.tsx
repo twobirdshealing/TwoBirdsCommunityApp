@@ -1,7 +1,8 @@
 // =============================================================================
 // ROOT LAYOUT - App-wide configuration with Authentication
 // =============================================================================
-// Routes: tabs, login, space, feed, profile, messages, notifications, bookmarks
+// Routes: tabs, login, space, feed, profile, messages, notifications, 
+//         bookmarks, event-webview
 // =============================================================================
 
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -10,6 +11,7 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { CartProvider } from '@/contexts/CartContext';
 import { colors } from '@/constants/colors';
 
 // -----------------------------------------------------------------------------
@@ -139,6 +141,18 @@ function RootLayoutNav() {
             title: 'Bookmarks',
           }}
         />
+
+        {/* ============================================= */}
+        {/* EVENT WEBVIEW (from calendar)                 */}
+        {/* ============================================= */}
+        <Stack.Screen
+          name="event-webview"
+          options={{
+            presentation: 'fullScreenModal',
+            headerShown: false,
+            animation: 'slide_from_bottom',
+          }}
+        />
       </Stack>
       <StatusBar style="dark" />
     </>
@@ -152,7 +166,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootLayoutNav />
+      <CartProvider>
+        <RootLayoutNav />
+      </CartProvider>
     </AuthProvider>
   );
 }

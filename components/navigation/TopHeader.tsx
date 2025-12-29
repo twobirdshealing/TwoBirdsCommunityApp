@@ -1,7 +1,7 @@
 // =============================================================================
 // TOP HEADER - Main navigation header with logo, icons, and avatar menu
 // =============================================================================
-// FIXED: Bookmarks now navigates to /bookmarks instead of showing "Coming Soon"
+// Icons: Messages, Notifications, Cart, Avatar Menu
 // =============================================================================
 
 import { Alert, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -9,10 +9,12 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
 import { profilesApi } from '@/services/api';
 import { Profile } from '@/types';
 import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/layout';
+import { SITE_URL } from '@/constants/config';
 import { Ionicons } from '@expo/vector-icons';
 import { HeaderIconButton } from './HeaderIconButton';
 import { UserMenu } from './UserMenu';
@@ -34,6 +36,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
+  const { count: cartCount } = useCart();
 
   // State
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -74,6 +77,21 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     router.push('/notifications');
   };
 
+  const handleCartPress = () => {
+    console.log('[TopHeader] Cart pressed, navigating to cart WebView');
+    const cartUrl = `${SITE_URL}/cart/`;
+    console.log('[TopHeader] Cart URL:', cartUrl);
+    
+    // Open cart in WebView with authenticated session
+    router.push({
+      pathname: '/event-webview',
+      params: {
+        eventUrl: cartUrl,
+        title: 'Cart',
+      },
+    });
+  };
+
   const handleProfilePress = () => {
     setMenuVisible(false);
     if (user?.username) {
@@ -88,7 +106,6 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
 
   const handleBookmarksPress = () => {
     setMenuVisible(false);
-    // Navigate to bookmarks screen
     router.push('/bookmarks');
   };
 
@@ -149,6 +166,13 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             icon="notifications-outline"
             onPress={handleNotificationsPress}
             badgeCount={unreadNotifications}
+          />
+
+          {/* Cart */}
+          <HeaderIconButton
+            icon="cart-outline"
+            onPress={handleCartPress}
+            badgeCount={cartCount}
           />
 
           {/* Avatar with dropdown arrow */}
