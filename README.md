@@ -1,50 +1,120 @@
-# Welcome to your Expo app 👋
+# Two Birds Community App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native mobile application for the Two Birds Church community. This app connects church members through social features, community spaces, events, and more.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Activity Feed** - Social feed with posts, reactions (likes/loves), and comments
+- **Community Spaces** - Join and participate in community groups
+- **Event Calendar** - Browse church events with WebView integration
+- **User Profiles** - View member profiles, stats, badges, and activities
+- **Post Composer** - Create posts with media, space selection, and rich formatting
+- **Notifications** - Stay updated with community activity
+- **Bookmarks** - Save favorite posts for later
+- **Direct Messages** - Communication between members
 
+## Tech Stack
+
+**Frontend:**
+- React Native 0.81 + Expo SDK 54
+- TypeScript
+- Expo Router (file-based routing)
+- React Native Reanimated & Gesture Handler
+
+**Key Libraries:**
+- Shopify Flash List (high-performance lists)
+- Expo Secure Store (credential storage)
+- Expo Image Picker & AV (media handling)
+- React Native WebView (embedded web content)
+
+**Backend:**
+- WordPress with Fluent Community framework
+- Custom REST API plugin (`tbc-community-app.php`)
+- Basic Authentication
+
+## Project Structure
+
+
+app/ # Expo Router pages (file-based routing)
+├── (tabs)/ # Tab navigation (Home, Activity, Spaces, Calendar)
+├── space/[slug]/ # Dynamic space routes
+├── profile/[username] # User profile pages
+├── feed/[id] # Full-screen post viewer
+└── login.tsx # Authentication screen
+
+components/ # Reusable React components
+├── feed/ # Feed, FeedCard, CommentSheet, etc.
+├── space/ # SpaceCard, SpaceHeader, SpaceMenu
+├── composer/ # Post creation components
+├── member/ # User/member display components
+├── navigation/ # TopHeader and nav components
+└── common/ # Shared utility components
+
+services/ # API and business logic
+├── auth.ts # Authentication service
+└── api/ # REST API services (feeds, spaces, profiles, etc.)
+
+contexts/ # React Context providers
+├── AuthContext.tsx # Global authentication state
+
+types/ # TypeScript type definitions
+constants/ # App configuration, colors, layout
+hooks/ # Custom React hooks
+assets/ # Static images and icons
+
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Expo CLI (`npm install -g expo-cli`)
+- iOS Simulator (macOS) or Android Emulator
+
+### Installation
+
+1. Clone the repository
    ```bash
-   npm install
-   ```
+   git clone https://github.com/twobirdshealing/TwoBirdsCommunityApp.git
+   cd TwoBirdsCommunityApp
 
-2. Start the app
+Install dependencies
 
-   ```bash
-   npx expo start
-   ```
+npm install
 
-In the output, you'll find options to open the app in a
+Start the development server
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+npx expo start
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Run on your preferred platform:
 
-## Get a fresh project
+Press i for iOS Simulator
+Press a for Android Emulator
+Scan QR code with Expo Go app on physical device
+Development Scripts
+npx expo start          # Start development server
+npx expo start --ios    # Start and open iOS simulator
+npx expo start --android # Start and open Android emulator
+npx expo start --web    # Start web version
+npm run lint            # Run ESLint
+npm run reset-project   # Reset to blank project
 
-When you're ready, run:
+Configuration
+The app connects to the Two Birds Church backend. API configuration is in constants/config.ts:
 
-```bash
-npm run reset-project
-```
+export const API_BASE_URL = 'https://staging.twobirdschurch.com/wp-json/fluent-community/v2';
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Authentication
+The app uses Basic Authentication with credentials stored securely via expo-secure-store. Users log in with their WordPress username/email and password.
 
-## Learn more
+Contributing
+Create a feature branch from main
+Make your changes
+Test on both iOS and Android
+Submit a pull request
+Backend Plugin
+The custom WordPress plugin (tbc-community-app.php) provides additional REST API endpoints for the mobile app. This should be installed on the WordPress site.
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+License
+Private - Two Birds Church
