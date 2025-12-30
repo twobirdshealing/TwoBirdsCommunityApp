@@ -1,24 +1,26 @@
 // =============================================================================
-// SPACES SCREEN - Shows all community spaces
+// MAIN SPACES SCREEN - Shows all spaces user is a member of
+// =============================================================================
+// DEBUG VERSION - Added extensive logging to trace 401 issue
 // =============================================================================
 
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import {
+import { 
   ActivityIndicator,
-  RefreshControl,
-  StyleSheet,
+  RefreshControl, 
+  StyleSheet, 
   Text,
-  TextInput,
-  View
+  TextInput, 
+  View 
 } from 'react-native';
 
 import { SpaceCard } from '@/components/space/SpaceCard';
-import { colors } from '@/constants/colors';
-import { spacing, typography } from '@/constants/layout';
 import { spacesApi } from '@/services/api/spaces';
 import { Space } from '@/types';
+import { colors } from '@/constants/colors';
+import { spacing, typography } from '@/constants/layout';
 
 export default function SpacesScreen() {
   const router = useRouter();
@@ -27,6 +29,10 @@ export default function SpacesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // ---------------------------------------------------------------------------
+  // Fetch All Spaces (API doesn't support pagination)
+  // ---------------------------------------------------------------------------
 
   const fetchSpaces = async (isRefresh = false) => {
     try {
@@ -37,18 +43,38 @@ export default function SpacesScreen() {
       }
       setError(null);
 
-      // Fetch all spaces (no pagination params - API returns everything)
-      const response = await spacesApi.getSpaces();
+      console.log('[SPACES DEBUG] Starting fetchSpaces...');
+
+      const response = await spacesApi.getSpaces({
+        status: 'published',
+      });
+
+      // DEBUG: Log the FULL response
+      console.log('[SPACES DEBUG] Full response:', JSON.stringify(response, null, 2).substring(0, 1500));
+      console.log('[SPACES DEBUG] response.success:', response.success);
 
       if (!response.success) {
+        console.log('[SPACES DEBUG] Response NOT successful');
+        console.log('[SPACES DEBUG] Error:', response.error);
         setError(response.error?.message || 'Failed to load spaces');
         return;
       }
 
-      const spacesList = response.data?.spaces || [];
+      const apiData = response.data as any;
+      console.log('[SPACES DEBUG] apiData keys:', apiData ? Object.keys(apiData) : 'null');
+      
+      const spacesList = apiData?.spaces || [];
+      console.log('[SPACES DEBUG] spacesList length:', spacesList.length);
+      console.log('[SPACES DEBUG] spacesList type:', typeof spacesList);
+      console.log('[SPACES DEBUG] Is array:', Array.isArray(spacesList));
+      
+      if (spacesList.length > 0) {
+        console.log('[SPACES DEBUG] First space:', JSON.stringify(spacesList[0], null, 2).substring(0, 300));
+      }
+      
       setSpaces(spacesList);
     } catch (err) {
-      console.error('[Spaces] Error:', err);
+      console.log('[SPACES DEBUG] CAUGHT ERROR:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
@@ -59,6 +85,10 @@ export default function SpacesScreen() {
   useEffect(() => {
     fetchSpaces();
   }, []);
+
+  // ---------------------------------------------------------------------------
+  // Client-side Search Filter
+  // ---------------------------------------------------------------------------
 
   const filteredSpaces = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -73,6 +103,10 @@ export default function SpacesScreen() {
     );
   }, [spaces, searchQuery]);
 
+  // ---------------------------------------------------------------------------
+  // Handlers
+  // ---------------------------------------------------------------------------
+
   const handleRefresh = () => {
     fetchSpaces(true);
   };
@@ -85,8 +119,13 @@ export default function SpacesScreen() {
     setSearchQuery('');
   };
 
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   return (
     <View style={styles.container}>
+      {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Text style={styles.searchIcon}>🔍</Text>
@@ -107,6 +146,7 @@ export default function SpacesScreen() {
           )}
         </View>
         
+        {/* Result count when searching */}
         {searchQuery.length > 0 && (
           <Text style={styles.resultCount}>
             {filteredSpaces.length} of {spaces.length} spaces
@@ -114,6 +154,7 @@ export default function SpacesScreen() {
         )}
       </View>
 
+      {/* Error State */}
       {error && !loading && spaces.length === 0 && (
         <View style={styles.centerContainer}>
           <Text style={styles.errorIcon}>⚠️</Text>
@@ -124,6 +165,7 @@ export default function SpacesScreen() {
         </View>
       )}
 
+      {/* Loading State */}
       {loading && spaces.length === 0 && (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -131,6 +173,7 @@ export default function SpacesScreen() {
         </View>
       )}
 
+      {/* Spaces List */}
       {!loading && spaces.length > 0 && (
         <FlashList
           data={filteredSpaces}
@@ -161,6 +204,7 @@ export default function SpacesScreen() {
         />
       )}
 
+      {/* Empty State (no spaces at all) */}
       {!loading && !error && spaces.length === 0 && (
         <View style={styles.centerContainer}>
           <Text style={styles.emptyIcon}>👥</Text>
@@ -174,11 +218,17 @@ export default function SpacesScreen() {
   );
 }
 
+// -----------------------------------------------------------------------------
+// Styles
+// -----------------------------------------------------------------------------
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
+
+  // Search Bar
   searchContainer: {
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
@@ -186,6 +236,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -193,74 +244,91 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: spacing.md,
   },
+
   searchIcon: {
     fontSize: 16,
     marginRight: spacing.sm,
   },
+
   searchInput: {
     flex: 1,
     paddingVertical: spacing.sm + 2,
     fontSize: typography.size.md,
     color: colors.text,
   },
+
   clearButton: {
     fontSize: 16,
     color: colors.textTertiary,
     padding: spacing.xs,
   },
+
   resultCount: {
     fontSize: typography.size.sm,
     color: colors.textSecondary,
     marginTop: spacing.sm,
     textAlign: 'center',
   },
+
+  // List
   listContent: {
-    paddingBottom: 100,
+    paddingBottom: 100, // Space for tab bar
   },
+
+  // States
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
   },
+
   loadingText: {
     marginTop: spacing.md,
     fontSize: typography.size.md,
     color: colors.textSecondary,
   },
+
   errorIcon: {
     fontSize: 48,
     marginBottom: spacing.md,
   },
+
   errorText: {
     fontSize: typography.size.md,
     color: colors.error,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
+
   retryButton: {
     fontSize: typography.size.md,
     color: colors.primary,
     fontWeight: '600',
   },
+
   emptyContainer: {
     alignItems: 'center',
     padding: spacing.xxl,
   },
+
   emptyIcon: {
     fontSize: 48,
     marginBottom: spacing.md,
   },
+
   emptyText: {
     fontSize: typography.size.md,
     color: colors.textSecondary,
     textAlign: 'center',
   },
+
   emptySubtext: {
     fontSize: typography.size.sm,
     color: colors.textTertiary,
     marginTop: spacing.xs,
   },
+
   clearSearchButton: {
     fontSize: typography.size.md,
     color: colors.primary,
