@@ -2,19 +2,20 @@
 // TOP HEADER - Main navigation header with logo, icons, and avatar menu
 // =============================================================================
 // SIMPLIFIED: No cart badge, just icon that opens WebView
+// UPDATED: Fetches unread notification count on focus
 // =============================================================================
 
-import { Alert, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { profilesApi } from '@/services/api';
-import { Profile } from '@/types';
 import { colors } from '@/constants/colors';
-import { spacing } from '@/constants/layout';
 import { SITE_URL } from '@/constants/config';
+import { spacing } from '@/constants/layout';
+import { useAuth } from '@/contexts/AuthContext';
+import { notificationsApi, profilesApi } from '@/services/api';
+import { Profile } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HeaderIconButton } from './HeaderIconButton';
 import { UserMenu } from './UserMenu';
 
@@ -62,6 +63,33 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
+
+  // ---------------------------------------------------------------------------
+  // Fetch Unread Notification Count
+  // ---------------------------------------------------------------------------
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const count = await notificationsApi.getUnreadCount();
+      setUnreadNotifications(count);
+    } catch (err) {
+      // Silent fail - badge just won't update
+    }
+  }, [user]);
+
+  // Fetch on mount
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
+
+  // Refresh when screen comes into focus (e.g., returning from notifications)
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnreadCount();
+    }, [fetchUnreadCount])
+  );
 
   // ---------------------------------------------------------------------------
   // Handlers

@@ -28,3 +28,6 @@ export * from './composer';
 
 // Calendar components
 export * from './calendar';
+
+// Notification components
+export * from './notification';

@@ -54,8 +54,10 @@ export const ENDPOINTS = {
   // Notifications
   NOTIFICATIONS: '/notifications',
   NOTIFICATIONS_UNREAD: '/notifications/unread',
-  NOTIFICATIONS_MARK_READ: (id: number) => `/notifications/mark-read/${id}`,
+  NOTIFICATIONS_MARK_READ: (id: number) => `/notifications/${id}/read`,
   NOTIFICATIONS_MARK_ALL_READ: '/notifications/mark-all-read',
+  NOTIFICATIONS_DELETE: (id: number) => `/notifications/${id}`,
+  NOTIFICATIONS_DELETE_ALL: '/notifications/delete-all',
   
   // Members
   MEMBERS: '/members',
