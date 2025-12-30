@@ -74,3 +74,22 @@ export const FEATURES = {
   MESSAGING: false,        // Requires Fluent Messaging plugin
   COURSES: false,          // Requires Fluent LMS
 };
+
+// -----------------------------------------------------------------------------
+// Debug/Testing Configuration
+// -----------------------------------------------------------------------------
+
+/**
+ * DEVELOPMENT/TESTING ONLY
+ * Bypass SecureStore authentication and use hardcoded credentials
+ * This helps isolate authentication issues by eliminating the login flow
+ */
+export const DEBUG_AUTH = {
+  // Set to true to bypass login and use hardcoded credentials below
+  USE_HARDCODED_AUTH: true,
+
+  // Hardcoded credentials (only used when USE_HARDCODED_AUTH is true)
+  // IMPORTANT: NEVER commit this as true in production!
+  HARDCODED_USERNAME: 'bluejay',
+  HARDCODED_PASSWORD: 'u5oa 98Qu KrHb dGlt XE5K xwmk',
+};

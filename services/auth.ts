@@ -6,7 +6,7 @@
 // IMPROVED: Better error messages for common issues
 // =============================================================================
 
-import { SITE_URL } from '@/constants/config';
+import { DEBUG_AUTH, SITE_URL } from '@/constants/config';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
@@ -215,8 +215,15 @@ export async function logout(): Promise<void> {
 
 /**
  * Check if user has stored auth
+ * Returns true if hardcoded auth is enabled OR SecureStore has auth
  */
 export async function hasStoredAuth(): Promise<boolean> {
+  // If using hardcoded auth, always return true
+  if (DEBUG_AUTH.USE_HARDCODED_AUTH) {
+    return true;
+  }
+
+  // Normal flow: check SecureStore
   try {
     const auth = await SecureStore.getItemAsync(AUTH_KEY);
     return auth !== null;
@@ -227,8 +234,19 @@ export async function hasStoredAuth(): Promise<boolean> {
 
 /**
  * Get the stored Basic Auth header value for API calls
+ * If DEBUG_AUTH.USE_HARDCODED_AUTH is enabled, returns hardcoded credentials
  */
 export async function getBasicAuth(): Promise<string | null> {
+  // Check if we should use hardcoded auth for testing/debugging
+  if (DEBUG_AUTH.USE_HARDCODED_AUTH) {
+    const credentials = `${DEBUG_AUTH.HARDCODED_USERNAME}:${DEBUG_AUTH.HARDCODED_PASSWORD}`;
+    const encodedCredentials = btoa(credentials);
+    console.warn('[Auth] ⚠️  Using HARDCODED credentials (DEBUG MODE)');
+    console.log('[Auth] Hardcoded user:', DEBUG_AUTH.HARDCODED_USERNAME);
+    return encodedCredentials;
+  }
+
+  // Normal flow: get from SecureStore
   try {
     const auth = await SecureStore.getItemAsync(AUTH_KEY);
     if (auth) {
@@ -243,8 +261,22 @@ export async function getBasicAuth(): Promise<string | null> {
 
 /**
  * Get the stored user data
+ * Returns mock user data if hardcoded auth is enabled
  */
 export async function getStoredUser(): Promise<User | null> {
+  // If using hardcoded auth, return mock user
+  if (DEBUG_AUTH.USE_HARDCODED_AUTH) {
+    const mockUser: User = {
+      id: 1,
+      username: DEBUG_AUTH.HARDCODED_USERNAME,
+      displayName: DEBUG_AUTH.HARDCODED_USERNAME,
+      email: `${DEBUG_AUTH.HARDCODED_USERNAME}@test.local`,
+    };
+    console.log('[Auth] Using hardcoded user:', mockUser.username);
+    return mockUser;
+  }
+
+  // Normal flow: get from SecureStore
   try {
     const userJson = await SecureStore.getItemAsync(USER_KEY);
     if (userJson) {
