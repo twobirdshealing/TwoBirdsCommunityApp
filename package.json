@@ -16,6 +16,7 @@
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
     "@shopify/flash-list": "2.0.2",
+    "base-64": "^1.0.0",
     "expo": "~54.0.29",
     "expo-av": "~16.0.8",
     "expo-clipboard": "~8.0.8",
@@ -46,6 +47,7 @@
     "react-native-youtube-iframe": "^2.4.1"
   },
   "devDependencies": {
+    "@types/base-64": "^1.0.2",
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
