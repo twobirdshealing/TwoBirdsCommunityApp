@@ -1,7 +1,9 @@
 // =============================================================================
 // API CLIENT - Base HTTP client with dynamic authentication
 // =============================================================================
-// DEBUG VERSION - Added extensive logging to trace 401 issue
+// Uses stored auth token from SecureStore.
+// No fallback credentials. If auth is invalid, it is cleared immediately.
+// FIXED: Added Accept header and verbose debug logging
 // =============================================================================
 
 import { API_URL } from '@/constants/config';
@@ -9,7 +11,7 @@ import { clearAuth, getBasicAuth } from '@/services/auth';
 import { ApiError } from '@/types/api';
 
 // -----------------------------------------------------------------------------
-// Debug - ENABLED
+// Debug
 // -----------------------------------------------------------------------------
 
 const DEBUG = true;
@@ -42,18 +44,12 @@ async function getAuthHeader(): Promise<string | null> {
   const storedAuth = await getBasicAuth();
 
   if (storedAuth) {
-    log('Retrieved auth token');
-    log('FULL TOKEN:', storedAuth);  // ADD THIS LINE TEMPORARILY
-    // DEBUG: Log first/last few chars of token (safe to show)
-    const tokenPreview = storedAuth.length > 10 
-      ? `${storedAuth.substring(0, 5)}...${storedAuth.substring(storedAuth.length - 5)}`
-      : '[short token]';
-    log('Token preview:', tokenPreview);
-    log('Token length:', storedAuth.length);
+    log('Using stored auth token');
+    log('Token (first 20 chars):', storedAuth.substring(0, 20) + '...');
     return `Basic ${storedAuth}`;
   }
 
-  log('NO AUTH TOKEN FOUND!');
+  log('WARNING: No auth token available!');
   return null;
 }
 
@@ -97,25 +93,17 @@ async function request<T>(
 
   try {
     const authHeader = await getAuthHeader();
-    
-    // DEBUG: Log if auth header is present
-    log('Auth header present:', !!authHeader);
-    if (authHeader) {
-      log('Auth header format check:', authHeader.startsWith('Basic ') ? 'OK (starts with Basic)' : 'WRONG FORMAT');
-    }
 
+    // Build headers - FIXED: Always include Accept header
     const requestHeaders: Record<string, string> = {
+      'Accept': 'application/json',
       ...(authHeader ? { Authorization: authHeader } : {}),
       ...(body ? { 'Content-Type': 'application/json' } : {}),
       ...headers,
     };
-    
-    // DEBUG: Log all headers being sent (redact auth value)
-    const safeHeaders = { ...requestHeaders };
-    if (safeHeaders.Authorization) {
-      safeHeaders.Authorization = safeHeaders.Authorization.substring(0, 15) + '...';
-    }
-    log('Request headers:', JSON.stringify(safeHeaders));
+
+    // Debug: Log all headers being sent
+    log('Request headers:', JSON.stringify(requestHeaders, null, 2));
 
     const response = await fetch(url, {
       method,
@@ -123,19 +111,19 @@ async function request<T>(
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
 
-    // DEBUG: Log response status
-    log('Response status:', response.status);
-    log('Response ok:', response.ok);
+    // Debug: Log response status and headers
+    log('Response status:', response.status, response.statusText);
+    log('Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
 
     const data = await response.json();
 
+    // Debug: Log first 500 chars of response
+    log('Response data (preview):', JSON.stringify(data).substring(0, 500));
+
     if (!response.ok) {
       console.error('[API Error]', data);
-      
-      // DEBUG: Log full error details
-      log('ERROR Response data:', JSON.stringify(data, null, 2).substring(0, 500));
 
-      // HARD FAIL AUTH ON INVALID APP PASSWORD
+      // 🔥 HARD FAIL AUTH ON INVALID APP PASSWORD
       if (
         response.status === 401 &&
         data?.code === 'incorrect_password'
@@ -172,7 +160,7 @@ async function request<T>(
 }
 
 // -----------------------------------------------------------------------------
-// Convenience Methods
+// Convenience Methods (unchanged public API)
 // -----------------------------------------------------------------------------
 
 export function get<T>(endpoint: string, params?: Record<string, any>) {
@@ -206,3 +194,18 @@ export function patch<T>(
 ) {
   return request<T>(endpoint, { method: 'PATCH', body, params });
 }
+
+// -----------------------------------------------------------------------------
+// Export client
+// -----------------------------------------------------------------------------
+
+export const apiClient = {
+  get,
+  post,
+  put,
+  delete: del,
+  patch,
+  request,
+};
+
+export default apiClient;
