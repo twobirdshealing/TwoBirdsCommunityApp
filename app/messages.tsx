@@ -6,26 +6,29 @@
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { PageHeader } from '@/components/navigation';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 
 export default function MessagesScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: 'Messages',
-          headerShown: true,
-          headerBackTitle: 'Back',
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        {/* Header - Using PageHeader for consistency */}
+        <PageHeader
+          leftAction="back"
+          onLeftPress={() => router.back()}
+          title="Messages"
+        />
+
         <View style={styles.emptyState}>
           <View style={styles.iconContainer}>
             <Ionicons name="mail-outline" size={64} color={colors.textTertiary} />

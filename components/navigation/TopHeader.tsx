@@ -106,10 +106,11 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   const handleCartPress = () => {
     // Open cart page in WebView
     router.push({
-      pathname: '/event-webview',
+      pathname: '/webview',
       params: {
-        eventUrl: `${SITE_URL}/cart/`,
+        url: `${SITE_URL}/cart/`,
         title: 'Cart',
+        showCart: 'false',  // Already on cart, no need for cart icon
       },
     });
   };

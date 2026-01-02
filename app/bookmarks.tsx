@@ -6,6 +6,7 @@
 
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { FeedList } from '@/components/feed/FeedList';
+import { PageHeader } from '@/components/navigation';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { feedsApi } from '@/services/api';
@@ -19,6 +20,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -26,7 +28,8 @@ import {
 
 export default function BookmarksScreen() {
   const router = useRouter();
-  
+  const insets = useSafeAreaInsets();
+
   // State
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [loading, setLoading] = useState(true);
@@ -262,14 +265,15 @@ export default function BookmarksScreen() {
   
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: 'Bookmarks',
-          headerBackTitle: 'Back',
-        }}
-      />
-      
-      <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        {/* Header - Using PageHeader for consistency */}
+        <PageHeader
+          leftAction="back"
+          onLeftPress={() => router.back()}
+          title="Bookmarks"
+        />
         <FeedList
           feeds={feeds}
           loading={loading}

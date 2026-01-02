@@ -11,6 +11,7 @@
 // =============================================================================
 
 import { NotificationCard } from '@/components/notification';
+import { PageHeader } from '@/components/navigation';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { notificationsApi } from '@/services/api';
@@ -393,20 +394,17 @@ export default function NotificationsScreen() {
 
   return (
     <GestureHandlerRootView style={styles.gestureRoot}>
-      <Stack.Screen
-        options={{
-          title: 'Notifications',
-          headerShown: true,
-          headerBackTitle: 'Back',
-          headerRight: () => (
-            <Pressable onPress={handleMoreOptions} style={styles.headerButton}>
-              <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
-            </Pressable>
-          ),
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        {/* Header - Using PageHeader for consistency */}
+        <PageHeader
+          leftAction="back"
+          onLeftPress={() => router.back()}
+          title="Notifications"
+          rightIcon="ellipsis-horizontal"
+          onRightPress={handleMoreOptions}
+        />
         {loading && notifications.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -456,12 +454,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-
-  // Header
-  headerButton: {
-    padding: spacing.sm,
-    marginRight: -spacing.sm,
   },
 
   // Filter Bar

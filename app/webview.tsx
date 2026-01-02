@@ -1,8 +1,16 @@
 // =============================================================================
-// WEBVIEW SCREEN - Authenticated WebView for events, cart, etc.
+// WEBVIEW SCREEN - Reusable authenticated WebView
 // =============================================================================
-// Route: /event-webview?eventUrl={url}&title={title}
+// Route: /webview?url={url}&title={title}&showCart={boolean}
 // Uses PageHeader for consistent header styling
+//
+// Params:
+//   url      - Required: The URL to load
+//   title    - Required: Header title
+//   showCart - Optional: Show cart icon in header (default: false)
+//
+// Usage:
+//   router.push({ pathname: '/webview', params: { url, title, showCart: 'true' } })
 // =============================================================================
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -37,10 +45,14 @@ const APP_USER_AGENT = 'TBCCommunityApp/1.0';
 export default function WebViewScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ 
-    eventUrl?: string;
+  const params = useLocalSearchParams<{
+    url?: string;
     title?: string;
+    showCart?: string;  // 'true' or 'false' (route params are strings)
   }>();
+
+  // Parse showCart param (defaults to false)
+  const showCart = params.showCart === 'true';
   
   const webViewRef = useRef<WebView>(null);
   
@@ -58,22 +70,22 @@ export default function WebViewScreen() {
 
   useEffect(() => {
     const initSession = async () => {
-      const eventUrl = params.eventUrl;
-      
-      console.log('[WebView] Init with URL:', eventUrl);
-      
-      if (!eventUrl) {
+      const url = params.url;
+
+      console.log('[WebView] Init with URL:', url);
+
+      if (!url) {
         setError('No URL provided');
         setLoading(false);
         return;
       }
-      
+
       try {
         console.log('[WebView] Creating session...');
-        const response = await appApi.createWebSession(eventUrl);
-        
+        const response = await appApi.createWebSession(url);
+
         console.log('[WebView] Session created:', response.success);
-        
+
         if (response.success && response.url) {
           setSessionUrl(response.url);
         } else {
@@ -87,9 +99,9 @@ export default function WebViewScreen() {
         setLoading(false);
       }
     };
-    
+
     initSession();
-  }, [params.eventUrl]);
+  }, [params.url]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -193,8 +205,8 @@ export default function WebViewScreen() {
         onLeftPress={handleBack}
         title={pageTitle}
         showLoader={pageLoading}
-        rightIcon="cart-outline"
-        onRightPress={handleCartPress}
+        rightIcon={showCart ? 'cart-outline' : undefined}
+        onRightPress={showCart ? handleCartPress : undefined}
       />
       
       {/* WebView with custom User-Agent */}
