@@ -3,10 +3,11 @@
 // =============================================================================
 // Handles file uploads to Fluent Community
 // Uses FormData for multipart/form-data uploads
+// Uses JWT Bearer token authentication
 // =============================================================================
 
 import { API_URL } from '@/constants/config';
-import { getBasicAuth } from '@/services/auth';
+import { getAuthToken } from '@/services/auth';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -64,8 +65,8 @@ export async function uploadMedia(
   objectSource: string = 'feed'
 ): Promise<MediaUploadResponse> {
   try {
-    const authToken = await getBasicAuth();
-    
+    const authToken = await getAuthToken();
+
     if (!authToken) {
       return {
         success: false,
@@ -78,14 +79,14 @@ export async function uploadMedia(
 
     // Create FormData
     const formData = new FormData();
-    
+
     // Append file - React Native format
     formData.append('file', {
       uri,
       type,
       name: fileName,
     } as any);
-    
+
     // Add context
     formData.append('object_source', objectSource);
 
@@ -94,7 +95,7 @@ export async function uploadMedia(
     const response = await fetch(`${API_URL}/feeds/media-upload`, {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${authToken}`,
+        Authorization: `Bearer ${authToken}`,
         // NOTE: Don't set Content-Type - fetch sets it with boundary for FormData
       },
       body: formData,
@@ -162,9 +163,9 @@ export function buildMediaItems(uploads: MediaItem[]): any[] {
  */
 export function buildMediaPreview(uploads: MediaItem[]): MediaPreviewMeta | null {
   const firstImage = uploads.find(u => u.type === 'image');
-  
+
   if (!firstImage) return null;
-  
+
   return {
     image: firstImage.url,
     provider: 'uploader',

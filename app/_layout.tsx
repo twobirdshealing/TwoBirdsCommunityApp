@@ -4,13 +4,13 @@
 // SIMPLIFIED: No CartProvider
 // =============================================================================
 
+import { colors } from '@/constants/colors';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { colors } from '@/constants/colors';
 
 // -----------------------------------------------------------------------------
 // Auth-aware navigation
@@ -102,7 +102,7 @@ function RootLayoutNav() {
 
         {/* WEBVIEW - for events, cart, etc */}
         <Stack.Screen
-          name="event-webview"
+          name="webview"
           options={{
             presentation: 'fullScreenModal',
             headerShown: false,

@@ -1,24 +1,22 @@
 // =============================================================================
-// AUTH SERVICE - Login, logout, and token management
+// AUTH SERVICE - JWT Authentication
 // =============================================================================
-// Uses expo-secure-store to securely store credentials on device.
-// Uses our custom WordPress plugin (tbc-ca) for authentication.
-// IMPROVED: Better error messages for common issues
+// Uses expo-secure-store to securely store JWT token on device.
+// Uses WordPress JWT Authentication plugin for login.
 // =============================================================================
 
 import { SITE_URL } from '@/constants/config';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 
 // -----------------------------------------------------------------------------
 // Constants
 // -----------------------------------------------------------------------------
 
-// Use our custom login plugin endpoint
-const AUTH_ENDPOINT = `${SITE_URL}/wp-json/tbc-ca/v1`;
+// JWT Auth endpoint (provided by JWT Authentication for WP REST API plugin)
+const JWT_ENDPOINT = `${SITE_URL}/wp-json/jwt-auth/v1/token`;
 
 // SecureStore keys
-const AUTH_KEY = 'tbc_auth_basic';
+const AUTH_KEY = 'tbc_auth_jwt';
 const USER_KEY = 'tbc_user_info';
 
 // Debug mode
@@ -35,11 +33,11 @@ function log(...args: any[]) {
 // -----------------------------------------------------------------------------
 
 interface User {
-  id: number;
+  id?: number;           // May not have ID from JWT, will get from profile API
   username: string;
-  displayName: string;  // camelCase to match AuthContext
+  displayName: string;   // camelCase to match AuthContext
   email: string;
-  avatar?: string;
+  avatar?: string;       // Will be fetched from Fluent profile API
 }
 
 interface LoginResult {
@@ -48,27 +46,12 @@ interface LoginResult {
   error?: string;
 }
 
-// API response type (from our WordPress plugin)
-interface LoginResponse {
-  success: boolean;
-  message: string;
-  user: {
-    id: number;
-    username: string;
-    email: string;
-    display_name: string;  // snake_case from API
-    first_name: string;
-    last_name: string;
-    avatar: string;
-    registered: string;
-    roles: string[];
-  };
-  auth: {
-    username: string;
-    app_password: string;
-    app_password_uuid: string;
-    basic_auth: string;
-  };
+// JWT Auth plugin response
+interface JWTResponse {
+  token: string;
+  user_email: string;
+  user_nicename: string;      // This is the username
+  user_display_name: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -76,27 +59,35 @@ interface LoginResponse {
 // -----------------------------------------------------------------------------
 
 function getReadableErrorMessage(status: number, data: any): string {
-  // Handle specific error codes
+  // Handle JWT Auth specific error codes
   if (data?.code) {
     switch (data.code) {
-      case 'rest_no_route':
-        return 'Unable to connect to login service. The TBC Community App plugin may be deactivated on the server. Please contact support.';
-      
+      case '[jwt_auth] invalid_username':
       case 'invalid_username':
         return 'Username not found. Please check your username and try again.';
-      
+
+      case '[jwt_auth] incorrect_password':
       case 'incorrect_password':
         return 'Incorrect password. Please try again.';
-      
+
+      case '[jwt_auth] invalid_email':
       case 'invalid_email':
         return 'Invalid email address. Please check and try again.';
-      
+
+      case '[jwt_auth] empty_username':
       case 'empty_username':
         return 'Please enter your username.';
-      
+
+      case '[jwt_auth] empty_password':
       case 'empty_password':
         return 'Please enter your password.';
-      
+
+      case 'jwt_auth_failed':
+        return 'Authentication failed. Please try again.';
+
+      case 'jwt_auth_invalid_token':
+        return 'Session expired. Please log in again.';
+
       default:
         break;
     }
@@ -106,21 +97,21 @@ function getReadableErrorMessage(status: number, data: any): string {
   switch (status) {
     case 401:
       return 'Invalid username or password. Please try again.';
-    
+
     case 403:
       return 'Access denied. Your account may be restricted.';
-    
+
     case 404:
       return 'Login service unavailable. Please try again later or contact support.';
-    
+
     case 500:
     case 502:
     case 503:
       return 'Server error. Please try again later.';
-    
+
     case 0:
       return 'Network error. Please check your internet connection.';
-    
+
     default:
       return data?.message || 'Login failed. Please try again.';
   }
@@ -132,53 +123,53 @@ function getReadableErrorMessage(status: number, data: any): string {
 
 /**
  * Login with username/email and WordPress password
- * Our plugin creates an Application Password and returns it
+ * Uses JWT Authentication plugin
  */
 export async function login(username: string, password: string): Promise<LoginResult> {
   log('Login attempt for:', username);
-  
+
   try {
-    // POST to our custom login endpoint
-    const response = await fetch(`${AUTH_ENDPOINT}/login`, {
+    // POST to JWT auth endpoint
+    const response = await fetch(JWT_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify({
         username,
         password,
-        device_name: `Two Birds App - ${Platform.OS}`,
       }),
     });
 
     const data = await response.json();
-    log('Login response:', response.status, data.success ? 'SUCCESS' : 'FAILED');
+    log('Login response:', response.status, data.token ? 'TOKEN_RECEIVED' : 'FAILED');
 
-    if (!response.ok || !data.success) {
+    if (!response.ok || !data.token) {
       log('Login failed:', data);
-      
+
       // Get user-friendly error message
       const errorMessage = getReadableErrorMessage(response.status, data);
-      
+
       return {
         success: false,
         error: errorMessage,
       };
     }
 
-    const loginData = data as LoginResponse;
+    const jwtData = data as JWTResponse;
 
-    // Store the basic_auth token (pre-encoded by the server!)
-    await SecureStore.setItemAsync(AUTH_KEY, loginData.auth.basic_auth);
-    log('Auth token stored');
+    // Store the JWT token
+    await SecureStore.setItemAsync(AUTH_KEY, jwtData.token);
+    log('JWT token stored');
 
-    // Map API response to our User type (display_name -> displayName)
+    // Map JWT response to our User type
+    // Note: JWT gives us username (user_nicename), email, and display_name
+    // Avatar and full profile will be fetched from Fluent's profile API
     const user: User = {
-      id: loginData.user.id,
-      username: loginData.user.username,
-      displayName: loginData.user.display_name,  // Convert snake_case to camelCase
-      email: loginData.user.email,
-      avatar: loginData.user.avatar || undefined,
+      username: jwtData.user_nicename,
+      displayName: jwtData.user_display_name,
+      email: jwtData.user_email,
     };
 
     // Store user info
@@ -186,10 +177,10 @@ export async function login(username: string, password: string): Promise<LoginRe
     log('User info stored:', user.username);
 
     return { success: true, user };
-    
+
   } catch (error) {
     log('Login error:', error);
-    
+
     // Check for network errors
     if (error instanceof TypeError && error.message.includes('Network')) {
       return {
@@ -197,7 +188,7 @@ export async function login(username: string, password: string): Promise<LoginRe
         error: 'Network error. Please check your internet connection.',
       };
     }
-    
+
     return {
       success: false,
       error: 'Unable to connect. Please check your internet connection and try again.',
@@ -226,20 +217,23 @@ export async function hasStoredAuth(): Promise<boolean> {
 }
 
 /**
- * Get the stored Basic Auth header value for API calls
+ * Get the stored JWT token for API calls
  */
-export async function getBasicAuth(): Promise<string | null> {
+export async function getAuthToken(): Promise<string | null> {
   try {
-    const auth = await SecureStore.getItemAsync(AUTH_KEY);
-    if (auth) {
-      log('Retrieved auth token');
+    const token = await SecureStore.getItemAsync(AUTH_KEY);
+    if (token) {
+      log('Retrieved JWT token');
     }
-    return auth;
+    return token;
   } catch (error) {
-    log('Error getting auth:', error);
+    log('Error getting token:', error);
     return null;
   }
 }
+
+// Keep old function name as alias for backwards compatibility during migration
+export const getBasicAuth = getAuthToken;
 
 /**
  * Get the stored user data
