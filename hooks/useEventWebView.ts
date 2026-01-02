@@ -24,7 +24,8 @@ export function useEventWebView() {
       params: {
         url: event.url,
         title: event.title,
-        showCart: 'true',  // Events need cart access for purchases
+        rightIcon: 'cart-outline',
+        rightAction: 'cart',
       },
     });
   }, [router]);

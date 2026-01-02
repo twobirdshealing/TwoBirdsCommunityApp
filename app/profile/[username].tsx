@@ -38,6 +38,7 @@ import {
   ProfileTabs,
 } from '@/components/profile';
 import { FeedCard } from '@/components/feed';
+import { PageHeader } from '@/components/navigation';
 
 // -----------------------------------------------------------------------------
 // Helper: Format numbers
@@ -326,19 +327,18 @@ export default function UserProfileScreen() {
 
   if (loading && !profile) {
     return (
-      <>
-        <Stack.Screen
-          options={{
-            title: username ? `@${username}` : 'Profile',
-            headerShown: true,
-            headerBackTitle: 'Back',
-          }}
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <PageHeader
+          leftAction="back"
+          onLeftPress={() => router.back()}
+          title={username ? `@${username}` : 'Profile'}
         />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
-      </>
+      </View>
     );
   }
 
@@ -348,13 +348,12 @@ export default function UserProfileScreen() {
 
   if (error && !profile) {
     return (
-      <>
-        <Stack.Screen
-          options={{
-            title: 'Profile',
-            headerShown: true,
-            headerBackTitle: 'Back',
-          }}
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <PageHeader
+          leftAction="back"
+          onLeftPress={() => router.back()}
+          title="Profile"
         />
         <View style={styles.centerContainer}>
           <Text style={styles.errorIcon}>😔</Text>
@@ -363,7 +362,7 @@ export default function UserProfileScreen() {
             <Text style={styles.retryButtonText}>Try Again</Text>
           </Pressable>
         </View>
-      </>
+      </View>
     );
   }
 
@@ -372,16 +371,15 @@ export default function UserProfileScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: profile?.display_name || `@${username}`,
-          headerShown: true,
-          headerBackTitle: 'Back',
-        }}
-      />
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      {/* Header - Using PageHeader for consistency */}
+      <PageHeader
+        leftAction="back"
+        onLeftPress={() => router.back()}
+        title={profile?.display_name || `@${username}`}
+      />
         <ScrollView
           style={styles.scrollView}
           refreshControl={
@@ -452,8 +450,7 @@ export default function UserProfileScreen() {
           {/* Tab Content */}
           <View style={styles.tabContent}>{renderTabContent()}</View>
         </ScrollView>
-      </View>
-    </>
+    </View>
   );
 }
 

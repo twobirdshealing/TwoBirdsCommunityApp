@@ -1,16 +1,24 @@
 // =============================================================================
 // WEBVIEW SCREEN - Reusable authenticated WebView
 // =============================================================================
-// Route: /webview?url={url}&title={title}&showCart={boolean}
+// Route: /webview?url={url}&title={title}&rightIcon={icon}&rightAction={action}
 // Uses PageHeader for consistent header styling
 //
 // Params:
-//   url      - Required: The URL to load
-//   title    - Required: Header title
-//   showCart - Optional: Show cart icon in header (default: false)
+//   url         - Required: The URL to load
+//   title       - Required: Header title
+//   rightIcon   - Optional: Ionicons name (e.g., 'cart-outline', 'share-outline')
+//   rightAction - Optional: Action type ('cart' triggers cart navigation)
 //
 // Usage:
-//   router.push({ pathname: '/webview', params: { url, title, showCart: 'true' } })
+//   // With cart icon
+//   router.push({ pathname: '/webview', params: { url, title, rightIcon: 'cart-outline', rightAction: 'cart' } })
+//
+//   // With share icon (future)
+//   router.push({ pathname: '/webview', params: { url, title, rightIcon: 'share-outline', rightAction: 'share' } })
+//
+//   // No right icon
+//   router.push({ pathname: '/webview', params: { url, title } })
 // =============================================================================
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -48,11 +56,12 @@ export default function WebViewScreen() {
   const params = useLocalSearchParams<{
     url?: string;
     title?: string;
-    showCart?: string;  // 'true' or 'false' (route params are strings)
+    rightIcon?: string;   // Ionicons name (e.g., 'cart-outline')
+    rightAction?: string; // Action type (e.g., 'cart')
   }>();
 
-  // Parse showCart param (defaults to false)
-  const showCart = params.showCart === 'true';
+  // Cast rightIcon to Ionicons type (validated at render time)
+  const rightIcon = params.rightIcon as keyof typeof Ionicons.glyphMap | undefined;
   
   const webViewRef = useRef<WebView>(null);
   
@@ -119,23 +128,37 @@ export default function WebViewScreen() {
     router.back();
   };
 
-  const handleCartPress = async () => {
+  // ---------------------------------------------------------------------------
+  // Right Action Handler - Extensible for different actions
+  // ---------------------------------------------------------------------------
+
+  const handleRightPress = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    try {
-      // Create new session for cart page
-      const cartUrl = `${SITE_URL}/cart/`;
-      const response = await appApi.createWebSession(cartUrl);
-      
-      if (response.success && response.url && webViewRef.current) {
-        // Navigate WebView to cart
-        webViewRef.current.injectJavaScript(
-          `window.location.href = '${response.url}'; true;`
-        );
-        setPageTitle('Cart');
-      }
-    } catch (err) {
-      console.log('[WebView] Cart error:', err);
+
+    switch (params.rightAction) {
+      case 'cart':
+        try {
+          const cartUrl = `${SITE_URL}/cart/`;
+          const response = await appApi.createWebSession(cartUrl);
+
+          if (response.success && response.url && webViewRef.current) {
+            webViewRef.current.injectJavaScript(
+              `window.location.href = '${response.url}'; true;`
+            );
+            setPageTitle('Cart');
+          }
+        } catch (err) {
+          console.log('[WebView] Cart error:', err);
+        }
+        break;
+
+      case 'share':
+        // Future: implement share functionality
+        console.log('[WebView] Share action - not implemented yet');
+        break;
+
+      default:
+        console.log('[WebView] Unknown action:', params.rightAction);
     }
   };
 
@@ -205,8 +228,8 @@ export default function WebViewScreen() {
         onLeftPress={handleBack}
         title={pageTitle}
         showLoader={pageLoading}
-        rightIcon={showCart ? 'cart-outline' : undefined}
-        onRightPress={showCart ? handleCartPress : undefined}
+        rightIcon={rightIcon}
+        onRightPress={rightIcon ? handleRightPress : undefined}
       />
       
       {/* WebView with custom User-Agent */}
