@@ -3,10 +3,11 @@
 // =============================================================================
 // IMPORTANT: Uses different API namespace than Fluent Community!
 // Base: /wp-json/tbc-wc/v1 (NOT /wp-json/fluent-community/v2)
+// Uses JWT Bearer token authentication
 // =============================================================================
 
 import { SITE_URL } from '@/constants/config';
-import { getBasicAuth } from '@/services/auth';
+import { getAuthToken } from '@/services/auth';
 import {
   EventsResponse,
   GetEventsOptions,
@@ -20,7 +21,7 @@ import {
 
 const CALENDAR_API_URL = `${SITE_URL}/wp-json/tbc-wc/v1`;
 
-const DEBUG = true;
+const DEBUG = __DEV__;
 function log(...args: any[]) {
   if (DEBUG) console.log('[CalendarAPI]', ...args);
 }
@@ -65,13 +66,14 @@ async function calendarRequest<T>(
     url += `?${searchParams.toString()}`;
   }
 
-  // Get auth header
-  const basicAuth = await getBasicAuth();
+  // Get auth token and build headers
+  const authToken = await getAuthToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   };
-  if (basicAuth) {
-    headers['Authorization'] = `Basic ${basicAuth}`;
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
   }
 
   log(`${method} ${url}`);
@@ -115,7 +117,7 @@ async function calendarRequest<T>(
 
 export async function getEvents(options: GetEventsOptions = {}) {
   const params: Record<string, any> = {};
-  
+
   if (options.month) params.month = options.month;
   if (options.limit) params.limit = options.limit;
   if (options.category) params.category = options.category;

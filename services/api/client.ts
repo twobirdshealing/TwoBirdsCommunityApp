@@ -1,20 +1,19 @@
 // =============================================================================
-// API CLIENT - Base HTTP client with dynamic authentication
+// API CLIENT - Base HTTP client with JWT authentication
 // =============================================================================
-// Uses stored auth token from SecureStore.
-// No fallback credentials. If auth is invalid, it is cleared immediately.
-// FIXED: Added Accept header and verbose debug logging
+// Uses stored JWT token from SecureStore.
+// All requests use Bearer token authentication.
 // =============================================================================
 
 import { API_URL } from '@/constants/config';
-import { clearAuth, getBasicAuth } from '@/services/auth';
+import { clearAuth, getAuthToken } from '@/services/auth';
 import { ApiError } from '@/types/api';
 
 // -----------------------------------------------------------------------------
 // Debug
 // -----------------------------------------------------------------------------
 
-const DEBUG = true;
+const DEBUG = __DEV__;
 function log(...args: any[]) {
   if (DEBUG) console.log('[API]', ...args);
 }
@@ -41,12 +40,12 @@ type ApiResponse<T> =
 // -----------------------------------------------------------------------------
 
 async function getAuthHeader(): Promise<string | null> {
-  const storedAuth = await getBasicAuth();
+  const token = await getAuthToken();
 
-  if (storedAuth) {
-    log('Using stored auth token');
-    log('Token (first 20 chars):', storedAuth.substring(0, 20) + '...');
-    return `Basic ${storedAuth}`;
+  if (token) {
+    log('Using JWT token');
+    log('Token (first 20 chars):', token.substring(0, 20) + '...');
+    return `Bearer ${token}`;
   }
 
   log('WARNING: No auth token available!');
@@ -94,7 +93,7 @@ async function request<T>(
   try {
     const authHeader = await getAuthHeader();
 
-    // Build headers - FIXED: Always include Accept header
+    // Build headers
     const requestHeaders: Record<string, string> = {
       'Accept': 'application/json',
       ...(authHeader ? { Authorization: authHeader } : {}),
@@ -102,8 +101,14 @@ async function request<T>(
       ...headers,
     };
 
-    // Debug: Log all headers being sent
-    log('Request headers:', JSON.stringify(requestHeaders, null, 2));
+    // Debug: Log headers (without full token)
+    if (DEBUG) {
+      const debugHeaders = { ...requestHeaders };
+      if (debugHeaders.Authorization) {
+        debugHeaders.Authorization = debugHeaders.Authorization.substring(0, 30) + '...';
+      }
+      log('Request headers:', JSON.stringify(debugHeaders, null, 2));
+    }
 
     const response = await fetch(url, {
       method,
@@ -111,24 +116,28 @@ async function request<T>(
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
 
-    // Debug: Log response status and headers
+    // Debug: Log response status
     log('Response status:', response.status, response.statusText);
-    log('Response headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
 
     const data = await response.json();
 
     // Debug: Log first 500 chars of response
-    log('Response data (preview):', JSON.stringify(data).substring(0, 500));
+    if (DEBUG) {
+      log('Response data (preview):', JSON.stringify(data).substring(0, 500));
+    }
 
     if (!response.ok) {
       console.error('[API Error]', data);
 
-      // 🔥 HARD FAIL AUTH ON INVALID APP PASSWORD
+      // Handle JWT expiration or invalid token
       if (
-        response.status === 401 &&
-        data?.code === 'incorrect_password'
+        response.status === 401 ||
+        response.status === 403 &&
+        (data?.code === 'jwt_auth_invalid_token' ||
+         data?.code === 'jwt_auth_expired_token' ||
+         data?.code === 'rest_forbidden')
       ) {
-        console.warn('[Auth] Invalid application password — clearing auth');
+        console.warn('[Auth] JWT invalid or expired — clearing auth');
         await clearAuth();
       }
 
