@@ -427,6 +427,7 @@ export default function NotificationsScreen() {
             </Pressable>
           </View>
         ) : (
+          // @ts-expect-error FlashList v2 has type inference issues with complex item types
           <FlashList
             data={notifications}
             renderItem={({ item }) => (
