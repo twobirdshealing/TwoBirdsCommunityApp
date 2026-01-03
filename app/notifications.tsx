@@ -15,7 +15,7 @@ import { PageHeader } from '@/components/navigation';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { notificationsApi } from '@/services/api';
-import { Notification } from '@/types';
+import { Notification as NotificationItem } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
@@ -43,7 +43,7 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
 
   // State
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -210,7 +210,7 @@ export default function NotificationsScreen() {
     );
   };
 
-  const handleNotificationPress = async (notification: Notification) => {
+  const handleNotificationPress = async (notification: NotificationItem) => {
     // Mark as read if unread
     if (!notification.is_read) {
       try {
@@ -231,7 +231,7 @@ export default function NotificationsScreen() {
     navigateToRoute(notification);
   };
 
-  const navigateToRoute = (notification: Notification) => {
+  const navigateToRoute = (notification: NotificationItem) => {
     try {
       const route = notification.route;
 
@@ -279,15 +279,10 @@ export default function NotificationsScreen() {
             }
             break;
 
-          case 'course':
-          case 'course_detail':
-            // Route to course (if supported)
-            const courseSlug = params.slug || params.course;
-            if (courseSlug) {
-              router.push(`/course/${courseSlug}`);
-              return;
-            }
-            break;
+          // Course routes - not yet implemented in app
+          // case 'course':
+          // case 'course_detail':
+          //   break;
         }
       }
 
@@ -303,7 +298,7 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handleMarkAsRead = async (notification: Notification) => {
+  const handleMarkAsRead = async (notification: NotificationItem) => {
     try {
       await notificationsApi.markAsRead(notification.id);
       setNotifications(prev =>
@@ -318,7 +313,7 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handleDelete = async (notification: Notification) => {
+  const handleDelete = async (notification: NotificationItem) => {
     try {
       await notificationsApi.deleteNotification(notification.id);
       setNotifications(prev => prev.filter(n => n.id !== notification.id));
@@ -327,7 +322,7 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handleAvatarPress = (notification: Notification) => {
+  const handleAvatarPress = (notification: NotificationItem) => {
     if (notification.xprofile?.username) {
       router.push(`/profile/${notification.xprofile.username}`);
     }
@@ -337,7 +332,7 @@ export default function NotificationsScreen() {
   // Render Helpers
   // ---------------------------------------------------------------------------
 
-  const renderNotification = ({ item }: { item: Notification }) => (
+  const renderNotification = ({ item }: { item: NotificationItem }) => (
     <NotificationCard
       notification={item}
       onPress={handleNotificationPress}
@@ -446,7 +441,7 @@ export default function NotificationsScreen() {
             data={notifications}
             renderItem={renderNotification}
             estimatedItemSize={80}
-            keyExtractor={item => item.id.toString()}
+            keyExtractor={(item: NotificationItem) => item.id.toString()}
             ListHeaderComponent={renderHeader}
             ListEmptyComponent={renderEmpty}
             ListFooterComponent={renderFooter}
