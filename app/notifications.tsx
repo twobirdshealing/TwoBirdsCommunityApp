@@ -15,7 +15,7 @@ import { PageHeader } from '@/components/navigation';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { notificationsApi } from '@/services/api';
-import { Notification as NotificationItem } from '@/types';
+import { AppNotification } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
@@ -43,7 +43,7 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
 
   // State
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -210,7 +210,7 @@ export default function NotificationsScreen() {
     );
   };
 
-  const handleNotificationPress = async (notification: NotificationItem) => {
+  const handleNotificationPress = async (notification: AppNotification) => {
     // Mark as read if unread
     if (!notification.is_read) {
       try {
@@ -231,7 +231,7 @@ export default function NotificationsScreen() {
     navigateToRoute(notification);
   };
 
-  const navigateToRoute = (notification: NotificationItem) => {
+  const navigateToRoute = (notification: AppNotification) => {
     try {
       const route = notification.route;
 
@@ -298,7 +298,7 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handleMarkAsRead = async (notification: NotificationItem) => {
+  const handleMarkAsRead = async (notification: AppNotification) => {
     try {
       await notificationsApi.markAsRead(notification.id);
       setNotifications(prev =>
@@ -313,7 +313,7 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handleDelete = async (notification: NotificationItem) => {
+  const handleDelete = async (notification: AppNotification) => {
     try {
       await notificationsApi.deleteNotification(notification.id);
       setNotifications(prev => prev.filter(n => n.id !== notification.id));
@@ -322,7 +322,7 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handleAvatarPress = (notification: NotificationItem) => {
+  const handleAvatarPress = (notification: AppNotification) => {
     if (notification.xprofile?.username) {
       router.push(`/profile/${notification.xprofile.username}`);
     }
@@ -427,7 +427,6 @@ export default function NotificationsScreen() {
             </Pressable>
           </View>
         ) : (
-          // @ts-expect-error FlashList v2 has type inference issues with complex item types
           <FlashList
             data={notifications}
             renderItem={({ item }) => (

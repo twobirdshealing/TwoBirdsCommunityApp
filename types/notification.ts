@@ -52,7 +52,7 @@ export interface NotificationSubscriber {
 // Notification Object (actual API response)
 // -----------------------------------------------------------------------------
 
-export interface Notification {
+export interface AppNotification {
   // Content
   content: string;           // HTML content from API
   action: NotificationAction; // e.g., "feed/mentioned"
@@ -91,7 +91,7 @@ export interface Notification {
 export interface NotificationsResponse {
   notifications: {
     current_page: number;
-    data: Notification[];
+    data: AppNotification[];
     first_page_url: string;
     from: number | null;
     last_page: number;
@@ -112,7 +112,7 @@ export interface NotificationsResponse {
 
 // Unread notifications response (includes count)
 export interface UnreadNotificationsResponse {
-  notifications: Notification[];
+  notifications: AppNotification[];
   unread_count: number;
 }
 
@@ -176,7 +176,7 @@ export function stripHtml(html: string): string {
  * Transform API notification to app-friendly format
  * Populates computed properties from raw API response
  */
-export function transformNotification(raw: any): Notification {
+export function transformNotification(raw: any): AppNotification {
   const subscriber = raw.subscriber || {};
 
   return {

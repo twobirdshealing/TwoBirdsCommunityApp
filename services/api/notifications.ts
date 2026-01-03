@@ -8,7 +8,6 @@ import {
     GetNotificationsOptions,
     MarkAllReadResponse,
     MarkReadResponse,
-    Notification,
     NotificationsResponse,
     transformNotification,
     UnreadNotificationsResponse,
