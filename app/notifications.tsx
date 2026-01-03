@@ -227,52 +227,77 @@ export default function NotificationsScreen() {
       }
     }
 
-    // Navigate based on action_url
-    if (notification.action_url) {
-      navigateToAction(notification.action_url, notification);
-    }
+    // Navigate using route object (new API) or fallback to legacy action_url
+    navigateToRoute(notification);
   };
 
-  const navigateToAction = (actionUrl: string, notification: Notification) => {
-    // Parse action_url and navigate to appropriate screen
-    // Examples:
-    // - /feeds/123#comment-45 -> feed detail
-    // - /portal/post/slug -> feed detail
-    // - /spaces/slug -> space detail
-    // - /profile/username -> profile
-
+  const navigateToRoute = (notification: Notification) => {
     try {
-      // Feed/post URLs
-      if (actionUrl.includes('/feeds/') || actionUrl.includes('/post/')) {
-        const feedMatch = actionUrl.match(/\/feeds\/(\d+)/) || actionUrl.match(/\/post\/([^/#]+)/);
-        if (feedMatch) {
-          router.push(`/feed/${feedMatch[1]}`);
-          return;
+      const route = notification.route;
+
+      // Handle route object from API
+      if (route && route.name && route.params) {
+        const { name, params } = route;
+
+        // Map API route names to app routes
+        switch (name) {
+          case 'space_feed':
+            // Route to feed by slug: { space: "slug", feed_slug: "slug" }
+            if (params.feed_slug) {
+              router.push(`/feed/${params.feed_slug}`);
+              return;
+            }
+            break;
+
+          case 'feed':
+          case 'feed_detail':
+            // Route to feed: { id, slug, or feed_slug }
+            const feedId = params.id || params.slug || params.feed_slug;
+            if (feedId) {
+              router.push(`/feed/${feedId}`);
+              return;
+            }
+            break;
+
+          case 'space':
+          case 'space_detail':
+            // Route to space: { slug or space }
+            const spaceSlug = params.slug || params.space;
+            if (spaceSlug) {
+              router.push(`/space/${spaceSlug}`);
+              return;
+            }
+            break;
+
+          case 'profile':
+          case 'user_profile':
+            // Route to profile: { username or user }
+            const username = params.username || params.user;
+            if (username) {
+              router.push(`/profile/${username}`);
+              return;
+            }
+            break;
+
+          case 'course':
+          case 'course_detail':
+            // Route to course (if supported)
+            const courseSlug = params.slug || params.course;
+            if (courseSlug) {
+              router.push(`/course/${courseSlug}`);
+              return;
+            }
+            break;
         }
       }
 
-      // Space URLs
-      if (actionUrl.includes('/spaces/')) {
-        const spaceMatch = actionUrl.match(/\/spaces\/([^/#]+)/);
-        if (spaceMatch) {
-          router.push(`/space/${spaceMatch[1]}`);
-          return;
-        }
-      }
-
-      // Profile URLs
-      if (actionUrl.includes('/profile/')) {
-        const profileMatch = actionUrl.match(/\/profile\/([^/#]+)/);
-        if (profileMatch) {
-          router.push(`/profile/${profileMatch[1]}`);
-          return;
-        }
-      }
-
-      // If we can't parse, try navigating to actor's profile
+      // Fallback: Navigate to actor's profile if available
       if (notification.xprofile?.username) {
         router.push(`/profile/${notification.xprofile.username}`);
+        return;
       }
+
+      console.log('[Notifications] Could not determine navigation for:', notification.route);
     } catch (err) {
       console.error('[Notifications] Navigation error:', err);
     }

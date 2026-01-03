@@ -8,10 +8,44 @@ import {
     GetNotificationsOptions,
     MarkAllReadResponse,
     MarkReadResponse,
+    Notification,
     NotificationsResponse,
+    transformNotification,
     UnreadNotificationsResponse,
 } from '@/types';
 import { del, get, post } from './client';
+
+// -----------------------------------------------------------------------------
+// Transform Response Helpers
+// -----------------------------------------------------------------------------
+
+/**
+ * Transform paginated notifications response
+ * Applies transformNotification to each notification in the data array
+ */
+function transformNotificationsResponse(response: any): NotificationsResponse {
+  const notifications = response.notifications || {};
+  const data = notifications.data || [];
+
+  return {
+    notifications: {
+      ...notifications,
+      data: data.map((n: any) => transformNotification(n)),
+    },
+  };
+}
+
+/**
+ * Transform unread notifications response
+ */
+function transformUnreadResponse(response: any): UnreadNotificationsResponse {
+  const notifications = response.notifications || [];
+
+  return {
+    notifications: notifications.map((n: any) => transformNotification(n)),
+    unread_count: response.unread_count || 0,
+  };
+}
 
 // -----------------------------------------------------------------------------
 // Get All Notifications (paginated)
@@ -37,7 +71,17 @@ export async function getNotifications(options: GetNotificationsOptions = {}) {
     params.order = options.order;
   }
 
-  return get<NotificationsResponse>(ENDPOINTS.NOTIFICATIONS, params);
+  const result = await get<any>(ENDPOINTS.NOTIFICATIONS, params);
+
+  // Transform the response if successful
+  if (result.success) {
+    return {
+      success: true as const,
+      data: transformNotificationsResponse(result.data),
+    };
+  }
+
+  return result;
 }
 
 // -----------------------------------------------------------------------------
@@ -46,7 +90,17 @@ export async function getNotifications(options: GetNotificationsOptions = {}) {
 // Returns unread notifications and total unread count for badge
 
 export async function getUnreadNotifications() {
-  return get<UnreadNotificationsResponse>(ENDPOINTS.NOTIFICATIONS_UNREAD);
+  const result = await get<any>(ENDPOINTS.NOTIFICATIONS_UNREAD);
+
+  // Transform the response if successful
+  if (result.success) {
+    return {
+      success: true as const,
+      data: transformUnreadResponse(result.data),
+    };
+  }
+
+  return result;
 }
 
 // -----------------------------------------------------------------------------
