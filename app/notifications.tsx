@@ -10,12 +10,12 @@
 // - Navigate to related content on tap
 // =============================================================================
 
-import { NotificationCard } from '@/components/notification';
 import { PageHeader } from '@/components/navigation';
+import { NotificationCard } from '@/components/notification';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { notificationsApi } from '@/services/api';
-import { Notification } from '@/types';
+import { AppNotification } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
@@ -43,7 +43,7 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
 
   // State
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -210,7 +210,7 @@ export default function NotificationsScreen() {
     );
   };
 
-  const handleNotificationPress = async (notification: Notification) => {
+  const handleNotificationPress = async (notification: AppNotification) => {
     // Mark as read if unread
     if (!notification.is_read) {
       try {
@@ -227,58 +227,78 @@ export default function NotificationsScreen() {
       }
     }
 
-    // Navigate based on action_url
-    if (notification.action_url) {
-      navigateToAction(notification.action_url, notification);
-    }
+    // Navigate using route object (new API) or fallback to legacy action_url
+    navigateToRoute(notification);
   };
 
-  const navigateToAction = (actionUrl: string, notification: Notification) => {
-    // Parse action_url and navigate to appropriate screen
-    // Examples:
-    // - /feeds/123#comment-45 -> feed detail
-    // - /portal/post/slug -> feed detail
-    // - /spaces/slug -> space detail
-    // - /profile/username -> profile
-
+  const navigateToRoute = (notification: AppNotification) => {
     try {
-      // Feed/post URLs
-      if (actionUrl.includes('/feeds/') || actionUrl.includes('/post/')) {
-        const feedMatch = actionUrl.match(/\/feeds\/(\d+)/) || actionUrl.match(/\/post\/([^/#]+)/);
-        if (feedMatch) {
-          router.push(`/feed/${feedMatch[1]}`);
-          return;
+      const route = notification.route;
+
+      // Handle route object from API
+      if (route && route.name && route.params) {
+        const { name, params } = route;
+
+        // Map API route names to app routes
+        switch (name) {
+          case 'space_feed':
+            // Route to feed by slug: { space: "slug", feed_slug: "slug" }
+            if (params.feed_slug) {
+              router.push(`/feed/${params.feed_slug}`);
+              return;
+            }
+            break;
+
+          case 'feed':
+          case 'feed_detail':
+            // Route to feed: { id, slug, or feed_slug }
+            const feedId = params.id || params.slug || params.feed_slug;
+            if (feedId) {
+              router.push(`/feed/${feedId}`);
+              return;
+            }
+            break;
+
+          case 'space':
+          case 'space_detail':
+            // Route to space: { slug or space }
+            const spaceSlug = params.slug || params.space;
+            if (spaceSlug) {
+              router.push(`/space/${spaceSlug}`);
+              return;
+            }
+            break;
+
+          case 'profile':
+          case 'user_profile':
+            // Route to profile: { username or user }
+            const username = params.username || params.user;
+            if (username) {
+              router.push(`/profile/${username}`);
+              return;
+            }
+            break;
+
+          // Course routes - not yet implemented in app
+          // case 'course':
+          // case 'course_detail':
+          //   break;
         }
       }
 
-      // Space URLs
-      if (actionUrl.includes('/spaces/')) {
-        const spaceMatch = actionUrl.match(/\/spaces\/([^/#]+)/);
-        if (spaceMatch) {
-          router.push(`/space/${spaceMatch[1]}`);
-          return;
-        }
-      }
-
-      // Profile URLs
-      if (actionUrl.includes('/profile/')) {
-        const profileMatch = actionUrl.match(/\/profile\/([^/#]+)/);
-        if (profileMatch) {
-          router.push(`/profile/${profileMatch[1]}`);
-          return;
-        }
-      }
-
-      // If we can't parse, try navigating to actor's profile
+      // Fallback: Navigate to actor's profile if available
       if (notification.xprofile?.username) {
         router.push(`/profile/${notification.xprofile.username}`);
+        return;
       }
+
+      console.log('[Notifications] Could not determine navigation for:', notification.route);
     } catch (err) {
       console.error('[Notifications] Navigation error:', err);
     }
   };
 
-  const handleMarkAsRead = async (notification: Notification) => {
+  const handleMarkAsRead = async (notification: AppNotification) => {
     try {
       await notificationsApi.markAsRead(notification.id);
       setNotifications(prev =>
@@ -293,7 +313,7 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handleDelete = async (notification: Notification) => {
+  const handleDelete = async (notification: AppNotification) => {
     try {
       await notificationsApi.deleteNotification(notification.id);
       setNotifications(prev => prev.filter(n => n.id !== notification.id));
@@ -302,7 +322,7 @@ export default function NotificationsScreen() {
     }
   };
 
-  const handleAvatarPress = (notification: Notification) => {
+  const handleAvatarPress = (notification: AppNotification) => {
     if (notification.xprofile?.username) {
       router.push(`/profile/${notification.xprofile.username}`);
     }
@@ -311,16 +331,6 @@ export default function NotificationsScreen() {
   // ---------------------------------------------------------------------------
   // Render Helpers
   // ---------------------------------------------------------------------------
-
-  const renderNotification = ({ item }: { item: Notification }) => (
-    <NotificationCard
-      notification={item}
-      onPress={handleNotificationPress}
-      onMarkAsRead={handleMarkAsRead}
-      onDelete={handleDelete}
-      onAvatarPress={handleAvatarPress}
-    />
-  );
 
   const renderEmpty = () => {
     if (loading) return null;
@@ -419,9 +429,17 @@ export default function NotificationsScreen() {
         ) : (
           <FlashList
             data={notifications}
-            renderItem={renderNotification}
+            renderItem={({ item }) => (
+              <NotificationCard
+                notification={item}
+                onPress={handleNotificationPress}
+                onMarkAsRead={handleMarkAsRead}
+                onDelete={handleDelete}
+                onAvatarPress={handleAvatarPress}
+              />
+            )}
             estimatedItemSize={80}
-            keyExtractor={item => item.id.toString()}
+            keyExtractor={(item) => item.id.toString()}
             ListHeaderComponent={renderHeader}
             ListEmptyComponent={renderEmpty}
             ListFooterComponent={renderFooter}

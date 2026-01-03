@@ -7,41 +7,80 @@
 import { XProfile } from './user';
 
 // -----------------------------------------------------------------------------
-// Notification Types (from API)
+// Notification Types (from API action field)
 // -----------------------------------------------------------------------------
 
-export type NotificationType =
-  | 'new_comment'      // New comment on user's feed
-  | 'new_reply'        // Reply to user's comment
-  | 'new_reaction'     // Reaction on user's content
-  | 'new_follower'     // New follower [PRO]
-  | 'mention'          // User mentioned in content
-  | 'space_invite'     // Invited to a space
-  | 'space_join'       // User joined a space
-  | 'course_enrollment' // Enrolled in a course
-  | 'lesson_complete'  // Lesson completed
-  | string;            // Allow unknown types for forward compatibility
+// API returns action strings like "feed/mentioned", "feed/commented", etc.
+export type NotificationAction =
+  | 'feed/mentioned'
+  | 'feed/commented'
+  | 'feed/replied'
+  | 'feed/reacted'
+  | 'profile/followed'
+  | 'space/invited'
+  | 'space/joined'
+  | 'course/enrolled'
+  | 'lesson/completed'
+  | string;
+
+// Legacy type alias for backwards compatibility
+export type NotificationType = NotificationAction;
 
 // -----------------------------------------------------------------------------
-// Notification Object
+// Route Object (for navigation)
 // -----------------------------------------------------------------------------
 
-export interface Notification {
+export interface NotificationRoute {
+  name: string;
+  params: Record<string, string | number>;
+}
+
+// -----------------------------------------------------------------------------
+// Subscriber Object (notification metadata)
+// -----------------------------------------------------------------------------
+
+export interface NotificationSubscriber {
   id: number;
+  object_id: number;
   user_id: number;
-  type: NotificationType;
-  title: string;
-  message: string;
-  action_url: string | null;
-  is_read: boolean;
-  actor_id: number | null;
-  object_id: number | null;
-  object_type: string | null;
+  is_read: string; // "0" or "1" from API
   created_at: string;
-  read_at: string | null;
+  updated_at: string;
+}
+
+// -----------------------------------------------------------------------------
+// Notification Object (actual API response)
+// -----------------------------------------------------------------------------
+
+export interface AppNotification {
+  // Content
+  content: string;           // HTML content from API
+  action: NotificationAction; // e.g., "feed/mentioned"
+
+  // Navigation
+  route?: NotificationRoute;  // For app navigation
+
+  // Metadata (from subscriber object)
+  subscriber: NotificationSubscriber;
 
   // Actor's profile (the user who triggered the notification)
   xprofile?: XProfile;
+
+  // ----- Computed properties (added by app) -----
+  // These are populated by transformNotification()
+  id: number;                 // From subscriber.id
+  is_read: boolean;           // Parsed from subscriber.is_read
+  created_at: string;         // From subscriber.created_at
+  type: NotificationAction;   // Alias for action
+
+  // Legacy fields (for backwards compatibility)
+  message?: string;           // Stripped HTML from content
+  title?: string;             // First line of message
+  action_url?: string | null; // Built from route
+  actor_id?: number | null;
+  object_id?: number | null;
+  object_type?: string | null;
+  read_at?: string | null;
 }
 
 // -----------------------------------------------------------------------------
@@ -52,7 +91,7 @@ export interface Notification {
 export interface NotificationsResponse {
   notifications: {
     current_page: number;
-    data: Notification[];
+    data: AppNotification[];
     first_page_url: string;
     from: number | null;
     last_page: number;
@@ -73,14 +112,14 @@ export interface NotificationsResponse {
 
 // Unread notifications response (includes count)
 export interface UnreadNotificationsResponse {
-  notifications: Notification[];
+  notifications: AppNotification[];
   unread_count: number;
 }
 
 // Mark as read response
 export interface MarkReadResponse {
   message: string;
-  data: {
+  data?: {
     id: number;
     is_read: boolean;
     read_at: string;
@@ -90,7 +129,7 @@ export interface MarkReadResponse {
 // Mark all as read response
 export interface MarkAllReadResponse {
   message: string;
-  data: {
+  data?: {
     marked_count: number;
   };
 }
@@ -108,7 +147,59 @@ export interface GetNotificationsOptions {
   page?: number;
   per_page?: number;
   is_read?: boolean;
-  type?: NotificationType;
+  type?: NotificationAction;
   orderby?: 'created_at' | 'read_at';
   order?: 'asc' | 'desc';
+}
+
+// -----------------------------------------------------------------------------
+// Transform Helper
+// -----------------------------------------------------------------------------
+
+/**
+ * Strip HTML tags from content string
+ */
+export function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/&nbsp;/g, ' ') // Replace &nbsp;
+    .replace(/&amp;/g, '&')  // Replace &amp;
+    .replace(/&lt;/g, '<')   // Replace &lt;
+    .replace(/&gt;/g, '>')   // Replace &gt;
+    .replace(/&quot;/g, '"') // Replace &quot;
+    .replace(/&#39;/g, "'")  // Replace &#39;
+    .replace(/\s+/g, ' ')    // Collapse whitespace
+    .trim();
+}
+
+/**
+ * Transform API notification to app-friendly format
+ * Populates computed properties from raw API response
+ */
+export function transformNotification(raw: any): AppNotification {
+  const subscriber = raw.subscriber || {};
+
+  return {
+    // Pass through raw data
+    content: raw.content || '',
+    action: raw.action || '',
+    route: raw.route,
+    subscriber: subscriber,
+    xprofile: raw.xprofile,
+
+    // Computed properties
+    id: subscriber.id || raw.id || 0,
+    is_read: subscriber.is_read === '1' || subscriber.is_read === 1 || subscriber.is_read === true,
+    created_at: subscriber.created_at || raw.created_at || '',
+    type: raw.action || '',
+
+    // Legacy/convenience
+    message: stripHtml(raw.content || ''),
+    title: stripHtml(raw.content || '').split('\n')[0],
+    action_url: null, // We use route instead
+    actor_id: raw.xprofile?.user_id || null,
+    object_id: subscriber.object_id || null,
+    object_type: null,
+    read_at: null,
+  };
 }

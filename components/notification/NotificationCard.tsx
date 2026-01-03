@@ -12,16 +12,16 @@
 import { Avatar } from '@/components/common/Avatar';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
-import { Notification } from '@/types';
+import { AppNotification } from '@/types';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef } from 'react';
 import {
-    Animated,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  Animated,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { NotificationTypeIcon } from './NotificationTypeIcon';
@@ -31,11 +31,11 @@ import { NotificationTypeIcon } from './NotificationTypeIcon';
 // -----------------------------------------------------------------------------
 
 interface NotificationCardProps {
-  notification: Notification;
-  onPress?: (notification: Notification) => void;
-  onMarkAsRead?: (notification: Notification) => void;
-  onDelete?: (notification: Notification) => void;
-  onAvatarPress?: (notification: Notification) => void;
+  notification: AppNotification;
+  onPress?: (notification: AppNotification) => void;
+  onMarkAsRead?: (notification: AppNotification) => void;
+  onDelete?: (notification: AppNotification) => void;
+  onAvatarPress?: (notification: AppNotification) => void;
 }
 
 // -----------------------------------------------------------------------------
