@@ -332,16 +332,6 @@ export default function NotificationsScreen() {
   // Render Helpers
   // ---------------------------------------------------------------------------
 
-  const renderNotification = ({ item }: { item: NotificationItem }) => (
-    <NotificationCard
-      notification={item}
-      onPress={handleNotificationPress}
-      onMarkAsRead={handleMarkAsRead}
-      onDelete={handleDelete}
-      onAvatarPress={handleAvatarPress}
-    />
-  );
-
   const renderEmpty = () => {
     if (loading) return null;
 
@@ -439,9 +429,17 @@ export default function NotificationsScreen() {
         ) : (
           <FlashList
             data={notifications}
-            renderItem={renderNotification}
+            renderItem={({ item }) => (
+              <NotificationCard
+                notification={item}
+                onPress={handleNotificationPress}
+                onMarkAsRead={handleMarkAsRead}
+                onDelete={handleDelete}
+                onAvatarPress={handleAvatarPress}
+              />
+            )}
             estimatedItemSize={80}
-            keyExtractor={(item: NotificationItem) => item.id.toString()}
+            keyExtractor={(item) => item.id.toString()}
             ListHeaderComponent={renderHeader}
             ListEmptyComponent={renderEmpty}
             ListFooterComponent={renderFooter}
