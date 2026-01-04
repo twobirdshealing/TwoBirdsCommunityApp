@@ -7,20 +7,20 @@
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { 
+import {
   ActivityIndicator,
-  RefreshControl, 
-  StyleSheet, 
+  RefreshControl,
+  StyleSheet,
   Text,
-  TextInput, 
-  View 
+  TextInput,
+  View
 } from 'react-native';
 
 import { SpaceCard } from '@/components/space/SpaceCard';
-import { spacesApi } from '@/services/api/spaces';
-import { Space } from '@/types';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { spacesApi } from '@/services/api/spaces';
+import { Space } from '@/types';
 
 export default function SpacesScreen() {
   const router = useRouter();
@@ -180,7 +180,6 @@ export default function SpacesScreen() {
           renderItem={({ item }) => (
             <SpaceCard space={item} onPress={() => handleSpacePress(item)} />
           )}
-          estimatedItemSize={140}
           refreshControl={
             <RefreshControl 
               refreshing={refreshing} 

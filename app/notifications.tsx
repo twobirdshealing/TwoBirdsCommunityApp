@@ -438,7 +438,6 @@ export default function NotificationsScreen() {
                 onAvatarPress={handleAvatarPress}
               />
             )}
-            estimatedItemSize={80}
             keyExtractor={(item) => item.id.toString()}
             ListHeaderComponent={renderHeader}
             ListEmptyComponent={renderEmpty}

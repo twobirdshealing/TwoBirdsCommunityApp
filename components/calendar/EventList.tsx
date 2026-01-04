@@ -4,13 +4,13 @@
 // Uses FlashList for performance with modern EventCard design
 // =============================================================================
 
-import React from 'react';
-import { RefreshControl, StyleSheet, View } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
 import { colors } from '@/constants/colors';
 import { CalendarEvent } from '@/types/calendar';
+import { FlashList } from '@shopify/flash-list';
+import React from 'react';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 import { EventCard } from './EventCard';
-import { LoadingSpinner, EmptyState, ErrorMessage } from '@/components/common';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -85,7 +85,6 @@ export function EventList({
             compact={compact}
           />
         )}
-        estimatedItemSize={compact ? 80 : 260}
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}

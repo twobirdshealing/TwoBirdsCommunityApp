@@ -14,9 +14,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { MemberCard, MemberCardData } from '@/components/member';
-import { spacesApi } from '@/services/api/spaces';
 import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { spacesApi } from '@/services/api/spaces';
 
 // -----------------------------------------------------------------------------
 // Helper: Sort members with leaders at top
@@ -267,7 +267,6 @@ export default function SpaceMembersScreen() {
                 />
               </>
             )}
-            estimatedItemSize={80}
             keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.5}
