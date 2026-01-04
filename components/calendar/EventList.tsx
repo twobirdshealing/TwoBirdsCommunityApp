@@ -85,7 +85,6 @@ export function EventList({
             compact={compact}
           />
         )}
-        estimatedItemSize={compact ? 80 : 260}
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}

@@ -267,7 +267,6 @@ export default function SpaceMembersScreen() {
                 />
               </>
             )}
-            estimatedItemSize={80}
             keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.5}

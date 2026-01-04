@@ -180,7 +180,6 @@ export default function SpacesScreen() {
           renderItem={({ item }) => (
             <SpaceCard space={item} onPress={() => handleSpacePress(item)} />
           )}
-          estimatedItemSize={140}
           refreshControl={
             <RefreshControl 
               refreshing={refreshing} 
