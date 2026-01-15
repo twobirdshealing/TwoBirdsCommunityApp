@@ -151,6 +151,23 @@ export async function getUnreadCount(): Promise<number> {
 }
 
 // -----------------------------------------------------------------------------
+// Get Unread Thread IDs
+// -----------------------------------------------------------------------------
+// Returns array of thread IDs that have unread messages
+
+export async function getUnreadThreadIds(): Promise<number[]> {
+  const result = await get<{ unread_threads: Record<string, number> }>(
+    ENDPOINTS.CHAT_UNREAD_THREADS
+  );
+
+  if (result.success && result.data.unread_threads) {
+    return Object.keys(result.data.unread_threads).map(id => parseInt(id, 10));
+  }
+
+  return [];
+}
+
+// -----------------------------------------------------------------------------
 // Mark Threads as Read
 // -----------------------------------------------------------------------------
 
@@ -170,6 +187,7 @@ export const messagesApi = {
   sendMessage,
   startChatWithUser,
   getUnreadCount,
+  getUnreadThreadIds,
   markThreadsRead,
 };
 

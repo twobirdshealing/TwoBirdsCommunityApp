@@ -53,6 +53,7 @@ export default function MessagesScreen() {
 
   // State
   const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [unreadThreadIds, setUnreadThreadIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,15 +92,27 @@ export default function MessagesScreen() {
     }
   }, [threads.length]);
 
+  // Fetch unread thread IDs
+  const fetchUnreadThreadIds = useCallback(async () => {
+    try {
+      const ids = await messagesApi.getUnreadThreadIds();
+      setUnreadThreadIds(ids);
+    } catch (err) {
+      console.error('[Messages] Fetch unread error:', err);
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
     fetchThreads();
+    fetchUnreadThreadIds();
   }, []);
 
   // Background polling (fallback if Pusher disconnects)
   useEffect(() => {
     pollIntervalRef.current = setInterval(() => {
       fetchThreads();
+      fetchUnreadThreadIds();
     }, POLL_INTERVAL);
 
     return () => {
@@ -187,6 +200,7 @@ export default function MessagesScreen() {
 
   const handleRefresh = () => {
     fetchThreads(true);
+    fetchUnreadThreadIds();
   };
 
   const handleThreadPress = (thread: ChatThread) => {
@@ -279,6 +293,7 @@ export default function MessagesScreen() {
               <ConversationCard
                 thread={item}
                 currentUserId={user?.id || 0}
+                isUnread={unreadThreadIds.includes(item.id)}
                 onPress={handleThreadPress}
                 onDelete={handleDeleteThread}
               />

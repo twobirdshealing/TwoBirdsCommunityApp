@@ -5,7 +5,7 @@
 // Uses WordPress JWT Authentication plugin for login.
 // =============================================================================
 
-import { SITE_URL } from '@/constants/config';
+import { API_URL, SITE_URL } from '@/constants/config';
 import * as SecureStore from 'expo-secure-store';
 
 // -----------------------------------------------------------------------------
@@ -165,16 +165,39 @@ export async function login(username: string, password: string): Promise<LoginRe
 
     // Map JWT response to our User type
     // Note: JWT gives us username (user_nicename), email, and display_name
-    // Avatar and full profile will be fetched from Fluent's profile API
     const user: User = {
       username: jwtData.user_nicename,
       displayName: jwtData.user_display_name,
       email: jwtData.user_email,
     };
 
+    // Fetch profile to get user_id and avatar (JWT doesn't include these)
+    try {
+      const profileResponse = await fetch(
+        `${API_URL}/profile/${jwtData.user_nicename}`,
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${jwtData.token}`,
+          },
+        }
+      );
+
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        if (profileData.profile) {
+          user.id = profileData.profile.user_id;
+          user.avatar = profileData.profile.avatar || undefined;
+          log('Profile fetched, user_id:', user.id);
+        }
+      }
+    } catch (e) {
+      log('Could not fetch profile for user_id:', e);
+    }
+
     // Store user info
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
-    log('User info stored:', user.username);
+    log('User info stored:', user.username, 'id:', user.id);
 
     return { success: true, user };
 

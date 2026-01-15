@@ -38,6 +38,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 interface ConversationCardProps {
   thread: ChatThread;
   currentUserId: number;
+  isUnread?: boolean;
   onPress?: (thread: ChatThread) => void;
   onDelete?: (thread: ChatThread) => void;
 }
@@ -49,6 +50,7 @@ interface ConversationCardProps {
 export function ConversationCard({
   thread,
   currentUserId,
+  isUnread = false,
   onPress,
   onDelete,
 }: ConversationCardProps) {
@@ -141,7 +143,8 @@ export function ConversationCard({
         <View style={styles.content}>
           {/* Header Row: Name + Timestamp */}
           <View style={styles.headerRow}>
-            <Text style={styles.name} numberOfLines={1}>
+            {isUnread && <View style={styles.unreadDot} />}
+            <Text style={[styles.name, isUnread && styles.nameUnread]} numberOfLines={1}>
               {displayName}
             </Text>
             <Text style={styles.timestamp}>{timestamp}</Text>
@@ -204,6 +207,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginRight: spacing.sm,
+  },
+
+  nameUnread: {
+    fontWeight: '700',
+  },
+
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+    marginRight: spacing.xs,
   },
 
   timestamp: {

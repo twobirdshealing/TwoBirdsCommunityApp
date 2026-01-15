@@ -3,6 +3,7 @@
 // =============================================================================
 
 import * as authService from '@/services/auth';
+import { profilesApi } from '@/services/api/profiles';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 // -----------------------------------------------------------------------------
@@ -54,7 +55,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Get stored user info
         const storedUser = await authService.getStoredUser();
         if (storedUser) {
-          setUser(storedUser);
+          // If user doesn't have id, fetch it from profile API (for existing logins)
+          if (!storedUser.id && storedUser.username) {
+            try {
+              const profileRes = await profilesApi.getProfile(storedUser.username);
+              if (profileRes.success && profileRes.data.profile) {
+                storedUser.id = profileRes.data.profile.user_id;
+                storedUser.avatar = profileRes.data.profile.avatar || undefined;
+                await authService.updateStoredUser(storedUser);
+                console.log('[Auth] Fetched missing user_id:', storedUser.id);
+              }
+            } catch (e) {
+              console.error('[Auth] Could not fetch user_id:', e);
+            }
+          }
+          setUser(storedUser as User);
           setIsAuthenticated(true);
         } else {
           // Has auth but no user info - clear it
