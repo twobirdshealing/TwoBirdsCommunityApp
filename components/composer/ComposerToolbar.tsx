@@ -20,12 +20,14 @@ import { spacing, typography } from '@/constants/layout';
 
 interface ComposerToolbarProps {
   onImagePress: () => void;
-  onEmojiPress: () => void;
+  onVideoPress?: () => void;
+  onEmojiPress?: () => void;
   onSubmit: () => void;
   isUploading: boolean;
   isSubmitting: boolean;
   canSubmit: boolean;
   submitLabel: string;
+  hasVideo?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -34,12 +36,14 @@ interface ComposerToolbarProps {
 
 export function ComposerToolbar({
   onImagePress,
+  onVideoPress,
   onEmojiPress,
   onSubmit,
   isUploading,
   isSubmitting,
   canSubmit,
   submitLabel,
+  hasVideo,
 }: ComposerToolbarProps) {
   return (
     <View style={styles.container}>
@@ -49,7 +53,7 @@ export function ComposerToolbar({
         <TouchableOpacity
           style={styles.actionButton}
           onPress={onImagePress}
-          disabled={isUploading}
+          disabled={isUploading || hasVideo}
         >
           {isUploading ? (
             <ActivityIndicator size="small" color={colors.primary} />
@@ -57,22 +61,39 @@ export function ComposerToolbar({
             <Ionicons
               name="image-outline"
               size={24}
-              color={colors.textSecondary}
+              color={hasVideo ? colors.textTertiary : colors.textSecondary}
             />
           )}
         </TouchableOpacity>
 
+        {/* Video Picker */}
+        {onVideoPress && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={onVideoPress}
+            disabled={hasVideo}
+          >
+            <Ionicons
+              name="videocam-outline"
+              size={24}
+              color={hasVideo ? colors.primary : colors.textSecondary}
+            />
+          </TouchableOpacity>
+        )}
+
         {/* Emoji Hint */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={onEmojiPress}
-        >
-          <Ionicons
-            name="happy-outline"
-            size={24}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
+        {onEmojiPress && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={onEmojiPress}
+          >
+            <Ionicons
+              name="happy-outline"
+              size={24}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Right: Submit Button */}

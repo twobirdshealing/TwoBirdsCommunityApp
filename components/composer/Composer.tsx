@@ -21,7 +21,10 @@ import { spacing, typography } from '@/constants/layout';
 import { MediaPreview } from './MediaPreview';
 import { ComposerToolbar } from './ComposerToolbar';
 import { SpaceSelector } from './SpaceSelector';
+import { VideoAttachModal } from './VideoAttachModal';
+import { VideoPreview } from './VideoPreview';
 import { MediaItem, mediaApi } from '@/services/api/media';
+import { OembedData } from '@/services/api/feeds';
 import * as ImagePicker from 'expo-image-picker';
 
 // -----------------------------------------------------------------------------
@@ -66,6 +69,11 @@ export interface ComposerSubmitData {
     height: number;
     provider: string;
   }>;
+  // Video embed (oembed)
+  media?: {
+    type: 'oembed';
+    url: string;
+  };
   // For comments
   parent_id?: number;
   meta?: Record<string, any>;
@@ -94,14 +102,16 @@ export function Composer({
   const [message, setMessage] = useState('');
   const [title, setTitle] = useState('');
   const [attachments, setAttachments] = useState<MediaItem[]>([]);
+  const [videoAttachment, setVideoAttachment] = useState<OembedData | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  
+  const [showVideoModal, setShowVideoModal] = useState(false);
+
   // Space selection - track SLUG not ID!
   const [selectedSpaceSlug, setSelectedSpaceSlug] = useState<string | null>(initialSpaceSlug || null);
   const [selectedSpaceName, setSelectedSpaceName] = useState<string | null>(initialSpaceName || null);
-  
+
   const inputRef = useRef<TextInput>(null);
 
   // ---------------------------------------------------------------------------
@@ -218,13 +228,31 @@ export function Composer({
   };
 
   // ---------------------------------------------------------------------------
+  // Handle Video Attach
+  // ---------------------------------------------------------------------------
+
+  const handleVideoPress = () => {
+    setShowVideoModal(true);
+  };
+
+  const handleVideoAttach = (data: OembedData) => {
+    setVideoAttachment(data);
+    // Clear image attachments when video is added
+    setAttachments([]);
+  };
+
+  const handleVideoRemove = () => {
+    setVideoAttachment(null);
+  };
+
+  // ---------------------------------------------------------------------------
   // Submit
   // ---------------------------------------------------------------------------
 
   const handleSubmit = async () => {
     const trimmedMessage = message.trim();
-    
-    if (!trimmedMessage && attachments.length === 0) {
+
+    if (!trimmedMessage && attachments.length === 0 && !videoAttachment) {
       return;
     }
 
@@ -270,6 +298,14 @@ export function Composer({
         }));
       }
 
+      // Add video embed (oembed)
+      if (videoAttachment) {
+        submitData.media = {
+          type: 'oembed',
+          url: videoAttachment.url,
+        };
+      }
+
       console.log('[Composer] Final submitData:', JSON.stringify(submitData, null, 2));
 
       await onSubmit(submitData);
@@ -278,6 +314,7 @@ export function Composer({
       setMessage('');
       setTitle('');
       setAttachments([]);
+      setVideoAttachment(null);
     } catch (error) {
       console.error('Submit error:', error);
       Alert.alert('Error', 'Failed to post. Please try again.');
@@ -298,11 +335,11 @@ export function Composer({
   // Can Submit
   // ---------------------------------------------------------------------------
 
-  const canSubmit = 
-    !isSubmitting && 
-    !isUploading && 
+  const canSubmit =
+    !isSubmitting &&
+    !isUploading &&
     !isOverLimit &&
-    (message.trim().length > 0 || attachments.length > 0);
+    (message.trim().length > 0 || attachments.length > 0 || videoAttachment !== null);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -360,6 +397,14 @@ export function Composer({
         />
       )}
 
+      {/* Video Preview */}
+      {videoAttachment && (
+        <VideoPreview
+          video={videoAttachment}
+          onRemove={handleVideoRemove}
+        />
+      )}
+
       {/* Character Count */}
       {showCharCount && (
         <Text style={[styles.charCount, isOverLimit && styles.charCountOver]}>
@@ -370,13 +415,20 @@ export function Composer({
       {/* Toolbar */}
       <ComposerToolbar
         onImagePress={handleImagePicker}
+        onVideoPress={mode === 'feed' ? handleVideoPress : undefined}
         onSubmit={handleSubmit}
         submitLabel={actualSubmitLabel}
         canSubmit={canSubmit}
         isSubmitting={isSubmitting}
         isUploading={isUploading}
-        attachmentCount={attachments.length}
-        maxAttachments={4}
+        hasVideo={videoAttachment !== null}
+      />
+
+      {/* Video Attach Modal */}
+      <VideoAttachModal
+        visible={showVideoModal}
+        onClose={() => setShowVideoModal(false)}
+        onAttach={handleVideoAttach}
       />
     </View>
   );

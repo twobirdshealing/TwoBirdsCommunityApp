@@ -22,6 +22,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { Avatar } from '@/components/common/Avatar';
+import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 import { colors } from '@/constants/colors';
 import { shadows, sizing, spacing, typography } from '@/constants/layout';
 import { Feed } from '@/types';
@@ -46,37 +47,47 @@ function detectMedia(feed: Feed): MediaInfo {
   const message = feed.message || '';
   const messageRendered = feed.message_rendered || '';
   const meta = feed.meta || {};
-  
+
   // 1. Check for multiple images in meta.media_items
   if (meta.media_items && Array.isArray(meta.media_items) && meta.media_items.length > 0) {
     const imageUrls = meta.media_items
       .filter((item: any) => item.type === 'image' && item.url)
       .map((item: any) => item.url);
-    
+
     if (imageUrls.length > 1) {
       return { type: 'images', imageUrls, imageUrl: imageUrls[0] };
     } else if (imageUrls.length === 1) {
       return { type: 'image', imageUrl: imageUrls[0] };
     }
   }
-  
-  // 2. Check for single image in meta.media_preview
-  if (meta.media_preview?.image) {
+
+  // 2. Check for YouTube in meta.media_preview (oembed from native web)
+  if (meta.media_preview?.provider === 'youtube' &&
+      meta.media_preview?.content_type === 'video') {
+    const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = meta.media_preview.url?.match(youtubeRegex);
+    if (match) {
+      return { type: 'youtube', youtubeId: match[1] };
+    }
+  }
+
+  // 3. Check for single image in meta.media_preview (skip if youtube provider)
+  if (meta.media_preview?.image && meta.media_preview?.provider !== 'youtube') {
     return { type: 'image', imageUrl: meta.media_preview.image };
   }
-  
-  // 3. Check for featured_image
+
+  // 4. Check for featured_image
   if (feed.featured_image) {
     return { type: 'image', imageUrl: feed.featured_image };
   }
-  
-  // 4. Check for YouTube links in message
+
+  // 5. Check for YouTube links in message text (fallback)
   const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
   const youtubeMatch = message.match(youtubeRegex) || messageRendered.match(youtubeRegex);
   if (youtubeMatch) {
     return { type: 'youtube', youtubeId: youtubeMatch[1] };
   }
-  
+
   return { type: 'none' };
 }
 
@@ -116,6 +127,7 @@ export function FeedCard({
   const { user } = useAuth();
   const [imageLoading, setImageLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(feed.bookmarked || false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   
   // Extract data
   const author = feed.xprofile;
@@ -257,92 +269,91 @@ export function FeedCard({
   // ---------------------------------------------------------------------------
   
   return (
-    <TouchableOpacity 
-      style={styles.card} 
-      onPress={onPress}
-      activeOpacity={0.9}
-    >
-      {/* ===== Sticky Indicator ===== */}
-      {isSticky && (
-        <View style={styles.stickyBadge}>
-          <Ionicons name="pin" size={12} color={colors.primary} />
-          <Text style={styles.stickyText}>Pinned</Text>
-        </View>
-      )}
-
-      {/* ===== Header ===== */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.authorRow}
-          onPress={onAuthorPress}
-          activeOpacity={0.7}
-        >
-          <Avatar 
-            source={authorAvatar}
-            size="md"
-            verified={isVerified}
-            fallback={authorName}
-          />
-          
-          <View style={styles.authorInfo}>
-            <Text style={styles.authorName} numberOfLines={1}>
-              {authorName}
-            </Text>
-            
-            <View style={styles.metaRow}>
-              <Text style={styles.timestamp}>{timestamp}</Text>
-              {spaceName && (
-                <>
-                  <Text style={styles.dot}>•</Text>
-                  <TouchableOpacity onPress={onSpacePress}>
-                    <Text style={styles.spaceName} numberOfLines={1}>
-                      {spaceName}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
+    <View style={styles.card}>
+      {/* ===== Touchable area for opening fullscreen (header + content only) ===== */}
+      <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
+        {/* ===== Sticky Indicator ===== */}
+        {isSticky && (
+          <View style={styles.stickyBadge}>
+            <Ionicons name="pin" size={12} color={colors.primary} />
+            <Text style={styles.stickyText}>Pinned</Text>
           </View>
-        </TouchableOpacity>
+        )}
 
-        {/* Header Actions: Bookmark + Menu */}
-        <View style={styles.headerActions}>
+        {/* ===== Header ===== */}
+        <View style={styles.header}>
           <TouchableOpacity
-            style={styles.headerButton}
-            onPress={handleBookmarkPress}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={styles.authorRow}
+            onPress={onAuthorPress}
+            activeOpacity={0.7}
           >
-            <Ionicons
-              name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-              size={20}
-              color={isBookmarked ? colors.primary : colors.textSecondary}
+            <Avatar
+              source={authorAvatar}
+              size="md"
+              verified={isVerified}
+              fallback={authorName}
             />
+
+            <View style={styles.authorInfo}>
+              <Text style={styles.authorName} numberOfLines={1}>
+                {authorName}
+              </Text>
+
+              <View style={styles.metaRow}>
+                <Text style={styles.timestamp}>{timestamp}</Text>
+                {spaceName && (
+                  <>
+                    <Text style={styles.dot}>•</Text>
+                    <TouchableOpacity onPress={onSpacePress}>
+                      <Text style={styles.spaceName} numberOfLines={1}>
+                        {spaceName}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            </View>
           </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={handleMenuPress}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+
+          {/* Header Actions: Bookmark + Menu */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handleBookmarkPress}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons
+                name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                size={20}
+                color={isBookmarked ? colors.primary : colors.textSecondary}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={handleMenuPress}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+
+        {/* ===== Title ===== */}
+        {feed.title && (
+          <Text style={styles.title} numberOfLines={3}>
+            {feed.title}
+          </Text>
+        )}
       
-      {/* ===== Title ===== */}
-      {feed.title && (
-        <Text style={styles.title} numberOfLines={3}>
-          {feed.title}
-        </Text>
-      )}
-      
-      {/* ===== Content ===== */}
-      {displayContent.length > 0 && (
-        <Text style={styles.content} numberOfLines={6}>
-          {displayContent}
-        </Text>
-      )}
-      
+        {/* ===== Content ===== */}
+        {displayContent.length > 0 && (
+          <Text style={styles.content} numberOfLines={6}>
+            {displayContent}
+          </Text>
+        )}
+      </TouchableOpacity>
+
       {/* ===== Single Image ===== */}
       {hasImage && (
         <View style={styles.mediaContainer}>
@@ -370,17 +381,45 @@ export function FeedCard({
         </View>
       )}
       
-      {/* ===== YouTube Thumbnail ===== */}
+      {/* ===== YouTube Video ===== */}
       {hasYouTube && media.youtubeId && (
         <View style={styles.mediaContainer}>
-          <Image 
-            source={{ uri: `https://img.youtube.com/vi/${media.youtubeId}/hqdefault.jpg` }}
-            style={styles.mediaImage}
-            resizeMode="cover"
-          />
-          <View style={styles.playButton}>
-            <Text style={styles.playIcon}>▶️</Text>
-          </View>
+          {!isVideoPlaying ? (
+            // Show thumbnail with play button
+            <>
+              <Image
+                source={{ uri: `https://img.youtube.com/vi/${media.youtubeId}/hqdefault.jpg` }}
+                style={styles.mediaImage}
+                resizeMode="cover"
+              />
+              <TouchableOpacity
+                style={styles.playButton}
+                onPress={() => setIsVideoPlaying(true)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.playButtonInner}>
+                  <Ionicons name="play" size={24} color="#fff" />
+                </View>
+              </TouchableOpacity>
+              <View style={styles.youtubeLabel}>
+                <Ionicons name="logo-youtube" size={14} color="#fff" />
+                <Text style={styles.youtubeLabelText}>YouTube</Text>
+              </View>
+            </>
+          ) : (
+            // Show in-place player
+            <View style={styles.inPlacePlayer}>
+              <YouTubeEmbed
+                videoId={media.youtubeId}
+                playing={isVideoPlaying}
+                onStateChange={(state) => {
+                  if (state === 'ended') {
+                    setIsVideoPlaying(false);
+                  }
+                }}
+              />
+            </View>
+          )}
         </View>
       )}
       
@@ -401,12 +440,9 @@ export function FeedCard({
         </TouchableOpacity>
         
         {/* Comment button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.commentButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            onCommentPress?.();
-          }}
+          onPress={() => onCommentPress?.()}
           activeOpacity={0.7}
         >
           <Text style={styles.statIcon}>💬</Text>
@@ -415,7 +451,7 @@ export function FeedCard({
           </Text>
         </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -565,21 +601,54 @@ const styles = StyleSheet.create({
   
   playButton: {
     position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -25 }, { translateY: -25 }],
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
+  playButtonInner: {
+    width: 60,
+    height: 42,
+    borderRadius: sizing.borderRadius.md,
+    backgroundColor: 'rgba(255, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  youtubeLabel: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    left: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: sizing.borderRadius.xs,
+    gap: 4,
+  },
+
+  youtubeLabelText: {
+    color: '#fff',
+    fontSize: typography.size.xs,
+    fontWeight: '500',
+  },
+
   playIcon: {
     fontSize: 24,
   },
-  
+
+  inPlacePlayer: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+
   // Footer
   footer: {
     flexDirection: 'row',

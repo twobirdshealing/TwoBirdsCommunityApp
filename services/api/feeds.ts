@@ -70,6 +70,30 @@ export async function getWelcomeBanner() {
 }
 
 // -----------------------------------------------------------------------------
+// Get oEmbed Data for URL
+// -----------------------------------------------------------------------------
+// GET /feeds/oembed?url=... - returns metadata for video/link embeds
+
+export interface OembedData {
+  title: string;
+  author_name?: string;
+  type: string;
+  provider: string;
+  content_type: string;
+  url: string;
+  html?: string;
+  image?: string;
+}
+
+export interface OembedResponse {
+  oembed: OembedData;
+}
+
+export async function getOembed(url: string) {
+  return get<OembedResponse>(`${ENDPOINTS.FEEDS}/oembed`, { url });
+}
+
+// -----------------------------------------------------------------------------
 // Create a New Feed Post
 // -----------------------------------------------------------------------------
 // FIXED: Use 'space' (slug) instead of 'space_id'
@@ -86,7 +110,7 @@ export interface CreateFeedData {
   status?: 'published' | 'draft';
   featured_image?: string;
   scheduled_at?: string;
-  // Media - web app uses media_images array
+  // Media - web app uses media_images array for images
   media_images?: Array<{
     url: string;
     type: string;
@@ -94,6 +118,11 @@ export interface CreateFeedData {
     height: number;
     provider: string;
   }>;
+  // Media - for video embeds (oembed)
+  media?: {
+    type: 'oembed';
+    url: string;
+  };
   meta?: Record<string, any>;
 }
 
@@ -102,17 +131,17 @@ export async function createFeed(data: CreateFeedData) {
   const requestData: Record<string, any> = {
     type: data.type || 'text',
     message: data.message,
-    media: null,           // Web app sends this
+    media: null,           // Web app sends this (will be overwritten if video attached)
     media_image: '',       // Web app sends this
     topic_ids: [],         // Web app sends this
     send_announcement_email: 'no',  // Web app sends this
   };
-  
+
   // CRITICAL: Use 'space' (slug) not 'space_id'
   if (data.space) {
     requestData.space = data.space;
   }
-  
+
   // Optional fields
   if (data.title) {
     requestData.title = data.title;
@@ -126,14 +155,19 @@ export async function createFeed(data: CreateFeedData) {
   if (data.status) {
     requestData.status = data.status;
   }
-  
+
   // CRITICAL: media_images at TOP LEVEL - EXACT format from web app
   if (data.media_images && data.media_images.length > 0) {
     requestData.media_images = data.media_images;
   }
-  
+
+  // Video embed (oembed) - replaces null media field
+  if (data.media) {
+    requestData.media = data.media;
+  }
+
   console.log('[FeedsAPI] Creating feed with:', JSON.stringify(requestData, null, 2));
-  
+
   return post<{ message: string; data: Feed }>(ENDPOINTS.FEEDS, requestData);
 }
 
@@ -245,6 +279,7 @@ export const feedsApi = {
   getFeedById,
   getFeedBySlug,
   getWelcomeBanner,
+  getOembed,
   createFeed,
   updateFeed,
   toggleSticky,
