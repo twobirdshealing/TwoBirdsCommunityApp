@@ -9,7 +9,7 @@ import { colors } from '@/constants/colors';
 import { SITE_URL } from '@/constants/config';
 import { spacing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
-import { notificationsApi, profilesApi } from '@/services/api';
+import { messagesApi, notificationsApi, profilesApi } from '@/services/api';
 import { Profile } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -65,30 +65,36 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   }, [fetchProfile]);
 
   // ---------------------------------------------------------------------------
-  // Fetch Unread Notification Count
+  // Fetch Unread Counts (Messages + Notifications)
   // ---------------------------------------------------------------------------
 
-  const fetchUnreadCount = useCallback(async () => {
+  const fetchUnreadCounts = useCallback(async () => {
     if (!user) return;
 
     try {
-      const count = await notificationsApi.getUnreadCount();
-      setUnreadNotifications(count);
+      // Fetch in parallel
+      const [messagesCount, notificationsCount] = await Promise.all([
+        messagesApi.getUnreadCount(),
+        notificationsApi.getUnreadCount(),
+      ]);
+
+      setUnreadMessages(messagesCount);
+      setUnreadNotifications(notificationsCount);
     } catch (err) {
-      // Silent fail - badge just won't update
+      // Silent fail - badges just won't update
     }
   }, [user]);
 
   // Fetch on mount
   useEffect(() => {
-    fetchUnreadCount();
-  }, [fetchUnreadCount]);
+    fetchUnreadCounts();
+  }, [fetchUnreadCounts]);
 
-  // Refresh when screen comes into focus (e.g., returning from notifications)
+  // Refresh when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchUnreadCount();
-    }, [fetchUnreadCount])
+      fetchUnreadCounts();
+    }, [fetchUnreadCounts])
   );
 
   // ---------------------------------------------------------------------------
@@ -96,7 +102,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   // ---------------------------------------------------------------------------
 
   const handleMessagesPress = () => {
-    router.push('/messages');
+    router.push('/messages' as any);
   };
 
   const handleNotificationsPress = () => {

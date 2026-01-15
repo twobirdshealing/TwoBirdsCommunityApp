@@ -2,15 +2,19 @@
 /**
  * Plugin Name: TBC - Community App
  * Plugin URI: https://twobirdschurch.com
- * Description: REST API endpoints for the Two Birds Community mobile app. Provides authentication and app-specific functionality.
- * Version: 1.3.0
+ * Description: Support plugin for the Two Birds Community mobile app. Provides web sessions for WebView and app-specific styling.
+ * Version: 2.0.0
  * Author: Two Birds Church
  * Author URI: https://twobirdschurch.com
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: tbc-ca
- * 
+ *
  * CHANGELOG:
+ * v2.0.0 - Migrated to JWT authentication (uses JWT Authentication for WP REST API plugin)
+ *        - Removed app password creation (no longer needed)
+ *        - Removed /login endpoint (now using /wp-json/jwt-auth/v1/token)
+ *        - Kept web session, cart, and app view styling features
  * v1.3.0 - Added app view mode (hide header/footer in WebView)
  * v1.2.0 - Fixed permission callback for Basic Auth compatibility
  * v1.1.0 - Added web session and cart endpoints
@@ -23,11 +27,10 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('TBC_CA_VERSION', '1.3.0');
+define('TBC_CA_VERSION', '2.0.0');
 define('TBC_CA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TBC_CA_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TBC_CA_REST_NAMESPACE', 'tbc-ca/v1');
-define('TBC_CA_APP_ID', 'tbc-community-app');
 define('TBC_CA_APP_USER_AGENT', 'TBCCommunityApp');
 
 // =============================================================================
@@ -70,7 +73,7 @@ function tbc_ca_app_view_styles() {
          * TBC Community App - App View Mode
          * Hides header/footer when viewing in mobile app WebView
          * ================================================================= */
-        
+
         /* Universal HTML5 semantic elements */
         body.tbc-app-view > header,
         body.tbc-app-view > footer,
@@ -80,7 +83,7 @@ function tbc_ca_app_view_styles() {
         body.tbc-app-view .site-footer {
             display: none !important;
         }
-        
+
         /* Common theme selectors */
         body.tbc-app-view #masthead,
         body.tbc-app-view #colophon,
@@ -91,25 +94,25 @@ function tbc_ca_app_view_styles() {
         body.tbc-app-view .footer-wrapper {
             display: none !important;
         }
-        
+
         /* Kadence theme */
         body.tbc-app-view .kadence-header,
         body.tbc-app-view .kadence-footer {
             display: none !important;
         }
-        
+
         /* Astra theme */
         body.tbc-app-view .ast-header,
         body.tbc-app-view .ast-footer {
             display: none !important;
         }
-        
+
         /* GeneratePress theme */
         body.tbc-app-view .generate-header,
         body.tbc-app-view .generate-footer {
             display: none !important;
         }
-        
+
         /* BuddyBoss theme */
         body.tbc-app-view .bb-header,
         body.tbc-app-view .bb-footer,
@@ -117,24 +120,24 @@ function tbc_ca_app_view_styles() {
         body.tbc-app-view #bb-footer {
             display: none !important;
         }
-        
+
         /* Elementor headers/footers */
         body.tbc-app-view .elementor-location-header,
         body.tbc-app-view .elementor-location-footer {
             display: none !important;
         }
-        
+
         /* WordPress admin bar (should be hidden anyway but just in case) */
         body.tbc-app-view #wpadminbar {
             display: none !important;
         }
-        
+
         /* Adjust body to remove any header spacing */
         body.tbc-app-view {
             padding-top: 0 !important;
             margin-top: 0 !important;
         }
-        
+
         /* Make main content full height */
         body.tbc-app-view .site-content,
         body.tbc-app-view .content-area,
@@ -147,124 +150,19 @@ function tbc_ca_app_view_styles() {
 }
 
 // =============================================================================
-// CUSTOM PERMISSION CALLBACK
-// =============================================================================
-
-/**
- * Check if user is authenticated via Basic Auth or regular session
- */
-function tbc_ca_user_can_access() {
-    if (is_user_logged_in()) {
-        return true;
-    }
-    
-    $user_id = tbc_ca_authenticate_from_headers();
-    
-    if ($user_id) {
-        wp_set_current_user($user_id);
-        return true;
-    }
-    
-    return false;
-}
-
-/**
- * Try to authenticate user from Authorization header
- */
-function tbc_ca_authenticate_from_headers() {
-    $auth_header = null;
-    
-    if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-        $auth_header = $_SERVER['HTTP_AUTHORIZATION'];
-    } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-        $auth_header = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
-    } elseif (function_exists('apache_request_headers')) {
-        $headers = apache_request_headers();
-        if (isset($headers['Authorization'])) {
-            $auth_header = $headers['Authorization'];
-        }
-    }
-    
-    if (!$auth_header || stripos($auth_header, 'Basic ') !== 0) {
-        return false;
-    }
-    
-    $encoded = substr($auth_header, 6);
-    $decoded = base64_decode($encoded);
-    
-    if (!$decoded || strpos($decoded, ':') === false) {
-        return false;
-    }
-    
-    list($username, $password) = explode(':', $decoded, 2);
-    
-    $user = wp_authenticate_application_password(null, $username, $password);
-    
-    if ($user && !is_wp_error($user)) {
-        return $user->ID;
-    }
-    
-    return false;
-}
-
-// =============================================================================
 // REST API ROUTES
 // =============================================================================
 
 add_action('rest_api_init', 'tbc_ca_register_routes');
 
 function tbc_ca_register_routes() {
-    
-    // POST /wp-json/tbc-ca/v1/login
-    register_rest_route(TBC_CA_REST_NAMESPACE, '/login', [
-        'methods' => 'POST',
-        'callback' => 'tbc_ca_handle_login',
-        'permission_callback' => '__return_true',
-        'args' => [
-            'username' => [
-                'required' => true,
-                'type' => 'string',
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
-            'password' => [
-                'required' => true,
-                'type' => 'string',
-            ],
-            'device_name' => [
-                'required' => false,
-                'type' => 'string',
-                'default' => 'Two Birds App',
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
-        ],
-    ]);
-    
-    // POST /wp-json/tbc-ca/v1/logout
-    register_rest_route(TBC_CA_REST_NAMESPACE, '/logout', [
-        'methods' => 'POST',
-        'callback' => 'tbc_ca_handle_logout',
-        'permission_callback' => 'tbc_ca_user_can_access',
-    ]);
-    
-    // GET /wp-json/tbc-ca/v1/validate
-    register_rest_route(TBC_CA_REST_NAMESPACE, '/validate', [
-        'methods' => 'GET',
-        'callback' => 'tbc_ca_handle_validate',
-        'permission_callback' => 'tbc_ca_user_can_access',
-    ]);
-    
-    // GET /wp-json/tbc-ca/v1/me
-    register_rest_route(TBC_CA_REST_NAMESPACE, '/me', [
-        'methods' => 'GET',
-        'callback' => 'tbc_ca_handle_get_me',
-        'permission_callback' => 'tbc_ca_user_can_access',
-    ]);
-    
+
     // POST /wp-json/tbc-ca/v1/create-web-session
+    // Creates a one-time login URL for WebView
     register_rest_route(TBC_CA_REST_NAMESPACE, '/create-web-session', [
         'methods' => 'POST',
         'callback' => 'tbc_ca_handle_create_web_session',
-        'permission_callback' => 'tbc_ca_user_can_access',
+        'permission_callback' => 'is_user_logged_in',
         'args' => [
             'redirect_url' => [
                 'required' => false,
@@ -273,92 +171,23 @@ function tbc_ca_register_routes() {
             ],
         ],
     ]);
-    
+
     // GET /wp-json/tbc-ca/v1/cart
+    // Gets user's WooCommerce cart data
     register_rest_route(TBC_CA_REST_NAMESPACE, '/cart', [
         'methods' => 'GET',
         'callback' => 'tbc_ca_handle_get_cart',
-        'permission_callback' => 'tbc_ca_user_can_access',
+        'permission_callback' => 'is_user_logged_in',
     ]);
-    
-}
 
-// =============================================================================
-// LOGIN HANDLER
-// =============================================================================
+    // GET /wp-json/tbc-ca/v1/validate
+    // Validates current authentication
+    register_rest_route(TBC_CA_REST_NAMESPACE, '/validate', [
+        'methods' => 'GET',
+        'callback' => 'tbc_ca_handle_validate',
+        'permission_callback' => 'is_user_logged_in',
+    ]);
 
-function tbc_ca_handle_login(WP_REST_Request $request) {
-    $username = $request->get_param('username');
-    $password = $request->get_param('password');
-    $device_name = $request->get_param('device_name');
-    
-    if (is_email($username)) {
-        $user = get_user_by('email', $username);
-    } else {
-        $user = get_user_by('login', $username);
-    }
-    
-    if (!$user) {
-        return new WP_Error(
-            'tbc_ca_invalid_credentials',
-            __('Invalid username or password.', 'tbc-ca'),
-            ['status' => 401]
-        );
-    }
-    
-    if (!wp_check_password($password, $user->user_pass, $user->ID)) {
-        return new WP_Error(
-            'tbc_ca_invalid_credentials',
-            __('Invalid username or password.', 'tbc-ca'),
-            ['status' => 401]
-        );
-    }
-    
-    if ($user->user_status != 0) {
-        return new WP_Error(
-            'tbc_ca_account_disabled',
-            __('Your account has been disabled.', 'tbc-ca'),
-            ['status' => 403]
-        );
-    }
-    
-    $app_password_result = tbc_ca_create_app_password($user->ID, $device_name);
-    
-    if (is_wp_error($app_password_result)) {
-        return $app_password_result;
-    }
-    
-    $user_data = tbc_ca_get_user_data($user);
-    
-    return new WP_REST_Response([
-        'success' => true,
-        'message' => __('Login successful', 'tbc-ca'),
-        'user' => $user_data,
-        'auth' => [
-            'username' => $user->user_login,
-            'app_password' => $app_password_result['password'],
-            'app_password_uuid' => $app_password_result['uuid'],
-            'basic_auth' => base64_encode($user->user_login . ':' . $app_password_result['password']),
-        ],
-    ], 200);
-}
-
-// =============================================================================
-// LOGOUT HANDLER
-// =============================================================================
-
-function tbc_ca_handle_logout(WP_REST_Request $request) {
-    $user = wp_get_current_user();
-    $uuid = $request->get_param('app_password_uuid');
-    
-    if ($uuid) {
-        WP_Application_Passwords::delete_application_password($user->ID, $uuid);
-    }
-    
-    return new WP_REST_Response([
-        'success' => true,
-        'message' => __('Logged out successfully', 'tbc-ca'),
-    ], 200);
 }
 
 // =============================================================================
@@ -367,25 +196,11 @@ function tbc_ca_handle_logout(WP_REST_Request $request) {
 
 function tbc_ca_handle_validate(WP_REST_Request $request) {
     $user = wp_get_current_user();
-    
+
     return new WP_REST_Response([
         'valid' => true,
         'user_id' => $user->ID,
         'username' => $user->user_login,
-    ], 200);
-}
-
-// =============================================================================
-// GET CURRENT USER HANDLER
-// =============================================================================
-
-function tbc_ca_handle_get_me(WP_REST_Request $request) {
-    $user = wp_get_current_user();
-    $user_data = tbc_ca_get_user_data($user);
-    
-    return new WP_REST_Response([
-        'success' => true,
-        'user' => $user_data,
     ], 200);
 }
 
@@ -396,10 +211,11 @@ function tbc_ca_handle_get_me(WP_REST_Request $request) {
 function tbc_ca_handle_create_web_session(WP_REST_Request $request) {
     $user_id = get_current_user_id();
     $redirect_url = $request->get_param('redirect_url') ?: home_url('/calendar/');
-    
+
+    // Validate redirect URL is on same domain
     $home_host = parse_url(home_url(), PHP_URL_HOST);
     $redirect_host = parse_url($redirect_url, PHP_URL_HOST);
-    
+
     if ($redirect_host && $redirect_host !== $home_host) {
         return new WP_Error(
             'tbc_ca_invalid_redirect',
@@ -407,21 +223,22 @@ function tbc_ca_handle_create_web_session(WP_REST_Request $request) {
             ['status' => 400]
         );
     }
-    
+
+    // Generate one-time token
     $token = wp_generate_password(64, false, false);
-    $expiry = 120;
-    
+    $expiry = 120; // 2 minutes
+
     $token_data = [
         'user_id' => $user_id,
         'redirect' => $redirect_url,
         'created' => time(),
         'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
     ];
-    
+
     set_transient('tbc_ca_login_token_' . $token, $token_data, $expiry);
-    
+
     $login_url = add_query_arg(['tbc_app_token' => $token], home_url('/'));
-    
+
     return new WP_REST_Response([
         'success' => true,
         'url' => $login_url,
@@ -439,33 +256,35 @@ function tbc_ca_handle_web_session_token() {
     if (!isset($_GET['tbc_app_token'])) {
         return;
     }
-    
+
     $token = sanitize_text_field($_GET['tbc_app_token']);
-    
+
     if (empty($token)) {
         return;
     }
-    
+
     $token_data = get_transient('tbc_ca_login_token_' . $token);
-    
+
     if (!$token_data || !isset($token_data['user_id'])) {
         wp_safe_redirect(home_url('/calendar/?app_error=session_expired'));
         exit;
     }
-    
+
+    // Delete token immediately (one-time use)
     delete_transient('tbc_ca_login_token_' . $token);
-    
+
     $user = get_user_by('ID', $token_data['user_id']);
-    
+
     if (!$user) {
         wp_safe_redirect(home_url('/calendar/?app_error=user_not_found'));
         exit;
     }
-    
+
+    // Log the user in
     wp_set_current_user($user->ID);
     wp_set_auth_cookie($user->ID, true);
     do_action('wp_login', $user->user_login, $user);
-    
+
     $redirect = $token_data['redirect'] ?: home_url('/calendar/');
     wp_safe_redirect($redirect);
     exit;
@@ -486,24 +305,24 @@ function tbc_ca_handle_get_cart(WP_REST_Request $request) {
             ],
         ], 200);
     }
-    
+
     $user_id = get_current_user_id();
     $saved_cart = get_user_meta($user_id, '_woocommerce_persistent_cart_' . get_current_blog_id(), true);
-    
+
     $cart_count = 0;
     $cart_items = [];
-    
+
     if (!empty($saved_cart['cart'])) {
         foreach ($saved_cart['cart'] as $cart_item_key => $cart_item) {
             $product_id = $cart_item['product_id'] ?? 0;
             $quantity = $cart_item['quantity'] ?? 0;
-            
+
             if ($product_id && $quantity) {
                 $product = wc_get_product($product_id);
-                
+
                 if ($product) {
                     $cart_count += $quantity;
-                    
+
                     $cart_items[] = [
                         'key' => $cart_item_key,
                         'product_id' => $product_id,
@@ -516,7 +335,7 @@ function tbc_ca_handle_get_cart(WP_REST_Request $request) {
             }
         }
     }
-    
+
     return new WP_REST_Response([
         'success' => true,
         'cart' => [
@@ -527,83 +346,6 @@ function tbc_ca_handle_get_cart(WP_REST_Request $request) {
             'checkout_url' => wc_get_checkout_url(),
         ],
     ], 200);
-}
-
-// =============================================================================
-// HELPER FUNCTIONS
-// =============================================================================
-
-function tbc_ca_create_app_password($user_id, $device_name) {
-    if (!class_exists('WP_Application_Passwords')) {
-        return new WP_Error(
-            'tbc_ca_app_passwords_unavailable',
-            __('Application Passwords are not available.', 'tbc-ca'),
-            ['status' => 500]
-        );
-    }
-    
-    tbc_ca_cleanup_old_passwords($user_id);
-    
-    $app_name = $device_name . ' - ' . date('M j, Y g:i A');
-    
-    $result = WP_Application_Passwords::create_new_application_password(
-        $user_id,
-        [
-            'name' => $app_name,
-            'app_id' => TBC_CA_APP_ID,
-        ]
-    );
-    
-    if (is_wp_error($result)) {
-        return new WP_Error(
-            'tbc_ca_app_password_failed',
-            __('Failed to create app password.', 'tbc-ca'),
-            ['status' => 500]
-        );
-    }
-    
-    return [
-        'password' => $result[0],
-        'uuid' => $result[1]['uuid'],
-    ];
-}
-
-function tbc_ca_get_user_data($user) {
-    $avatar_url = get_avatar_url($user->ID, ['size' => 200]);
-    
-    return [
-        'id' => $user->ID,
-        'username' => $user->user_login,
-        'email' => $user->user_email,
-        'display_name' => $user->display_name,
-        'first_name' => $user->first_name,
-        'last_name' => $user->last_name,
-        'avatar' => $avatar_url,
-        'registered' => $user->user_registered,
-        'roles' => $user->roles,
-    ];
-}
-
-function tbc_ca_cleanup_old_passwords($user_id, $max_passwords = 5) {
-    $passwords = WP_Application_Passwords::get_user_application_passwords($user_id);
-    
-    if (!$passwords || count($passwords) <= $max_passwords) {
-        return;
-    }
-    
-    $our_passwords = array_filter($passwords, function ($pw) {
-        return isset($pw['app_id']) && $pw['app_id'] === TBC_CA_APP_ID;
-    });
-    
-    usort($our_passwords, function ($a, $b) {
-        return ($a['last_used'] ?? 0) - ($b['last_used'] ?? 0);
-    });
-    
-    $to_remove = array_slice($our_passwords, 0, count($our_passwords) - $max_passwords);
-    
-    foreach ($to_remove as $pw) {
-        WP_Application_Passwords::delete_application_password($user_id, $pw['uuid']);
-    }
 }
 
 // =============================================================================
@@ -657,20 +399,4 @@ function tbc_ca_activate() {
 
 function tbc_ca_deactivate() {
     flush_rewrite_rules();
-}
-
-// =============================================================================
-// ADMIN NOTICE
-// =============================================================================
-
-add_action('admin_notices', 'tbc_ca_admin_notices');
-
-function tbc_ca_admin_notices() {
-    if (!class_exists('WP_Application_Passwords')) {
-        ?>
-        <div class="notice notice-error">
-            <p><strong>TBC Community App:</strong> Requires WordPress 5.6+ for Application Passwords.</p>
-        </div>
-        <?php
-    }
 }

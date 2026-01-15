@@ -1,0 +1,234 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Fluent Messaging\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-02-04 14:57+0000\n"
+"PO-Revision-Date: 2025-04-26 06:17+0000\n"
+"Last-Translator: Jean David FOLIO\n"
+"Language-Team: French (France)\n"
+"Language: fr_FR\n"
+"Plural-Forms: nplurals=2; plural=n > 1;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Loco https://localise.biz/\n"
+"X-Loco-Version: 2.7.2; wp-6.7.2\n"
+"X-Domain: fluent-messaging"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:224
+#, php-format
+msgid "%s unread messa"
+msgstr "%s message non lu"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:223
+#, php-format
+msgid "%s unread messages"
+msgstr "%s messages non lus"
+
+#: app/Services/EmailNotificationMail.php:46
+msgid "1 new message in your inbox"
+msgstr "1 nouveau message dans votre boîte de réception"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:228
+msgid "Active Now"
+msgstr "Actif actuellement"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:210
+msgid "Admin"
+msgstr "Administrateur"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:222
+msgid "Cancel"
+msgstr "Annuler"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:57
+#: app/Hooks/Handlers/ChatAppHandler.php:205
+msgid "Chat"
+msgstr "Chat"
+
+#. Description of the plugin
+msgid "Chat Plugin for FluentCommunity"
+msgstr "Chat Plugin pour FluentCommunity"
+
+#: boot/app.php:37
+msgid "Check Update"
+msgstr "Vérifier la mise à jour"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:221
+msgid "Confirm"
+msgstr "Confirmer"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:206
+msgid "Delete"
+msgstr "Supprimer"
+
+#: app/Services/EmailNotificationMail.php:191
+msgid "Email subject or body is empty."
+msgstr "L'objet ou le corps de l'e-mail est vide."
+
+#. Name of the plugin
+msgid "Fluent Messaging"
+msgstr "Fluent Messaging"
+
+#. URI of the plugin
+#. Author URI of the plugin
+msgid "https://fluentcommunity.co"
+msgstr "https://fluentcommunity.co"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:216
+#, php-format
+msgid "Joined: %s"
+msgstr "Inscription : %s"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:229
+#, php-format
+msgid "Last seen %s"
+msgstr "Vu pour la dernière fois %s"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:230
+#, php-format
+msgid "Last seen: %s"
+msgstr "Vu pour la dernière fois : %s"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:226
+msgid "Load more messages"
+msgstr "Charger plus de messages"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:227
+msgid "Loading..."
+msgstr "Chargement..."
+
+#: app/Hooks/Handlers/ChatAppHandler.php:209
+msgid "Members"
+msgstr "Membres"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:134
+msgid "Message"
+msgstr "Message"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:225
+msgid "Messages"
+msgstr "Messages"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:208
+msgid "Reply"
+msgstr "Répondre"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:217
+msgid "Search..."
+msgstr ""
+
+#: app/Hooks/Handlers/ChatAppHandler.php:215
+msgid "Select a user to start messaging"
+msgstr "Sélectionnez un utilisateur pour commencer à envoyer des messages"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:214
+msgid "Select or search user"
+msgstr "Sélectionner ou rechercher un utilisateur"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:220
+msgid "Send"
+msgstr "Envoyer"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:207
+msgid "sending..."
+msgstr "envoi..."
+
+#: app/Hooks/Handlers/ChatAppHandler.php:231
+msgid "Sorry, you can not intiate a new message"
+msgstr "Désolé, vous ne pouvez pas créer de nouveau message"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:212
+#, php-format
+msgid "Start a chat session with %s by sending the first message"
+msgstr "Démarrez une session de chat avec %s en envoyant le premier message"
+
+#. Author of the plugin
+msgid "techjewel"
+msgstr "techjewel"
+
+#: app/Http/Controllers/ChatController.php:140
+#: app/Http/Controllers/ChatController.php:161
+msgid "This chat thread could not be found or is no longer active"
+msgstr "Ce fil de discussion n'a pas pu être trouvé ou n'est plus actif"
+
+#: app/Http/Controllers/ChatController.php:471
+msgid "Thread already exist in this community"
+msgstr "Le fil existe déjà dans cette communauté"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:213
+msgid "To:"
+msgstr "À:"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:211
+msgid "Type your message here"
+msgstr "Tapez votre message ici"
+
+#: app/Hooks/Handlers/ChatAppHandler.php:218
+msgid "Uploading"
+msgstr "Transfert..."
+
+#: app/Hooks/Handlers/ChatAppHandler.php:219
+msgid "Write a message here..."
+msgstr "Écrivez un message ici..."
+
+#: app/Http/Controllers/ChatController.php:751
+msgid "You are already in this thread"
+msgstr "Vous êtes déjà dans ce fil"
+
+#: app/Http/Controllers/ChatController.php:465
+msgid "You are not allowed to create thread in this community"
+msgstr ""
+"Vous n'êtes pas autorisé à créer un fil de discussion dans cette communauté"
+
+#: app/Http/Controllers/ChatController.php:439
+msgid "You are not allowed to delete this message"
+msgstr "Vous n'êtes pas autorisé à supprimer ce message"
+
+#: app/Http/Controllers/ChatController.php:552
+msgid "You are not allowed to initiate a message"
+msgstr "Vous n'êtes pas autorisé à initier un message"
+
+#: app/Http/Controllers/ChatController.php:320
+msgid "You are not allowed to send messages in this thread"
+msgstr ""
+"Vous n'êtes pas autorisé à envoyer des messages dans ce fil de discussion"
+
+#: app/Http/Controllers/ChatController.php:146
+#: app/Http/Controllers/ChatController.php:169
+#: app/Http/Controllers/ChatController.php:283
+#: app/Http/Controllers/ChatController.php:306
+#: app/Http/Controllers/ChatController.php:433
+msgid "You are not allowed to view this thread"
+msgstr "Vous n'êtes pas autorisé à voir ce fil de discussion"
+
+#: app/Http/Controllers/ChatController.php:679
+#: app/Http/Controllers/ChatController.php:713
+msgid "You are not allowed to view this thread members"
+msgstr "Vous n'êtes pas autorisé à voir les membres de ce fil de discussion"
+
+#: app/Http/Controllers/ChatController.php:772
+#: app/Http/Controllers/ChatController.php:796
+#: app/Http/Controllers/ChatController.php:820
+msgid "You are not in this thread"
+msgstr "Vous n'êtes pas dans ce fil de discussion"
+
+#: app/Http/Controllers/ChatController.php:528
+msgid "You can not create thread with yourself"
+msgstr "Vous ne pouvez pas créer de fil de discussion avec vous-même"
+
+#: app/Http/Controllers/ChatController.php:796
+msgid "You have blocked this user"
+msgstr "Vous avez bloqué cet utilisateur"
+
+#: app/Http/Controllers/ChatController.php:751
+msgid "You have joined the thread"
+msgstr "Vous avez rejoint le fil de discussion"
+
+#: app/Http/Controllers/ChatController.php:772
+msgid "You have left the thread"
+msgstr "Vous avez quitté le fil de discussion"
+
+#: app/Http/Controllers/ChatController.php:820
+msgid "You have unblocked this user"
+msgstr "Vous avez débloqué cet utilisateur"

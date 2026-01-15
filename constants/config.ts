@@ -64,6 +64,23 @@ export const ENDPOINTS = {
   
   // Activities
   ACTIVITIES: '/activities',
+
+  // Chat/Messaging
+  CHAT_THREADS: '/chat/threads',
+  CHAT_MESSAGES: (threadId: number) => `/chat/messages/${threadId}`,
+  CHAT_MESSAGES_NEW: (threadId: number, lastId: number) => `/chat/messages/${threadId}/new?last_id=${lastId}`,
+  CHAT_UNREAD_THREADS: '/chat/unread_threads',
+  CHAT_MARK_READ: '/chat/read-threads',
+};
+
+// -----------------------------------------------------------------------------
+// Pusher Configuration (Real-time messaging)
+// -----------------------------------------------------------------------------
+
+export const PUSHER_CONFIG = {
+  APP_KEY: '2ee0dcc0255ee7f9a996',
+  CLUSTER: 'us3',
+  AUTH_ENDPOINT: `${API_URL}/chat/broadcast/auth`,
 };
 
 // -----------------------------------------------------------------------------
@@ -73,6 +90,6 @@ export const ENDPOINTS = {
 export const FEATURES = {
   DARK_MODE: false,        // Coming soon
   PUSH_NOTIFICATIONS: false, // Coming soon
-  MESSAGING: false,        // Requires Fluent Messaging plugin
+  MESSAGING: true,         // Fluent Messaging enabled
   COURSES: false,          // Requires Fluent LMS
 };

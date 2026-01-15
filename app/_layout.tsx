@@ -6,6 +6,7 @@
 
 import { colors } from '@/constants/colors';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { PusherProvider } from '@/contexts/PusherContext';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -122,7 +123,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootLayoutNav />
+      <PusherProvider>
+        <RootLayoutNav />
+      </PusherProvider>
     </AuthProvider>
   );
 }
