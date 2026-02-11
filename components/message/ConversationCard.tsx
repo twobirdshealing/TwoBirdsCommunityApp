@@ -9,8 +9,8 @@
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   ChatThread,
   getLastMessage,
@@ -55,6 +55,7 @@ export function ConversationCard({
   onDelete,
 }: ConversationCardProps) {
   const swipeableRef = useRef<Swipeable>(null);
+  const { colors: themeColors } = useTheme();
 
   // Get display data
   const displayName = getThreadDisplayName(thread, currentUserId);
@@ -128,7 +129,7 @@ export function ConversationCard({
       overshootLeft={false}
     >
       <Pressable
-        style={styles.container}
+        style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}
         onPress={() => onPress?.(thread)}
       >
         {/* Avatar */}
@@ -143,19 +144,19 @@ export function ConversationCard({
         <View style={styles.content}>
           {/* Header Row: Name + Timestamp */}
           <View style={styles.headerRow}>
-            {isUnread && <View style={styles.unreadDot} />}
-            <Text style={[styles.name, isUnread && styles.nameUnread]} numberOfLines={1}>
+            {isUnread && <View style={[styles.unreadDot, { backgroundColor: themeColors.primary }]} />}
+            <Text style={[styles.name, { color: themeColors.text }, isUnread && styles.nameUnread]} numberOfLines={1}>
               {displayName}
             </Text>
-            <Text style={styles.timestamp}>{timestamp}</Text>
+            <Text style={[styles.timestamp, { color: themeColors.textTertiary }]}>{timestamp}</Text>
           </View>
 
           {/* Message Preview */}
           <View style={styles.previewRow}>
             {isOwnLastMessage && (
-              <Text style={styles.youPrefix}>You: </Text>
+              <Text style={[styles.youPrefix, { color: themeColors.textSecondary }]}>You: </Text>
             )}
-            <Text style={styles.preview} numberOfLines={1}>
+            <Text style={[styles.preview, { color: themeColors.textSecondary }]} numberOfLines={1}>
               {messagePreview}
             </Text>
           </View>
@@ -165,7 +166,7 @@ export function ConversationCard({
         <Ionicons
           name="chevron-forward"
           size={16}
-          color={colors.textTertiary}
+          color={themeColors.textTertiary}
           style={styles.chevron}
         />
       </Pressable>
@@ -181,11 +182,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   content: {
@@ -205,7 +204,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.size.md,
     fontWeight: '600',
-    color: colors.text,
     marginRight: spacing.sm,
   },
 
@@ -217,13 +215,11 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.primary,
     marginRight: spacing.xs,
   },
 
   timestamp: {
     fontSize: typography.size.xs,
-    color: colors.textTertiary,
   },
 
   previewRow: {
@@ -233,14 +229,12 @@ const styles = StyleSheet.create({
 
   youPrefix: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
     fontWeight: '500',
   },
 
   preview: {
     flex: 1,
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
     lineHeight: 18,
   },
 
@@ -263,7 +257,6 @@ const styles = StyleSheet.create({
   },
 
   deleteAction: {
-    backgroundColor: colors.error,
   },
 
   swipeActionText: {

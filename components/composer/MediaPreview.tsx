@@ -12,8 +12,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { MediaItem } from '@/services/api/media';
 
 // -----------------------------------------------------------------------------
@@ -31,19 +31,21 @@ interface MediaPreviewProps {
 // -----------------------------------------------------------------------------
 
 export function MediaPreview({ items, onRemove, isUploading }: MediaPreviewProps) {
+  const { colors: themeColors } = useTheme();
+
   if (items.length === 0 && !isUploading) {
     return null;
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { borderTopColor: themeColors.border }]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         {items.map((item, index) => (
-          <View key={`${item.media_id}-${index}`} style={styles.imageContainer}>
+          <View key={`${item.media_id}-${index}`} style={[styles.imageContainer, { backgroundColor: themeColors.skeleton }]}>
             <Image source={{ uri: item.url }} style={styles.image} />
             
             {/* Remove Button */}
@@ -58,8 +60,8 @@ export function MediaPreview({ items, onRemove, isUploading }: MediaPreviewProps
 
         {/* Upload Indicator */}
         {isUploading && (
-          <View style={[styles.imageContainer, styles.uploadingContainer]}>
-            <ActivityIndicator size="large" color={colors.primary} />
+          <View style={[styles.imageContainer, styles.uploadingContainer, { backgroundColor: themeColors.backgroundSecondary, borderColor: themeColors.border }]}>
+            <ActivityIndicator size="large" color={themeColors.primary} />
           </View>
         )}
       </ScrollView>
@@ -75,7 +77,6 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
 
   scrollContent: {
@@ -88,7 +89,6 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: colors.skeleton,
   },
 
   image: {
@@ -108,9 +108,7 @@ const styles = StyleSheet.create({
   uploadingContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
     borderWidth: 2,
-    borderColor: colors.border,
     borderStyle: 'dashed',
   },
 });

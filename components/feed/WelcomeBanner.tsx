@@ -16,8 +16,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colors } from '@/constants/colors';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { WelcomeBanner as WelcomeBannerType, WelcomeBannerButton } from '@/types';
 import { stripHtmlTags } from '@/utils/htmlToText';
 
@@ -60,6 +60,8 @@ interface CTAButtonProps {
 }
 
 function CTAButton({ button }: CTAButtonProps) {
+  const { colors: themeColors } = useTheme();
+
   const handlePress = () => {
     if (button.link) {
       Linking.openURL(button.link).catch(err => {
@@ -99,7 +101,7 @@ function CTAButton({ button }: CTAButtonProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.button, getButtonStyle()]}
+      style={[styles.button, getButtonStyle(), button.type === 'secondary' && { backgroundColor: themeColors.surface, borderColor: themeColors.primary }]}
       onPress={handlePress}
       activeOpacity={0.8}
     >
@@ -113,6 +115,8 @@ function CTAButton({ button }: CTAButtonProps) {
 // -----------------------------------------------------------------------------
 
 export function WelcomeBanner({ banner }: WelcomeBannerProps) {
+  const { colors: themeColors, isDark } = useTheme();
+
   // Don't render if not enabled
   if (banner.enabled !== 'yes') {
     return null;
@@ -140,7 +144,7 @@ export function WelcomeBanner({ banner }: WelcomeBannerProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
       {/* Media: Image or YouTube Thumbnail */}
       {banner.mediaType === 'image' && banner.bannerImage && (
         <Image
@@ -151,7 +155,7 @@ export function WelcomeBanner({ banner }: WelcomeBannerProps) {
       )}
 
       {hasYouTube && youtubeId && (
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={handleYouTubePress}
           activeOpacity={0.9}
           style={styles.videoContainer}
@@ -162,8 +166,8 @@ export function WelcomeBanner({ banner }: WelcomeBannerProps) {
             resizeMode="cover"
           />
           <View style={styles.playOverlay}>
-            <View style={styles.playButton}>
-              <Text style={styles.playIcon}>▶</Text>
+            <View style={[styles.playButton, { backgroundColor: isDark ? themeColors.backgroundSecondary : 'rgba(255,255,255,0.9)' }]}>
+              <Text style={[styles.playIcon, { color: themeColors.text }]}>▶</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -173,12 +177,12 @@ export function WelcomeBanner({ banner }: WelcomeBannerProps) {
       <View style={styles.content}>
         {/* Title */}
         {banner.title && (
-          <Text style={styles.title}>{banner.title}</Text>
+          <Text style={[styles.title, { color: themeColors.text }]}>{banner.title}</Text>
         )}
 
         {/* Description */}
         {description && (
-          <Text style={styles.description}>{description}</Text>
+          <Text style={[styles.description, { color: themeColors.textSecondary }]}>{description}</Text>
         )}
 
         {/* CTA Buttons */}
@@ -200,7 +204,6 @@ export function WelcomeBanner({ banner }: WelcomeBannerProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
     borderRadius: sizing.borderRadius.lg,
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
@@ -217,7 +220,6 @@ const styles = StyleSheet.create({
   bannerImage: {
     width: '100%',
     height: IMAGE_HEIGHT,
-    backgroundColor: colors.skeleton,
   },
 
   // Video
@@ -243,7 +245,6 @@ const styles = StyleSheet.create({
 
   playIcon: {
     fontSize: 24,
-    color: colors.text,
     marginLeft: 4, // Visual center for play icon
   },
 
@@ -255,13 +256,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size.xl,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: spacing.xs,
   },
 
   description: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     lineHeight: typography.size.md * 1.5,
     marginBottom: spacing.md,
   },
@@ -283,13 +282,10 @@ const styles = StyleSheet.create({
   },
 
   buttonPrimary: {
-    backgroundColor: colors.primary,
   },
 
   buttonSecondary: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.primary,
   },
 
   buttonText: {
@@ -302,15 +298,12 @@ const styles = StyleSheet.create({
   },
 
   buttonPrimaryText: {
-    color: colors.textInverse,
   },
 
   buttonSecondaryText: {
-    color: colors.primary,
   },
 
   buttonTextText: {
-    color: colors.primary,
   },
 });
 

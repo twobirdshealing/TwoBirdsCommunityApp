@@ -10,8 +10,8 @@
 
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { colors } from '@/constants/colors';
 import { sizing } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -68,6 +68,7 @@ export function Avatar({
   online = false,
   fallback = '?',
 }: AvatarProps) {
+  const { colors: themeColors } = useTheme();
   const avatarSize = sizeMap[size];
   const badgeSize = badgeSizeMap[size];
   
@@ -84,26 +85,27 @@ export function Avatar({
       {source ? (
         <Image
           source={{ uri: source }}
-          style={[styles.image, containerStyle]}
+          style={[styles.image, containerStyle, { backgroundColor: themeColors.skeleton }]}
         />
       ) : (
-        <View style={[styles.placeholder, containerStyle]}>
+        <View style={[styles.placeholder, containerStyle, { backgroundColor: themeColors.primary }]}>
           <Text style={[styles.placeholderText, { fontSize: avatarSize * 0.4 }]}>
             {fallback.substring(0, 2).toUpperCase()}
           </Text>
         </View>
       )}
-      
+
       {/* Verified Badge */}
       {verified && (
         <View style={[
-          styles.verifiedBadge, 
-          { 
-            width: badgeSize, 
-            height: badgeSize, 
+          styles.verifiedBadge,
+          {
+            width: badgeSize,
+            height: badgeSize,
             borderRadius: badgeSize / 2,
             right: -2,
             bottom: -2,
+            borderColor: themeColors.surface,
           }
         ]}>
           <Text style={[styles.verifiedIcon, { fontSize: badgeSize * 0.6 }]}>✓</Text>
@@ -113,13 +115,14 @@ export function Avatar({
       {/* Online Indicator */}
       {online && !verified && (
         <View style={[
-          styles.onlineIndicator, 
-          { 
-            width: badgeSize * 0.7, 
-            height: badgeSize * 0.7, 
+          styles.onlineIndicator,
+          {
+            width: badgeSize * 0.7,
+            height: badgeSize * 0.7,
             borderRadius: badgeSize / 2,
             right: 0,
             bottom: 0,
+            borderColor: themeColors.surface,
           }
         ]} />
       )}
@@ -137,39 +140,31 @@ const styles = StyleSheet.create({
   },
   
   image: {
-    backgroundColor: colors.skeleton,
   },
-  
+
   placeholder: {
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
   placeholderText: {
-    color: colors.textInverse,
     fontWeight: '600',
   },
-  
+
   verifiedBadge: {
     position: 'absolute',
-    backgroundColor: colors.verified,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.surface,
   },
-  
+
   verifiedIcon: {
-    color: colors.textInverse,
     fontWeight: 'bold',
   },
-  
+
   onlineIndicator: {
     position: 'absolute',
-    backgroundColor: colors.online,
     borderWidth: 2,
-    borderColor: colors.surface,
   },
 });
 

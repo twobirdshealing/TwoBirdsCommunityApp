@@ -2,7 +2,7 @@
 // FEED TYPES - TypeScript definitions for feed-related data
 // =============================================================================
 
-import { XProfile } from './profile';
+import { XProfile } from './user';
 
 // -----------------------------------------------------------------------------
 // Main Feed Type
@@ -19,7 +19,7 @@ export interface Feed {
   slug: string;
   message: string;
   message_rendered: string;
-  is_sticky: boolean;
+  is_sticky: boolean | number;
   featured_image: string | null;
   priority: number;
   status: FeedStatus;
@@ -40,6 +40,7 @@ export interface Feed {
       url?: string;
       provider?: 'youtube' | 'giphy' | 'external' | 'uploader';
       type?: 'image' | 'video';
+      content_type?: string;
       width?: number;
       height?: number;
       title?: string;
@@ -60,7 +61,14 @@ export interface Feed {
 
   // User reaction state (from API when authenticated)
   has_user_react?: boolean;
+  user_reaction_type?: ReactionType | null;
+  user_reaction_icon_url?: string | null;
+  user_reaction_name?: string | null;
   bookmarked?: boolean;
+
+  // Multi-reaction breakdown (injected by tb-multi-reactions plugin)
+  reaction_breakdown?: ReactionBreakdown[];
+  reaction_total?: number;
 
   // Related data
   user?: XProfile;
@@ -131,13 +139,22 @@ export interface Reaction {
   xprofile?: XProfile;
 }
 
-export type ReactionType =
-  | 'like'
-  | 'love'
-  | 'laugh'
-  | 'wow'
-  | 'sad'
-  | 'angry';
+// Reaction type ID - defaults are 'like','love','laugh','wow','sad','angry';
+// custom reactions use dynamic IDs (e.g. 'custom_1234567890')
+export type ReactionType = string;
+
+// -----------------------------------------------------------------------------
+// Reaction Breakdown (from tb-multi-reactions plugin)
+// -----------------------------------------------------------------------------
+
+export interface ReactionBreakdown {
+  type: ReactionType;
+  emoji: string;
+  icon_url?: string | null;
+  name: string;
+  count: number;
+  color: string;
+}
 
 // -----------------------------------------------------------------------------
 // API Response Types

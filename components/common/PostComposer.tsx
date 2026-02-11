@@ -15,9 +15,9 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import { colors } from '@/constants/colors';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface PostComposerProps {
   placeholder?: string;
@@ -32,6 +32,7 @@ export function PostComposer({
   onPost,
   compact = false,
 }: PostComposerProps) {
+  const { colors: themeColors } = useTheme();
   const { user } = useAuth();
   const [message, setMessage] = useState('');
   const [posting, setPosting] = useState(false);
@@ -66,16 +67,16 @@ export function PostComposer({
   if (compact) {
     // Compact version - single line
     return (
-      <TouchableOpacity 
-        style={styles.compactContainer}
+      <TouchableOpacity
+        style={[styles.compactContainer, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}
         onPress={() => {}} // Phase 2: Open full composer modal
         activeOpacity={0.7}
       >
         <Image source={{ uri: userPhoto }} style={styles.compactAvatar} />
-        <View style={styles.compactInput}>
-          <Text style={styles.compactPlaceholder}>{placeholder}</Text>
+        <View style={[styles.compactInput, { backgroundColor: themeColors.background }]}>
+          <Text style={[styles.compactPlaceholder, { color: themeColors.textTertiary }]}>{placeholder}</Text>
         </View>
-        <View style={styles.compactButton}>
+        <View style={[styles.compactButton, { backgroundColor: themeColors.primary }]}>
           <Text style={styles.compactButtonIcon}>✍️</Text>
         </View>
       </TouchableOpacity>
@@ -84,16 +85,16 @@ export function PostComposer({
 
   // Full version - expandable composer
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
       <View style={styles.row}>
         {/* User Avatar */}
         <Image source={{ uri: userPhoto }} style={styles.avatar} />
 
         {/* Input */}
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: themeColors.text }]}
           placeholder={placeholder}
-          placeholderTextColor={colors.textTertiary}
+          placeholderTextColor={themeColors.textTertiary}
           value={message}
           onChangeText={setMessage}
           multiline
@@ -104,22 +105,22 @@ export function PostComposer({
 
       {/* Actions */}
       {message.trim().length > 0 && (
-        <View style={styles.actions}>
+        <View style={[styles.actions, { borderTopColor: themeColors.border }]}>
           <TouchableOpacity
             style={styles.cancelButton}
             onPress={() => setMessage('')}
             disabled={posting}
           >
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={[styles.cancelText, { color: themeColors.textSecondary }]}>Cancel</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.postButton, posting && styles.postButtonDisabled]}
+            style={[styles.postButton, { backgroundColor: themeColors.primary }, posting && styles.postButtonDisabled]}
             onPress={handlePost}
             disabled={posting}
           >
             {posting ? (
-              <ActivityIndicator size="small" color={colors.textInverse} />
+              <ActivityIndicator size="small" color={themeColors.textInverse} />
             ) : (
               <Text style={styles.postText}>Post</Text>
             )}
@@ -133,10 +134,8 @@ export function PostComposer({
 const styles = StyleSheet.create({
   // Full Composer
   container: {
-    backgroundColor: colors.surface,
     padding: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   row: {
@@ -153,7 +152,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: typography.size.md,
-    color: colors.text,
     minHeight: 60,
     textAlignVertical: 'top',
   },
@@ -164,7 +162,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
 
   cancelButton: {
@@ -175,12 +172,10 @@ const styles = StyleSheet.create({
 
   cancelText: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     fontWeight: typography.weight.medium,
   },
 
   postButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
     borderRadius: sizing.borderRadius.md,
@@ -194,7 +189,6 @@ const styles = StyleSheet.create({
 
   postText: {
     fontSize: typography.size.md,
-    color: colors.textInverse,
     fontWeight: typography.weight.semibold,
   },
 
@@ -202,10 +196,8 @@ const styles = StyleSheet.create({
   compactContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     padding: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   compactAvatar: {
@@ -217,7 +209,6 @@ const styles = StyleSheet.create({
 
   compactInput: {
     flex: 1,
-    backgroundColor: colors.background,
     borderRadius: sizing.borderRadius.md,
     padding: spacing.sm,
     paddingHorizontal: spacing.md,
@@ -225,14 +216,12 @@ const styles = StyleSheet.create({
 
   compactPlaceholder: {
     fontSize: typography.size.md,
-    color: colors.textTertiary,
   },
 
   compactButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: spacing.sm,

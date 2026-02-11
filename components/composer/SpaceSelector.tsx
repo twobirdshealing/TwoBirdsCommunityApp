@@ -17,8 +17,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacesApi } from '@/services/api/spaces';
 
 // -----------------------------------------------------------------------------
@@ -48,6 +48,7 @@ export function SpaceSelector({
   selectedSpaceName,
   onSelect,
 }: SpaceSelectorProps) {
+  const { colors: themeColors } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(false);
@@ -111,22 +112,23 @@ export function SpaceSelector({
     <TouchableOpacity
       style={[
         styles.spaceItem,
+        { borderBottomColor: themeColors.border },
         item.slug === selectedSpaceSlug && styles.spaceItemSelected,
       ]}
       onPress={() => handleSelect(item)}
     >
       <View style={styles.spaceIcon}>
-        <Ionicons 
-          name={item.privacy === 'secret' ? 'lock-closed' : item.privacy === 'private' ? 'people' : 'globe-outline'} 
-          size={20} 
-          color={colors.primary} 
+        <Ionicons
+          name={item.privacy === 'secret' ? 'lock-closed' : item.privacy === 'private' ? 'people' : 'globe-outline'}
+          size={20}
+          color={themeColors.primary}
         />
       </View>
-      <Text style={styles.spaceTitle} numberOfLines={1}>
+      <Text style={[styles.spaceTitle, { color: themeColors.text }]} numberOfLines={1}>
         {item.title}
       </Text>
       {item.slug === selectedSpaceSlug && (
-        <Ionicons name="checkmark" size={20} color={colors.primary} />
+        <Ionicons name="checkmark" size={20} color={themeColors.primary} />
       )}
     </TouchableOpacity>
   );
@@ -139,14 +141,14 @@ export function SpaceSelector({
     <>
       {/* Trigger Button */}
       <TouchableOpacity
-        style={styles.trigger}
+        style={[styles.trigger, { backgroundColor: themeColors.background }]}
         onPress={() => setIsOpen(true)}
       >
-        <Ionicons name="people-outline" size={20} color={colors.primary} />
-        <Text style={styles.triggerText}>
+        <Ionicons name="people-outline" size={20} color={themeColors.primary} />
+        <Text style={[styles.triggerText, { color: themeColors.text }]}>
           {selectedSpaceName || 'Select a space...'}
         </Text>
-        <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+        <Ionicons name="chevron-down" size={16} color={themeColors.textSecondary} />
       </TouchableOpacity>
 
       {/* Modal */}
@@ -156,10 +158,10 @@ export function SpaceSelector({
         presentationStyle="pageSheet"
         onRequestClose={() => setIsOpen(false)}
       >
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { backgroundColor: themeColors.surface }]}>
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Select Space</Text>
+          <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
+            <Text style={[styles.headerTitle, { color: themeColors.text }]}>Select Space</Text>
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => {
@@ -167,24 +169,24 @@ export function SpaceSelector({
                 setSearchQuery('');
               }}
             >
-              <Ionicons name="close" size={24} color={colors.text} />
+              <Ionicons name="close" size={24} color={themeColors.text} />
             </TouchableOpacity>
           </View>
 
           {/* Search */}
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={colors.textSecondary} />
+          <View style={[styles.searchContainer, { backgroundColor: themeColors.backgroundSecondary }]}>
+            <Ionicons name="search" size={20} color={themeColors.textSecondary} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: themeColors.text }]}
               placeholder="Search spaces..."
-              placeholderTextColor={colors.textTertiary}
+              placeholderTextColor={themeColors.textTertiary}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCapitalize="none"
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -192,12 +194,12 @@ export function SpaceSelector({
           {/* Content */}
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.loadingText}>Loading spaces...</Text>
+              <ActivityIndicator size="large" color={themeColors.primary} />
+              <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Loading spaces...</Text>
             </View>
           ) : filteredSpaces.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
                 {searchQuery ? 'No spaces match your search' : 'No spaces available'}
               </Text>
             </View>
@@ -224,7 +226,6 @@ const styles = StyleSheet.create({
   trigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
     borderRadius: 8,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
@@ -234,12 +235,10 @@ const styles = StyleSheet.create({
   triggerText: {
     flex: 1,
     fontSize: typography.size.md,
-    color: colors.text,
   },
 
   modalContainer: {
     flex: 1,
-    backgroundColor: colors.surface,
   },
 
   header: {
@@ -249,13 +248,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   headerTitle: {
     fontSize: typography.size.lg,
     fontWeight: '600',
-    color: colors.text,
   },
 
   closeButton: {
@@ -265,7 +262,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
@@ -276,7 +272,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: typography.size.md,
-    color: colors.text,
     paddingVertical: spacing.sm,
   },
 
@@ -291,19 +286,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     gap: spacing.sm,
   },
 
   spaceItemSelected: {
-    backgroundColor: colors.primaryLight + '20',
   },
 
   spaceIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.primaryLight + '30',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -311,7 +303,6 @@ const styles = StyleSheet.create({
   spaceTitle: {
     flex: 1,
     fontSize: typography.size.md,
-    color: colors.text,
   },
 
   loadingContainer: {
@@ -323,7 +314,6 @@ const styles = StyleSheet.create({
 
   loadingText: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
   },
 
   emptyContainer: {
@@ -335,7 +325,6 @@ const styles = StyleSheet.create({
 
   emptyText: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     textAlign: 'center',
   },
 });

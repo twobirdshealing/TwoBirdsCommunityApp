@@ -18,9 +18,10 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Feed, Space } from '@/types';
 import { feedsApi, spacesApi } from '@/services/api';
 import { FeedList } from '@/components/feed/FeedList';
@@ -28,6 +29,8 @@ import { CommentSheet } from '@/components/feed/CommentSheet';
 import { SpaceMenu } from '@/components/space/SpaceMenu';
 import { PageHeader } from '@/components/navigation';
 import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/composer';
+import { useFeedReactions } from '@/hooks';
+import { stripHtmlPreserveBreaks } from '@/utils/htmlToText';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -37,7 +40,7 @@ export default function SpacePage() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  
+  const { colors: themeColors } = useTheme();
   // Space state
   const [space, setSpace] = useState<Space | null>(null);
   const [feeds, setFeeds] = useState<Feed[]>([]);
@@ -84,8 +87,10 @@ export default function SpacePage() {
       // Also fetch members count (since API doesn't return it reliably)
       try {
         const membersResponse = await spacesApi.getSpaceMembers(slug, { per_page: 1 });
-        if (membersResponse.success && membersResponse.data?.meta?.total) {
-          setMembersCount(membersResponse.data.meta.total);
+        const total = membersResponse.data?.members?.total
+          || membersResponse.data?.meta?.total;
+        if (membersResponse.success && total) {
+          setMembersCount(total);
         }
       } catch (err) {
         console.log('[STATS] Could not fetch members count');
@@ -162,13 +167,6 @@ export default function SpacePage() {
     fetchFeeds(true);
   };
   
-  const handleFeedPress = (feed: Feed) => {
-    router.push({
-      pathname: '/feed/[id]',
-      params: { id: feed.id.toString(), space: slug },
-    });
-  };
-  
   const handleAuthorPress = (username: string) => {
     router.push({
       pathname: '/profile/[username]',
@@ -176,43 +174,7 @@ export default function SpacePage() {
     });
   };
 
-  // ---------------------------------------------------------------------------
-  // Reaction Handler
-  // ---------------------------------------------------------------------------
-  
-  const handleReact = async (feedId: number, type: 'like') => {
-    const feed = feeds.find(f => f.id === feedId);
-    if (!feed) return;
-    
-    const hasUserReact = feed.has_user_react || false;
-
-    // Optimistic update
-    setFeeds(prevFeeds =>
-      prevFeeds.map(f => {
-        if (f.id === feedId) {
-          const currentCount = typeof f.reactions_count === 'string'
-            ? parseInt(f.reactions_count, 10)
-            : f.reactions_count || 0;
-          
-          return {
-            ...f,
-            has_user_react: !hasUserReact,
-            reactions_count: hasUserReact ? currentCount - 1 : currentCount + 1,
-          };
-        }
-        return f;
-      })
-    );
-
-    try {
-      await feedsApi.reactToFeed(feedId, type, hasUserReact);
-    } catch (err) {
-      // Revert on error
-      setFeeds(prevFeeds =>
-        prevFeeds.map(f => (f.id === feedId ? feed : f))
-      );
-    }
-  };
+  const handleReact = useFeedReactions(feeds, setFeeds);
   
   // ---------------------------------------------------------------------------
   // Comment Handlers
@@ -395,52 +357,89 @@ export default function SpacePage() {
   // Space Info Header (inside FeedList)
   // ---------------------------------------------------------------------------
   
+  const getPrivacyIcon = (privacy: string): string => {
+    switch (privacy) {
+      case 'public': return 'globe-outline';
+      case 'private': return 'lock-closed-outline';
+      case 'secret': return 'eye-off-outline';
+      default: return 'globe-outline';
+    }
+  };
+
   const SpaceInfoHeader = () => {
     if (!space) return null;
-    
+
+    const descriptionText = stripHtmlPreserveBreaks(
+      (space as any).description_rendered || space.description
+    );
+
     return (
       <View style={styles.spaceHeader}>
-        {/* Cover Image */}
-        {space.cover_photo ? (
-          <Image
-            source={{ uri: space.cover_photo }}
-            style={styles.coverImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={[styles.coverImage, styles.coverPlaceholder]} />
-        )}
-        
-        {/* Space Info */}
-        <View style={styles.spaceInfo}>
-          {space.logo && (
+        {/* Hero Cover Section */}
+        <View style={styles.heroContainer}>
+          {space.cover_photo ? (
             <Image
-              source={{ uri: space.logo }}
-              style={styles.spaceLogo}
+              source={{ uri: space.cover_photo }}
+              style={styles.coverImage}
               resizeMode="cover"
             />
+          ) : (
+            <LinearGradient
+              colors={['#6366f1', '#8b5cf6', '#d946ef']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.coverImage}
+            />
           )}
-          
-          <Text style={styles.spaceTitle}>{space.title}</Text>
-          
-          {space.description && (
-            <Text style={styles.spaceDescription} numberOfLines={2}>
-              {space.description}
-            </Text>
-          )}
-          
-          <View style={styles.spaceStats}>
-            <View style={styles.statItem}>
-              <Ionicons name="people-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.statText}>{membersCount} members</Text>
+
+          {/* Gradient Overlay */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.7)']}
+            style={styles.heroOverlay}
+          >
+            {/* Logo + Title + Stats overlaid on cover */}
+            <View style={styles.heroContent}>
+              {space.logo && (
+                <Image
+                  source={{ uri: space.logo }}
+                  style={styles.heroLogo}
+                  resizeMode="cover"
+                />
+              )}
+              <View style={styles.heroTextContainer}>
+                <Text style={styles.heroTitle} numberOfLines={2}>{space.title}</Text>
+                <View style={styles.heroStats}>
+                  <View style={styles.heroStatItem}>
+                    <Ionicons name={getPrivacyIcon(space.privacy)} size={14} color="rgba(255,255,255,0.85)" />
+                    <Text style={styles.heroStatText}>
+                      {space.privacy.charAt(0).toUpperCase() + space.privacy.slice(1)}
+                    </Text>
+                  </View>
+                  <View style={styles.heroStatDot} />
+                  <View style={styles.heroStatItem}>
+                    <Ionicons name="people-outline" size={14} color="rgba(255,255,255,0.85)" />
+                    <Text style={styles.heroStatText}>{membersCount}</Text>
+                  </View>
+                  <View style={styles.heroStatDot} />
+                  <View style={styles.heroStatItem}>
+                    <Ionicons name="document-text-outline" size={14} color="rgba(255,255,255,0.85)" />
+                    <Text style={styles.heroStatText}>{postsCount}</Text>
+                  </View>
+                </View>
+              </View>
             </View>
-            <View style={styles.statItem}>
-              <Ionicons name="document-text-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.statText}>{postsCount} posts</Text>
-            </View>
-          </View>
+          </LinearGradient>
         </View>
-        
+
+        {/* Description (below cover, respects theme) */}
+        {descriptionText ? (
+          <View style={styles.descriptionContainer}>
+            <Text style={[styles.spaceDescription, { color: themeColors.textSecondary }]} numberOfLines={3}>
+              {descriptionText}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Quick Post Box */}
         <QuickPostBox
           onPress={() => setShowComposer(true)}
@@ -459,7 +458,7 @@ export default function SpacePage() {
   console.log('[SPACE PAGE RENDER] canPin():', canPinResult);
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header - Using PageHeader with SpaceMenu */}
       <View style={{ paddingTop: insets.top }}>
         <PageHeader
@@ -485,7 +484,6 @@ export default function SpacePage() {
         refreshing={refreshing}
         error={error}
         onRefresh={handleRefresh}
-        onFeedPress={handleFeedPress}
         onReact={handleReact}
         onAuthorPress={handleAuthorPress}
         onCommentPress={handleCommentPress}
@@ -525,67 +523,96 @@ export default function SpacePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   // Space Header (inside FeedList)
   spaceHeader: {
-    backgroundColor: colors.surface,
     marginBottom: spacing.md,
   },
-  
+
+  // Hero Cover
+  heroContainer: {
+    height: 200,
+    position: 'relative',
+  },
+
   coverImage: {
     width: '100%',
-    height: 150,
-    backgroundColor: colors.skeleton,
+    height: '100%',
   },
-  
-  coverPlaceholder: {
-    backgroundColor: colors.primary,
+
+  heroOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 60,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
   },
-  
-  spaceInfo: {
-    padding: spacing.md,
+
+  heroContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
   },
-  
-  spaceLogo: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    marginTop: -32,
-    marginBottom: spacing.sm,
-    borderWidth: 3,
-    borderColor: colors.surface,
-    backgroundColor: colors.skeleton,
+
+  heroLogo: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.9)',
+    marginRight: spacing.sm,
   },
-  
-  spaceTitle: {
+
+  heroTextContainer: {
+    flex: 1,
+  },
+
+  heroTitle: {
     fontSize: typography.size.xl,
     fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.xs,
+    color: '#fff',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  
-  spaceDescription: {
-    fontSize: typography.size.md,
-    color: colors.textSecondary,
-    lineHeight: typography.size.md * 1.4,
-    marginBottom: spacing.sm,
-  },
-  
-  spaceStats: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-  },
-  
-  statItem: {
+
+  heroStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
   },
-  
-  statText: {
+
+  heroStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  heroStatText: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '500',
+  },
+
+  heroStatDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    marginHorizontal: 8,
+  },
+
+  // Description (below cover)
+  descriptionContainer: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+  },
+
+  spaceDescription: {
+    fontSize: typography.size.md,
+    lineHeight: typography.size.md * 1.4,
+    marginBottom: spacing.sm,
   },
 });

@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { XProfile } from './user';
-import { Reaction } from './feed';
+import { Reaction, ReactionBreakdown, ReactionType } from './feed';
 
 // -----------------------------------------------------------------------------
 // Comment - A response to a feed or another comment
@@ -22,6 +22,12 @@ export interface Comment {
   content_type: 'text' | 'markdown' | 'html';
   status: CommentStatus;
   reactions_count: number | string;
+  has_user_react?: boolean;
+  user_reaction_type?: ReactionType | null;
+  user_reaction_icon_url?: string | null;
+  user_reaction_name?: string | null;
+  reaction_breakdown?: ReactionBreakdown[];
+  reaction_total?: number;
   is_sticky: number | string;
   meta: CommentMeta;
   created_at: string;

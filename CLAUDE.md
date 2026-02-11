@@ -9,3 +9,5 @@ no i require the full files just ONLY make minimal changes to exsiting code but 
 Current TEST credtials for when YOU give me commands curl -s -u "tas:WZm0 KKI7 g0H0 2CYd rJkx 6Ra1"
 
 dont try running commands your self jsut give them to me and wait for response. if unsure always ask for a API response to understand full pciture 
+
+all agents run opus

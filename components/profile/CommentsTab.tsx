@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Linking } from 'react-native';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { ProfileComment } from '@/types';
 import { stripHtml, getPostExcerpt, formatTimeAgo } from '@/utils/profileUtils';
@@ -15,10 +15,12 @@ interface CommentsTabProps {
 }
 
 export function CommentsTab({ comments = [], loading }: CommentsTabProps) {
+  const { colors: themeColors } = useTheme();
+
   if (loading) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Loading comments...</Text>
+        <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>Loading comments...</Text>
       </View>
     );
   }
@@ -27,7 +29,7 @@ export function CommentsTab({ comments = [], loading }: CommentsTabProps) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyIcon}>💬</Text>
-        <Text style={styles.emptyText}>No comments yet</Text>
+        <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No comments yet</Text>
       </View>
     );
   }
@@ -54,23 +56,23 @@ export function CommentsTab({ comments = [], loading }: CommentsTabProps) {
         return (
           <View key={comment.id} style={styles.commentCard}>
             <View style={styles.timeline}>
-              <View style={styles.timelineDotContainer}>
-                <View style={styles.timelineDot} />
+              <View style={[styles.timelineDotContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.primary }]}>
+                <View style={[styles.timelineDot, { backgroundColor: themeColors.primary }]} />
               </View>
-              {!isLast && <View style={styles.timelineLine} />}
+              {!isLast && <View style={[styles.timelineLine, { backgroundColor: themeColors.border }]} />}
             </View>
 
-            <View style={styles.commentContent}>
-              <TouchableOpacity 
-                onPress={() => handlePostPress(comment)} 
+            <View style={[styles.commentContent, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+              <TouchableOpacity
+                onPress={() => handlePostPress(comment)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.postLink} numberOfLines={2}>
+                <Text style={[styles.postLink, { color: themeColors.primary }]} numberOfLines={2}>
                   {postExcerpt}
                 </Text>
               </TouchableOpacity>
 
-              <Text style={styles.commentText} numberOfLines={4}>
+              <Text style={[styles.commentText, { color: themeColors.text }]} numberOfLines={4}>
                 {commentText}
               </Text>
 
@@ -82,15 +84,15 @@ export function CommentsTab({ comments = [], loading }: CommentsTabProps) {
                 />
               )}
 
-              <View style={styles.commentFooter}>
-                <Text style={styles.commentTime}>
+              <View style={[styles.commentFooter, { borderTopColor: themeColors.border }]}>
+                <Text style={[styles.commentTime, { color: themeColors.textTertiary }]}>
                   {formatTimeAgo(comment.created_at)}
                 </Text>
-                
+
                 {reactionsCount > 0 && (
                   <>
-                    <View style={styles.footerDivider} />
-                    <Text style={styles.reactions}>
+                    <View style={[styles.footerDivider, { backgroundColor: themeColors.border }]} />
+                    <Text style={[styles.reactions, { color: themeColors.textSecondary }]}>
                       ❤️ {reactionsCount}
                     </Text>
                   </>
@@ -121,7 +123,6 @@ const styles = StyleSheet.create({
 
   emptyText: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
   },
 
   commentCard: {
@@ -139,9 +140,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: colors.surface,
     borderWidth: 3,
-    borderColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 2,
@@ -151,7 +150,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.primary,
   },
 
   timelineLine: {
@@ -159,28 +157,23 @@ const styles = StyleSheet.create({
     top: 20,
     bottom: -spacing.lg,
     width: 2,
-    backgroundColor: colors.border,
   },
 
   commentContent: {
     flex: 1,
-    backgroundColor: colors.surface,
     borderRadius: sizing.borderRadius.md,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
   },
 
   postLink: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
-    color: colors.primary,
     marginBottom: spacing.sm,
   },
 
   commentText: {
     fontSize: typography.size.sm,
-    color: colors.text,
     lineHeight: typography.size.sm * 1.5,
     marginBottom: spacing.sm,
   },
@@ -189,7 +182,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 150,
     borderRadius: sizing.borderRadius.sm,
-    backgroundColor: colors.skeleton,
     marginTop: spacing.sm,
   },
 
@@ -199,24 +191,20 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
 
   commentTime: {
     fontSize: typography.size.xs,
-    color: colors.textTertiary,
   },
 
   footerDivider: {
     width: 1,
     height: 12,
-    backgroundColor: colors.border,
     marginHorizontal: spacing.sm,
   },
 
   reactions: {
     fontSize: typography.size.xs,
-    color: colors.textSecondary,
   },
 });
 

@@ -5,9 +5,9 @@
 // =============================================================================
 
 import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacing } from '@/constants/layout';
-import { Feed } from '@/types';
+import { Feed, ReactionType } from '@/types';
 import React from 'react';
 import { FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
 import { FeedCard } from './FeedCard';
@@ -22,8 +22,7 @@ interface FeedListProps {
   refreshing?: boolean;
   error?: string | null;
   onRefresh?: () => void;
-  onFeedPress?: (feed: Feed) => void;
-  onReact?: (feedId: number, type: 'like') => void;
+  onReact?: (feedId: number, type: ReactionType) => void;
   onAuthorPress?: (username: string) => void;
   onSpacePress?: (spaceSlug: string) => void;
   onCommentPress?: (feed: Feed) => void;
@@ -47,7 +46,6 @@ export function FeedList({
   refreshing = false,
   error = null,
   onRefresh,
-  onFeedPress,
   onReact,
   onAuthorPress,
   onSpacePress,
@@ -61,6 +59,7 @@ export function FeedList({
   emptyIcon = '📭',
   ListHeaderComponent,
 }: FeedListProps) {
+  const { colors: themeColors } = useTheme();
 
   // Initial loading state
   if (loading && feeds.length === 0) {
@@ -80,7 +79,7 @@ export function FeedList({
   // Empty state
   if (!loading && feeds.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         {ListHeaderComponent}
         <EmptyState
           icon={emptyIcon}
@@ -100,7 +99,6 @@ export function FeedList({
     return (
       <FeedCard
         feed={item}
-        onPress={() => onFeedPress?.(item)}
         onReact={(type) => onReact?.(item.id, type)}
         onAuthorPress={() => {
           if (item.xprofile?.username) {
@@ -134,8 +132,8 @@ export function FeedList({
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
+            colors={[themeColors.primary]}
+            tintColor={themeColors.primary}
           />
         ) : undefined
       }
@@ -157,7 +155,6 @@ export function FeedList({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   
   list: {

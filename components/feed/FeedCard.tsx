@@ -10,7 +10,6 @@
 import React, { useState } from 'react';
 import {
   ActionSheetIOS,
-  ActivityIndicator,
   Alert,
   Image,
   Platform,
@@ -21,16 +20,23 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 import { Avatar } from '@/components/common/Avatar';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
-import { colors } from '@/constants/colors';
+import { MediaViewer } from '@/components/media/MediaViewer';
+import { ReactionPicker } from './ReactionPicker';
+import { ReactionBreakdownModal } from './ReactionBreakdownModal';
+import { ReactionIcon } from './ReactionIcon';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useReactionConfig } from '@/hooks';
 import { shadows, sizing, spacing, typography } from '@/constants/layout';
-import { Feed } from '@/types';
+import { Feed, ReactionType } from '@/types';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { formatCompactNumber } from '@/utils/formatNumber';
 import { stripHtmlTags, truncateText } from '@/utils/htmlToText';
 import { useAuth } from '@/contexts/AuthContext';
 import { SITE_URL } from '@/constants/config';
+import { REACTION_EMOJI, REACTION_COLORS, REACTION_NAMES } from '@/constants/reactions';
 
 // -----------------------------------------------------------------------------
 // Media Detection Helper
@@ -97,8 +103,7 @@ function detectMedia(feed: Feed): MediaInfo {
 
 interface FeedCardProps {
   feed: Feed;
-  onPress?: () => void;
-  onReact?: (type: 'like') => void;
+  onReact?: (type: ReactionType) => void;
   onAuthorPress?: () => void;
   onSpacePress?: () => void;
   onCommentPress?: () => void;
@@ -114,7 +119,6 @@ interface FeedCardProps {
 
 export function FeedCard({
   feed,
-  onPress,
   onReact,
   onAuthorPress,
   onSpacePress,
@@ -125,9 +129,16 @@ export function FeedCard({
   onPin,
 }: FeedCardProps) {
   const { user } = useAuth();
-  const [imageLoading, setImageLoading] = useState(true);
+  const { colors: themeColors } = useTheme();
+  const { reactions, getReaction, display } = useReactionConfig();
+  const defaultReactionId = reactions[0]?.id || 'like';
   const [isBookmarked, setIsBookmarked] = useState(feed.bookmarked || false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [showMediaViewer, setShowMediaViewer] = useState(false);
+  const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
+  const longPressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Extract data
   const author = feed.xprofile;
@@ -143,7 +154,9 @@ export function FeedCard({
   
   // Content processing
   const rawContent = stripHtmlTags(feed.message_rendered || feed.message || '');
-  const displayContent = truncateText(rawContent, 300);
+  const isLongContent = rawContent.length > 300;
+  const [expanded, setExpanded] = useState(false);
+  const displayContent = expanded ? rawContent : truncateText(rawContent, 300);
   
   // Media detection
   const media = detectMedia(feed);
@@ -151,13 +164,22 @@ export function FeedCard({
   const hasYouTube = media.type === 'youtube';
   
   // Stats
-  const reactionsCount = typeof feed.reactions_count === 'string'
-    ? parseInt(feed.reactions_count, 10)
-    : feed.reactions_count || 0;
+  const reactionsCount = feed.reaction_total
+    ? feed.reaction_total
+    : typeof feed.reactions_count === 'string'
+      ? parseInt(feed.reactions_count, 10)
+      : feed.reactions_count || 0;
   const commentsCount = typeof feed.comments_count === 'string'
     ? parseInt(feed.comments_count, 10)
     : feed.comments_count || 0;
   const hasUserReact = feed.has_user_react || false;
+  const userReactionType = feed.user_reaction_type || null;
+  const userReactionConfig = getReaction(userReactionType || defaultReactionId);
+  const userReactionIconUrl = feed.user_reaction_icon_url || userReactionConfig?.icon_url || null;
+  const userReactionEmoji = userReactionConfig?.emoji || (userReactionType ? REACTION_EMOJI[userReactionType] : '👍');
+  const userReactionName = feed.user_reaction_name || userReactionConfig?.name || (userReactionType ? REACTION_NAMES[userReactionType] : 'Like');
+  const userReactionColor = userReactionConfig?.color || (userReactionType ? REACTION_COLORS[userReactionType] : undefined);
+  const reactionBreakdown = feed.reaction_breakdown || [];
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -269,117 +291,171 @@ export function FeedCard({
   // ---------------------------------------------------------------------------
   
   return (
-    <View style={styles.card}>
-      {/* ===== Touchable area for opening fullscreen (header + content only) ===== */}
-      <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
-        {/* ===== Sticky Indicator ===== */}
-        {isSticky && (
-          <View style={styles.stickyBadge}>
-            <Ionicons name="pin" size={12} color={colors.primary} />
-            <Text style={styles.stickyText}>Pinned</Text>
-          </View>
-        )}
-
-        {/* ===== Header ===== */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.authorRow}
-            onPress={onAuthorPress}
-            activeOpacity={0.7}
-          >
-            <Avatar
-              source={authorAvatar}
-              size="md"
-              verified={isVerified}
-              fallback={authorName}
-            />
-
-            <View style={styles.authorInfo}>
-              <Text style={styles.authorName} numberOfLines={1}>
-                {authorName}
-              </Text>
-
-              <View style={styles.metaRow}>
-                <Text style={styles.timestamp}>{timestamp}</Text>
-                {spaceName && (
-                  <>
-                    <Text style={styles.dot}>•</Text>
-                    <TouchableOpacity onPress={onSpacePress}>
-                      <Text style={styles.spaceName} numberOfLines={1}>
-                        {spaceName}
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-            </View>
-          </TouchableOpacity>
-
-          {/* Header Actions: Bookmark + Menu */}
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={handleBookmarkPress}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons
-                name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-                size={20}
-                color={isBookmarked ? colors.primary : colors.textSecondary}
-              />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={handleMenuPress}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="ellipsis-vertical" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* ===== Title ===== */}
-        {feed.title && (
-          <Text style={styles.title} numberOfLines={3}>
-            {feed.title}
-          </Text>
-        )}
-      
-        {/* ===== Content ===== */}
-        {displayContent.length > 0 && (
-          <Text style={styles.content} numberOfLines={6}>
-            {displayContent}
-          </Text>
-        )}
-      </TouchableOpacity>
-
-      {/* ===== Single Image ===== */}
-      {hasImage && (
-        <View style={styles.mediaContainer}>
-          {imageLoading && (
-            <View style={styles.mediaPlaceholder}>
-              <ActivityIndicator size="small" color={colors.primary} />
-            </View>
-          )}
-          <Image 
-            source={{ uri: media.imageUrl }}
-            style={[styles.mediaImage, imageLoading && { opacity: 0 }]}
-            resizeMode="cover"
-            onLoadStart={() => setImageLoading(true)}
-            onLoadEnd={() => setImageLoading(false)}
-          />
-          
-          {/* Multiple images indicator */}
-          {media.type === 'images' && media.imageUrls && media.imageUrls.length > 1 && (
-            <View style={styles.imageCount}>
-              <Text style={styles.imageCountText}>
-                +{media.imageUrls.length - 1}
-              </Text>
-            </View>
-          )}
+    <View style={[styles.card, { backgroundColor: themeColors.surface }]}>
+      {/* ===== Sticky Indicator ===== */}
+      {isSticky && (
+        <View style={[styles.stickyBadge, { backgroundColor: themeColors.primaryLight + '20' }]}>
+          <Ionicons name="pin" size={12} color={themeColors.primary} />
+          <Text style={[styles.stickyText, { color: themeColors.primary }]}>Pinned</Text>
         </View>
       )}
+
+      {/* ===== Header ===== */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.authorRow}
+          onPress={onAuthorPress}
+          activeOpacity={0.7}
+        >
+          <Avatar
+            source={authorAvatar}
+            size="md"
+            verified={isVerified}
+            fallback={authorName}
+          />
+
+          <View style={styles.authorInfo}>
+            <Text style={[styles.authorName, { color: themeColors.text }]} numberOfLines={1}>
+              {authorName}
+            </Text>
+
+            <View style={styles.metaRow}>
+              <Text style={[styles.timestamp, { color: themeColors.textTertiary }]}>{timestamp}</Text>
+              {spaceName && (
+                <>
+                  <Text style={[styles.dot, { color: themeColors.textTertiary }]}>•</Text>
+                  <TouchableOpacity onPress={onSpacePress}>
+                    <Text style={[styles.spaceName, { color: themeColors.primary }]} numberOfLines={1}>
+                      {spaceName}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* Header Actions: Bookmark + Menu */}
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleBookmarkPress}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons
+              name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+              size={20}
+              color={isBookmarked ? themeColors.primary : themeColors.textSecondary}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleMenuPress}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="ellipsis-vertical" size={20} color={themeColors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ===== Title ===== */}
+      {feed.title && (
+        <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={3}>
+          {feed.title}
+        </Text>
+      )}
+
+      {/* ===== Content ===== */}
+      {displayContent.length > 0 && (
+        <Text style={[styles.content, { color: themeColors.textSecondary }]} numberOfLines={expanded ? undefined : 6}>
+          {displayContent}
+        </Text>
+      )}
+
+      {/* ===== Show More / Show Less ===== */}
+      {isLongContent && (
+        <TouchableOpacity onPress={() => setExpanded(!expanded)} activeOpacity={0.7}>
+          <Text style={[styles.showMoreText, { color: themeColors.primary }]}>
+            {expanded ? 'Show less' : 'Show more'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* ===== Image Grid - Tappable to open Media Viewer ===== */}
+      {hasImage && (() => {
+        const allUrls = media.type === 'images' && media.imageUrls ? media.imageUrls : media.imageUrl ? [media.imageUrl] : [];
+        const count = allUrls.length;
+        const gridGap = 3;
+        const extraCount = count > 4 ? count - 4 : 0;
+
+        const renderGridImage = (url: string, index: number, style: any, isLast4Plus?: boolean) => (
+          <TouchableOpacity
+            key={index}
+            activeOpacity={0.9}
+            onPress={() => {
+              setMediaViewerIndex(index);
+              setShowMediaViewer(true);
+            }}
+            style={style}
+          >
+            <Image
+              source={{ uri: url }}
+              style={styles.gridImage}
+              resizeMode="cover"
+            />
+            {isLast4Plus && extraCount > 0 && (
+              <View style={styles.gridOverlay}>
+                <Text style={styles.gridOverlayText}>+{extraCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+
+        if (count === 1) {
+          return (
+            <View style={[styles.mediaContainer, { backgroundColor: themeColors.background }]}>
+              {renderGridImage(allUrls[0], 0, styles.gridSingle)}
+            </View>
+          );
+        }
+
+        if (count === 2) {
+          return (
+            <View style={[styles.mediaContainer, styles.gridRow, { backgroundColor: themeColors.background, gap: gridGap }]}>
+              {renderGridImage(allUrls[0], 0, styles.gridHalf)}
+              {renderGridImage(allUrls[1], 1, styles.gridHalf)}
+            </View>
+          );
+        }
+
+        if (count === 3) {
+          return (
+            <View style={[styles.mediaContainer, styles.gridRow, { backgroundColor: themeColors.background, gap: gridGap, height: 260 }]}>
+              {renderGridImage(allUrls[0], 0, styles.gridHalf)}
+              <View style={[styles.gridHalf, { gap: gridGap }]}>
+                {renderGridImage(allUrls[1], 1, styles.gridStackItem)}
+                {renderGridImage(allUrls[2], 2, styles.gridStackItem)}
+              </View>
+            </View>
+          );
+        }
+
+        // 4+ images: 2x2 grid, with +N overlay on 4th if >4
+        return (
+          <View style={[styles.mediaContainer, { backgroundColor: themeColors.background, height: 260 }]}>
+            <View style={[styles.gridRow, { flex: 1, gap: gridGap }]}>
+              {renderGridImage(allUrls[0], 0, styles.gridHalf)}
+              {renderGridImage(allUrls[1], 1, styles.gridHalf)}
+            </View>
+            <View style={{ height: gridGap }} />
+            <View style={[styles.gridRow, { flex: 1, gap: gridGap }]}>
+              {renderGridImage(allUrls[2], 2, styles.gridHalf)}
+              {renderGridImage(allUrls[3], 3, styles.gridHalf, count > 4)}
+            </View>
+          </View>
+        );
+      })()}
       
       {/* ===== YouTube Video ===== */}
       {hasYouTube && media.youtubeId && (
@@ -423,34 +499,120 @@ export function FeedCard({
         </View>
       )}
       
-      {/* ===== Footer ===== */}
-      <View style={styles.footer}>
-        {/* Single Like Button */}
-        <TouchableOpacity 
-          style={[
-            styles.reactionButton,
-            hasUserReact && styles.reactionButtonActive
-          ]}
-          onPress={() => onReact?.('like')}
-        >
-          <Text style={styles.reactionIcon}>{hasUserReact ? '👍' : '👍'}</Text>
-          <Text style={[styles.reactionCount, hasUserReact && styles.reactionCountActive]}>
-            {reactionsCount > 0 ? formatCompactNumber(reactionsCount) : 'Like'}
-          </Text>
-        </TouchableOpacity>
-        
-        {/* Comment button */}
-        <TouchableOpacity
-          style={styles.commentButton}
-          onPress={() => onCommentPress?.()}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.statIcon}>💬</Text>
-          <Text style={styles.statCount}>
-            {commentsCount > 0 ? formatCompactNumber(commentsCount) : 'Comment'}
-          </Text>
-        </TouchableOpacity>
+      {/* ===== Footer (matches web layout: left actions + right summary) ===== */}
+      <View style={[styles.footer, { borderTopColor: themeColors.borderLight }]}>
+        {/* Left side: reaction + comment buttons */}
+        <View style={styles.footerLeft}>
+          {/* Reaction Button - tap for default like, long-press for picker */}
+          <TouchableOpacity
+            style={[
+              styles.footerButton,
+              hasUserReact && [
+                styles.reactionButtonActive,
+                { backgroundColor: (userReactionColor || themeColors.primary) + '15' },
+              ],
+            ]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              if (hasUserReact && userReactionType) {
+                onReact?.(userReactionType);
+              } else {
+                onReact?.(defaultReactionId as ReactionType);
+              }
+            }}
+            onLongPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setShowReactionPicker(true);
+            }}
+            delayLongPress={400}
+            activeOpacity={0.7}
+          >
+            <View style={{ opacity: hasUserReact ? 1 : 0.4 }}>
+              <ReactionIcon iconUrl={userReactionIconUrl} emoji={userReactionEmoji} size={35} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Comment button */}
+          <TouchableOpacity
+            style={styles.footerButton}
+            onPress={() => onCommentPress?.()}
+            activeOpacity={0.7}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Ionicons name="chatbubble-outline" size={20} color={themeColors.textSecondary} />
+              {commentsCount > 0 && (
+                <Text style={[styles.reactionSummaryCount, { color: themeColors.textSecondary }]}>
+                  {formatCompactNumber(commentsCount)}
+                </Text>
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Right side: reaction breakdown summary (tappable) */}
+        {reactionBreakdown.length > 0 && reactionsCount > 0 && (
+          <TouchableOpacity
+            style={styles.footerRight}
+            onPress={() => setShowBreakdown(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.reactionEmojiStack}>
+              {reactionBreakdown.slice(0, display.count).map((item, i) => (
+                <View
+                  key={item.type}
+                  style={[
+                    styles.reactionStackIcon,
+                    { zIndex: 10 + i, marginLeft: i === 0 ? 0 : -display.overlap },
+                  ]}
+                >
+                  <ReactionIcon
+                    iconUrl={item.icon_url}
+                    emoji={item.emoji || REACTION_EMOJI[item.type as ReactionType]}
+                    size={22}
+                    stroke={display.stroke}
+                    borderColor={themeColors.borderLight}
+                  />
+                </View>
+              ))}
+            </View>
+            <Text style={[styles.reactionSummaryCount, { color: themeColors.textSecondary }]}>
+              {formatCompactNumber(reactionsCount)}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      {/* ===== Reaction Picker Modal ===== */}
+      <ReactionPicker
+        visible={showReactionPicker}
+        onSelect={(type) => onReact?.(type)}
+        onClose={() => setShowReactionPicker(false)}
+        currentType={userReactionType}
+      />
+
+      {/* ===== Reaction Breakdown Modal ===== */}
+      <ReactionBreakdownModal
+        visible={showBreakdown}
+        onClose={() => setShowBreakdown(false)}
+        objectType="feed"
+        objectId={feed.id}
+      />
+
+      {/* ===== Media Viewer Overlay ===== */}
+      {hasImage && (
+        <MediaViewer
+          visible={showMediaViewer}
+          images={
+            media.type === 'images' && media.imageUrls
+              ? media.imageUrls.map((url) => ({ url }))
+              : media.imageUrl
+              ? [{ url: media.imageUrl }]
+              : []
+          }
+          initialIndex={mediaViewerIndex}
+          onClose={() => setShowMediaViewer(false)}
+        />
+      )}
     </View>
   );
 }
@@ -461,7 +623,6 @@ export function FeedCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
     marginVertical: spacing.xs,
     padding: spacing.lg,
@@ -476,7 +637,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    backgroundColor: colors.primaryLight + '20',
     borderRadius: sizing.borderRadius.sm,
     alignSelf: 'flex-start',
   },
@@ -484,7 +644,6 @@ const styles = StyleSheet.create({
   stickyText: {
     fontSize: typography.size.xs,
     fontWeight: '600',
-    color: colors.primary,
     marginLeft: 4,
   },
   
@@ -509,7 +668,6 @@ const styles = StyleSheet.create({
   authorName: {
     fontSize: typography.size.md,
     fontWeight: '600',
-    color: colors.text,
   },
   
   metaRow: {
@@ -520,18 +678,15 @@ const styles = StyleSheet.create({
   
   timestamp: {
     fontSize: typography.size.sm,
-    color: colors.textTertiary,
   },
-  
+
   dot: {
     fontSize: typography.size.sm,
-    color: colors.textTertiary,
     marginHorizontal: spacing.xs,
   },
-  
+
   spaceName: {
     fontSize: typography.size.sm,
-    color: colors.primary,
     maxWidth: 150,
   },
 
@@ -550,53 +705,71 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size.lg,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: spacing.sm,
     lineHeight: 24,
   },
-  
+
   // Content
   content: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     lineHeight: 22,
+    marginBottom: spacing.sm,
+  },
+
+  showMoreText: {
+    fontSize: typography.size.sm,
+    fontWeight: '600',
     marginBottom: spacing.md,
   },
   
-  // Media
+  // Media Grid
   mediaContainer: {
     marginHorizontal: -spacing.lg,
     marginBottom: spacing.md,
     height: 200,
-    backgroundColor: colors.background,
+    overflow: 'hidden',
+    borderRadius: sizing.borderRadius.md,
+    marginLeft: 0,
+    marginRight: 0,
   },
-  
-  mediaPlaceholder: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-  },
-  
+
   mediaImage: {
     width: '100%',
     height: '100%',
   },
-  
-  imageCount: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: sizing.borderRadius.sm,
+
+  gridRow: {
+    flexDirection: 'row',
   },
-  
-  imageCountText: {
+
+  gridSingle: {
+    flex: 1,
+  },
+
+  gridHalf: {
+    flex: 1,
+  },
+
+  gridStackItem: {
+    flex: 1,
+  },
+
+  gridImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  gridOverlayText: {
     color: '#fff',
-    fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: '700',
   },
   
   playButton: {
@@ -649,58 +822,45 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
 
-  // Footer
+  // Footer (web-matching layout: left actions + right summary)
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    gap: spacing.lg,
   },
-  
-  reactionButton: {
+
+  footerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    gap: spacing.md,
+  },
+
+  footerButton: {
+    padding: spacing.xs,
     borderRadius: sizing.borderRadius.md,
   },
-  
-  reactionButtonActive: {
-    backgroundColor: colors.primaryLight + '20',
-  },
-  
-  reactionIcon: {
-    fontSize: 18,
-    marginRight: spacing.xs,
-  },
-  
-  reactionCount: {
-    fontSize: typography.size.sm,
-    color: colors.textSecondary,
-  },
-  
-  reactionCountActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  
-  commentButton: {
+
+  reactionButtonActive: {},
+
+  footerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    gap: 6,
   },
-  
-  statIcon: {
-    fontSize: 18,
-    marginRight: spacing.xs,
+
+  reactionEmojiStack: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  
-  statCount: {
+
+  reactionStackIcon: {
+    // marginLeft and zIndex set inline from display config
+  },
+
+  reactionSummaryCount: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
   },
 });
 

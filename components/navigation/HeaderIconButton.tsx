@@ -7,7 +7,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -30,8 +30,10 @@ export function HeaderIconButton({
   onPress,
   badgeCount = 0,
   size = 24,
-  color = colors.text,
+  color,
 }: HeaderIconButtonProps) {
+  const { colors: themeColors } = useTheme();
+  const iconColor = color || themeColors.text;
   const showBadge = badgeCount > 0;
   const displayCount = badgeCount > 99 ? '99+' : badgeCount.toString();
 
@@ -39,14 +41,14 @@ export function HeaderIconButton({
     <Pressable
       style={({ pressed }) => [
         styles.container,
-        pressed && styles.pressed,
+        pressed && [styles.pressed, { backgroundColor: themeColors.backgroundSecondary }],
       ]}
       onPress={onPress}
     >
-      <Ionicons name={icon} size={size} color={color} />
+      <Ionicons name={icon} size={size} color={iconColor} />
       
       {showBadge && (
-        <View style={styles.badge}>
+        <View style={[styles.badge, { backgroundColor: themeColors.error, borderColor: themeColors.surface }]}>
           <Text style={styles.badgeText}>{displayCount}</Text>
         </View>
       )}
@@ -69,22 +71,19 @@ const styles = StyleSheet.create({
 
   pressed: {
     opacity: 0.7,
-    backgroundColor: colors.backgroundSecondary,
   },
 
   badge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
+    top: -2,
+    right: -2,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: colors.error,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: colors.surface,
   },
 
   badgeText: {

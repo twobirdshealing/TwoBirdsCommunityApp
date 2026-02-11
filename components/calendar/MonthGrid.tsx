@@ -11,8 +11,8 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { CalendarEvent, EventsByDate } from '@/types/calendar';
 
 // -----------------------------------------------------------------------------
@@ -94,6 +94,7 @@ interface DayCellProps {
 }
 
 function DayCell({ day, dateKey, isToday, isSelected, isPast, events, onPress }: DayCellProps) {
+  const { colors: themeColors } = useTheme();
   if (day === null) {
     return <View style={styles.dayCell} />;
   }
@@ -101,7 +102,7 @@ function DayCell({ day, dateKey, isToday, isSelected, isPast, events, onPress }:
   const hasEvents = events.length > 0;
   
   // Get unique colors from events (max 3 dots)
-  const eventColors = [...new Set(events.map(e => e.calendar_color || colors.primary))].slice(0, 3);
+  const eventColors = [...new Set(events.map(e => e.calendar_color || themeColors.primary))].slice(0, 3);
 
   const handlePress = () => {
     if (hasEvents) {
@@ -122,14 +123,18 @@ function DayCell({ day, dateKey, isToday, isSelected, isPast, events, onPress }:
       <View style={[
         styles.dayNumber,
         isToday && styles.dayNumberToday,
+        isToday && { backgroundColor: themeColors.primary },
         isSelected && styles.dayNumberSelected,
+        isSelected && { backgroundColor: themeColors.primary },
         isPast && !isToday && styles.dayNumberPast,
       ]}>
         <Text style={[
           styles.dayText,
+          { color: themeColors.text },
           isToday && styles.dayTextToday,
           isSelected && styles.dayTextSelected,
           isPast && !isToday && styles.dayTextPast,
+          isPast && !isToday && { color: themeColors.textTertiary },
         ]}>
           {day}
         </Text>
@@ -155,6 +160,7 @@ function DayCell({ day, dateKey, isToday, isSelected, isPast, events, onPress }:
 // -----------------------------------------------------------------------------
 
 export function MonthGrid({ month, events, selectedDate, onSelectDate }: MonthGridProps) {
+  const { colors: themeColors } = useTheme();
   const { year, month: monthNum, daysInMonth, startWeekday } = getMonthData(month);
   const today = getTodayKey();
   
@@ -193,12 +199,12 @@ export function MonthGrid({ month, events, selectedDate, onSelectDate }: MonthGr
   }, [daysInMonth, startWeekday]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
       {/* Weekday Headers */}
-      <View style={styles.weekdayRow}>
+      <View style={[styles.weekdayRow, { borderBottomColor: themeColors.border }]}>
         {WEEKDAYS.map(day => (
           <View key={day} style={styles.weekdayCell}>
-            <Text style={styles.weekdayText}>{day}</Text>
+            <Text style={[styles.weekdayText, { color: themeColors.textTertiary }]}>{day}</Text>
           </View>
         ))}
       </View>
@@ -238,7 +244,6 @@ const CELL_SIZE = 44;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
     paddingHorizontal: spacing.sm,
     paddingBottom: spacing.sm,
   },
@@ -247,7 +252,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   weekdayCell: {
@@ -258,7 +262,6 @@ const styles = StyleSheet.create({
   weekdayText: {
     fontSize: typography.size.xs,
     fontWeight: '600',
-    color: colors.textTertiary,
     textTransform: 'uppercase',
   },
 
@@ -276,7 +279,6 @@ const styles = StyleSheet.create({
   },
 
   dayCellSelected: {
-    backgroundColor: colors.primaryLight + '15',
     borderRadius: 8,
   },
 
@@ -289,11 +291,9 @@ const styles = StyleSheet.create({
   },
 
   dayNumberToday: {
-    backgroundColor: colors.primary,
   },
 
   dayNumberSelected: {
-    backgroundColor: colors.primary,
   },
 
   dayNumberPast: {
@@ -303,7 +303,6 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: typography.size.sm,
     fontWeight: '500',
-    color: colors.text,
   },
 
   dayTextToday: {
@@ -317,7 +316,6 @@ const styles = StyleSheet.create({
   },
 
   dayTextPast: {
-    color: colors.textTertiary,
   },
 
   dotsContainer: {

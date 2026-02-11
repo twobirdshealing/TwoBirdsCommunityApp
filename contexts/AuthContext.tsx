@@ -25,6 +25,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
+  registerAndLogin: (token: string, userData: User, credentials: { username: string; password: string }) => Promise<void>;
 }
 
 // -----------------------------------------------------------------------------
@@ -45,6 +46,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Check auth status on mount
   useEffect(() => {
     checkAuthStatus();
+  }, []);
+
+  // Register callback so API client can notify us when auth is cleared (e.g. silent refresh failed)
+  useEffect(() => {
+    authService.setOnAuthCleared(() => {
+      setUser(null);
+      setIsAuthenticated(false);
+    });
+
+    return () => {
+      authService.setOnAuthCleared(null);
+    };
   }, []);
 
   const checkAuthStatus = async () => {
@@ -121,6 +134,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await checkAuthStatus();
   }, []);
 
+  const registerAndLogin = useCallback(async (
+    token: string,
+    userData: User,
+    credentials: { username: string; password: string }
+  ) => {
+    await authService.storeAuthDirect(token, userData, credentials);
+    setUser(userData);
+    setIsAuthenticated(true);
+  }, []);
+
   return (
     <AuthContext.Provider value={{
       isAuthenticated,
@@ -129,6 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login,
       logout,
       refreshAuth,
+      registerAndLogin,
     }}>
       {children}
     </AuthContext.Provider>

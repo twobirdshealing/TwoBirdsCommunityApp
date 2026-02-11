@@ -6,7 +6,8 @@
 // Supports both legacy types (new_comment) and action types (feed/commented)
 // =============================================================================
 
-import { colors } from '@/constants/colors';
+import { ColorTheme } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { NotificationType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -31,7 +32,7 @@ interface IconConfig {
   backgroundColor: string;
 }
 
-function getIconConfig(type: NotificationType): IconConfig {
+function getIconConfig(type: NotificationType, tc: ColorTheme): IconConfig {
   // Handle action-style types (e.g., "feed/mentioned")
   const normalizedType = type?.toLowerCase() || '';
 
@@ -41,8 +42,8 @@ function getIconConfig(type: NotificationType): IconConfig {
       normalizedType === 'feed/commented') {
     return {
       icon: 'chatbubble',
-      color: colors.info,
-      backgroundColor: colors.infoLight,
+      color: tc.info,
+      backgroundColor: tc.infoLight,
     };
   }
 
@@ -53,8 +54,8 @@ function getIconConfig(type: NotificationType): IconConfig {
       normalizedType === 'feed/replied') {
     return {
       icon: 'arrow-undo',
-      color: colors.info,
-      backgroundColor: colors.infoLight,
+      color: tc.info,
+      backgroundColor: tc.infoLight,
     };
   }
 
@@ -64,8 +65,18 @@ function getIconConfig(type: NotificationType): IconConfig {
       normalizedType === 'feed/reacted') {
     return {
       icon: 'heart',
-      color: colors.reactions.love,
-      backgroundColor: colors.errorLight,
+      color: tc.reactions.love,
+      backgroundColor: tc.errorLight,
+    };
+  }
+
+  // Friend posted types
+  if (normalizedType === 'friend_new_post' ||
+      normalizedType === 'friend_post') {
+    return {
+      icon: 'document-text',
+      color: tc.primary,
+      backgroundColor: tc.primaryLight + '30',
     };
   }
 
@@ -75,8 +86,8 @@ function getIconConfig(type: NotificationType): IconConfig {
       normalizedType === 'profile/followed') {
     return {
       icon: 'person-add',
-      color: colors.success,
-      backgroundColor: colors.successLight,
+      color: tc.success,
+      backgroundColor: tc.successLight,
     };
   }
 
@@ -86,8 +97,8 @@ function getIconConfig(type: NotificationType): IconConfig {
       normalizedType === 'feed/mentioned') {
     return {
       icon: 'at',
-      color: colors.warning,
-      backgroundColor: colors.warningLight,
+      color: tc.warning,
+      backgroundColor: tc.warningLight,
     };
   }
 
@@ -97,8 +108,8 @@ function getIconConfig(type: NotificationType): IconConfig {
       normalizedType === 'space/invited') {
     return {
       icon: 'mail',
-      color: colors.primary,
-      backgroundColor: colors.primaryLight + '30',
+      color: tc.primary,
+      backgroundColor: tc.primaryLight + '30',
     };
   }
 
@@ -107,8 +118,8 @@ function getIconConfig(type: NotificationType): IconConfig {
       normalizedType === 'space/joined') {
     return {
       icon: 'people',
-      color: colors.success,
-      backgroundColor: colors.successLight,
+      color: tc.success,
+      backgroundColor: tc.successLight,
     };
   }
 
@@ -118,8 +129,8 @@ function getIconConfig(type: NotificationType): IconConfig {
       normalizedType === 'course/enrolled') {
     return {
       icon: 'school',
-      color: colors.primary,
-      backgroundColor: colors.primaryLight + '30',
+      color: tc.primary,
+      backgroundColor: tc.primaryLight + '30',
     };
   }
 
@@ -129,16 +140,16 @@ function getIconConfig(type: NotificationType): IconConfig {
       normalizedType === 'lesson/completed') {
     return {
       icon: 'checkmark-circle',
-      color: colors.success,
-      backgroundColor: colors.successLight,
+      color: tc.success,
+      backgroundColor: tc.successLight,
     };
   }
 
   // Default fallback
   return {
     icon: 'notifications',
-    color: colors.textSecondary,
-    backgroundColor: colors.backgroundSecondary,
+    color: tc.textSecondary,
+    backgroundColor: tc.backgroundSecondary,
   };
 }
 
@@ -147,7 +158,8 @@ function getIconConfig(type: NotificationType): IconConfig {
 // -----------------------------------------------------------------------------
 
 export function NotificationTypeIcon({ type, size = 20 }: NotificationTypeIconProps) {
-  const config = getIconConfig(type);
+  const { colors: themeColors } = useTheme();
+  const config = getIconConfig(type, themeColors);
   const containerSize = size * 1.8;
 
   return (

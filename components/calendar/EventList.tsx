@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { CalendarEvent } from '@/types/calendar';
 import { FlashList } from '@shopify/flash-list';
 import React from 'react';
@@ -43,10 +43,12 @@ export function EventList({
   emptyMessage = 'No events scheduled',
   compact = false,
 }: EventListProps) {
+  const { colors: themeColors } = useTheme();
+
   // Initial loading state
   if (loading && events.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         {ListHeaderComponent}
         <LoadingSpinner message="Loading events..." />
       </View>
@@ -56,7 +58,7 @@ export function EventList({
   // Error state
   if (error && events.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         {ListHeaderComponent}
         <ErrorMessage message={error} onRetry={onRefresh} />
       </View>
@@ -66,7 +68,7 @@ export function EventList({
   // Empty state
   if (!loading && events.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         {ListHeaderComponent}
         <EmptyState icon="📅" message={emptyMessage} />
       </View>
@@ -74,7 +76,7 @@ export function EventList({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <FlashList
         data={events}
         keyExtractor={(item) => `${item.product_id}-${item.start}`}
@@ -93,8 +95,8 @@ export function EventList({
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
+              tintColor={themeColors.primary}
+              colors={[themeColors.primary]}
             />
           ) : undefined
         }
@@ -110,7 +112,6 @@ export function EventList({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   listContent: {

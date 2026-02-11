@@ -1,12 +1,13 @@
 // =============================================================================
-// MAIN SPACES SCREEN - Shows all spaces user is a member of
+// MAIN SPACES SCREEN - Shows spaces organized by group
 // =============================================================================
-// DEBUG VERSION - Added extensive logging to trace 401 issue
+// Fetches space groups (options_only) and user's spaces (profile endpoint)
+// to display grouped spaces with member counts and role badges.
 // =============================================================================
 
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -17,24 +18,51 @@ import {
 } from 'react-native';
 
 import { SpaceCard } from '@/components/space/SpaceCard';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { profilesApi } from '@/services/api/profiles';
 import { spacesApi } from '@/services/api/spaces';
-import { Space } from '@/types';
+import { Space, SpaceGroupOption } from '@/types';
+
+// -----------------------------------------------------------------------------
+// Types for the flat list (spaces + group headers)
+// -----------------------------------------------------------------------------
+
+type GroupHeaderItem = {
+  _type: 'group_header';
+  id: number;
+  title: string;
+  count: number;
+};
+
+type SpaceItem = {
+  _type: 'space';
+  space: Space;
+};
+
+type ListItem = GroupHeaderItem | SpaceItem;
+
+// -----------------------------------------------------------------------------
+// Component
+// -----------------------------------------------------------------------------
 
 export default function SpacesScreen() {
   const router = useRouter();
+  const { colors: themeColors } = useTheme();
+  const { user } = useAuth();
   const [spaces, setSpaces] = useState<Space[]>([]);
+  const [groups, setGroups] = useState<SpaceGroupOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // ---------------------------------------------------------------------------
-  // Fetch All Spaces (API doesn't support pagination)
+  // Fetch Groups + Spaces in parallel
   // ---------------------------------------------------------------------------
 
-  const fetchSpaces = async (isRefresh = false) => {
+  const fetchData = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -43,60 +71,49 @@ export default function SpacesScreen() {
       }
       setError(null);
 
-      console.log('[SPACES DEBUG] Starting fetchSpaces...');
+      // Fetch groups and spaces in parallel
+      const [groupsRes, spacesRes] = await Promise.all([
+        spacesApi.getSpaceGroups({ options_only: true }),
+        user?.username
+          ? profilesApi.getUserSpaces(user.username)
+          : spacesApi.getSpaces({ status: 'published' }),
+      ]);
 
-      const response = await spacesApi.getSpaces({
-        status: 'published',
-      });
-
-      // DEBUG: Log the FULL response
-      console.log('[SPACES DEBUG] Full response:', JSON.stringify(response, null, 2).substring(0, 1500));
-      console.log('[SPACES DEBUG] response.success:', response.success);
-
-      if (!response.success) {
-        console.log('[SPACES DEBUG] Response NOT successful');
-        console.log('[SPACES DEBUG] Error:', response.error);
-        setError(response.error?.message || 'Failed to load spaces');
-        return;
+      // Process groups
+      if (groupsRes.success && groupsRes.data) {
+        const groupsData = groupsRes.data as any;
+        setGroups(groupsData?.groups || []);
       }
 
-      const apiData = response.data as any;
-      console.log('[SPACES DEBUG] apiData keys:', apiData ? Object.keys(apiData) : 'null');
-      
-      const spacesList = apiData?.spaces || [];
-      console.log('[SPACES DEBUG] spacesList length:', spacesList.length);
-      console.log('[SPACES DEBUG] spacesList type:', typeof spacesList);
-      console.log('[SPACES DEBUG] Is array:', Array.isArray(spacesList));
-      
-      if (spacesList.length > 0) {
-        console.log('[SPACES DEBUG] First space:', JSON.stringify(spacesList[0], null, 2).substring(0, 300));
+      // Process spaces
+      if (spacesRes.success && spacesRes.data) {
+        const spacesData = spacesRes.data as any;
+        const spacesList = spacesData?.spaces || [];
+        setSpaces(spacesList);
+      } else {
+        setError(spacesRes.error?.message || 'Failed to load spaces');
       }
-      
-      setSpaces(spacesList);
     } catch (err) {
-      console.log('[SPACES DEBUG] CAUGHT ERROR:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [user?.username]);
 
   useEffect(() => {
-    fetchSpaces();
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   // ---------------------------------------------------------------------------
   // Client-side Search Filter
   // ---------------------------------------------------------------------------
 
   const filteredSpaces = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return spaces;
-    }
+    if (!searchQuery.trim()) return spaces;
 
     const query = searchQuery.toLowerCase().trim();
-    return spaces.filter(space => 
+    return spaces.filter(space =>
       space.title?.toLowerCase().includes(query) ||
       space.description?.toLowerCase().includes(query) ||
       space.slug?.toLowerCase().includes(query)
@@ -104,35 +121,117 @@ export default function SpacesScreen() {
   }, [spaces, searchQuery]);
 
   // ---------------------------------------------------------------------------
+  // Build grouped flat list data
+  // ---------------------------------------------------------------------------
+
+  const listData = useMemo((): ListItem[] => {
+    const items: ListItem[] = [];
+    const spacesToGroup = filteredSpaces;
+
+    // Build a map of group_id → spaces
+    const groupedSpaces = new Map<string, Space[]>();
+    const ungroupedSpaces: Space[] = [];
+
+    for (const space of spacesToGroup) {
+      const parentId = space.parent_id?.toString();
+      if (parentId) {
+        const existing = groupedSpaces.get(parentId) || [];
+        existing.push(space);
+        groupedSpaces.set(parentId, existing);
+      } else {
+        ungroupedSpaces.push(space);
+      }
+    }
+
+    // Add groups in API order (preserves admin-configured ordering)
+    for (const group of groups) {
+      const groupSpaces = groupedSpaces.get(group.id.toString()) || [];
+      if (groupSpaces.length === 0 && searchQuery.trim()) continue; // Hide empty groups when searching
+
+      // Sort spaces within group by serial
+      groupSpaces.sort((a, b) => {
+        const aSerial = Number(a.serial) || 0;
+        const bSerial = Number(b.serial) || 0;
+        return aSerial - bSerial;
+      });
+
+      items.push({
+        _type: 'group_header',
+        id: group.id,
+        title: group.title,
+        count: groupSpaces.length,
+      });
+
+      for (const space of groupSpaces) {
+        items.push({ _type: 'space', space });
+      }
+    }
+
+    // Add any ungrouped spaces at the end
+    if (ungroupedSpaces.length > 0) {
+      if (groups.length > 0) {
+        items.push({
+          _type: 'group_header',
+          id: 0,
+          title: 'Other Spaces',
+          count: ungroupedSpaces.length,
+        });
+      }
+      for (const space of ungroupedSpaces) {
+        items.push({ _type: 'space', space });
+      }
+    }
+
+    return items;
+  }, [filteredSpaces, groups, searchQuery]);
+
+  // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
 
-  const handleRefresh = () => {
-    fetchSpaces(true);
-  };
+  const handleRefresh = () => fetchData(true);
 
   const handleSpacePress = (space: Space) => {
     router.push(`/space/${space.slug}`);
   };
 
-  const handleClearSearch = () => {
-    setSearchQuery('');
-  };
+  const handleClearSearch = () => setSearchQuery('');
 
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
+  const renderItem = ({ item }: { item: ListItem }) => {
+    if (item._type === 'group_header') {
+      return (
+        <View style={[styles.groupHeader, { backgroundColor: themeColors.backgroundSecondary, borderBottomColor: themeColors.border }]}>
+          <Text style={[styles.groupTitle, { color: themeColors.text }]}>{item.title}</Text>
+          <View style={[styles.groupCountBadge, { backgroundColor: themeColors.border }]}>
+            <Text style={[styles.groupCountText, { color: themeColors.textSecondary }]}>
+              {item.count}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <SpaceCard space={item.space} onPress={() => handleSpacePress(item.space)} />
+    );
+  };
+
+  const getItemType = (item: ListItem) => item._type;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
+      <View style={[styles.searchContainer, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
+        <View style={[styles.searchInputContainer, { backgroundColor: themeColors.backgroundSecondary }]}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: themeColors.text }]}
             placeholder="Search spaces..."
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor={themeColors.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
@@ -140,15 +239,15 @@ export default function SpacesScreen() {
             clearButtonMode="while-editing"
           />
           {searchQuery.length > 0 && (
-            <Text style={styles.clearButton} onPress={handleClearSearch}>
+            <Text style={[styles.clearButton, { color: themeColors.textTertiary }]} onPress={handleClearSearch}>
               ✕
             </Text>
           )}
         </View>
-        
+
         {/* Result count when searching */}
         {searchQuery.length > 0 && (
-          <Text style={styles.resultCount}>
+          <Text style={[styles.resultCount, { color: themeColors.textSecondary }]}>
             {filteredSpaces.length} of {spaces.length} spaces
           </Text>
         )}
@@ -158,8 +257,8 @@ export default function SpacesScreen() {
       {error && !loading && spaces.length === 0 && (
         <View style={styles.centerContainer}>
           <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <Text style={styles.retryButton} onPress={handleRefresh}>
+          <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
+          <Text style={[styles.retryButton, { color: themeColors.primary }]} onPress={handleRefresh}>
             Tap to retry
           </Text>
         </View>
@@ -168,24 +267,29 @@ export default function SpacesScreen() {
       {/* Loading State */}
       {loading && spaces.length === 0 && (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading spaces...</Text>
+          <ActivityIndicator size="large" color={themeColors.primary} />
+          <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Loading spaces...</Text>
         </View>
       )}
 
-      {/* Spaces List */}
-      {!loading && spaces.length > 0 && (
+      {/* Grouped Spaces List */}
+      {!loading && listData.length > 0 && (
         <FlashList
-          data={filteredSpaces}
-          renderItem={({ item }) => (
-            <SpaceCard space={item} onPress={() => handleSpacePress(item)} />
-          )}
+          data={listData}
+          renderItem={renderItem}
+          getItemType={getItemType}
+          estimatedItemSize={180}
+          keyExtractor={(item) =>
+            item._type === 'group_header'
+              ? `group-${item.id}`
+              : `space-${item.space.id}`
+          }
           refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
+            <RefreshControl
+              refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
+              tintColor={themeColors.primary}
+              colors={[themeColors.primary]}
             />
           }
           contentContainerStyle={styles.listContent}
@@ -193,8 +297,8 @@ export default function SpacesScreen() {
             searchQuery.length > 0 ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyIcon}>🔍</Text>
-                <Text style={styles.emptyText}>No spaces match "{searchQuery}"</Text>
-                <Text style={styles.clearSearchButton} onPress={handleClearSearch}>
+                <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No spaces match "{searchQuery}"</Text>
+                <Text style={[styles.clearSearchButton, { color: themeColors.primary }]} onPress={handleClearSearch}>
                   Clear search
                 </Text>
               </View>
@@ -207,8 +311,8 @@ export default function SpacesScreen() {
       {!loading && !error && spaces.length === 0 && (
         <View style={styles.centerContainer}>
           <Text style={styles.emptyIcon}>👥</Text>
-          <Text style={styles.emptyText}>No spaces yet</Text>
-          <Text style={styles.emptySubtext}>
+          <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No spaces yet</Text>
+          <Text style={[styles.emptySubtext, { color: themeColors.textTertiary }]}>
             Join a space to see it here
           </Text>
         </View>
@@ -224,22 +328,18 @@ export default function SpacesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   // Search Bar
   searchContainer: {
-    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
     borderRadius: 10,
     paddingHorizontal: spacing.md,
   },
@@ -253,20 +353,44 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.sm + 2,
     fontSize: typography.size.md,
-    color: colors.text,
   },
 
   clearButton: {
     fontSize: 16,
-    color: colors.textTertiary,
     padding: spacing.xs,
   },
 
   resultCount: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
     marginTop: spacing.sm,
     textAlign: 'center',
+  },
+
+  // Group Headers
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md + 4,
+    paddingVertical: spacing.sm + 2,
+    marginTop: spacing.sm,
+    borderBottomWidth: 1,
+  },
+
+  groupTitle: {
+    fontSize: typography.size.md,
+    fontWeight: '700',
+    flex: 1,
+  },
+
+  groupCountBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+
+  groupCountText: {
+    fontSize: typography.size.sm,
+    fontWeight: '600',
   },
 
   // List
@@ -285,7 +409,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: spacing.md,
     fontSize: typography.size.md,
-    color: colors.textSecondary,
   },
 
   errorIcon: {
@@ -295,14 +418,12 @@ const styles = StyleSheet.create({
 
   errorText: {
     fontSize: typography.size.md,
-    color: colors.error,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
 
   retryButton: {
     fontSize: typography.size.md,
-    color: colors.primary,
     fontWeight: '600',
   },
 
@@ -318,19 +439,16 @@ const styles = StyleSheet.create({
 
   emptyText: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     textAlign: 'center',
   },
 
   emptySubtext: {
     fontSize: typography.size.sm,
-    color: colors.textTertiary,
     marginTop: spacing.xs,
   },
 
   clearSearchButton: {
     fontSize: typography.size.md,
-    color: colors.primary,
     fontWeight: '600',
     marginTop: spacing.md,
   },

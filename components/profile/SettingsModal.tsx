@@ -12,9 +12,9 @@ import {
   TouchableWithoutFeedback,
   Alert,
 } from 'react-native';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface SettingsModalProps {
   visible: boolean;
@@ -25,6 +25,7 @@ interface SettingsModalProps {
 
 export function SettingsModal({ visible, onClose, userEmail, userName }: SettingsModalProps) {
   const { logout } = useAuth();
+  const { colors: themeColors } = useTheme();
 
   const handleLogout = () => {
     Alert.alert(
@@ -54,32 +55,32 @@ export function SettingsModal({ visible, onClose, userEmail, userName }: Setting
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
-            <View style={styles.modal}>
+            <View style={[styles.modal, { backgroundColor: themeColors.surface }]}>
               {/* User Info */}
               <View style={styles.userInfo}>
-                <Text style={styles.userName}>{userName || 'User'}</Text>
-                {userEmail && <Text style={styles.userEmail}>{userEmail}</Text>}
+                <Text style={[styles.userName, { color: themeColors.text }]}>{userName || 'User'}</Text>
+                {userEmail && <Text style={[styles.userEmail, { color: themeColors.textSecondary }]}>{userEmail}</Text>}
               </View>
 
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
 
               {/* Menu Items */}
               <TouchableOpacity style={styles.menuItem} onPress={() => { onClose(); }}>
                 <Text style={styles.menuIcon}>👤</Text>
-                <Text style={styles.menuText}>Edit Profile</Text>
+                <Text style={[styles.menuText, { color: themeColors.text }]}>Edit Profile</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.menuItem} onPress={() => { onClose(); }}>
                 <Text style={styles.menuIcon}>🔖</Text>
-                <Text style={styles.menuText}>Bookmarks</Text>
+                <Text style={[styles.menuText, { color: themeColors.text }]}>Bookmarks</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.menuItem} onPress={() => { onClose(); }}>
                 <Text style={styles.menuIcon}>🔔</Text>
-                <Text style={styles.menuText}>Notification Settings</Text>
+                <Text style={[styles.menuText, { color: themeColors.text }]}>Notification Settings</Text>
               </TouchableOpacity>
 
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
 
               {/* Logout */}
               <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
@@ -88,8 +89,8 @@ export function SettingsModal({ visible, onClose, userEmail, userName }: Setting
               </TouchableOpacity>
 
               {/* App Version */}
-              <View style={styles.footer}>
-                <Text style={styles.version}>Two Birds Community v1.0.0</Text>
+              <View style={[styles.footer, { borderTopColor: themeColors.border }]}>
+                <Text style={[styles.version, { color: themeColors.textTertiary }]}>Two Birds Community v1.0.0</Text>
               </View>
             </View>
           </TouchableWithoutFeedback>
@@ -111,7 +112,6 @@ const styles = StyleSheet.create({
   modal: {
     width: '100%',
     maxWidth: 320,
-    backgroundColor: colors.surface,
     borderRadius: 16,
     overflow: 'hidden',
   },
@@ -124,18 +124,15 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: typography.size.lg,
     fontWeight: typography.weight.bold,
-    color: colors.text,
   },
 
   userEmail: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
     marginTop: spacing.xs,
   },
 
   divider: {
     height: 1,
-    backgroundColor: colors.border,
   },
 
   menuItem: {
@@ -154,23 +151,19 @@ const styles = StyleSheet.create({
 
   menuText: {
     fontSize: typography.size.md,
-    color: colors.text,
   },
 
   logoutText: {
-    color: colors.error,
   },
 
   footer: {
     padding: spacing.lg,
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
 
   version: {
     fontSize: typography.size.xs,
-    color: colors.textTertiary,
   },
 });
 

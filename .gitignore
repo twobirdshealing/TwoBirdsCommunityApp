@@ -41,3 +41,13 @@ app-example
 # generated native folders
 /ios
 /android
+
+# companion plugins (reference only)
+companion plugins/
+
+# sensitive config files
+google-services.json
+GoogleService-Info.plist
+
+# junk
+nul

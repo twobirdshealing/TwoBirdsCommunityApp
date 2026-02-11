@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
 
 export type ProfileTab = 'about' | 'posts' | 'comments';
@@ -24,15 +24,16 @@ const TABS: { key: ProfileTab; label: string }[] = [
 ];
 
 export function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
+  const { colors: themeColors } = useTheme();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
       {TABS.map((tab) => (
         <TouchableOpacity
           key={tab.key}
-          style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+          style={[styles.tab, activeTab === tab.key && [styles.tabActive, { borderBottomColor: themeColors.primary }]]}
           onPress={() => onTabChange(tab.key)}
         >
-          <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: themeColors.textSecondary }, activeTab === tab.key && [styles.tabTextActive, { color: themeColors.primary }]]}>
             {tab.label}
           </Text>
         </TouchableOpacity>
@@ -44,9 +45,7 @@ export function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   tab: {
@@ -58,17 +57,14 @@ const styles = StyleSheet.create({
   },
 
   tabActive: {
-    borderBottomColor: colors.primary,
   },
 
   tabText: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium,
-    color: colors.textSecondary,
   },
 
   tabTextActive: {
-    color: colors.primary,
     fontWeight: typography.weight.semibold,
   },
 });

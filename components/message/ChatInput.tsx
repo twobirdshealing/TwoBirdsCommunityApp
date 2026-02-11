@@ -5,8 +5,8 @@
 // =============================================================================
 
 import { MediaPreview } from '@/components/composer/MediaPreview';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { MediaItem, mediaApi } from '@/services/api/media';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -50,6 +50,7 @@ export function ChatInput({
   disabled = false,
   sending = false,
 }: ChatInputProps) {
+  const { colors: themeColors } = useTheme();
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<MediaItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -159,7 +160,7 @@ export function ChatInput({
   // ---------------------------------------------------------------------------
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
       {/* Media Preview */}
       {(attachments.length > 0 || isUploading) && (
         <MediaPreview
@@ -169,7 +170,7 @@ export function ChatInput({
         />
       )}
 
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
         {/* Image Picker Button */}
         <Pressable
           style={styles.attachButton}
@@ -179,17 +180,17 @@ export function ChatInput({
           <Ionicons
             name="image-outline"
             size={24}
-            color={attachments.length >= 4 ? colors.textTertiary : colors.textSecondary}
+            color={attachments.length >= 4 ? themeColors.textTertiary : themeColors.textSecondary}
           />
         </Pressable>
 
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { backgroundColor: themeColors.backgroundSecondary }]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: themeColors.text }]}
             value={text}
             onChangeText={setText}
             placeholder={placeholder}
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor={themeColors.textTertiary}
             multiline
             maxLength={2000}
             editable={!disabled && !sending}
@@ -200,18 +201,19 @@ export function ChatInput({
         <Pressable
           style={[
             styles.sendButton,
-            canSend && styles.sendButtonActive,
+            { backgroundColor: themeColors.backgroundSecondary },
+            canSend && [styles.sendButtonActive, { backgroundColor: themeColors.primary }],
           ]}
           onPress={handleSend}
           disabled={!canSend}
         >
           {sending ? (
-            <ActivityIndicator size="small" color={colors.textInverse} />
+            <ActivityIndicator size="small" color={themeColors.textInverse} />
           ) : (
             <Ionicons
               name="send"
               size={20}
-              color={canSend ? colors.textInverse : colors.textTertiary}
+              color={canSend ? themeColors.textInverse : themeColors.textTertiary}
             />
           )}
         </Pressable>
@@ -226,9 +228,7 @@ export function ChatInput({
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
 
   container: {
@@ -236,7 +236,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -259,7 +258,6 @@ const styles = StyleSheet.create({
 
   inputContainer: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
     borderRadius: 20,
     paddingHorizontal: spacing.md,
     paddingVertical: Platform.OS === 'ios' ? spacing.sm : 0,
@@ -269,7 +267,6 @@ const styles = StyleSheet.create({
 
   input: {
     fontSize: typography.size.md,
-    color: colors.text,
     lineHeight: 20,
     minHeight: 24,
     maxHeight: 100,
@@ -281,13 +278,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   sendButtonActive: {
-    backgroundColor: colors.primary,
   },
 });
 

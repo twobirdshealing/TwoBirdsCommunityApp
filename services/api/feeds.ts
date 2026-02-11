@@ -6,7 +6,7 @@
 // ADDED: getWelcomeBanner() for welcome banner feature
 // =============================================================================
 
-import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
+import { DEFAULT_PER_PAGE, ENDPOINTS, TBC_MR_URL } from '@/constants/config';
 import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType, WelcomeBannerResponse } from '@/types';
 import { del, get, patch, post } from './client';
 
@@ -209,19 +209,111 @@ export async function deleteFeed(id: number) {
 // -----------------------------------------------------------------------------
 
 export async function reactToFeed(
-  feedId: number, 
-  type: ReactionType, 
+  feedId: number,
+  type: ReactionType,
   hasUserReact: boolean = false
 ) {
-  const payload: { react_type: string; remove?: boolean } = { 
-    react_type: type 
+  // Always send 'like' to FC — FC only understands 'like' as a reaction type.
+  // The actual multi-reaction type is sent via X-TBC-Reaction-Type header.
+  const payload: { react_type: string; remove?: boolean } = {
+    react_type: 'like'
   };
-  
+
   if (hasUserReact) {
     payload.remove = true;
   }
-  
-  return post<ReactResponse>(ENDPOINTS.FEED_REACT(feedId), payload);
+
+  // Send reaction type header so tb-multi-reactions plugin can track it
+  const headers: Record<string, string> = {
+    'X-TBC-Reaction-Type': type,
+  };
+
+  return post<ReactResponse>(ENDPOINTS.FEED_REACT(feedId), payload, undefined, headers);
+}
+
+// -----------------------------------------------------------------------------
+// Swap Reaction Type (change existing reaction to different type)
+// -----------------------------------------------------------------------------
+// Uses tbc-multi-reactions plugin REST endpoint
+
+export async function swapReactionType(
+  objectId: number,
+  objectType: 'feed' | 'comment',
+  reactionType: ReactionType
+) {
+  // This calls the plugin's own REST endpoint (different base URL)
+  const url = `${TBC_MR_URL}/swap`;
+
+  const token = await import('@/services/auth').then(m => m.getAuthToken());
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ object_id: objectId, object_type: objectType, reaction_type: reactionType }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    return { success: false as const, error: data };
+  }
+
+  return { success: true as const, data };
+}
+
+// -----------------------------------------------------------------------------
+// Get Reaction Breakdown with Users
+// -----------------------------------------------------------------------------
+// Uses tbc-multi-reactions plugin REST endpoint
+
+export interface BreakdownUser {
+  user_id: number;
+  display_name: string;
+  avatar: string;
+  user_url?: string;
+}
+
+export interface BreakdownItem {
+  type: ReactionType;
+  emoji: string;
+  icon_url?: string | null;
+  name: string;
+  count: number;
+  color: string;
+  users: BreakdownUser[];
+  has_more?: boolean;
+}
+
+export interface BreakdownResponse {
+  breakdown: BreakdownItem[];
+  total: number;
+}
+
+export async function getReactionBreakdownUsers(
+  objectType: 'feed' | 'comment',
+  objectId: number
+): Promise<{ success: true; data: BreakdownResponse } | { success: false; error: any }> {
+  const url = `${TBC_MR_URL}/breakdown/${objectType}/${objectId}/users`;
+
+  const token = await import('@/services/auth').then(m => m.getAuthToken());
+  const headers: Record<string, string> = {
+    'Accept': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  const response = await fetch(url, { method: 'GET', headers });
+  const data = await response.json();
+
+  if (!response.ok) {
+    return { success: false as const, error: data };
+  }
+
+  return { success: true as const, data };
 }
 
 // -----------------------------------------------------------------------------
@@ -285,9 +377,11 @@ export const feedsApi = {
   toggleSticky,
   deleteFeed,
   reactToFeed,
+  swapReactionType,
   toggleBookmark,
   getBookmarks,
   getFeedReactions,
+  getReactionBreakdownUsers,
 };
 
 export default feedsApi;

@@ -20,6 +20,7 @@ export interface Space {
   logo: string | null;
   cover_photo: string | null;
   description: string | null;
+  description_rendered?: string | null;
   type: SpaceType;
   privacy: 'public' | 'private' | 'secret';  // ✅ UPDATED: Added 'secret'
   status: 'published' | 'draft' | 'archived';
@@ -150,6 +151,16 @@ export interface SpaceDetailResponse {
 export interface SpaceGroupsResponse {
   groups: SpaceGroup[];
   orphaned_spaces: Space[];
+}
+
+// Lightweight group info from GET /spaces/space_groups?options_only=1
+export interface SpaceGroupOption {
+  id: number;
+  title: string;
+}
+
+export interface SpaceGroupOptionsResponse {
+  groups: SpaceGroupOption[];
 }
 
 // Response from POST /spaces/{slug}/join

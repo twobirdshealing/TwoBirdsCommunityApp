@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
-import { JoinSpaceResponse, SpaceDetailResponse, SpaceGroupsResponse, SpacesResponse } from '@/types';
+import { JoinSpaceResponse, SpaceDetailResponse, SpaceGroupOptionsResponse, SpaceGroupsResponse, SpacesResponse } from '@/types';
 import { get, post } from './client';
 
 // -----------------------------------------------------------------------------
@@ -64,12 +64,16 @@ export async function getSpaceById(id: number) {
 // Get Space Groups (with nested spaces)
 // -----------------------------------------------------------------------------
 
-export async function getSpaceGroups(options: { with_spaces?: boolean; include_empty?: boolean } = {}) {
+export async function getSpaceGroups(options: { with_spaces?: boolean; include_empty?: boolean; options_only?: boolean } = {}) {
+  if (options.options_only) {
+    return get<SpaceGroupOptionsResponse>(`${ENDPOINTS.SPACES}/space_groups`, { options_only: 1 });
+  }
+
   const params = {
     with_spaces: options.with_spaces !== false,  // Default true
     ...(options.include_empty && { include_empty: options.include_empty }),
   };
-  
+
   return get<SpaceGroupsResponse>(`${ENDPOINTS.SPACES}/space_groups`, params);
 }
 

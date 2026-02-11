@@ -1,24 +1,20 @@
 // =============================================================================
-// CREATE POST MODAL - Full screen post composer
+// CREATE POST MODAL - Near-fullscreen post composer
 // =============================================================================
 // FIXED: Use space SLUG instead of ID
-// UPDATED: Uses PageHeader component for consistent styling
+// REFACTORED: Uses shared BottomSheet component for cohesive UX
 // =============================================================================
 
 import React from 'react';
 import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
-import { PageHeader } from '@/components/navigation';
+import { useTheme } from '@/contexts/ThemeContext';
+import { BottomSheet } from '@/components/common/BottomSheet';
 import { Composer, ComposerSubmitData } from './Composer';
 
 // -----------------------------------------------------------------------------
@@ -44,7 +40,8 @@ export function CreatePostModal({
   spaceSlug,
   spaceName,
 }: CreatePostModalProps) {
-  
+  const { colors: themeColors } = useTheme();
+
   const handleSubmit = async (data: ComposerSubmitData) => {
     await onSubmit(data);
     onClose();
@@ -52,90 +49,66 @@ export function CreatePostModal({
 
   // If space is pre-selected, ensure the space slug is in submit data
   const handleSubmitWithSpace = async (data: ComposerSubmitData) => {
-    const finalData = spaceSlug 
+    const finalData = spaceSlug
       ? { ...data, space: spaceSlug }
       : data;
-    
+
     console.log('[CreatePostModal] Submitting:', JSON.stringify(finalData, null, 2));
     await handleSubmit(finalData);
   };
 
   return (
-    <Modal
+    <BottomSheet
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      onClose={onClose}
+      heightMode="percentage"
+      heightPercentage={95}
+      title="Create Post"
+      keyboardAvoiding
     >
-      <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView
-          style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          {/* Header - Using PageHeader component */}
-          <PageHeader
-            leftAction="close"
-            onLeftPress={onClose}
-            title="Create Post"
-          />
+      {/* Space indicator - shown when space is pre-selected */}
+      {spaceName && (
+        <View style={styles.spaceIndicator}>
+          <Ionicons name="people-outline" size={16} color={themeColors.primary} />
+          <Text style={[styles.spaceText, { color: themeColors.textSecondary }]}>Posting to <Text style={[styles.spaceName, { color: themeColors.primary }]}>{spaceName}</Text></Text>
+        </View>
+      )}
 
-          {/* Space indicator - shown when space is pre-selected */}
-          {spaceName && (
-            <View style={styles.spaceIndicator}>
-              <Ionicons name="people-outline" size={16} color={colors.primary} />
-              <Text style={styles.spaceText}>Posting to <Text style={styles.spaceName}>{spaceName}</Text></Text>
-            </View>
-          )}
-
-          {/* Composer */}
-          <View style={styles.composerContainer}>
-            <Composer
-              mode="feed"
-              placeholder="What's happening?"
-              submitLabel="Post"
-              autoFocus={true}
-              initialSpaceSlug={spaceSlug}
-              initialSpaceName={spaceName}
-              onSubmit={handleSubmitWithSpace}
-              onCancel={onClose}
-            />
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </Modal>
+      {/* Composer */}
+      <View style={styles.composerContainer}>
+        <Composer
+          mode="feed"
+          placeholder="What's happening?"
+          submitLabel="Post"
+          autoFocus={true}
+          initialSpaceSlug={spaceSlug}
+          initialSpaceName={spaceName}
+          onSubmit={handleSubmitWithSpace}
+          onCancel={onClose}
+        />
+      </View>
+    </BottomSheet>
   );
 }
 
 // -----------------------------------------------------------------------------
-// Styles (header styles removed - now in PageHeader component)
+// Styles
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
-
-  keyboardView: {
-    flex: 1,
-  },
-
   spaceIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primaryLight + '20',
     gap: spacing.xs,
   },
 
   spaceText: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
   },
 
   spaceName: {
-    color: colors.primary,
     fontWeight: '600',
   },
 

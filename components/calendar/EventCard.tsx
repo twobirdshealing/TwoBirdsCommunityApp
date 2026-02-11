@@ -24,8 +24,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '@/constants/colors';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { CalendarEvent } from '@/types/calendar';
 
 // -----------------------------------------------------------------------------
@@ -71,17 +71,17 @@ function formatEventDate(start: string, end: string, startTime: string | null): 
   return timeStr ? `${dateStr} • ${timeStr}` : dateStr;
 }
 
-function getStatusConfig(event: CalendarEvent) {
+function getStatusConfig(event: CalendarEvent, themeColors: { success: string; successLight: string; warning: string; warningLight: string; error: string; errorLight: string; info: string; infoLight: string }) {
   if (event.user?.is_booked) {
-    return { label: 'Registered', color: '#22C55E', bg: '#DCFCE7' };
+    return { label: 'Registered', color: themeColors.success, bg: themeColors.successLight };
   }
   if (event.user?.is_on_waitlist) {
-    return { label: 'On Waitlist', color: '#F59E0B', bg: '#FEF3C7' };
+    return { label: 'On Waitlist', color: themeColors.warning, bg: themeColors.warningLight };
   }
   if (event.status === 'closed') {
-    return { label: 'Waitlist', color: '#EF4444', bg: '#FEE2E2' };  // Changed from "Full"
+    return { label: 'Waitlist', color: themeColors.error, bg: themeColors.errorLight };
   }
-  return { label: 'Available', color: '#3B82F6', bg: '#DBEAFE' };
+  return { label: 'Available', color: themeColors.info, bg: themeColors.infoLight };
 }
 
 function formatPrice(priceRaw: number, deposit: number | null): string {
@@ -109,9 +109,10 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 // -----------------------------------------------------------------------------
 
 export function EventCard({ event, onPress, compact = false }: EventCardProps) {
-  const status = getStatusConfig(event);
+  const { colors: themeColors } = useTheme();
+  const status = getStatusConfig(event, themeColors);
   const eventDate = formatEventDate(event.start, event.end, event.start_time);
-  const calendarColor = event.calendar_color || colors.primary;
+  const calendarColor = event.calendar_color || themeColors.primary;
   const location = event.location?.business_name || event.location?.address;
   
   // Animation for press feedback
@@ -138,31 +139,31 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
   if (compact) {
     return (
       <Pressable
-        style={styles.compactCard}
+        style={[styles.compactCard, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}
         onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
       >
         <View style={[styles.colorBar, { backgroundColor: calendarColor }]} />
-        
+
         <View style={styles.compactContent}>
           <View style={styles.compactHeader}>
-            <Text style={styles.compactTitle} numberOfLines={1}>{event.title}</Text>
+            <Text style={[styles.compactTitle, { color: themeColors.text }]} numberOfLines={1}>{event.title}</Text>
             <View style={[styles.statusPill, { backgroundColor: status.bg }]}>
               <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
             </View>
           </View>
           
-          <Text style={styles.compactMeta}>{eventDate}</Text>
-          
+          <Text style={[styles.compactMeta, { color: themeColors.textSecondary }]}>{eventDate}</Text>
+
           {location && (
-            <Text style={styles.compactLocation} numberOfLines={1}>
+            <Text style={[styles.compactLocation, { color: themeColors.textTertiary }]} numberOfLines={1}>
               📍 {location}
             </Text>
           )}
         </View>
         
-        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+        <Ionicons name="chevron-forward" size={20} color={themeColors.textTertiary} />
       </Pressable>
     );
   }
@@ -170,7 +171,7 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
   // Full card for list view
   return (
     <AnimatedPressable
-      style={[styles.card, animatedStyle]}
+      style={[styles.card, { backgroundColor: themeColors.surface }, animatedStyle]}
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
@@ -202,30 +203,30 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
       {/* Content */}
       <View style={styles.content}>
         {/* Title */}
-        <Text style={styles.title} numberOfLines={2}>{event.title}</Text>
-        
+        <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={2}>{event.title}</Text>
+
         {/* Meta info */}
         <View style={styles.metaRow}>
-          <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-          <Text style={styles.metaText}>{eventDate}</Text>
+          <Ionicons name="calendar-outline" size={14} color={themeColors.textSecondary} />
+          <Text style={[styles.metaText, { color: themeColors.textSecondary }]}>{eventDate}</Text>
         </View>
-        
+
         {location && (
           <View style={styles.metaRow}>
-            <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-            <Text style={styles.metaText} numberOfLines={1}>{location}</Text>
+            <Ionicons name="location-outline" size={14} color={themeColors.textSecondary} />
+            <Text style={[styles.metaText, { color: themeColors.textSecondary }]} numberOfLines={1}>{location}</Text>
           </View>
         )}
-        
+
         {/* Price + RSVP */}
-        <View style={styles.footer}>
-          <Text style={styles.price}>
+        <View style={[styles.footer, { borderTopColor: themeColors.border }]}>
+          <Text style={[styles.price, { color: themeColors.text }]}>
             {formatPrice(event.price_raw, event.deposit ?? null)}
           </Text>
           
           {event.rsvp?.show_countdown && !event.rsvp.deadline_passed && (
-            <View style={styles.rsvpBadge}>
-              <Text style={styles.rsvpText}>
+            <View style={[styles.rsvpBadge, { backgroundColor: themeColors.warningLight }]}>
+              <Text style={[styles.rsvpText, { color: themeColors.warning }]}>
                 RSVP {event.rsvp.days_remaining}d left
               </Text>
             </View>
@@ -235,18 +236,18 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
         {/* Progress bar */}
         {event.progress && (
           <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View 
+            <View style={[styles.progressBar, { backgroundColor: themeColors.backgroundSecondary }]}>
+              <View
                 style={[
-                  styles.progressFill, 
-                  { 
-                    width: `${Math.min(event.progress.percentage, 100)}%`, 
-                    backgroundColor: calendarColor 
+                  styles.progressFill,
+                  {
+                    width: `${Math.min(event.progress.percentage, 100)}%`,
+                    backgroundColor: calendarColor
                   }
-                ]} 
+                ]}
               />
             </View>
-            <Text style={styles.progressText}>
+            <Text style={[styles.progressText, { color: themeColors.textTertiary }]}>
               {event.progress.current}/{event.progress.goal} spots filled
             </Text>
           </View>
@@ -263,7 +264,6 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
 const styles = StyleSheet.create({
   // Full Card
   card: {
-    backgroundColor: colors.surface,
     borderRadius: sizing.borderRadius.lg,
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
@@ -320,7 +320,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size.lg,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: spacing.sm,
   },
 
@@ -334,7 +333,6 @@ const styles = StyleSheet.create({
   metaText: {
     flex: 1,
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
   },
 
   footer: {
@@ -344,13 +342,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
   },
 
   price: {
     fontSize: typography.size.md,
     fontWeight: '600',
-    color: colors.text,
   },
 
   rsvpBadge: {
@@ -372,7 +368,6 @@ const styles = StyleSheet.create({
 
   progressBar: {
     height: 4,
-    backgroundColor: colors.backgroundSecondary,
     borderRadius: 2,
     overflow: 'hidden',
   },
@@ -384,7 +379,6 @@ const styles = StyleSheet.create({
 
   progressText: {
     fontSize: typography.size.xs,
-    color: colors.textTertiary,
     marginTop: 2,
   },
 
@@ -392,11 +386,9 @@ const styles = StyleSheet.create({
   compactCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     paddingVertical: spacing.sm,
     paddingRight: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   colorBar: {
@@ -422,7 +414,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.size.md,
     fontWeight: '600',
-    color: colors.text,
   },
 
   statusPill: {
@@ -438,12 +429,10 @@ const styles = StyleSheet.create({
 
   compactMeta: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
   },
 
   compactLocation: {
     fontSize: typography.size.xs,
-    color: colors.textTertiary,
     marginTop: 2,
   },
 });

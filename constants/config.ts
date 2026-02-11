@@ -88,8 +88,20 @@ export const PUSHER_CONFIG = {
 // -----------------------------------------------------------------------------
 
 export const FEATURES = {
-  DARK_MODE: false,        // Coming soon
-  PUSH_NOTIFICATIONS: false, // Coming soon
+  DARK_MODE: true,         // Synced with Fluent Community theme
+  PUSH_NOTIFICATIONS: true, // TBC-CA plugin push notifications
   MESSAGING: true,         // Fluent Messaging enabled
   COURSES: false,          // Requires Fluent LMS
 };
+
+// -----------------------------------------------------------------------------
+// TBC Community App Plugin (Push Notifications)
+// -----------------------------------------------------------------------------
+
+export const TBC_CA_URL = `${SITE_URL}/wp-json/tbc-ca/v1`;
+
+// -----------------------------------------------------------------------------
+// TBC Multi Reactions Plugin
+// -----------------------------------------------------------------------------
+
+export const TBC_MR_URL = `${SITE_URL}/wp-json/tbc-multi-reactions/v1`;

@@ -33,11 +33,11 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { SITE_URL } from '@/constants/config';
 import { appApi } from '@/services/api/app';
 import { PageHeader } from '@/components/navigation';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -53,6 +53,7 @@ const APP_USER_AGENT = 'TBCCommunityApp/1.0';
 export default function WebViewScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isDark, colors } = useTheme();
   const params = useLocalSearchParams<{
     url?: string;
     title?: string;
@@ -62,8 +63,34 @@ export default function WebViewScreen() {
 
   // Cast rightIcon to Ionicons type (validated at render time)
   const rightIcon = params.rightIcon as keyof typeof Ionicons.glyphMap | undefined;
-  
+
   const webViewRef = useRef<WebView>(null);
+
+  // ---------------------------------------------------------------------------
+  // Theme Sync - Inject JS to set Fluent Community dark mode in WebView
+  // ---------------------------------------------------------------------------
+
+  const themeInjectionScript = `(function() {
+    try {
+      var mode = '${isDark ? 'dark' : 'light'}';
+      // Set Fluent Community color mode in localStorage
+      var storage = {};
+      try { storage = JSON.parse(localStorage.getItem('fcom_global_storage') || '{}'); } catch(e) {}
+      storage.fcom_color_mode = mode;
+      localStorage.setItem('fcom_global_storage', JSON.stringify(storage));
+      // Set cookie for server-side detection
+      document.cookie = 'fcom_color_mode=' + mode + ';path=/;max-age=31536000';
+      // Toggle dark class on html element
+      if (mode === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.setAttribute('data-color-mode', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.setAttribute('data-color-mode', 'light');
+      }
+    } catch(e) {}
+    true;
+  })();`;
   
   // State
   const [sessionUrl, setSessionUrl] = useState<string | null>(null);
@@ -176,11 +203,11 @@ export default function WebViewScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
         </View>
       </View>
     );
@@ -192,23 +219,23 @@ export default function WebViewScreen() {
 
   if (error) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
-        
+
         {/* Header */}
         <PageHeader
           leftAction="close"
           onLeftPress={handleClose}
           title="Error"
         />
-        
+
         {/* Error Content */}
         <View style={styles.centered}>
-          <View style={styles.errorIcon}>
+          <View style={[styles.errorIcon, { backgroundColor: colors.backgroundSecondary }]}>
             <Ionicons name="alert-circle-outline" size={64} color={colors.textTertiary} />
           </View>
-          <Text style={styles.errorTitle}>Something went wrong</Text>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={[styles.errorTitle, { color: colors.text }]}>Something went wrong</Text>
+          <Text style={[styles.errorText, { color: colors.textSecondary }]}>{error}</Text>
         </View>
       </View>
     );
@@ -219,9 +246,9 @@ export default function WebViewScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      
+
       {/* Header - Using PageHeader component */}
       <PageHeader
         leftAction={canGoBack ? 'back' : 'close'}
@@ -231,8 +258,8 @@ export default function WebViewScreen() {
         rightIcon={rightIcon}
         onRightPress={rightIcon ? handleRightPress : undefined}
       />
-      
-      {/* WebView with custom User-Agent */}
+
+      {/* WebView with custom User-Agent + theme sync */}
       {sessionUrl && (
         <WebView
           ref={webViewRef}
@@ -245,8 +272,9 @@ export default function WebViewScreen() {
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}
+          injectedJavaScript={themeInjectionScript}
           renderLoading={() => (
-            <View style={styles.webViewLoading}>
+            <View style={[styles.webViewLoading, { backgroundColor: colors.background }]}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           )}
@@ -263,7 +291,6 @@ export default function WebViewScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   centered: {
@@ -277,7 +304,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: spacing.md,
     fontSize: typography.size.md,
-    color: colors.textSecondary,
   },
 
   // Error
@@ -285,7 +311,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: colors.backgroundSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
@@ -294,13 +319,11 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: typography.size.xl,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: spacing.sm,
   },
 
   errorText: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.lg,
   },
@@ -318,6 +341,5 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background,
   },
 });

@@ -8,6 +8,7 @@
 import { get, post, del } from './client';
 import { ENDPOINTS, DEFAULT_PER_PAGE } from '@/constants/config';
 import { Comment, CommentsResponse, CreateCommentResponse } from '@/types';
+import { ReactionType } from '@/types/feed';
 
 // -----------------------------------------------------------------------------
 // Request Options
@@ -124,15 +125,25 @@ export async function deleteComment(feedId: number, commentId: number) {
 // FIXED: Web app sends {state: 1} to toggle reaction on/off
 // state: 1 = add reaction, state: 0 = remove reaction (toggle)
 
-export async function reactToComment(feedId: number, commentId: number, hasReacted: boolean = false) {
+export async function reactToComment(
+  feedId: number,
+  commentId: number,
+  hasReacted: boolean = false,
+  reactionType: ReactionType = 'like'
+) {
   // Web app format: {state: 1} to react, {state: 0} to unreact
   const payload = {
     state: hasReacted ? 0 : 1,
   };
-  
-  console.log('[CommentsAPI] Reacting to comment:', { feedId, commentId, payload });
-  
-  return post<any>(`${ENDPOINTS.FEED_COMMENTS(feedId)}/${commentId}/reactions`, payload);
+
+  // Send reaction type header so tb-multi-reactions plugin can track it
+  const headers: Record<string, string> = {
+    'X-TBC-Reaction-Type': reactionType,
+  };
+
+  console.log('[CommentsAPI] Reacting to comment:', { feedId, commentId, payload, reactionType });
+
+  return post<any>(`${ENDPOINTS.FEED_COMMENTS(feedId)}/${commentId}/reactions`, payload, undefined, headers);
 }
 
 // -----------------------------------------------------------------------------

@@ -15,7 +15,7 @@
 
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -78,16 +78,16 @@ const getRoleLabel = (role: string): string => {
 };
 
 /**
- * Get badge color for role
+ * Get badge color for role (themed)
  */
-const getRoleBadgeColor = (role: string): string => {
+const getRoleBadgeColor = (role: string, tc?: { error: string; info: string; textSecondary: string }): string => {
   switch (role?.toLowerCase()) {
     case 'admin':
-      return '#d32f2f';      // Red
+      return tc?.error || '#d32f2f';      // Red
     case 'moderator':
-      return '#1976d2';      // Blue
+      return tc?.info || '#1976d2';       // Blue
     default:
-      return '#757575';      // Gray (won't show for members)
+      return tc?.textSecondary || '#757575';  // Gray (won't show for members)
   }
 };
 
@@ -121,9 +121,9 @@ const formatLastActive = (dateString: string | undefined): string => {
 // Component
 // -----------------------------------------------------------------------------
 
-export function MemberCard({ 
-  member, 
-  onPress, 
+export function MemberCard({
+  member,
+  onPress,
   onMessagePress,
   onFollowPress,
   showRole = true,
@@ -132,6 +132,7 @@ export function MemberCard({
   showActions = false,
   compact = false,
 }: MemberCardProps) {
+  const { colors: themeColors } = useTheme();
   // Extract profile data (handle both nested xprofile and direct fields)
   const profile = member.xprofile || {};
   const displayName = profile.display_name || member.display_name || 'Unknown';
@@ -143,6 +144,7 @@ export function MemberCard({
   const lastActivity = profile.last_activity || member.last_activity;
   
   const roleLabel = getRoleLabel(role || '');
+  const roleBadgeColor = getRoleBadgeColor(role || '', themeColors);
   const lastActiveText = formatLastActive(lastActivity);
 
   // ---------------------------------------------------------------------------
@@ -150,22 +152,22 @@ export function MemberCard({
   // ---------------------------------------------------------------------------
 
   const content = (
-    <View style={[styles.container, compact && styles.containerCompact]}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }, compact && styles.containerCompact]}>
       {/* Left: Avatar */}
       <View style={styles.avatarContainer}>
         {avatar ? (
           <Image source={{ uri: avatar }} style={styles.avatar} />
         ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <Text style={styles.avatarText}>
+          <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
+            <Text style={[styles.avatarText, { color: themeColors.textInverse }]}>
               {displayName.charAt(0).toUpperCase()}
             </Text>
           </View>
         )}
-        
+
         {/* Verified Badge */}
         {isVerified ? (
-          <View style={styles.verifiedBadge}>
+          <View style={[styles.verifiedBadge, { backgroundColor: themeColors.info, borderColor: themeColors.surface }]}>
             <Text style={styles.verifiedIcon}>✓</Text>
           </View>
         ) : null}
@@ -175,33 +177,33 @@ export function MemberCard({
       <View style={styles.infoContainer}>
         {/* Name Row */}
         <View style={styles.nameRow}>
-          <Text style={styles.displayName} numberOfLines={1}>
+          <Text style={[styles.displayName, { color: themeColors.text }]} numberOfLines={1}>
             {displayName}
           </Text>
-          
+
           {/* Role Badge - inline with name */}
           {showRole && roleLabel ? (
-            <View style={[styles.roleBadge, { backgroundColor: getRoleBadgeColor(role || '') }]}>
+            <View style={[styles.roleBadge, { backgroundColor: roleBadgeColor }]}>
               <Text style={styles.roleBadgeText}>{roleLabel}</Text>
             </View>
           ) : null}
         </View>
-        
+
         {/* Username */}
-        <Text style={styles.username} numberOfLines={1}>
+        <Text style={[styles.username, { color: themeColors.textSecondary }]} numberOfLines={1}>
           @{username}
         </Text>
-        
+
         {/* Bio (if available and enabled) */}
         {showBio && bio ? (
-          <Text style={styles.bio} numberOfLines={compact ? 1 : 2}>
+          <Text style={[styles.bio, { color: themeColors.textSecondary }]} numberOfLines={compact ? 1 : 2}>
             {bio}
           </Text>
         ) : null}
-        
+
         {/* Last Active */}
         {showLastActive && lastActiveText ? (
-          <Text style={styles.lastActive}>
+          <Text style={[styles.lastActive, { color: themeColors.textTertiary }]}>
             {lastActiveText}
           </Text>
         ) : null}
@@ -212,21 +214,21 @@ export function MemberCard({
         <View style={styles.actionsContainer}>
           {/* Message Button */}
           {onMessagePress && (
-            <Pressable 
-              style={styles.actionButton}
+            <Pressable
+              style={[styles.actionButton, { backgroundColor: themeColors.backgroundSecondary }]}
               onPress={() => onMessagePress(member)}
             >
               <Text style={styles.actionIcon}>💬</Text>
             </Pressable>
           )}
-          
+
           {/* Follow Button */}
           {onFollowPress && (
-            <Pressable 
-              style={[styles.actionButton, styles.followButton]}
+            <Pressable
+              style={[styles.actionButton, styles.followButton, { backgroundColor: themeColors.primary }]}
               onPress={() => onFollowPress(member)}
             >
-              <Text style={styles.followButtonText}>Follow</Text>
+              <Text style={[styles.followButtonText, { color: themeColors.textInverse }]}>Follow</Text>
             </Pressable>
           )}
         </View>
@@ -237,9 +239,9 @@ export function MemberCard({
   // Wrap in Pressable if onPress provided
   if (onPress) {
     return (
-      <Pressable 
+      <Pressable
         onPress={() => onPress(member)}
-        style={({ pressed }) => pressed && styles.pressed}
+        style={({ pressed }) => pressed && [styles.pressed, { backgroundColor: themeColors.backgroundSecondary }]}
       >
         {content}
       </Pressable>
@@ -257,11 +259,9 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   containerCompact: {
@@ -270,7 +270,6 @@ const styles = StyleSheet.create({
 
   pressed: {
     opacity: 0.7,
-    backgroundColor: colors.backgroundSecondary,
   },
 
   // Avatar
@@ -283,11 +282,9 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: colors.skeleton,
   },
 
   avatarPlaceholder: {
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -295,7 +292,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 22,
     fontWeight: '600',
-    color: colors.textInverse,
   },
 
   verifiedBadge: {
@@ -309,7 +305,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.surface,
   },
 
   verifiedIcon: {
@@ -334,26 +329,22 @@ const styles = StyleSheet.create({
   displayName: {
     fontSize: typography.size.md,
     fontWeight: '600',
-    color: colors.text,
     marginRight: spacing.xs,
   },
 
   username: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
     marginBottom: 2,
   },
 
   bio: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
     marginTop: 4,
     lineHeight: 18,
   },
 
   lastActive: {
     fontSize: typography.size.xs,
-    color: colors.textTertiary,
     marginTop: 4,
   },
 
@@ -381,7 +372,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: spacing.xs,
@@ -394,13 +384,11 @@ const styles = StyleSheet.create({
   followButton: {
     width: 'auto',
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.primary,
   },
 
   followButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.textInverse,
   },
 });
 

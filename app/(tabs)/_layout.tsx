@@ -10,7 +10,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { TopHeader } from '@/components/navigation';
 
 // -----------------------------------------------------------------------------
@@ -21,14 +21,15 @@ interface TabIconProps {
   name: keyof typeof Ionicons.glyphMap;
   nameOutline: keyof typeof Ionicons.glyphMap;
   focused: boolean;
+  color: string;
 }
 
-function TabIcon({ name, nameOutline, focused }: TabIconProps) {
+function TabIcon({ name, nameOutline, focused, color }: TabIconProps) {
   return (
     <Ionicons
       name={focused ? name : nameOutline}
       size={24}
-      color={focused ? colors.primary : colors.textTertiary}
+      color={color}
     />
   );
 }
@@ -39,11 +40,12 @@ function TabIcon({ name, nameOutline, focused }: TabIconProps) {
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { colors: themeColors } = useTheme();
 
   const tabBarHeight = 60 + Math.max(insets.bottom, 10);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Top Header - Consistent across all tabs */}
       <TopHeader showLogo={true} />
 
@@ -51,13 +53,13 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textTertiary,
+          tabBarActiveTintColor: themeColors.primary,
+          tabBarInactiveTintColor: themeColors.textTertiary,
           tabBarStyle: {
             position: 'absolute',
-            backgroundColor: colors.surface,
+            backgroundColor: themeColors.surface,
             borderTopWidth: 1,
-            borderTopColor: colors.border,
+            borderTopColor: themeColors.border,
             height: tabBarHeight,
             paddingTop: 8,
             paddingBottom: Math.max(insets.bottom, 10),
@@ -89,8 +91,8 @@ export default function TabLayout() {
           name="index"
           options={{
             title: 'Home',
-            tabBarIcon: ({ focused }) => (
-              <TabIcon name="home" nameOutline="home-outline" focused={focused} />
+            tabBarIcon: ({ focused, color }) => (
+              <TabIcon name="home" nameOutline="home-outline" focused={focused} color={color} />
             ),
           }}
         />
@@ -100,8 +102,8 @@ export default function TabLayout() {
           name="activity"
           options={{
             title: 'Activity',
-            tabBarIcon: ({ focused }) => (
-              <TabIcon name="newspaper" nameOutline="newspaper-outline" focused={focused} />
+            tabBarIcon: ({ focused, color }) => (
+              <TabIcon name="newspaper" nameOutline="newspaper-outline" focused={focused} color={color} />
             ),
           }}
         />
@@ -111,8 +113,8 @@ export default function TabLayout() {
           name="spaces"
           options={{
             title: 'Spaces',
-            tabBarIcon: ({ focused }) => (
-              <TabIcon name="people" nameOutline="people-outline" focused={focused} />
+            tabBarIcon: ({ focused, color }) => (
+              <TabIcon name="people" nameOutline="people-outline" focused={focused} color={color} />
             ),
           }}
         />
@@ -122,8 +124,8 @@ export default function TabLayout() {
           name="calendar"
           options={{
             title: 'Calendar',
-            tabBarIcon: ({ focused }) => (
-              <TabIcon name="calendar" nameOutline="calendar-outline" focused={focused} />
+            tabBarIcon: ({ focused, color }) => (
+              <TabIcon name="calendar" nameOutline="calendar-outline" focused={focused} color={color} />
             ),
           }}
         />
@@ -139,6 +141,5 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 });

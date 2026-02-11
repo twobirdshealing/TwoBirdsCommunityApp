@@ -18,8 +18,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colors } from '@/constants/colors';
 import { sizing } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Try to import YouTube player, fallback if not installed
 let YoutubePlayer: any = null;
@@ -54,6 +54,7 @@ export function YouTubeEmbed({
   onStateChange,
   onReady,
 }: YouTubeEmbedProps) {
+  const { colors: themeColors } = useTheme();
   const [loading, setLoading] = React.useState(true);
 
   // Handle player state change
@@ -92,7 +93,7 @@ export function YouTubeEmbed({
     <View style={styles.container}>
       {loading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={colors.textInverse} />
+          <ActivityIndicator size="large" color={themeColors.textInverse} />
         </View>
       )}
 

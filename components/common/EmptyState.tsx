@@ -14,7 +14,7 @@
 
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -47,23 +47,25 @@ export function EmptyState({
   actionLabel,
   onAction,
 }: EmptyStateProps) {
+  const { colors: themeColors } = useTheme();
+
   return (
     <View style={styles.container}>
       {/* Icon */}
       <Text style={styles.icon}>{icon}</Text>
-      
+
       {/* Title */}
       {title && (
-        <Text style={styles.title}>{title}</Text>
+        <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
       )}
-      
+
       {/* Message */}
-      <Text style={styles.message}>{message}</Text>
+      <Text style={[styles.message, { color: themeColors.textSecondary }]}>{message}</Text>
       
       {/* Action Button */}
       {actionLabel && onAction && (
-        <TouchableOpacity style={styles.actionButton} onPress={onAction}>
-          <Text style={styles.actionText}>{actionLabel}</Text>
+        <TouchableOpacity style={[styles.actionButton, { backgroundColor: themeColors.primary }]} onPress={onAction}>
+          <Text style={[styles.actionText, { color: themeColors.textInverse }]}>{actionLabel}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -91,27 +93,23 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold,
-    color: colors.text,
     marginBottom: spacing.xs,
   },
-  
+
   message: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: typography.size.md * typography.lineHeight.normal,
   },
-  
+
   actionButton: {
     marginTop: spacing.lg,
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: sizing.borderRadius.md,
   },
-  
+
   actionText: {
-    color: colors.textInverse,
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
   },

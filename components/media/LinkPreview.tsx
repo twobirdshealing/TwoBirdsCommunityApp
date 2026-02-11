@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -92,6 +92,7 @@ export function LinkPreview({
   description,
   provider,
 }: LinkPreviewProps) {
+  const { colors: themeColors } = useTheme();
   const icon = getProviderIcon(provider, url);
   const providerName = getProviderName(provider, url);
   const domain = getDomain(url);
@@ -106,33 +107,33 @@ export function LinkPreview({
   // Compact style (no thumbnail)
   if (!thumbnail) {
     return (
-      <TouchableOpacity 
-        style={styles.compactContainer}
+      <TouchableOpacity
+        style={[styles.compactContainer, { backgroundColor: themeColors.backgroundSecondary, borderColor: themeColors.border }]}
         onPress={handlePress}
         activeOpacity={0.8}
       >
-        <View style={styles.iconContainer}>
+        <View style={[styles.iconContainer, { backgroundColor: themeColors.background }]}>
           <Text style={styles.icon}>{icon}</Text>
         </View>
-        
+
         <View style={styles.compactContent}>
-          <Text style={styles.compactTitle} numberOfLines={1}>
+          <Text style={[styles.compactTitle, { color: themeColors.text }]} numberOfLines={1}>
             {title || providerName}
           </Text>
-          <Text style={styles.compactDomain} numberOfLines={1}>
+          <Text style={[styles.compactDomain, { color: themeColors.textSecondary }]} numberOfLines={1}>
             {domain}
           </Text>
         </View>
-        
-        <Text style={styles.externalIcon}>↗</Text>
+
+        <Text style={[styles.externalIcon, { color: themeColors.textSecondary }]}>↗</Text>
       </TouchableOpacity>
     );
   }
   
   // Full style (with thumbnail)
   return (
-    <TouchableOpacity 
-      style={styles.container}
+    <TouchableOpacity
+      style={[styles.container, { backgroundColor: themeColors.backgroundSecondary }]}
       onPress={handlePress}
       activeOpacity={0.9}
     >
@@ -142,27 +143,27 @@ export function LinkPreview({
         style={styles.thumbnail}
         resizeMode="cover"
       />
-      
+
       {/* Content Overlay */}
       <View style={styles.contentOverlay}>
         <View style={styles.providerBadge}>
           <Text style={styles.providerIcon}>{icon}</Text>
-          <Text style={styles.providerText}>{providerName}</Text>
+          <Text style={[styles.providerText, { color: themeColors.textSecondary }]}>{providerName}</Text>
         </View>
-        
+
         {title && (
-          <Text style={styles.title} numberOfLines={2}>
+          <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={2}>
             {title}
           </Text>
         )}
-        
+
         {description && (
-          <Text style={styles.description} numberOfLines={2}>
+          <Text style={[styles.description, { color: themeColors.textSecondary }]} numberOfLines={2}>
             {description}
           </Text>
         )}
       </View>
-      
+
       {/* Tap to open hint */}
       <View style={styles.openHint}>
         <Text style={styles.openHintText}>Tap to open ↗</Text>
@@ -180,13 +181,11 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
-    backgroundColor: colors.backgroundSecondary,
   },
   
   thumbnail: {
     width: '100%',
     height: 180,
-    backgroundColor: colors.skeleton,
   },
   
   contentOverlay: {
@@ -206,20 +205,17 @@ const styles = StyleSheet.create({
   
   providerText: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
     fontWeight: typography.weight.medium,
   },
-  
+
   title: {
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
-    color: colors.text,
     lineHeight: typography.size.md * 1.3,
   },
   
   description: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
     marginTop: spacing.xs,
     lineHeight: typography.size.sm * 1.4,
   },
@@ -235,7 +231,6 @@ const styles = StyleSheet.create({
   },
   
   openHintText: {
-    color: colors.textInverse,
     fontSize: typography.size.xs,
   },
   
@@ -243,18 +238,15 @@ const styles = StyleSheet.create({
   compactContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
     borderRadius: sizing.borderRadius.md,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   
   iconContainer: {
     width: 40,
     height: 40,
     borderRadius: sizing.borderRadius.sm,
-    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
@@ -271,18 +263,15 @@ const styles = StyleSheet.create({
   compactTitle: {
     fontSize: typography.size.md,
     fontWeight: typography.weight.medium,
-    color: colors.text,
   },
   
   compactDomain: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
     marginTop: 2,
   },
   
   externalIcon: {
     fontSize: 18,
-    color: colors.textSecondary,
     marginLeft: spacing.sm,
   },
 });

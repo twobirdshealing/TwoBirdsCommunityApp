@@ -23,9 +23,9 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { profilesApi } from '@/services/api';
 import { Profile, Feed, ProfileComment } from '@/types';
 
@@ -39,6 +39,7 @@ import {
 } from '@/components/profile';
 import { FeedCard } from '@/components/feed';
 import { PageHeader } from '@/components/navigation';
+import { useFeedReactions } from '@/hooks';
 
 // -----------------------------------------------------------------------------
 // Helper: Format numbers
@@ -59,6 +60,7 @@ export default function UserProfileScreen() {
   const insets = useSafeAreaInsets();
   const { username } = useLocalSearchParams<{ username: string }>();
   const { user: currentUser } = useAuth();
+  const { colors: themeColors } = useTheme();
 
   // Check if viewing own profile
   const isOwnProfile = currentUser?.username === username;
@@ -81,6 +83,9 @@ export default function UserProfileScreen() {
   // Follow state (for other users only)
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+
+  // Reactions
+  const handleReact = useFeedReactions(posts, setPosts);
 
   // ---------------------------------------------------------------------------
   // Fetch Profile
@@ -274,7 +279,7 @@ export default function UserProfileScreen() {
         if (postsLoading) {
           return (
             <View style={styles.tabLoading}>
-              <ActivityIndicator size="small" color={colors.primary} />
+              <ActivityIndicator size="small" color={themeColors.primary} />
             </View>
           );
         }
@@ -282,7 +287,7 @@ export default function UserProfileScreen() {
           return (
             <View style={styles.emptyTab}>
               <Text style={styles.emptyIcon}>📝</Text>
-              <Text style={styles.emptyText}>No posts yet</Text>
+              <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No posts yet</Text>
             </View>
           );
         }
@@ -292,7 +297,7 @@ export default function UserProfileScreen() {
               <FeedCard
                 key={post.id}
                 feed={post}
-                onPress={() => router.push(`/feed/${post.id}`)}
+                onReact={(type) => handleReact(post.id, type)}
               />
             ))}
           </View>
@@ -302,7 +307,7 @@ export default function UserProfileScreen() {
         if (commentsLoading) {
           return (
             <View style={styles.tabLoading}>
-              <ActivityIndicator size="small" color={colors.primary} />
+              <ActivityIndicator size="small" color={themeColors.primary} />
             </View>
           );
         }
@@ -310,7 +315,7 @@ export default function UserProfileScreen() {
           return (
             <View style={styles.emptyTab}>
               <Text style={styles.emptyIcon}>💬</Text>
-              <Text style={styles.emptyText}>No comments yet</Text>
+              <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No comments yet</Text>
             </View>
           );
         }
@@ -327,16 +332,16 @@ export default function UserProfileScreen() {
 
   if (loading && !profile) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <PageHeader
           leftAction="back"
           onLeftPress={() => router.back()}
           title={username ? `@${username}` : 'Profile'}
         />
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading profile...</Text>
+        <View style={[styles.centerContainer, { backgroundColor: themeColors.background }]}>
+          <ActivityIndicator size="large" color={themeColors.primary} />
+          <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Loading profile...</Text>
         </View>
       </View>
     );
@@ -348,17 +353,17 @@ export default function UserProfileScreen() {
 
   if (error && !profile) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <PageHeader
           leftAction="back"
           onLeftPress={() => router.back()}
           title="Profile"
         />
-        <View style={styles.centerContainer}>
+        <View style={[styles.centerContainer, { backgroundColor: themeColors.background }]}>
           <Text style={styles.errorIcon}>😔</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable style={styles.retryButton} onPress={() => fetchProfile()}>
+          <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
+          <Pressable style={[styles.retryButton, { backgroundColor: themeColors.primary }]} onPress={() => fetchProfile()}>
             <Text style={styles.retryButtonText}>Try Again</Text>
           </Pressable>
         </View>
@@ -371,7 +376,7 @@ export default function UserProfileScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header - Using PageHeader for consistency */}
@@ -386,8 +391,8 @@ export default function UserProfileScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
+              tintColor={themeColors.primary}
+              colors={[themeColors.primary]}
             />
           }
         >
@@ -402,12 +407,12 @@ export default function UserProfileScreen() {
           />
 
           {/* Action Buttons */}
-          <View style={styles.actionButtons}>
+          <View style={[styles.actionButtons, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
             {isOwnProfile ? (
               // Own Profile: Edit button
-              <Pressable style={styles.editButton} onPress={handleEditProfilePress}>
-                <Ionicons name="create-outline" size={18} color={colors.text} />
-                <Text style={styles.editButtonText}>Edit Profile</Text>
+              <Pressable style={[styles.editButton, { backgroundColor: themeColors.backgroundSecondary }]} onPress={handleEditProfilePress}>
+                <Ionicons name="create-outline" size={18} color={themeColors.text} />
+                <Text style={[styles.editButtonText, { color: themeColors.text }]}>Edit Profile</Text>
               </Pressable>
             ) : (
               // Other's Profile: Follow + Message
@@ -415,7 +420,8 @@ export default function UserProfileScreen() {
                 <Pressable
                   style={[
                     styles.followButton,
-                    isFollowing && styles.followingButton,
+                    { backgroundColor: themeColors.primary },
+                    isFollowing && [styles.followingButton, { borderColor: themeColors.primary }],
                   ]}
                   onPress={handleFollowPress}
                   disabled={followLoading}
@@ -423,13 +429,13 @@ export default function UserProfileScreen() {
                   {followLoading ? (
                     <ActivityIndicator
                       size="small"
-                      color={isFollowing ? colors.primary : '#fff'}
+                      color={isFollowing ? themeColors.primary : '#fff'}
                     />
                   ) : (
                     <Text
                       style={[
                         styles.followButtonText,
-                        isFollowing && styles.followingButtonText,
+                        isFollowing && [styles.followingButtonText, { color: themeColors.primary }],
                       ]}
                     >
                       {isFollowing ? 'Following' : 'Follow'}
@@ -437,8 +443,8 @@ export default function UserProfileScreen() {
                   )}
                 </Pressable>
 
-                <Pressable style={styles.messageButton} onPress={handleMessagePress}>
-                  <Ionicons name="mail-outline" size={20} color={colors.text} />
+                <Pressable style={[styles.messageButton, { backgroundColor: themeColors.backgroundSecondary }]} onPress={handleMessagePress}>
+                  <Ionicons name="mail-outline" size={20} color={themeColors.text} />
                 </Pressable>
               </>
             )}
@@ -461,7 +467,6 @@ export default function UserProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   scrollView: {
@@ -473,13 +478,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
-    backgroundColor: colors.background,
   },
 
   loadingText: {
     marginTop: spacing.md,
     fontSize: typography.size.md,
-    color: colors.textSecondary,
   },
 
   errorIcon: {
@@ -489,13 +492,11 @@ const styles = StyleSheet.create({
 
   errorText: {
     fontSize: typography.size.md,
-    color: colors.error,
     textAlign: 'center',
     marginBottom: spacing.md,
   },
 
   retryButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 8,
@@ -513,16 +514,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.md,
     gap: spacing.sm,
-    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.backgroundSecondary,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm + 2,
     borderRadius: 20,
@@ -532,11 +530,9 @@ const styles = StyleSheet.create({
   editButtonText: {
     fontSize: typography.size.md,
     fontWeight: '600',
-    color: colors.text,
   },
 
   followButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm + 2,
     borderRadius: 20,
@@ -547,7 +543,6 @@ const styles = StyleSheet.create({
   followingButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.primary,
   },
 
   followButtonText: {
@@ -556,15 +551,12 @@ const styles = StyleSheet.create({
     fontSize: typography.size.md,
   },
 
-  followingButtonText: {
-    color: colors.primary,
-  },
+  followingButtonText: {},
 
   messageButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -591,7 +583,6 @@ const styles = StyleSheet.create({
 
   emptyText: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
   },
 
   postsList: {

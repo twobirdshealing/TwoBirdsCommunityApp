@@ -8,8 +8,8 @@
 
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors } from '@/constants/colors';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -39,21 +39,22 @@ export function ErrorMessage({
   fullScreen = true,
   title = 'Oops!',
 }: ErrorMessageProps) {
+  const { colors: themeColors } = useTheme();
   const content = (
     <View style={styles.content}>
       {/* Error Icon */}
       <Text style={styles.icon}>😕</Text>
       
       {/* Title */}
-      <Text style={styles.title}>{title}</Text>
-      
+      <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
+
       {/* Message */}
-      <Text style={styles.message}>{message}</Text>
-      
+      <Text style={[styles.message, { color: themeColors.textSecondary }]}>{message}</Text>
+
       {/* Retry Button */}
       {onRetry && (
-        <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
-          <Text style={styles.retryText}>Try Again</Text>
+        <TouchableOpacity style={[styles.retryButton, { backgroundColor: themeColors.primary }]} onPress={onRetry}>
+          <Text style={[styles.retryText, { color: themeColors.surface }]}>Try Again</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -61,7 +62,7 @@ export function ErrorMessage({
   
   if (fullScreen) {
     return (
-      <View style={styles.fullScreen}>
+      <View style={[styles.fullScreen, { backgroundColor: themeColors.background }]}>
         {content}
       </View>
     );
@@ -79,43 +80,38 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
     padding: spacing.xl,
   },
-  
+
   content: {
     alignItems: 'center',
     padding: spacing.xl,
   },
-  
+
   icon: {
     fontSize: 48,
     marginBottom: spacing.md,
   },
-  
+
   title: {
     fontSize: typography.size.xl,
     fontWeight: typography.weight.bold,
-    color: colors.text,
     marginBottom: spacing.sm,
   },
-  
+
   message: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.lg,
   },
-  
+
   retryButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     borderRadius: sizing.borderRadius.md,
   },
-  
+
   retryText: {
-    color: colors.textInverse,
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
   },

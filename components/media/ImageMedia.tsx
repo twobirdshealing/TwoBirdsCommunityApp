@@ -18,8 +18,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colors } from '@/constants/colors';
 import { sizing, spacing } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MAX_IMAGE_WIDTH = SCREEN_WIDTH - 48; // Account for padding
@@ -47,6 +47,7 @@ export function ImageMedia({
   maxHeight = 400,
   onPress,
 }: ImageMediaProps) {
+  const { colors: themeColors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   
@@ -77,20 +78,20 @@ export function ImageMedia({
   // Error state - show placeholder
   if (error) {
     return (
-      <View style={[styles.container, imageStyle, styles.errorContainer]}>
+      <View style={[styles.container, imageStyle, styles.errorContainer, { backgroundColor: themeColors.backgroundSecondary }]}>
         <Text style={styles.errorIcon}>🖼️</Text>
-        <Text style={styles.errorText}>Image unavailable</Text>
+        <Text style={[styles.errorText, { color: themeColors.textSecondary }]}>Image unavailable</Text>
       </View>
     );
   }
-  
+
   return (
-    <Wrapper style={styles.container} {...wrapperProps}>
+    <Wrapper style={[styles.container, { backgroundColor: themeColors.skeleton }]} {...wrapperProps}>
       {/* Loading Placeholder */}
       {loading && (
-        <View style={[styles.loadingContainer, imageStyle]}>
-          <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading image...</Text>
+        <View style={[styles.loadingContainer, imageStyle, { backgroundColor: themeColors.skeleton }]}>
+          <ActivityIndicator size="small" color={themeColors.primary} />
+          <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Loading image...</Text>
         </View>
       )}
       
@@ -119,45 +120,39 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
-    backgroundColor: colors.skeleton || '#E5E7EB',
   },
-  
+
   loadingContainer: {
     position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.skeleton || '#E5E7EB',
     zIndex: 1,
   },
-  
+
   loadingText: {
     marginTop: spacing.sm,
     fontSize: 12,
-    color: colors.textSecondary || '#6B7280',
   },
-  
+
   image: {
-    backgroundColor: colors.skeleton || '#E5E7EB',
   },
-  
+
   hidden: {
     opacity: 0,
   },
-  
+
   errorContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary || '#F3F4F6',
   },
-  
+
   errorIcon: {
     fontSize: 32,
     marginBottom: spacing.xs,
   },
-  
+
   errorText: {
     fontSize: 12,
-    color: colors.textSecondary || '#6B7280',
   },
 });
 

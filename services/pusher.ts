@@ -93,11 +93,18 @@ export async function initializePusher(userId: number): Promise<boolean> {
           try {
             log('Authorizing channel:', channel.name);
 
+            // Get fresh token each time (may have been refreshed since init)
+            const freshToken = await getAuthToken();
+            if (!freshToken) {
+              callback(new Error('No auth token'), null);
+              return;
+            }
+
             const response = await fetch(PUSHER_CONFIG.AUTH_ENDPOINT, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
+                'Authorization': `Bearer ${freshToken}`,
               },
               body: JSON.stringify({
                 socket_id: socketId,
@@ -193,6 +200,36 @@ export function disconnectPusher(): void {
 }
 
 // -----------------------------------------------------------------------------
+// Reconnect Pusher (preserves existing event handlers)
+// -----------------------------------------------------------------------------
+
+export async function reconnectPusher(): Promise<boolean> {
+  if (!currentUserId) {
+    log('Cannot reconnect - no current user');
+    return false;
+  }
+
+  const userId = currentUserId;
+  log('Reconnecting Pusher for user', userId);
+
+  // Disconnect client and channel WITHOUT clearing handler Sets
+  if (userChannel && currentUserId) {
+    pusherClient?.unsubscribe(`private-chat_user_${currentUserId}`);
+    userChannel = null;
+  }
+
+  if (pusherClient) {
+    pusherClient.disconnect();
+    pusherClient = null;
+  }
+
+  currentUserId = null;
+  // DO NOT clear messageHandlers/threadHandlers — keep existing subscriptions
+
+  return initializePusher(userId);
+}
+
+// -----------------------------------------------------------------------------
 // Event Subscription
 // -----------------------------------------------------------------------------
 
@@ -237,6 +274,7 @@ export function getConnectionState(): string {
 export const pusherService = {
   initialize: initializePusher,
   disconnect: disconnectPusher,
+  reconnect: reconnectPusher,
   onNewMessage,
   onNewThread,
   isConnected,

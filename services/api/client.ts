@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { API_URL } from '@/constants/config';
-import { clearAuth, getAuthToken } from '@/services/auth';
+import { clearAuth, getAuthToken, silentRefresh } from '@/services/auth';
 import { ApiError } from '@/types/api';
 
 // -----------------------------------------------------------------------------
@@ -29,6 +29,8 @@ interface RequestConfig {
   body?: any;
   params?: Record<string, any>;
   headers?: Record<string, string>;
+  /** @internal Used to prevent infinite retry loops */
+  _isRetry?: boolean;
 }
 
 type ApiResponse<T> =
@@ -130,14 +132,27 @@ async function request<T>(
       console.error('[API Error]', data);
 
       // Handle JWT expiration or invalid token
-      if (
+      const isJwtExpired = (
         response.status === 401 ||
-        response.status === 403 &&
-        (data?.code === 'jwt_auth_invalid_token' ||
-         data?.code === 'jwt_auth_expired_token' ||
-         data?.code === 'rest_forbidden')
-      ) {
-        console.warn('[Auth] JWT invalid or expired — clearing auth');
+        (response.status === 403 &&
+          (data?.code === 'jwt_auth_invalid_token' ||
+           data?.code === 'jwt_auth_expired_token' ||
+           data?.code === 'rest_forbidden'))
+      );
+
+      if (isJwtExpired && !config._isRetry) {
+        log('JWT expired, attempting silent refresh...');
+        const refreshed = await silentRefresh();
+
+        if (refreshed) {
+          log('Token refreshed, retrying request...');
+          return request<T>(endpoint, { ...config, _isRetry: true });
+        }
+
+        console.warn('[Auth] Silent refresh failed — clearing auth');
+        await clearAuth();
+      } else if (isJwtExpired && config._isRetry) {
+        console.warn('[Auth] JWT still invalid after refresh — clearing auth');
         await clearAuth();
       }
 
@@ -179,9 +194,10 @@ export function get<T>(endpoint: string, params?: Record<string, any>) {
 export function post<T>(
   endpoint: string,
   body?: any,
-  params?: Record<string, any>
+  params?: Record<string, any>,
+  headers?: Record<string, string>
 ) {
-  return request<T>(endpoint, { method: 'POST', body, params });
+  return request<T>(endpoint, { method: 'POST', body, params, headers });
 }
 
 export function put<T>(

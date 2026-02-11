@@ -12,8 +12,8 @@
 import { Avatar } from '@/components/common/Avatar';
 import { ChatInput, ChatInputAttachment, DateSeparator, MessageBubble } from '@/components/message';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNewMessageListener } from '@/contexts/PusherContext';
 import { messagesApi } from '@/services/api/messages';
@@ -54,6 +54,7 @@ export default function ChatThreadScreen() {
   const insets = useSafeAreaInsets();
   const { threadId } = useLocalSearchParams<{ threadId: string }>();
   const { user } = useAuth();
+  const { colors: themeColors } = useTheme();
 
   // State
   const [thread, setThread] = useState<ChatThread | null>(null);
@@ -258,11 +259,11 @@ export default function ChatThreadScreen() {
         size="sm"
         fallback={displayName}
       />
-      <Text style={styles.headerTitle} numberOfLines={1}>
+      <Text style={[styles.headerTitle, { color: themeColors.text }]} numberOfLines={1}>
         {displayName}
       </Text>
       {loading && messages.length > 0 && (
-        <ActivityIndicator size="small" color={colors.primary} style={styles.headerLoader} />
+        <ActivityIndicator size="small" color={themeColors.primary} style={styles.headerLoader} />
       )}
     </Pressable>
   );
@@ -317,14 +318,14 @@ export default function ChatThreadScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         {/* Header with Avatar */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
           <Pressable
             style={styles.headerBackButton}
             onPress={() => router.back()}
           >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
+            <Ionicons name="chevron-back" size={24} color={themeColors.text} />
           </Pressable>
 
           {renderHeaderCenter()}
@@ -340,7 +341,7 @@ export default function ChatThreadScreen() {
         >
           {loading && messages.length === 0 ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
+              <ActivityIndicator size="large" color={themeColors.primary} />
             </View>
           ) : (
             <FlashList
@@ -379,7 +380,6 @@ export default function ChatThreadScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   chatArea: {
@@ -393,9 +393,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     minHeight: 52,
     ...Platform.select({
       ios: {
@@ -429,7 +427,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.size.lg,
     fontWeight: '600',
-    color: colors.text,
   },
 
   headerLoader: {

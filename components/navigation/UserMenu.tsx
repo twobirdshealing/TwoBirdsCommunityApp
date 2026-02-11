@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -35,6 +35,7 @@ interface UserMenuProps {
   onProfilePress: () => void;
   onMySpacesPress: () => void;
   onBookmarksPress: () => void;
+  onNotificationSettingsPress: () => void;
   onLogout: () => void;
 }
 
@@ -50,14 +51,15 @@ interface MenuItemProps {
 }
 
 function MenuItem({ icon, label, onPress, destructive = false }: MenuItemProps) {
+  const { colors: themeColors } = useTheme();
   return (
     <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
-      <Ionicons 
-        name={icon} 
-        size={22} 
-        color={destructive ? colors.error : colors.textSecondary} 
+      <Ionicons
+        name={icon}
+        size={22}
+        color={destructive ? themeColors.error : themeColors.textSecondary}
       />
-      <Text style={[styles.menuItemText, destructive && styles.menuItemDestructive]}>
+      <Text style={[styles.menuItemText, { color: destructive ? themeColors.error : themeColors.text, marginLeft: spacing.md }]}>
         {label}
       </Text>
     </TouchableOpacity>
@@ -75,9 +77,17 @@ export function UserMenu({
   onProfilePress,
   onMySpacesPress,
   onBookmarksPress,
+  onNotificationSettingsPress,
   onLogout,
 }: UserMenuProps) {
   const insets = useSafeAreaInsets();
+  const { theme, isDark, setTheme, colors: themeColors } = useTheme();
+
+  const themeModeLabel = isDark ? 'Dark' : 'Light';
+
+  const handleThemeToggle = () => {
+    setTheme(isDark ? 'light' : 'dark');
+  };
 
   const handleProfilePress = () => {
     onClose();
@@ -92,6 +102,11 @@ export function UserMenu({
   const handleBookmarksPress = () => {
     onClose();
     onBookmarksPress();
+  };
+
+  const handleNotificationSettingsPress = () => {
+    onClose();
+    onNotificationSettingsPress();
   };
 
   const handleLogout = () => {
@@ -109,7 +124,7 @@ export function UserMenu({
       {/* Backdrop */}
       <Pressable style={styles.backdrop} onPress={onClose}>
         {/* Menu Container - positioned top right */}
-        <View style={[styles.menuContainer, { top: insets.top + 50 }]}>
+        <View style={[styles.menuContainer, { top: insets.top + 50, backgroundColor: themeColors.surface }]}>
           <Pressable onPress={(e) => e.stopPropagation()}>
             {/* Profile Preview - Tappable to go to profile */}
             <TouchableOpacity 
@@ -120,47 +135,63 @@ export function UserMenu({
               {user.avatar ? (
                 <Image source={{ uri: user.avatar }} style={styles.avatar} />
               ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
                   <Text style={styles.avatarText}>
                     {user.displayName.charAt(0).toUpperCase()}
                   </Text>
                 </View>
               )}
               <View style={styles.profileInfo}>
-                <Text style={styles.displayName} numberOfLines={1}>
+                <Text style={[styles.displayName, { color: themeColors.text }]} numberOfLines={1}>
                   {user.displayName}
                 </Text>
-                <Text style={styles.email} numberOfLines={1}>
+                <Text style={[styles.email, { color: themeColors.textSecondary }]} numberOfLines={1}>
                   {user.email || `@${user.username}`}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              <Ionicons name="chevron-forward" size={20} color={themeColors.textTertiary} />
             </TouchableOpacity>
 
             {/* Divider */}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
 
             {/* Menu Items */}
             <View style={styles.menuItems}>
-              <MenuItem 
-                icon="person-outline" 
-                label="My Profile" 
-                onPress={handleProfilePress} 
+              <MenuItem
+                icon="person-outline"
+                label="My Profile"
+                onPress={handleProfilePress}
               />
-              <MenuItem 
-                icon="people-outline" 
-                label="My Spaces" 
-                onPress={handleMySpacesPress} 
+              <MenuItem
+                icon="people-outline"
+                label="My Spaces"
+                onPress={handleMySpacesPress}
               />
-              <MenuItem 
-                icon="bookmark-outline" 
-                label="Bookmarks" 
-                onPress={handleBookmarksPress} 
+              <MenuItem
+                icon="bookmark-outline"
+                label="Bookmarks"
+                onPress={handleBookmarksPress}
               />
+              <MenuItem
+                icon="notifications-outline"
+                label="Notification Settings"
+                onPress={handleNotificationSettingsPress}
+              />
+
+              {/* Dark Mode Toggle */}
+              <TouchableOpacity style={styles.menuItem} onPress={handleThemeToggle} activeOpacity={0.7}>
+                <Ionicons
+                  name={isDark ? 'sunny-outline' : 'moon-outline'}
+                  size={22}
+                  color={themeColors.textSecondary}
+                />
+                <Text style={[styles.menuItemText, { color: themeColors.text, marginLeft: spacing.md }]}>Dark Mode</Text>
+                <Text style={[styles.themeLabel, { color: themeColors.textTertiary }]}>{themeModeLabel}</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Divider */}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
 
             {/* Logout */}
             <View style={styles.menuItems}>
@@ -192,7 +223,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: spacing.md,
     width: 280,
-    backgroundColor: colors.surface,
     borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -213,11 +243,9 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.skeleton,
   },
 
   avatarPlaceholder: {
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -236,19 +264,16 @@ const styles = StyleSheet.create({
   displayName: {
     fontSize: typography.size.md,
     fontWeight: '600',
-    color: colors.text,
   },
 
   email: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
     marginTop: 2,
   },
 
   // Divider
   divider: {
     height: 1,
-    backgroundColor: colors.border,
   },
 
   // Menu Items
@@ -265,12 +290,14 @@ const styles = StyleSheet.create({
 
   menuItemText: {
     fontSize: typography.size.md,
-    color: colors.text,
     marginLeft: spacing.md,
   },
 
-  menuItemDestructive: {
-    color: colors.error,
+  menuItemDestructive: {},
+
+  themeLabel: {
+    fontSize: typography.size.sm,
+    marginLeft: 'auto',
   },
 });
 

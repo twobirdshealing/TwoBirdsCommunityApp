@@ -19,9 +19,9 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -31,6 +31,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { login, isLoading } = useAuth();
+  const { colors: themeColors } = useTheme();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -77,8 +78,8 @@ export default function LoginScreen() {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.title}>Two Birds</Text>
-            <Text style={styles.subtitle}>Community</Text>
+            <Text style={[styles.title, { color: themeColors.text }]}>Two Birds</Text>
+            <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>Community</Text>
           </View>
 
           {/* Form Card */}
@@ -92,13 +93,13 @@ export default function LoginScreen() {
 
             {/* Username/Email Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email or Username</Text>
+              <Text style={[styles.label, { color: themeColors.text }]}>Email or Username</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: themeColors.background, borderColor: themeColors.border, color: themeColors.text }]}
                 value={username}
                 onChangeText={setUsername}
                 placeholder="Enter your email or username"
-                placeholderTextColor={colors.textTertiary}
+                placeholderTextColor={themeColors.textTertiary}
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="email-address"
@@ -110,14 +111,14 @@ export default function LoginScreen() {
 
             {/* Password Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.passwordContainer}>
+              <Text style={[styles.label, { color: themeColors.text }]}>Password</Text>
+              <View style={[styles.passwordContainer, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
                 <TextInput
-                  style={styles.passwordInput}
+                  style={[styles.passwordInput, { color: themeColors.text }]}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Enter your password"
-                  placeholderTextColor={colors.textTertiary}
+                  placeholderTextColor={themeColors.textTertiary}
                   secureTextEntry={!showPassword}
                   textContentType="password"
                   autoComplete="password"
@@ -137,7 +138,7 @@ export default function LoginScreen() {
 
             {/* Login Button */}
             <TouchableOpacity
-              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+              style={[styles.loginButton, { backgroundColor: themeColors.primary }, isLoading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
               activeOpacity={0.8}
@@ -150,16 +151,21 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             {/* Forgot Password Link */}
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+            <TouchableOpacity style={styles.forgotPassword} onPress={() => router.push('/forgot-password')}>
+              <Text style={[styles.forgotPasswordText, { color: themeColors.primary }]}>Forgot password?</Text>
             </TouchableOpacity>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>
+            <Text style={[styles.footerText, { color: themeColors.textSecondary }]}>
               Don't have an account?{' '}
-              <Text style={styles.footerLink}>Sign up on our website</Text>
+              <Text
+                style={[styles.footerLink, { color: themeColors.primary }]}
+                onPress={() => router.push('/register')}
+              >
+                Sign up
+              </Text>
             </Text>
           </View>
         </View>
@@ -202,13 +208,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: spacing.xs,
   },
 
   subtitle: {
     fontSize: 20,
-    color: colors.textSecondary,
     fontWeight: '500',
   },
 
@@ -231,27 +235,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: typography.size.sm,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: spacing.sm,
   },
 
   input: {
-    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: 12,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: typography.size.md,
-    color: colors.text,
   },
 
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: 12,
   },
 
@@ -260,7 +258,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: typography.size.md,
-    color: colors.text,
   },
 
   showPasswordButton: {
@@ -288,7 +285,6 @@ const styles = StyleSheet.create({
   },
 
   loginButton: {
-    backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: spacing.lg,
     alignItems: 'center',
@@ -312,7 +308,6 @@ const styles = StyleSheet.create({
   },
 
   forgotPasswordText: {
-    color: colors.primary,
     fontSize: typography.size.sm,
   },
 
@@ -323,12 +318,10 @@ const styles = StyleSheet.create({
   },
 
   footerText: {
-    color: colors.textSecondary,
     fontSize: typography.size.sm,
   },
 
   footerLink: {
-    color: colors.primary,
     fontWeight: '600',
   },
 });

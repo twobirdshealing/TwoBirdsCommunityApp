@@ -8,9 +8,9 @@
 // =============================================================================
 
 import { MemberCard, MemberCardData } from '@/components/member/MemberCard';
-import { colors } from '@/constants/colors';
 import { ENDPOINTS } from '@/constants/config';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { get } from '@/services/api/client';
 import { messagesApi } from '@/services/api/messages';
 import { Ionicons } from '@expo/vector-icons';
@@ -54,6 +54,7 @@ interface MemberSearchResult {
 export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: themeColors } = useTheme();
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -218,23 +219,23 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.surface }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <Ionicons name="close" size={24} color={colors.text} />
+            <Ionicons name="close" size={24} color={themeColors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>New Message</Text>
+          <Text style={[styles.headerTitle, { color: themeColors.text }]}>New Message</Text>
           <View style={styles.headerRight} />
         </View>
 
         {/* Search Input */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color={colors.textSecondary} />
+        <View style={[styles.searchContainer, { backgroundColor: themeColors.backgroundSecondary }]}>
+          <Ionicons name="search" size={20} color={themeColors.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: themeColors.text }]}
             placeholder="Search for a person..."
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor={themeColors.textTertiary}
             value={searchQuery}
             onChangeText={handleSearchChange}
             autoCapitalize="none"
@@ -246,16 +247,16 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
               setSearchQuery('');
               setMembers([]);
             }}>
-              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
 
         {/* Loading Overlay for Creating */}
         {creating && (
-          <View style={styles.creatingOverlay}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.creatingText}>Starting conversation...</Text>
+          <View style={[styles.creatingOverlay, { backgroundColor: themeColors.surface + 'E6' }]}>
+            <ActivityIndicator size="large" color={themeColors.primary} />
+            <Text style={[styles.creatingText, { color: themeColors.textSecondary }]}>Starting conversation...</Text>
           </View>
         )}
 
@@ -269,19 +270,19 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
         {/* Content */}
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={themeColors.primary} />
           </View>
         ) : searchQuery.length < 2 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={48} color={colors.textTertiary} />
-            <Text style={styles.emptyText}>
+            <Ionicons name="people-outline" size={48} color={themeColors.textTertiary} />
+            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
               Type at least 2 characters to search
             </Text>
           </View>
         ) : members.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="search-outline" size={48} color={colors.textTertiary} />
-            <Text style={styles.emptyText}>
+            <Ionicons name="search-outline" size={48} color={themeColors.textTertiary} />
+            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
               No members found for "{searchQuery}"
             </Text>
           </View>
@@ -307,7 +308,6 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
   },
 
   header: {
@@ -317,7 +317,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   closeButton: {
@@ -330,7 +329,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: typography.size.lg,
     fontWeight: '600',
-    color: colors.text,
   },
 
   headerRight: {
@@ -340,7 +338,6 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
@@ -351,7 +348,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: typography.size.md,
-    color: colors.text,
     paddingVertical: spacing.sm,
   },
 
@@ -371,7 +367,6 @@ const styles = StyleSheet.create({
 
   emptyText: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     textAlign: 'center',
   },
 
@@ -394,19 +389,16 @@ const styles = StyleSheet.create({
 
   creatingText: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
   },
 
   errorContainer: {
     marginHorizontal: spacing.md,
     padding: spacing.sm,
-    backgroundColor: colors.error + '20',
     borderRadius: 8,
   },
 
   errorText: {
     fontSize: typography.size.sm,
-    color: colors.error,
     textAlign: 'center',
   },
 });

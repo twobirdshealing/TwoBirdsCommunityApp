@@ -12,9 +12,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colors } from '@/constants/colors';
-import { spacing, typography } from '@/constants/layout';
+import { shadows, spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { profilesApi } from '@/services/api';
 
 // -----------------------------------------------------------------------------
@@ -34,6 +34,7 @@ export function QuickPostBox({
   placeholder = "What's happening?",
   onPress,
 }: QuickPostBoxProps) {
+  const { colors: themeColors } = useTheme();
   const { user } = useAuth();
   const [avatar, setAvatar] = useState<string | null>(null);
 
@@ -61,7 +62,7 @@ export function QuickPostBox({
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, { backgroundColor: themeColors.surface, borderColor: themeColors.border, ...shadows.sm }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -70,7 +71,7 @@ export function QuickPostBox({
         {avatar ? (
           <Image source={{ uri: avatar }} style={styles.avatar} />
         ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+          <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
             <Text style={styles.avatarText}>
               {firstName.charAt(0).toUpperCase()}
             </Text>
@@ -79,8 +80,8 @@ export function QuickPostBox({
       </View>
 
       {/* Placeholder text */}
-      <View style={styles.inputPlaceholder}>
-        <Text style={styles.placeholderText}>{placeholder}</Text>
+      <View style={[styles.inputPlaceholder, { backgroundColor: themeColors.backgroundSecondary }]}>
+        <Text style={[styles.placeholderText, { color: themeColors.textSecondary }]}>{placeholder}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -94,13 +95,11 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
-    padding: spacing.md,
+    padding: spacing.lg,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
   },
 
   avatarContainer: {
@@ -108,33 +107,29 @@ const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
 
   avatarPlaceholder: {
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   avatarText: {
-    color: colors.textInverse,
-    fontSize: typography.size.md,
+    fontSize: typography.size.lg,
     fontWeight: '600',
   },
 
   inputPlaceholder: {
     flex: 1,
-    backgroundColor: colors.backgroundSecondary,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 20,
   },
 
   placeholderText: {
-    color: colors.textTertiary,
     fontSize: typography.size.md,
   },
 });

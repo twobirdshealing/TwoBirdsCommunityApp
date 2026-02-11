@@ -14,8 +14,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { MemberCard, MemberCardData } from '@/components/member';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacesApi } from '@/services/api/spaces';
 
 // -----------------------------------------------------------------------------
@@ -51,6 +51,7 @@ function sortMembersWithLeadersFirst(members: MemberCardData[]): MemberCardData[
 export default function SpaceMembersScreen() {
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { colors: themeColors } = useTheme();
   const [members, setMembers] = useState<MemberCardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -185,32 +186,32 @@ export default function SpaceMembersScreen() {
     if (index === 0) {
       if (role === 'admin' || role === 'moderator') {
         return (
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>Leadership</Text>
+          <View style={[styles.sectionHeader, { backgroundColor: themeColors.backgroundSecondary, borderBottomColor: themeColors.border }]}>
+            <Text style={[styles.sectionHeaderText, { color: themeColors.textSecondary }]}>Leadership</Text>
           </View>
         );
       }
       return (
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionHeaderText}>Members</Text>
+        <View style={[styles.sectionHeader, { backgroundColor: themeColors.backgroundSecondary, borderBottomColor: themeColors.border }]}>
+          <Text style={[styles.sectionHeaderText, { color: themeColors.textSecondary }]}>Members</Text>
         </View>
       );
     }
-    
+
     const prevMember = sortedMembers[index - 1];
     const prevRole = prevMember?.role;
     const prevIsLeader = prevRole === 'admin' || prevRole === 'moderator';
     const currentIsLeader = role === 'admin' || role === 'moderator';
-    
+
     // Show "Members" label when transitioning from leaders to regular members
     if (prevIsLeader && !currentIsLeader) {
       return (
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionHeaderText}>Members</Text>
+        <View style={[styles.sectionHeader, { backgroundColor: themeColors.backgroundSecondary, borderBottomColor: themeColors.border }]}>
+          <Text style={[styles.sectionHeaderText, { color: themeColors.textSecondary }]}>Members</Text>
         </View>
       );
     }
-    
+
     return null;
   };
 
@@ -228,13 +229,13 @@ export default function SpaceMembersScreen() {
         }}
       />
 
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         {/* Error State */}
         {error && !loading && members.length === 0 && (
           <View style={styles.centerContainer}>
             <Text style={styles.errorIcon}>⚠️</Text>
-            <Text style={styles.errorText}>{error}</Text>
-            <Text style={styles.retryButton} onPress={handleRefresh}>
+            <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
+            <Text style={[styles.retryButton, { color: themeColors.primary }]} onPress={handleRefresh}>
               Tap to retry
             </Text>
           </View>
@@ -243,8 +244,8 @@ export default function SpaceMembersScreen() {
         {/* Loading State */}
         {loading && members.length === 0 && !error && (
           <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading members...</Text>
+            <ActivityIndicator size="large" color={themeColors.primary} />
+            <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Loading members...</Text>
           </View>
         )}
 
@@ -271,25 +272,25 @@ export default function SpaceMembersScreen() {
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.5}
             refreshControl={
-              <RefreshControl 
-                refreshing={refreshing} 
+              <RefreshControl
+                refreshing={refreshing}
                 onRefresh={handleRefresh}
-                tintColor={colors.primary}
-                colors={[colors.primary]}
+                tintColor={themeColors.primary}
+                colors={[themeColors.primary]}
               />
             }
             ListEmptyComponent={
               !loading && !error ? (
                 <View style={styles.centerContainer}>
                   <Text style={styles.emptyIcon}>👥</Text>
-                  <Text style={styles.emptyText}>No members found</Text>
+                  <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No members found</Text>
                 </View>
               ) : null
             }
             ListFooterComponent={
               loading && page > 1 ? (
                 <View style={styles.footerLoader}>
-                  <ActivityIndicator size="small" color={colors.primary} />
+                  <ActivityIndicator size="small" color={themeColors.primary} />
                 </View>
               ) : null
             }
@@ -307,7 +308,6 @@ export default function SpaceMembersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   centerContainer: {
@@ -320,7 +320,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: spacing.md,
     fontSize: 14,
-    color: colors.textSecondary,
   },
 
   errorIcon: {
@@ -330,14 +329,12 @@ const styles = StyleSheet.create({
 
   errorText: {
     fontSize: 16,
-    color: colors.error,
     textAlign: 'center',
     marginBottom: spacing.md,
   },
 
   retryButton: {
     fontSize: 14,
-    color: colors.primary,
     fontWeight: '600',
   },
 
@@ -348,7 +345,6 @@ const styles = StyleSheet.create({
 
   emptyText: {
     fontSize: 16,
-    color: colors.textSecondary,
   },
 
   footerLoader: {
@@ -358,17 +354,14 @@ const styles = StyleSheet.create({
 
   // Section Headers
   sectionHeader: {
-    backgroundColor: colors.backgroundSecondary,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   sectionHeaderText: {
     fontSize: typography.size.sm,
     fontWeight: '600',
-    color: colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },

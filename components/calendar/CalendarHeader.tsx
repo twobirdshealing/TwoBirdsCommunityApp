@@ -7,8 +7,8 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { CalendarViewMode } from '@/types/calendar';
 
 // -----------------------------------------------------------------------------
@@ -51,10 +51,11 @@ export function CalendarHeader({
   canGoPrev = true,
   canGoNext = true,
 }: CalendarHeaderProps) {
+  const { colors: themeColors } = useTheme();
   const monthDisplay = formatMonthYear(currentMonth);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
       {/* Month Navigation */}
       <View style={styles.monthNav}>
         <TouchableOpacity
@@ -66,11 +67,11 @@ export function CalendarHeader({
           <Ionicons
             name="chevron-back"
             size={22}
-            color={canGoPrev ? colors.primary : colors.textTertiary}
+            color={canGoPrev ? themeColors.primary : themeColors.textTertiary}
           />
         </TouchableOpacity>
 
-        <Text style={styles.monthText}>{monthDisplay}</Text>
+        <Text style={[styles.monthText, { color: themeColors.text }]}>{monthDisplay}</Text>
 
         <TouchableOpacity
           style={styles.navButton}
@@ -81,24 +82,25 @@ export function CalendarHeader({
           <Ionicons
             name="chevron-forward"
             size={22}
-            color={canGoNext ? colors.primary : colors.textTertiary}
+            color={canGoNext ? themeColors.primary : themeColors.textTertiary}
           />
         </TouchableOpacity>
       </View>
 
       {/* View Toggle */}
-      <View style={styles.viewToggle}>
+      <View style={[styles.viewToggle, { backgroundColor: themeColors.backgroundSecondary }]}>
         <TouchableOpacity
           style={[
             styles.toggleButton,
             viewMode === 'list' && styles.toggleButtonActive,
+            viewMode === 'list' && { backgroundColor: themeColors.primary },
           ]}
           onPress={() => onViewModeChange('list')}
         >
           <Ionicons
             name="list"
             size={18}
-            color={viewMode === 'list' ? colors.surface : colors.textSecondary}
+            color={viewMode === 'list' ? themeColors.surface : themeColors.textSecondary}
           />
         </TouchableOpacity>
 
@@ -106,13 +108,14 @@ export function CalendarHeader({
           style={[
             styles.toggleButton,
             viewMode === 'month' && styles.toggleButtonActive,
+            viewMode === 'month' && { backgroundColor: themeColors.primary },
           ]}
           onPress={() => onViewModeChange('month')}
         >
           <Ionicons
             name="grid-outline"
             size={18}
-            color={viewMode === 'month' ? colors.surface : colors.textSecondary}
+            color={viewMode === 'month' ? themeColors.surface : themeColors.textSecondary}
           />
         </TouchableOpacity>
       </View>
@@ -131,9 +134,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   monthNav: {
@@ -149,14 +150,12 @@ const styles = StyleSheet.create({
   monthText: {
     fontSize: typography.size.lg,
     fontWeight: '600',
-    color: colors.text,
     minWidth: 160,
     textAlign: 'center',
   },
 
   viewToggle: {
     flexDirection: 'row',
-    backgroundColor: colors.backgroundSecondary,
     borderRadius: 8,
     padding: 2,
   },
@@ -168,7 +167,6 @@ const styles = StyleSheet.create({
   },
 
   toggleButtonActive: {
-    backgroundColor: colors.primary,
   },
 });
 

@@ -6,8 +6,8 @@
 
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
-import { colors } from '@/constants/colors';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Space } from '@/types';
 import { formatCompactNumber } from '@/utils/formatNumber';
 
@@ -16,6 +16,7 @@ interface SpaceHeaderProps {
 }
 
 export function SpaceHeader({ space }: SpaceHeaderProps) {
+  const { colors: themeColors } = useTheme();
   const coverPhoto = space.cover_photo || space.logo;
   
   // API doesn't include counts in by-slug response, so hide the stats for now
@@ -23,7 +24,7 @@ export function SpaceHeader({ space }: SpaceHeaderProps) {
   const showStats = false;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
       {/* Cover Photo */}
       {coverPhoto ? (
         <Image
@@ -32,7 +33,7 @@ export function SpaceHeader({ space }: SpaceHeaderProps) {
           resizeMode="cover"
         />
       ) : (
-        <View style={[styles.coverImage, styles.coverPlaceholder]}>
+        <View style={[styles.coverImage, styles.coverPlaceholder, { backgroundColor: themeColors.primary }]}>
           <Text style={styles.coverEmoji}>
             {space.settings?.emoji || '🏠'}
           </Text>
@@ -41,12 +42,12 @@ export function SpaceHeader({ space }: SpaceHeaderProps) {
 
       {/* Space Info */}
       <View style={styles.infoContainer}>
-        <Text style={styles.title} numberOfLines={2}>
+        <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={2}>
           {space.title}
         </Text>
 
         {space.description && (
-          <Text style={styles.description} numberOfLines={3}>
+          <Text style={[styles.description, { color: themeColors.textSecondary }]} numberOfLines={3}>
             {space.description}
           </Text>
         )}
@@ -56,14 +57,14 @@ export function SpaceHeader({ space }: SpaceHeaderProps) {
           <View style={styles.stats}>
             <View style={styles.stat}>
               <Text style={styles.statIcon}>👥</Text>
-              <Text style={styles.statText}>Members</Text>
+              <Text style={[styles.statText, { color: themeColors.textSecondary }]}>Members</Text>
             </View>
 
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: themeColors.border }]} />
 
             <View style={styles.stat}>
               <Text style={styles.statIcon}>📝</Text>
-              <Text style={styles.statText}>Posts</Text>
+              <Text style={[styles.statText, { color: themeColors.textSecondary }]}>Posts</Text>
             </View>
           </View>
         )}
@@ -74,19 +75,15 @@ export function SpaceHeader({ space }: SpaceHeaderProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   coverImage: {
     width: '100%',
     height: 200,
-    backgroundColor: colors.skeleton,
   },
 
   coverPlaceholder: {
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -102,13 +99,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size.xxl,
     fontWeight: typography.weight.bold,
-    color: colors.text,
     marginBottom: spacing.xs,
   },
 
   description: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     lineHeight: typography.size.md * 1.5,
   },
 
@@ -130,13 +125,11 @@ const styles = StyleSheet.create({
 
   statText: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
   },
 
   statDivider: {
     width: 1,
     height: 14,
-    backgroundColor: colors.border,
     marginHorizontal: spacing.md,
   },
 });

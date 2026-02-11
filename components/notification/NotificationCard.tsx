@@ -10,7 +10,7 @@
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
 import { AppNotification } from '@/types';
 import { formatRelativeTime } from '@/utils/formatDate';
@@ -49,6 +49,7 @@ export function NotificationCard({
   onDelete,
   onAvatarPress,
 }: NotificationCardProps) {
+  const { colors: themeColors } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
 
   // Extract data
@@ -96,7 +97,7 @@ export function NotificationCard({
         style={[
           styles.swipeAction,
           styles.markReadAction,
-          { transform: [{ translateX }] },
+          { backgroundColor: themeColors.success, transform: [{ translateX }] },
         ]}
       >
         <Pressable style={styles.swipeActionButton} onPress={handleMarkAsRead}>
@@ -123,7 +124,7 @@ export function NotificationCard({
         style={[
           styles.swipeAction,
           styles.deleteAction,
-          { transform: [{ translateX }] },
+          { backgroundColor: themeColors.error, transform: [{ translateX }] },
         ]}
       >
         <Pressable style={styles.swipeActionButton} onPress={handleDelete}>
@@ -151,12 +152,13 @@ export function NotificationCard({
       <Pressable
         style={[
           styles.container,
-          isUnread && styles.containerUnread,
+          { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border },
+          isUnread && [styles.containerUnread, { backgroundColor: themeColors.primary + '10' }],
         ]}
         onPress={() => onPress?.(notification)}
       >
         {/* Unread Indicator Dot */}
-        {isUnread && <View style={styles.unreadDot} />}
+        {isUnread && <View style={[styles.unreadDot, { backgroundColor: themeColors.primary }]} />}
 
         {/* Avatar with Type Icon Overlay */}
         <Pressable
@@ -177,19 +179,19 @@ export function NotificationCard({
         {/* Content */}
         <View style={styles.content}>
           {/* Message */}
-          <Text style={[styles.message, isUnread && styles.messageUnread]} numberOfLines={2}>
+          <Text style={[styles.message, { color: themeColors.textSecondary }, isUnread && [styles.messageUnread, { color: themeColors.text }]]} numberOfLines={2}>
             {notification.message || notification.title}
           </Text>
 
           {/* Timestamp */}
-          <Text style={styles.timestamp}>{timestamp}</Text>
+          <Text style={[styles.timestamp, { color: themeColors.textTertiary }]}>{timestamp}</Text>
         </View>
 
         {/* Chevron */}
         <Ionicons
           name="chevron-forward"
           size={16}
-          color={colors.textTertiary}
+          color={themeColors.textTertiary}
           style={styles.chevron}
         />
       </Pressable>
@@ -205,16 +207,13 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingLeft: spacing.xl, // Extra space for unread dot
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   containerUnread: {
-    backgroundColor: colors.primaryLight + '10', // Very subtle tint
   },
 
   // Unread indicator
@@ -224,7 +223,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.primary,
   },
 
   // Avatar
@@ -247,19 +245,16 @@ const styles = StyleSheet.create({
 
   message: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: 4,
   },
 
   messageUnread: {
-    color: colors.text,
     fontWeight: '500',
   },
 
   timestamp: {
     fontSize: typography.size.xs,
-    color: colors.textTertiary,
   },
 
   chevron: {
@@ -281,11 +276,9 @@ const styles = StyleSheet.create({
   },
 
   markReadAction: {
-    backgroundColor: colors.success,
   },
 
   deleteAction: {
-    backgroundColor: colors.error,
   },
 
   swipeActionText: {

@@ -16,8 +16,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { MediaPreview } from './MediaPreview';
 import { ComposerToolbar } from './ComposerToolbar';
 import { SpaceSelector } from './SpaceSelector';
@@ -98,6 +98,8 @@ export function Composer({
   onFocus,
   onBlur,
 }: ComposerProps) {
+  const { colors: themeColors } = useTheme();
+
   // State
   const [message, setMessage] = useState('');
   const [title, setTitle] = useState('');
@@ -346,10 +348,10 @@ export function Composer({
   // ---------------------------------------------------------------------------
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
       {/* Space Selector (only for feeds without preset space) */}
       {showSpaceSelector && (
-        <View style={styles.spaceRow}>
+        <View style={[styles.spaceRow, { borderBottomColor: themeColors.border }]}>
           <SpaceSelector
             selectedSpaceSlug={selectedSpaceSlug}
             selectedSpaceName={selectedSpaceName}
@@ -361,9 +363,9 @@ export function Composer({
       {/* Title Input (for feeds) */}
       {showTitle && (
         <TextInput
-          style={styles.titleInput}
+          style={[styles.titleInput, { color: themeColors.text, borderBottomColor: themeColors.border }]}
           placeholder="Title (optional)"
-          placeholderTextColor={colors.textTertiary}
+          placeholderTextColor={themeColors.textTertiary}
           value={title}
           onChangeText={setTitle}
           maxLength={200}
@@ -375,10 +377,11 @@ export function Composer({
         ref={inputRef}
         style={[
           styles.messageInput,
+          { color: themeColors.text },
           isFocused && styles.messageInputFocused,
         ]}
         placeholder={actualPlaceholder}
-        placeholderTextColor={colors.textTertiary}
+        placeholderTextColor={themeColors.textTertiary}
         value={message}
         onChangeText={setMessage}
         onFocus={handleFocus}
@@ -407,7 +410,7 @@ export function Composer({
 
       {/* Character Count */}
       {showCharCount && (
-        <Text style={[styles.charCount, isOverLimit && styles.charCountOver]}>
+        <Text style={[styles.charCount, { color: themeColors.textTertiary }, isOverLimit && styles.charCountOver]}>
           {charCount}/{maxLength}
         </Text>
       )}
@@ -441,30 +444,25 @@ export function Composer({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
   },
 
   spaceRow: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   titleInput: {
     fontSize: typography.size.lg,
     fontWeight: '600',
-    color: colors.text,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   messageInput: {
     flex: 1,
     fontSize: typography.size.md,
-    color: colors.text,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     textAlignVertical: 'top',
@@ -477,14 +475,12 @@ const styles = StyleSheet.create({
 
   charCount: {
     fontSize: typography.size.xs,
-    color: colors.textTertiary,
     textAlign: 'right',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xs,
   },
 
   charCountOver: {
-    color: colors.error,
   },
 });
 

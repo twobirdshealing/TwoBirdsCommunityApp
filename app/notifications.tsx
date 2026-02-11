@@ -12,8 +12,8 @@
 
 import { PageHeader } from '@/components/navigation';
 import { NotificationCard } from '@/components/notification';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { notificationsApi } from '@/services/api';
 import { AppNotification } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +41,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function NotificationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors: themeColors } = useTheme();
 
   // State
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -337,24 +338,24 @@ export default function NotificationsScreen() {
 
     return (
       <View style={styles.emptyState}>
-        <View style={styles.emptyIconContainer}>
+        <View style={[styles.emptyIconContainer, { backgroundColor: themeColors.backgroundSecondary }]}>
           <Ionicons
             name={showUnreadOnly ? 'checkmark-circle-outline' : 'notifications-outline'}
             size={64}
-            color={colors.textTertiary}
+            color={themeColors.textTertiary}
           />
         </View>
-        <Text style={styles.emptyTitle}>
+        <Text style={[styles.emptyTitle, { color: themeColors.text }]}>
           {showUnreadOnly ? 'All Caught Up!' : 'No Notifications'}
         </Text>
-        <Text style={styles.emptyText}>
+        <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
           {showUnreadOnly
             ? "You've read all your notifications."
             : "When you receive notifications, they'll appear here."}
         </Text>
         {showUnreadOnly && (
           <Pressable style={styles.showAllButton} onPress={handleToggleFilter}>
-            <Text style={styles.showAllButtonText}>Show All Notifications</Text>
+            <Text style={[styles.showAllButtonText, { color: themeColors.primary }]}>Show All Notifications</Text>
           </Pressable>
         )}
       </View>
@@ -365,7 +366,7 @@ export default function NotificationsScreen() {
     if (!loadingMore) return null;
     return (
       <View style={styles.footer}>
-        <ActivityIndicator size="small" color={colors.primary} />
+        <ActivityIndicator size="small" color={themeColors.primary} />
       </View>
     );
   };
@@ -374,20 +375,20 @@ export default function NotificationsScreen() {
     const unreadCount = notifications.filter(n => !n.is_read).length;
 
     return (
-      <View style={styles.filterBar}>
+      <View style={[styles.filterBar, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
         <Pressable
-          style={[styles.filterButton, !showUnreadOnly && styles.filterButtonActive]}
+          style={[styles.filterButton, { backgroundColor: themeColors.backgroundSecondary }, !showUnreadOnly && [styles.filterButtonActive, { backgroundColor: themeColors.primary }]]}
           onPress={() => showUnreadOnly && handleToggleFilter()}
         >
-          <Text style={[styles.filterButtonText, !showUnreadOnly && styles.filterButtonTextActive]}>
+          <Text style={[styles.filterButtonText, { color: themeColors.textSecondary }, !showUnreadOnly && [styles.filterButtonTextActive, { color: themeColors.textInverse }]]}>
             All
           </Text>
         </Pressable>
         <Pressable
-          style={[styles.filterButton, showUnreadOnly && styles.filterButtonActive]}
+          style={[styles.filterButton, { backgroundColor: themeColors.backgroundSecondary }, showUnreadOnly && [styles.filterButtonActive, { backgroundColor: themeColors.primary }]]}
           onPress={() => !showUnreadOnly && handleToggleFilter()}
         >
-          <Text style={[styles.filterButtonText, showUnreadOnly && styles.filterButtonTextActive]}>
+          <Text style={[styles.filterButtonText, { color: themeColors.textSecondary }, showUnreadOnly && [styles.filterButtonTextActive, { color: themeColors.textInverse }]]}>
             Unread
             {unreadCount > 0 && !showUnreadOnly && (
               <Text style={styles.filterBadge}> ({unreadCount})</Text>
@@ -406,7 +407,7 @@ export default function NotificationsScreen() {
     <GestureHandlerRootView style={styles.gestureRoot}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
         {/* Header - Using PageHeader for consistency */}
         <PageHeader
           leftAction="back"
@@ -417,13 +418,13 @@ export default function NotificationsScreen() {
         />
         {loading && notifications.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={themeColors.primary} />
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-            <Pressable style={styles.retryButton} onPress={() => fetchNotifications(1)}>
-              <Text style={styles.retryButtonText}>Try Again</Text>
+            <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
+            <Pressable style={[styles.retryButton, { backgroundColor: themeColors.primary }]} onPress={() => fetchNotifications(1)}>
+              <Text style={[styles.retryButtonText, { color: themeColors.textInverse }]}>Try Again</Text>
             </Pressable>
           </View>
         ) : (
@@ -448,8 +449,8 @@ export default function NotificationsScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                colors={[colors.primary]}
-                tintColor={colors.primary}
+                colors={[themeColors.primary]}
+                tintColor={themeColors.primary}
               />
             }
           />
@@ -470,17 +471,14 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   // Filter Bar
   filterBar: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     gap: spacing.sm,
   },
 
@@ -488,22 +486,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: 16,
-    backgroundColor: colors.backgroundSecondary,
   },
 
-  filterButtonActive: {
-    backgroundColor: colors.primary,
-  },
+  filterButtonActive: {},
 
   filterButtonText: {
     fontSize: typography.size.sm,
     fontWeight: '500',
-    color: colors.textSecondary,
   },
 
-  filterButtonTextActive: {
-    color: colors.textInverse,
-  },
+  filterButtonTextActive: {},
 
   filterBadge: {
     fontWeight: '600',
@@ -526,7 +518,6 @@ const styles = StyleSheet.create({
 
   errorText: {
     fontSize: typography.size.md,
-    color: colors.error,
     textAlign: 'center',
     marginBottom: spacing.lg,
   },
@@ -534,14 +525,12 @@ const styles = StyleSheet.create({
   retryButton: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    backgroundColor: colors.primary,
     borderRadius: 8,
   },
 
   retryButtonText: {
     fontSize: typography.size.md,
     fontWeight: '600',
-    color: colors.textInverse,
   },
 
   // Empty State
@@ -557,7 +546,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: colors.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
@@ -566,13 +554,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: typography.size.xl,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: spacing.sm,
   },
 
   emptyText: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     textAlign: 'center',
     maxWidth: 280,
     marginBottom: spacing.lg,
@@ -586,7 +572,6 @@ const styles = StyleSheet.create({
   showAllButtonText: {
     fontSize: typography.size.md,
     fontWeight: '600',
-    color: colors.primary,
   },
 
   // Footer

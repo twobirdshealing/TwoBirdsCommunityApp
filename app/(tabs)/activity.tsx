@@ -1,21 +1,20 @@
 // =============================================================================
 // ACTIVITY SCREEN - Main community feed with all features
 // =============================================================================
-// UPDATED: Added Welcome Banner support
 // UPDATED: Added pin support for admins
 // =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors } from '@/constants/colors';
-import { Feed, WelcomeBanner as WelcomeBannerType } from '@/types';
+import { useTheme } from '@/contexts/ThemeContext';
+import { Feed } from '@/types';
 import { feedsApi } from '@/services/api';
 import { FeedList } from '@/components/feed/FeedList';
-import { WelcomeBanner } from '@/components/feed/WelcomeBanner';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/composer';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeedReactions } from '@/hooks';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -24,38 +23,18 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function ActivityScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  
+  const { colors: themeColors } = useTheme();
   // Feed state
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Welcome banner state
-  const [welcomeBanner, setWelcomeBanner] = useState<WelcomeBannerType | null>(null);
-  
   // Modal states
   const [showComposer, setShowComposer] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
   const [selectedFeedSlug, setSelectedFeedSlug] = useState<string | undefined>(undefined);
-  
-  // ---------------------------------------------------------------------------
-  // Fetch Welcome Banner
-  // ---------------------------------------------------------------------------
-  
-  const fetchWelcomeBanner = useCallback(async () => {
-    try {
-      const response = await feedsApi.getWelcomeBanner();
-      
-      if (response.success && response.data?.welcome_banner) {
-        setWelcomeBanner(response.data.welcome_banner);
-      }
-    } catch (err) {
-      // Silent fail - banner is optional
-      console.log('[BANNER] Failed to fetch welcome banner:', err);
-    }
-  }, []);
   
   // ---------------------------------------------------------------------------
   // Fetch Feeds - Now merges sticky posts at top!
@@ -120,59 +99,18 @@ export default function ActivityScreen() {
   
   // Initial load
   useEffect(() => {
-    fetchWelcomeBanner();
     fetchFeeds();
-  }, [fetchWelcomeBanner, fetchFeeds]);
+  }, [fetchFeeds]);
   
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
   
   const handleRefresh = () => {
-    fetchWelcomeBanner(); // Also refresh banner
     fetchFeeds(true);
   };
   
-  const handleFeedPress = (feed: Feed) => {
-    router.push({
-      pathname: '/feed/[id]',
-      params: { id: feed.id.toString() },
-    });
-  };
-  
-  const handleReact = async (feedId: number, type: 'like') => {
-    const feed = feeds.find(f => f.id === feedId);
-    if (!feed) return;
-    
-    const hasUserReact = feed.has_user_react || false;
-
-    // Optimistic update
-    setFeeds(prevFeeds =>
-      prevFeeds.map(f => {
-        if (f.id === feedId) {
-          const currentCount = typeof f.reactions_count === 'string'
-            ? parseInt(f.reactions_count, 10)
-            : f.reactions_count || 0;
-          
-          return {
-            ...f,
-            has_user_react: !hasUserReact,
-            reactions_count: hasUserReact ? currentCount - 1 : currentCount + 1,
-          };
-        }
-        return f;
-      })
-    );
-
-    try {
-      await feedsApi.reactToFeed(feedId, type, hasUserReact);
-    } catch (err) {
-      // Revert on error
-      setFeeds(prevFeeds =>
-        prevFeeds.map(f => (f.id === feedId ? feed : f))
-      );
-    }
-  };
+  const handleReact = useFeedReactions(feeds, setFeeds);
   
   const handleAuthorPress = (username: string) => {
     router.push({
@@ -341,21 +279,13 @@ export default function ActivityScreen() {
   };
 
   // ---------------------------------------------------------------------------
-  // Header Component with Welcome Banner
+  // Header Component
   // ---------------------------------------------------------------------------
 
   const FeedHeader = () => (
-    <>
-      {/* Welcome Banner - shown above QuickPostBox */}
-      {welcomeBanner && welcomeBanner.enabled === 'yes' && (
-        <WelcomeBanner banner={welcomeBanner} />
-      )}
-      
-      {/* Quick Post Box */}
-      <QuickPostBox
-        onPress={() => setShowComposer(true)}
-      />
-    </>
+    <QuickPostBox
+      onPress={() => setShowComposer(true)}
+    />
   );
   
   // ---------------------------------------------------------------------------
@@ -363,14 +293,13 @@ export default function ActivityScreen() {
   // ---------------------------------------------------------------------------
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <FeedList
         feeds={feeds}
         loading={loading}
         refreshing={refreshing}
         error={error}
         onRefresh={handleRefresh}
-        onFeedPress={handleFeedPress}
         onReact={handleReact}
         onAuthorPress={handleAuthorPress}
         onSpacePress={handleSpacePress}
@@ -409,6 +338,5 @@ export default function ActivityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 });

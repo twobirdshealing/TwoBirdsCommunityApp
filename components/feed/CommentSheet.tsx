@@ -9,44 +9,45 @@
 // FIXED: Mentions are now clickable and link to profiles
 // FIXED: Reply button no longer has emoji (cleaner look)
 // ADDED: 3-dot menu with Copy Link, Edit, Delete
+// REFACTORED: Uses shared BottomSheet component
 // =============================================================================
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
-  Animated,
-  Dimensions,
   FlatList,
   Image,
-  KeyboardAvoidingView,
-  Modal,
-  PanResponder,
   Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { Comment } from '@/types';
+import { ReactionType } from '@/types/feed';
 import { commentsApi, mediaApi } from '@/services/api';
 import { Avatar } from '@/components/common/Avatar';
+import { BottomSheet } from '@/components/common/BottomSheet';
+import { ReactionPicker } from './ReactionPicker';
+import { ReactionBreakdownModal } from './ReactionBreakdownModal';
+import { ReactionIcon } from './ReactionIcon';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { stripHtmlTags } from '@/utils/htmlToText';
 import { useAuth } from '@/contexts/AuthContext';
+import { useReactionConfig } from '@/hooks';
+import { updateBreakdownOptimistically } from '@/utils/reactionHelpers';
 import { SITE_URL } from '@/constants/config';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SHEET_HEIGHT = SCREEN_HEIGHT * 0.75;
+import { REACTION_EMOJI } from '@/constants/reactions';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -84,17 +85,17 @@ interface TextPart {
  */
 function parseCommentContent(html: string): TextPart[] {
   if (!html) return [];
-  
+
   const parts: TextPart[] = [];
-  
+
   // Regex to match profile links in format:
   // <a href="https://staging.twobirdschurch.com/portal/u/bluejay/">James Elrod</a>
   // Captures: username from URL, display name from link text
   const mentionRegex = /<a\s+href=["'](?:https?:\/\/[^\/]+)?\/portal\/u\/([^"'\/]+)\/?["'][^>]*>([^<]+)<\/a>/gi;
-  
+
   let lastIndex = 0;
   let match;
-  
+
   while ((match = mentionRegex.exec(html)) !== null) {
     // Add text before this match
     if (match.index > lastIndex) {
@@ -104,7 +105,7 @@ function parseCommentContent(html: string): TextPart[] {
         parts.push({ type: 'text', content: strippedText });
       }
     }
-    
+
     // Add the mention
     parts.push({
       type: 'mention',
@@ -112,10 +113,10 @@ function parseCommentContent(html: string): TextPart[] {
       username: match[1], // Username from URL
       displayName: match[2],
     });
-    
+
     lastIndex = match.index + match[0].length;
   }
-  
+
   // Add remaining text after last match
   if (lastIndex < html.length) {
     const remainingText = html.substring(lastIndex);
@@ -124,7 +125,7 @@ function parseCommentContent(html: string): TextPart[] {
       parts.push({ type: 'text', content: strippedText });
     }
   }
-  
+
   // If no mentions found, just return stripped text
   if (parts.length === 0) {
     const stripped = stripHtmlTags(html);
@@ -132,7 +133,7 @@ function parseCommentContent(html: string): TextPart[] {
       parts.push({ type: 'text', content: stripped });
     }
   }
-  
+
   return parts;
 }
 
@@ -143,57 +144,27 @@ function parseCommentContent(html: string): TextPart[] {
 export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdded }: CommentSheetProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors: themeColors } = useTheme();
+  const { reactions, getReaction, display } = useReactionConfig();
+  const defaultReactionId = reactions[0]?.id || 'like';
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
-  
+
   // Comment input state
   const [commentText, setCommentText] = useState('');
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Edit mode state
   const [editingComment, setEditingComment] = useState<Comment | null>(null);
 
-  // Swipe to close
-  const translateY = useRef(new Animated.Value(0)).current;
-  
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to downward swipes
-        return gestureState.dy > 10;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        // Only allow downward movement
-        if (gestureState.dy > 0) {
-          translateY.setValue(gestureState.dy);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        // If swiped down more than 100px, close the sheet
-        if (gestureState.dy > 100) {
-          Animated.timing(translateY, {
-            toValue: SHEET_HEIGHT,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
-            onClose();
-            translateY.setValue(0);
-          });
-        } else {
-          // Snap back
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
-        }
-      },
-    })
-  ).current;
+  // Reaction picker state
+  const [reactionPickerComment, setReactionPickerComment] = useState<Comment | null>(null);
+  // Breakdown modal state
+  const [breakdownComment, setBreakdownComment] = useState<Comment | null>(null);
 
   // ---------------------------------------------------------------------------
   // Fetch Comments
@@ -201,31 +172,32 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 
   const fetchComments = async () => {
     if (!feedId) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await commentsApi.getComments(feedId);
-      
-      if (response.success && response.data) {
-        // Flatten nested comments for display
-        const allComments: Comment[] = [];
-        
-        response.data.comments?.forEach((comment: Comment) => {
-          allComments.push(comment);
-          // Add replies after parent
-          if (comment.replies && comment.replies.length > 0) {
-            comment.replies.forEach((reply: Comment) => {
-              allComments.push(reply);
-            });
-          }
-        });
-        
-        setComments(allComments);
-      } else {
+
+      if (!response.success) {
         setError(response.error?.message || 'Failed to load comments');
+        return;
       }
+
+      // Flatten nested comments for display
+      const allComments: Comment[] = [];
+
+      response.data.comments?.forEach((comment: Comment) => {
+        allComments.push(comment);
+        // Add replies after parent
+        if (comment.replies && comment.replies.length > 0) {
+          comment.replies.forEach((reply: Comment) => {
+            allComments.push(reply);
+          });
+        }
+      });
+
+      setComments(allComments);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -236,7 +208,6 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   useEffect(() => {
     if (visible && feedId) {
       fetchComments();
-      translateY.setValue(0);
     }
   }, [visible, feedId]);
 
@@ -294,7 +265,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 
   const handleSubmitComment = async () => {
     if (!feedId) return;
-    
+
     const trimmedText = commentText.trim();
     if (!trimmedText && attachedImages.length === 0) return;
 
@@ -306,10 +277,10 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         const response = await commentsApi.updateComment(feedId, editingComment.id, {
           comment: trimmedText,
         });
-        
+
         if (response.success) {
           // Update local state
-          setComments(prev => prev.map(c => 
+          setComments(prev => prev.map(c =>
             c.id === editingComment.id
               ? { ...c, message: trimmedText, message_rendered: `<p>${trimmedText}</p>` }
               : c
@@ -335,7 +306,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         : undefined;
 
       const parentId = getReplyParentId();
-      
+
       console.log('[CommentSheet] Submitting comment:', {
         comment: trimmedText,
         parent_id: parentId,
@@ -379,7 +350,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
     // We should reply to the TOP-LEVEL comment, not nest deeper
     // Also pre-fill with @username mention
     setReplyingTo(comment);
-    
+
     // Add @username mention to input
     const username = comment.xprofile?.username || comment.xprofile?.display_name || '';
     if (username) {
@@ -397,13 +368,13 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   // If replying to a top-level comment, use its ID
   const getReplyParentId = (): number | undefined => {
     if (!replyingTo) return undefined;
-    
+
     // If the comment we're replying to already has a parent_id,
     // use THAT parent_id (the top-level comment)
     if (replyingTo.parent_id) {
       return replyingTo.parent_id;
     }
-    
+
     // Otherwise this IS a top-level comment, use its ID
     return replyingTo.id;
   };
@@ -412,31 +383,71 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   // Handle Comment Reaction - FIXED: Uses {state: 1} format
   // ---------------------------------------------------------------------------
 
-  const handleCommentReaction = async (comment: Comment) => {
+  const handleCommentReaction = async (comment: Comment, reactionType: ReactionType = 'like') => {
     if (!feedId) return;
-    
-    const hasReacted = comment.has_user_react || false;
-    
-    // Optimistic update
+
+    // Derive hasReacted from user_reaction_type (has_user_react not always in API)
+    const hasReacted = !!(comment.has_user_react || comment.user_reaction_type);
+    const currentType = comment.user_reaction_type || null;
+    const isSameType = hasReacted && currentType === reactionType;
+    const willRemove = isSameType;
+    const willSwap = hasReacted && !isSameType;
+    const action = willRemove ? 'remove' : willSwap ? 'swap' : 'add';
+
+    // Optimistic update (matches useFeedReactions pattern)
     setComments(prevComments =>
       prevComments.map(c => {
-        if (c.id === comment.id) {
-          const currentCount = typeof c.reactions_count === 'string'
-            ? parseInt(c.reactions_count, 10)
-            : c.reactions_count || 0;
-          
+        if (c.id !== comment.id) return c;
+
+        const currentCount = typeof c.reactions_count === 'string'
+          ? parseInt(c.reactions_count, 10)
+          : c.reactions_count || 0;
+        const updatedBreakdown = updateBreakdownOptimistically(
+          c.reaction_breakdown || [], reactionType, action,
+          currentType as ReactionType | null, getReaction,
+        );
+
+        if (willRemove) {
           return {
             ...c,
-            has_user_react: !hasReacted,
-            reactions_count: hasReacted ? currentCount - 1 : currentCount + 1,
+            has_user_react: false,
+            user_reaction_type: null,
+            user_reaction_icon_url: null,
+            user_reaction_name: null,
+            reactions_count: currentCount - 1,
+            reaction_total: currentCount - 1,
+            reaction_breakdown: updatedBreakdown,
+          };
+        } else if (willSwap) {
+          return {
+            ...c,
+            user_reaction_type: reactionType,
+            user_reaction_icon_url: null,
+            user_reaction_name: null,
+            reaction_breakdown: updatedBreakdown,
+          };
+        } else {
+          return {
+            ...c,
+            has_user_react: true,
+            user_reaction_type: reactionType,
+            user_reaction_icon_url: null,
+            user_reaction_name: null,
+            reactions_count: currentCount + 1,
+            reaction_total: currentCount + 1,
+            reaction_breakdown: updatedBreakdown,
           };
         }
-        return c;
       })
     );
-    
+
     try {
-      await commentsApi.reactToComment(feedId, comment.id, hasReacted);
+      if (willSwap) {
+        const { swapReactionType } = await import('@/services/api/feeds');
+        await swapReactionType(comment.id, 'comment', reactionType);
+      } else {
+        await commentsApi.reactToComment(feedId, comment.id, willRemove, reactionType);
+      }
     } catch (err) {
       console.error('[CommentSheet] Reaction error:', err);
       // Revert on error
@@ -452,13 +463,13 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 
   const handleCommentMenu = (comment: Comment) => {
     const isOwner = user?.id === Number(comment.user_id);
-    
+
     if (Platform.OS === 'ios') {
       const options = ['Cancel', 'Copy Link'];
       if (isOwner) {
         options.push('Edit', 'Delete');
       }
-      
+
       ActionSheetIOS.showActionSheetWithOptions(
         {
           options,
@@ -477,16 +488,16 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         { text: 'Cancel', style: 'cancel' },
         { text: 'Copy Link', onPress: () => handleCopyLink(comment) },
       ];
-      
+
       if (isOwner) {
         buttons.push({ text: 'Edit', onPress: () => handleEditComment(comment) });
-        buttons.push({ 
-          text: 'Delete', 
+        buttons.push({
+          text: 'Delete',
           onPress: () => handleDeleteComment(comment),
           style: 'destructive'
         });
       }
-      
+
       Alert.alert(
         'Comment Options',
         'Choose an action',
@@ -500,7 +511,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
     // Build URL like: https://site.com/portal/post/feed-slug?comment_id=123
     const slug = feedSlug || `feed-${feedId}`;
     const url = `${SITE_URL}/portal/post/${slug}?comment_id=${comment.id}`;
-    
+
     try {
       await Clipboard.setStringAsync(url);
       Alert.alert('Copied!', 'Link copied to clipboard');
@@ -528,10 +539,10 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
           style: 'destructive',
           onPress: async () => {
             if (!feedId) return;
-            
+
             try {
               const response = await commentsApi.deleteComment(feedId, comment.id);
-              
+
               if (response.success) {
                 // Remove from local state
                 setComments(prev => prev.filter(c => c.id !== comment.id));
@@ -572,30 +583,30 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 
   const renderCommentText = (html: string) => {
     const parts = parseCommentContent(html);
-    
+
     if (parts.length === 0) {
       return null;
     }
-    
+
     // If only one text part, render simple Text
     if (parts.length === 1 && parts[0].type === 'text') {
-      return <Text style={styles.commentText}>{parts[0].content}</Text>;
+      return <Text style={[styles.commentText, { color: themeColors.text }]}>{parts[0].content}</Text>;
     }
-    
+
     // Render with clickable mentions
     return (
-      <Text style={styles.commentText}>
+      <Text style={[styles.commentText, { color: themeColors.text }]}>
         {parts.map((part, index) => {
           if (part.type === 'mention' && part.username) {
             return (
               <Text
                 key={index}
-                style={styles.mentionText}
+                style={[styles.mentionText, { color: themeColors.primary }]}
                 onPress={() => handleMentionPress(part.username!)}
               >
                 {part.content}
                 {/* Add space after mention for natural reading */}
-                <Text style={styles.commentText}> </Text>
+                <Text style={[styles.commentText, { color: themeColors.text }]}> </Text>
               </Text>
             );
           }
@@ -621,7 +632,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
     // API might return as media_images, media_items, or media_preview
     const meta = item.meta || {};
     let commentImages: Array<{ url: string }> = [];
-    
+
     if (meta.media_images && Array.isArray(meta.media_images)) {
       commentImages = meta.media_images;
     } else if (meta.media_items && Array.isArray(meta.media_items)) {
@@ -631,7 +642,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
     }
 
     return (
-      <View style={[styles.commentItem, isReply && styles.commentReply]}>
+      <View style={[styles.commentItem, isReply && [styles.commentReply, { borderLeftColor: themeColors.border }]]}>
         <Avatar
           source={authorAvatar}
           size="sm"
@@ -641,8 +652,8 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         <View style={styles.commentContent}>
           <View style={styles.commentHeader}>
             <View style={styles.commentHeaderLeft}>
-              <Text style={styles.commentAuthor}>{authorName}</Text>
-              <Text style={styles.commentTime}>{timestamp}</Text>
+              <Text style={[styles.commentAuthor, { color: themeColors.text }]}>{authorName}</Text>
+              <Text style={[styles.commentTime, { color: themeColors.textTertiary }]}>{timestamp}</Text>
             </View>
             {/* 3-dot menu */}
             <TouchableOpacity
@@ -650,13 +661,13 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
               onPress={() => handleCommentMenu(item)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="ellipsis-vertical" size={16} color={colors.textTertiary} />
+              <Ionicons name="ellipsis-vertical" size={16} color={themeColors.textTertiary} />
             </TouchableOpacity>
           </View>
-          
+
           {/* Comment text with clickable mentions */}
           {renderCommentText(item.message_rendered || item.message)}
-          
+
           {/* Comment images */}
           {commentImages.length > 0 && (
             <View style={styles.commentImages}>
@@ -670,30 +681,82 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
               ))}
             </View>
           )}
-          
-          {/* Comment actions - FIXED: Working reactions, clean Reply button */}
+
+          {/* Comment actions - Multi-reaction support */}
           <View style={styles.commentActions}>
-            <TouchableOpacity 
-              style={styles.commentAction}
-              onPress={() => handleCommentReaction(item)}
-            >
-              <Text style={[
-                styles.commentActionText,
-                item.has_user_react && styles.commentActionActive
-              ]}>
-                {item.has_user_react ? '❤️' : '🤍'} {
-                  typeof item.reactions_count === 'string'
-                    ? parseInt(item.reactions_count, 10) || ''
-                    : item.reactions_count || ''
-                }
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.commentAction}
-              onPress={() => handleReply(item)}
-            >
-              <Text style={styles.commentActionText}>Reply</Text>
-            </TouchableOpacity>
+            <View style={styles.commentActionsLeft}>
+              {(() => {
+                const hasReacted = !!(item.has_user_react || item.user_reaction_type);
+                const reactionType = item.user_reaction_type || defaultReactionId;
+                const rConfig = getReaction(reactionType);
+                const iconUrl = item.user_reaction_icon_url || rConfig?.icon_url || null;
+                const emoji = rConfig?.emoji || REACTION_EMOJI[reactionType] || '👍';
+                const reactionColor = rConfig?.color || themeColors.primary;
+
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.commentReactionButton,
+                      hasReacted && { backgroundColor: reactionColor + '15' },
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      const type = item.user_reaction_type || defaultReactionId;
+                      handleCommentReaction(item, type);
+                    }}
+                    onLongPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      setReactionPickerComment(item);
+                    }}
+                    delayLongPress={400}
+                  >
+                    <View style={{ opacity: hasReacted ? 1 : 0.4 }}>
+                      <ReactionIcon iconUrl={iconUrl} emoji={emoji} size={35} />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })()}
+              <TouchableOpacity
+                style={styles.commentAction}
+                onPress={() => handleReply(item)}
+              >
+                <Text style={[styles.commentActionText, { color: themeColors.textSecondary }]}>Reply</Text>
+              </TouchableOpacity>
+            </View>
+            {/* Right side: reaction breakdown summary */}
+            {(() => {
+              const breakdown = item.reaction_breakdown || [];
+              const totalReactions = typeof item.reactions_count === 'string'
+                ? parseInt(item.reactions_count, 10) : item.reactions_count || 0;
+              if (breakdown.length === 0 || totalReactions === 0) return null;
+              return (
+                <TouchableOpacity
+                  style={styles.commentBreakdown}
+                  onPress={() => setBreakdownComment(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.commentEmojiStack}>
+                    {breakdown.slice(0, display.count).map((bd, i) => (
+                      <View
+                        key={bd.type}
+                        style={{ zIndex: 10 + i, marginLeft: i === 0 ? 0 : -3 }}
+                      >
+                        <ReactionIcon
+                          iconUrl={bd.icon_url}
+                          emoji={bd.emoji || REACTION_EMOJI[bd.type as ReactionType]}
+                          size={22}
+                          stroke={display.stroke}
+                          borderColor={themeColors.borderLight}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={[styles.commentActionText, { color: themeColors.textSecondary }]}>
+                    {totalReactions}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })()}
           </View>
         </View>
       </View>
@@ -711,58 +774,32 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   // ---------------------------------------------------------------------------
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
-      {/* Backdrop */}
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.backdrop} />
-      </TouchableWithoutFeedback>
-
-      {/* Sheet - Now animated for swipe */}
-      <Animated.View
-        style={[
-          styles.sheet,
-          { transform: [{ translateY }] }
-        ]}
+    <>
+      <BottomSheet
+        visible={visible}
+        onClose={onClose}
+        heightMode="percentage"
+        heightPercentage={75}
+        title="Comments"
+        keyboardAvoiding
       >
-        <KeyboardAvoidingView
-          style={styles.sheetInner}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          {/* Handle - Swipeable */}
-          <View style={styles.handleContainer} {...panResponder.panHandlers}>
-            <View style={styles.handle} />
-          </View>
-
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Comments</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
         {/* Content */}
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={themeColors.primary} />
           </View>
         ) : error ? (
           <View style={styles.centered}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity onPress={fetchComments} style={styles.retryButton}>
-              <Text style={styles.retryText}>Try Again</Text>
+            <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
+            <TouchableOpacity onPress={fetchComments} style={[styles.retryButton, { backgroundColor: themeColors.primary }]}>
+              <Text style={[styles.retryText, { color: themeColors.textInverse }]}>Try Again</Text>
             </TouchableOpacity>
           </View>
         ) : comments.length === 0 ? (
           <View style={styles.centered}>
             <Text style={styles.emptyIcon}>💬</Text>
-            <Text style={styles.emptyTitle}>No Comments Yet</Text>
-            <Text style={styles.emptyText}>Be the first to comment!</Text>
+            <Text style={[styles.emptyTitle, { color: themeColors.text }]}>No Comments Yet</Text>
+            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>Be the first to comment!</Text>
           </View>
         ) : (
           <FlatList
@@ -776,24 +813,24 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 
         {/* Reply indicator - shows who you're mentioning */}
         {replyingTo && !editingComment && (
-          <View style={styles.replyIndicator}>
-            <Text style={styles.replyText}>
-              Replying to <Text style={styles.replyName}>@{replyingTo.xprofile?.username || replyingTo.xprofile?.display_name}</Text>
+          <View style={[styles.replyIndicator, { backgroundColor: themeColors.primaryLight + '20' }]}>
+            <Text style={[styles.replyText, { color: themeColors.textSecondary }]}>
+              Replying to <Text style={[styles.replyName, { color: themeColors.primary }]}>@{replyingTo.xprofile?.username || replyingTo.xprofile?.display_name}</Text>
             </Text>
             <TouchableOpacity onPress={cancelReply}>
-              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
             </TouchableOpacity>
           </View>
         )}
 
         {/* Edit indicator */}
         {editingComment && (
-          <View style={[styles.replyIndicator, styles.editIndicator]}>
-            <Text style={styles.replyText}>
+          <View style={[styles.replyIndicator, styles.editIndicator, { backgroundColor: themeColors.warning + '20' }]}>
+            <Text style={[styles.replyText, { color: themeColors.textSecondary }]}>
               Editing comment
             </Text>
             <TouchableOpacity onPress={cancelEdit}>
-              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
             </TouchableOpacity>
           </View>
         )}
@@ -813,15 +850,15 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
               </View>
             ))}
             {isUploading && (
-              <View style={styles.uploadingIndicator}>
-                <ActivityIndicator size="small" color={colors.primary} />
+              <View style={[styles.uploadingIndicator, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
+                <ActivityIndicator size="small" color={themeColors.primary} />
               </View>
             )}
           </View>
         )}
 
         {/* Comment Input */}
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
           {/* Image picker button */}
           <TouchableOpacity
             style={styles.imageButton}
@@ -831,15 +868,15 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
             <Ionicons
               name="image-outline"
               size={24}
-              color={attachedImages.length >= 4 ? colors.textTertiary : colors.primary}
+              color={attachedImages.length >= 4 ? themeColors.textTertiary : themeColors.primary}
             />
           </TouchableOpacity>
 
           {/* Text input */}
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, { backgroundColor: themeColors.background, color: themeColors.text }]}
             placeholder={replyingTo ? 'Write your reply...' : 'Write a comment...'}
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor={themeColors.textTertiary}
             value={commentText}
             onChangeText={setCommentText}
             multiline
@@ -848,7 +885,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 
           {/* Submit button */}
           <TouchableOpacity
-            style={[styles.sendButton, !canSubmit && styles.sendButtonDisabled]}
+            style={[styles.sendButton, { backgroundColor: themeColors.primary }, !canSubmit && [styles.sendButtonDisabled, { backgroundColor: themeColors.textTertiary }]]}
             onPress={handleSubmitComment}
             disabled={!canSubmit}
           >
@@ -859,9 +896,28 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
             )}
           </TouchableOpacity>
         </View>
-        </KeyboardAvoidingView>
-      </Animated.View>
-    </Modal>
+      </BottomSheet>
+
+      {/* Reaction Picker for comments */}
+      <ReactionPicker
+        visible={!!reactionPickerComment}
+        onSelect={(type) => {
+          if (reactionPickerComment) {
+            handleCommentReaction(reactionPickerComment, type);
+          }
+        }}
+        onClose={() => setReactionPickerComment(null)}
+        currentType={reactionPickerComment?.user_reaction_type || null}
+      />
+
+      {/* Reaction Breakdown Modal for comments */}
+      <ReactionBreakdownModal
+        visible={!!breakdownComment}
+        onClose={() => setBreakdownComment(null)}
+        objectType="comment"
+        objectId={breakdownComment?.id || 0}
+      />
+    </>
   );
 }
 
@@ -870,63 +926,6 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-
-  sheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: SHEET_HEIGHT,
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: sizing.borderRadius.xl,
-    borderTopRightRadius: sizing.borderRadius.xl,
-  },
-
-  sheetInner: {
-    flex: 1,
-  },
-
-  handleContainer: {
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-  },
-
-  handle: {
-    width: 40,
-    height: 5,
-    backgroundColor: colors.border,
-    borderRadius: 3,
-  },
-
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-
-  headerTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: '600',
-    color: colors.text,
-  },
-
-  closeButton: {
-    position: 'absolute',
-    right: spacing.lg,
-    width: 30,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -935,21 +934,18 @@ const styles = StyleSheet.create({
   },
 
   errorText: {
-    color: colors.error,
     fontSize: typography.size.md,
     textAlign: 'center',
     marginBottom: spacing.md,
   },
 
   retryButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: sizing.borderRadius.md,
   },
 
   retryText: {
-    color: colors.textInverse,
     fontWeight: '600',
   },
 
@@ -961,13 +957,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: typography.size.lg,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: spacing.xs,
   },
 
   emptyText: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
   },
 
   commentsList: {
@@ -984,7 +978,6 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xl,
     paddingLeft: spacing.md,
     borderLeftWidth: 2,
-    borderLeftColor: colors.border,
   },
 
   commentContent: {
@@ -1012,23 +1005,19 @@ const styles = StyleSheet.create({
   commentAuthor: {
     fontSize: typography.size.sm,
     fontWeight: '600',
-    color: colors.text,
     marginRight: spacing.sm,
   },
 
   commentTime: {
     fontSize: typography.size.xs,
-    color: colors.textTertiary,
   },
 
   commentText: {
     fontSize: typography.size.md,
-    color: colors.text,
     lineHeight: 20,
   },
 
   mentionText: {
-    color: colors.primary,
     fontWeight: '600',
   },
 
@@ -1048,21 +1037,42 @@ const styles = StyleSheet.create({
   commentActions: {
     flexDirection: 'row',
     marginTop: spacing.sm,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  commentActionsLeft: {
+    flexDirection: 'row',
     gap: spacing.md,
+    alignItems: 'center',
   },
 
   commentAction: {
     paddingVertical: spacing.xs,
   },
 
+  commentReactionButton: {
+    padding: spacing.xs,
+    borderRadius: sizing.borderRadius.md,
+  },
+
   commentActionText: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
   },
 
   commentActionActive: {
-    color: colors.error,
     fontWeight: '600',
+  },
+
+  commentBreakdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  commentEmojiStack: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   replyIndicator: {
@@ -1071,21 +1081,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.primaryLight + '20',
   },
 
   replyText: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
   },
 
   replyName: {
     fontWeight: '600',
-    color: colors.primary,
   },
 
   editIndicator: {
-    backgroundColor: colors.warning + '20',
   },
 
   attachedImagesContainer: {
@@ -1117,11 +1123,9 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 8,
-    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
     borderStyle: 'dashed',
   },
 
@@ -1131,8 +1135,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
     gap: spacing.sm,
   },
 
@@ -1149,23 +1151,19 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.background,
     borderRadius: 20,
     fontSize: typography.size.md,
-    color: colors.text,
   },
 
   sendButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   sendButtonDisabled: {
-    backgroundColor: colors.textTertiary,
   },
 });
 

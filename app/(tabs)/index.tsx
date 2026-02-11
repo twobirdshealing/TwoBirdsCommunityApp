@@ -1,18 +1,19 @@
 // =============================================================================
-// HOME SCREEN - Welcome page with user greeting
+// HOME SCREEN - Welcome page with user greeting and admin banner
 // =============================================================================
-// Simple welcome placeholder with avatar and greeting
+// Greeting with avatar + admin-set Welcome Banner
 // Future: Quick stats, highlights, action buttons
 // =============================================================================
 
-import React, { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Image, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
-import { profilesApi } from '@/services/api';
-import { Profile } from '@/types';
+import { useTheme } from '@/contexts/ThemeContext';
+import { feedsApi, profilesApi } from '@/services/api';
+import { Profile, WelcomeBanner as WelcomeBannerType } from '@/types';
+import { WelcomeBanner } from '@/components/feed/WelcomeBanner';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -21,28 +22,60 @@ import { Profile } from '@/types';
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { colors: themeColors } = useTheme();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [welcomeBanner, setWelcomeBanner] = useState<WelcomeBannerType | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Fetch Welcome Banner
+  // ---------------------------------------------------------------------------
+
+  const fetchWelcomeBanner = useCallback(async () => {
+    try {
+      const response = await feedsApi.getWelcomeBanner();
+      if (response.success && response.data?.welcome_banner) {
+        setWelcomeBanner(response.data.welcome_banner);
+      }
+    } catch (err) {
+      // Silent fail - banner is optional
+    }
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Fetch Profile
   // ---------------------------------------------------------------------------
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user?.username) return;
-
-      try {
-        const response = await profilesApi.getProfile(user.username);
-        if (response.success && response.data.profile) {
-          setProfile(response.data.profile);
-        }
-      } catch (err) {
-        // Silent fail
+  const fetchProfile = useCallback(async () => {
+    if (!user?.username) return;
+    try {
+      const response = await profilesApi.getProfile(user.username);
+      if (response.success && response.data.profile) {
+        setProfile(response.data.profile);
       }
-    };
-
-    fetchProfile();
+    } catch (err) {
+      // Silent fail
+    }
   }, [user?.username]);
+
+  // ---------------------------------------------------------------------------
+  // Initial Load
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    fetchProfile();
+    fetchWelcomeBanner();
+  }, [fetchProfile, fetchWelcomeBanner]);
+
+  // ---------------------------------------------------------------------------
+  // Pull-to-Refresh
+  // ---------------------------------------------------------------------------
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchProfile(), fetchWelcomeBanner()]);
+    setRefreshing(false);
+  }, [fetchProfile, fetchWelcomeBanner]);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -53,32 +86,38 @@ export default function HomeScreen() {
   const avatar = profile?.avatar;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        {/* Avatar */}
-        <View style={styles.avatarContainer}>
-          {avatar ? (
-            <Image source={{ uri: avatar }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Text style={styles.avatarText}>
-                {firstName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
+        {/* Greeting Section */}
+        <View style={styles.greetingSection}>
+          {/* Avatar */}
+          <View style={styles.avatarContainer}>
+            {avatar ? (
+              <Image source={{ uri: avatar }} style={[styles.avatar, { backgroundColor: themeColors.skeleton }]} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
+                <Text style={styles.avatarText}>
+                  {firstName.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Greeting */}
+          <Text style={[styles.greeting, { color: themeColors.textSecondary }]}>Welcome back,</Text>
+          <Text style={[styles.name, { color: themeColors.text }]}>{firstName}! 👋</Text>
         </View>
 
-        {/* Greeting */}
-        <Text style={styles.greeting}>Welcome back,</Text>
-        <Text style={styles.name}>{firstName}! 👋</Text>
-
-        {/* Placeholder for future content */}
-        <View style={styles.placeholder}>
-          <Text style={styles.placeholderText}>
-            Your personalized dashboard is coming soon
-          </Text>
-        </View>
-      </View>
+        {/* Welcome Banner */}
+        {welcomeBanner && welcomeBanner.enabled === 'yes' && (
+          <WelcomeBanner banner={welcomeBanner} />
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -90,14 +129,17 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
-  content: {
-    flex: 1,
-    justifyContent: 'center',
+  scrollContent: {
+    flexGrow: 1,
+    paddingVertical: spacing.xl,
+  },
+
+  greetingSection: {
     alignItems: 'center',
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.lg,
   },
 
   // Avatar
@@ -114,11 +156,9 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: colors.skeleton,
   },
 
   avatarPlaceholder: {
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -132,29 +172,13 @@ const styles = StyleSheet.create({
   // Greeting
   greeting: {
     fontSize: typography.size.xl,
-    color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
 
   name: {
     fontSize: 32,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: spacing.xl,
   },
 
-  // Placeholder
-  placeholder: {
-    backgroundColor: colors.backgroundSecondary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-    borderRadius: 16,
-    marginTop: spacing.lg,
-  },
-
-  placeholderText: {
-    fontSize: typography.size.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
 });

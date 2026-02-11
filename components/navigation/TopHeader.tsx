@@ -5,10 +5,10 @@
 // UPDATED: Fetches unread notification count on focus
 // =============================================================================
 
-import { colors } from '@/constants/colors';
 import { SITE_URL } from '@/constants/config';
 import { spacing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { messagesApi, notificationsApi, profilesApi } from '@/services/api';
 import { Profile } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +36,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
+  const { colors: themeColors } = useTheme();
 
   // State
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -138,6 +139,11 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     router.push('/bookmarks');
   };
 
+  const handleNotificationSettingsPress = () => {
+    setMenuVisible(false);
+    router.push('/notification-settings');
+  };
+
   const handleLogout = () => {
     setMenuVisible(false);
     Alert.alert(
@@ -164,7 +170,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   const email = profile?.email;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
       <View style={styles.content}>
         {/* Left: Logo or Title */}
         <View style={styles.leftSection}>
@@ -175,7 +181,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
               resizeMode="contain"
             />
           ) : title ? (
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>
               {title}
             </Text>
           ) : null}
@@ -207,14 +213,14 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
           <Pressable
             style={({ pressed }) => [
               styles.avatarButton,
-              pressed && styles.avatarButtonPressed,
+              pressed && [styles.avatarButtonPressed, { backgroundColor: themeColors.backgroundSecondary }],
             ]}
             onPress={() => setMenuVisible(true)}
           >
             {avatar ? (
-              <Image source={{ uri: avatar }} style={styles.avatar} />
+              <Image source={{ uri: avatar }} style={[styles.avatar, { backgroundColor: themeColors.skeleton }]} />
             ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
                 <Text style={styles.avatarText}>
                   {displayName.charAt(0).toUpperCase()}
                 </Text>
@@ -223,7 +229,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             <Ionicons
               name="chevron-down"
               size={14}
-              color={colors.textSecondary}
+              color={themeColors.textSecondary}
               style={styles.dropdownArrow}
             />
           </Pressable>
@@ -243,6 +249,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
         onProfilePress={handleProfilePress}
         onMySpacesPress={handleMySpacesPress}
         onBookmarksPress={handleBookmarksPress}
+        onNotificationSettingsPress={handleNotificationSettingsPress}
         onLogout={handleLogout}
       />
     </View>
@@ -255,9 +262,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -292,7 +297,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
 
   rightSection: {
@@ -311,18 +315,16 @@ const styles = StyleSheet.create({
   },
 
   avatarButtonPressed: {
-    backgroundColor: colors.backgroundSecondary,
+    opacity: 0.7,
   },
 
   avatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.skeleton,
   },
 
   avatarPlaceholder: {
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },

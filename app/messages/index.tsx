@@ -12,8 +12,8 @@
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConversationCard, NewMessageModal } from '@/components/message';
 import { PageHeader } from '@/components/navigation';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { getMessagePreview, getOtherParticipants } from '@/types/message';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNewMessageListener, useNewThreadListener } from '@/contexts/PusherContext';
@@ -50,6 +50,7 @@ export default function MessagesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { colors: themeColors } = useTheme();
 
   // State
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -241,7 +242,7 @@ export default function MessagesScreen() {
     <GestureHandlerRootView style={styles.gestureRoot}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
         {/* Header */}
         <PageHeader
           leftAction="back"
@@ -259,12 +260,12 @@ export default function MessagesScreen() {
 
         {/* Search Bar */}
         {threads.length > 0 && (
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={colors.textSecondary} />
+          <View style={[styles.searchContainer, { backgroundColor: themeColors.backgroundSecondary }]}>
+            <Ionicons name="search" size={20} color={themeColors.textSecondary} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: themeColors.text }]}
               placeholder="Search conversations..."
-              placeholderTextColor={colors.textTertiary}
+              placeholderTextColor={themeColors.textTertiary}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCapitalize="none"
@@ -272,7 +273,7 @@ export default function MessagesScreen() {
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -280,11 +281,11 @@ export default function MessagesScreen() {
 
         {loading && threads.length === 0 ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={themeColors.primary} />
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
           </View>
         ) : (
           <FlashList
@@ -305,8 +306,8 @@ export default function MessagesScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={handleRefresh}
-                colors={[colors.primary]}
-                tintColor={colors.primary}
+                colors={[themeColors.primary]}
+                tintColor={themeColors.primary}
               />
             }
           />
@@ -327,7 +328,6 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   loadingContainer: {
@@ -345,14 +345,12 @@ const styles = StyleSheet.create({
 
   errorText: {
     fontSize: 16,
-    color: colors.error,
     textAlign: 'center',
   },
 
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
@@ -363,7 +361,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: typography.size.md,
-    color: colors.text,
     paddingVertical: spacing.sm,
   },
 });

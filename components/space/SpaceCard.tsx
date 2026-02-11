@@ -1,13 +1,13 @@
 // =============================================================================
 // SPACE CARD COMPONENT - Unified card for all space displays
 // =============================================================================
-// Fixed: Removed broken placeholder URL, uses gradient fallback
-// Shows: title, description, privacy icon
+// Shows: title, description, privacy icon, members count, role badge
 // =============================================================================
 
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { useTheme } from '@/contexts/ThemeContext';
 import { Space } from '@/types';
 
 interface SpaceCardProps {
@@ -16,6 +16,8 @@ interface SpaceCardProps {
 }
 
 export function SpaceCard({ space, onPress }: SpaceCardProps) {
+  const { colors: themeColors, isDark } = useTheme();
+
   // Privacy icon and label helpers
   const getPrivacyIcon = (): string => {
     switch (space.privacy) {
@@ -34,11 +36,16 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
     return space.privacy.charAt(0).toUpperCase() + space.privacy.slice(1);
   };
 
+  // Role badge (only for admin/moderator)
+  const role = space.pivot?.role;
+  const showRoleBadge = role === 'admin' || role === 'moderator';
+  const roleBadgeLabel = role === 'admin' ? 'Admin' : 'Mod';
+
   // Use actual cover photo or fallback
   const hasCoverPhoto = space.cover_photo && space.cover_photo.trim() !== '';
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, { backgroundColor: themeColors.surface }, pressed && styles.cardPressed]}>
       {/* Cover Photo or Gradient Fallback */}
       {hasCoverPhoto ? (
         <Image source={{ uri: space.cover_photo }} style={styles.cover} resizeMode="cover" />
@@ -57,35 +64,47 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
 
       {/* Logo Overlay (if exists and has cover photo) */}
       {space.logo && hasCoverPhoto && (
-        <Image source={{ uri: space.logo }} style={styles.logo} resizeMode="cover" />
+        <Image source={{ uri: space.logo }} style={[styles.logo, { borderColor: themeColors.surface, backgroundColor: themeColors.surface }]} resizeMode="cover" />
       )}
 
       {/* Emoji Badge (if exists and has cover photo) */}
       {space.settings?.emoji && hasCoverPhoto && (
-        <View style={styles.emojiContainer}>
+        <View style={[styles.emojiContainer, { backgroundColor: isDark ? themeColors.backgroundSecondary : 'rgba(255, 255, 255, 0.9)' }]}>
           <Text style={styles.emoji}>{space.settings.emoji}</Text>
         </View>
       )}
 
       {/* Content */}
       <View style={styles.content}>
-        {/* Title */}
-        <Text style={styles.title} numberOfLines={1}>
-          {space.title}
-        </Text>
+        {/* Title Row with Role Badge */}
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>
+            {space.title}
+          </Text>
+          {showRoleBadge && (
+            <View style={[styles.roleBadge, { backgroundColor: themeColors.primary }]}>
+              <Text style={styles.roleBadgeText}>{roleBadgeLabel}</Text>
+            </View>
+          )}
+        </View>
 
         {/* Description */}
         {space.description && (
-          <Text style={styles.description} numberOfLines={2}>
+          <Text style={[styles.description, { color: themeColors.textSecondary }]} numberOfLines={2}>
             {space.description.replace(/<[^>]*>/g, '')}
           </Text>
         )}
 
-        {/* Privacy Indicator */}
+        {/* Footer: Privacy + Members Count */}
         <View style={styles.footer}>
-          <Text style={styles.privacy}>
+          <Text style={[styles.privacy, { color: themeColors.textTertiary }]}>
             {getPrivacyIcon()} {getPrivacyLabel()}
           </Text>
+          {space.members_count != null && space.members_count > 0 && (
+            <Text style={[styles.membersCount, { color: themeColors.textTertiary }]}>
+              👥 {space.members_count} {space.members_count === 1 ? 'Member' : 'Members'}
+            </Text>
+          )}
         </View>
       </View>
     </Pressable>
@@ -148,11 +167,28 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 12,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   title: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1a1a1a',
-    marginBottom: 4,
+    flex: 1,
+  },
+  roleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  roleBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
   },
   description: {
     fontSize: 14,
@@ -163,10 +199,15 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   privacy: {
     fontSize: 13,
     color: '#888',
+    fontWeight: '500',
+  },
+  membersCount: {
+    fontSize: 13,
     fontWeight: '500',
   },
 });

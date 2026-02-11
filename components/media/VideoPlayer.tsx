@@ -18,8 +18,8 @@ import {
   View,
 } from 'react-native';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
-import { colors } from '@/constants/colors';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PLAYER_WIDTH = SCREEN_WIDTH - 48;
@@ -41,6 +41,7 @@ interface VideoPlayerProps {
 // -----------------------------------------------------------------------------
 
 export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps) {
+  const { colors: themeColors } = useTheme();
   const videoRef = useRef<Video>(null);
   const [status, setStatus] = useState<AVPlaybackStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,7 +110,7 @@ export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps)
       {/* Loading Indicator */}
       {(loading || isBuffering) && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={colors.textInverse} />
+          <ActivityIndicator size="large" color={themeColors.textInverse} />
         </View>
       )}
       
@@ -132,7 +133,7 @@ export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps)
       {!loading && (
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+            <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: themeColors.primary }]} />
           </View>
           <Text style={styles.timeText}>
             {formatTime(currentTime)} / {formatTime(duration)}
@@ -216,12 +217,11 @@ const styles = StyleSheet.create({
   
   progressFill: {
     height: '100%',
-    backgroundColor: colors.primary,
     borderRadius: 2,
   },
-  
+
   timeText: {
-    color: colors.textInverse,
+    color: '#fff',
     fontSize: typography.size.xs,
     fontWeight: typography.weight.medium,
   },
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   
   videoLabelText: {
-    color: colors.textInverse,
+    color: '#fff',
     fontSize: typography.size.xs,
     fontWeight: typography.weight.medium,
   },

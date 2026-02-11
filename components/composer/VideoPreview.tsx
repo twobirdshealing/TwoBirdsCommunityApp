@@ -11,8 +11,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { OembedData } from '@/services/api/feeds';
 
 // -----------------------------------------------------------------------------
@@ -29,8 +29,10 @@ interface VideoPreviewProps {
 // -----------------------------------------------------------------------------
 
 export function VideoPreview({ video, onRemove }: VideoPreviewProps) {
+  const { colors: themeColors } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
       {/* Thumbnail */}
       <View style={styles.thumbnailContainer}>
         {video.image ? (
@@ -40,8 +42,8 @@ export function VideoPreview({ video, onRemove }: VideoPreviewProps) {
             resizeMode="cover"
           />
         ) : (
-          <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
-            <Ionicons name="videocam" size={32} color={colors.textTertiary} />
+          <View style={[styles.thumbnail, styles.thumbnailPlaceholder, { backgroundColor: themeColors.backgroundSecondary }]}>
+            <Ionicons name="videocam" size={32} color={themeColors.textTertiary} />
           </View>
         )}
 
@@ -55,11 +57,11 @@ export function VideoPreview({ video, onRemove }: VideoPreviewProps) {
 
       {/* Info */}
       <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={2}>
+        <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={2}>
           {video.title || 'Video'}
         </Text>
-        <View style={styles.providerBadge}>
-          <Text style={styles.providerText}>
+        <View style={[styles.providerBadge, { backgroundColor: themeColors.primary + '20' }]}>
+          <Text style={[styles.providerText, { color: themeColors.primary }]}>
             {video.provider || 'Video'}
           </Text>
         </View>
@@ -71,7 +73,7 @@ export function VideoPreview({ video, onRemove }: VideoPreviewProps) {
         onPress={onRemove}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Ionicons name="close-circle" size={24} color={colors.error} />
+        <Ionicons name="close-circle" size={24} color={themeColors.error} />
       </TouchableOpacity>
     </View>
   );
@@ -85,13 +87,11 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
     borderRadius: sizing.borderRadius.md,
     padding: spacing.sm,
     marginHorizontal: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.border,
   },
 
   thumbnailContainer: {
@@ -108,7 +108,6 @@ const styles = StyleSheet.create({
   },
 
   thumbnailPlaceholder: {
-    backgroundColor: colors.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -137,12 +136,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size.sm,
     fontWeight: '500',
-    color: colors.text,
     marginBottom: spacing.xs,
   },
 
   providerBadge: {
-    backgroundColor: colors.primary + '20',
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: sizing.borderRadius.xs,
@@ -151,7 +148,6 @@ const styles = StyleSheet.create({
 
   providerText: {
     fontSize: typography.size.xs,
-    color: colors.primary,
     fontWeight: '500',
     textTransform: 'capitalize',
   },

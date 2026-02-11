@@ -25,8 +25,8 @@ import Animated, {
   withSequence,
   Easing,
 } from 'react-native-reanimated';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { CalendarEvent } from '@/types/calendar';
 
 // -----------------------------------------------------------------------------
@@ -99,7 +99,8 @@ interface FeaturedItemProps {
 }
 
 function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps) {
-  const borderColor = event.calendar_color || colors.primary;
+  const { colors: themeColors } = useTheme();
+  const borderColor = event.calendar_color || themeColors.primary;
   const isActive = index === activeIndex;
   const shortTitle = getShortTitle(event);
   
@@ -135,11 +136,11 @@ function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps)
   return (
     <TouchableOpacity style={styles.item} onPress={handlePress} activeOpacity={0.8}>
       {/* Date - NOW ON TOP */}
-      <Text style={styles.itemDate}>{formatShortDate(event.start)}</Text>
+      <Text style={[styles.itemDate, { color: themeColors.primary }]}>{formatShortDate(event.start)}</Text>
       
       {/* Image container with ring */}
       <View style={styles.imageContainer}>
-        <View style={[styles.imageRing, { borderColor }]}>
+        <View style={[styles.imageRing, { borderColor, backgroundColor: themeColors.surface }]}>
           {event.image ? (
             <Image source={{ uri: event.image }} style={styles.itemImage} />
           ) : (
@@ -165,7 +166,7 @@ function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps)
       
       {/* Title below image */}
       <View style={styles.titleContainer}>
-        <Text style={styles.itemTitle} numberOfLines={2}>
+        <Text style={[styles.itemTitle, { color: themeColors.text }]} numberOfLines={2}>
           {shortTitle}
         </Text>
       </View>
@@ -178,6 +179,7 @@ function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps)
 // -----------------------------------------------------------------------------
 
 export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEventsProps) {
+  const { colors: themeColors } = useTheme();
   const [activeIndexState, setActiveIndexState] = React.useState(-1);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -208,10 +210,10 @@ export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEvents
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>FEATURED</Text>
-        <View style={styles.headerLine} />
+        <Text style={[styles.sectionTitle, { color: themeColors.textSecondary }]}>FEATURED</Text>
+        <View style={[styles.headerLine, { backgroundColor: themeColors.border }]} />
       </View>
       
       <View style={styles.listContainer}>
@@ -236,9 +238,7 @@ export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEvents
 const styles = StyleSheet.create({
   container: {
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
 
   header: {
@@ -251,14 +251,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.size.sm,
     fontWeight: '600',
-    color: colors.textSecondary,
     letterSpacing: 0.5,
   },
 
   headerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: colors.border,
     marginLeft: spacing.sm,
   },
 
@@ -277,7 +275,6 @@ const styles = StyleSheet.create({
   // Date on top - more prominent
   itemDate: {
     fontSize: typography.size.xs,
-    color: colors.primary,
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: spacing.xs,
@@ -297,7 +294,6 @@ const styles = StyleSheet.create({
     borderRadius: (IMAGE_SIZE + 8) / 2,
     borderWidth: 3,
     padding: 3,
-    backgroundColor: colors.surface,
   },
 
   itemImage: {
@@ -337,7 +333,6 @@ const styles = StyleSheet.create({
   itemTitle: {
     fontSize: typography.size.sm,
     fontWeight: '600',
-    color: colors.text,
     textAlign: 'center',
     lineHeight: TITLE_LINE_HEIGHT,
   },

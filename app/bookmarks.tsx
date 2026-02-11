@@ -7,8 +7,8 @@
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { FeedList } from '@/components/feed/FeedList';
 import { PageHeader } from '@/components/navigation';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { feedsApi } from '@/services/api';
 import { Feed } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +21,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFeedReactions } from '@/hooks';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -29,7 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function BookmarksScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-
+  const { colors: themeColors } = useTheme();
   // State
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,46 +123,7 @@ export default function BookmarksScreen() {
     fetchBookmarks(true);
   };
   
-  const handleFeedPress = (feed: Feed) => {
-    router.push({
-      pathname: '/feed/[id]',
-      params: { id: feed.id.toString() },
-    });
-  };
-  
-  const handleReact = async (feedId: number, type: 'like') => {
-    const feed = feeds.find(f => f.id === feedId);
-    if (!feed) return;
-    
-    const hasUserReact = feed.has_user_react || false;
-
-    // Optimistic update
-    setFeeds(prevFeeds =>
-      prevFeeds.map(f => {
-        if (f.id === feedId) {
-          const currentCount = typeof f.reactions_count === 'string'
-            ? parseInt(f.reactions_count, 10)
-            : f.reactions_count || 0;
-          
-          return {
-            ...f,
-            has_user_react: !hasUserReact,
-            reactions_count: hasUserReact ? currentCount - 1 : currentCount + 1,
-          };
-        }
-        return f;
-      })
-    );
-
-    try {
-      await feedsApi.reactToFeed(feedId, type, hasUserReact);
-    } catch (err) {
-      // Revert on error
-      setFeeds(prevFeeds =>
-        prevFeeds.map(f => (f.id === feedId ? feed : f))
-      );
-    }
-  };
+  const handleReact = useFeedReactions(feeds, setFeeds);
   
   const handleAuthorPress = (username: string) => {
     router.push({
@@ -250,10 +212,10 @@ export default function BookmarksScreen() {
   // ---------------------------------------------------------------------------
 
   const BookmarksHeader = () => (
-    <View style={styles.headerInfo}>
-      <Ionicons name="bookmark" size={48} color={colors.primary} />
-      <Text style={styles.headerTitle}>Saved Posts</Text>
-      <Text style={styles.headerSubtitle}>
+    <View style={[styles.headerInfo, { backgroundColor: themeColors.surface }]}>
+      <Ionicons name="bookmark" size={48} color={themeColors.primary} />
+      <Text style={[styles.headerTitle, { color: themeColors.text }]}>Saved Posts</Text>
+      <Text style={[styles.headerSubtitle, { color: themeColors.textSecondary }]}>
         {feeds.length} {feeds.length === 1 ? 'post' : 'posts'} saved
       </Text>
     </View>
@@ -267,7 +229,7 @@ export default function BookmarksScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         {/* Header - Using PageHeader for consistency */}
         <PageHeader
           leftAction="back"
@@ -280,7 +242,6 @@ export default function BookmarksScreen() {
           refreshing={refreshing}
           error={error}
           onRefresh={handleRefresh}
-          onFeedPress={handleFeedPress}
           onReact={handleReact}
           onAuthorPress={handleAuthorPress}
           onSpacePress={handleSpacePress}
@@ -313,27 +274,23 @@ export default function BookmarksScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   headerInfo: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
     paddingHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
     marginBottom: spacing.md,
   },
 
   headerTitle: {
     fontSize: typography.size.xl,
     fontWeight: '700',
-    color: colors.text,
     marginTop: spacing.md,
   },
 
   headerSubtitle: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     marginTop: spacing.xs,
   },
 });

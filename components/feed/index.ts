@@ -4,6 +4,8 @@
 
 export { FeedCard } from './FeedCard';
 export { FeedList } from './FeedList';
-export { FullScreenPost } from './FullScreenPost';
 export { CommentSheet } from './CommentSheet';
 export { WelcomeBanner } from './WelcomeBanner';
+export { ReactionPicker } from './ReactionPicker';
+export { ReactionBreakdownModal } from './ReactionBreakdownModal';
+export { ReactionIcon } from './ReactionIcon';

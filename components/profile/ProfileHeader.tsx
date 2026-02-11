@@ -6,8 +6,8 @@
 
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Profile } from '@/types';
 import { Avatar } from '@/components/common';
 import { formatCompactNumber } from '@/utils/formatNumber';
@@ -31,6 +31,7 @@ export function ProfileHeader({
   onCoverPhotoPress,
   onAvatarPress,
 }: ProfileHeaderProps) {
+  const { colors: themeColors, isDark } = useTheme();
   const isVerified = profile.is_verified === 1;
   const coverPhoto = profile.cover_photo || profile.meta?.cover_photo;
 
@@ -47,7 +48,7 @@ export function ProfileHeader({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
       {/* Cover Photo */}
       <TouchableOpacity
         style={styles.coverContainer}
@@ -62,20 +63,20 @@ export function ProfileHeader({
             resizeMode="cover"
           />
         ) : (
-          <View style={[styles.coverPhoto, styles.coverPlaceholder]} />
+          <View style={[styles.coverPhoto, styles.coverPlaceholder, { backgroundColor: themeColors.primary }]} />
         )}
-        
+
         {/* Edit Cover Hint (own profile only) */}
         {isOwnProfile && onCoverPhotoPress && (
           <View style={styles.editHint}>
             <Text style={styles.editHintText}>📷 Tap to change cover</Text>
           </View>
         )}
-        
+
         {/* Settings Button (own profile only) */}
         {isOwnProfile && onSettingsPress && (
-          <TouchableOpacity 
-            style={styles.settingsButton} 
+          <TouchableOpacity
+            style={[styles.settingsButton, { backgroundColor: isDark ? themeColors.backgroundSecondary : 'rgba(255,255,255,0.9)' }]}
             onPress={onSettingsPress}
             activeOpacity={0.8}
           >
@@ -88,7 +89,7 @@ export function ProfileHeader({
       <View style={styles.infoContainer}>
         {/* Avatar */}
         <TouchableOpacity
-          style={styles.avatarWrapper}
+          style={[styles.avatarWrapper, { backgroundColor: themeColors.surface }]}
           onPress={handleAvatarPress}
           activeOpacity={isOwnProfile ? 0.8 : 1}
           disabled={!isOwnProfile}
@@ -101,47 +102,42 @@ export function ProfileHeader({
           />
           {/* Edit Avatar Hint (own profile only) */}
           {isOwnProfile && onAvatarPress && (
-            <View style={styles.avatarEditBadge}>
+            <View style={[styles.avatarEditBadge, { backgroundColor: themeColors.primary, borderColor: themeColors.surface }]}>
               <Text style={styles.avatarEditIcon}>📷</Text>
             </View>
           )}
         </TouchableOpacity>
 
         {/* Name & Username */}
-        <Text style={styles.displayName}>{profile.display_name}</Text>
-        <Text style={styles.username}>@{profile.username}</Text>
-
-        {/* Bio */}
-        {profile.short_description && (
-          <Text style={styles.bio}>{profile.short_description}</Text>
-        )}
+        <Text style={[styles.displayName, { color: themeColors.text }]}>{profile.display_name}</Text>
+        <Text style={[styles.username, { color: themeColors.textSecondary }]}>@{profile.username}</Text>
 
         {/* Stats Row */}
-        <View style={styles.statsRow}>
+        <View style={[styles.statsRow, { backgroundColor: themeColors.backgroundSecondary }]}>
           <TouchableOpacity style={styles.stat} onPress={onFollowingPress}>
-            <Text style={styles.statValue}>
+            <Text style={[styles.statValue, { color: themeColors.text }]}>
               {formatCompactNumber(profile.followings_count || 0)}
             </Text>
-            <Text style={styles.statLabel}>Following</Text>
+            <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Following</Text>
           </TouchableOpacity>
 
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: themeColors.border }]} />
 
           <TouchableOpacity style={styles.stat} onPress={onFollowersPress}>
-            <Text style={styles.statValue}>
+            <Text style={[styles.statValue, { color: themeColors.text }]}>
               {formatCompactNumber(profile.followers_count || 0)}
             </Text>
-            <Text style={styles.statLabel}>Followers</Text>
+            <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Followers</Text>
           </TouchableOpacity>
 
           {profile.total_points > 0 && (
             <>
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, { backgroundColor: themeColors.border }]} />
               <View style={styles.stat}>
-                <Text style={styles.statValue}>
+                <Text style={[styles.statValue, { color: themeColors.text }]}>
                   {formatCompactNumber(profile.total_points)}
                 </Text>
-                <Text style={styles.statLabel}>Points</Text>
+                <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Points</Text>
               </View>
             </>
           )}
@@ -153,7 +149,6 @@ export function ProfileHeader({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
   },
 
   // Cover
@@ -165,11 +160,9 @@ const styles = StyleSheet.create({
   coverPhoto: {
     width: '100%',
     height: '100%',
-    backgroundColor: colors.skeleton,
   },
 
   coverPlaceholder: {
-    backgroundColor: colors.primary,
   },
 
   editHint: {
@@ -184,7 +177,6 @@ const styles = StyleSheet.create({
   },
 
   editHintText: {
-    color: colors.textInverse,
     fontSize: typography.size.xs,
   },
 
@@ -214,7 +206,6 @@ const styles = StyleSheet.create({
   avatarWrapper: {
     marginTop: -50,
     padding: 4,
-    backgroundColor: colors.surface,
     borderRadius: 60,
     position: 'relative',
   },
@@ -226,11 +217,9 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.surface,
   },
 
   avatarEditIcon: {
@@ -240,24 +229,13 @@ const styles = StyleSheet.create({
   displayName: {
     fontSize: typography.size.xxl,
     fontWeight: typography.weight.bold,
-    color: colors.text,
     marginTop: spacing.sm,
     textAlign: 'center',
   },
 
   username: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     marginTop: spacing.xs,
-  },
-
-  bio: {
-    fontSize: typography.size.md,
-    color: colors.text,
-    textAlign: 'center',
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-    lineHeight: typography.size.md * 1.5,
   },
 
   // Stats
@@ -267,7 +245,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    backgroundColor: colors.backgroundSecondary,
     borderRadius: 12,
   },
 
@@ -279,19 +256,16 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: typography.size.lg,
     fontWeight: typography.weight.bold,
-    color: colors.text,
   },
 
   statLabel: {
     fontSize: typography.size.xs,
-    color: colors.textSecondary,
     marginTop: 2,
   },
 
   statDivider: {
     width: 1,
     height: 30,
-    backgroundColor: colors.border,
   },
 });
 

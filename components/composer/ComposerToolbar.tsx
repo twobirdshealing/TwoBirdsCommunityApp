@@ -11,8 +11,8 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -45,8 +45,10 @@ export function ComposerToolbar({
   submitLabel,
   hasVideo,
 }: ComposerToolbarProps) {
+  const { colors: themeColors } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { borderTopColor: themeColors.border, backgroundColor: themeColors.backgroundSecondary }]}>
       {/* Left: Action Buttons */}
       <View style={styles.actions}>
         {/* Image Picker */}
@@ -56,12 +58,12 @@ export function ComposerToolbar({
           disabled={isUploading || hasVideo}
         >
           {isUploading ? (
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color={themeColors.primary} />
           ) : (
             <Ionicons
               name="image-outline"
               size={24}
-              color={hasVideo ? colors.textTertiary : colors.textSecondary}
+              color={hasVideo ? themeColors.textTertiary : themeColors.textSecondary}
             />
           )}
         </TouchableOpacity>
@@ -76,7 +78,7 @@ export function ComposerToolbar({
             <Ionicons
               name="videocam-outline"
               size={24}
-              color={hasVideo ? colors.primary : colors.textSecondary}
+              color={hasVideo ? themeColors.primary : themeColors.textSecondary}
             />
           </TouchableOpacity>
         )}
@@ -90,7 +92,7 @@ export function ComposerToolbar({
             <Ionicons
               name="happy-outline"
               size={24}
-              color={colors.textSecondary}
+              color={themeColors.textSecondary}
             />
           </TouchableOpacity>
         )}
@@ -100,6 +102,7 @@ export function ComposerToolbar({
       <TouchableOpacity
         style={[
           styles.submitButton,
+          { backgroundColor: themeColors.primary },
           !canSubmit && styles.submitButtonDisabled,
         ]}
         onPress={onSubmit}
@@ -127,8 +130,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.backgroundSecondary,
   },
 
   actions: {
@@ -145,7 +146,6 @@ const styles = StyleSheet.create({
   },
 
   submitButton: {
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 20,
@@ -154,7 +154,6 @@ const styles = StyleSheet.create({
   },
 
   submitButtonDisabled: {
-    backgroundColor: colors.textTertiary,
     opacity: 0.6,
   },
 

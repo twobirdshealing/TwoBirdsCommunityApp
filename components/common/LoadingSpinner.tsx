@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -38,20 +38,23 @@ export function LoadingSpinner({
   fullScreen = true,
   message,
   size = 'large',
-  color = colors.primary,
+  color,
 }: LoadingSpinnerProps) {
+  const { colors: themeColors } = useTheme();
+  const spinnerColor = color || themeColors.primary;
+
   const content = (
     <>
-      <ActivityIndicator size={size} color={color} />
+      <ActivityIndicator size={size} color={spinnerColor} />
       {message && (
-        <Text style={styles.message}>{message}</Text>
+        <Text style={[styles.message, { color: themeColors.textSecondary }]}>{message}</Text>
       )}
     </>
   );
-  
+
   if (fullScreen) {
     return (
-      <View style={styles.fullScreen}>
+      <View style={[styles.fullScreen, { backgroundColor: themeColors.background }]}>
         {content}
       </View>
     );
@@ -73,19 +76,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
   },
-  
+
   inline: {
     padding: spacing.xl,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
   message: {
     marginTop: spacing.md,
     fontSize: typography.size.md,
-    color: colors.textSecondary,
   },
 });
 

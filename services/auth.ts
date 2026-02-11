@@ -5,8 +5,9 @@
 // Uses WordPress JWT Authentication plugin for login.
 // =============================================================================
 
-import { API_URL, SITE_URL } from '@/constants/config';
+import { API_URL, SITE_URL, FEATURES } from '@/constants/config';
 import * as SecureStore from 'expo-secure-store';
+import { registerDeviceToken, unregisterDeviceToken } from './push';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -18,6 +19,7 @@ const JWT_ENDPOINT = `${SITE_URL}/wp-json/jwt-auth/v1/token`;
 // SecureStore keys
 const AUTH_KEY = 'tbc_auth_jwt';
 const USER_KEY = 'tbc_user_info';
+const CRED_KEY = 'tbc_auth_cred';
 
 // Debug mode
 const DEBUG = __DEV__;
@@ -163,6 +165,9 @@ export async function login(username: string, password: string): Promise<LoginRe
     await SecureStore.setItemAsync(AUTH_KEY, jwtData.token);
     log('JWT token stored');
 
+    // Store credentials for silent refresh (encrypted by OS keychain)
+    await SecureStore.setItemAsync(CRED_KEY, JSON.stringify({ username, password }));
+
     // Map JWT response to our User type
     // Note: JWT gives us username (user_nicename), email, and display_name
     const user: User = {
@@ -199,6 +204,14 @@ export async function login(username: string, password: string): Promise<LoginRe
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
     log('User info stored:', user.username, 'id:', user.id);
 
+    // Register device for push notifications (non-blocking)
+    // Pass the token to avoid circular dependency (push.ts doesn't import from auth.ts)
+    if (FEATURES.PUSH_NOTIFICATIONS) {
+      registerDeviceToken(jwtData.token).catch(err => {
+        log('Failed to register push token:', err);
+      });
+    }
+
     return { success: true, user };
 
   } catch (error) {
@@ -224,6 +237,16 @@ export async function login(username: string, password: string): Promise<LoginRe
  */
 export async function logout(): Promise<void> {
   log('Logging out...');
+
+  // Get token before clearing auth (needed for unregister call)
+  const token = await getAuthToken();
+
+  // Unregister device from push notifications first
+  // Pass the token to avoid circular dependency (push.ts doesn't import from auth.ts)
+  if (FEATURES.PUSH_NOTIFICATIONS && token) {
+    await unregisterDeviceToken(token).catch(() => {});
+  }
+
   await clearAuth();
 }
 
@@ -279,14 +302,100 @@ export async function getStoredUser(): Promise<User | null> {
 /**
  * Clear all auth data
  */
+// Auth state change callback (set by AuthContext)
+let onAuthCleared: (() => void) | null = null;
+
+export function setOnAuthCleared(callback: (() => void) | null): void {
+  onAuthCleared = callback;
+}
+
 export async function clearAuth(): Promise<void> {
   try {
     await SecureStore.deleteItemAsync(AUTH_KEY);
     await SecureStore.deleteItemAsync(USER_KEY);
+    await SecureStore.deleteItemAsync(CRED_KEY);
     log('Auth cleared');
+
+    if (onAuthCleared) {
+      onAuthCleared();
+    }
   } catch (error) {
     log('Error clearing auth:', error);
   }
+}
+
+// -----------------------------------------------------------------------------
+// Silent Refresh - Re-authenticate with stored credentials
+// -----------------------------------------------------------------------------
+
+let refreshInProgress: Promise<boolean> | null = null;
+
+export async function silentRefresh(): Promise<boolean> {
+  // If a refresh is already in progress, wait for it
+  if (refreshInProgress) {
+    log('Silent refresh already in progress, waiting...');
+    return refreshInProgress;
+  }
+
+  refreshInProgress = (async () => {
+    try {
+      log('Attempting silent re-authentication...');
+
+      const credJson = await SecureStore.getItemAsync(CRED_KEY);
+      if (!credJson) {
+        log('No stored credentials for silent refresh');
+        return false;
+      }
+
+      const { username, password } = JSON.parse(credJson);
+
+      // Direct fetch to JWT endpoint (NOT using our API client to avoid loops)
+      const response = await fetch(JWT_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.token) {
+        log('Silent refresh failed:', data?.code || response.status);
+        // Credentials are no longer valid — clear everything
+        await clearAuth();
+        return false;
+      }
+
+      // Store the new token
+      await SecureStore.setItemAsync(AUTH_KEY, data.token);
+      log('Silent refresh successful, new token stored');
+      return true;
+    } catch (error) {
+      log('Silent refresh error:', error);
+      return false;
+    } finally {
+      refreshInProgress = null;
+    }
+  })();
+
+  return refreshInProgress;
+}
+
+/**
+ * Store auth data directly (for registration auto-login where we already have a JWT token).
+ * Stores token, user info, and credentials in SecureStore without making a JWT request.
+ */
+export async function storeAuthDirect(
+  token: string,
+  user: User,
+  credentials: { username: string; password: string }
+): Promise<void> {
+  await SecureStore.setItemAsync(AUTH_KEY, token);
+  await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+  await SecureStore.setItemAsync(CRED_KEY, JSON.stringify(credentials));
+  log('Auth stored directly (registration)');
 }
 
 /**

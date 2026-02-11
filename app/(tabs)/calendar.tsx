@@ -12,8 +12,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { calendarApi } from '@/services/api/calendar';
 import { CalendarEvent, CalendarViewMode } from '@/types/calendar';
 import { useEventWebView } from '@/hooks/useEventWebView';
@@ -60,6 +60,7 @@ function formatSelectedDate(dateString: string): string {
 export default function CalendarScreen() {
   // WebView hook for opening events
   const { openEvent } = useEventWebView();
+  const { colors: themeColors } = useTheme();
 
   // State
   const [viewMode, setViewMode] = useState<CalendarViewMode>('list');
@@ -225,8 +226,8 @@ export default function CalendarScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          tintColor={colors.primary}
-          colors={[colors.primary]}
+          tintColor={themeColors.primary}
+          colors={[themeColors.primary]}
         />
       }
     >
@@ -302,7 +303,6 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   selectedDaySection: {
@@ -314,13 +314,11 @@ const styles = StyleSheet.create({
   selectedDayTitle: {
     fontSize: typography.size.md,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: spacing.sm,
   },
 
   noEventsText: {
     fontSize: typography.size.sm,
-    color: colors.textSecondary,
     textAlign: 'center',
     paddingVertical: spacing.lg,
   },

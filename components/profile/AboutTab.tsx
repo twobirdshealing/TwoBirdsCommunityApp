@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
 import { Profile } from '@/types';
 
@@ -13,6 +13,7 @@ interface AboutTabProps {
 }
 
 export function AboutTab({ profile }: AboutTabProps) {
+  const { colors: themeColors } = useTheme();
   const description = profile.short_description || profile.meta?.bio;
   const website = profile.meta?.website;
   const socialLinks = profile.meta?.social_links || {};
@@ -40,35 +41,35 @@ export function AboutTab({ profile }: AboutTabProps) {
     <View style={styles.container}>
       {/* Description */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
+        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>About</Text>
         {description ? (
-          <Text style={styles.description}>{description}</Text>
+          <Text style={[styles.description, { color: themeColors.text }]}>{description}</Text>
         ) : (
-          <Text style={styles.placeholder}>No description added yet</Text>
+          <Text style={[styles.placeholder, { color: themeColors.textTertiary }]}>No description added yet</Text>
         )}
       </View>
 
       {/* Info */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Info</Text>
-        
+        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Info</Text>
+
         {/* Joined Date */}
         {joinedDate && (
           <View style={styles.infoRow}>
             <Text style={styles.infoIcon}>📅</Text>
-            <Text style={styles.infoText}>Joined {joinedDate}</Text>
+            <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>Joined {joinedDate}</Text>
           </View>
         )}
 
         {/* Website */}
         {website && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.infoRow}
             onPress={() => handleOpenLink(website)}
             activeOpacity={0.7}
           >
             <Text style={styles.infoIcon}>🌐</Text>
-            <Text style={[styles.infoText, styles.link]} numberOfLines={1}>
+            <Text style={[styles.infoText, styles.link, { color: themeColors.primary }]} numberOfLines={1}>
               {website.replace(/^https?:\/\//, '')}
             </Text>
           </TouchableOpacity>
@@ -78,7 +79,7 @@ export function AboutTab({ profile }: AboutTabProps) {
         {profile.meta?.location && (
           <View style={styles.infoRow}>
             <Text style={styles.infoIcon}>📍</Text>
-            <Text style={styles.infoText}>{profile.meta.location}</Text>
+            <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>{profile.meta.location}</Text>
           </View>
         )}
       </View>
@@ -86,43 +87,43 @@ export function AboutTab({ profile }: AboutTabProps) {
       {/* Social Links */}
       {hasSocial && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Social</Text>
+          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Social</Text>
           <View style={styles.socialRow}>
             {socialLinks.twitter && (
-              <TouchableOpacity 
-                style={styles.socialButton}
+              <TouchableOpacity
+                style={[styles.socialButton, { backgroundColor: themeColors.backgroundSecondary }]}
                 onPress={() => handleOpenLink(socialLinks.twitter!)}
               >
                 <Text style={styles.socialIcon}>🐦</Text>
               </TouchableOpacity>
             )}
             {socialLinks.fb && (
-              <TouchableOpacity 
-                style={styles.socialButton}
+              <TouchableOpacity
+                style={[styles.socialButton, { backgroundColor: themeColors.backgroundSecondary }]}
                 onPress={() => handleOpenLink(socialLinks.fb!)}
               >
                 <Text style={styles.socialIcon}>📘</Text>
               </TouchableOpacity>
             )}
             {socialLinks.instagram && (
-              <TouchableOpacity 
-                style={styles.socialButton}
+              <TouchableOpacity
+                style={[styles.socialButton, { backgroundColor: themeColors.backgroundSecondary }]}
                 onPress={() => handleOpenLink(socialLinks.instagram!)}
               >
                 <Text style={styles.socialIcon}>📷</Text>
               </TouchableOpacity>
             )}
             {socialLinks.linkedin && (
-              <TouchableOpacity 
-                style={styles.socialButton}
+              <TouchableOpacity
+                style={[styles.socialButton, { backgroundColor: themeColors.backgroundSecondary }]}
                 onPress={() => handleOpenLink(socialLinks.linkedin!)}
               >
                 <Text style={styles.socialIcon}>💼</Text>
               </TouchableOpacity>
             )}
             {socialLinks.youtube && (
-              <TouchableOpacity 
-                style={styles.socialButton}
+              <TouchableOpacity
+                style={[styles.socialButton, { backgroundColor: themeColors.backgroundSecondary }]}
                 onPress={() => handleOpenLink(socialLinks.youtube!)}
               >
                 <Text style={styles.socialIcon}>▶️</Text>
@@ -147,19 +148,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold,
-    color: colors.text,
     marginBottom: spacing.md,
   },
 
   description: {
     fontSize: typography.size.md,
-    color: colors.text,
     lineHeight: typography.size.md * 1.6,
   },
 
   placeholder: {
     fontSize: typography.size.md,
-    color: colors.textTertiary,
     fontStyle: 'italic',
   },
 
@@ -178,12 +176,10 @@ const styles = StyleSheet.create({
 
   infoText: {
     fontSize: typography.size.md,
-    color: colors.textSecondary,
     flex: 1,
   },
 
   link: {
-    color: colors.primary,
   },
 
   socialRow: {
@@ -196,7 +192,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.backgroundSecondary,
     justifyContent: 'center',
     alignItems: 'center',
   },

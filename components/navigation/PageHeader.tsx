@@ -39,7 +39,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { colors } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { spacing } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -78,7 +78,8 @@ export function PageHeader({
   rightElement,
   includeSafeArea = false,
 }: PageHeaderProps) {
-  
+  const { colors: themeColors } = useTheme();
+
   // ---------------------------------------------------------------------------
   // Handlers with haptic feedback
   // ---------------------------------------------------------------------------
@@ -117,7 +118,7 @@ export function PageHeader({
   // ---------------------------------------------------------------------------
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
       <View style={styles.content}>
         {/* Left Button */}
         {leftIcon ? (
@@ -125,11 +126,11 @@ export function PageHeader({
             onPress={handleLeftPress}
             style={({ pressed }) => [
               styles.button,
-              pressed && styles.buttonPressed,
+              pressed && [styles.buttonPressed, { backgroundColor: themeColors.backgroundSecondary }],
             ]}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name={leftIcon} size={24} color={colors.text} />
+            <Ionicons name={leftIcon} size={24} color={themeColors.text} />
           </Pressable>
         ) : (
           <View style={styles.buttonSpacer} />
@@ -138,14 +139,14 @@ export function PageHeader({
         {/* Center: Title + Loader */}
         <View style={styles.center}>
           {title && (
-            <Text style={styles.title} numberOfLines={1}>
+            <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>
               {title}
             </Text>
           )}
           {showLoader && (
             <ActivityIndicator
               size="small"
-              color={colors.primary}
+              color={themeColors.primary}
               style={styles.loader}
             />
           )}
@@ -161,11 +162,11 @@ export function PageHeader({
             onPress={handleRightPress}
             style={({ pressed }) => [
               styles.button,
-              pressed && styles.buttonPressed,
+              pressed && [styles.buttonPressed, { backgroundColor: themeColors.backgroundSecondary }],
             ]}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name={rightIcon} size={24} color={colors.text} />
+            <Ionicons name={rightIcon} size={24} color={themeColors.text} />
           </Pressable>
         ) : (
           <View style={styles.buttonSpacer} />
@@ -181,9 +182,7 @@ export function PageHeader({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -215,7 +214,7 @@ const styles = StyleSheet.create({
   },
   
   buttonPressed: {
-    backgroundColor: colors.backgroundSecondary,
+    opacity: 0.7,
   },
   
   buttonSpacer: {
@@ -234,7 +233,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
     textAlign: 'center',
   },
   

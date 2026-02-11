@@ -11,6 +11,7 @@ export * from './media';
 export * from './messages';
 export * from './notifications';
 export * from './profiles';
+export * from './registration';
 export * from './spaces';
 
 // Also export the api objects for convenience
@@ -22,4 +23,5 @@ export { default as mediaApi } from './media';
 export { default as messagesApi } from './messages';
 export { default as notificationsApi } from './notifications';
 export { default as profilesApi } from './profiles';
+export { default as registrationApi } from './registration';
 export { default as spacesApi } from './spaces';

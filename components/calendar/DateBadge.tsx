@@ -9,8 +9,8 @@
 
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '@/constants/colors';
 import { spacing } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -82,17 +82,18 @@ const SIZES = {
 // -----------------------------------------------------------------------------
 
 export function DateBadge({ date, size = 'md' }: DateBadgeProps) {
+  const { colors: themeColors } = useTheme();
   const { dayName, day, ordinal, month } = formatDate(date);
   const sizeConfig = SIZES[size];
 
   return (
-    <View style={[styles.container, sizeConfig.container]}>
-      <Text style={[styles.dayName, sizeConfig.dayName]}>{dayName}</Text>
+    <View style={[styles.container, sizeConfig.container, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
+      <Text style={[styles.dayName, sizeConfig.dayName, { color: themeColors.text }]}>{dayName}</Text>
       <View style={styles.dayRow}>
-        <Text style={[styles.day, sizeConfig.day]}>{day}</Text>
-        <Text style={[styles.ordinal, sizeConfig.ordinal]}>{ordinal}</Text>
+        <Text style={[styles.day, sizeConfig.day, { color: themeColors.text }]}>{day}</Text>
+        <Text style={[styles.ordinal, sizeConfig.ordinal, { color: themeColors.text }]}>{ordinal}</Text>
       </View>
-      <Text style={[styles.month, sizeConfig.month]}>{month}</Text>
+      <Text style={[styles.month, sizeConfig.month, { color: themeColors.text }]}>{month}</Text>
     </View>
   );
 }
@@ -103,16 +104,13 @@ export function DateBadge({ date, size = 'md' }: DateBadgeProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.background,
     borderWidth: 2,
-    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   dayName: {
     fontWeight: '700',
-    color: colors.text,
     letterSpacing: 0.5,
   },
 
@@ -123,19 +121,16 @@ const styles = StyleSheet.create({
 
   day: {
     fontWeight: '700',
-    color: colors.text,
     lineHeight: 28,
   },
 
   ordinal: {
     fontWeight: '600',
-    color: colors.text,
     marginTop: 2,
   },
 
   month: {
     fontWeight: '700',
-    color: colors.text,
     letterSpacing: 0.5,
   },
 });

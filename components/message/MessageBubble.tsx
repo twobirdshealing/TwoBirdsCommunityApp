@@ -9,8 +9,8 @@
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
-import { colors } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
+import { useTheme } from '@/contexts/ThemeContext';
 import { ChatMessage, getMessageText } from '@/types/message';
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -51,6 +51,7 @@ export function MessageBubble({
   onAvatarPress,
   onLongPress,
 }: MessageBubbleProps) {
+  const { colors: themeColors } = useTheme();
   const messageText = getMessageText(message.text);
   const senderName = message.xprofile?.display_name || 'Unknown';
   const avatarUrl = message.xprofile?.avatar || null;
@@ -93,7 +94,7 @@ export function MessageBubble({
       <Pressable
         style={[
           styles.bubble,
-          isOwn ? styles.bubbleOwn : styles.bubbleOther,
+          isOwn ? [styles.bubbleOwn, { backgroundColor: themeColors.primary }] : [styles.bubbleOther, { backgroundColor: themeColors.backgroundSecondary }],
           hasImages && styles.bubbleWithImage,
         ]}
         onLongPress={() => onLongPress?.(message)}
@@ -117,7 +118,7 @@ export function MessageBubble({
 
         {/* Text (if any) */}
         {messageText.length > 0 && (
-          <Text style={[styles.text, isOwn && styles.textOwn, hasImages && styles.textWithImage]}>
+          <Text style={[styles.text, { color: themeColors.text }, isOwn && { color: '#FFFFFF' }, hasImages && styles.textWithImage]}>
             {messageText}
           </Text>
         )}
@@ -125,7 +126,7 @@ export function MessageBubble({
 
       {/* Timestamp (optional, shown below bubble) */}
       {showTimestamp && (
-        <Text style={[styles.timestamp, isOwn && styles.timestampOwn]}>
+        <Text style={[styles.timestamp, { color: themeColors.textTertiary }, isOwn && styles.timestampOwn]}>
           {formatTime(message.created_at)}
         </Text>
       )}
@@ -179,6 +180,7 @@ interface DateSeparatorProps {
 }
 
 export function DateSeparator({ date }: DateSeparatorProps) {
+  const { colors: themeColors } = useTheme();
   const formatDate = (dateString: string) => {
     const messageDate = new Date(dateString);
     const today = new Date();
@@ -205,9 +207,9 @@ export function DateSeparator({ date }: DateSeparatorProps) {
 
   return (
     <View style={styles.dateSeparator}>
-      <View style={styles.dateLine} />
-      <Text style={styles.dateText}>{formatDate(date)}</Text>
-      <View style={styles.dateLine} />
+      <View style={[styles.dateLine, { backgroundColor: themeColors.border }]} />
+      <Text style={[styles.dateText, { color: themeColors.textTertiary }]}>{formatDate(date)}</Text>
+      <View style={[styles.dateLine, { backgroundColor: themeColors.border }]} />
     </View>
   );
 }
@@ -245,12 +247,10 @@ const styles = StyleSheet.create({
   },
 
   bubbleOwn: {
-    backgroundColor: colors.primary,
     borderBottomRightRadius: 4,
   },
 
   bubbleOther: {
-    backgroundColor: colors.backgroundSecondary,
     borderBottomLeftRadius: 4,
   },
 
@@ -279,12 +279,10 @@ const styles = StyleSheet.create({
 
   text: {
     fontSize: typography.size.md,
-    color: colors.text,
     lineHeight: 20,
   },
 
   textOwn: {
-    color: colors.textInverse,
   },
 
   textWithImage: {
@@ -294,7 +292,6 @@ const styles = StyleSheet.create({
 
   timestamp: {
     fontSize: typography.size.xs,
-    color: colors.textTertiary,
     marginTop: 4,
     marginLeft: 32 + spacing.xs + spacing.sm,
   },
@@ -321,12 +318,10 @@ const styles = StyleSheet.create({
   dateLine: {
     flex: 1,
     height: 1,
-    backgroundColor: colors.border,
   },
 
   dateText: {
     fontSize: typography.size.xs,
-    color: colors.textTertiary,
     marginHorizontal: spacing.md,
     fontWeight: '500',
   },
