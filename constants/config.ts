@@ -65,6 +65,9 @@ export const ENDPOINTS = {
   // Activities
   ACTIVITIES: '/activities',
 
+  // Notification Preferences (email)
+  NOTIFICATION_PREFS: (username: string) => `/profile/${username}/notification-preferences`,
+
   // Chat/Messaging
   CHAT_THREADS: '/chat/threads',
   CHAT_MESSAGES: (threadId: number) => `/chat/messages/${threadId}`,

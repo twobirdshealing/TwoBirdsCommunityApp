@@ -33,7 +33,7 @@ import { shadows, sizing, spacing, typography } from '@/constants/layout';
 import { Feed, ReactionType } from '@/types';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { formatCompactNumber } from '@/utils/formatNumber';
-import { stripHtmlTags, truncateText } from '@/utils/htmlToText';
+import { stripHtmlTags, stripHtmlPreserveBreaks, truncateText } from '@/utils/htmlToText';
 import { useAuth } from '@/contexts/AuthContext';
 import { SITE_URL } from '@/constants/config';
 import { REACTION_EMOJI, REACTION_COLORS, REACTION_NAMES } from '@/constants/reactions';
@@ -111,6 +111,7 @@ interface FeedCardProps {
   onEdit?: () => void;
   onDelete?: () => void;
   onPin?: () => void;  // NEW: Pin callback (only passed if user can pin)
+  variant?: 'compact' | 'full';  // compact = list view (truncated), full = single post view
 }
 
 // -----------------------------------------------------------------------------
@@ -127,6 +128,7 @@ export function FeedCard({
   onEdit,
   onDelete,
   onPin,
+  variant = 'compact',
 }: FeedCardProps) {
   const { user } = useAuth();
   const { colors: themeColors } = useTheme();
@@ -153,10 +155,12 @@ export function FeedCard({
   const timestamp = formatRelativeTime(feed.created_at);
   
   // Content processing
-  const rawContent = stripHtmlTags(feed.message_rendered || feed.message || '');
-  const isLongContent = rawContent.length > 300;
+  const rawContent = variant === 'full'
+    ? stripHtmlPreserveBreaks(feed.message_rendered || feed.message || '')
+    : stripHtmlTags(feed.message_rendered || feed.message || '');
+  const isLongContent = variant === 'compact' && rawContent.length > 300;
   const [expanded, setExpanded] = useState(false);
-  const displayContent = expanded ? rawContent : truncateText(rawContent, 300);
+  const displayContent = variant === 'full' ? rawContent : (expanded ? rawContent : truncateText(rawContent, 300));
   
   // Media detection
   const media = detectMedia(feed);
@@ -361,14 +365,14 @@ export function FeedCard({
 
       {/* ===== Title ===== */}
       {feed.title && (
-        <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={3}>
+        <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={variant === 'full' ? undefined : 3}>
           {feed.title}
         </Text>
       )}
 
       {/* ===== Content ===== */}
       {displayContent.length > 0 && (
-        <Text style={[styles.content, { color: themeColors.textSecondary }]} numberOfLines={expanded ? undefined : 6}>
+        <Text style={[styles.content, { color: themeColors.textSecondary }]} numberOfLines={variant === 'full' ? undefined : (expanded ? undefined : 6)}>
           {displayContent}
         </Text>
       )}

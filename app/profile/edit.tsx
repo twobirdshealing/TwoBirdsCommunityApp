@@ -1,0 +1,1073 @@
+// =============================================================================
+// EDIT PROFILE SCREEN - Edit native + custom profile fields
+// =============================================================================
+// Route: /profile/edit
+// Fetches current profile, renders editable form, saves via single POST
+// =============================================================================
+
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { spacing, typography } from '@/constants/layout';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { profilesApi } from '@/services/api';
+import { verifyOtp, resendOtp, requestVoiceCall } from '@/services/api/otp';
+import { updateStoredUser } from '@/services/auth';
+import { Profile, CustomFieldConfig } from '@/types';
+import { PageHeader } from '@/components/navigation';
+
+// -----------------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------------
+
+interface FormData {
+  first_name: string;
+  last_name: string;
+  short_description: string;
+  website: string;
+  social_links: {
+    twitter: string;
+    fb: string;
+    instagram: string;
+    linkedin: string;
+    youtube: string;
+  };
+  custom_fields: Record<string, any>;
+}
+
+// -----------------------------------------------------------------------------
+// Component
+// -----------------------------------------------------------------------------
+
+export default function EditProfileScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { user: currentUser } = useAuth();
+  const { colors: themeColors } = useTheme();
+
+  const username = currentUser?.username || '';
+
+  // State
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Form data
+  const [formData, setFormData] = useState<FormData>({
+    first_name: '',
+    last_name: '',
+    short_description: '',
+    website: '',
+    social_links: { twitter: '', fb: '', instagram: '', linkedin: '', youtube: '' },
+    custom_fields: {},
+  });
+
+  // Select modal state
+  const [selectModalVisible, setSelectModalVisible] = useState(false);
+  const [selectModalField, setSelectModalField] = useState<string | null>(null);
+
+  // OTP state (phone change verification)
+  const [showOtp, setShowOtp] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSessionKey, setOtpSessionKey] = useState('');
+  const [otpPhoneMasked, setOtpPhoneMasked] = useState('');
+  const [otpVoiceFallback, setOtpVoiceFallback] = useState(false);
+  const [otpResendTimer, setOtpResendTimer] = useState(0);
+  const [otpError, setOtpError] = useState('');
+  const [otpVerifying, setOtpVerifying] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Load Profile
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (!username) return;
+
+    (async () => {
+      try {
+        setLoading(true);
+        const response = await profilesApi.getProfile(username);
+
+        if (response.success && response.data.profile) {
+          const p = response.data.profile;
+          setProfile(p);
+
+          // Pre-populate form
+          const customValues: Record<string, any> = {};
+          if (p.custom_fields) {
+            Object.entries(p.custom_fields).forEach(([key, field]) => {
+              customValues[key] = field.value || '';
+            });
+          }
+
+          setFormData({
+            first_name: p.first_name || '',
+            last_name: p.last_name || '',
+            short_description: p.short_description || '',
+            website: p.meta?.website || '',
+            social_links: {
+              twitter: p.meta?.social_links?.twitter || '',
+              fb: p.meta?.social_links?.fb || '',
+              instagram: p.meta?.social_links?.instagram || '',
+              linkedin: p.meta?.social_links?.linkedin || '',
+              youtube: p.meta?.social_links?.youtube || '',
+            },
+            custom_fields: customValues,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load profile for edit:', err);
+        Alert.alert('Error', 'Failed to load profile.');
+        router.back();
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [username]);
+
+  // ---------------------------------------------------------------------------
+  // OTP resend timer
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (otpResendTimer <= 0) return;
+    const interval = setInterval(() => {
+      setOtpResendTimer((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [otpResendTimer]);
+
+  // ---------------------------------------------------------------------------
+  // Field helpers
+  // ---------------------------------------------------------------------------
+
+  const setFieldValue = useCallback((key: string, value: any) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+    setFieldErrors(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
+  const setSocialLink = useCallback((provider: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      social_links: { ...prev.social_links, [provider]: value },
+    }));
+  }, []);
+
+  const setCustomField = useCallback((key: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      custom_fields: { ...prev.custom_fields, [key]: value },
+    }));
+    setFieldErrors(prev => {
+      const next = { ...prev };
+      delete next[`cf_${key}`];
+      return next;
+    });
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Save
+  // ---------------------------------------------------------------------------
+
+  const handleSave = async (otpSessionKeyOverride?: string) => {
+    if (saving || !username) return;
+
+    // Basic validation (skip if resubmitting after OTP)
+    if (!otpSessionKeyOverride) {
+      const errors: Record<string, string> = {};
+      if (!formData.first_name.trim()) {
+        errors.first_name = 'First name is required';
+      }
+
+      if (profile?.custom_field_configs) {
+        Object.entries(profile.custom_field_configs).forEach(([key, config]) => {
+          if (config.required && !formData.custom_fields[key]) {
+            errors[`cf_${key}`] = `${config.label} is required`;
+          }
+        });
+      }
+
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        return;
+      }
+    }
+
+    try {
+      setSaving(true);
+
+      const payload: Parameters<typeof profilesApi.updateProfile>[1] = {
+        user_id: profile?.user_id,
+        first_name: formData.first_name.trim(),
+        last_name: formData.last_name.trim(),
+        short_description: formData.short_description.trim(),
+        website: formData.website.trim(),
+        social_links: formData.social_links,
+        custom_fields: formData.custom_fields,
+      };
+
+      // Include verified OTP session key for resubmit
+      if (otpSessionKeyOverride) {
+        payload.tbc_otp_session_key = otpSessionKeyOverride;
+      }
+
+      const response = await profilesApi.updateProfile(username, payload);
+
+      if (response.success) {
+        const displayName = [formData.first_name.trim(), formData.last_name.trim()].filter(Boolean).join(' ');
+        await updateStoredUser({ display_name: displayName });
+        setShowOtp(false);
+        router.back();
+      } else {
+        const errorData = response.error as any;
+        // Check for OTP required response (phone change verification)
+        const otpData = errorData?.data || errorData;
+        if (otpData?.otp_required) {
+          setOtpSessionKey(otpData.session_key || '');
+          setOtpPhoneMasked(otpData.phone_masked || '');
+          setOtpVoiceFallback(otpData.voice_fallback || false);
+          setOtpCode('');
+          setOtpError('');
+          setOtpResendTimer(60);
+          setShowOtp(true);
+        } else {
+          const message = otpData?.message || errorData?.message;
+          Alert.alert('Error', message || 'Failed to save profile.');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+      Alert.alert('Error', 'Failed to save profile.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // OTP handlers
+  // ---------------------------------------------------------------------------
+
+  const handleVerifyOtp = async () => {
+    if (otpVerifying || !otpCode.length) {
+      if (!otpCode.length) setOtpError('Please enter the verification code.');
+      return;
+    }
+
+    setOtpError('');
+    setOtpVerifying(true);
+
+    try {
+      const result = await verifyOtp(otpSessionKey, otpCode);
+
+      if (result.success) {
+        // OTP verified — resubmit profile save with the verified session key
+        setOtpVerifying(false);
+        await handleSave(otpSessionKey);
+      } else {
+        setOtpError(result.message || 'Invalid code. Please try again.');
+      }
+    } catch {
+      setOtpError('Verification failed. Please try again.');
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (otpResendTimer > 0) return;
+
+    try {
+      const result = await resendOtp(otpSessionKey);
+      if (result.success) {
+        setOtpResendTimer(60);
+        setOtpError('');
+      } else {
+        setOtpError(result.message || 'Failed to resend code.');
+      }
+    } catch {
+      setOtpError('Failed to resend code.');
+    }
+  };
+
+  const handleOtpVoiceCall = async () => {
+    try {
+      const result = await requestVoiceCall(otpSessionKey);
+      if (result.success) {
+        setOtpResendTimer(60);
+        setOtpError('');
+      } else {
+        setOtpError(result.message || 'Failed to initiate call.');
+      }
+    } catch {
+      setOtpError('Failed to initiate call.');
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Custom field renderer
+  // ---------------------------------------------------------------------------
+
+  const renderCustomField = (key: string, config: CustomFieldConfig) => {
+    const value = formData.custom_fields[key] ?? '';
+    const fieldError = fieldErrors[`cf_${key}`];
+
+    // Select / Radio / Gender
+    if (config.type === 'select' || config.type === 'radio' || config.type === 'gender') {
+      return (
+        <View key={key} style={styles.inputContainer}>
+          <Text style={[styles.label, { color: themeColors.text }]}>
+            {config.label}{config.required && <Text style={styles.required}> *</Text>}
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.input,
+              styles.selectInput,
+              {
+                backgroundColor: themeColors.background,
+                borderColor: fieldError ? '#EF4444' : themeColors.border,
+              },
+            ]}
+            onPress={() => {
+              setSelectModalField(key);
+              setSelectModalVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.selectText,
+              { color: value ? themeColors.text : themeColors.textTertiary },
+            ]}>
+              {value || config.placeholder || `Select ${config.label}`}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={themeColors.textSecondary} />
+          </TouchableOpacity>
+          {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+        </View>
+      );
+    }
+
+    // Textarea
+    if (config.type === 'textarea') {
+      return (
+        <View key={key} style={styles.inputContainer}>
+          <Text style={[styles.label, { color: themeColors.text }]}>
+            {config.label}{config.required && <Text style={styles.required}> *</Text>}
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              styles.textareaInput,
+              {
+                backgroundColor: themeColors.background,
+                borderColor: fieldError ? '#EF4444' : themeColors.border,
+                color: themeColors.text,
+              },
+            ]}
+            value={value}
+            onChangeText={(text) => setCustomField(key, text)}
+            placeholder={config.placeholder || ''}
+            placeholderTextColor={themeColors.textTertiary}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+          />
+          {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+        </View>
+      );
+    }
+
+    // Checkbox / Multiselect — toggle chips
+    if (config.type === 'checkbox' || config.type === 'multiselect') {
+      let selected: string[] = [];
+      try {
+        selected = typeof value === 'string' ? JSON.parse(value || '[]') : (Array.isArray(value) ? value : []);
+      } catch {
+        selected = [];
+      }
+
+      const toggleOption = (option: string) => {
+        const next = selected.includes(option)
+          ? selected.filter(s => s !== option)
+          : [...selected, option];
+        setCustomField(key, JSON.stringify(next));
+      };
+
+      return (
+        <View key={key} style={styles.inputContainer}>
+          <Text style={[styles.label, { color: themeColors.text }]}>
+            {config.label}{config.required && <Text style={styles.required}> *</Text>}
+          </Text>
+          <View style={styles.chipRow}>
+            {(config.options || []).map((option) => {
+              const isSelected = selected.includes(option);
+              return (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: isSelected ? themeColors.primary : themeColors.background,
+                      borderColor: isSelected ? themeColors.primary : themeColors.border,
+                    },
+                  ]}
+                  onPress={() => toggleOption(option)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.chipText, { color: isSelected ? '#fff' : themeColors.text }]}>
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+        </View>
+      );
+    }
+
+    // Default: text, phone, number, date, url
+    let keyboardType: TextInput['props']['keyboardType'] = 'default';
+    let autoCapitalize: TextInput['props']['autoCapitalize'] = 'sentences';
+    let placeholder = config.placeholder || '';
+
+    switch (config.type) {
+      case 'phone':
+        keyboardType = 'phone-pad';
+        autoCapitalize = 'none';
+        break;
+      case 'number':
+        keyboardType = 'numeric';
+        break;
+      case 'date':
+        placeholder = placeholder || 'YYYY-MM-DD';
+        autoCapitalize = 'none';
+        break;
+      case 'url':
+        keyboardType = 'url';
+        autoCapitalize = 'none';
+        break;
+      default:
+        break;
+    }
+
+    return (
+      <View key={key} style={styles.inputContainer}>
+        <Text style={[styles.label, { color: themeColors.text }]}>
+          {config.label}{config.required && <Text style={styles.required}> *</Text>}
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: themeColors.background,
+              borderColor: fieldError ? '#EF4444' : themeColors.border,
+              color: themeColors.text,
+            },
+          ]}
+          value={value}
+          onChangeText={(text) => setCustomField(key, text)}
+          placeholder={placeholder}
+          placeholderTextColor={themeColors.textTertiary}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={false}
+        />
+        {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+      </View>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Select modal
+  // ---------------------------------------------------------------------------
+
+  const renderSelectModal = () => {
+    if (!selectModalField || !profile?.custom_field_configs?.[selectModalField]) return null;
+
+    const config = profile.custom_field_configs[selectModalField];
+    const options = config.options || [];
+    const currentValue = formData.custom_fields[selectModalField];
+
+    return (
+      <Modal
+        visible={selectModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setSelectModalVisible(false)}
+        >
+          <View style={[styles.modalContent, { backgroundColor: themeColors.surface }]}>
+            <Text style={[styles.modalTitle, { color: themeColors.text }]}>
+              Select {config.label}
+            </Text>
+            <ScrollView style={styles.modalScroll}>
+              {options.map((option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.modalOption,
+                    { borderBottomColor: themeColors.border },
+                    currentValue === option && { backgroundColor: `${themeColors.primary}15` },
+                  ]}
+                  onPress={() => {
+                    setCustomField(selectModalField, option);
+                    setSelectModalVisible(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.modalOptionText,
+                    { color: themeColors.text },
+                    currentValue === option && { color: themeColors.primary, fontWeight: typography.weight.semibold },
+                  ]}>
+                    {option}
+                  </Text>
+                  {currentValue === option && (
+                    <Ionicons name="checkmark" size={20} color={themeColors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render: Loading
+  // ---------------------------------------------------------------------------
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <PageHeader
+          leftAction="close"
+          onLeftPress={() => router.back()}
+          title="Edit Profile"
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={themeColors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render: Form
+  // ---------------------------------------------------------------------------
+
+  const customFieldConfigs = profile?.custom_field_configs || {};
+  const hasCustomFields = Object.keys(customFieldConfigs).length > 0;
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <PageHeader
+        leftAction="close"
+        onLeftPress={() => router.back()}
+        title="Edit Profile"
+        rightElement={
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: themeColors.primary }]}
+            onPress={() => handleSave()}
+            disabled={saving}
+            activeOpacity={0.8}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.saveButtonText}>Save</Text>
+            )}
+          </TouchableOpacity>
+        }
+      />
+
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* --- Basic Info --- */}
+          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Basic Info</Text>
+
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: themeColors.text }]}>
+              First Name<Text style={styles.required}> *</Text>
+            </Text>
+            <TextInput
+              style={[styles.input, {
+                backgroundColor: themeColors.background,
+                borderColor: fieldErrors.first_name ? '#EF4444' : themeColors.border,
+                color: themeColors.text,
+              }]}
+              value={formData.first_name}
+              onChangeText={(text) => setFieldValue('first_name', text)}
+              placeholder="First name"
+              placeholderTextColor={themeColors.textTertiary}
+              autoCapitalize="words"
+            />
+            {fieldErrors.first_name && <Text style={styles.fieldError}>{fieldErrors.first_name}</Text>}
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: themeColors.text }]}>Last Name</Text>
+            <TextInput
+              style={[styles.input, {
+                backgroundColor: themeColors.background,
+                borderColor: themeColors.border,
+                color: themeColors.text,
+              }]}
+              value={formData.last_name}
+              onChangeText={(text) => setFieldValue('last_name', text)}
+              placeholder="Last name"
+              placeholderTextColor={themeColors.textTertiary}
+              autoCapitalize="words"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: themeColors.text }]}>Bio</Text>
+            <TextInput
+              style={[styles.input, styles.textareaInput, {
+                backgroundColor: themeColors.background,
+                borderColor: themeColors.border,
+                color: themeColors.text,
+              }]}
+              value={formData.short_description}
+              onChangeText={(text) => setFieldValue('short_description', text)}
+              placeholder="Tell people about yourself"
+              placeholderTextColor={themeColors.textTertiary}
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: themeColors.text }]}>Website</Text>
+            <TextInput
+              style={[styles.input, {
+                backgroundColor: themeColors.background,
+                borderColor: themeColors.border,
+                color: themeColors.text,
+              }]}
+              value={formData.website}
+              onChangeText={(text) => setFieldValue('website', text)}
+              placeholder="https://yourwebsite.com"
+              placeholderTextColor={themeColors.textTertiary}
+              keyboardType="url"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          {/* --- Social Links --- */}
+          <Text style={[styles.sectionTitle, styles.sectionTitleSpaced, { color: themeColors.text }]}>Social Links</Text>
+
+          {[
+            { key: 'twitter', label: 'Twitter', icon: 'logo-twitter' as const },
+            { key: 'fb', label: 'Facebook', icon: 'logo-facebook' as const },
+            { key: 'instagram', label: 'Instagram', icon: 'logo-instagram' as const },
+            { key: 'linkedin', label: 'LinkedIn', icon: 'logo-linkedin' as const },
+            { key: 'youtube', label: 'YouTube', icon: 'logo-youtube' as const },
+          ].map(({ key, label, icon }) => (
+            <View key={key} style={styles.inputContainer}>
+              <View style={styles.socialLabelRow}>
+                <Ionicons name={icon} size={18} color={themeColors.textSecondary} />
+                <Text style={[styles.label, styles.socialLabel, { color: themeColors.text }]}>{label}</Text>
+              </View>
+              <TextInput
+                style={[styles.input, {
+                  backgroundColor: themeColors.background,
+                  borderColor: themeColors.border,
+                  color: themeColors.text,
+                }]}
+                value={formData.social_links[key as keyof typeof formData.social_links]}
+                onChangeText={(text) => setSocialLink(key, text)}
+                placeholder={`${label} profile URL`}
+                placeholderTextColor={themeColors.textTertiary}
+                keyboardType="url"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          ))}
+
+          {/* --- Custom Fields --- */}
+          {hasCustomFields && (
+            <>
+              <Text style={[styles.sectionTitle, styles.sectionTitleSpaced, { color: themeColors.text }]}>Additional Info</Text>
+              {Object.entries(customFieldConfigs).map(([key, config]) =>
+                renderCustomField(key, config)
+              )}
+            </>
+          )}
+
+          {/* Bottom spacer */}
+          <View style={{ height: spacing.xxl }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Select modal for custom fields */}
+      {renderSelectModal()}
+
+      {/* OTP verification modal */}
+      <Modal
+        visible={showOtp}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowOtp(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowOtp(false)}
+        >
+          <Pressable style={[styles.otpModalContent, { backgroundColor: themeColors.surface }]}>
+            <Text style={[styles.modalTitle, { color: themeColors.text }]}>
+              Verify Your Phone
+            </Text>
+            <Text style={[styles.otpSubtitle, { color: themeColors.textSecondary }]}>
+              Enter the code sent to {otpPhoneMasked}
+            </Text>
+
+            {otpError ? (
+              <View style={styles.otpErrorContainer}>
+                <Text style={styles.otpErrorText}>{otpError}</Text>
+              </View>
+            ) : null}
+
+            <TextInput
+              style={[
+                styles.input,
+                styles.otpInput,
+                {
+                  backgroundColor: themeColors.background,
+                  borderColor: themeColors.border,
+                  color: themeColors.text,
+                },
+              ]}
+              value={otpCode}
+              onChangeText={(text) => setOtpCode(text.replace(/[^0-9]/g, ''))}
+              placeholder="0000"
+              placeholderTextColor={themeColors.textTertiary}
+              keyboardType="number-pad"
+              maxLength={8}
+              textContentType="oneTimeCode"
+              autoComplete="sms-otp"
+              autoFocus
+            />
+
+            <TouchableOpacity
+              style={[styles.otpVerifyButton, { backgroundColor: themeColors.primary }, (otpVerifying || saving) && styles.otpButtonDisabled]}
+              onPress={handleVerifyOtp}
+              disabled={otpVerifying || saving}
+              activeOpacity={0.8}
+            >
+              {otpVerifying || saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.otpVerifyButtonText}>Verify</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.otpActions}>
+              <TouchableOpacity
+                onPress={handleResendOtp}
+                disabled={otpResendTimer > 0}
+              >
+                <Text style={[
+                  styles.otpActionText,
+                  { color: otpResendTimer > 0 ? themeColors.textTertiary : themeColors.primary },
+                ]}>
+                  {otpResendTimer > 0 ? `Resend code (${otpResendTimer}s)` : 'Resend code'}
+                </Text>
+              </TouchableOpacity>
+              {otpVoiceFallback && (
+                <TouchableOpacity onPress={handleOtpVoiceCall}>
+                  <Text style={[styles.otpActionText, { color: themeColors.primary }]}>
+                    Try voice call
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.otpCancelButton}
+              onPress={() => setShowOtp(false)}
+            >
+              <Text style={[styles.otpActionText, { color: themeColors.textSecondary }]}>Cancel</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Styles
+// -----------------------------------------------------------------------------
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+
+  flex: {
+    flex: 1,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  scrollContent: {
+    padding: spacing.lg,
+  },
+
+  // Save button in header
+  saveButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: 8,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  // Section titles
+  sectionTitle: {
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.semibold,
+    marginBottom: spacing.md,
+  },
+
+  sectionTitleSpaced: {
+    marginTop: spacing.xl,
+  },
+
+  // Inputs
+  inputContainer: {
+    marginBottom: spacing.md,
+  },
+
+  label: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
+    marginBottom: spacing.xs,
+  },
+
+  required: {
+    color: '#EF4444',
+  },
+
+  input: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    fontSize: typography.size.md,
+  },
+
+  textareaInput: {
+    minHeight: 90,
+    paddingTop: spacing.sm + 2,
+  },
+
+  selectInput: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  selectText: {
+    fontSize: typography.size.md,
+    flex: 1,
+  },
+
+  fieldError: {
+    color: '#EF4444',
+    fontSize: typography.size.xs,
+    marginTop: spacing.xs,
+  },
+
+  // Social links
+  socialLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+
+  socialLabel: {
+    marginBottom: 0,
+  },
+
+  // Chip toggles (checkbox/multiselect)
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+
+  chip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+
+  chipText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
+  },
+
+  // Select modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+
+  modalContent: {
+    borderRadius: 16,
+    width: '100%',
+    maxHeight: '60%',
+    overflow: 'hidden',
+  },
+
+  modalTitle: {
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.semibold,
+    padding: spacing.lg,
+    textAlign: 'center',
+  },
+
+  modalScroll: {
+    maxHeight: 300,
+  },
+
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+
+  modalOptionText: {
+    fontSize: typography.size.md,
+    flex: 1,
+  },
+
+  // OTP modal
+  otpModalContent: {
+    borderRadius: 16,
+    width: '100%',
+    padding: spacing.xl,
+  },
+
+  otpSubtitle: {
+    fontSize: typography.size.sm,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+
+  otpInput: {
+    fontSize: 24,
+    fontWeight: '600' as const,
+    textAlign: 'center' as const,
+    letterSpacing: 8,
+    marginBottom: spacing.md,
+  },
+
+  otpVerifyButton: {
+    borderRadius: 12,
+    paddingVertical: spacing.md,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    marginTop: spacing.sm,
+  },
+
+  otpVerifyButtonText: {
+    color: '#fff',
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
+  },
+
+  otpButtonDisabled: {
+    opacity: 0.7,
+  },
+
+  otpActions: {
+    flexDirection: 'row' as const,
+    justifyContent: 'center' as const,
+    gap: spacing.xl,
+    marginTop: spacing.lg,
+  },
+
+  otpActionText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  otpCancelButton: {
+    alignItems: 'center' as const,
+    marginTop: spacing.md,
+  },
+
+  otpErrorContainer: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 10,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+  },
+
+  otpErrorText: {
+    color: '#DC2626',
+    fontSize: typography.size.xs,
+    textAlign: 'center' as const,
+  },
+});

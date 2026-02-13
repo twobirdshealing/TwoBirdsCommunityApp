@@ -129,7 +129,11 @@ async function request<T>(
     }
 
     if (!response.ok) {
-      console.error('[API Error]', data);
+      if (response.status >= 500) {
+        console.error('[API Error]', data);
+      } else {
+        console.warn('[API Error]', data);
+      }
 
       // Handle JWT expiration or invalid token
       const isJwtExpired = (

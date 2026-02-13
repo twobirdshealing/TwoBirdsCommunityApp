@@ -73,6 +73,11 @@ export interface AppNotification {
   created_at: string;         // From subscriber.created_at
   type: NotificationAction;   // Alias for action
 
+  // Reaction type data (injected by tbc-multi-reactions plugin)
+  tbc_reaction_type?: string;     // e.g. 'laugh', 'like', 'wow'
+  tbc_reaction_icon_url?: string | null; // Custom icon URL (uploaded image)
+  tbc_reaction_emoji?: string | null;    // Emoji fallback
+
   // Legacy fields (for backwards compatibility)
   message?: string;           // Stripped HTML from content
   title?: string;             // First line of message
@@ -192,6 +197,11 @@ export function transformNotification(raw: any): AppNotification {
     is_read: subscriber.is_read === '1' || subscriber.is_read === 1 || subscriber.is_read === true,
     created_at: subscriber.created_at || raw.created_at || '',
     type: raw.action || '',
+
+    // Reaction type (from tbc-multi-reactions API injection)
+    tbc_reaction_type: raw.tbc_reaction_type || undefined,
+    tbc_reaction_icon_url: raw.tbc_reaction_icon_url || null,
+    tbc_reaction_emoji: raw.tbc_reaction_emoji || null,
 
     // Legacy/convenience
     message: stripHtml(raw.content || ''),

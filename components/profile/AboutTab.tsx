@@ -1,12 +1,12 @@
 // =============================================================================
-// ABOUT TAB - Profile about section
+// ABOUT TAB - Profile about section with custom fields
 // =============================================================================
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
-import { Profile } from '@/types';
+import { Profile, CustomFieldValue } from '@/types';
 
 interface AboutTabProps {
   profile: Profile;
@@ -18,9 +18,24 @@ export function AboutTab({ profile }: AboutTabProps) {
   const website = profile.meta?.website;
   const socialLinks = profile.meta?.social_links || {};
   const hasSocial = Object.values(socialLinks).some(link => link);
-  
+
+  // Custom fields from tbc-fluent-profiles
+  const customFields = profile.custom_fields || {};
+  const visibleFields = Object.entries(customFields).filter(([, field]) => {
+    if (!field.value) return false;
+    if (field.type === 'checkbox' || field.type === 'multiselect') {
+      try {
+        const arr = JSON.parse(field.value);
+        return Array.isArray(arr) && arr.length > 0;
+      } catch {
+        return false;
+      }
+    }
+    return true;
+  });
+
   // Format joined date
-  const joinedDate = profile.created_at 
+  const joinedDate = profile.created_at
     ? new Date(profile.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -34,6 +49,58 @@ export function AboutTab({ profile }: AboutTabProps) {
     const supported = await Linking.canOpenURL(fullUrl);
     if (supported) {
       await Linking.openURL(fullUrl);
+    }
+  };
+
+  const renderFieldValue = (field: CustomFieldValue) => {
+    const { value, type } = field;
+
+    switch (type) {
+      case 'url':
+        return (
+          <TouchableOpacity onPress={() => handleOpenLink(value)} activeOpacity={0.7}>
+            <Text style={[styles.fieldValueText, { color: themeColors.primary }]} numberOfLines={1}>
+              {value.replace(/^https?:\/\//, '')}
+            </Text>
+          </TouchableOpacity>
+        );
+
+      case 'date': {
+        const date = new Date(value);
+        const formatted = isNaN(date.getTime())
+          ? value
+          : date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        return <Text style={[styles.fieldValueText, { color: themeColors.textSecondary }]}>{formatted}</Text>;
+      }
+
+      case 'checkbox':
+      case 'multiselect': {
+        try {
+          const items = JSON.parse(value);
+          if (!Array.isArray(items) || items.length === 0) return null;
+          return (
+            <View style={styles.tagRow}>
+              {items.map((item: string, i: number) => (
+                <View key={i} style={[styles.tag, { backgroundColor: themeColors.backgroundSecondary }]}>
+                  <Text style={[styles.tagText, { color: themeColors.text }]}>{item}</Text>
+                </View>
+              ))}
+            </View>
+          );
+        } catch {
+          return <Text style={[styles.fieldValueText, { color: themeColors.textSecondary }]}>{value}</Text>;
+        }
+      }
+
+      case 'textarea':
+        return (
+          <Text style={[styles.fieldValueText, { color: themeColors.textSecondary, lineHeight: typography.size.md * 1.5 }]}>
+            {value}
+          </Text>
+        );
+
+      default:
+        return <Text style={[styles.fieldValueText, { color: themeColors.textSecondary }]}>{value}</Text>;
     }
   };
 
@@ -83,6 +150,19 @@ export function AboutTab({ profile }: AboutTabProps) {
           </View>
         )}
       </View>
+
+      {/* Custom Profile Fields */}
+      {visibleFields.length > 0 && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Details</Text>
+          {visibleFields.map(([key, field]) => (
+            <View key={key} style={styles.fieldRow}>
+              <Text style={[styles.fieldLabel, { color: themeColors.textTertiary }]}>{field.label}</Text>
+              {renderFieldValue(field)}
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Social Links */}
       {hasSocial && (
@@ -182,6 +262,40 @@ const styles = StyleSheet.create({
   link: {
   },
 
+  // Custom fields
+  fieldRow: {
+    marginBottom: spacing.md,
+  },
+
+  fieldLabel: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.medium,
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  fieldValueText: {
+    fontSize: typography.size.md,
+  },
+
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+
+  tag: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 12,
+  },
+
+  tagText: {
+    fontSize: typography.size.sm,
+  },
+
+  // Social
   socialRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -172,7 +172,13 @@ export function NotificationCard({
             fallback={actorName}
           />
           <View style={styles.typeIconOverlay}>
-            <NotificationTypeIcon type={notification.type} size={12} />
+            <NotificationTypeIcon
+              type={notification.type}
+              reactionType={notification.tbc_reaction_type}
+              reactionIconUrl={notification.tbc_reaction_icon_url}
+              reactionEmoji={notification.tbc_reaction_emoji}
+              size={12}
+            />
           </View>
         </Pressable>
 

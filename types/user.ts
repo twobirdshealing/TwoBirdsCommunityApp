@@ -39,6 +39,28 @@ export interface XProfile {
 }
 
 // -----------------------------------------------------------------------------
+// Custom Profile Fields (injected by tbc-fluent-profiles plugin)
+// -----------------------------------------------------------------------------
+
+export interface CustomFieldValue {
+  value: string;
+  label: string;
+  type: string;
+  visibility: string;
+}
+
+export interface CustomFieldConfig {
+  label: string;
+  type: string;
+  placeholder: string;
+  instructions: string;
+  required: boolean;
+  options: string[];
+  visibility: string;
+  allow_user_override: boolean;
+}
+
+// -----------------------------------------------------------------------------
 // Full Profile - What you get from /profile/{username}
 // -----------------------------------------------------------------------------
 
@@ -62,6 +84,10 @@ export interface Profile extends XProfile {
   // Navigation items
   profile_navs?: ProfileNav[];
   profile_nav_actions?: any[];
+
+  // Custom profile fields (injected by tbc-fluent-profiles plugin)
+  custom_fields?: Record<string, CustomFieldValue>;
+  custom_field_configs?: Record<string, CustomFieldConfig>;
 }
 
 // -----------------------------------------------------------------------------

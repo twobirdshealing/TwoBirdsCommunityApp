@@ -9,7 +9,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Image,
@@ -27,20 +26,18 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Avatar } from '@/components/common/Avatar';
-import { uploadMedia } from '@/services/api/media';
 import { updateStoredUser } from '@/services/auth';
+import { showAvatarPicker } from '@/utils/avatarPicker';
 import {
   getRegistrationFields,
   submitRegistration,
   verifyOtp,
   resendOtp,
   requestVoiceCall,
-  updateAvatar,
   type RegistrationField,
   type FieldsResponse,
 } from '@/services/api/registration';
@@ -413,95 +410,23 @@ export default function RegisterScreen() {
   // Avatar upload (Step 5)
   // ---------------------------------------------------------------------------
 
-  const processAvatarAsset = useCallback(async (asset: ImagePicker.ImagePickerAsset) => {
-    setAvatarUri(asset.uri);
-    setUploadingAvatar(true);
-    setError(null);
-
-    try {
-      const uploadResult = await uploadMedia(
-        asset.uri,
-        asset.mimeType || 'image/jpeg',
-        asset.fileName || 'avatar.jpg',
-        'profile'
-      );
-
-      if (!uploadResult.success || !uploadResult.data?.url) {
-        setError('Failed to upload photo. You can add it later from your profile.');
-        setUploadingAvatar(false);
-        return;
-      }
-
-      const profileResult = await updateAvatar(uploadResult.data.url);
-
-      if (profileResult.success) {
-        await updateStoredUser({ avatar: profileResult.avatar || uploadResult.data.url });
-      }
-
-      setUploadingAvatar(false);
-    } catch (e) {
-      setError('Failed to upload photo. You can add it later from your profile.');
-      setUploadingAvatar(false);
-    }
-  }, [formData.username]);
-
-  const handlePickFromLibrary = useCallback(async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (result.canceled || !result.assets?.[0]) return;
-      await processAvatarAsset(result.assets[0]);
-    } catch (e) {
-      setError('Failed to upload photo. You can add it later from your profile.');
-    }
-  }, [processAvatarAsset]);
-
-  const handleTakePhoto = useCallback(async () => {
-    try {
-      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permissionResult.granted) {
-        Alert.alert('Permission Required', 'Please allow camera access to take a photo.');
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-
-      if (result.canceled || !result.assets?.[0]) return;
-      await processAvatarAsset(result.assets[0]);
-    } catch (e) {
-      setError('Failed to take photo. You can add it later from your profile.');
-    }
-  }, [processAvatarAsset]);
-
   const handlePickAvatar = useCallback(() => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Take Photo', 'Choose from Library'],
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) handleTakePhoto();
-          else if (buttonIndex === 2) handlePickFromLibrary();
-        }
-      );
-    } else {
-      Alert.alert('Add Photo', 'Choose an option', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Take Photo', onPress: handleTakePhoto },
-        { text: 'Choose from Library', onPress: handlePickFromLibrary },
-      ]);
-    }
-  }, [handleTakePhoto, handlePickFromLibrary]);
+    showAvatarPicker({
+      onUploadStart: (localUri) => {
+        setAvatarUri(localUri);
+        setUploadingAvatar(true);
+        setError(null);
+      },
+      onSuccess: async (remoteUrl) => {
+        await updateStoredUser({ avatar: remoteUrl });
+        setUploadingAvatar(false);
+      },
+      onError: (msg) => {
+        setError(msg + ' You can add it later from your profile.');
+        setUploadingAvatar(false);
+      },
+    });
+  }, []);
 
   const handleFinish = useCallback(() => {
     router.replace('/(tabs)');

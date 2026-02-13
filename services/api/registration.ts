@@ -8,6 +8,7 @@
 
 import { SITE_URL } from '@/constants/config';
 import { getAuthToken } from '@/services/auth';
+import { verifyOtp, resendOtp, requestVoiceCall } from './otp';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -51,10 +52,8 @@ export interface RegisterResponse {
   errors?: Record<string, string>;
 }
 
-export interface OtpResponse {
-  success: boolean;
-  message?: string;
-}
+// OTP types re-exported from universal otp service
+export type { OtpResponse, OtpVerifyResponse } from './otp';
 
 export interface ForgotPasswordResponse {
   success: boolean;
@@ -66,12 +65,8 @@ export interface ForgotPasswordResponse {
   message?: string;
 }
 
-export interface PasswordVerifyResponse {
-  success: boolean;
-  reset_token?: string;
-  login?: string;
-  message?: string;
-}
+// PasswordVerifyResponse is now OtpVerifyResponse from otp.ts (same shape)
+export type { OtpVerifyResponse as PasswordVerifyResponse } from './otp';
 
 export interface PasswordResetResponse {
   success: boolean;
@@ -159,62 +154,8 @@ export async function submitRegistration(data: Record<string, any>): Promise<Reg
   };
 }
 
-/**
- * POST /register/otp/verify - Verify an OTP code
- */
-export async function verifyOtp(sessionKey: string, code: string): Promise<OtpResponse> {
-  const result = await tbcPublicRequest<OtpResponse>('/register/otp/verify', {
-    method: 'POST',
-    body: JSON.stringify({ session_key: sessionKey, code }),
-  });
-
-  if (result.success) {
-    return result.data;
-  }
-
-  return {
-    success: false,
-    message: result.error,
-  };
-}
-
-/**
- * POST /register/otp/resend - Resend OTP SMS
- */
-export async function resendOtp(sessionKey: string): Promise<OtpResponse> {
-  const result = await tbcPublicRequest<OtpResponse>('/register/otp/resend', {
-    method: 'POST',
-    body: JSON.stringify({ session_key: sessionKey }),
-  });
-
-  if (result.success) {
-    return result.data;
-  }
-
-  return {
-    success: false,
-    message: result.error,
-  };
-}
-
-/**
- * POST /register/otp/voice - Request voice call OTP
- */
-export async function requestVoiceCall(sessionKey: string): Promise<OtpResponse> {
-  const result = await tbcPublicRequest<OtpResponse>('/register/otp/voice', {
-    method: 'POST',
-    body: JSON.stringify({ session_key: sessionKey }),
-  });
-
-  if (result.success) {
-    return result.data;
-  }
-
-  return {
-    success: false,
-    message: result.error,
-  };
-}
+// OTP functions re-exported from universal otp service
+export { verifyOtp, resendOtp, requestVoiceCall };
 
 /**
  * POST /profile/avatar - Update user avatar (JWT authenticated)
@@ -273,65 +214,10 @@ export async function forgotPassword(login: string): Promise<ForgotPasswordRespo
   };
 }
 
-/**
- * POST /password/verify - Verify OTP code for password recovery
- */
-export async function verifyPasswordOtp(
-  sessionKey: string,
-  code: string
-): Promise<PasswordVerifyResponse> {
-  const result = await tbcPublicRequest<PasswordVerifyResponse>('/password/verify', {
-    method: 'POST',
-    body: JSON.stringify({ session_key: sessionKey, code }),
-  });
-
-  if (result.success) {
-    return result.data;
-  }
-
-  return {
-    success: false,
-    message: result.error,
-  };
-}
-
-/**
- * POST /password/verify - Resend OTP for password recovery
- */
-export async function resendPasswordOtp(sessionKey: string): Promise<OtpResponse> {
-  const result = await tbcPublicRequest<OtpResponse>('/password/verify', {
-    method: 'POST',
-    body: JSON.stringify({ session_key: sessionKey, action: 'resend' }),
-  });
-
-  if (result.success) {
-    return result.data;
-  }
-
-  return {
-    success: false,
-    message: result.error,
-  };
-}
-
-/**
- * POST /password/verify - Request voice call OTP for password recovery
- */
-export async function requestPasswordVoiceCall(sessionKey: string): Promise<OtpResponse> {
-  const result = await tbcPublicRequest<OtpResponse>('/password/verify', {
-    method: 'POST',
-    body: JSON.stringify({ session_key: sessionKey, action: 'voice' }),
-  });
-
-  if (result.success) {
-    return result.data;
-  }
-
-  return {
-    success: false,
-    message: result.error,
-  };
-}
+// Password OTP functions — aliases to universal otp service
+export const verifyPasswordOtp = verifyOtp;
+export const resendPasswordOtp = resendOtp;
+export const requestPasswordVoiceCall = requestVoiceCall;
 
 /**
  * POST /password/reset - Set new password with reset token

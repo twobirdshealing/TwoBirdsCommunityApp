@@ -413,7 +413,7 @@ export default function NotificationsScreen() {
           leftAction="back"
           onLeftPress={() => router.back()}
           title="Notifications"
-          rightIcon="ellipsis-horizontal"
+          rightIcon="settings-outline"
           onRightPress={handleMoreOptions}
         />
         {loading && notifications.length === 0 ? (

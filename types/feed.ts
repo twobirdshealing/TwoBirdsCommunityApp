@@ -175,7 +175,7 @@ export interface FeedsResponse {
 }
 
 export interface FeedDetailResponse {
-  data: Feed;
+  feed: Feed;
 }
 
 export interface ReactResponse {

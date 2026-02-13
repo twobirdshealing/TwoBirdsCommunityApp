@@ -9,3 +9,4 @@ export * from './formatDate';
 export * from './formatNumber';
 export * from './htmlToText';
 export * from './reactionHelpers';
+export * from './avatarPicker';

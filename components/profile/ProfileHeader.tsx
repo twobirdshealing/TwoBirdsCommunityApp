@@ -1,11 +1,10 @@
 // =============================================================================
-// PROFILE HEADER - Cover photo, avatar, name, stats
-// =============================================================================
-// Updated with clickable cover/avatar for editing (Phase 2 ready)
+// PROFILE HEADER - Modern cover photo, avatar, name, stats
 // =============================================================================
 
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Profile } from '@/types';
@@ -15,16 +14,18 @@ import { formatCompactNumber } from '@/utils/formatNumber';
 interface ProfileHeaderProps {
   profile: Profile;
   isOwnProfile?: boolean;
+  isUploading?: boolean;
   onSettingsPress?: () => void;
   onFollowersPress?: () => void;
   onFollowingPress?: () => void;
-  onCoverPhotoPress?: () => void;  // For editing cover (Phase 2)
-  onAvatarPress?: () => void;      // For editing avatar (Phase 2)
+  onCoverPhotoPress?: () => void;
+  onAvatarPress?: () => void;
 }
 
 export function ProfileHeader({
   profile,
   isOwnProfile = false,
+  isUploading = false,
   onSettingsPress,
   onFollowersPress,
   onFollowingPress,
@@ -66,30 +67,37 @@ export function ProfileHeader({
           <View style={[styles.coverPhoto, styles.coverPlaceholder, { backgroundColor: themeColors.primary }]} />
         )}
 
-        {/* Edit Cover Hint (own profile only) */}
+        {/* Subtle gradient overlay */}
+        <View style={styles.coverOverlay} />
+
+        {/* Edit Cover Button (own profile only) */}
         {isOwnProfile && onCoverPhotoPress && (
-          <View style={styles.editHint}>
-            <Text style={styles.editHintText}>📷 Tap to change cover</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.coverEditButton}
+            onPress={handleCoverPress}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="camera-outline" size={16} color="#fff" />
+          </TouchableOpacity>
         )}
 
         {/* Settings Button (own profile only) */}
         {isOwnProfile && onSettingsPress && (
           <TouchableOpacity
-            style={[styles.settingsButton, { backgroundColor: isDark ? themeColors.backgroundSecondary : 'rgba(255,255,255,0.9)' }]}
+            style={[styles.settingsButton, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)' }]}
             onPress={onSettingsPress}
             activeOpacity={0.8}
           >
-            <Text style={styles.settingsIcon}>⚙️</Text>
+            <Ionicons name="settings-outline" size={20} color={isDark ? '#fff' : '#333'} />
           </TouchableOpacity>
         )}
       </TouchableOpacity>
 
       {/* Profile Info */}
       <View style={styles.infoContainer}>
-        {/* Avatar */}
+        {/* Avatar with edit overlay */}
         <TouchableOpacity
-          style={[styles.avatarWrapper, { backgroundColor: themeColors.surface }]}
+          style={[styles.avatarWrapper, { backgroundColor: themeColors.surface, borderColor: themeColors.surface }]}
           onPress={handleAvatarPress}
           activeOpacity={isOwnProfile ? 0.8 : 1}
           disabled={!isOwnProfile}
@@ -100,10 +108,18 @@ export function ProfileHeader({
             verified={isVerified}
             fallback={profile.display_name}
           />
-          {/* Edit Avatar Hint (own profile only) */}
-          {isOwnProfile && onAvatarPress && (
+
+          {/* Upload loading overlay */}
+          {isUploading && (
+            <View style={styles.avatarLoadingOverlay}>
+              <ActivityIndicator size="small" color="#fff" />
+            </View>
+          )}
+
+          {/* Edit Avatar Button (own profile only) */}
+          {isOwnProfile && onAvatarPress && !isUploading && (
             <View style={[styles.avatarEditBadge, { backgroundColor: themeColors.primary, borderColor: themeColors.surface }]}>
-              <Text style={styles.avatarEditIcon}>📷</Text>
+              <Ionicons name="camera" size={14} color="#fff" />
             </View>
           )}
         </TouchableOpacity>
@@ -129,18 +145,6 @@ export function ProfileHeader({
             </Text>
             <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Followers</Text>
           </TouchableOpacity>
-
-          {profile.total_points > 0 && (
-            <>
-              <View style={[styles.statDivider, { backgroundColor: themeColors.border }]} />
-              <View style={styles.stat}>
-                <Text style={[styles.statValue, { color: themeColors.text }]}>
-                  {formatCompactNumber(profile.total_points)}
-                </Text>
-                <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Points</Text>
-              </View>
-            </>
-          )}
         </View>
       </View>
     </View>
@@ -153,7 +157,7 @@ const styles = StyleSheet.create({
 
   // Cover
   coverContainer: {
-    height: 140,
+    height: 200,
     position: 'relative',
   },
 
@@ -165,35 +169,32 @@ const styles = StyleSheet.create({
   coverPlaceholder: {
   },
 
-  editHint: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -75 }, { translateY: -15 }],
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 20,
+  coverOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
   },
 
-  editHintText: {
-    fontSize: typography.size.xs,
-  },
-
-  settingsButton: {
+  coverEditButton: {
     position: 'absolute',
-    top: 50,
-    right: spacing.md,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    bottom: spacing.sm,
+    right: spacing.sm,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  settingsIcon: {
-    fontSize: 20,
+  settingsButton: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // Info
@@ -204,26 +205,32 @@ const styles = StyleSheet.create({
   },
 
   avatarWrapper: {
-    marginTop: -50,
+    marginTop: -60,
     padding: 4,
-    borderRadius: 60,
+    borderRadius: 64,
+    borderWidth: 4,
     position: 'relative',
+  },
+
+  avatarLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    margin: 4,
   },
 
   avatarEditBadge: {
     position: 'absolute',
     bottom: 4,
     right: 4,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-  },
-
-  avatarEditIcon: {
-    fontSize: 14,
+    borderWidth: 3,
   },
 
   displayName: {
@@ -244,7 +251,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.lg,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     borderRadius: 12,
   },
 

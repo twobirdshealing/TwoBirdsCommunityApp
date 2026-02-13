@@ -24,13 +24,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import {
-  forgotPassword,
-  verifyPasswordOtp,
-  resendPasswordOtp,
-  requestPasswordVoiceCall,
-  resetPassword,
-} from '@/services/api/registration';
+import { forgotPassword, resetPassword } from '@/services/api/registration';
+import { verifyOtp, resendOtp, requestVoiceCall } from '@/services/api/otp';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -136,7 +131,7 @@ export default function ForgotPasswordScreen() {
     setSubmitting(true);
 
     try {
-      const result = await verifyPasswordOtp(sessionKey, otpCode);
+      const result = await verifyOtp(sessionKey, otpCode);
 
       if (result.success && result.reset_token && result.login) {
         setResetToken(result.reset_token);
@@ -156,7 +151,7 @@ export default function ForgotPasswordScreen() {
     if (resendTimer > 0) return;
 
     try {
-      const result = await resendPasswordOtp(sessionKey);
+      const result = await resendOtp(sessionKey);
       if (result.success) {
         setResendTimer(60);
         setError(null);
@@ -170,7 +165,7 @@ export default function ForgotPasswordScreen() {
 
   const handleVoiceCall = useCallback(async () => {
     try {
-      const result = await requestPasswordVoiceCall(sessionKey);
+      const result = await requestVoiceCall(sessionKey);
       if (result.success) {
         setResendTimer(60);
         setError(null);

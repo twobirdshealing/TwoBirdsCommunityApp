@@ -4,9 +4,13 @@
 // Returns appropriate icon and color for each notification type.
 // Used in NotificationCard and potentially notification toasts.
 // Supports both legacy types (new_comment) and action types (feed/commented)
+// For reaction notifications, renders the actual reaction icon (custom image
+// or emoji) via ReactionIcon when tbc_reaction_type data is available.
 // =============================================================================
 
 import { ColorTheme } from '@/constants/colors';
+import { ReactionIcon } from '@/components/feed/ReactionIcon';
+import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { useTheme } from '@/contexts/ThemeContext';
 import { NotificationType } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +23,12 @@ import { StyleSheet, View } from 'react-native';
 
 interface NotificationTypeIconProps {
   type: NotificationType;
+  /** Reaction type from tbc-multi-reactions API (e.g. 'laugh', 'wow') */
+  reactionType?: string;
+  /** Custom icon URL for the reaction (uploaded image) */
+  reactionIconUrl?: string | null;
+  /** Emoji fallback for the reaction */
+  reactionEmoji?: string | null;
   size?: number;
 }
 
@@ -157,10 +167,49 @@ function getIconConfig(type: NotificationType, tc: ColorTheme): IconConfig {
 // Component
 // -----------------------------------------------------------------------------
 
-export function NotificationTypeIcon({ type, size = 20 }: NotificationTypeIconProps) {
+export function NotificationTypeIcon({
+  type,
+  reactionType,
+  reactionIconUrl,
+  reactionEmoji,
+  size = 20,
+}: NotificationTypeIconProps) {
   const { colors: themeColors } = useTheme();
+  const { getReaction } = useReactionConfig();
   const config = getIconConfig(type, themeColors);
   const containerSize = size * 1.8;
+
+  // For reaction notifications with type data, show the actual reaction icon
+  const isReaction = config.icon === 'heart' && reactionType;
+  let iconUrl = reactionIconUrl;
+  let emoji = reactionEmoji;
+
+  if (isReaction && !iconUrl && !emoji) {
+    // Fallback: look up from cached reaction config
+    const reactionConfig = getReaction(reactionType);
+    if (reactionConfig) {
+      iconUrl = reactionConfig.icon_url;
+      emoji = reactionConfig.emoji;
+    }
+  }
+
+  if (isReaction) {
+    return (
+      <View
+        style={[
+          styles.container,
+          {
+            width: containerSize,
+            height: containerSize,
+            borderRadius: containerSize / 2,
+            backgroundColor: 'transparent',
+          },
+        ]}
+      >
+        <ReactionIcon iconUrl={iconUrl} emoji={emoji || undefined} size={containerSize} />
+      </View>
+    );
+  }
 
   return (
     <View

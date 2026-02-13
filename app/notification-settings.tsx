@@ -1,20 +1,28 @@
 // =============================================================================
-// NOTIFICATION SETTINGS SCREEN - User push notification preferences
+// NOTIFICATION SETTINGS SCREEN - Unified push + email notification preferences
 // =============================================================================
-// Fetches notification types from TBC-CA plugin API and allows user to toggle
-// each notification type on/off.
+// Fetches push notification types from TBC-CA plugin API and email notification
+// preferences from Fluent Community API. Displays both channels together for
+// each notification concept, with per-space email settings at the bottom.
 // =============================================================================
 
 import { PageHeader } from '@/components/navigation';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { FEATURES } from '@/constants/config';
 import { getPushSettings, updatePushSettings, PushPreference } from '@/services/api/push';
+import {
+  getEmailPrefs,
+  updateEmailPrefs,
+  EmailPrefsResponse,
+  EmailUserGlobals,
+} from '@/services/api/emailPrefs';
 import { isPushAvailable } from '@/services/push';
 import { getAuthToken } from '@/services/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -34,41 +42,224 @@ interface CategoryPreferences {
   [category: string]: PushPreference[];
 }
 
-// -----------------------------------------------------------------------------
-// Toggle Component
-// -----------------------------------------------------------------------------
+type ChannelType = 'push' | 'email';
 
-interface ToggleRowProps {
+interface ChannelInfo {
+  type: ChannelType;
+  id: string;        // push pref id or email key
+  label: string;
+  enabled: boolean;
+}
+
+interface UnifiedItem {
+  key: string;
   label: string;
   description: string;
+  channels: ChannelInfo[];
+  note?: string;
+}
+
+interface UnifiedSection {
+  category: string;
+  title: string;
+  items: UnifiedItem[];
+}
+
+type SpacePrefValue = '' | 'admin_only_posts' | 'all_member_posts';
+
+// -----------------------------------------------------------------------------
+// Notification Mapping — links push type IDs to email pref keys
+// -----------------------------------------------------------------------------
+
+interface NotificationMapping {
+  key: string;
+  label: string;
+  description: string;
+  category: string;
+  pushIds?: string[];
+  pushLabels?: string[];
+  emailKey?: keyof EmailUserGlobals;
+  note?: string;
+}
+
+const NOTIFICATION_MAP: NotificationMapping[] = [
+  // Community — dual channel
+  {
+    key: 'comment_on_post',
+    label: 'Comment on Your Post',
+    description: 'When someone comments on your post',
+    category: 'community',
+    pushIds: ['comment_on_post'],
+    emailKey: 'com_my_post_mail',
+  },
+  {
+    key: 'reply_to_comment',
+    label: 'Reply to Your Comment',
+    description: 'When someone replies to your comment',
+    category: 'community',
+    pushIds: ['reply_to_comment'],
+    emailKey: 'reply_my_com_mail',
+  },
+  {
+    key: 'mentions',
+    label: 'Mentions',
+    description: 'When someone mentions you in a post or comment',
+    category: 'community',
+    pushIds: ['mentioned_in_comment', 'mentioned_in_post'],
+    pushLabels: ['In comments', 'In posts'],
+    emailKey: 'mention_mail',
+    note: 'Email setting also controls announcement emails',
+  },
+  // Community — push only
+  {
+    key: 'reaction_on_post',
+    label: 'Reaction on Your Post',
+    description: 'When someone reacts to your post',
+    category: 'community',
+    pushIds: ['reaction_on_post'],
+  },
+  {
+    key: 'comment_on_followed_post',
+    label: 'Comment on Followed Post',
+    description: 'When someone comments on a post you follow',
+    category: 'community',
+    pushIds: ['comment_on_followed_post'],
+  },
+  {
+    key: 'new_space_post',
+    label: 'New Post in Your Space',
+    description: 'When a new post is created in a space you belong to',
+    category: 'community',
+    pushIds: ['new_space_post'],
+  },
+  {
+    key: 'space_join',
+    label: 'Someone Joined Your Space',
+    description: 'When someone joins a space you moderate',
+    category: 'community',
+    pushIds: ['space_join'],
+  },
+  {
+    key: 'space_role_change',
+    label: 'Your Role Changed',
+    description: 'When your role is changed in a space',
+    category: 'community',
+    pushIds: ['space_role_change'],
+  },
+  {
+    key: 'invitation_received',
+    label: 'Invitation Received',
+    description: 'When you receive an invitation',
+    category: 'community',
+    pushIds: ['invitation_received'],
+  },
+  // Social — push only
+  {
+    key: 'friend_new_post',
+    label: 'Friend Posted',
+    description: 'When someone you follow creates a new post',
+    category: 'social',
+    pushIds: ['friend_new_post'],
+  },
+  {
+    key: 'new_follower',
+    label: 'New Follower',
+    description: 'When someone follows you',
+    category: 'social',
+    pushIds: ['new_follower'],
+  },
+  {
+    key: 'level_up',
+    label: 'You Leveled Up',
+    description: 'When you reach a new level',
+    category: 'social',
+    pushIds: ['level_up'],
+  },
+  {
+    key: 'points_earned',
+    label: 'Points Earned',
+    description: 'When you earn points',
+    category: 'social',
+    pushIds: ['points_earned'],
+  },
+  {
+    key: 'quiz_result',
+    label: 'Quiz Submitted',
+    description: 'When a quiz is submitted',
+    category: 'social',
+    pushIds: ['quiz_result'],
+  },
+];
+
+// Category display order and titles
+const CATEGORY_CONFIG: Record<string, string> = {
+  community: 'Community',
+  social: 'Social',
+};
+
+// Frequency options for DM emails
+const FREQUENCY_OPTIONS: { value: string; label: string }[] = [
+  { value: 'default', label: 'Default' },
+  { value: 'hourly', label: 'Hourly' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'disabled', label: 'Off' },
+];
+
+// Space email pref options
+const SPACE_PREF_OPTIONS: { value: SpacePrefValue; label: string }[] = [
+  { value: '', label: 'Off' },
+  { value: 'admin_only_posts', label: 'Admin Posts' },
+  { value: 'all_member_posts', label: 'All Posts' },
+];
+
+// =============================================================================
+// Sub-components
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// Channel Toggle Row — shows icon (bell/envelope) + label + toggle
+// -----------------------------------------------------------------------------
+
+interface ChannelToggleRowProps {
+  type: ChannelType;
+  label: string;
   enabled: boolean;
   onToggle: () => void;
   disabled?: boolean;
 }
 
-function ToggleRow({ label, description, enabled, onToggle, disabled = false }: ToggleRowProps) {
+function ChannelToggleRow({ type, label, enabled, onToggle, disabled = false }: ChannelToggleRowProps) {
   const { colors: themeColors } = useTheme();
+  const icon = type === 'push' ? 'notifications-outline' : 'mail-outline';
+
   return (
     <Pressable
-      style={[styles.toggleRow, disabled && styles.toggleRowDisabled]}
+      style={[styles.channelRow, disabled && styles.channelRowDisabled]}
       onPress={disabled ? undefined : onToggle}
       disabled={disabled}
     >
-      <View style={styles.toggleContent}>
-        <Text style={[styles.toggleLabel, { color: themeColors.text }, disabled && styles.toggleLabelDisabled, disabled && { color: themeColors.textTertiary }]}>
-          {label}
-        </Text>
-        <Text style={[styles.toggleDescription, { color: themeColors.textSecondary }, disabled && styles.toggleDescriptionDisabled, disabled && { color: themeColors.textTertiary }]}>
-          {description}
-        </Text>
-      </View>
+      <Ionicons
+        name={icon as any}
+        size={18}
+        color={disabled ? themeColors.textTertiary : themeColors.textSecondary}
+        style={styles.channelIcon}
+      />
+      <Text
+        style={[
+          styles.channelLabel,
+          { color: themeColors.text },
+          disabled && { color: themeColors.textTertiary },
+        ]}
+      >
+        {label}
+      </Text>
       <View
         style={[
           styles.toggle,
           { backgroundColor: themeColors.border },
           enabled && styles.toggleEnabled,
           enabled && { backgroundColor: themeColors.primary },
-          disabled && styles.toggleDisabled,
           disabled && { backgroundColor: themeColors.skeleton },
         ]}
       >
@@ -85,27 +276,208 @@ function ToggleRow({ label, description, enabled, onToggle, disabled = false }: 
 }
 
 // -----------------------------------------------------------------------------
-// Component
+// Notification Card — wraps one notification concept with its channel rows
 // -----------------------------------------------------------------------------
+
+interface NotificationCardProps {
+  item: UnifiedItem;
+  onToggle: (channelType: ChannelType, id: string, currentEnabled: boolean) => void;
+  savingIds: Set<string>;
+  showPush: boolean;
+}
+
+function NotificationCard({ item, onToggle, savingIds, showPush }: NotificationCardProps) {
+  const { colors: themeColors } = useTheme();
+  const visibleChannels = item.channels.filter(
+    ch => ch.type === 'email' || (ch.type === 'push' && showPush)
+  );
+
+  if (visibleChannels.length === 0) return null;
+
+  return (
+    <View style={[styles.notificationCard, { backgroundColor: themeColors.surface }]}>
+      <View style={styles.cardHeader}>
+        <Text style={[styles.cardTitle, { color: themeColors.text }]}>{item.label}</Text>
+        <Text style={[styles.cardDescription, { color: themeColors.textSecondary }]}>
+          {item.description}
+        </Text>
+      </View>
+      {visibleChannels.map((channel, index) => (
+        <React.Fragment key={`${channel.type}-${channel.id}`}>
+          {index > 0 && <View style={[styles.channelDivider, { backgroundColor: themeColors.border }]} />}
+          <ChannelToggleRow
+            type={channel.type}
+            label={channel.label}
+            enabled={channel.enabled}
+            onToggle={() => onToggle(channel.type, channel.id, channel.enabled)}
+            disabled={savingIds.has(`${channel.type}-${channel.id}`)}
+          />
+        </React.Fragment>
+      ))}
+      {item.note && (
+        <Text style={[styles.infoNote, { color: themeColors.textTertiary }]}>
+          {item.note}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Frequency Picker — row of pressable chips
+// -----------------------------------------------------------------------------
+
+interface FrequencyPickerProps {
+  label: string;
+  description: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  note?: string;
+}
+
+function FrequencyPicker({ label, description, value, options, onChange, disabled, note }: FrequencyPickerProps) {
+  const { colors: themeColors } = useTheme();
+
+  return (
+    <View style={[styles.notificationCard, { backgroundColor: themeColors.surface }]}>
+      <View style={styles.cardHeader}>
+        <View style={styles.frequencyTitleRow}>
+          <Ionicons name="mail-outline" size={18} color={themeColors.textSecondary} style={styles.channelIcon} />
+          <Text style={[styles.cardTitle, { color: themeColors.text }]}>{label}</Text>
+        </View>
+        <Text style={[styles.cardDescription, { color: themeColors.textSecondary }]}>
+          {description}
+        </Text>
+      </View>
+      <View style={styles.frequencyRow}>
+        {options.map(option => {
+          const isSelected = value === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              style={[
+                styles.frequencyChip,
+                { backgroundColor: themeColors.background, borderColor: themeColors.border },
+                isSelected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+                disabled && { opacity: 0.5 },
+              ]}
+              onPress={() => !disabled && onChange(option.value)}
+              disabled={disabled}
+            >
+              <Text
+                style={[
+                  styles.frequencyChipText,
+                  { color: themeColors.textSecondary },
+                  isSelected && { color: '#fff' },
+                ]}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {note && (
+        <Text style={[styles.infoNote, { color: themeColors.textTertiary }]}>{note}</Text>
+      )}
+    </View>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Space Email Row — space name + cycle-on-tap dropdown selector
+// -----------------------------------------------------------------------------
+
+interface SpaceEmailRowProps {
+  spaceTitle: string;
+  value: SpacePrefValue;
+  onChange: (value: SpacePrefValue) => void;
+  disabled?: boolean;
+}
+
+function SpaceEmailRow({ spaceTitle, value, onChange, disabled }: SpaceEmailRowProps) {
+  const { colors: themeColors } = useTheme();
+
+  const currentLabel = SPACE_PREF_OPTIONS.find(o => o.value === value)?.label ?? 'Off';
+  const isActive = value !== '';
+
+  // Cycle to next option on tap
+  const handleCycle = () => {
+    if (disabled) return;
+    const currentIndex = SPACE_PREF_OPTIONS.findIndex(o => o.value === value);
+    const nextIndex = (currentIndex + 1) % SPACE_PREF_OPTIONS.length;
+    onChange(SPACE_PREF_OPTIONS[nextIndex].value);
+  };
+
+  return (
+    <View style={styles.spaceRow}>
+      <Text
+        style={[styles.spaceTitle, { color: themeColors.text }]}
+        numberOfLines={2}
+      >
+        {spaceTitle}
+      </Text>
+      <Pressable
+        style={[
+          styles.spaceSelector,
+          { backgroundColor: themeColors.background, borderColor: themeColors.border },
+          isActive && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+          disabled && { opacity: 0.5 },
+        ]}
+        onPress={handleCycle}
+        disabled={disabled}
+      >
+        <Text
+          style={[
+            styles.spaceSelectorText,
+            { color: themeColors.textSecondary },
+            isActive && { color: '#fff' },
+          ]}
+        >
+          {currentLabel}
+        </Text>
+        <Ionicons
+          name="chevron-expand-outline"
+          size={14}
+          color={isActive ? '#fff' : themeColors.textTertiary}
+        />
+      </Pressable>
+    </View>
+  );
+}
+
+// =============================================================================
+// Main Screen Component
+// =============================================================================
 
 export default function NotificationSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
+  const { user } = useAuth();
 
+  // ---------------------------------------------------------------------------
   // State
-  const [preferences, setPreferences] = useState<CategoryPreferences>({});
+  // ---------------------------------------------------------------------------
+
+  const [pushPrefs, setPushPrefs] = useState<CategoryPreferences>({});
+  const [emailPrefs, setEmailPrefs] = useState<EmailPrefsResponse | null>(null);
+  const emailPrefsRef = useRef<EmailPrefsResponse | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ push?: string; email?: string }>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
 
   // ---------------------------------------------------------------------------
-  // Check Push Available
+  // Feature Checks
   // ---------------------------------------------------------------------------
 
   const pushAvailable = isPushAvailable();
   const pushEnabled = FEATURES.PUSH_NOTIFICATIONS;
+  const showPush = pushAvailable && pushEnabled;
 
   // ---------------------------------------------------------------------------
   // Fetch Settings
@@ -113,176 +485,414 @@ export default function NotificationSettingsScreen() {
 
   const fetchSettings = useCallback(async (isRefresh = false) => {
     try {
-      if (isRefresh) {
-        setRefreshing(true);
-      }
-      setError(null);
+      if (isRefresh) setRefreshing(true);
+      setError({});
 
-      // Get auth token
       const authToken = await getAuthToken();
-      if (!authToken) {
-        setError('Not authenticated');
+      if (!authToken || !user?.username) {
+        setError({ push: 'Not authenticated', email: 'Not authenticated' });
         return;
       }
 
-      const response = await getPushSettings(authToken);
+      // Fetch both APIs in parallel
+      const [pushResult, emailResult] = await Promise.all([
+        showPush ? getPushSettings(authToken) : Promise.resolve(null),
+        getEmailPrefs(user.username),
+      ]);
 
-      if (!response.success) {
-        setError(response.error || 'Failed to load notification settings');
-        return;
+      const newError: { push?: string; email?: string } = {};
+
+      if (pushResult && pushResult.success && pushResult.data?.preferences) {
+        setPushPrefs(pushResult.data.preferences);
+      } else if (pushResult && !pushResult.success) {
+        newError.push = pushResult.error || 'Failed to load push settings';
       }
 
-      // API returns { success, preferences: { category: [...prefs] }, device_count }
-      if (response.data?.preferences) {
-        setPreferences(response.data.preferences);
+      if (emailResult.success && emailResult.data) {
+        setEmailPrefs(emailResult.data);
+        emailPrefsRef.current = emailResult.data;
+      } else if (!emailResult.success) {
+        newError.email = typeof emailResult.error === 'object'
+          ? emailResult.error.message
+          : 'Failed to load email settings';
+      }
+
+      if (newError.push || newError.email) {
+        setError(newError);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError({
+        push: err instanceof Error ? err.message : 'Something went wrong',
+        email: err instanceof Error ? err.message : 'Something went wrong',
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [showPush, user?.username]);
 
-  // Initial load
   useEffect(() => {
-    if (pushEnabled) {
-      fetchSettings();
-    } else {
-      setLoading(false);
+    fetchSettings();
+  }, [fetchSettings]);
+
+  // ---------------------------------------------------------------------------
+  // Build Unified Model
+  // ---------------------------------------------------------------------------
+
+  // Flatten push prefs into a lookup by id
+  const pushLookup = useMemo(() => {
+    const lookup: Record<string, PushPreference> = {};
+    for (const prefs of Object.values(pushPrefs)) {
+      for (const pref of prefs) {
+        lookup[pref.id] = pref;
+      }
     }
-  }, [fetchSettings, pushEnabled]);
+    return lookup;
+  }, [pushPrefs]);
+
+  const unifiedSections = useMemo(() => {
+    const sections: UnifiedSection[] = [];
+    const categoryMap: Record<string, UnifiedItem[]> = {};
+
+    for (const mapping of NOTIFICATION_MAP) {
+      const channels: ChannelInfo[] = [];
+
+      // Add push channels
+      if (mapping.pushIds) {
+        for (let i = 0; i < mapping.pushIds.length; i++) {
+          const pushId = mapping.pushIds[i];
+          const pushPref = pushLookup[pushId];
+          if (pushPref) {
+            channels.push({
+              type: 'push',
+              id: pushId,
+              label: mapping.pushLabels?.[i]
+                ? `Push: ${mapping.pushLabels[i]}`
+                : 'Push notification',
+              enabled: pushPref.enabled,
+            });
+          }
+        }
+      }
+
+      // Add email channel
+      if (mapping.emailKey && emailPrefs?.user_globals) {
+        const emailValue = emailPrefs.user_globals[mapping.emailKey];
+        if (mapping.emailKey !== 'message_email_frequency') {
+          channels.push({
+            type: 'email',
+            id: mapping.emailKey,
+            label: 'Email notification',
+            enabled: emailValue === 'yes',
+          });
+        }
+      }
+
+      // Only include items that have at least one visible channel
+      const hasVisibleChannel = channels.some(
+        ch => ch.type === 'email' || (ch.type === 'push' && showPush)
+      );
+      if (!hasVisibleChannel) continue;
+
+      if (!categoryMap[mapping.category]) {
+        categoryMap[mapping.category] = [];
+      }
+
+      categoryMap[mapping.category].push({
+        key: mapping.key,
+        label: mapping.label,
+        description: mapping.description,
+        channels,
+        note: mapping.note,
+      });
+    }
+
+    // Build sections in display order
+    for (const [catKey, catTitle] of Object.entries(CATEGORY_CONFIG)) {
+      const items = categoryMap[catKey];
+      if (items && items.length > 0) {
+        sections.push({ category: catKey, title: catTitle, items });
+      }
+    }
+
+    return sections;
+  }, [pushLookup, emailPrefs, showPush]);
 
   // ---------------------------------------------------------------------------
-  // Toggle Handler
+  // Toggle Handlers
   // ---------------------------------------------------------------------------
 
-  const handleToggle = async (prefId: string, currentEnabled: boolean) => {
-    // Add to saving state
-    setSavingIds(prev => new Set(prev).add(prefId));
+  const addSaving = (key: string) => {
+    setSavingIds(prev => new Set(prev).add(key));
+  };
+
+  const removeSaving = (key: string) => {
+    setSavingIds(prev => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  };
+
+  // Push toggle — partial update
+  const handlePushToggle = async (prefId: string, currentEnabled: boolean) => {
+    const savingKey = `push-${prefId}`;
+    addSaving(savingKey);
 
     // Optimistic update
-    setPreferences(prev => {
+    setPushPrefs(prev => {
       const updated = { ...prev };
       for (const category of Object.keys(updated)) {
-        updated[category] = updated[category].map(pref => {
-          if (pref.id === prefId) {
-            return { ...pref, enabled: !currentEnabled };
-          }
-          return pref;
-        });
+        updated[category] = updated[category].map(pref =>
+          pref.id === prefId ? { ...pref, enabled: !currentEnabled } : pref
+        );
       }
       return updated;
     });
 
     try {
-      // Get auth token
       const authToken = await getAuthToken();
-      if (!authToken) {
-        throw new Error('Not authenticated');
-      }
+      if (!authToken) throw new Error('Not authenticated');
 
       const response = await updatePushSettings(authToken, { [prefId]: !currentEnabled });
-
-      if (!response.success) {
-        // Revert on failure
-        setPreferences(prev => {
-          const updated = { ...prev };
-          for (const category of Object.keys(updated)) {
-            updated[category] = updated[category].map(pref => {
-              if (pref.id === prefId) {
-                return { ...pref, enabled: currentEnabled };
-              }
-              return pref;
-            });
-          }
-          return updated;
-        });
-      }
-    } catch (err) {
-      // Revert on error
-      setPreferences(prev => {
+      if (!response.success) throw new Error('Save failed');
+    } catch {
+      // Revert
+      setPushPrefs(prev => {
         const updated = { ...prev };
         for (const category of Object.keys(updated)) {
-          updated[category] = updated[category].map(pref => {
-            if (pref.id === prefId) {
-              return { ...pref, enabled: currentEnabled };
-            }
-            return pref;
-          });
+          updated[category] = updated[category].map(pref =>
+            pref.id === prefId ? { ...pref, enabled: currentEnabled } : pref
+          );
         }
         return updated;
       });
     } finally {
-      setSavingIds(prev => {
-        const next = new Set(prev);
-        next.delete(prefId);
-        return next;
+      removeSaving(savingKey);
+    }
+  };
+
+  // Email toggle — full replacement POST
+  const handleEmailToggle = async (emailKey: string, currentEnabled: boolean) => {
+    if (!emailPrefsRef.current || !user?.username) return;
+
+    const savingKey = `email-${emailKey}`;
+    addSaving(savingKey);
+
+    const newValue = currentEnabled ? 'no' : 'yes';
+    const oldValue = currentEnabled ? 'yes' : 'no';
+
+    // Optimistic update
+    setEmailPrefs(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        user_globals: { ...prev.user_globals, [emailKey]: newValue },
+      };
+    });
+
+    // Update ref for full-replacement POST
+    const prevGlobals = { ...emailPrefsRef.current.user_globals };
+    emailPrefsRef.current = {
+      ...emailPrefsRef.current,
+      user_globals: { ...emailPrefsRef.current.user_globals, [emailKey]: newValue } as EmailUserGlobals,
+    };
+
+    try {
+      const result = await updateEmailPrefs(user.username, {
+        user_globals: emailPrefsRef.current.user_globals,
+        space_prefs: buildSpacePrefsPayload(),
       });
+      if (!result.success) throw new Error('Save failed');
+    } catch {
+      // Revert
+      setEmailPrefs(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          user_globals: { ...prev.user_globals, [emailKey]: oldValue },
+        };
+      });
+      emailPrefsRef.current = {
+        ...emailPrefsRef.current,
+        user_globals: prevGlobals as EmailUserGlobals,
+      };
+    } finally {
+      removeSaving(savingKey);
+    }
+  };
+
+  // DM frequency change — full replacement POST
+  const handleFrequencyChange = async (newValue: string) => {
+    if (!emailPrefsRef.current || !user?.username) return;
+
+    const savingKey = 'email-message_email_frequency';
+    addSaving(savingKey);
+
+    const oldValue = emailPrefsRef.current.user_globals.message_email_frequency;
+
+    // Optimistic update
+    setEmailPrefs(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        user_globals: {
+          ...prev.user_globals,
+          message_email_frequency: newValue as EmailUserGlobals['message_email_frequency'],
+        },
+      };
+    });
+
+    emailPrefsRef.current = {
+      ...emailPrefsRef.current,
+      user_globals: {
+        ...emailPrefsRef.current.user_globals,
+        message_email_frequency: newValue as EmailUserGlobals['message_email_frequency'],
+      },
+    };
+
+    try {
+      const result = await updateEmailPrefs(user.username, {
+        user_globals: emailPrefsRef.current.user_globals,
+        space_prefs: buildSpacePrefsPayload(),
+      });
+      if (!result.success) throw new Error('Save failed');
+    } catch {
+      // Revert
+      setEmailPrefs(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          user_globals: {
+            ...prev.user_globals,
+            message_email_frequency: oldValue,
+          },
+        };
+      });
+      emailPrefsRef.current = {
+        ...emailPrefsRef.current,
+        user_globals: {
+          ...emailPrefsRef.current.user_globals,
+          message_email_frequency: oldValue,
+        },
+      };
+    } finally {
+      removeSaving(savingKey);
+    }
+  };
+
+  // Space email pref change — full replacement POST
+  const handleSpacePrefChange = async (spaceId: number, newValue: SpacePrefValue) => {
+    if (!emailPrefsRef.current || !user?.username) return;
+
+    const savingKey = `space-${spaceId}`;
+    addSaving(savingKey);
+
+    const oldValue = getSpacePref(spaceId);
+
+    // Optimistic update in spaceGroups (for UI)
+    setEmailPrefs(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        spaceGroups: prev.spaceGroups.map(group => ({
+          ...group,
+          spaces: group.spaces.map(space =>
+            space.id === spaceId ? { ...space, pref: newValue } : space
+          ),
+        })),
+      };
+    });
+
+    // Update ref
+    const prevSpaceGroups = emailPrefsRef.current.spaceGroups;
+    emailPrefsRef.current = {
+      ...emailPrefsRef.current,
+      spaceGroups: emailPrefsRef.current.spaceGroups.map(group => ({
+        ...group,
+        spaces: group.spaces.map(space =>
+          space.id === spaceId ? { ...space, pref: newValue } : space
+        ),
+      })),
+    };
+
+    try {
+      const result = await updateEmailPrefs(user.username, {
+        user_globals: emailPrefsRef.current.user_globals,
+        space_prefs: buildSpacePrefsPayload(),
+      });
+      if (!result.success) throw new Error('Save failed');
+    } catch {
+      // Revert
+      setEmailPrefs(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          spaceGroups: prev.spaceGroups.map(group => ({
+            ...group,
+            spaces: group.spaces.map(space =>
+              space.id === spaceId ? { ...space, pref: oldValue } : space
+            ),
+          })),
+        };
+      });
+      emailPrefsRef.current = {
+        ...emailPrefsRef.current,
+        spaceGroups: prevSpaceGroups,
+      };
+    } finally {
+      removeSaving(savingKey);
+    }
+  };
+
+  // Unified toggle dispatcher
+  const handleToggle = (channelType: ChannelType, id: string, currentEnabled: boolean) => {
+    if (channelType === 'push') {
+      handlePushToggle(id, currentEnabled);
+    } else {
+      handleEmailToggle(id, currentEnabled);
     }
   };
 
   // ---------------------------------------------------------------------------
-  // Render Helpers
+  // Helpers
   // ---------------------------------------------------------------------------
 
-  const formatCategoryTitle = (category: string): string => {
-    // Convert snake_case to Title Case
-    return category
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+  /** Build the space_prefs payload from the ref's spaceGroups */
+  const buildSpacePrefsPayload = (): Record<string, SpacePrefValue> => {
+    const prefs: Record<string, SpacePrefValue> = {};
+    if (!emailPrefsRef.current) return prefs;
+    for (const group of emailPrefsRef.current.spaceGroups) {
+      for (const space of group.spaces) {
+        prefs[String(space.id)] = space.pref;
+      }
+    }
+    return prefs;
   };
+
+  /** Get current space pref from state */
+  const getSpacePref = (spaceId: number): SpacePrefValue => {
+    if (!emailPrefs) return '';
+    for (const group of emailPrefs.spaceGroups) {
+      for (const space of group.spaces) {
+        if (space.id === spaceId) return space.pref;
+      }
+    }
+    return '';
+  };
+
+  /** Check if space groups have any spaces */
+  const hasSpaces = emailPrefs?.spaceGroups?.some(g => g.spaces.length > 0) ?? false;
+
+  // Default frequency label for helper text
+  const defaultFreqLabel = emailPrefs?.default_messaging_email_frequency
+    ? emailPrefs.default_messaging_email_frequency.charAt(0).toUpperCase() +
+      emailPrefs.default_messaging_email_frequency.slice(1)
+    : '';
 
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
-
-  // Push not available on this device
-  if (!pushAvailable) {
-    return (
-      <>
-        <Stack.Screen options={{ headerShown: false }} />
-        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
-          <PageHeader
-            leftAction="back"
-            onLeftPress={() => router.back()}
-            title="Notifications"
-          />
-          <View style={styles.centerContent}>
-            <Ionicons name="phone-portrait-outline" size={48} color={themeColors.textTertiary} />
-            <Text style={[styles.unavailableTitle, { color: themeColors.text }]}>Push Notifications Unavailable</Text>
-            <Text style={[styles.unavailableText, { color: themeColors.textSecondary }]}>
-              Push notifications require a physical device. They are not available in simulators or emulators.
-            </Text>
-          </View>
-        </View>
-      </>
-    );
-  }
-
-  // Push disabled in config
-  if (!pushEnabled) {
-    return (
-      <>
-        <Stack.Screen options={{ headerShown: false }} />
-        <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
-          <PageHeader
-            leftAction="back"
-            onLeftPress={() => router.back()}
-            title="Notifications"
-          />
-          <View style={styles.centerContent}>
-            <Ionicons name="notifications-off-outline" size={48} color={themeColors.textTertiary} />
-            <Text style={[styles.unavailableTitle, { color: themeColors.text }]}>Push Notifications Disabled</Text>
-            <Text style={[styles.unavailableText, { color: themeColors.textSecondary }]}>
-              Push notifications are currently disabled. Contact support if you believe this is an error.
-            </Text>
-          </View>
-        </View>
-      </>
-    );
-  }
 
   // Loading state
   if (loading) {
@@ -303,8 +913,8 @@ export default function NotificationSettingsScreen() {
     );
   }
 
-  // Error state
-  if (error) {
+  // Full error (both APIs failed)
+  if (error.push && error.email) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
@@ -318,18 +928,19 @@ export default function NotificationSettingsScreen() {
             <Ionicons name="alert-circle-outline" size={48} color={themeColors.error} />
             <Text style={[styles.errorTitle, { color: themeColors.text }]}>Failed to Load</Text>
             <Text style={[styles.errorText, { color: themeColors.textSecondary }]}>
-              {error}
+              {error.email || error.push}
             </Text>
-            <Pressable style={[styles.retryButton, { backgroundColor: themeColors.primary }]} onPress={() => fetchSettings()}>
-              <Text style={[styles.retryButtonText, { color: themeColors.surface }]}>Try Again</Text>
+            <Pressable
+              style={[styles.retryButton, { backgroundColor: themeColors.primary }]}
+              onPress={() => { setLoading(true); fetchSettings(); }}
+            >
+              <Text style={[styles.retryButtonText, { color: '#fff' }]}>Try Again</Text>
             </Pressable>
           </View>
         </View>
       </>
     );
   }
-
-  const categories = Object.keys(preferences);
 
   return (
     <>
@@ -356,43 +967,138 @@ export default function NotificationSettingsScreen() {
           {/* Header Info */}
           <View style={[styles.headerInfo, { backgroundColor: themeColors.surface }]}>
             <Ionicons name="notifications" size={40} color={themeColors.primary} />
-            <Text style={[styles.headerTitle, { color: themeColors.text }]}>Push Notifications</Text>
+            <Text style={[styles.headerTitle, { color: themeColors.text }]}>Notification Settings</Text>
             <Text style={[styles.headerSubtitle, { color: themeColors.textSecondary }]}>
-              Choose which notifications you want to receive on your device
+              Manage your push and email notification preferences
             </Text>
           </View>
 
-          {/* No preferences available */}
-          {categories.length === 0 && (
-            <View style={styles.emptyState}>
-              <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
-                No notification settings available at this time.
+          {/* Push unavailable banner */}
+          {!showPush && (
+            <View style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+              <Ionicons name="information-circle-outline" size={20} color={themeColors.textSecondary} />
+              <Text style={[styles.infoBannerText, { color: themeColors.textSecondary }]}>
+                {!pushEnabled
+                  ? 'Push notifications are disabled.'
+                  : 'Push notifications require a physical device.'}
               </Text>
             </View>
           )}
 
-          {/* Categories */}
-          {categories.map(category => (
-            <View key={category} style={styles.categorySection}>
-              <Text style={[styles.categoryTitle, { color: themeColors.textSecondary }]}>
-                {formatCategoryTitle(category)}
+          {/* Partial error banners */}
+          {error.push && !error.email && (
+            <View style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.error }]}>
+              <Ionicons name="alert-circle-outline" size={20} color={themeColors.error} />
+              <Text style={[styles.infoBannerText, { color: themeColors.error }]}>
+                Could not load push settings. Pull to refresh.
               </Text>
-              <View style={[styles.categoryCard, { backgroundColor: themeColors.surface }]}>
-                {preferences[category].map((pref, index) => (
-                  <React.Fragment key={pref.id}>
-                    {index > 0 && <View style={[styles.divider, { backgroundColor: themeColors.border }]} />}
-                    <ToggleRow
-                      label={pref.label}
-                      description={pref.description}
-                      enabled={pref.enabled}
-                      onToggle={() => handleToggle(pref.id, pref.enabled)}
-                      disabled={savingIds.has(pref.id)}
-                    />
+            </View>
+          )}
+          {error.email && !error.push && (
+            <View style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.error }]}>
+              <Ionicons name="alert-circle-outline" size={20} color={themeColors.error} />
+              <Text style={[styles.infoBannerText, { color: themeColors.error }]}>
+                Could not load email settings. Pull to refresh.
+              </Text>
+            </View>
+          )}
+
+          {/* Unified notification sections */}
+          {unifiedSections.map(section => (
+            <View key={section.category} style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: themeColors.textSecondary }]}>
+                {section.title}
+              </Text>
+              {section.items.map(item => (
+                <NotificationCard
+                  key={item.key}
+                  item={item}
+                  onToggle={handleToggle}
+                  savingIds={savingIds}
+                  showPush={showPush}
+                />
+              ))}
+            </View>
+          ))}
+
+          {/* Email-only section: Digest + DM frequency */}
+          {emailPrefs && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: themeColors.textSecondary }]}>
+                Email
+              </Text>
+
+              {/* Weekly Digest */}
+              <NotificationCard
+                item={{
+                  key: 'digest',
+                  label: `Weekly Digest${emailPrefs.digestEmailDay ? ` (${emailPrefs.digestEmailDay})` : ''}`,
+                  description: 'Receive a weekly summary email with community highlights',
+                  channels: [
+                    {
+                      type: 'email',
+                      id: 'digest_mail',
+                      label: 'Email notification',
+                      enabled: emailPrefs.user_globals.digest_mail === 'yes',
+                    },
+                  ],
+                }}
+                onToggle={handleToggle}
+                savingIds={savingIds}
+                showPush={false}
+              />
+
+              {/* DM Email Frequency */}
+              <FrequencyPicker
+                label="Message Emails"
+                description="How often to receive email notifications for direct messages"
+                value={emailPrefs.user_globals.message_email_frequency}
+                options={FREQUENCY_OPTIONS}
+                onChange={handleFrequencyChange}
+                disabled={savingIds.has('email-message_email_frequency')}
+                note={defaultFreqLabel ? `Community default: ${defaultFreqLabel}` : undefined}
+              />
+            </View>
+          )}
+
+          {/* Per-space email notifications */}
+          {emailPrefs && hasSpaces && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: themeColors.textSecondary }]}>
+                Space Email Notifications
+              </Text>
+              <Text style={[styles.sectionSubtitle, { color: themeColors.textTertiary }]}>
+                Choose which spaces send you email notifications for new posts
+              </Text>
+
+              <View style={[styles.spaceCard, { backgroundColor: themeColors.surface }]}>
+                {emailPrefs.spaceGroups.map(group => (
+                  <React.Fragment key={group.id}>
+                    {group.spaces.length > 0 && (
+                      <>
+                        <Text style={[styles.spaceGroupTitle, { color: themeColors.textSecondary }]}>
+                          {group.title}
+                        </Text>
+                        {group.spaces.map((space, index) => (
+                          <React.Fragment key={space.id}>
+                            {index > 0 && (
+                              <View style={[styles.channelDivider, { backgroundColor: themeColors.border }]} />
+                            )}
+                            <SpaceEmailRow
+                              spaceTitle={space.title}
+                              value={space.pref}
+                              onChange={(val) => handleSpacePrefChange(space.id, val)}
+                              disabled={savingIds.has(`space-${space.id}`)}
+                            />
+                          </React.Fragment>
+                        ))}
+                      </>
+                    )}
                   </React.Fragment>
                 ))}
               </View>
             </View>
-          ))}
+          )}
 
           {/* Bottom padding */}
           <View style={{ height: insets.bottom + spacing.xl }} />
@@ -402,9 +1108,9 @@ export default function NotificationSettingsScreen() {
   );
 }
 
-// -----------------------------------------------------------------------------
+// =============================================================================
 // Styles
-// -----------------------------------------------------------------------------
+// =============================================================================
 
 const styles = StyleSheet.create({
   container: {
@@ -446,19 +1152,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Unavailable states
-  unavailableTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: '600',
-    marginTop: spacing.md,
-    textAlign: 'center',
+  // Info / Error banners
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: spacing.sm,
   },
 
-  unavailableText: {
-    fontSize: typography.size.md,
-    marginTop: spacing.sm,
-    textAlign: 'center',
-    lineHeight: 22,
+  infoBannerText: {
+    flex: 1,
+    fontSize: typography.size.sm,
   },
 
   // Error state
@@ -484,27 +1192,15 @@ const styles = StyleSheet.create({
   retryButtonText: {
     fontSize: typography.size.md,
     fontWeight: '600',
-    color: '#fff',
   },
 
-  // Empty state
-  emptyState: {
-    padding: spacing.xl,
-    alignItems: 'center',
-  },
-
-  emptyText: {
-    fontSize: typography.size.md,
-    textAlign: 'center',
-  },
-
-  // Category
-  categorySection: {
-    marginTop: spacing.md,
+  // Section
+  section: {
+    marginTop: spacing.lg,
     paddingHorizontal: spacing.md,
   },
 
-  categoryTitle: {
+  sectionTitle: {
     fontSize: typography.size.sm,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -513,50 +1209,62 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
 
-  categoryCard: {
+  sectionSubtitle: {
+    fontSize: typography.size.sm,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.xs,
+  },
+
+  // Notification Card
+  notificationCard: {
     borderRadius: 12,
+    marginBottom: spacing.sm,
     overflow: 'hidden',
   },
 
-  divider: {
-    height: 1,
-    marginLeft: spacing.md,
-  },
-
-  // Toggle Row
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
+  cardHeader: {
     paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
 
-  toggleRowDisabled: {
-    opacity: 0.6,
-  },
-
-  toggleContent: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-
-  toggleLabel: {
+  cardTitle: {
     fontSize: typography.size.md,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 
-  toggleLabelDisabled: {
-  },
-
-  toggleDescription: {
+  cardDescription: {
     fontSize: typography.size.sm,
     marginTop: 2,
   },
 
-  toggleDescriptionDisabled: {
+  // Channel Toggle Row
+  channelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
 
-  // Custom Toggle (not using Switch for consistency)
+  channelRowDisabled: {
+    opacity: 0.6,
+  },
+
+  channelIcon: {
+    marginRight: spacing.sm,
+  },
+
+  channelLabel: {
+    flex: 1,
+    fontSize: typography.size.sm,
+  },
+
+  channelDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: spacing.md + 18 + spacing.sm, // icon width + margin
+  },
+
+  // Toggle (reused from original)
   toggle: {
     width: 50,
     height: 30,
@@ -565,17 +1273,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
 
-  toggleEnabled: {
-  },
-
-  toggleDisabled: {
-  },
+  toggleEnabled: {},
 
   toggleThumb: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
@@ -585,5 +1288,87 @@ const styles = StyleSheet.create({
 
   toggleThumbEnabled: {
     alignSelf: 'flex-end',
+  },
+
+  // Info note
+  infoNote: {
+    fontSize: typography.size.xs,
+    fontStyle: 'italic',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+    marginTop: 2,
+  },
+
+  // Frequency Picker
+  frequencyTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  frequencyRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.xs,
+  },
+
+  frequencyChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+
+  frequencyChipText: {
+    fontSize: typography.size.sm,
+    fontWeight: '500',
+  },
+
+  // Space Email Settings
+  spaceCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    paddingBottom: spacing.sm,
+  },
+
+  spaceGroupTitle: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+
+  spaceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+
+  spaceTitle: {
+    flex: 1,
+    fontSize: typography.size.sm,
+    marginRight: spacing.md,
+  },
+
+  spaceSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
+    minWidth: 100,
+    justifyContent: 'center',
+  },
+
+  spaceSelectorText: {
+    fontSize: typography.size.xs,
+    fontWeight: '500',
   },
 });

@@ -77,11 +77,29 @@ export async function getFollowing(username: string, page: number = 1) {
 }
 
 // -----------------------------------------------------------------------------
+// Update Profile
+// -----------------------------------------------------------------------------
+
+export async function updateProfile(username: string, data: {
+  user_id?: number;
+  first_name?: string;
+  last_name?: string;
+  short_description?: string;
+  website?: string;
+  social_links?: Record<string, string>;
+  custom_fields?: Record<string, any>;
+  tbc_otp_session_key?: string;
+}) {
+  return post<{ profile: Profile }>(ENDPOINTS.PROFILE(username), { data });
+}
+
+// -----------------------------------------------------------------------------
 // Export as object for convenience
 // -----------------------------------------------------------------------------
 
 export const profilesApi = {
   getProfile,
+  updateProfile,
   getUserFeeds,
   getUserSpaces,
   getUserComments,
