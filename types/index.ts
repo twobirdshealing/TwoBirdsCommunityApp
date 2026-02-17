@@ -10,3 +10,4 @@ export * from './message';
 export * from './notification';
 export * from './space';
 export * from './user';
+export * from './blog';

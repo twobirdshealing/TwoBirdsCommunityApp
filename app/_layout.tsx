@@ -189,6 +189,16 @@ function RootLayoutNav() {
           options={{ presentation: 'card', headerShown: false }}
         />
 
+        {/* BLOG */}
+        <Stack.Screen
+          name="blog/index"
+          options={{ presentation: 'card', headerShown: false }}
+        />
+        <Stack.Screen
+          name="blog/[id]"
+          options={{ presentation: 'card', headerShown: false }}
+        />
+
         {/* NOTIFICATION SETTINGS */}
         <Stack.Screen
           name="notification-settings"

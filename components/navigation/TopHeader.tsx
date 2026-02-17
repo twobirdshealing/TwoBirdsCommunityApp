@@ -14,8 +14,10 @@ import { Profile } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, AppState, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Notifications from 'expo-notifications';
+import { useNewMessageListener } from '@/contexts/PusherContext';
 import { HeaderIconButton } from './HeaderIconButton';
 import { UserMenu } from './UserMenu';
 
@@ -99,6 +101,46 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   );
 
   // ---------------------------------------------------------------------------
+  // Real-time: Pusher new_message → bump message badge
+  // ---------------------------------------------------------------------------
+
+  useNewMessageListener((data) => {
+    if (user?.id && String(data.message.user_id) !== String(user.id)) {
+      setUnreadMessages(prev => prev + 1);
+    }
+  }, [user?.id]);
+
+  // ---------------------------------------------------------------------------
+  // Real-time: Foreground push notification → bump notification badge
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (!user) return;
+
+    const subscription = Notifications.addNotificationReceivedListener(() => {
+      setUnreadNotifications(prev => prev + 1);
+    });
+
+    return () => subscription.remove();
+  }, [user]);
+
+  // ---------------------------------------------------------------------------
+  // Background → Foreground: refetch both counts
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (!user) return;
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        fetchUnreadCounts();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [user, fetchUnreadCounts]);
+
+  // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
 
@@ -142,6 +184,11 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   const handleBookmarksPress = () => {
     setMenuVisible(false);
     router.push('/bookmarks');
+  };
+
+  const handleBlogPress = () => {
+    setMenuVisible(false);
+    router.push('/blog');
   };
 
   const handleNotificationSettingsPress = () => {
@@ -255,6 +302,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
         onMySpacesPress={handleMySpacesPress}
         onDirectoryPress={handleDirectoryPress}
         onBookmarksPress={handleBookmarksPress}
+        onBlogPress={handleBlogPress}
         onNotificationSettingsPress={handleNotificationSettingsPress}
         onLogout={handleLogout}
       />

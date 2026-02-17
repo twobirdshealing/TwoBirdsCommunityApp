@@ -17,6 +17,7 @@ export * from './otp';
 export * from './profiles';
 export * from './registration';
 export * from './spaces';
+export * from './blog';
 
 // Also export the api objects for convenience
 export { appApi } from './app';
@@ -32,3 +33,4 @@ export { default as otpApi } from './otp';
 export { default as profilesApi } from './profiles';
 export { default as registrationApi } from './registration';
 export { default as spacesApi } from './spaces';
+export { default as blogApi } from './blog';

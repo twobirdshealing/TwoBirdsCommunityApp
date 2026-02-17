@@ -36,6 +36,7 @@ interface UserMenuProps {
   onMySpacesPress: () => void;
   onDirectoryPress: () => void;
   onBookmarksPress: () => void;
+  onBlogPress: () => void;
   onNotificationSettingsPress: () => void;
   onLogout: () => void;
 }
@@ -79,6 +80,7 @@ export function UserMenu({
   onMySpacesPress,
   onDirectoryPress,
   onBookmarksPress,
+  onBlogPress,
   onNotificationSettingsPress,
   onLogout,
 }: UserMenuProps) {
@@ -109,6 +111,11 @@ export function UserMenu({
   const handleBookmarksPress = () => {
     onClose();
     onBookmarksPress();
+  };
+
+  const handleBlogPress = () => {
+    onClose();
+    onBlogPress();
   };
 
   const handleNotificationSettingsPress = () => {
@@ -183,6 +190,11 @@ export function UserMenu({
                 icon="bookmark-outline"
                 label="Bookmarks"
                 onPress={handleBookmarksPress}
+              />
+              <MenuItem
+                icon="newspaper-outline"
+                label="Blog"
+                onPress={handleBlogPress}
               />
               <MenuItem
                 icon="notifications-outline"

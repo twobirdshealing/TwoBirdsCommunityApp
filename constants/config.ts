@@ -112,3 +112,16 @@ export const TBC_CA_URL = `${SITE_URL}/wp-json/tbc-ca/v1`;
 // -----------------------------------------------------------------------------
 
 export const TBC_MR_URL = `${SITE_URL}/wp-json/tbc-multi-reactions/v1`;
+
+// -----------------------------------------------------------------------------
+// WordPress REST API (Blog Posts)
+// -----------------------------------------------------------------------------
+
+export const WP_REST_URL = `${SITE_URL}/wp-json/wp/v2`;
+
+export const WP_ENDPOINTS = {
+  POSTS: '/posts',
+  POST_BY_ID: (id: number) => `/posts/${id}`,
+  CATEGORIES: '/categories',
+  COMMENTS: '/comments',
+};
