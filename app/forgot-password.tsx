@@ -24,6 +24,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
+import { withOpacity } from '@/constants/colors';
 import { forgotPassword, resetPassword } from '@/services/api/registration';
 import { verifyOtp, resendOtp, requestVoiceCall } from '@/services/api/otp';
 
@@ -288,9 +289,9 @@ export default function ForgotPasswordScreen() {
         activeOpacity={0.8}
       >
         {submitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={themeColors.textInverse} />
         ) : (
-          <Text style={styles.primaryButtonText}>Send Code</Text>
+          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Send Code</Text>
         )}
       </TouchableOpacity>
 
@@ -341,9 +342,9 @@ export default function ForgotPasswordScreen() {
         activeOpacity={0.8}
       >
         {submitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={themeColors.textInverse} />
         ) : (
-          <Text style={styles.primaryButtonText}>Verify</Text>
+          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Verify</Text>
         )}
       </TouchableOpacity>
 
@@ -455,9 +456,9 @@ export default function ForgotPasswordScreen() {
         activeOpacity={0.8}
       >
         {submitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={themeColors.textInverse} />
         ) : (
-          <Text style={styles.primaryButtonText}>Reset Password</Text>
+          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Reset Password</Text>
         )}
       </TouchableOpacity>
     </>
@@ -500,20 +501,20 @@ export default function ForgotPasswordScreen() {
           )}
 
           {/* Form Card */}
-          <View style={[styles.formCard, isDark && { backgroundColor: themeColors.surface }]}>
+          <View style={[styles.formCard, { backgroundColor: withOpacity(themeColors.surface, 0.95) }]}>
             {renderStepIndicator()}
 
             {/* Success Message */}
             {successMessage && (
-              <View style={styles.successContainer}>
-                <Text style={styles.successText}>{successMessage}</Text>
+              <View style={[styles.successContainer, { backgroundColor: themeColors.successLight, borderColor: withOpacity(themeColors.success, 0.3) }]}>
+                <Text style={[styles.successText, { color: themeColors.success }]}>{successMessage}</Text>
               </View>
             )}
 
             {/* Error Message */}
             {error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
+              <View style={[styles.errorContainer, { backgroundColor: themeColors.errorLight, borderColor: withOpacity(themeColors.error, 0.3) }]}>
+                <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
               </View>
             )}
 
@@ -560,7 +561,6 @@ const styles = StyleSheet.create({
 
   // Form Card
   formCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
     padding: spacing.xl,
     shadowColor: '#000',
@@ -659,31 +659,25 @@ const styles = StyleSheet.create({
 
   // Messages
   errorContainer: {
-    backgroundColor: '#FEE2E2',
     borderWidth: 1,
-    borderColor: '#FECACA',
     borderRadius: 12,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
 
   errorText: {
-    color: '#DC2626',
     fontSize: typography.size.sm,
     textAlign: 'center',
   },
 
   successContainer: {
-    backgroundColor: '#D1FAE5',
     borderWidth: 1,
-    borderColor: '#A7F3D0',
     borderRadius: 12,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
 
   successText: {
-    color: '#065F46',
     fontSize: typography.size.sm,
     textAlign: 'center',
   },
@@ -698,7 +692,6 @@ const styles = StyleSheet.create({
   },
 
   primaryButtonText: {
-    color: '#fff',
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold,
   },

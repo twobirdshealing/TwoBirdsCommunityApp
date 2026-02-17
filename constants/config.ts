@@ -50,14 +50,14 @@ export const ENDPOINTS = {
   PROFILE_UNFOLLOW: (username: string) => `/profile/${username}/unfollow`,
   PROFILE_FOLLOWERS: (username: string) => `/profile/${username}/followers`,
   PROFILE_FOLLOWING: (username: string) => `/profile/${username}/followings`,
+  PROFILE_BLOCK: (username: string) => `/profile/${username}/block`,
+  PROFILE_UNBLOCK: (username: string) => `/profile/${username}/unblock`,
   
   // Notifications
   NOTIFICATIONS: '/notifications',
   NOTIFICATIONS_UNREAD: '/notifications/unread',
   NOTIFICATIONS_MARK_READ: (id: number) => `/notifications/mark-read/${id}`,
   NOTIFICATIONS_MARK_ALL_READ: '/notifications/mark-all-read',
-  NOTIFICATIONS_DELETE: (id: number) => `/notifications/${id}`,
-  NOTIFICATIONS_DELETE_ALL: '/notifications/delete-all',
   
   // Members
   MEMBERS: '/members',
@@ -74,6 +74,10 @@ export const ENDPOINTS = {
   CHAT_MESSAGES_NEW: (threadId: number, lastId: number) => `/chat/messages/${threadId}/new?last_id=${lastId}`,
   CHAT_UNREAD_THREADS: '/chat/unread_threads',
   CHAT_MARK_READ: '/chat/read-threads',
+  CHAT_USERS: '/chat/users',
+  CHAT_MESSAGE_DELETE: (messageId: number) => `/chat/messages/delete/${messageId}`,
+  CHAT_THREAD_BLOCK: (threadId: number) => `/chat/threads/block/${threadId}`,
+  CHAT_THREAD_UNBLOCK: (threadId: number) => `/chat/threads/unblock/${threadId}`,
 };
 
 // -----------------------------------------------------------------------------

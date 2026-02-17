@@ -193,7 +193,7 @@ export function BottomSheet({
     >
       {/* Backdrop - tap to close */}
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.backdrop} />
+        <View style={[styles.backdrop, { backgroundColor: themeColors.overlay }]} />
       </TouchableWithoutFeedback>
 
       {/* Sheet */}

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:dev.fluentcommunity.co)",
-      "Bash(node --eval:*)"
+      "Bash(node --eval:*)",
+      "WebFetch(domain:reactnavigation.org)"
     ]
   }
 }

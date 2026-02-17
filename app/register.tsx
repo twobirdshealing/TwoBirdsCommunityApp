@@ -3,8 +3,10 @@
 // =============================================================================
 // Step 1: Basic info (name, email, username, password)
 // Step 2: Custom profile fields + terms
-// Step 3: OTP verification (if required)
-// Step 4: Avatar upload (post auto-login, optional)
+// Step 3: Email verification (if required)
+// Step 4: Phone OTP verification (if required)
+// Step 5: Social links (post auto-login, optional)
+// Step 6: Avatar upload (post auto-login, optional)
 // =============================================================================
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,9 +31,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Avatar } from '@/components/common/Avatar';
+import { withOpacity } from '@/constants/colors';
+import { SocialLinksForm } from '@/components/common/SocialLinksForm';
+import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
 import { updateStoredUser } from '@/services/auth';
-import { showAvatarPicker } from '@/utils/avatarPicker';
+import { updateProfile, patchProfileMedia } from '@/services/api/profiles';
+import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import {
   getRegistrationFields,
   submitRegistration,
@@ -46,7 +51,7 @@ import {
 // Types
 // -----------------------------------------------------------------------------
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
 // -----------------------------------------------------------------------------
 // Component
@@ -55,7 +60,7 @@ type Step = 1 | 2 | 3 | 4 | 5;
 export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { registerAndLogin, isAuthenticated } = useAuth();
+  const { registerAndLogin, isAuthenticated, user: currentUser } = useAuth();
   const { colors: themeColors, isDark } = useTheme();
 
   // State
@@ -83,9 +88,21 @@ export default function RegisterScreen() {
   const [emailVerifyCode, setEmailVerifyCode] = useState('');
   const [verificationToken, setVerificationToken] = useState('');
 
-  // Avatar state (step 5)
+  // Social links state (step 5)
+  const [socialLinks, setSocialLinks] = useState<Record<string, string>>({
+    instagram: '',
+    youtube: '',
+    fb: '',
+    blue_sky: '',
+    reddit: '',
+  });
+  const [savingSocial, setSavingSocial] = useState(false);
+
+  // Avatar + cover photo state (step 6)
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [coverUri, setCoverUri] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   // Stored credentials for auto-login
   const credentialsRef = useRef<{ username: string; password: string } | null>(null);
@@ -407,10 +424,46 @@ export default function RegisterScreen() {
   }, [formData, resendTimer]);
 
   // ---------------------------------------------------------------------------
-  // Avatar upload (Step 5)
+  // Social links (Step 5)
+  // ---------------------------------------------------------------------------
+
+  const handleSaveSocialLinks = useCallback(async () => {
+    const hasAnyLink = Object.values(socialLinks).some(v => v.trim() !== '');
+    if (!hasAnyLink) {
+      setStep(6);
+      return;
+    }
+
+    setSavingSocial(true);
+    setError(null);
+
+    try {
+      const username = currentUser?.username || formData.username || '';
+      const response = await updateProfile(username, {
+        user_id: currentUser?.id,
+        first_name: formData.first_name || '',
+        last_name: formData.last_name || '',
+        social_links: socialLinks,
+      });
+
+      if (response.success) {
+        setStep(6);
+      } else {
+        setError('Could not save social links. You can add them later from your profile.');
+      }
+    } catch (e) {
+      setError('Could not save social links. You can add them later from your profile.');
+    } finally {
+      setSavingSocial(false);
+    }
+  }, [socialLinks, currentUser, formData]);
+
+  // ---------------------------------------------------------------------------
+  // Avatar + Cover photo upload (Step 6)
   // ---------------------------------------------------------------------------
 
   const handlePickAvatar = useCallback(() => {
+    const username = currentUser?.username || formData.username || '';
     showAvatarPicker({
       onUploadStart: (localUri) => {
         setAvatarUri(localUri);
@@ -418,7 +471,12 @@ export default function RegisterScreen() {
         setError(null);
       },
       onSuccess: async (remoteUrl) => {
-        await updateStoredUser({ avatar: remoteUrl });
+        try {
+          await patchProfileMedia(username, { avatar: remoteUrl });
+          await updateStoredUser({ avatar: remoteUrl });
+        } catch (e) {
+          setError('Failed to save avatar. You can add it later from your profile.');
+        }
         setUploadingAvatar(false);
       },
       onError: (msg) => {
@@ -426,7 +484,31 @@ export default function RegisterScreen() {
         setUploadingAvatar(false);
       },
     });
-  }, []);
+  }, [currentUser, formData.username]);
+
+  const handlePickCover = useCallback(() => {
+    const username = currentUser?.username || formData.username || '';
+    showCoverPicker({
+      onUploadStart: (localUri) => {
+        setCoverUri(localUri);
+        setUploadingCover(true);
+        setError(null);
+      },
+      onSuccess: async (remoteUrl) => {
+        try {
+          await patchProfileMedia(username, { cover_photo: remoteUrl });
+          setCoverUri(remoteUrl);
+        } catch (e) {
+          setError('Failed to save cover photo. You can add it later from your profile.');
+        }
+        setUploadingCover(false);
+      },
+      onError: (msg) => {
+        setError(msg + ' You can add it later from your profile.');
+        setUploadingCover(false);
+      },
+    });
+  }, [currentUser, formData.username]);
 
   const handleFinish = useCallback(() => {
     router.replace('/(tabs)');
@@ -451,17 +533,17 @@ export default function RegisterScreen() {
           >
             <View style={[
               styles.checkbox,
-              { borderColor: fieldError ? '#EF4444' : themeColors.border },
+              { borderColor: fieldError ? themeColors.error : themeColors.border },
               value && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
             ]}>
-              {value && <Text style={styles.checkmark}>✓</Text>}
+              {value && <Text style={[styles.checkmark, { color: themeColors.textInverse }]}>✓</Text>}
             </View>
             <Text style={[styles.checkboxLabel, { color: themeColors.text }]}>
               {field.inline_label || field.label}
-              {field.required && <Text style={{ color: '#EF4444' }}> *</Text>}
+              {field.required && <Text style={{ color: themeColors.error }}> *</Text>}
             </Text>
           </TouchableOpacity>
-          {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
         </View>
       );
     }
@@ -471,7 +553,7 @@ export default function RegisterScreen() {
       return (
         <View key={key} style={styles.inputContainer}>
           <Text style={[styles.label, { color: themeColors.text }]}>
-            {field.label}{field.required && <Text style={{ color: '#EF4444' }}> *</Text>}
+            {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
           </Text>
           <TouchableOpacity
             style={[
@@ -479,7 +561,7 @@ export default function RegisterScreen() {
               styles.selectInput,
               {
                 backgroundColor: themeColors.background,
-                borderColor: fieldError ? '#EF4444' : themeColors.border,
+                borderColor: fieldError ? themeColors.error : themeColors.border,
               },
             ]}
             onPress={() => {
@@ -496,7 +578,7 @@ export default function RegisterScreen() {
             </Text>
             <Text style={{ color: themeColors.textSecondary }}>▼</Text>
           </TouchableOpacity>
-          {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
         </View>
       );
     }
@@ -506,7 +588,7 @@ export default function RegisterScreen() {
       return (
         <View key={key} style={styles.inputContainer}>
           <Text style={[styles.label, { color: themeColors.text }]}>
-            {field.label}{field.required && <Text style={{ color: '#EF4444' }}> *</Text>}
+            {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
           </Text>
           <TextInput
             style={[
@@ -514,7 +596,7 @@ export default function RegisterScreen() {
               styles.textareaInput,
               {
                 backgroundColor: themeColors.background,
-                borderColor: fieldError ? '#EF4444' : themeColors.border,
+                borderColor: fieldError ? themeColors.error : themeColors.border,
                 color: themeColors.text,
               },
             ]}
@@ -526,7 +608,7 @@ export default function RegisterScreen() {
             numberOfLines={3}
             textAlignVertical="top"
           />
-          {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
         </View>
       );
     }
@@ -542,13 +624,13 @@ export default function RegisterScreen() {
       return (
         <View key={key} style={styles.inputContainer}>
           <Text style={[styles.label, { color: themeColors.text }]}>
-            {field.label}{field.required && <Text style={{ color: '#EF4444' }}> *</Text>}
+            {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
           </Text>
           <View style={[
             styles.passwordContainer,
             {
               backgroundColor: themeColors.background,
-              borderColor: fieldError ? '#EF4444' : themeColors.border,
+              borderColor: fieldError ? themeColors.error : themeColors.border,
             },
           ]}>
             <TextInput
@@ -568,7 +650,7 @@ export default function RegisterScreen() {
               <Text style={styles.showPasswordText}>{visible ? '🙈' : '👁️'}</Text>
             </TouchableOpacity>
           </View>
-          {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
         </View>
       );
     }
@@ -612,14 +694,14 @@ export default function RegisterScreen() {
     return (
       <View key={key} style={styles.inputContainer}>
         <Text style={[styles.label, { color: themeColors.text }]}>
-          {field.label}{field.required && <Text style={{ color: '#EF4444' }}> *</Text>}
+          {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
         </Text>
         <TextInput
           style={[
             styles.input,
             {
               backgroundColor: themeColors.background,
-              borderColor: fieldError ? '#EF4444' : themeColors.border,
+              borderColor: fieldError ? themeColors.error : themeColors.border,
               color: themeColors.text,
             },
           ]}
@@ -633,7 +715,7 @@ export default function RegisterScreen() {
           autoCorrect={false}
           editable={!submitting}
         />
-        {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+        {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
       </View>
     );
   }, [formData, fieldErrors, themeColors, showPassword, showConfPassword, submitting, setFieldValue]);
@@ -656,7 +738,7 @@ export default function RegisterScreen() {
         onRequestClose={() => setSelectModalVisible(false)}
       >
         <Pressable
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { backgroundColor: themeColors.overlay }]}
           onPress={() => setSelectModalVisible(false)}
         >
           <View style={[styles.modalContent, { backgroundColor: themeColors.surface }]}>
@@ -715,7 +797,7 @@ export default function RegisterScreen() {
 
   const hasEmailVerify = fieldsConfig?.email_verification_required || false;
   const hasPhoneOtp = fieldsConfig?.otp_required || false;
-  const totalSteps = 2 + (hasEmailVerify ? 1 : 0) + (hasPhoneOtp ? 1 : 0) + 1; // base 2 + optional email + optional OTP + avatar
+  const totalSteps = 2 + (hasEmailVerify ? 1 : 0) + (hasPhoneOtp ? 1 : 0) + 2; // base 2 + optional email + optional OTP + social links + avatar
 
   // Map actual step number to visual position (accounting for skipped steps)
   const getVisualStep = useCallback((actualStep: number): number => {
@@ -782,7 +864,7 @@ export default function RegisterScreen() {
               style={[styles.primaryButton, { backgroundColor: themeColors.primary }]}
               onPress={() => router.back()}
             >
-              <Text style={styles.primaryButtonText}>Back to Login</Text>
+              <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Back to Login</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -803,7 +885,7 @@ export default function RegisterScreen() {
         disabled={submitting}
         activeOpacity={0.8}
       >
-        <Text style={styles.primaryButtonText}>Next</Text>
+        <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Next</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.linkButton} onPress={() => router.back()}>
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Back to Login</Text>
@@ -821,9 +903,9 @@ export default function RegisterScreen() {
         activeOpacity={0.8}
       >
         {submitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={themeColors.textInverse} />
         ) : (
-          <Text style={styles.primaryButtonText}>Create Account</Text>
+          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Create Account</Text>
         )}
       </TouchableOpacity>
       <TouchableOpacity style={styles.linkButton} onPress={() => { setError(null); setStep(1); }}>
@@ -869,9 +951,9 @@ export default function RegisterScreen() {
         activeOpacity={0.8}
       >
         {submitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={themeColors.textInverse} />
         ) : (
-          <Text style={styles.primaryButtonText}>Verify Email</Text>
+          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Verify Email</Text>
         )}
       </TouchableOpacity>
       <View style={styles.otpActions}>
@@ -933,9 +1015,9 @@ export default function RegisterScreen() {
         activeOpacity={0.8}
       >
         {submitting ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={themeColors.textInverse} />
         ) : (
-          <Text style={styles.primaryButtonText}>Verify</Text>
+          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Verify</Text>
         )}
       </TouchableOpacity>
       <View style={styles.otpActions}>
@@ -965,50 +1047,74 @@ export default function RegisterScreen() {
     </>
   );
 
-  const renderStep5_Avatar = () => (
+  const renderStep5_SocialLinks = () => (
     <>
       <View style={styles.avatarHeader}>
         <Text style={[styles.otpTitle, { color: themeColors.text }]}>
-          Add a Profile Photo
+          Connect Your Socials
         </Text>
         <Text style={[styles.otpSubtitle, { color: themeColors.textSecondary }]}>
-          Help others recognize you
+          Let others find you on social media
         </Text>
       </View>
-      <View style={styles.avatarContainer}>
-        {avatarUri ? (
-          <Image source={{ uri: avatarUri }} style={styles.avatarPreview} />
-        ) : (
-          <Avatar
-            source={null}
-            fallback={formData.full_name || formData.username || 'U'}
-            size="xxl"
-          />
-        )}
-        {uploadingAvatar && (
-          <View style={styles.avatarOverlay}>
-            <ActivityIndicator color="#fff" size="large" />
-          </View>
-        )}
-      </View>
+
+      <SocialLinksForm
+        values={socialLinks}
+        onChange={(key, value) => setSocialLinks(prev => ({ ...prev, [key]: value }))}
+      />
+
       <TouchableOpacity
-        style={[styles.primaryButton, { backgroundColor: themeColors.primary }, uploadingAvatar && styles.buttonDisabled]}
-        onPress={handlePickAvatar}
-        disabled={uploadingAvatar}
+        style={[styles.primaryButton, { backgroundColor: themeColors.primary }, savingSocial && styles.buttonDisabled]}
+        onPress={handleSaveSocialLinks}
+        disabled={savingSocial}
         activeOpacity={0.8}
       >
-        <Text style={styles.primaryButtonText}>
-          {avatarUri ? 'Change Photo' : 'Add Photo'}
-        </Text>
+        {savingSocial ? (
+          <ActivityIndicator color={themeColors.textInverse} />
+        ) : (
+          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Save & Continue</Text>
+        )}
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.secondaryButton, { borderColor: themeColors.border }]}
+        onPress={() => setStep(6)}
+        disabled={savingSocial}
+        activeOpacity={0.8}
+      >
+        <Text style={[styles.secondaryButtonText, { color: themeColors.text }]}>Skip for now</Text>
+      </TouchableOpacity>
+    </>
+  );
+
+  const renderStep6_Avatar = () => (
+    <>
+      <View style={styles.avatarHeader}>
+        <Text style={[styles.otpTitle, { color: themeColors.text }]}>
+          Personalize Your Profile
+        </Text>
+        <Text style={[styles.otpSubtitle, { color: themeColors.textSecondary }]}>
+          Add a cover photo and avatar
+        </Text>
+      </View>
+
+      <ProfilePhotoPicker
+        avatarSource={avatarUri}
+        coverSource={coverUri}
+        fallbackName={formData.full_name || formData.username || 'U'}
+        onAvatarPress={handlePickAvatar}
+        onCoverPress={handlePickCover}
+        avatarUploading={uploadingAvatar}
+        coverUploading={uploadingCover}
+      />
+
+      <TouchableOpacity
+        style={[styles.secondaryButton, { borderColor: themeColors.border }]}
         onPress={handleFinish}
-        disabled={uploadingAvatar}
+        disabled={uploadingAvatar || uploadingCover}
         activeOpacity={0.8}
       >
         <Text style={[styles.secondaryButtonText, { color: themeColors.text }]}>
-          {avatarUri ? 'Done' : 'Skip for now'}
+          {(avatarUri || coverUri) ? 'Done' : 'Skip for now'}
         </Text>
       </TouchableOpacity>
     </>
@@ -1019,7 +1125,8 @@ export default function RegisterScreen() {
     2: 'Your Profile',
     3: 'Verify Email',
     4: 'Verify Phone',
-    5: 'Profile Photo',
+    5: 'Social Links',
+    6: 'Personalize',
   };
 
   return (
@@ -1049,7 +1156,7 @@ export default function RegisterScreen() {
           )}
 
           {/* Form Card */}
-          <View style={[styles.formCard, isDark && { backgroundColor: themeColors.surface }]}>
+          <View style={[styles.formCard, { backgroundColor: withOpacity(themeColors.surface, 0.95) }]}>
             {renderStepIndicator()}
 
             <Text style={[styles.formTitle, { color: themeColors.text }]}>
@@ -1058,8 +1165,8 @@ export default function RegisterScreen() {
 
             {/* Error Message */}
             {error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
+              <View style={[styles.errorContainer, { backgroundColor: themeColors.errorLight, borderColor: withOpacity(themeColors.error, 0.3) }]}>
+                <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
               </View>
             )}
 
@@ -1067,7 +1174,8 @@ export default function RegisterScreen() {
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3_EmailVerify()}
             {step === 4 && renderStep4_PhoneOtp()}
-            {step === 5 && renderStep5_Avatar()}
+            {step === 5 && renderStep5_SocialLinks()}
+            {step === 6 && renderStep6_Avatar()}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -1117,7 +1225,6 @@ const styles = StyleSheet.create({
 
   // Form Card
   formCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
     padding: spacing.xl,
     shadowColor: '#000',
@@ -1229,7 +1336,6 @@ const styles = StyleSheet.create({
   },
 
   checkmark: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '700',
   },
@@ -1241,22 +1347,18 @@ const styles = StyleSheet.create({
 
   // Errors
   errorContainer: {
-    backgroundColor: '#FEE2E2',
     borderWidth: 1,
-    borderColor: '#FECACA',
     borderRadius: 12,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
 
   errorText: {
-    color: '#DC2626',
     fontSize: typography.size.sm,
     textAlign: 'center',
   },
 
   fieldError: {
-    color: '#DC2626',
     fontSize: typography.size.xs,
     marginTop: spacing.xs,
   },
@@ -1271,7 +1373,6 @@ const styles = StyleSheet.create({
   },
 
   primaryButtonText: {
-    color: '#fff',
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold,
   },
@@ -1374,7 +1475,7 @@ const styles = StyleSheet.create({
 
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     borderRadius: sizing.avatar.xxl / 2,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1386,7 +1487,7 @@ const styles = StyleSheet.create({
   // Select Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
   },

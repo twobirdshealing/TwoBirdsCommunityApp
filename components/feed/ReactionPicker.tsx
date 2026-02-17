@@ -79,7 +79,7 @@ export function ReactionPicker({
       animationType="none"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.overlay} onPress={onClose}>
+      <Pressable style={[styles.overlay, { backgroundColor: themeColors.overlay }]} onPress={onClose}>
         <Animated.View
           style={[
             styles.picker,

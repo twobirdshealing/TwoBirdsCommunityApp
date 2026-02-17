@@ -33,6 +33,37 @@ export async function getThreads() {
 }
 
 // -----------------------------------------------------------------------------
+// Get Threads with Pre-Selected User (Server-Side Thread Resolution)
+// -----------------------------------------------------------------------------
+// Uses Fluent Messaging's pre_selected param to resolve a thread by user ID
+// Returns selected_thread if a thread exists, intended_object if not
+
+export interface IntendedObject {
+  id: number;
+  title: string;
+  photo: string;
+  type: string;
+}
+
+export async function getThreadsForUser(userId: number) {
+  const result = await get<ThreadsResponse & {
+    selected_thread?: ChatThread;
+    intended_object?: IntendedObject;
+  }>(
+    `${ENDPOINTS.CHAT_THREADS}?pre_selected[id]=${userId}&pre_selected[type]=user`
+  );
+
+  if (result.success) {
+    return {
+      success: true as const,
+      data: result.data,
+    };
+  }
+
+  return result;
+}
+
+// -----------------------------------------------------------------------------
 // Create New Thread (Start Conversation)
 // -----------------------------------------------------------------------------
 
@@ -53,8 +84,11 @@ export async function createThread(request: CreateThreadRequest) {
 // Get Messages in Thread
 // -----------------------------------------------------------------------------
 
-export async function getMessages(threadId: number) {
-  const result = await get<MessagesResponse>(ENDPOINTS.CHAT_MESSAGES(threadId));
+export async function getMessages(threadId: number, page = 1) {
+  const url = page > 1
+    ? `${ENDPOINTS.CHAT_MESSAGES(threadId)}?page=${page}`
+    : ENDPOINTS.CHAT_MESSAGES(threadId);
+  const result = await get<MessagesResponse>(url);
 
   if (result.success) {
     return {
@@ -135,22 +169,6 @@ export async function startChatWithUser(userId: number, initialMessage: string) 
 }
 
 // -----------------------------------------------------------------------------
-// Get Unread Thread Count
-// -----------------------------------------------------------------------------
-
-export async function getUnreadCount(): Promise<number> {
-  const result = await get<{ unread_threads: Record<string, number> }>(
-    ENDPOINTS.CHAT_UNREAD_THREADS
-  );
-
-  if (result.success && result.data.unread_threads) {
-    return Object.keys(result.data.unread_threads).length;
-  }
-
-  return 0;
-}
-
-// -----------------------------------------------------------------------------
 // Get Unread Thread IDs
 // -----------------------------------------------------------------------------
 // Returns array of thread IDs that have unread messages
@@ -176,19 +194,47 @@ export async function markThreadsRead(threadIds: number[]) {
 }
 
 // -----------------------------------------------------------------------------
+// Delete Message
+// -----------------------------------------------------------------------------
+// Author-only — plugin checks user_id match server-side
+
+export async function deleteMessage(messageId: number) {
+  return post(ENDPOINTS.CHAT_MESSAGE_DELETE(messageId), {});
+}
+
+// -----------------------------------------------------------------------------
+// Block Thread (Chat-level block)
+// -----------------------------------------------------------------------------
+
+export async function blockThread(threadId: number) {
+  return post(ENDPOINTS.CHAT_THREAD_BLOCK(threadId), {});
+}
+
+// -----------------------------------------------------------------------------
+// Unblock Thread (Chat-level unblock)
+// -----------------------------------------------------------------------------
+
+export async function unblockThread(threadId: number) {
+  return post(ENDPOINTS.CHAT_THREAD_UNBLOCK(threadId), {});
+}
+
+// -----------------------------------------------------------------------------
 // Export as object
 // -----------------------------------------------------------------------------
 
 export const messagesApi = {
   getThreads,
+  getThreadsForUser,
   createThread,
   getMessages,
   getNewMessages,
   sendMessage,
   startChatWithUser,
-  getUnreadCount,
   getUnreadThreadIds,
   markThreadsRead,
+  deleteMessage,
+  blockThread,
+  unblockThread,
 };
 
 export default messagesApi;

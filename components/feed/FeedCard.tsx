@@ -22,13 +22,14 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { Avatar } from '@/components/common/Avatar';
+import { ProfileBadge } from '@/components/common/ProfileBadge';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 import { MediaViewer } from '@/components/media/MediaViewer';
 import { ReactionPicker } from './ReactionPicker';
 import { ReactionBreakdownModal } from './ReactionBreakdownModal';
 import { ReactionIcon } from './ReactionIcon';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useReactionConfig } from '@/hooks';
+import { useReactionConfig, useProfileBadges } from '@/hooks';
 import { shadows, sizing, spacing, typography } from '@/constants/layout';
 import { Feed, ReactionType } from '@/types';
 import { formatRelativeTime } from '@/utils/formatDate';
@@ -151,6 +152,7 @@ export function FeedCard({
   const isSticky = feed.is_sticky === true || feed.is_sticky === 1;
   const canPin = !!onPin; // If onPin is passed, user can pin
   
+  const authorBadges = useProfileBadges(author?.meta?.badge_slug);
   const spaceName = feed.space?.title || null;
   const timestamp = formatRelativeTime(feed.created_at);
   
@@ -319,9 +321,14 @@ export function FeedCard({
           />
 
           <View style={styles.authorInfo}>
-            <Text style={[styles.authorName, { color: themeColors.text }]} numberOfLines={1}>
-              {authorName}
-            </Text>
+            <View style={styles.authorNameRow}>
+              <Text style={[styles.authorName, { color: themeColors.text }]} numberOfLines={1}>
+                {authorName}
+              </Text>
+              {authorBadges.map((badge) => (
+                <ProfileBadge key={badge.slug} badge={badge} />
+              ))}
+            </View>
 
             <View style={styles.metaRow}>
               <Text style={[styles.timestamp, { color: themeColors.textTertiary }]}>{timestamp}</Text>
@@ -669,6 +676,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   
+  authorNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+
   authorName: {
     fontSize: typography.size.md,
     fontWeight: '600',

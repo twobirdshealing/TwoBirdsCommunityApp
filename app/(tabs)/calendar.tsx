@@ -244,12 +244,12 @@ export default function CalendarScreen() {
       {/* Selected Day Events */}
       {selectedDate && (
         <View style={styles.selectedDaySection}>
-          <Text style={styles.selectedDayTitle}>
+          <Text style={[styles.selectedDayTitle, { color: themeColors.text }]}>
             {formatSelectedDate(selectedDate)}
           </Text>
-          
+
           {selectedDateEvents.length === 0 ? (
-            <Text style={styles.noEventsText}>No events on this day</Text>
+            <Text style={[styles.noEventsText, { color: themeColors.textSecondary }]}>No events on this day</Text>
           ) : (
             selectedDateEvents.map(event => (
               <EventCard
@@ -290,7 +290,7 @@ export default function CalendarScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {viewMode === 'month' ? renderMonthView() : renderListView()}
     </View>
   );

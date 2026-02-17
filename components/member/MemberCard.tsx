@@ -14,8 +14,11 @@
 // =============================================================================
 
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useProfileBadges } from '@/hooks';
+import { ProfileBadge } from '@/components/common/ProfileBadge';
 import { spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -38,6 +41,10 @@ export interface MemberCardData {
     is_verified?: number | boolean;
     last_activity?: string;
     created_at?: string;
+    meta?: {
+      badge_slug?: string[];
+      [key: string]: any;
+    };
   };
   // Alternative direct fields (for flexibility)
   display_name?: string;
@@ -52,6 +59,8 @@ interface MemberCardProps {
   onPress?: (member: MemberCardData) => void;
   onMessagePress?: (member: MemberCardData) => void;
   onFollowPress?: (member: MemberCardData) => void;
+  isFollowing?: boolean;
+  followLoading?: boolean;
   showRole?: boolean;
   showBio?: boolean;
   showLastActive?: boolean;
@@ -126,6 +135,8 @@ export function MemberCard({
   onPress,
   onMessagePress,
   onFollowPress,
+  isFollowing = false,
+  followLoading = false,
   showRole = true,
   showBio = true,
   showLastActive = true,
@@ -143,6 +154,7 @@ export function MemberCard({
   const role = member.role;
   const lastActivity = profile.last_activity || member.last_activity;
   
+  const memberBadges = useProfileBadges(profile.meta?.badge_slug);
   const roleLabel = getRoleLabel(role || '');
   const roleBadgeColor = getRoleBadgeColor(role || '', themeColors);
   const lastActiveText = formatLastActive(lastActivity);
@@ -168,7 +180,7 @@ export function MemberCard({
         {/* Verified Badge */}
         {isVerified ? (
           <View style={[styles.verifiedBadge, { backgroundColor: themeColors.info, borderColor: themeColors.surface }]}>
-            <Text style={styles.verifiedIcon}>✓</Text>
+            <Text style={[styles.verifiedIcon, { color: themeColors.textInverse }]}>✓</Text>
           </View>
         ) : null}
       </View>
@@ -181,10 +193,15 @@ export function MemberCard({
             {displayName}
           </Text>
 
+          {/* Profile Badges */}
+          {memberBadges.map((badge) => (
+            <ProfileBadge key={badge.slug} badge={badge} />
+          ))}
+
           {/* Role Badge - inline with name */}
           {showRole && roleLabel ? (
             <View style={[styles.roleBadge, { backgroundColor: roleBadgeColor }]}>
-              <Text style={styles.roleBadgeText}>{roleLabel}</Text>
+              <Text style={[styles.roleBadgeText, { color: themeColors.textInverse }]}>{roleLabel}</Text>
             </View>
           ) : null}
         </View>
@@ -218,17 +235,36 @@ export function MemberCard({
               style={[styles.actionButton, { backgroundColor: themeColors.backgroundSecondary }]}
               onPress={() => onMessagePress(member)}
             >
-              <Text style={styles.actionIcon}>💬</Text>
+              <Ionicons name="chatbubble-outline" size={16} color={themeColors.text} />
             </Pressable>
           )}
 
           {/* Follow Button */}
           {onFollowPress && (
             <Pressable
-              style={[styles.actionButton, styles.followButton, { backgroundColor: themeColors.primary }]}
+              style={[
+                styles.actionButton,
+                styles.memberFollowButton,
+                { backgroundColor: themeColors.primary },
+                isFollowing && { backgroundColor: 'transparent', borderWidth: 1, borderColor: themeColors.primary },
+              ]}
               onPress={() => onFollowPress(member)}
+              disabled={followLoading}
             >
-              <Text style={[styles.followButtonText, { color: themeColors.textInverse }]}>Follow</Text>
+              {followLoading ? (
+                <ActivityIndicator
+                  size="small"
+                  color={isFollowing ? themeColors.primary : themeColors.textInverse}
+                />
+              ) : (
+                <Text style={[
+                  styles.followButtonText,
+                  { color: themeColors.textInverse },
+                  isFollowing && { color: themeColors.primary },
+                ]}>
+                  {isFollowing ? 'Following' : 'Follow'}
+                </Text>
+              )}
             </Pressable>
           )}
         </View>
@@ -309,7 +345,6 @@ const styles = StyleSheet.create({
 
   verifiedIcon: {
     fontSize: 10,
-    color: '#fff',
     fontWeight: 'bold',
   },
 
@@ -358,7 +393,6 @@ const styles = StyleSheet.create({
   roleBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#fff',
   },
 
   // Actions
@@ -377,13 +411,10 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
 
-  actionIcon: {
-    fontSize: 16,
-  },
-
-  followButton: {
+  memberFollowButton: {
     width: 'auto',
     paddingHorizontal: spacing.md,
+    minHeight: 36,
   },
 
   followButtonText: {

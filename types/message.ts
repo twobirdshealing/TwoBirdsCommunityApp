@@ -81,9 +81,20 @@ export interface PaginatedMessages {
   total: number;
 }
 
+// Metadata about the other participant (returned by plugin on page 1)
+export interface ThreadDetails {
+  id: number;
+  title: string;
+  photo: string;
+  type: 'user' | 'community';
+  user_id?: number;
+  username?: string;
+  blocked_thread?: boolean;
+}
+
 export interface MessagesResponse {
   messages: PaginatedMessages;
-  thread?: ChatThread;
+  threadDetails?: ThreadDetails; // plugin returns this on page 1 (NOT "thread")
 }
 
 export interface SendMessageResponse {

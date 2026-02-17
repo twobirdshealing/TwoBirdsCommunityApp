@@ -13,7 +13,9 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
+import { syncBadgeCount } from '@/services/push';
+import { notificationsApi } from '@/services/api';
 import 'react-native-reanimated';
 
 // -----------------------------------------------------------------------------
@@ -83,6 +85,30 @@ function RootLayoutNav() {
     return () => subscription.remove();
   }, [router]);
 
+  // ---------------------------------------------------------------------------
+  // Badge Sync - correct app icon badge on foreground
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const fetchAndSyncBadge = async () => {
+      const count = await notificationsApi.getUnreadCount();
+      syncBadgeCount(count);
+    };
+
+    // Sync on mount (app just opened)
+    fetchAndSyncBadge();
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        fetchAndSyncBadge();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [isAuthenticated]);
+
   if (isLoading) {
     return (
       <View style={[styles.loading, { backgroundColor: themeColors.background }]}>
@@ -136,7 +162,7 @@ function RootLayoutNav() {
         {/* PROFILE */}
         <Stack.Screen
           name="profile/[username]"
-          options={{ presentation: 'card', headerShown: true }}
+          options={{ presentation: 'card', headerShown: false }}
         />
 
         {/* MESSAGES - folder with _layout.tsx */}
@@ -148,13 +174,19 @@ function RootLayoutNav() {
         {/* NOTIFICATIONS */}
         <Stack.Screen
           name="notifications"
-          options={{ presentation: 'card', headerShown: true, title: 'Notifications' }}
+          options={{ presentation: 'card', headerShown: false }}
+        />
+
+        {/* CHURCH DIRECTORY */}
+        <Stack.Screen
+          name="directory"
+          options={{ presentation: 'card', headerShown: false }}
         />
 
         {/* BOOKMARKS */}
         <Stack.Screen
           name="bookmarks"
-          options={{ presentation: 'card', headerShown: true, title: 'Bookmarks' }}
+          options={{ presentation: 'card', headerShown: false }}
         />
 
         {/* NOTIFICATION SETTINGS */}

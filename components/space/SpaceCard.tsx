@@ -83,7 +83,7 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
           </Text>
           {showRoleBadge && (
             <View style={[styles.roleBadge, { backgroundColor: themeColors.primary }]}>
-              <Text style={styles.roleBadgeText}>{roleBadgeLabel}</Text>
+              <Text style={[styles.roleBadgeText, { color: themeColors.textInverse }]}>{roleBadgeLabel}</Text>
             </View>
           )}
         </View>
@@ -113,7 +113,6 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     marginHorizontal: 16,
     marginVertical: 8,
@@ -146,8 +145,8 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     borderWidth: 3,
-    borderColor: '#fff',
-    backgroundColor: '#fff',
+    borderColor: undefined,
+    backgroundColor: undefined,
   },
   emojiContainer: {
     position: 'absolute',
@@ -185,7 +184,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   roleBadgeText: {
-    color: '#fff',
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',

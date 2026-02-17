@@ -1,60 +1,63 @@
 // =============================================================================
-// SPACE MEMBERS SCREEN - Shows list of space members
+// CHURCH DIRECTORY - Global member directory
 // =============================================================================
-// Route: /space/[slug]/members
+// Route: /directory
 // Features:
-// - Admins and Facilitators sorted to top
-// - Tap member to view profile
-// - Message and Follow buttons (placeholders)
+// - Search members by name/username
+// - Sort via gear menu: Joining Date (default), Last Activity, Display Name
+// - Infinite scroll with pull-to-refresh
+// - Follow/unfollow, message, view profile
 // =============================================================================
 
 import { FlashList } from '@shopify/flash-list';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MemberCard, MemberCardData } from '@/components/member';
+import { DropdownMenu } from '@/components/common';
+import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
+import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { membersApi } from '@/services/api/members';
 import { profilesApi } from '@/services/api/profiles';
-import { spacesApi } from '@/services/api/spaces';
 
 // -----------------------------------------------------------------------------
-// Helper: Sort members with leaders at top
+// Sort Options
 // -----------------------------------------------------------------------------
 
-function sortMembersWithLeadersFirst(members: MemberCardData[]): MemberCardData[] {
-  const roleOrder: Record<string, number> = {
-    admin: 0,
-    moderator: 1,
-    member: 2,
-  };
-  
-  return [...members].sort((a, b) => {
-    const aOrder = roleOrder[a.role || 'member'] ?? 2;
-    const bOrder = roleOrder[b.role || 'member'] ?? 2;
-    
-    if (aOrder !== bOrder) {
-      return aOrder - bOrder;
-    }
-    
-    // Same role - sort alphabetically by name
-    const aName = a.xprofile?.display_name || a.display_name || '';
-    const bName = b.xprofile?.display_name || b.display_name || '';
-    return aName.localeCompare(bName);
-  });
-}
+type SortOption = 'created_at' | 'last_activity' | 'display_name';
+
+const SORT_CONFIG: { key: SortOption; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'created_at', label: 'Joining Date', icon: 'calendar-outline' },
+  { key: 'last_activity', label: 'Last Activity', icon: 'time-outline' },
+  { key: 'display_name', label: 'Display Name', icon: 'text-outline' },
+];
 
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
-export default function SpaceMembersScreen() {
+export default function ChurchDirectoryScreen() {
   const router = useRouter();
-  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const insets = useSafeAreaInsets();
   const { user: currentUser } = useAuth();
   const { colors: themeColors } = useTheme();
+
+  // Data state
   const [members, setMembers] = useState<MemberCardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,17 +65,15 @@ export default function SpaceMembersScreen() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // Follow state: maps userId → follow level (> 0 = following)
+  // Search & Sort
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('created_at');
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Follow state
   const [followMap, setFollowMap] = useState<Record<number, number>>({});
   const [followLoadingMap, setFollowLoadingMap] = useState<Record<number, boolean>>({});
-
-  // ---------------------------------------------------------------------------
-  // Sorted members (admins/facilitators first)
-  // ---------------------------------------------------------------------------
-  
-  const sortedMembers = useMemo(() => {
-    return sortMembersWithLeadersFirst(members);
-  }, [members]);
 
   // ---------------------------------------------------------------------------
   // Fetch Members
@@ -80,12 +81,6 @@ export default function SpaceMembersScreen() {
 
   const fetchMembers = async (pageNum: number = 1, shouldAppend: boolean = false) => {
     if ((loading || refreshing) && pageNum !== 1) return;
-    
-    if (!slug) {
-      setError('Space not found');
-      setLoading(false);
-      return;
-    }
 
     try {
       if (pageNum === 1) {
@@ -95,10 +90,11 @@ export default function SpaceMembersScreen() {
       }
       setError(null);
 
-      const response = await spacesApi.getSpaceMembers(slug, {
+      const response = await membersApi.getMembers({
         page: pageNum,
         per_page: 20,
-        status: 'active',
+        sort_by: sortBy,
+        ...(search.trim() && { search: search.trim() }),
       });
 
       if (!response.success) {
@@ -107,10 +103,10 @@ export default function SpaceMembersScreen() {
       }
 
       const apiData = response.data as any;
-      
+
       // Extract members from nested structure: { members: { data: [...] } }
       let newMembers: MemberCardData[] = [];
-      
+
       if (apiData?.members?.data && Array.isArray(apiData.members.data)) {
         newMembers = apiData.members.data;
       } else if (apiData?.data && Array.isArray(apiData.data)) {
@@ -125,14 +121,15 @@ export default function SpaceMembersScreen() {
         setMembers(newMembers);
       }
 
-      // Extract follow state from API response (injected by FollowHandler)
+      // Extract follow state if present
       if (apiData?.current_user_follows) {
         setFollowMap(prev => ({ ...prev, ...apiData.current_user_follows }));
       }
 
-      const hasMorePages = apiData?.members?.next_page_url !== null || newMembers.length === 20;
+      // Check if more pages exist
+      const hasMorePages = apiData?.members?.next_page_url != null || newMembers.length === 20;
       setHasMore(hasMorePages);
-      
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -141,9 +138,25 @@ export default function SpaceMembersScreen() {
     }
   };
 
+  // Initial fetch & refetch on sort change
   useEffect(() => {
+    setPage(1);
+    setHasMore(true);
     fetchMembers(1, false);
-  }, [slug]);
+  }, [sortBy]);
+
+  // Debounced search
+  const handleSearchChange = (text: string) => {
+    setSearch(text);
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    searchTimeout.current = setTimeout(() => {
+      setPage(1);
+      setHasMore(true);
+      fetchMembers(1, false);
+    }, 400);
+  };
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -206,7 +219,7 @@ export default function SpaceMembersScreen() {
         await profilesApi.followUser(username);
       }
     } catch (err) {
-      console.error('[SpaceMembers] Follow error:', err);
+      console.error('[Directory] Follow error:', err);
       // Revert on failure
       setFollowMap(prev => ({
         ...prev,
@@ -219,42 +232,18 @@ export default function SpaceMembersScreen() {
   }, [followMap]);
 
   // ---------------------------------------------------------------------------
-  // Section Header (for Admins/Facilitators vs Members)
+  // Sort Menu Items (for DropdownMenu)
   // ---------------------------------------------------------------------------
 
-  const renderSectionLabel = (role: string | undefined, index: number) => {
-    // Show section label only at transitions
-    if (index === 0) {
-      if (role === 'admin' || role === 'moderator') {
-        return (
-          <View style={[styles.sectionHeader, { backgroundColor: themeColors.backgroundSecondary, borderBottomColor: themeColors.border }]}>
-            <Text style={[styles.sectionHeaderText, { color: themeColors.textSecondary }]}>Leadership</Text>
-          </View>
-        );
-      }
-      return (
-        <View style={[styles.sectionHeader, { backgroundColor: themeColors.backgroundSecondary, borderBottomColor: themeColors.border }]}>
-          <Text style={[styles.sectionHeaderText, { color: themeColors.textSecondary }]}>Members</Text>
-        </View>
-      );
-    }
-
-    const prevMember = sortedMembers[index - 1];
-    const prevRole = prevMember?.role;
-    const prevIsLeader = prevRole === 'admin' || prevRole === 'moderator';
-    const currentIsLeader = role === 'admin' || role === 'moderator';
-
-    // Show "Members" label when transitioning from leaders to regular members
-    if (prevIsLeader && !currentIsLeader) {
-      return (
-        <View style={[styles.sectionHeader, { backgroundColor: themeColors.backgroundSecondary, borderBottomColor: themeColors.border }]}>
-          <Text style={[styles.sectionHeaderText, { color: themeColors.textSecondary }]}>Members</Text>
-        </View>
-      );
-    }
-
-    return null;
-  };
+  const sortMenuItems: DropdownMenuItem[] = SORT_CONFIG.map((option) => ({
+    key: option.key,
+    label: sortBy === option.key ? `${option.label}  \u2713` : option.label,
+    icon: option.icon,
+    onPress: () => {
+      setSortBy(option.key);
+      setShowSortMenu(false);
+    },
+  }));
 
   // ---------------------------------------------------------------------------
   // Render
@@ -262,22 +251,55 @@ export default function SpaceMembersScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: 'Members',
-          headerShown: true,
-          headerBackTitle: 'Back',
-          headerStyle: { backgroundColor: themeColors.surface },
-          headerTintColor: themeColors.text,
-          headerShadowVisible: false,
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
+        {/* Header */}
+        <PageHeader
+          leftAction="back"
+          onLeftPress={() => router.back()}
+          title="Church Directory"
+          rightElement={
+            <>
+              <Pressable onPress={() => setShowSortMenu(true)} style={styles.menuButton}>
+                <Ionicons name="options-outline" size={22} color={themeColors.text} />
+              </Pressable>
+              <DropdownMenu
+                visible={showSortMenu}
+                onClose={() => setShowSortMenu(false)}
+                items={sortMenuItems}
+                topOffset={60}
+              />
+            </>
+          }
+        />
+
+        {/* Search Bar */}
+        <View style={[styles.searchContainer, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
+          <View style={[styles.searchInputWrapper, { backgroundColor: themeColors.backgroundSecondary }]}>
+            <Ionicons name="search-outline" size={18} color={themeColors.textTertiary} />
+            <TextInput
+              style={[styles.searchInput, { color: themeColors.text }]}
+              placeholder="Search Members..."
+              placeholderTextColor={themeColors.textTertiary}
+              value={search}
+              onChangeText={handleSearchChange}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {search.length > 0 && (
+              <Pressable onPress={() => { setSearch(''); handleSearchChange(''); }}>
+                <Ionicons name="close-circle" size={18} color={themeColors.textTertiary} />
+              </Pressable>
+            )}
+          </View>
+        </View>
+
         {/* Error State */}
         {error && !loading && members.length === 0 && (
           <View style={styles.centerContainer}>
-            <Text style={styles.errorIcon}>⚠️</Text>
+            <Text style={styles.stateIcon}>!</Text>
             <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
             <Text style={[styles.retryButton, { color: themeColors.primary }]} onPress={handleRefresh}>
               Tap to retry
@@ -294,31 +316,29 @@ export default function SpaceMembersScreen() {
         )}
 
         {/* Members List */}
-        {(sortedMembers.length > 0 || (!loading && !error)) && (
+        {(members.length > 0 || (!loading && !error)) && (
           <FlashList
-            data={sortedMembers}
-            renderItem={({ item, index }) => {
-              const memberId = Number(item.xprofile?.user_id || item.user_id);
+            data={members}
+            renderItem={({ item }) => {
+              const memberId = Number(item.xprofile?.user_id || item.user_id || item.id);
               const isSelf = memberId === currentUser?.id;
               return (
-                <>
-                  {renderSectionLabel(item.role, index)}
-                  <MemberCard
-                    member={item}
-                    onPress={handleMemberPress}
-                    onMessagePress={isSelf ? undefined : handleMessagePress}
-                    onFollowPress={isSelf ? undefined : handleFollowPress}
-                    isFollowing={(followMap[memberId] || 0) > 0}
-                    followLoading={followLoadingMap[memberId] || false}
-                    showRole={true}
-                    showBio={true}
-                    showLastActive={true}
-                    showActions={!isSelf}
-                  />
-                </>
+                <MemberCard
+                  member={item}
+                  onPress={handleMemberPress}
+                  onMessagePress={isSelf ? undefined : handleMessagePress}
+                  onFollowPress={isSelf ? undefined : handleFollowPress}
+                  isFollowing={(followMap[memberId] || 0) > 0}
+                  followLoading={followLoadingMap[memberId] || false}
+                  showRole={false}
+                  showBio={true}
+                  showLastActive={true}
+                  showActions={!isSelf}
+                />
               );
             }}
-            keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+            keyExtractor={(item) => (item.user_id || item.id)?.toString() || Math.random().toString()}
+            estimatedItemSize={80}
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.5}
             refreshControl={
@@ -332,8 +352,10 @@ export default function SpaceMembersScreen() {
             ListEmptyComponent={
               !loading && !error ? (
                 <View style={styles.centerContainer}>
-                  <Text style={styles.emptyIcon}>👥</Text>
-                  <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No members found</Text>
+                  <Ionicons name="people-outline" size={48} color={themeColors.textTertiary} />
+                  <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
+                    {search ? 'No members found' : 'No members yet'}
+                  </Text>
                 </View>
               ) : null
             }
@@ -360,6 +382,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  // Gear menu button (in PageHeader rightElement)
+  menuButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Search
+  searchContainer: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+  },
+
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
+  },
+
+  searchInput: {
+    flex: 1,
+    fontSize: typography.size.md,
+    paddingVertical: 0,
+  },
+
+  // States
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -367,14 +420,14 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
 
+  stateIcon: {
+    fontSize: 48,
+    marginBottom: spacing.md,
+  },
+
   loadingText: {
     marginTop: spacing.md,
     fontSize: 14,
-  },
-
-  errorIcon: {
-    fontSize: 48,
-    marginBottom: spacing.md,
   },
 
   errorText: {
@@ -388,31 +441,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: spacing.md,
-  },
-
   emptyText: {
     fontSize: 16,
+    marginTop: spacing.md,
   },
 
   footerLoader: {
     paddingVertical: spacing.md,
     alignItems: 'center',
-  },
-
-  // Section Headers
-  sectionHeader: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-  },
-
-  sectionHeaderText: {
-    fontSize: typography.size.sm,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
 });

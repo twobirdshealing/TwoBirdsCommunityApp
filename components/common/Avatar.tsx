@@ -10,6 +10,7 @@
 
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -97,18 +98,12 @@ export function Avatar({
 
       {/* Verified Badge */}
       {verified && (
-        <View style={[
-          styles.verifiedBadge,
-          {
-            width: badgeSize,
-            height: badgeSize,
-            borderRadius: badgeSize / 2,
-            right: -2,
-            bottom: -2,
-            borderColor: themeColors.surface,
-          }
-        ]}>
-          <Text style={[styles.verifiedIcon, { fontSize: badgeSize * 0.6 }]}>✓</Text>
+        <View style={[styles.verifiedBadge, { right: -3, bottom: -3 }]}>
+          <MaterialCommunityIcons
+            name="check-decagram"
+            size={badgeSize + 2}
+            color={themeColors.verified}
+          />
         </View>
       )}
       
@@ -153,13 +148,6 @@ const styles = StyleSheet.create({
 
   verifiedBadge: {
     position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-  },
-
-  verifiedIcon: {
-    fontWeight: 'bold',
   },
 
   onlineIndicator: {

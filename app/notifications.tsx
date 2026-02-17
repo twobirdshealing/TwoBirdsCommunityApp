@@ -15,16 +15,15 @@ import { NotificationCard } from '@/components/notification';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { notificationsApi } from '@/services/api';
+import { syncBadgeCount } from '@/services/push';
 import { AppNotification } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
-  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -143,10 +142,10 @@ export default function NotificationsScreen() {
             try {
               const response = await notificationsApi.markAllAsRead();
               if (response.success) {
-                // Update local state
                 setNotifications(prev =>
                   prev.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
                 );
+                syncBadgeCount(0);
               }
             } catch (err) {
               Alert.alert('Error', 'Failed to mark notifications as read');
@@ -158,64 +157,14 @@ export default function NotificationsScreen() {
   };
 
   const handleMoreOptions = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Cancel', 'Mark All as Read', 'Delete All'],
-          cancelButtonIndex: 0,
-          destructiveButtonIndex: 2,
-        },
-        async buttonIndex => {
-          if (buttonIndex === 1) {
-            handleMarkAllAsRead();
-          } else if (buttonIndex === 2) {
-            handleDeleteAll();
-          }
-        }
-      );
-    } else {
-      Alert.alert('Options', 'Choose an action', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Mark All as Read', onPress: handleMarkAllAsRead },
-        { text: 'Delete All', style: 'destructive', onPress: handleDeleteAll },
-      ]);
-    }
-  };
-
-  const handleDeleteAll = () => {
-    if (notifications.length === 0) {
-      Alert.alert('No Notifications', 'Nothing to delete');
-      return;
-    }
-
-    Alert.alert(
-      'Delete All Notifications',
-      'This cannot be undone. Are you sure?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete All',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await notificationsApi.deleteAllNotifications();
-              if (response.success) {
-                setNotifications([]);
-              }
-            } catch (err) {
-              Alert.alert('Error', 'Failed to delete notifications');
-            }
-          },
-        },
-      ]
-    );
+    handleMarkAllAsRead();
   };
 
   const handleNotificationPress = async (notification: AppNotification) => {
     // Mark as read if unread
     if (!notification.is_read) {
       try {
-        await notificationsApi.markAsRead(notification.id);
+        const response = await notificationsApi.markAsRead(notification.id);
         setNotifications(prev =>
           prev.map(n =>
             n.id === notification.id
@@ -223,6 +172,9 @@ export default function NotificationsScreen() {
               : n
           )
         );
+        if (response.success) {
+          syncBadgeCount(response.data.unread_count);
+        }
       } catch (err) {
         // Silent fail - still navigate
       }
@@ -301,7 +253,7 @@ export default function NotificationsScreen() {
 
   const handleMarkAsRead = async (notification: AppNotification) => {
     try {
-      await notificationsApi.markAsRead(notification.id);
+      const response = await notificationsApi.markAsRead(notification.id);
       setNotifications(prev =>
         prev.map(n =>
           n.id === notification.id
@@ -309,19 +261,14 @@ export default function NotificationsScreen() {
             : n
         )
       );
+      if (response.success) {
+        syncBadgeCount(response.data.unread_count);
+      }
     } catch (err) {
       Alert.alert('Error', 'Failed to mark as read');
     }
   };
 
-  const handleDelete = async (notification: AppNotification) => {
-    try {
-      await notificationsApi.deleteNotification(notification.id);
-      setNotifications(prev => prev.filter(n => n.id !== notification.id));
-    } catch (err) {
-      Alert.alert('Error', 'Failed to delete notification');
-    }
-  };
 
   const handleAvatarPress = (notification: AppNotification) => {
     if (notification.xprofile?.username) {
@@ -435,7 +382,6 @@ export default function NotificationsScreen() {
                 notification={item}
                 onPress={handleNotificationPress}
                 onMarkAsRead={handleMarkAsRead}
-                onDelete={handleDelete}
                 onAvatarPress={handleAvatarPress}
               />
             )}

@@ -23,13 +23,17 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { profilesApi } from '@/services/api';
+import { withOpacity } from '@/constants/colors';
+import { profilesApi, patchProfileMedia } from '@/services/api';
 import { verifyOtp, resendOtp, requestVoiceCall } from '@/services/api/otp';
 import { updateStoredUser } from '@/services/auth';
+import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import { Profile, CustomFieldConfig } from '@/types';
+import { SocialLinksForm, ProfilePhotoPicker } from '@/components/common';
 import { PageHeader } from '@/components/navigation';
 
 // -----------------------------------------------------------------------------
@@ -39,14 +43,16 @@ import { PageHeader } from '@/components/navigation';
 interface FormData {
   first_name: string;
   last_name: string;
+  email: string;
+  username: string;
   short_description: string;
   website: string;
   social_links: {
-    twitter: string;
-    fb: string;
     instagram: string;
-    linkedin: string;
     youtube: string;
+    fb: string;
+    blue_sky: string;
+    reddit: string;
   };
   custom_fields: Record<string, any>;
 }
@@ -73,11 +79,19 @@ export default function EditProfileScreen() {
   const [formData, setFormData] = useState<FormData>({
     first_name: '',
     last_name: '',
+    email: '',
+    username: '',
     short_description: '',
     website: '',
-    social_links: { twitter: '', fb: '', instagram: '', linkedin: '', youtube: '' },
+    social_links: { instagram: '', youtube: '', fb: '', blue_sky: '', reddit: '' },
     custom_fields: {},
   });
+
+  // Avatar/cover upload state
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [localAvatar, setLocalAvatar] = useState<string | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [localCover, setLocalCover] = useState<string | null>(null);
 
   // Select modal state
   const [selectModalVisible, setSelectModalVisible] = useState(false);
@@ -114,20 +128,25 @@ export default function EditProfileScreen() {
           if (p.custom_fields) {
             Object.entries(p.custom_fields).forEach(([key, field]) => {
               customValues[key] = field.value || '';
+              if (field.visibility) {
+                customValues[`${key}_visibility`] = field.visibility;
+              }
             });
           }
 
           setFormData({
             first_name: p.first_name || '',
             last_name: p.last_name || '',
+            email: p.email || '',
+            username: p.username || '',
             short_description: p.short_description || '',
-            website: p.meta?.website || '',
+            website: p.website || p.meta?.website || '',
             social_links: {
-              twitter: p.meta?.social_links?.twitter || '',
-              fb: p.meta?.social_links?.fb || '',
-              instagram: p.meta?.social_links?.instagram || '',
-              linkedin: p.meta?.social_links?.linkedin || '',
-              youtube: p.meta?.social_links?.youtube || '',
+              instagram: p.social_links?.instagram || p.meta?.social_links?.instagram || '',
+              youtube: p.social_links?.youtube || p.meta?.social_links?.youtube || '',
+              fb: p.social_links?.fb || p.meta?.social_links?.fb || '',
+              blue_sky: p.social_links?.blue_sky || p.meta?.social_links?.blue_sky || '',
+              reddit: p.social_links?.reddit || p.meta?.social_links?.reddit || '',
             },
             custom_fields: customValues,
           });
@@ -186,6 +205,74 @@ export default function EditProfileScreen() {
     });
   }, []);
 
+  const setCustomFieldVisibility = useCallback((key: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      custom_fields: { ...prev.custom_fields, [`${key}_visibility`]: value },
+    }));
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Avatar handler
+  // ---------------------------------------------------------------------------
+
+  const handleAvatarPress = () => {
+    if (!username) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    showAvatarPicker({
+      onUploadStart: (localUri) => {
+        setAvatarUploading(true);
+        setLocalAvatar(localUri);
+      },
+      onSuccess: async (remoteUrl) => {
+        try {
+          await patchProfileMedia(username, { avatar: remoteUrl });
+        } catch (e) {
+          // Fall through — avatar was uploaded, just assignment failed
+        }
+        setAvatarUploading(false);
+        setLocalAvatar(null);
+        if (profile) {
+          setProfile({ ...profile, avatar: remoteUrl });
+        }
+        await updateStoredUser({ avatar: remoteUrl });
+      },
+      onError: (message) => {
+        setAvatarUploading(false);
+        setLocalAvatar(null);
+        Alert.alert('Upload Failed', message);
+      },
+    });
+  };
+
+  const handleCoverPhotoPress = () => {
+    if (!username) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    showCoverPicker({
+      onUploadStart: (localUri) => {
+        setCoverUploading(true);
+        setLocalCover(localUri);
+      },
+      onSuccess: async (remoteUrl) => {
+        try {
+          await patchProfileMedia(username, { cover_photo: remoteUrl });
+        } catch (e) {
+          Alert.alert('Upload Failed', 'Failed to save cover photo.');
+        }
+        setCoverUploading(false);
+        setLocalCover(null);
+        if (profile) {
+          setProfile({ ...profile, cover_photo: remoteUrl });
+        }
+      },
+      onError: (message) => {
+        setCoverUploading(false);
+        setLocalCover(null);
+        Alert.alert('Upload Failed', message);
+      },
+    });
+  };
+
   // ---------------------------------------------------------------------------
   // Save
   // ---------------------------------------------------------------------------
@@ -227,6 +314,24 @@ export default function EditProfileScreen() {
         custom_fields: formData.custom_fields,
       };
 
+      if (profile?.can_change_email && formData.email.trim()) {
+        payload.email = formData.email.trim();
+      }
+      if (profile?.can_change_username && formData.username.trim()) {
+        payload.username = formData.username.trim();
+      }
+
+      // Preserve admin-managed fields (server resets these if omitted for moderators)
+      if (profile?.is_verified !== undefined) {
+        payload.is_verified = profile.is_verified;
+      }
+      if (profile?.badge_slugs) {
+        payload.badge_slugs = profile.badge_slugs;
+      }
+      if (profile?.status) {
+        payload.status = profile.status;
+      }
+
       // Include verified OTP session key for resubmit
       if (otpSessionKeyOverride) {
         payload.tbc_otp_session_key = otpSessionKeyOverride;
@@ -236,7 +341,7 @@ export default function EditProfileScreen() {
 
       if (response.success) {
         const displayName = [formData.first_name.trim(), formData.last_name.trim()].filter(Boolean).join(' ');
-        await updateStoredUser({ display_name: displayName });
+        await updateStoredUser({ displayName });
         setShowOtp(false);
         router.back();
       } else {
@@ -325,6 +430,47 @@ export default function EditProfileScreen() {
   };
 
   // ---------------------------------------------------------------------------
+  // Visibility selector (shared across custom field types)
+  // ---------------------------------------------------------------------------
+
+  const visibilityOptions = [
+    { key: 'public', label: 'Everyone' },
+    { key: 'members', label: 'Members' },
+    { key: 'friends', label: 'Friends' },
+    { key: 'admins', label: 'Admins' },
+  ] as const;
+
+  const renderVisibilityRow = (key: string, config: CustomFieldConfig) => {
+    if (!config.allow_user_override) return null;
+    const currentVisibility = formData.custom_fields[`${key}_visibility`] || config.visibility || 'public';
+    return (
+      <View style={styles.visibilityRow}>
+        <Ionicons name="eye-outline" size={14} color={themeColors.textTertiary} />
+        {visibilityOptions.map((vis) => (
+          <TouchableOpacity
+            key={vis.key}
+            style={[
+              styles.visibilityChip,
+              {
+                backgroundColor: currentVisibility === vis.key ? themeColors.primary : themeColors.background,
+                borderColor: currentVisibility === vis.key ? themeColors.primary : themeColors.border,
+              },
+            ]}
+            onPress={() => setCustomFieldVisibility(key, vis.key)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.visibilityChipText, {
+              color: currentVisibility === vis.key ? themeColors.textInverse : themeColors.textSecondary,
+            }]}>
+              {vis.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
   // Custom field renderer
   // ---------------------------------------------------------------------------
 
@@ -337,15 +483,16 @@ export default function EditProfileScreen() {
       return (
         <View key={key} style={styles.inputContainer}>
           <Text style={[styles.label, { color: themeColors.text }]}>
-            {config.label}{config.required && <Text style={styles.required}> *</Text>}
+            {config.label}{config.required && <Text style={[styles.required, { color: themeColors.error }]}> *</Text>}
           </Text>
+          {config.instructions ? <Text style={[styles.fieldInstructions, { color: themeColors.textTertiary }]}>{config.instructions}</Text> : null}
           <TouchableOpacity
             style={[
               styles.input,
               styles.selectInput,
               {
                 backgroundColor: themeColors.background,
-                borderColor: fieldError ? '#EF4444' : themeColors.border,
+                borderColor: fieldError ? themeColors.error : themeColors.border,
               },
             ]}
             onPress={() => {
@@ -362,7 +509,8 @@ export default function EditProfileScreen() {
             </Text>
             <Ionicons name="chevron-down" size={16} color={themeColors.textSecondary} />
           </TouchableOpacity>
-          {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+          {renderVisibilityRow(key, config)}
+          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
         </View>
       );
     }
@@ -372,15 +520,16 @@ export default function EditProfileScreen() {
       return (
         <View key={key} style={styles.inputContainer}>
           <Text style={[styles.label, { color: themeColors.text }]}>
-            {config.label}{config.required && <Text style={styles.required}> *</Text>}
+            {config.label}{config.required && <Text style={[styles.required, { color: themeColors.error }]}> *</Text>}
           </Text>
+          {config.instructions ? <Text style={[styles.fieldInstructions, { color: themeColors.textTertiary }]}>{config.instructions}</Text> : null}
           <TextInput
             style={[
               styles.input,
               styles.textareaInput,
               {
                 backgroundColor: themeColors.background,
-                borderColor: fieldError ? '#EF4444' : themeColors.border,
+                borderColor: fieldError ? themeColors.error : themeColors.border,
                 color: themeColors.text,
               },
             ]}
@@ -392,7 +541,8 @@ export default function EditProfileScreen() {
             numberOfLines={3}
             textAlignVertical="top"
           />
-          {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+          {renderVisibilityRow(key, config)}
+          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
         </View>
       );
     }
@@ -416,8 +566,9 @@ export default function EditProfileScreen() {
       return (
         <View key={key} style={styles.inputContainer}>
           <Text style={[styles.label, { color: themeColors.text }]}>
-            {config.label}{config.required && <Text style={styles.required}> *</Text>}
+            {config.label}{config.required && <Text style={[styles.required, { color: themeColors.error }]}> *</Text>}
           </Text>
+          {config.instructions ? <Text style={[styles.fieldInstructions, { color: themeColors.textTertiary }]}>{config.instructions}</Text> : null}
           <View style={styles.chipRow}>
             {(config.options || []).map((option) => {
               const isSelected = selected.includes(option);
@@ -434,14 +585,15 @@ export default function EditProfileScreen() {
                   onPress={() => toggleOption(option)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.chipText, { color: isSelected ? '#fff' : themeColors.text }]}>
+                  <Text style={[styles.chipText, { color: isSelected ? themeColors.textInverse : themeColors.text }]}>
                     {option}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
-          {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+          {renderVisibilityRow(key, config)}
+          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
         </View>
       );
     }
@@ -474,14 +626,15 @@ export default function EditProfileScreen() {
     return (
       <View key={key} style={styles.inputContainer}>
         <Text style={[styles.label, { color: themeColors.text }]}>
-          {config.label}{config.required && <Text style={styles.required}> *</Text>}
+          {config.label}{config.required && <Text style={[styles.required, { color: themeColors.error }]}> *</Text>}
         </Text>
+        {config.instructions ? <Text style={[styles.fieldInstructions, { color: themeColors.textTertiary }]}>{config.instructions}</Text> : null}
         <TextInput
           style={[
             styles.input,
             {
               backgroundColor: themeColors.background,
-              borderColor: fieldError ? '#EF4444' : themeColors.border,
+              borderColor: fieldError ? themeColors.error : themeColors.border,
               color: themeColors.text,
             },
           ]}
@@ -493,7 +646,8 @@ export default function EditProfileScreen() {
           autoCapitalize={autoCapitalize}
           autoCorrect={false}
         />
-        {fieldError && <Text style={styles.fieldError}>{fieldError}</Text>}
+        {renderVisibilityRow(key, config)}
+        {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
       </View>
     );
   };
@@ -517,7 +671,7 @@ export default function EditProfileScreen() {
         onRequestClose={() => setSelectModalVisible(false)}
       >
         <Pressable
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { backgroundColor: themeColors.overlay }]}
           onPress={() => setSelectModalVisible(false)}
         >
           <View style={[styles.modalContent, { backgroundColor: themeColors.surface }]}>
@@ -600,9 +754,9 @@ export default function EditProfileScreen() {
             activeOpacity={0.8}
           >
             {saving ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={themeColors.textInverse} />
             ) : (
-              <Text style={styles.saveButtonText}>Save</Text>
+              <Text style={[styles.saveButtonText, { color: themeColors.textInverse }]}>Save</Text>
             )}
           </TouchableOpacity>
         }
@@ -617,17 +771,28 @@ export default function EditProfileScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
+          {/* --- Profile Photos --- */}
+          <ProfilePhotoPicker
+            avatarSource={localAvatar || profile?.avatar}
+            coverSource={localCover || profile?.cover_photo || profile?.meta?.cover_photo}
+            fallbackName={profile?.display_name}
+            onAvatarPress={handleAvatarPress}
+            onCoverPress={handleCoverPhotoPress}
+            avatarUploading={avatarUploading}
+            coverUploading={coverUploading}
+          />
+
           {/* --- Basic Info --- */}
           <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Basic Info</Text>
 
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: themeColors.text }]}>
-              First Name<Text style={styles.required}> *</Text>
+              First Name<Text style={[styles.required, { color: themeColors.error }]}> *</Text>
             </Text>
             <TextInput
               style={[styles.input, {
                 backgroundColor: themeColors.background,
-                borderColor: fieldErrors.first_name ? '#EF4444' : themeColors.border,
+                borderColor: fieldErrors.first_name ? themeColors.error : themeColors.border,
                 color: themeColors.text,
               }]}
               value={formData.first_name}
@@ -636,7 +801,7 @@ export default function EditProfileScreen() {
               placeholderTextColor={themeColors.textTertiary}
               autoCapitalize="words"
             />
-            {fieldErrors.first_name && <Text style={styles.fieldError}>{fieldErrors.first_name}</Text>}
+            {fieldErrors.first_name && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldErrors.first_name}</Text>}
           </View>
 
           <View style={styles.inputContainer}>
@@ -654,6 +819,48 @@ export default function EditProfileScreen() {
               autoCapitalize="words"
             />
           </View>
+
+          {profile?.can_change_email && (
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: themeColors.text }]}>Email</Text>
+              <TextInput
+                style={[styles.input, {
+                  backgroundColor: themeColors.background,
+                  borderColor: themeColors.border,
+                  color: themeColors.text,
+                }]}
+                value={formData.email}
+                onChangeText={(text) => setFieldValue('email', text)}
+                placeholder="your@email.com"
+                placeholderTextColor={themeColors.textTertiary}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          )}
+
+          {profile?.can_change_username && (
+            <View style={styles.inputContainer}>
+              <Text style={[styles.label, { color: themeColors.text }]}>Username</Text>
+              <TextInput
+                style={[styles.input, {
+                  backgroundColor: themeColors.background,
+                  borderColor: themeColors.border,
+                  color: themeColors.text,
+                }]}
+                value={formData.username}
+                onChangeText={(text) => setFieldValue('username', text.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                placeholder="username"
+                placeholderTextColor={themeColors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <Text style={[styles.fieldInstructions, { color: themeColors.textTertiary, marginTop: spacing.xs, marginBottom: 0 }]}>
+                Lowercase letters, numbers, hyphens, underscores only
+              </Text>
+            </View>
+          )}
 
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: themeColors.text }]}>Bio</Text>
@@ -694,34 +901,10 @@ export default function EditProfileScreen() {
           {/* --- Social Links --- */}
           <Text style={[styles.sectionTitle, styles.sectionTitleSpaced, { color: themeColors.text }]}>Social Links</Text>
 
-          {[
-            { key: 'twitter', label: 'Twitter', icon: 'logo-twitter' as const },
-            { key: 'fb', label: 'Facebook', icon: 'logo-facebook' as const },
-            { key: 'instagram', label: 'Instagram', icon: 'logo-instagram' as const },
-            { key: 'linkedin', label: 'LinkedIn', icon: 'logo-linkedin' as const },
-            { key: 'youtube', label: 'YouTube', icon: 'logo-youtube' as const },
-          ].map(({ key, label, icon }) => (
-            <View key={key} style={styles.inputContainer}>
-              <View style={styles.socialLabelRow}>
-                <Ionicons name={icon} size={18} color={themeColors.textSecondary} />
-                <Text style={[styles.label, styles.socialLabel, { color: themeColors.text }]}>{label}</Text>
-              </View>
-              <TextInput
-                style={[styles.input, {
-                  backgroundColor: themeColors.background,
-                  borderColor: themeColors.border,
-                  color: themeColors.text,
-                }]}
-                value={formData.social_links[key as keyof typeof formData.social_links]}
-                onChangeText={(text) => setSocialLink(key, text)}
-                placeholder={`${label} profile URL`}
-                placeholderTextColor={themeColors.textTertiary}
-                keyboardType="url"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          ))}
+          <SocialLinksForm
+            values={formData.social_links}
+            onChange={setSocialLink}
+          />
 
           {/* --- Custom Fields --- */}
           {hasCustomFields && (
@@ -749,7 +932,7 @@ export default function EditProfileScreen() {
         onRequestClose={() => setShowOtp(false)}
       >
         <Pressable
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, { backgroundColor: themeColors.overlay }]}
           onPress={() => setShowOtp(false)}
         >
           <Pressable style={[styles.otpModalContent, { backgroundColor: themeColors.surface }]}>
@@ -761,8 +944,8 @@ export default function EditProfileScreen() {
             </Text>
 
             {otpError ? (
-              <View style={styles.otpErrorContainer}>
-                <Text style={styles.otpErrorText}>{otpError}</Text>
+              <View style={[styles.otpErrorContainer, { backgroundColor: themeColors.errorLight, borderColor: withOpacity(themeColors.error, 0.3) }]}>
+                <Text style={[styles.otpErrorText, { color: themeColors.error }]}>{otpError}</Text>
               </View>
             ) : null}
 
@@ -794,9 +977,9 @@ export default function EditProfileScreen() {
               activeOpacity={0.8}
             >
               {otpVerifying || saving ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={themeColors.textInverse} />
               ) : (
-                <Text style={styles.otpVerifyButtonText}>Verify</Text>
+                <Text style={[styles.otpVerifyButtonText, { color: themeColors.textInverse }]}>Verify</Text>
               )}
             </TouchableOpacity>
 
@@ -867,7 +1050,6 @@ const styles = StyleSheet.create({
   },
 
   saveButtonText: {
-    color: '#fff',
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
   },
@@ -895,7 +1077,6 @@ const styles = StyleSheet.create({
   },
 
   required: {
-    color: '#EF4444',
   },
 
   input: {
@@ -922,22 +1103,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  fieldError: {
-    color: '#EF4444',
+  fieldInstructions: {
     fontSize: typography.size.xs,
-    marginTop: spacing.xs,
-  },
-
-  // Social links
-  socialLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
     marginBottom: spacing.xs,
   },
 
-  socialLabel: {
-    marginBottom: 0,
+  visibilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+
+  visibilityChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+
+  visibilityChipText: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.medium,
+  },
+
+  fieldError: {
+    fontSize: typography.size.xs,
+    marginTop: spacing.xs,
   },
 
   // Chip toggles (checkbox/multiselect)
@@ -1030,7 +1222,6 @@ const styles = StyleSheet.create({
   },
 
   otpVerifyButtonText: {
-    color: '#fff',
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
   },
@@ -1057,16 +1248,13 @@ const styles = StyleSheet.create({
   },
 
   otpErrorContainer: {
-    backgroundColor: '#FEE2E2',
     borderWidth: 1,
-    borderColor: '#FECACA',
     borderRadius: 10,
     padding: spacing.sm,
     marginBottom: spacing.md,
   },
 
   otpErrorText: {
-    color: '#DC2626',
     fontSize: typography.size.xs,
     textAlign: 'center' as const,
   },

@@ -327,7 +327,6 @@ const styles = StyleSheet.create({
   attachButtonText: {
     fontSize: typography.size.md,
     fontWeight: '600',
-    color: '#fff',
   },
 });
 

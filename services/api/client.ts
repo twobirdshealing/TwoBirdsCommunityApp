@@ -112,6 +112,10 @@ async function request<T>(
       log('Request headers:', JSON.stringify(debugHeaders, null, 2));
     }
 
+    if (DEBUG && body) {
+      log('Request body (preview):', JSON.stringify(body).substring(0, 500));
+    }
+
     const response = await fetch(url, {
       method,
       headers: requestHeaders,

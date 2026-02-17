@@ -49,7 +49,7 @@ export function HeaderIconButton({
       
       {showBadge && (
         <View style={[styles.badge, { backgroundColor: themeColors.error, borderColor: themeColors.surface }]}>
-          <Text style={styles.badgeText}>{displayCount}</Text>
+          <Text style={[styles.badgeText, { color: '#fff' }]}>{displayCount}</Text>
         </View>
       )}
     </Pressable>
@@ -75,21 +75,21 @@ const styles = StyleSheet.create({
 
   badge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
+    top: -4,
+    right: -6,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 2,
+    paddingHorizontal: 5,
+    borderWidth: 1.5,
   },
 
   badgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#fff',
+    lineHeight: 12,
   },
 });
 

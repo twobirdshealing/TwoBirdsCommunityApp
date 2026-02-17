@@ -4,15 +4,12 @@
 
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
 import {
-  DeleteNotificationResponse,
   GetNotificationsOptions,
   MarkAllReadResponse,
   MarkReadResponse,
-  NotificationsResponse,
   transformNotification,
-  UnreadNotificationsResponse,
 } from '@/types';
-import { del, get, post } from './client';
+import { get, post } from './client';
 
 // -----------------------------------------------------------------------------
 // Transform Response Helpers
@@ -132,22 +129,6 @@ export async function markAllAsRead() {
 }
 
 // -----------------------------------------------------------------------------
-// Delete Single Notification
-// -----------------------------------------------------------------------------
-
-export async function deleteNotification(notificationId: number) {
-  return del<DeleteNotificationResponse>(ENDPOINTS.NOTIFICATIONS_DELETE(notificationId));
-}
-
-// -----------------------------------------------------------------------------
-// Delete All Notifications
-// -----------------------------------------------------------------------------
-
-export async function deleteAllNotifications() {
-  return del<DeleteNotificationResponse>(ENDPOINTS.NOTIFICATIONS_DELETE_ALL);
-}
-
-// -----------------------------------------------------------------------------
 // Export as object
 // -----------------------------------------------------------------------------
 
@@ -157,8 +138,6 @@ export const notificationsApi = {
   getUnreadCount,
   markAsRead,
   markAllAsRead,
-  deleteNotification,
-  deleteAllNotifications,
 };
 
 export default notificationsApi;

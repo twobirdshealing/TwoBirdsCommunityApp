@@ -109,9 +109,9 @@ export function ComposerToolbar({
         disabled={!canSubmit}
       >
         {isSubmitting ? (
-          <ActivityIndicator size="small" color="#fff" />
+          <ActivityIndicator size="small" color={themeColors.textInverse} />
         ) : (
-          <Text style={styles.submitText}>{submitLabel}</Text>
+          <Text style={[styles.submitText, { color: themeColors.textInverse }]}>{submitLabel}</Text>
         )}
       </TouchableOpacity>
     </View>
@@ -158,7 +158,6 @@ const styles = StyleSheet.create({
   },
 
   submitText: {
-    color: '#fff',
     fontSize: typography.size.sm,
     fontWeight: '600',
   },

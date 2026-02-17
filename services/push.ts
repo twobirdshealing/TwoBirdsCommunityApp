@@ -34,7 +34,7 @@ let storedPushToken: string | null = null;
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
-    shouldSetBadge: true,
+    shouldSetBadge: false,
     shouldShowBanner: true,
     shouldShowList: true,
   }),
@@ -204,6 +204,35 @@ export function isPushAvailable(): boolean {
 }
 
 // -----------------------------------------------------------------------------
+// Badge Count
+// -----------------------------------------------------------------------------
+
+/**
+ * Set OS app icon badge to the given count.
+ * Callers are responsible for fetching the count (e.g. via notificationsApi.getUnreadCount()).
+ */
+export async function syncBadgeCount(count: number): Promise<void> {
+  try {
+    await Notifications.setBadgeCountAsync(count);
+    log('Badge synced to', count);
+  } catch (error) {
+    log('Badge sync failed:', error);
+  }
+}
+
+/**
+ * Clear OS app icon badge. Call on logout.
+ */
+export async function clearBadgeCount(): Promise<void> {
+  try {
+    await Notifications.setBadgeCountAsync(0);
+    log('Badge cleared');
+  } catch (error) {
+    log('Badge clear failed:', error);
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Export
 // -----------------------------------------------------------------------------
 
@@ -213,6 +242,8 @@ export const pushService = {
   unregisterDeviceToken,
   getStoredPushToken,
   isPushAvailable,
+  syncBadgeCount,
+  clearBadgeCount,
 };
 
 export default pushService;

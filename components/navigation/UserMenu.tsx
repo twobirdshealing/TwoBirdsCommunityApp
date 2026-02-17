@@ -34,6 +34,7 @@ interface UserMenuProps {
   };
   onProfilePress: () => void;
   onMySpacesPress: () => void;
+  onDirectoryPress: () => void;
   onBookmarksPress: () => void;
   onNotificationSettingsPress: () => void;
   onLogout: () => void;
@@ -76,6 +77,7 @@ export function UserMenu({
   user,
   onProfilePress,
   onMySpacesPress,
+  onDirectoryPress,
   onBookmarksPress,
   onNotificationSettingsPress,
   onLogout,
@@ -97,6 +99,11 @@ export function UserMenu({
   const handleMySpacesPress = () => {
     onClose();
     onMySpacesPress();
+  };
+
+  const handleDirectoryPress = () => {
+    onClose();
+    onDirectoryPress();
   };
 
   const handleBookmarksPress = () => {
@@ -122,7 +129,7 @@ export function UserMenu({
       onRequestClose={onClose}
     >
       {/* Backdrop */}
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={[styles.backdrop, { backgroundColor: themeColors.overlay }]} onPress={onClose}>
         {/* Menu Container - positioned top right */}
         <View style={[styles.menuContainer, { top: insets.top + 50, backgroundColor: themeColors.surface }]}>
           <Pressable onPress={(e) => e.stopPropagation()}>
@@ -136,7 +143,7 @@ export function UserMenu({
                 <Image source={{ uri: user.avatar }} style={styles.avatar} />
               ) : (
                 <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
-                  <Text style={styles.avatarText}>
+                  <Text style={[styles.avatarText, { color: themeColors.textInverse }]}>
                     {user.displayName.charAt(0).toUpperCase()}
                   </Text>
                 </View>
@@ -166,6 +173,11 @@ export function UserMenu({
                 icon="people-outline"
                 label="My Spaces"
                 onPress={handleMySpacesPress}
+              />
+              <MenuItem
+                icon="globe-outline"
+                label="Church Directory"
+                onPress={handleDirectoryPress}
               />
               <MenuItem
                 icon="bookmark-outline"
@@ -253,7 +265,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#fff',
   },
 
   profileInfo: {

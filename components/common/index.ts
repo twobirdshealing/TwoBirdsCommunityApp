@@ -8,3 +8,6 @@ export { ErrorMessage } from './ErrorMessage';
 export { EmptyState } from './EmptyState';
 export { BottomSheet } from './BottomSheet';
 export { DropdownMenu } from './DropdownMenu';
+export { ProfileBadge } from './ProfileBadge';
+export { SocialLinksForm } from './SocialLinksForm';
+export { ProfilePhotoPicker } from './ProfilePhotoPicker';

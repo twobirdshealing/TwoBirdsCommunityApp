@@ -134,6 +134,11 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     router.push('/(tabs)/spaces');
   };
 
+  const handleDirectoryPress = () => {
+    setMenuVisible(false);
+    router.push('/directory');
+  };
+
   const handleBookmarksPress = () => {
     setMenuVisible(false);
     router.push('/bookmarks');
@@ -221,7 +226,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
               <Image source={{ uri: avatar }} style={[styles.avatar, { backgroundColor: themeColors.skeleton }]} />
             ) : (
               <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
-                <Text style={styles.avatarText}>
+                <Text style={[styles.avatarText, { color: themeColors.textInverse }]}>
                   {displayName.charAt(0).toUpperCase()}
                 </Text>
               </View>
@@ -248,6 +253,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
         }}
         onProfilePress={handleProfilePress}
         onMySpacesPress={handleMySpacesPress}
+        onDirectoryPress={handleDirectoryPress}
         onBookmarksPress={handleBookmarksPress}
         onNotificationSettingsPress={handleNotificationSettingsPress}
         onLogout={handleLogout}
@@ -332,7 +338,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
   },
 
   dropdownArrow: {

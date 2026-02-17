@@ -123,24 +123,11 @@ export interface UnreadNotificationsResponse {
 
 // Mark as read response
 export interface MarkReadResponse {
-  message: string;
-  data?: {
-    id: number;
-    is_read: boolean;
-    read_at: string;
-  };
+  unread_count: number;
 }
 
 // Mark all as read response
 export interface MarkAllReadResponse {
-  message: string;
-  data?: {
-    marked_count: number;
-  };
-}
-
-// Delete notification response
-export interface DeleteNotificationResponse {
   message: string;
 }
 
@@ -193,7 +180,7 @@ export function transformNotification(raw: any): AppNotification {
     xprofile: raw.xprofile,
 
     // Computed properties
-    id: subscriber.id || raw.id || 0,
+    id: raw.id || subscriber.object_id || 0,
     is_read: subscriber.is_read === '1' || subscriber.is_read === 1 || subscriber.is_read === true,
     created_at: subscriber.created_at || raw.created_at || '',
     type: raw.action || '',

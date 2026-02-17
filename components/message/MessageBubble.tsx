@@ -12,8 +12,10 @@ import { Avatar } from '@/components/common/Avatar';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ChatMessage, getMessageText } from '@/types/message';
-import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useRef } from 'react';
+import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -26,6 +28,7 @@ interface MessageBubbleProps {
   showTimestamp?: boolean;
   onAvatarPress?: () => void;
   onLongPress?: (message: ChatMessage) => void;
+  onDelete?: (message: ChatMessage) => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -50,8 +53,10 @@ export function MessageBubble({
   showTimestamp = false,
   onAvatarPress,
   onLongPress,
+  onDelete,
 }: MessageBubbleProps) {
   const { colors: themeColors } = useTheme();
+  const swipeableRef = useRef<Swipeable>(null);
   const messageText = getMessageText(message.text);
   const senderName = message.xprofile?.display_name || 'Unknown';
   const avatarUrl = message.xprofile?.avatar || null;
@@ -71,10 +76,44 @@ export function MessageBubble({
   };
 
   // ---------------------------------------------------------------------------
+  // Swipe Delete Action (own messages only)
+  // ---------------------------------------------------------------------------
+
+  const handleDelete = () => {
+    swipeableRef.current?.close();
+    onDelete?.(message);
+  };
+
+  const renderDeleteAction = (
+    progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
+    const translateX = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [0, 80],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View
+        style={[
+          styles.swipeAction,
+          { backgroundColor: themeColors.error, transform: [{ translateX }] },
+        ]}
+      >
+        <Pressable style={styles.swipeActionButton} onPress={handleDelete}>
+          <Ionicons name="trash" size={20} color={themeColors.textInverse} />
+          <Text style={[styles.swipeActionText, { color: themeColors.textInverse }]}>Delete</Text>
+        </Pressable>
+      </Animated.View>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
-  return (
+  const bubbleContent = (
     <View style={[styles.container, isOwn && styles.containerOwn]}>
       {/* Avatar (for received messages) */}
       {!isOwn && showAvatar && (
@@ -118,7 +157,7 @@ export function MessageBubble({
 
         {/* Text (if any) */}
         {messageText.length > 0 && (
-          <Text style={[styles.text, { color: themeColors.text }, isOwn && { color: '#FFFFFF' }, hasImages && styles.textWithImage]}>
+          <Text style={[styles.text, { color: themeColors.text }, isOwn && { color: themeColors.textInverse }, hasImages && styles.textWithImage]}>
             {messageText}
           </Text>
         )}
@@ -132,6 +171,22 @@ export function MessageBubble({
       )}
     </View>
   );
+
+  // Wrap own messages in Swipeable for delete action
+  if (isOwn && onDelete) {
+    return (
+      <Swipeable
+        ref={swipeableRef}
+        renderRightActions={renderDeleteAction}
+        rightThreshold={40}
+        overshootRight={false}
+      >
+        {bubbleContent}
+      </Swipeable>
+    );
+  }
+
+  return bubbleContent;
 }
 
 // -----------------------------------------------------------------------------
@@ -324,6 +379,26 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     marginHorizontal: spacing.md,
     fontWeight: '500',
+  },
+
+  // Swipe Actions
+  swipeAction: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+  },
+
+  swipeActionButton: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  swipeActionText: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
+    marginTop: 4,
   },
 });
 

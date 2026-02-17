@@ -5,7 +5,7 @@
 // - Other participant's avatar
 // - Name and last message preview
 // - Timestamp
-// - Swipe to delete
+// - Unread indicator
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
@@ -21,15 +21,13 @@ import {
 } from '@/types/message';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useRef } from 'react';
+import React from 'react';
 import {
-  Animated,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -40,7 +38,6 @@ interface ConversationCardProps {
   currentUserId: number;
   isUnread?: boolean;
   onPress?: (thread: ChatThread) => void;
-  onDelete?: (thread: ChatThread) => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -52,9 +49,7 @@ export function ConversationCard({
   currentUserId,
   isUnread = false,
   onPress,
-  onDelete,
 }: ConversationCardProps) {
-  const swipeableRef = useRef<Swipeable>(null);
   const { colors: themeColors } = useTheme();
 
   // Get display data
@@ -78,56 +73,10 @@ export function ConversationCard({
   const isOwnLastMessage = lastMessage && Number(lastMessage.user_id) === currentUserId;
 
   // ---------------------------------------------------------------------------
-  // Swipe Actions
-  // ---------------------------------------------------------------------------
-
-  const closeSwipeable = () => {
-    swipeableRef.current?.close();
-  };
-
-  const handleDelete = () => {
-    closeSwipeable();
-    onDelete?.(thread);
-  };
-
-  // Left swipe action - Delete
-  const renderLeftActions = (
-    progress: Animated.AnimatedInterpolation<number>,
-    dragX: Animated.AnimatedInterpolation<number>
-  ) => {
-    const translateX = dragX.interpolate({
-      inputRange: [0, 80],
-      outputRange: [-80, 0],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <Animated.View
-        style={[
-          styles.swipeAction,
-          styles.deleteAction,
-          { transform: [{ translateX }] },
-        ]}
-      >
-        <Pressable style={styles.swipeActionButton} onPress={handleDelete}>
-          <Ionicons name="trash" size={24} color="#fff" />
-          <Text style={styles.swipeActionText}>Delete</Text>
-        </Pressable>
-      </Animated.View>
-    );
-  };
-
-  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
   return (
-    <Swipeable
-      ref={swipeableRef}
-      renderLeftActions={renderLeftActions}
-      leftThreshold={40}
-      overshootLeft={false}
-    >
       <Pressable
         style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}
         onPress={() => onPress?.(thread)}
@@ -170,7 +119,6 @@ export function ConversationCard({
           style={styles.chevron}
         />
       </Pressable>
-    </Swipeable>
   );
 }
 
@@ -242,29 +190,6 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
 
-  // Swipe Actions
-  swipeAction: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 80,
-  },
-
-  swipeActionButton: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  deleteAction: {
-  },
-
-  swipeActionText: {
-    color: '#fff',
-    fontSize: typography.size.xs,
-    fontWeight: '600',
-    marginTop: 4,
-  },
 });
 
 export default ConversationCard;

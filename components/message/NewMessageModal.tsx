@@ -12,7 +12,6 @@ import { ENDPOINTS } from '@/constants/config';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { get } from '@/services/api/client';
-import { messagesApi } from '@/services/api/messages';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -60,7 +59,6 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [members, setMembers] = useState<MemberSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Debounce timer
@@ -80,15 +78,15 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
     setError(null);
 
     try {
-      const response = await get<{ members: { data: MemberSearchResult[] } }>(
-        ENDPOINTS.MEMBERS,
-        { search: query.trim(), per_page: 20 }
+      // Use plugin's /chat/users endpoint — respects chat permissions, shows recently active
+      const response = await get<{ users: MemberSearchResult[] }>(
+        ENDPOINTS.CHAT_USERS,
+        { search: query.trim() }
       );
 
-      if (response.success && response.data?.members) {
-        // Handle both array and paginated response
-        const membersList = response.data.members.data || response.data.members;
-        setMembers(Array.isArray(membersList) ? membersList : []);
+      if (response.success && response.data?.users) {
+        const usersList = Array.isArray(response.data.users) ? response.data.users : [];
+        setMembers(usersList);
       } else {
         setMembers([]);
       }
@@ -125,37 +123,20 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
   // Handle User Selection
   // ---------------------------------------------------------------------------
 
-  const handleSelectUser = async (member: MemberSearchResult) => {
-    if (creating) return;
+  const handleSelectUser = (member: MemberSearchResult) => {
+    // Close modal and navigate to user chat route
+    onClose();
+    setSearchQuery('');
+    setMembers([]);
 
-    setCreating(true);
-    setError(null);
-
-    try {
-      // Create thread with selected user (API requires non-empty message)
-      const response = await messagesApi.startChatWithUser(
-        member.user_id,
-        '👋' // Wave emoji as initial greeting
-      );
-
-      if (response.success && response.data?.thread) {
-        const threadId = response.data.thread.id;
-
-        // Close modal and navigate to chat
-        onClose();
-        setSearchQuery('');
-        setMembers([]);
-
-        router.push(`/messages/${threadId}` as any);
-      } else {
-        setError('Failed to start conversation');
-      }
-    } catch (err) {
-      console.error('[NewMessageModal] Create thread error:', err);
-      setError('Failed to start conversation');
-    } finally {
-      setCreating(false);
-    }
+    router.push({
+      pathname: '/messages/user/[userId]',
+      params: {
+        userId: String(member.user_id),
+        displayName: member.display_name,
+        avatar: member.avatar || '',
+      },
+    } as any);
   };
 
   // ---------------------------------------------------------------------------
@@ -251,14 +232,6 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
             </TouchableOpacity>
           )}
         </View>
-
-        {/* Loading Overlay for Creating */}
-        {creating && (
-          <View style={[styles.creatingOverlay, { backgroundColor: themeColors.surface + 'E6' }]}>
-            <ActivityIndicator size="large" color={themeColors.primary} />
-            <Text style={[styles.creatingText, { color: themeColors.textSecondary }]}>Starting conversation...</Text>
-          </View>
-        )}
 
         {/* Error Message */}
         {error && (
@@ -372,23 +345,6 @@ const styles = StyleSheet.create({
 
   listContent: {
     paddingBottom: spacing.xl,
-  },
-
-  creatingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
-    gap: spacing.md,
-  },
-
-  creatingText: {
-    fontSize: typography.size.md,
   },
 
   errorContainer: {

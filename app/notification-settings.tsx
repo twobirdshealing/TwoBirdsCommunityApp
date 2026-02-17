@@ -370,7 +370,7 @@ function FrequencyPicker({ label, description, value, options, onChange, disable
                 style={[
                   styles.frequencyChipText,
                   { color: themeColors.textSecondary },
-                  isSelected && { color: '#fff' },
+                  isSelected && { color: themeColors.textInverse },
                 ]}
               >
                 {option.label}
@@ -433,7 +433,7 @@ function SpaceEmailRow({ spaceTitle, value, onChange, disabled }: SpaceEmailRowP
           style={[
             styles.spaceSelectorText,
             { color: themeColors.textSecondary },
-            isActive && { color: '#fff' },
+            isActive && { color: themeColors.textInverse },
           ]}
         >
           {currentLabel}
@@ -441,7 +441,7 @@ function SpaceEmailRow({ spaceTitle, value, onChange, disabled }: SpaceEmailRowP
         <Ionicons
           name="chevron-expand-outline"
           size={14}
-          color={isActive ? '#fff' : themeColors.textTertiary}
+          color={isActive ? themeColors.textInverse : themeColors.textTertiary}
         />
       </Pressable>
     </View>
@@ -934,7 +934,7 @@ export default function NotificationSettingsScreen() {
               style={[styles.retryButton, { backgroundColor: themeColors.primary }]}
               onPress={() => { setLoading(true); fetchSettings(); }}
             >
-              <Text style={[styles.retryButtonText, { color: '#fff' }]}>Try Again</Text>
+              <Text style={[styles.retryButtonText, { color: themeColors.textInverse }]}>Try Again</Text>
             </Pressable>
           </View>
         </View>

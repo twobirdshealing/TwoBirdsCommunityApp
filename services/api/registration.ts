@@ -7,7 +7,6 @@
 // =============================================================================
 
 import { SITE_URL } from '@/constants/config';
-import { getAuthToken } from '@/services/auth';
 import { verifyOtp, resendOtp, requestVoiceCall } from './otp';
 
 // -----------------------------------------------------------------------------
@@ -157,40 +156,6 @@ export async function submitRegistration(data: Record<string, any>): Promise<Reg
 // OTP functions re-exported from universal otp service
 export { verifyOtp, resendOtp, requestVoiceCall };
 
-/**
- * POST /profile/avatar - Update user avatar (JWT authenticated)
- * Uses our TBC-CA endpoint with native Fluent models.
- */
-export async function updateAvatar(avatarUrl: string): Promise<{ success: boolean; avatar?: string; message?: string }> {
-  try {
-    const token = await getAuthToken();
-    if (!token) {
-      return { success: false, message: 'Not authenticated.' };
-    }
-
-    const response = await fetch(`${TBC_CA_BASE}/profile/avatar`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ avatar: avatarUrl }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return { success: false, message: data?.message || 'Failed to update avatar.' };
-    }
-
-    return { success: true, avatar: data?.avatar };
-  } catch (error) {
-    console.error('[Registration] Avatar update error:', error);
-    return { success: false, message: 'Failed to update avatar.' };
-  }
-}
-
 // -----------------------------------------------------------------------------
 // Password Reset API Functions
 // -----------------------------------------------------------------------------
@@ -252,7 +217,6 @@ export const registrationApi = {
   verifyOtp,
   resendOtp,
   requestVoiceCall,
-  updateAvatar,
   forgotPassword,
   verifyPasswordOtp,
   resendPasswordOtp,

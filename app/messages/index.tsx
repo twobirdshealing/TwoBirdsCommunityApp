@@ -25,7 +25,6 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   RefreshControl,
   StyleSheet,
   Text,
@@ -33,7 +32,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // -----------------------------------------------------------------------------
@@ -133,7 +131,9 @@ export default function MessagesScreen() {
       id: data.thread.id,
       title: data.thread.title,
       message_count: String(data.thread.messages?.length || 1),
-      status: data.thread.status,
+      status: (data.thread.status as ChatThread['status']) || 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       xprofiles: data.thread.xprofiles || [],
       messages: data.thread.messages || [],
     };
@@ -205,17 +205,17 @@ export default function MessagesScreen() {
   };
 
   const handleThreadPress = (thread: ChatThread) => {
-    router.push(`/messages/${thread.id}` as any);
-  };
-
-  const handleDeleteThread = (thread: ChatThread) => {
-    // Note: The Fluent Chat API may not have a delete thread endpoint
-    // For now, show a message that this feature is not available
-    Alert.alert(
-      'Delete Conversation',
-      'Deleting conversations is not currently supported.',
-      [{ text: 'OK' }]
-    );
+    const others = getOtherParticipants(thread, user?.id || 0);
+    const other = others[0];
+    router.push({
+      pathname: '/messages/user/[userId]',
+      params: {
+        userId: String(other?.user_id || 0),
+        threadId: String(thread.id),
+        displayName: other?.display_name || 'Chat',
+        avatar: other?.avatar || '',
+      },
+    } as any);
   };
 
   // ---------------------------------------------------------------------------
@@ -239,7 +239,7 @@ export default function MessagesScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <GestureHandlerRootView style={styles.gestureRoot}>
+    <>
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
@@ -296,7 +296,6 @@ export default function MessagesScreen() {
                 currentUserId={user?.id || 0}
                 isUnread={unreadThreadIds.includes(item.id)}
                 onPress={handleThreadPress}
-                onDelete={handleDeleteThread}
               />
             )}
             keyExtractor={(item) => item.id.toString()}
@@ -313,7 +312,7 @@ export default function MessagesScreen() {
           />
         )}
       </View>
-    </GestureHandlerRootView>
+    </>
   );
 }
 
@@ -322,10 +321,6 @@ export default function MessagesScreen() {
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  gestureRoot: {
-    flex: 1,
-  },
-
   container: {
     flex: 1,
   },

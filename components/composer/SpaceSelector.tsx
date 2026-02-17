@@ -5,7 +5,7 @@
 // API /spaces endpoint returns user's spaces - no client-side filtering needed
 // =============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacesApi } from '@/services/api/spaces';
+import { SpaceGroupOption } from '@/types';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -31,6 +32,8 @@ interface Space {
   slug: string;
   logo?: string;
   privacy?: string;
+  parent_id?: number | string | null;
+  serial?: string | number;
 }
 
 interface SpaceSelectorProps {
@@ -38,6 +41,10 @@ interface SpaceSelectorProps {
   selectedSpaceName: string | null;
   onSelect: (spaceSlug: string, spaceName: string) => void;
 }
+
+type GroupHeaderItem = { _type: 'group_header'; id: number; title: string };
+type SpaceItem = { _type: 'space'; space: Space };
+type ListItem = GroupHeaderItem | SpaceItem;
 
 // -----------------------------------------------------------------------------
 // Component
@@ -51,6 +58,7 @@ export function SpaceSelector({
   const { colors: themeColors } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [spaces, setSpaces] = useState<Space[]>([]);
+  const [groups, setGroups] = useState<SpaceGroupOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -67,11 +75,21 @@ export function SpaceSelector({
   const fetchSpaces = async () => {
     setLoading(true);
     try {
-      // API returns only spaces the user is a member of
-      const response = await spacesApi.getSpaces({ per_page: 100 });
-      
-      if (response.success && response.data?.spaces) {
-        const spacesList = response.data.spaces.data || response.data.spaces;
+      // Fetch groups and spaces in parallel
+      const [groupsRes, spacesRes] = await Promise.all([
+        spacesApi.getSpaceGroups({ options_only: true }),
+        spacesApi.getSpaces({ per_page: 100 }),
+      ]);
+
+      // Process groups
+      if (groupsRes.success && groupsRes.data) {
+        const groupsData = groupsRes.data as any;
+        setGroups(groupsData?.groups || []);
+      }
+
+      // Process spaces
+      if (spacesRes.success && spacesRes.data?.spaces) {
+        const spacesList = spacesRes.data.spaces.data || spacesRes.data.spaces;
         console.log('[SpaceSelector] Spaces count:', spacesList.length);
         setSpaces(spacesList);
       }
@@ -94,6 +112,60 @@ export function SpaceSelector({
     : spaces;
 
   // ---------------------------------------------------------------------------
+  // Build grouped list data
+  // ---------------------------------------------------------------------------
+
+  const listData = useMemo((): ListItem[] => {
+    const items: ListItem[] = [];
+
+    // Build a map of parent_id → spaces
+    const groupedSpaces = new Map<string, Space[]>();
+    const ungroupedSpaces: Space[] = [];
+
+    for (const space of filteredSpaces) {
+      const parentId = space.parent_id?.toString();
+      if (parentId) {
+        const existing = groupedSpaces.get(parentId) || [];
+        existing.push(space);
+        groupedSpaces.set(parentId, existing);
+      } else {
+        ungroupedSpaces.push(space);
+      }
+    }
+
+    // Add groups in API order (preserves admin-configured ordering)
+    for (const group of groups) {
+      const groupSpaces = groupedSpaces.get(group.id.toString()) || [];
+      if (groupSpaces.length === 0 && searchQuery.trim()) continue;
+      if (groupSpaces.length === 0) continue;
+
+      // Sort spaces within group by serial
+      groupSpaces.sort((a, b) => {
+        const aSerial = Number(a.serial) || 0;
+        const bSerial = Number(b.serial) || 0;
+        return aSerial - bSerial;
+      });
+
+      items.push({ _type: 'group_header', id: group.id, title: group.title });
+      for (const space of groupSpaces) {
+        items.push({ _type: 'space', space });
+      }
+    }
+
+    // Add ungrouped spaces at the end
+    if (ungroupedSpaces.length > 0) {
+      if (groups.length > 0) {
+        items.push({ _type: 'group_header', id: 0, title: 'Other Spaces' });
+      }
+      for (const space of ungroupedSpaces) {
+        items.push({ _type: 'space', space });
+      }
+    }
+
+    return items;
+  }, [filteredSpaces, groups, searchQuery]);
+
+  // ---------------------------------------------------------------------------
   // Handle Selection - pass SLUG not ID
   // ---------------------------------------------------------------------------
 
@@ -108,30 +180,43 @@ export function SpaceSelector({
   // Render Space Item
   // ---------------------------------------------------------------------------
 
-  const renderSpaceItem = ({ item }: { item: Space }) => (
-    <TouchableOpacity
-      style={[
-        styles.spaceItem,
-        { borderBottomColor: themeColors.border },
-        item.slug === selectedSpaceSlug && styles.spaceItemSelected,
-      ]}
-      onPress={() => handleSelect(item)}
-    >
-      <View style={styles.spaceIcon}>
-        <Ionicons
-          name={item.privacy === 'secret' ? 'lock-closed' : item.privacy === 'private' ? 'people' : 'globe-outline'}
-          size={20}
-          color={themeColors.primary}
-        />
-      </View>
-      <Text style={[styles.spaceTitle, { color: themeColors.text }]} numberOfLines={1}>
-        {item.title}
-      </Text>
-      {item.slug === selectedSpaceSlug && (
-        <Ionicons name="checkmark" size={20} color={themeColors.primary} />
-      )}
-    </TouchableOpacity>
-  );
+  const renderListItem = ({ item }: { item: ListItem }) => {
+    if (item._type === 'group_header') {
+      return (
+        <View style={[styles.groupHeader, { borderBottomColor: themeColors.border }]}>
+          <Text style={[styles.groupHeaderText, { color: themeColors.textSecondary }]}>
+            {item.title}
+          </Text>
+        </View>
+      );
+    }
+
+    const space = item.space;
+    return (
+      <TouchableOpacity
+        style={[
+          styles.spaceItem,
+          { borderBottomColor: themeColors.border },
+          space.slug === selectedSpaceSlug && styles.spaceItemSelected,
+        ]}
+        onPress={() => handleSelect(space)}
+      >
+        <View style={styles.spaceIcon}>
+          <Ionicons
+            name={space.privacy === 'secret' ? 'lock-closed' : space.privacy === 'private' ? 'people' : 'globe-outline'}
+            size={20}
+            color={themeColors.primary}
+          />
+        </View>
+        <Text style={[styles.spaceTitle, { color: themeColors.text }]} numberOfLines={1}>
+          {space.title}
+        </Text>
+        {space.slug === selectedSpaceSlug && (
+          <Ionicons name="checkmark" size={20} color={themeColors.primary} />
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   // ---------------------------------------------------------------------------
   // Render
@@ -197,7 +282,7 @@ export function SpaceSelector({
               <ActivityIndicator size="large" color={themeColors.primary} />
               <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Loading spaces...</Text>
             </View>
-          ) : filteredSpaces.length === 0 ? (
+          ) : listData.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
                 {searchQuery ? 'No spaces match your search' : 'No spaces available'}
@@ -205,9 +290,9 @@ export function SpaceSelector({
             </View>
           ) : (
             <FlatList
-              data={filteredSpaces}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={renderSpaceItem}
+              data={listData}
+              keyExtractor={(item) => item._type === 'group_header' ? `group-${item.id}` : `space-${item.space.id}`}
+              renderItem={renderListItem}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
             />
@@ -278,6 +363,20 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xl,
+  },
+
+  groupHeader: {
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderBottomWidth: 1,
+  },
+
+  groupHeaderText: {
+    fontSize: typography.size.sm,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 
   spaceItem: {

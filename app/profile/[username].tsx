@@ -19,16 +19,18 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { profilesApi } from '@/services/api';
+import { profilesApi, patchProfileMedia } from '@/services/api';
 import { updateStoredUser } from '@/services/auth';
-import { showAvatarPicker } from '@/utils/avatarPicker';
+import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import { Profile } from '@/types';
+import { DropdownMenu } from '@/components/common';
+import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 
 import { AboutTab, ProfileHeader, ProfileMenu } from '@/components/profile';
 import { PageHeader } from '@/components/navigation';
@@ -53,15 +55,23 @@ export default function UserProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Avatar upload state
+  // Avatar/cover upload state
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
 
   // Settings menu state (own profile only)
   const [settingsVisible, setSettingsVisible] = useState(false);
 
+  // Other-user menu state (block etc.)
+  const [otherMenuVisible, setOtherMenuVisible] = useState(false);
+
   // Follow state (for other users only)
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+
+  // Block state (for other users only)
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockLoading, setBlockLoading] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Fetch Profile
@@ -86,6 +96,10 @@ export default function UserProfileScreen() {
 
       if (response.success && response.data.profile) {
         setProfile(response.data.profile);
+        // Init follow state from API (FollowHandler injects follow level)
+        setIsFollowing((response.data.profile.follow || 0) > 0);
+        // Init block state from API (BlockHandler injects is_blocked_by_you)
+        setIsBlocked(response.data.profile.is_blocked_by_you === true);
       } else {
         setError('Failed to load profile');
       }
@@ -98,9 +112,11 @@ export default function UserProfileScreen() {
     }
   }, [username]);
 
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [fetchProfile])
+  );
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -143,12 +159,60 @@ export default function UserProfileScreen() {
     }
   };
 
+  const handleBlockPress = () => {
+    if (!username || blockLoading) return;
+
+    const action = isBlocked ? 'Unblock' : 'Block';
+    const message = isBlocked
+      ? `Are you sure you want to unblock ${profile?.display_name || 'this user'}?`
+      : `Blocking this user will hide their posts from your feed and prevent them from interacting with you.`;
+
+    Alert.alert(`${action} User`, message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: action,
+        style: isBlocked ? 'default' : 'destructive',
+        onPress: async () => {
+          try {
+            setBlockLoading(true);
+
+            if (isBlocked) {
+              const result = await profilesApi.unblockUser(username);
+              if (result.success) {
+                setIsBlocked(false);
+              } else {
+                Alert.alert('Error', 'Failed to unblock user');
+              }
+            } else {
+              const result = await profilesApi.blockUser(username);
+              if (result.success) {
+                setIsBlocked(true);
+                setIsFollowing(false);
+              } else {
+                Alert.alert('Error', 'Failed to block user');
+              }
+            }
+          } catch (err) {
+            console.error('Block action failed:', err);
+            Alert.alert('Error', `Failed to ${action.toLowerCase()} user`);
+          } finally {
+            setBlockLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
   const handleMessagePress = () => {
-    Alert.alert(
-      'Coming Soon',
-      'Direct messaging will be available in a future update.',
-      [{ text: 'OK' }]
-    );
+    if (!profile) return;
+    router.push({
+      pathname: '/messages/user/[userId]',
+      params: {
+        userId: String(profile.user_id),
+        displayName: profile.display_name,
+        avatar: profile.avatar || '',
+      },
+    } as any);
   };
 
   const handleEditProfilePress = () => {
@@ -156,13 +220,36 @@ export default function UserProfileScreen() {
   };
 
   const handleCoverPhotoPress = () => {
-    if (isOwnProfile) {
-      Alert.alert('Coming Soon', 'Cover photo editing will be available soon.');
-    }
+    if (!isOwnProfile || !username) return;
+
+    showCoverPicker({
+      onUploadStart: (localUri) => {
+        setCoverUploading(true);
+        if (profile) {
+          setProfile({ ...profile, cover_photo: localUri });
+        }
+      },
+      onSuccess: async (remoteUrl) => {
+        try {
+          await patchProfileMedia(username, { cover_photo: remoteUrl });
+        } catch (e) {
+          // Fall through — cover was uploaded, just assignment failed
+        }
+        setCoverUploading(false);
+        if (profile) {
+          setProfile({ ...profile, cover_photo: remoteUrl });
+        }
+      },
+      onError: (message) => {
+        setCoverUploading(false);
+        fetchProfile();
+        Alert.alert('Upload Failed', message);
+      },
+    });
   };
 
   const handleAvatarPress = () => {
-    if (!isOwnProfile) return;
+    if (!isOwnProfile || !username) return;
 
     showAvatarPicker({
       onUploadStart: (localUri) => {
@@ -172,6 +259,11 @@ export default function UserProfileScreen() {
         }
       },
       onSuccess: async (remoteUrl) => {
+        try {
+          await patchProfileMedia(username, { avatar: remoteUrl });
+        } catch (e) {
+          // Fall through — avatar was uploaded, just assignment failed
+        }
         setAvatarUploading(false);
         if (profile) {
           setProfile({ ...profile, avatar: remoteUrl });
@@ -232,7 +324,7 @@ export default function UserProfileScreen() {
           <Text style={styles.errorIcon}>😔</Text>
           <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
           <Pressable style={[styles.retryButton, { backgroundColor: themeColors.primary }]} onPress={() => fetchProfile()}>
-            <Text style={styles.retryButtonText}>Try Again</Text>
+            <Text style={[styles.retryButtonText, { color: themeColors.textInverse }]}>Try Again</Text>
           </Pressable>
         </View>
       </View>
@@ -251,9 +343,9 @@ export default function UserProfileScreen() {
         leftAction="back"
         onLeftPress={() => router.back()}
         title={profile?.display_name || `@${username}`}
-        rightElement={isOwnProfile ? (
+        rightElement={
           <Pressable
-            onPress={() => setSettingsVisible(true)}
+            onPress={() => isOwnProfile ? setSettingsVisible(true) : setOtherMenuVisible(true)}
             style={({ pressed }) => [
               styles.settingsButton,
               pressed && { opacity: 0.7 },
@@ -261,7 +353,7 @@ export default function UserProfileScreen() {
           >
             <Ionicons name="settings-outline" size={22} color={themeColors.text} />
           </Pressable>
-        ) : undefined}
+        }
       />
         <ScrollView
           style={styles.scrollView}
@@ -288,35 +380,54 @@ export default function UserProfileScreen() {
           {/* Action Buttons (other profiles only) */}
           {!isOwnProfile && (
             <View style={[styles.actionButtons, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
-              <Pressable
-                style={[
-                  styles.followButton,
-                  { backgroundColor: themeColors.primary },
-                  isFollowing && [styles.followingButton, { borderColor: themeColors.primary }],
-                ]}
-                onPress={handleFollowPress}
-                disabled={followLoading}
-              >
-                {followLoading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={isFollowing ? themeColors.primary : '#fff'}
-                  />
-                ) : (
-                  <Text
+              {isBlocked ? (
+                <Pressable
+                  style={[styles.followButton, { backgroundColor: themeColors.error }]}
+                  onPress={handleBlockPress}
+                  disabled={blockLoading}
+                >
+                  {blockLoading ? (
+                    <ActivityIndicator size="small" color={themeColors.textInverse} />
+                  ) : (
+                    <Text style={[styles.followButtonText, { color: themeColors.textInverse }]}>
+                      Blocked
+                    </Text>
+                  )}
+                </Pressable>
+              ) : (
+                <>
+                  <Pressable
                     style={[
-                      styles.followButtonText,
-                      isFollowing && [styles.followingButtonText, { color: themeColors.primary }],
+                      styles.followButton,
+                      { backgroundColor: themeColors.primary },
+                      isFollowing && [styles.followingButton, { borderColor: themeColors.primary }],
                     ]}
+                    onPress={handleFollowPress}
+                    disabled={followLoading}
                   >
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </Text>
-                )}
-              </Pressable>
+                    {followLoading ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={isFollowing ? themeColors.primary : themeColors.textInverse}
+                      />
+                    ) : (
+                      <Text
+                        style={[
+                          styles.followButtonText,
+                          { color: themeColors.textInverse },
+                          isFollowing && [styles.followingButtonText, { color: themeColors.primary }],
+                        ]}
+                      >
+                        {isFollowing ? 'Following' : 'Follow'}
+                      </Text>
+                    )}
+                  </Pressable>
 
-              <Pressable style={[styles.messageButton, { backgroundColor: themeColors.backgroundSecondary }]} onPress={handleMessagePress}>
-                <Ionicons name="mail-outline" size={20} color={themeColors.text} />
-              </Pressable>
+                  <Pressable style={[styles.messageButton, { backgroundColor: themeColors.backgroundSecondary }]} onPress={handleMessagePress}>
+                    <Ionicons name="chatbubble-outline" size={20} color={themeColors.text} />
+                  </Pressable>
+                </>
+              )}
             </View>
           )}
 
@@ -324,12 +435,29 @@ export default function UserProfileScreen() {
           <AboutTab profile={profile!} />
         </ScrollView>
 
-      {/* Profile Settings Dropdown */}
+      {/* Profile Settings Dropdown (own profile) */}
       {isOwnProfile && (
         <ProfileMenu
           visible={settingsVisible}
           onClose={() => setSettingsVisible(false)}
           onEditProfile={handleEditProfilePress}
+        />
+      )}
+
+      {/* Other User Menu Dropdown (block) */}
+      {!isOwnProfile && (
+        <DropdownMenu
+          visible={otherMenuVisible}
+          onClose={() => setOtherMenuVisible(false)}
+          items={[
+            {
+              key: 'block',
+              label: isBlocked ? 'Unblock User' : 'Block User',
+              icon: isBlocked ? 'person-add-outline' : 'ban-outline',
+              onPress: () => { setOtherMenuVisible(false); handleBlockPress(); },
+              destructive: !isBlocked,
+            },
+          ] as DropdownMenuItem[]}
         />
       )}
     </View>
@@ -379,7 +507,6 @@ const styles = StyleSheet.create({
   },
 
   retryButtonText: {
-    color: '#fff',
     fontWeight: '600',
   },
 
@@ -415,7 +542,6 @@ const styles = StyleSheet.create({
   },
 
   followButtonText: {
-    color: '#fff',
     fontWeight: '600',
     fontSize: typography.size.md,
   },

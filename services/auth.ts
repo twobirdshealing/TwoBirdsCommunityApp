@@ -7,7 +7,7 @@
 
 import { API_URL, SITE_URL, FEATURES } from '@/constants/config';
 import * as SecureStore from 'expo-secure-store';
-import { registerDeviceToken, unregisterDeviceToken } from './push';
+import { registerDeviceToken, unregisterDeviceToken, clearBadgeCount } from './push';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -246,6 +246,9 @@ export async function logout(): Promise<void> {
   if (FEATURES.PUSH_NOTIFICATIONS && token) {
     await unregisterDeviceToken(token).catch(() => {});
   }
+
+  // Clear app icon badge
+  await clearBadgeCount();
 
   await clearAuth();
 }

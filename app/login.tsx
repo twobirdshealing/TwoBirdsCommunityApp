@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { withOpacity } from '@/constants/colors';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -83,11 +84,11 @@ export default function LoginScreen() {
           </View>
 
           {/* Form Card */}
-          <View style={styles.formCard}>
+          <View style={[styles.formCard, { backgroundColor: withOpacity(themeColors.surface, 0.95) }]}>
             {/* Error Message */}
             {error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
+              <View style={[styles.errorContainer, { backgroundColor: themeColors.errorLight, borderColor: withOpacity(themeColors.error, 0.3) }]}>
+                <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
               </View>
             )}
 
@@ -144,9 +145,9 @@ export default function LoginScreen() {
               activeOpacity={0.8}
             >
               {isLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={themeColors.textInverse} />
               ) : (
-                <Text style={styles.loginButtonText}>Sign In</Text>
+                <Text style={[styles.loginButtonText, { color: themeColors.textInverse }]}>Sign In</Text>
               )}
             </TouchableOpacity>
 
@@ -218,7 +219,6 @@ const styles = StyleSheet.create({
 
   // Form Card
   formCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
     padding: spacing.xl,
     shadowColor: '#000',
@@ -270,16 +270,13 @@ const styles = StyleSheet.create({
   },
 
   errorContainer: {
-    backgroundColor: '#FEE2E2',
     borderWidth: 1,
-    borderColor: '#FECACA',
     borderRadius: 12,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
 
   errorText: {
-    color: '#DC2626',
     fontSize: typography.size.sm,
     textAlign: 'center',
   },
@@ -297,7 +294,6 @@ const styles = StyleSheet.create({
   },
 
   loginButtonText: {
-    color: '#fff',
     fontSize: typography.size.lg,
     fontWeight: '600',
   },

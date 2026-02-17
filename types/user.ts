@@ -25,11 +25,11 @@ export interface XProfile {
     website?: string;
     cover_photo?: string;
     social_links?: {
-      twitter?: string;
-      youtube?: string;
-      linkedin?: string;
-      fb?: string;
       instagram?: string;
+      youtube?: string;
+      fb?: string;
+      blue_sky?: string;
+      reddit?: string;
     };
     badge_slug?: string[];
   };
@@ -75,6 +75,12 @@ export interface Profile extends XProfile {
   followers_count?: number;
   followings_count?: number;
   last_activity?: string;
+
+  // Follow status (injected by FollowHandler): level > 0 = current user follows this profile
+  follow?: number;
+
+  // Block status (injected by BlockHandler): true if current user has blocked this profile
+  is_blocked_by_you?: boolean;
   
   // Permissions
   can_change_username?: boolean;
@@ -84,6 +90,21 @@ export interface Profile extends XProfile {
   // Navigation items
   profile_navs?: ProfileNav[];
   profile_nav_actions?: any[];
+
+  // Top-level social links (profile endpoint returns these at root, not in meta)
+  social_links?: {
+    instagram?: string;
+    youtube?: string;
+    fb?: string;
+    blue_sky?: string;
+    reddit?: string;
+  };
+
+  // Website at top level (profile endpoint)
+  website?: string;
+
+  // Badge slugs (top-level on profile endpoint, vs meta.badge_slug on xprofile)
+  badge_slugs?: string[];
 
   // Custom profile fields (injected by tbc-fluent-profiles plugin)
   custom_fields?: Record<string, CustomFieldValue>;
@@ -110,8 +131,14 @@ export interface ProfileNav {
 export interface Badge {
   slug: string;
   title: string;
-  icon?: string;
   color?: string;
+  background_color?: string;
+  show_label?: string;
+  config?: {
+    shape_svg?: string;
+    emoji?: string;
+    logo?: string;
+  };
 }
 
 // -----------------------------------------------------------------------------

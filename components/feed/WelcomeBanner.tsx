@@ -101,11 +101,26 @@ function CTAButton({ button }: CTAButtonProps) {
 
   return (
     <TouchableOpacity
-      style={[styles.button, getButtonStyle(), button.type === 'secondary' && { backgroundColor: themeColors.surface, borderColor: themeColors.primary }]}
+      style={[
+        styles.button,
+        getButtonStyle(),
+        button.type === 'primary' && { backgroundColor: themeColors.primaryDark },
+        button.type === 'secondary' && { backgroundColor: themeColors.surface, borderColor: themeColors.primary },
+      ]}
       onPress={handlePress}
       activeOpacity={0.8}
     >
-      <Text style={[styles.buttonLabel, getTextStyle()]}>{button.label}</Text>
+      <Text
+        style={[
+          styles.buttonLabel,
+          getTextStyle(),
+          button.type === 'primary' && { color: themeColors.textInverse },
+          button.type === 'secondary' && { color: themeColors.primary },
+          (button.type === 'text' || button.type === 'link') && { color: themeColors.primary },
+        ]}
+      >
+        {button.label}
+      </Text>
     </TouchableOpacity>
   );
 }

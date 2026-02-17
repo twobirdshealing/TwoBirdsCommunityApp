@@ -4,7 +4,7 @@
 
 import { ENDPOINTS } from '@/constants/config';
 import { Feed, Profile } from '@/types';
-import { get, post } from './client';
+import { get, post, put } from './client';
 
 // -----------------------------------------------------------------------------
 // Get Profile by Username
@@ -86,11 +86,47 @@ export async function updateProfile(username: string, data: {
   last_name?: string;
   short_description?: string;
   website?: string;
+  email?: string;
+  username?: string;
   social_links?: Record<string, string>;
   custom_fields?: Record<string, any>;
   tbc_otp_session_key?: string;
+  is_verified?: number;
+  badge_slugs?: string[];
+  status?: string;
 }) {
   return post<{ profile: Profile }>(ENDPOINTS.PROFILE(username), { data });
+}
+
+// -----------------------------------------------------------------------------
+// Patch Profile Media (avatar / cover photo via native PUT)
+// -----------------------------------------------------------------------------
+
+export async function patchProfileMedia(username: string, data: {
+  avatar?: string;
+  cover_photo?: string;
+}) {
+  return put<{ message: string }>(ENDPOINTS.PROFILE(username), { data });
+}
+
+// -----------------------------------------------------------------------------
+// Block User
+// -----------------------------------------------------------------------------
+
+export async function blockUser(username: string) {
+  return post<{ follow: any; xprofile: any }>(
+    `${ENDPOINTS.PROFILE(username)}/block`
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Unblock User
+// -----------------------------------------------------------------------------
+
+export async function unblockUser(username: string) {
+  return post<{ message: string }>(
+    `${ENDPOINTS.PROFILE(username)}/unblock`
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -100,6 +136,7 @@ export async function updateProfile(username: string, data: {
 export const profilesApi = {
   getProfile,
   updateProfile,
+  patchProfileMedia,
   getUserFeeds,
   getUserSpaces,
   getUserComments,
@@ -107,6 +144,8 @@ export const profilesApi = {
   unfollowUser,
   getFollowers,
   getFollowing,
+  blockUser,
+  unblockUser,
 };
 
 export default profilesApi;

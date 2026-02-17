@@ -30,7 +30,7 @@ export function DropdownMenu({ visible, onClose, items, topOffset = 100 }: Dropd
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity
-        style={[styles.modalOverlay, { paddingTop: topOffset }]}
+        style={[styles.modalOverlay, { paddingTop: topOffset, backgroundColor: themeColors.overlay }]}
         activeOpacity={1}
         onPress={onClose}
       >

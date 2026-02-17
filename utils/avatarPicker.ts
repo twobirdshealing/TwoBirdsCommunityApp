@@ -1,32 +1,44 @@
 // =============================================================================
-// AVATAR PICKER - Shared utility for picking and uploading avatar photos
+// IMAGE PICKER - Shared utility for picking and uploading profile images
 // =============================================================================
-// Used by: registration flow (app/register.tsx) and profile screen
-// Reuses: uploadMedia (services/api/media.ts), updateAvatar (services/api/registration.ts)
+// Used by: registration flow, edit profile, profile view
+// Supports: avatar (1:1) and cover photo (16:9)
+// Handles: pick from library / camera → upload to Fluent Community media
+// Callers handle the assignment (PUT to profile endpoint)
 // =============================================================================
 
 import * as ImagePicker from 'expo-image-picker';
 import { Platform, ActionSheetIOS, Alert } from 'react-native';
 import { uploadMedia } from '@/services/api/media';
-import { updateAvatar } from '@/services/api/registration';
 
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
 
-export interface AvatarPickerCallbacks {
+export interface ImagePickerCallbacks {
   onUploadStart?: (localUri: string) => void;
-  onSuccess: (avatarUrl: string) => void;
+  onSuccess: (remoteUrl: string) => void;
   onError: (message: string) => void;
 }
 
+/** @deprecated Use ImagePickerCallbacks instead */
+export type AvatarPickerCallbacks = ImagePickerCallbacks;
+
+export interface ImagePickerOptions {
+  aspect?: [number, number];    // default [1, 1]
+  quality?: number;              // default 0.8
+  defaultFileName?: string;      // default 'photo.jpg'
+  objectSource?: string;         // default 'profile'
+}
+
 // -----------------------------------------------------------------------------
-// Core: Process and upload an avatar asset
+// Core: Process and upload an image asset
 // -----------------------------------------------------------------------------
 
-export async function processAndUploadAvatar(
+async function processAndUpload(
   asset: ImagePicker.ImagePickerAsset,
-  callbacks: AvatarPickerCallbacks
+  callbacks: ImagePickerCallbacks,
+  options?: ImagePickerOptions
 ): Promise<void> {
   callbacks.onUploadStart?.(asset.uri);
 
@@ -34,8 +46,8 @@ export async function processAndUploadAvatar(
     const uploadResult = await uploadMedia(
       asset.uri,
       asset.mimeType || 'image/jpeg',
-      asset.fileName || 'avatar.jpg',
-      'profile'
+      asset.fileName || options?.defaultFileName || 'photo.jpg',
+      options?.objectSource || 'profile'
     );
 
     if (!uploadResult.success || !uploadResult.data?.url) {
@@ -43,13 +55,7 @@ export async function processAndUploadAvatar(
       return;
     }
 
-    const profileResult = await updateAvatar(uploadResult.data.url);
-
-    if (profileResult.success) {
-      callbacks.onSuccess(profileResult.avatar || uploadResult.data.url);
-    } else {
-      callbacks.onError(profileResult.message || 'Failed to update avatar.');
-    }
+    callbacks.onSuccess(uploadResult.data.url);
   } catch (e) {
     callbacks.onError('Failed to upload photo.');
   }
@@ -59,17 +65,20 @@ export async function processAndUploadAvatar(
 // Pick from library
 // -----------------------------------------------------------------------------
 
-export async function pickAvatarFromLibrary(callbacks: AvatarPickerCallbacks): Promise<void> {
+async function pickFromLibrary(
+  callbacks: ImagePickerCallbacks,
+  options?: ImagePickerOptions
+): Promise<void> {
   try {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
+      aspect: options?.aspect || [1, 1],
+      quality: options?.quality ?? 0.8,
     });
 
     if (result.canceled || !result.assets?.[0]) return;
-    await processAndUploadAvatar(result.assets[0], callbacks);
+    await processAndUpload(result.assets[0], callbacks, options);
   } catch (e) {
     callbacks.onError('Failed to pick photo.');
   }
@@ -79,7 +88,10 @@ export async function pickAvatarFromLibrary(callbacks: AvatarPickerCallbacks): P
 // Take photo with camera
 // -----------------------------------------------------------------------------
 
-export async function takeAvatarPhoto(callbacks: AvatarPickerCallbacks): Promise<void> {
+async function takePhoto(
+  callbacks: ImagePickerCallbacks,
+  options?: ImagePickerOptions
+): Promise<void> {
   try {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
     if (!permissionResult.granted) {
@@ -89,22 +101,25 @@ export async function takeAvatarPhoto(callbacks: AvatarPickerCallbacks): Promise
 
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
+      aspect: options?.aspect || [1, 1],
+      quality: options?.quality ?? 0.8,
     });
 
     if (result.canceled || !result.assets?.[0]) return;
-    await processAndUploadAvatar(result.assets[0], callbacks);
+    await processAndUpload(result.assets[0], callbacks, options);
   } catch (e) {
     callbacks.onError('Failed to take photo.');
   }
 }
 
 // -----------------------------------------------------------------------------
-// Show platform action sheet and pick
+// Generic: Show platform action sheet and pick
 // -----------------------------------------------------------------------------
 
-export function showAvatarPicker(callbacks: AvatarPickerCallbacks): void {
+export function showImagePicker(
+  callbacks: ImagePickerCallbacks,
+  options?: ImagePickerOptions
+): void {
   if (Platform.OS === 'ios') {
     ActionSheetIOS.showActionSheetWithOptions(
       {
@@ -112,15 +127,29 @@ export function showAvatarPicker(callbacks: AvatarPickerCallbacks): void {
         cancelButtonIndex: 0,
       },
       (buttonIndex) => {
-        if (buttonIndex === 1) takeAvatarPhoto(callbacks);
-        else if (buttonIndex === 2) pickAvatarFromLibrary(callbacks);
+        if (buttonIndex === 1) takePhoto(callbacks, options);
+        else if (buttonIndex === 2) pickFromLibrary(callbacks, options);
       }
     );
   } else {
     Alert.alert('Change Photo', 'Choose an option', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Take Photo', onPress: () => takeAvatarPhoto(callbacks) },
-      { text: 'Choose from Library', onPress: () => pickAvatarFromLibrary(callbacks) },
+      { text: 'Take Photo', onPress: () => takePhoto(callbacks, options) },
+      { text: 'Choose from Library', onPress: () => pickFromLibrary(callbacks, options) },
     ]);
   }
+}
+
+// -----------------------------------------------------------------------------
+// Convenience wrappers
+// -----------------------------------------------------------------------------
+
+/** Pick and upload an avatar (1:1 square crop) */
+export function showAvatarPicker(callbacks: ImagePickerCallbacks): void {
+  showImagePicker(callbacks, { aspect: [1, 1], defaultFileName: 'avatar.jpg' });
+}
+
+/** Pick and upload a cover photo (16:9 landscape crop) */
+export function showCoverPicker(callbacks: ImagePickerCallbacks): void {
+  showImagePicker(callbacks, { aspect: [16, 9], defaultFileName: 'cover.jpg' });
 }

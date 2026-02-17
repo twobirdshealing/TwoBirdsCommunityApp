@@ -3,12 +3,14 @@
 // =============================================================================
 
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Profile } from '@/types';
-import { Avatar } from '@/components/common';
+import { Avatar, ProfileBadge } from '@/components/common';
+import { useProfileBadges } from '@/hooks';
 import { formatCompactNumber } from '@/utils/formatNumber';
 
 interface ProfileHeaderProps {
@@ -34,16 +36,35 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const { colors: themeColors, isDark } = useTheme();
   const isVerified = profile.is_verified === 1;
+  const profileBadges = useProfileBadges(profile.badge_slugs || profile.meta?.badge_slug);
   const coverPhoto = profile.cover_photo || profile.meta?.cover_photo;
+  const socialLinks = profile.social_links || profile.meta?.social_links || {};
+
+  const socialConfig = [
+    { key: 'instagram', icon: 'logo-instagram' as const, baseUrl: 'https://instagram.com/' },
+    { key: 'youtube', icon: 'logo-youtube' as const, baseUrl: 'https://youtube.com/' },
+    { key: 'fb', icon: 'logo-facebook' as const, baseUrl: 'https://facebook.com/' },
+    { key: 'blue_sky', icon: 'cloud-outline' as const, baseUrl: 'https://bsky.app/profile/' },
+    { key: 'reddit', icon: 'logo-reddit' as const, baseUrl: 'https://www.reddit.com/user/' },
+  ];
+  const activeSocials = socialConfig.filter(s => socialLinks[s.key as keyof typeof socialLinks]);
+
+  const handleOpenSocial = (value: string, baseUrl: string) => {
+    // If already a full URL, use as-is; otherwise prepend the platform base URL
+    const fullUrl = value.startsWith('http') ? value : `${baseUrl}${value}`;
+    Linking.openURL(fullUrl).catch(() => {});
+  };
 
   const handleCoverPress = () => {
     if (isOwnProfile && onCoverPhotoPress) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onCoverPhotoPress();
     }
   };
 
   const handleAvatarPress = () => {
     if (isOwnProfile && onAvatarPress) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onAvatarPress();
     }
   };
@@ -54,7 +75,7 @@ export function ProfileHeader({
       <TouchableOpacity
         style={styles.coverContainer}
         onPress={handleCoverPress}
-        activeOpacity={isOwnProfile ? 0.8 : 1}
+        activeOpacity={isOwnProfile ? 0.85 : 1}
         disabled={!isOwnProfile}
       >
         {coverPhoto ? (
@@ -70,17 +91,6 @@ export function ProfileHeader({
         {/* Subtle gradient overlay */}
         <View style={styles.coverOverlay} />
 
-        {/* Edit Cover Button (own profile only) */}
-        {isOwnProfile && onCoverPhotoPress && (
-          <TouchableOpacity
-            style={styles.coverEditButton}
-            onPress={handleCoverPress}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="camera-outline" size={16} color="#fff" />
-          </TouchableOpacity>
-        )}
-
         {/* Settings Button (own profile only) */}
         {isOwnProfile && onSettingsPress && (
           <TouchableOpacity
@@ -88,7 +98,7 @@ export function ProfileHeader({
             onPress={onSettingsPress}
             activeOpacity={0.8}
           >
-            <Ionicons name="settings-outline" size={20} color={isDark ? '#fff' : '#333'} />
+            <Ionicons name="settings-outline" size={20} color={themeColors.icon} />
           </TouchableOpacity>
         )}
       </TouchableOpacity>
@@ -115,18 +125,32 @@ export function ProfileHeader({
               <ActivityIndicator size="small" color="#fff" />
             </View>
           )}
-
-          {/* Edit Avatar Button (own profile only) */}
-          {isOwnProfile && onAvatarPress && !isUploading && (
-            <View style={[styles.avatarEditBadge, { backgroundColor: themeColors.primary, borderColor: themeColors.surface }]}>
-              <Ionicons name="camera" size={14} color="#fff" />
-            </View>
-          )}
         </TouchableOpacity>
 
-        {/* Name & Username */}
-        <Text style={[styles.displayName, { color: themeColors.text }]}>{profile.display_name}</Text>
+        {/* Name & Badges */}
+        <View style={styles.nameRow}>
+          <Text style={[styles.displayName, { color: themeColors.text }]}>{profile.display_name}</Text>
+          {profileBadges.map((badge) => (
+            <ProfileBadge key={badge.slug} badge={badge} />
+          ))}
+        </View>
         <Text style={[styles.username, { color: themeColors.textSecondary }]}>@{profile.username}</Text>
+
+        {/* Social Icons */}
+        {activeSocials.length > 0 && (
+          <View style={styles.socialRow}>
+            {activeSocials.map(({ key, icon, baseUrl }) => (
+              <TouchableOpacity
+                key={key}
+                onPress={() => handleOpenSocial(socialLinks[key as keyof typeof socialLinks]!, baseUrl)}
+                activeOpacity={0.7}
+                style={styles.socialIconButton}
+              >
+                <Ionicons name={icon} size={18} color={themeColors.textSecondary} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Stats Row */}
         <View style={[styles.statsRow, { backgroundColor: themeColors.backgroundSecondary }]}>
@@ -174,18 +198,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.08)',
   },
 
-  coverEditButton: {
-    position: 'absolute',
-    bottom: spacing.sm,
-    right: spacing.sm,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
   settingsButton: {
     position: 'absolute',
     top: spacing.sm,
@@ -221,28 +233,35 @@ const styles = StyleSheet.create({
     margin: 4,
   },
 
-  avatarEditBadge: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: 'center',
+  nameRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 3,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    marginTop: spacing.sm,
   },
 
   displayName: {
     fontSize: typography.size.xxl,
     fontWeight: typography.weight.bold,
-    marginTop: spacing.sm,
     textAlign: 'center',
   },
 
   username: {
     fontSize: typography.size.md,
     marginTop: spacing.xs,
+  },
+
+  // Social
+  socialRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+
+  socialIconButton: {
+    padding: 4,
   },
 
   // Stats

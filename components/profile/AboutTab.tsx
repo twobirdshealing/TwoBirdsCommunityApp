@@ -1,23 +1,31 @@
 // =============================================================================
-// ABOUT TAB - Profile about section with custom fields
+// ABOUT TAB - Clean profile info section (matches web portal style)
 // =============================================================================
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
 import { Profile, CustomFieldValue } from '@/types';
+import { formatRelativeTime } from '@/utils/formatDate';
 
 interface AboutTabProps {
   profile: Profile;
 }
 
+// Map custom field types to Ionicons
+const fieldTypeIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
+  phone: 'call-outline',
+  url: 'link-outline',
+  date: 'calendar-outline',
+  email: 'mail-outline',
+};
+
 export function AboutTab({ profile }: AboutTabProps) {
   const { colors: themeColors } = useTheme();
   const description = profile.short_description || profile.meta?.bio;
   const website = profile.meta?.website;
-  const socialLinks = profile.meta?.social_links || {};
-  const hasSocial = Object.values(socialLinks).some(link => link);
 
   // Custom fields from tbc-fluent-profiles
   const customFields = profile.custom_fields || {};
@@ -34,13 +42,14 @@ export function AboutTab({ profile }: AboutTabProps) {
     return true;
   });
 
-  // Format joined date
-  const joinedDate = profile.created_at
-    ? new Date(profile.created_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      })
+  // Relative joined date
+  const joinedText = profile.created_at
+    ? `Joined ${formatRelativeTime(profile.created_at)}`
+    : null;
+
+  // Last seen
+  const lastSeenText = profile.last_activity
+    ? `Last seen: ${formatRelativeTime(profile.last_activity)}`
     : null;
 
   const handleOpenLink = async (url: string) => {
@@ -52,166 +61,122 @@ export function AboutTab({ profile }: AboutTabProps) {
     }
   };
 
+  const handlePhonePress = (phone: string) => {
+    Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`);
+  };
+
+  // Render a single custom field value inline
   const renderFieldValue = (field: CustomFieldValue) => {
     const { value, type } = field;
 
-    switch (type) {
-      case 'url':
-        return (
-          <TouchableOpacity onPress={() => handleOpenLink(value)} activeOpacity={0.7}>
-            <Text style={[styles.fieldValueText, { color: themeColors.primary }]} numberOfLines={1}>
-              {value.replace(/^https?:\/\//, '')}
-            </Text>
-          </TouchableOpacity>
-        );
-
-      case 'date': {
-        const date = new Date(value);
-        const formatted = isNaN(date.getTime())
-          ? value
-          : date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-        return <Text style={[styles.fieldValueText, { color: themeColors.textSecondary }]}>{formatted}</Text>;
-      }
-
-      case 'checkbox':
-      case 'multiselect': {
-        try {
-          const items = JSON.parse(value);
-          if (!Array.isArray(items) || items.length === 0) return null;
-          return (
-            <View style={styles.tagRow}>
-              {items.map((item: string, i: number) => (
-                <View key={i} style={[styles.tag, { backgroundColor: themeColors.backgroundSecondary }]}>
-                  <Text style={[styles.tagText, { color: themeColors.text }]}>{item}</Text>
-                </View>
-              ))}
-            </View>
-          );
-        } catch {
-          return <Text style={[styles.fieldValueText, { color: themeColors.textSecondary }]}>{value}</Text>;
-        }
-      }
-
-      case 'textarea':
-        return (
-          <Text style={[styles.fieldValueText, { color: themeColors.textSecondary, lineHeight: typography.size.md * 1.5 }]}>
-            {value}
-          </Text>
-        );
-
-      default:
-        return <Text style={[styles.fieldValueText, { color: themeColors.textSecondary }]}>{value}</Text>;
+    if (type === 'phone') {
+      return (
+        <TouchableOpacity onPress={() => handlePhonePress(value)} activeOpacity={0.7}>
+          <Text style={[styles.infoText, { color: themeColors.primary }]}>{value}</Text>
+        </TouchableOpacity>
+      );
     }
+
+    if (type === 'url') {
+      return (
+        <TouchableOpacity onPress={() => handleOpenLink(value)} activeOpacity={0.7}>
+          <Text style={[styles.infoText, { color: themeColors.primary }]} numberOfLines={1}>
+            {value.replace(/^https?:\/\//, '')}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+
+    if (type === 'date') {
+      const date = new Date(value);
+      const formatted = isNaN(date.getTime())
+        ? value
+        : date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      return <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>{formatted}</Text>;
+    }
+
+    if (type === 'checkbox' || type === 'multiselect') {
+      try {
+        const items = JSON.parse(value);
+        if (!Array.isArray(items) || items.length === 0) return null;
+        return (
+          <View style={styles.tagRow}>
+            {items.map((item: string, i: number) => (
+              <View key={i} style={[styles.tag, { backgroundColor: themeColors.backgroundSecondary }]}>
+                <Text style={[styles.tagText, { color: themeColors.text }]}>{item}</Text>
+              </View>
+            ))}
+          </View>
+        );
+      } catch {
+        return <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>{value}</Text>;
+      }
+    }
+
+    return <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>{value}</Text>;
   };
 
   return (
-    <View style={styles.container}>
-      {/* Description */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>About</Text>
-        {description ? (
-          <Text style={[styles.description, { color: themeColors.text }]}>{description}</Text>
-        ) : (
-          <Text style={[styles.placeholder, { color: themeColors.textTertiary }]}>No description added yet</Text>
-        )}
-      </View>
+    <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
+      {/* Section Title */}
+      <Text style={[styles.sectionTitle, { color: themeColors.primary }]}>About</Text>
 
-      {/* Info */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Info</Text>
+      {/* Bio */}
+      {description ? (
+        <Text style={[styles.description, { color: themeColors.text }]}>{description}</Text>
+      ) : (
+        <Text style={[styles.placeholder, { color: themeColors.textTertiary }]}>No description added yet</Text>
+      )}
 
-        {/* Joined Date */}
-        {joinedDate && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoIcon}>📅</Text>
-            <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>Joined {joinedDate}</Text>
-          </View>
-        )}
+      {/* Joined */}
+      {joinedText && (
+        <View style={styles.infoRow}>
+          <Ionicons name="calendar-outline" size={16} color={themeColors.textTertiary} style={styles.infoIcon} />
+          <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>{joinedText}</Text>
+        </View>
+      )}
 
-        {/* Website */}
-        {website && (
-          <TouchableOpacity
-            style={styles.infoRow}
-            onPress={() => handleOpenLink(website)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.infoIcon}>🌐</Text>
-            <Text style={[styles.infoText, styles.link, { color: themeColors.primary }]} numberOfLines={1}>
-              {website.replace(/^https?:\/\//, '')}
-            </Text>
-          </TouchableOpacity>
-        )}
+      {/* Last Seen */}
+      {lastSeenText && (
+        <View style={styles.infoRow}>
+          <Ionicons name="time-outline" size={16} color={themeColors.textTertiary} style={styles.infoIcon} />
+          <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>{lastSeenText}</Text>
+        </View>
+      )}
 
-        {/* Location */}
-        {profile.meta?.location && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoIcon}>📍</Text>
-            <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>{profile.meta.location}</Text>
-          </View>
-        )}
-      </View>
+      {/* Custom Fields (phone, etc.) */}
+      {visibleFields.map(([key, field]) => {
+        const iconName = fieldTypeIcons[field.type] || 'information-circle-outline';
 
-      {/* Custom Profile Fields */}
-      {visibleFields.length > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Details</Text>
-          {visibleFields.map(([key, field]) => (
-            <View key={key} style={styles.fieldRow}>
+        // Checkbox/multiselect get their own block layout
+        if (field.type === 'checkbox' || field.type === 'multiselect') {
+          return (
+            <View key={key} style={styles.fieldBlock}>
               <Text style={[styles.fieldLabel, { color: themeColors.textTertiary }]}>{field.label}</Text>
               {renderFieldValue(field)}
             </View>
-          ))}
-        </View>
+          );
+        }
+
+        return (
+          <View key={key} style={styles.infoRow}>
+            <Ionicons name={iconName} size={16} color={themeColors.textTertiary} style={styles.infoIcon} />
+            <Text style={[styles.fieldPrefix, { color: themeColors.textTertiary }]}>{field.label}: </Text>
+            {renderFieldValue(field)}
+          </View>
+        );
+      })}
+
+      {/* Website */}
+      {website && (
+        <TouchableOpacity style={styles.infoRow} onPress={() => handleOpenLink(website)} activeOpacity={0.7}>
+          <Ionicons name="globe-outline" size={16} color={themeColors.textTertiary} style={styles.infoIcon} />
+          <Text style={[styles.infoText, { color: themeColors.primary }]} numberOfLines={1}>
+            {website.replace(/^https?:\/\//, '')}
+          </Text>
+        </TouchableOpacity>
       )}
 
-      {/* Social Links */}
-      {hasSocial && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Social</Text>
-          <View style={styles.socialRow}>
-            {socialLinks.twitter && (
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: themeColors.backgroundSecondary }]}
-                onPress={() => handleOpenLink(socialLinks.twitter!)}
-              >
-                <Text style={styles.socialIcon}>🐦</Text>
-              </TouchableOpacity>
-            )}
-            {socialLinks.fb && (
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: themeColors.backgroundSecondary }]}
-                onPress={() => handleOpenLink(socialLinks.fb!)}
-              >
-                <Text style={styles.socialIcon}>📘</Text>
-              </TouchableOpacity>
-            )}
-            {socialLinks.instagram && (
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: themeColors.backgroundSecondary }]}
-                onPress={() => handleOpenLink(socialLinks.instagram!)}
-              >
-                <Text style={styles.socialIcon}>📷</Text>
-              </TouchableOpacity>
-            )}
-            {socialLinks.linkedin && (
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: themeColors.backgroundSecondary }]}
-                onPress={() => handleOpenLink(socialLinks.linkedin!)}
-              >
-                <Text style={styles.socialIcon}>💼</Text>
-              </TouchableOpacity>
-            )}
-            {socialLinks.youtube && (
-              <TouchableOpacity
-                style={[styles.socialButton, { backgroundColor: themeColors.backgroundSecondary }]}
-                onPress={() => handleOpenLink(socialLinks.youtube!)}
-              >
-                <Text style={styles.socialIcon}>▶️</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      )}
     </View>
   );
 }
@@ -219,64 +184,59 @@ export function AboutTab({ profile }: AboutTabProps) {
 const styles = StyleSheet.create({
   container: {
     padding: spacing.lg,
-  },
-
-  section: {
-    marginBottom: spacing.xl,
+    margin: spacing.md,
+    marginTop: spacing.sm,
+    borderRadius: 12,
   },
 
   sectionTitle: {
-    fontSize: typography.size.lg,
+    fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
 
   description: {
     fontSize: typography.size.md,
     lineHeight: typography.size.md * 1.6,
+    marginBottom: spacing.md,
   },
 
   placeholder: {
     fontSize: typography.size.md,
     fontStyle: 'italic',
+    marginBottom: spacing.md,
   },
 
+  // Info rows (icon + text, single line)
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs + 2,
   },
 
   infoIcon: {
-    fontSize: 16,
-    marginRight: spacing.md,
-    width: 24,
-    textAlign: 'center',
+    width: 22,
+    marginRight: spacing.sm,
   },
 
   infoText: {
-    fontSize: typography.size.md,
+    fontSize: typography.size.sm,
     flex: 1,
   },
 
-  link: {
+  fieldPrefix: {
+    fontSize: typography.size.sm,
   },
 
-  // Custom fields
-  fieldRow: {
-    marginBottom: spacing.md,
+  // Block layout for multi-value fields (checkbox/multiselect)
+  fieldBlock: {
+    paddingVertical: spacing.xs + 2,
   },
 
   fieldLabel: {
     fontSize: typography.size.xs,
     fontWeight: typography.weight.medium,
     marginBottom: spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-
-  fieldValueText: {
-    fontSize: typography.size.md,
   },
 
   tagRow: {
@@ -295,24 +255,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
   },
 
-  // Social
-  socialRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-
-  socialButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  socialIcon: {
-    fontSize: 18,
-  },
 });
 
 export default AboutTab;

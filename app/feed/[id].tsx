@@ -145,7 +145,7 @@ export default function SinglePostScreen() {
           {error || 'Post not found'}
         </Text>
         <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: themeColors.primary }]}>
-          <Text style={styles.backButtonText}>Go Back</Text>
+          <Text style={[styles.backButtonText, { color: themeColors.textInverse }]}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -237,7 +237,6 @@ const styles = StyleSheet.create({
   },
 
   backButtonText: {
-    color: '#fff',
     fontSize: typography.size.md,
     fontWeight: '600',
   },

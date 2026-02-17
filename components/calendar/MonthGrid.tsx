@@ -131,8 +131,8 @@ function DayCell({ day, dateKey, isToday, isSelected, isPast, events, onPress }:
         <Text style={[
           styles.dayText,
           { color: themeColors.text },
-          isToday && styles.dayTextToday,
-          isSelected && styles.dayTextSelected,
+          isToday && [styles.dayTextToday, { color: themeColors.textInverse }],
+          isSelected && [styles.dayTextSelected, { color: themeColors.textInverse }],
           isPast && !isToday && styles.dayTextPast,
           isPast && !isToday && { color: themeColors.textTertiary },
         ]}>
@@ -306,12 +306,10 @@ const styles = StyleSheet.create({
   },
 
   dayTextToday: {
-    color: '#FFFFFF',
     fontWeight: '700',
   },
 
   dayTextSelected: {
-    color: '#FFFFFF',
     fontWeight: '700',
   },
 

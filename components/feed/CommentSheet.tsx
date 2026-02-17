@@ -37,6 +37,7 @@ import { Comment } from '@/types';
 import { ReactionType } from '@/types/feed';
 import { commentsApi, mediaApi } from '@/services/api';
 import { Avatar } from '@/components/common/Avatar';
+import { ProfileBadge } from '@/components/common/ProfileBadge';
 import { BottomSheet } from '@/components/common/BottomSheet';
 import { ReactionPicker } from './ReactionPicker';
 import { ReactionBreakdownModal } from './ReactionBreakdownModal';
@@ -44,7 +45,7 @@ import { ReactionIcon } from './ReactionIcon';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { stripHtmlTags } from '@/utils/htmlToText';
 import { useAuth } from '@/contexts/AuthContext';
-import { useReactionConfig } from '@/hooks';
+import { useReactionConfig, useBadgeDefinitions } from '@/hooks';
 import { updateBreakdownOptimistically } from '@/utils/reactionHelpers';
 import { SITE_URL } from '@/constants/config';
 import { REACTION_EMOJI } from '@/constants/reactions';
@@ -146,6 +147,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   const { user } = useAuth();
   const { colors: themeColors } = useTheme();
   const { reactions, getReaction, display } = useReactionConfig();
+  const { resolveBadges } = useBadgeDefinitions();
   const defaultReactionId = reactions[0]?.id || 'like';
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -653,6 +655,9 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
           <View style={styles.commentHeader}>
             <View style={styles.commentHeaderLeft}>
               <Text style={[styles.commentAuthor, { color: themeColors.text }]}>{authorName}</Text>
+              {resolveBadges(author?.meta?.badge_slug || []).map((badge) => (
+                <ProfileBadge key={badge.slug} badge={badge} />
+              ))}
               <Text style={[styles.commentTime, { color: themeColors.textTertiary }]}>{timestamp}</Text>
             </View>
             {/* 3-dot menu */}
@@ -890,9 +895,9 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
             disabled={!canSubmit}
           >
             {isSubmitting ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={themeColors.textInverse} />
             ) : (
-              <Ionicons name={editingComment ? "checkmark" : "send"} size={20} color="#fff" />
+              <Ionicons name={editingComment ? "checkmark" : "send"} size={20} color={themeColors.textInverse} />
             )}
           </TouchableOpacity>
         </View>

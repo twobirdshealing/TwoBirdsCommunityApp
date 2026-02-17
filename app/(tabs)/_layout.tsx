@@ -5,10 +5,12 @@
 // Header: Logo + Messages + Notifications + Avatar Menu
 // =============================================================================
 
-import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import React, { useRef, useCallback } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import * as Haptics from 'expo-haptics';
+
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { TopHeader } from '@/components/navigation';
@@ -35,14 +37,131 @@ function TabIcon({ name, nameOutline, focused, color }: TabIconProps) {
 }
 
 // -----------------------------------------------------------------------------
+// Tab Item Button (with wobble animation + haptic feedback)
+// -----------------------------------------------------------------------------
+
+interface TabItemButtonProps {
+  routeKey: string;
+  label: string;
+  icon: React.ReactNode;
+  isFocused: boolean;
+  color: string;
+  accessibilityLabel?: string;
+  onPress: () => void;
+  onLongPress: () => void;
+}
+
+function TabItemButton({ routeKey, label, icon, isFocused, color, accessibilityLabel, onPress, onLongPress }: TabItemButtonProps) {
+  const wobble = useRef(new Animated.Value(0)).current;
+
+  const handlePress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    Animated.sequence([
+      Animated.timing(wobble, { toValue: 1, duration: 40, useNativeDriver: true }),
+      Animated.timing(wobble, { toValue: -1, duration: 80, useNativeDriver: true }),
+      Animated.timing(wobble, { toValue: 0, duration: 40, useNativeDriver: true }),
+    ]).start();
+    onPress();
+  }, [onPress, wobble]);
+
+  const rotation = wobble.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-8deg', '0deg', '8deg'],
+  });
+
+  return (
+    <Pressable
+      key={routeKey}
+      accessibilityRole="button"
+      accessibilityState={isFocused ? { selected: true } : {}}
+      accessibilityLabel={accessibilityLabel}
+      onPress={handlePress}
+      onLongPress={onLongPress}
+      style={styles.tabItem}
+    >
+      <Animated.View style={{ transform: [{ rotate: rotation }] }}>
+        {icon}
+      </Animated.View>
+      <Text style={[styles.tabLabel, { color }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Custom Tab Bar
+// -----------------------------------------------------------------------------
+
+function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
+  const { colors: themeColors } = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.tabBarOuter,
+        {
+          backgroundColor: themeColors.surface,
+          borderTopColor: themeColors.border,
+          paddingBottom: insets.bottom,
+          ...Platform.select({
+            android: { elevation: 8 },
+            ios: {
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 3,
+            },
+          }),
+        },
+      ]}
+    >
+      <View style={styles.tabBarInner}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const isFocused = state.index === index;
+          const color = isFocused ? themeColors.primary : themeColors.textTertiary;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name, route.params);
+            }
+          };
+
+          const onLongPress = () => {
+            navigation.emit({ type: 'tabLongPress', target: route.key });
+          };
+
+          return (
+            <TabItemButton
+              key={route.key}
+              routeKey={route.key}
+              label={options.title ?? route.name}
+              icon={options.tabBarIcon?.({ focused: isFocused, color, size: 24 })}
+              isFocused={isFocused}
+              color={color}
+              accessibilityLabel={options.tabBarAccessibilityLabel}
+              onPress={onPress}
+              onLongPress={onLongPress}
+            />
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
 export default function TabLayout() {
-  const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
-
-  const tabBarHeight = 60 + Math.max(insets.bottom, 10);
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
@@ -51,36 +170,8 @@ export default function TabLayout() {
 
       {/* Tab Navigator */}
       <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveTintColor: themeColors.primary,
-          tabBarInactiveTintColor: themeColors.textTertiary,
-          tabBarStyle: {
-            position: 'absolute',
-            backgroundColor: themeColors.surface,
-            borderTopWidth: 1,
-            borderTopColor: themeColors.border,
-            height: tabBarHeight,
-            paddingTop: 8,
-            paddingBottom: Math.max(insets.bottom, 10),
-            ...Platform.select({
-              android: {
-                elevation: 8,
-              },
-              ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: -2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 3,
-              },
-            }),
-          },
-          tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: '500',
-            marginTop: 2,
-          },
-        }}
+        tabBar={(props) => <CustomTabBar {...props} />}
+        screenOptions={{ headerShown: false }}
       >
         {/* ============================================= */}
         {/* 4 TABS: Home, Activity, Spaces, Calendar     */}
@@ -141,5 +232,30 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+
+  tabBarOuter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopWidth: 1,
+  },
+
+  tabBarInner: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+  },
+
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '500',
   },
 });

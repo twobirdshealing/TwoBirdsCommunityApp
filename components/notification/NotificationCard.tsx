@@ -6,7 +6,7 @@
 // - Actor avatar
 // - Type icon overlay
 // - Message and timestamp
-// - Swipe left to delete, swipe right to mark as read
+// - Swipe right to mark as read
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
@@ -34,7 +34,6 @@ interface NotificationCardProps {
   notification: AppNotification;
   onPress?: (notification: AppNotification) => void;
   onMarkAsRead?: (notification: AppNotification) => void;
-  onDelete?: (notification: AppNotification) => void;
   onAvatarPress?: (notification: AppNotification) => void;
 }
 
@@ -46,7 +45,6 @@ export function NotificationCard({
   notification,
   onPress,
   onMarkAsRead,
-  onDelete,
   onAvatarPress,
 }: NotificationCardProps) {
   const { colors: themeColors } = useTheme();
@@ -73,11 +71,6 @@ export function NotificationCard({
     onMarkAsRead?.(notification);
   };
 
-  const handleDelete = () => {
-    closeSwipeable();
-    onDelete?.(notification);
-  };
-
   // Right swipe action - Mark as Read
   const renderRightActions = (
     progress: Animated.AnimatedInterpolation<number>,
@@ -101,35 +94,8 @@ export function NotificationCard({
         ]}
       >
         <Pressable style={styles.swipeActionButton} onPress={handleMarkAsRead}>
-          <Ionicons name="checkmark-circle" size={24} color="#fff" />
-          <Text style={styles.swipeActionText}>Read</Text>
-        </Pressable>
-      </Animated.View>
-    );
-  };
-
-  // Left swipe action - Delete
-  const renderLeftActions = (
-    progress: Animated.AnimatedInterpolation<number>,
-    dragX: Animated.AnimatedInterpolation<number>
-  ) => {
-    const translateX = dragX.interpolate({
-      inputRange: [0, 80],
-      outputRange: [-80, 0],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <Animated.View
-        style={[
-          styles.swipeAction,
-          styles.deleteAction,
-          { backgroundColor: themeColors.error, transform: [{ translateX }] },
-        ]}
-      >
-        <Pressable style={styles.swipeActionButton} onPress={handleDelete}>
-          <Ionicons name="trash" size={24} color="#fff" />
-          <Text style={styles.swipeActionText}>Delete</Text>
+          <Ionicons name="checkmark-circle" size={24} color={themeColors.textInverse} />
+          <Text style={[styles.swipeActionText, { color: themeColors.textInverse }]}>Read</Text>
         </Pressable>
       </Animated.View>
     );
@@ -143,11 +109,8 @@ export function NotificationCard({
     <Swipeable
       ref={swipeableRef}
       renderRightActions={renderRightActions}
-      renderLeftActions={renderLeftActions}
       rightThreshold={40}
-      leftThreshold={40}
       overshootRight={false}
-      overshootLeft={false}
     >
       <Pressable
         style={[
@@ -284,11 +247,7 @@ const styles = StyleSheet.create({
   markReadAction: {
   },
 
-  deleteAction: {
-  },
-
   swipeActionText: {
-    color: '#fff',
     fontSize: typography.size.xs,
     fontWeight: '600',
     marginTop: 4,
