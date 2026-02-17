@@ -130,7 +130,7 @@ export default function SpaceMembersScreen() {
         setFollowMap(prev => ({ ...prev, ...apiData.current_user_follows }));
       }
 
-      const hasMorePages = apiData?.members?.next_page_url !== null || newMembers.length === 20;
+      const hasMorePages = apiData?.members?.next_page_url != null || newMembers.length === 20;
       setHasMore(hasMorePages);
       
     } catch (err) {

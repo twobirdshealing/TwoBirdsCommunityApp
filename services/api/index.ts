@@ -3,6 +3,7 @@
 // =============================================================================
 
 export * from './app';
+export * from './badges';
 export * from './calendar';
 export * from './client';
 export * from './comments';
