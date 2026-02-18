@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useProfileBadges } from '@/hooks';
 import { ProfileBadge } from '@/components/common/ProfileBadge';
+import { VerifiedBadge } from '@/components/common/VerifiedBadge';
 import { spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -177,12 +178,6 @@ export function MemberCard({
           </View>
         )}
 
-        {/* Verified Badge */}
-        {isVerified ? (
-          <View style={[styles.verifiedBadge, { backgroundColor: themeColors.info, borderColor: themeColors.surface }]}>
-            <Text style={[styles.verifiedIcon, { color: themeColors.textInverse }]}>✓</Text>
-          </View>
-        ) : null}
       </View>
 
       {/* Middle: Info */}
@@ -192,6 +187,7 @@ export function MemberCard({
           <Text style={[styles.displayName, { color: themeColors.text }]} numberOfLines={1}>
             {displayName}
           </Text>
+          {isVerified && <VerifiedBadge size={14} />}
 
           {/* Profile Badges */}
           {memberBadges.map((badge) => (
@@ -328,24 +324,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 22,
     fontWeight: '600',
-  },
-
-  verifiedBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#1976d2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-  },
-
-  verifiedIcon: {
-    fontSize: 10,
-    fontWeight: 'bold',
   },
 
   // Info

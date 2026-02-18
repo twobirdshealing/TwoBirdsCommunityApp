@@ -183,7 +183,11 @@ export default function BlogListScreen() {
             data={posts}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
-              <BlogCard post={item} onPress={() => handlePostPress(item)} onAuthorPress={handleAuthorPress} />
+              <BlogCard
+                post={item}
+                onPress={() => handlePostPress(item)}
+                onAuthorPress={handleAuthorPress}
+              />
             )}
             contentContainerStyle={styles.listContent}
             refreshControl={

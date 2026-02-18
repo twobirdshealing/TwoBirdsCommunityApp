@@ -53,6 +53,7 @@ export default function SpacePage() {
   const [showComments, setShowComments] = useState(false);
   const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
   const [selectedFeedSlug, setSelectedFeedSlug] = useState<string | undefined>(undefined);
+  const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
   
   // Stats - API doesn't return counts reliably
   const [membersCount, setMembersCount] = useState<number>(0);
@@ -264,17 +265,14 @@ export default function SpacePage() {
   // ---------------------------------------------------------------------------
 
   const handleEdit = (feed: Feed) => {
-    Alert.alert(
-      'Edit Post',
-      'Edit functionality coming soon!',
-      [{ text: 'OK' }]
-    );
+    setEditingFeed(feed);
+    setShowComposer(true);
   };
 
   const handleDelete = async (feed: Feed) => {
     try {
       const response = await feedsApi.deleteFeed(feed.id);
-      
+
       if (response.success) {
         setFeeds(prevFeeds => prevFeeds.filter(f => f.id !== feed.id));
         Alert.alert('Deleted', 'Post deleted successfully');
@@ -286,28 +284,47 @@ export default function SpacePage() {
       Alert.alert('Error', 'Failed to delete post');
     }
   };
-  
+
   // ---------------------------------------------------------------------------
-  // Create Post Handler
+  // Create/Edit Post Handler
   // ---------------------------------------------------------------------------
-  
-  const handleCreatePost = async (data: ComposerSubmitData) => {
+
+  const handleCreateOrEditPost = async (data: ComposerSubmitData) => {
     try {
-      const response = await feedsApi.createFeed({
-        message: data.message,
-        space: data.space || slug,
-        content_type: data.content_type,
-        media_images: data.media_images,
-      });
-      
-      if (response.success) {
-        setShowComposer(false);
-        fetchFeeds(true);
+      if (editingFeed) {
+        // EDIT MODE
+        const response = await feedsApi.updateFeed(editingFeed.id, {
+          message: data.message,
+          title: data.title,
+          content_type: data.content_type,
+          media_images: data.media_images,
+        });
+
+        if (response.success && response.data?.feed) {
+          setFeeds(prevFeeds =>
+            prevFeeds.map(f => f.id === editingFeed.id ? response.data!.feed : f)
+          );
+        } else {
+          throw new Error(response.error?.message || 'Failed to update post');
+        }
       } else {
-        Alert.alert('Error', response.error?.message || 'Failed to create post');
+        // CREATE MODE
+        const response = await feedsApi.createFeed({
+          message: data.message,
+          space: data.space || slug,
+          content_type: data.content_type,
+          media_images: data.media_images,
+        });
+
+        if (response.success) {
+          fetchFeeds(true);
+        } else {
+          Alert.alert('Error', response.error?.message || 'Failed to create post');
+        }
       }
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to create post');
+      console.error(`${editingFeed ? 'Edit' : 'Create'} post error:`, err);
+      throw new Error(err instanceof Error ? err.message : `Failed to ${editingFeed ? 'update' : 'create'} post`);
     }
   };
 
@@ -491,17 +508,22 @@ export default function SpacePage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onPin={canPinResult ? handlePin : undefined}
+        canModerate={canPinResult}
         ListHeaderComponent={<SpaceInfoHeader />}
         emptyMessage="No posts in this space yet"
         emptyIcon="📝"
       />
       
-      {/* Create Post Modal */}
+      {/* Create/Edit Post Modal */}
       <CreatePostModal
         visible={showComposer}
-        onClose={() => setShowComposer(false)}
-        onSubmit={handleCreatePost}
+        onClose={() => {
+          setShowComposer(false);
+          setEditingFeed(null);
+        }}
+        onSubmit={handleCreateOrEditPost}
         spaceSlug={slug}
+        editFeed={editingFeed || undefined}
       />
       
       {/* Comment Sheet */}

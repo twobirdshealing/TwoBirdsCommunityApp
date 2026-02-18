@@ -276,6 +276,39 @@ export async function createBlogComment(
 }
 
 // -----------------------------------------------------------------------------
+// Update a Comment (auth required, owner only)
+// -----------------------------------------------------------------------------
+
+export async function updateBlogComment(
+  commentId: number,
+  content: string
+): Promise<{ success: true; data: WPComment } | WPRequestError> {
+  const result = await wpRequest<WPComment>(`${WP_ENDPOINTS.COMMENTS}/${commentId}`, {
+    method: 'POST',
+    body: { content },
+  });
+
+  if (!result.success) return result;
+  return { success: true, data: result.data };
+}
+
+// -----------------------------------------------------------------------------
+// Delete a Comment (auth required, owner only)
+// -----------------------------------------------------------------------------
+
+export async function deleteBlogComment(
+  commentId: number
+): Promise<{ success: true; data: WPComment } | WPRequestError> {
+  const result = await wpRequest<WPComment>(`${WP_ENDPOINTS.COMMENTS}/${commentId}`, {
+    method: 'DELETE',
+    params: { force: true },
+  });
+
+  if (!result.success) return result;
+  return { success: true, data: result.data };
+}
+
+// -----------------------------------------------------------------------------
 // Get WP User Slug by ID (for navigating comment authors to profile)
 // -----------------------------------------------------------------------------
 
@@ -301,6 +334,8 @@ export const blogApi = {
   getBlogCategories,
   getBlogComments,
   createBlogComment,
+  updateBlogComment,
+  deleteBlogComment,
   getWpUserSlug,
 };
 

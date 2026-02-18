@@ -9,6 +9,7 @@
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
+import { VerifiedBadge } from '@/components/common/VerifiedBadge';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -85,7 +86,6 @@ export function ConversationCard({
         <Avatar
           source={avatarUrl}
           size="lg"
-          verified={isVerified}
           fallback={displayName}
         />
 
@@ -97,6 +97,7 @@ export function ConversationCard({
             <Text style={[styles.name, { color: themeColors.text }, isUnread && styles.nameUnread]} numberOfLines={1}>
               {displayName}
             </Text>
+            {isVerified && <VerifiedBadge size={14} />}
             <Text style={[styles.timestamp, { color: themeColors.textTertiary }]}>{timestamp}</Text>
           </View>
 

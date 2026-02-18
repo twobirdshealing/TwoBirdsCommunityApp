@@ -45,9 +45,7 @@ app-example
 # companion plugins (reference only)
 companion plugins/
 
-# sensitive config files
-google-services.json
-GoogleService-Info.plist
+# Firebase config files (safe to commit - contain only project IDs and restricted API keys)
 
 # junk
 nul

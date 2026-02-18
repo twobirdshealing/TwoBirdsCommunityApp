@@ -35,6 +35,7 @@ export default function ActivityScreen() {
   const [showComments, setShowComments] = useState(false);
   const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
   const [selectedFeedSlug, setSelectedFeedSlug] = useState<string | undefined>(undefined);
+  const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
   
   // ---------------------------------------------------------------------------
   // Fetch Feeds - Now merges sticky posts at top!
@@ -216,11 +217,8 @@ export default function ActivityScreen() {
   // ---------------------------------------------------------------------------
 
   const handleEdit = (feed: Feed) => {
-    Alert.alert(
-      'Edit Post',
-      'Edit functionality coming soon!',
-      [{ text: 'OK' }]
-    );
+    setEditingFeed(feed);
+    setShowComposer(true);
   };
 
   const handleDelete = async (feed: Feed) => {
@@ -256,25 +254,43 @@ export default function ActivityScreen() {
   // Create Post Handler
   // ---------------------------------------------------------------------------
 
-  const handleCreatePost = async (data: ComposerSubmitData) => {
+  const handleCreateOrEditPost = async (data: ComposerSubmitData) => {
     try {
-      const response = await feedsApi.createFeed({
-        message: data.message,
-        title: data.title,
-        space: data.space,
-        content_type: data.content_type,
-        media_images: data.media_images,
-      });
-      
-      if (response.success && response.data?.data) {
-        // Add new post to top of feed
-        setFeeds(prevFeeds => [response.data!.data, ...prevFeeds]);
+      if (editingFeed) {
+        // EDIT MODE
+        const response = await feedsApi.updateFeed(editingFeed.id, {
+          message: data.message,
+          title: data.title,
+          content_type: data.content_type,
+          media_images: data.media_images,
+        });
+
+        if (response.success && response.data?.feed) {
+          setFeeds(prevFeeds =>
+            prevFeeds.map(f => f.id === editingFeed.id ? response.data!.feed : f)
+          );
+        } else {
+          throw new Error(response.error?.message || 'Failed to update post');
+        }
       } else {
-        throw new Error(response.error?.message || 'Failed to create post');
+        // CREATE MODE
+        const response = await feedsApi.createFeed({
+          message: data.message,
+          title: data.title,
+          space: data.space,
+          content_type: data.content_type,
+          media_images: data.media_images,
+        });
+
+        if (response.success && response.data?.data) {
+          setFeeds(prevFeeds => [response.data!.data, ...prevFeeds]);
+        } else {
+          throw new Error(response.error?.message || 'Failed to create post');
+        }
       }
     } catch (err) {
-      console.error('Create post error:', err);
-      throw new Error(err instanceof Error ? err.message : 'Failed to create post');
+      console.error(`${editingFeed ? 'Edit' : 'Create'} post error:`, err);
+      throw new Error(err instanceof Error ? err.message : `Failed to ${editingFeed ? 'update' : 'create'} post`);
     }
   };
 
@@ -307,16 +323,19 @@ export default function ActivityScreen() {
         onBookmarkToggle={handleBookmarkToggle}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        // Note: On activity feed, pin only shows for own posts
-        // Space admins should go to the space to pin others' posts
+        onPin={handlePin}
         ListHeaderComponent={<FeedHeader />}
       />
       
-      {/* Create Post Modal */}
+      {/* Create/Edit Post Modal */}
       <CreatePostModal
         visible={showComposer}
-        onClose={() => setShowComposer(false)}
-        onSubmit={handleCreatePost}
+        onClose={() => {
+          setShowComposer(false);
+          setEditingFeed(null);
+        }}
+        onSubmit={handleCreateOrEditPost}
+        editFeed={editingFeed || undefined}
       />
       
       {/* Comment Sheet */}

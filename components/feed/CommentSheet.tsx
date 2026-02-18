@@ -14,12 +14,10 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -38,7 +36,10 @@ import { ReactionType } from '@/types/feed';
 import { commentsApi, mediaApi } from '@/services/api';
 import { Avatar } from '@/components/common/Avatar';
 import { ProfileBadge } from '@/components/common/ProfileBadge';
+import { VerifiedBadge } from '@/components/common/VerifiedBadge';
 import { BottomSheet } from '@/components/common/BottomSheet';
+import { DropdownMenu } from '@/components/common/DropdownMenu';
+import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { ReactionPicker } from './ReactionPicker';
 import { ReactionBreakdownModal } from './ReactionBreakdownModal';
 import { ReactionIcon } from './ReactionIcon';
@@ -167,6 +168,8 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   const [reactionPickerComment, setReactionPickerComment] = useState<Comment | null>(null);
   // Breakdown modal state
   const [breakdownComment, setBreakdownComment] = useState<Comment | null>(null);
+  // Menu state
+  const [menuComment, setMenuComment] = useState<Comment | null>(null);
 
   // ---------------------------------------------------------------------------
   // Fetch Comments
@@ -464,49 +467,26 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   // ---------------------------------------------------------------------------
 
   const handleCommentMenu = (comment: Comment) => {
-    const isOwner = user?.id === Number(comment.user_id);
+    setMenuComment(comment);
+  };
 
-    if (Platform.OS === 'ios') {
-      const options = ['Cancel', 'Copy Link'];
-      if (isOwner) {
-        options.push('Edit', 'Delete');
-      }
+  const getCommentMenuItems = (): DropdownMenuItem[] => {
+    if (!menuComment) return [];
+    const isOwner = user?.id === Number(menuComment.user_id);
+    const comment = menuComment;
 
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options,
-          cancelButtonIndex: 0,
-          destructiveButtonIndex: isOwner ? options.indexOf('Delete') : undefined,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) handleCopyLink(comment);
-          else if (isOwner && buttonIndex === 2) handleEditComment(comment);
-          else if (isOwner && buttonIndex === 3) handleDeleteComment(comment);
-        }
-      );
-    } else {
-      // Android - Cancel first so it appears at bottom
-      const buttons: any[] = [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Copy Link', onPress: () => handleCopyLink(comment) },
-      ];
+    const items: DropdownMenuItem[] = [
+      { key: 'copy', label: 'Copy Link', icon: 'link-outline', onPress: () => { setMenuComment(null); handleCopyLink(comment); } },
+    ];
 
-      if (isOwner) {
-        buttons.push({ text: 'Edit', onPress: () => handleEditComment(comment) });
-        buttons.push({
-          text: 'Delete',
-          onPress: () => handleDeleteComment(comment),
-          style: 'destructive'
-        });
-      }
-
-      Alert.alert(
-        'Comment Options',
-        'Choose an action',
-        buttons,
-        { cancelable: true }
+    if (isOwner) {
+      items.push(
+        { key: 'edit', label: 'Edit', icon: 'create-outline', onPress: () => { setMenuComment(null); handleEditComment(comment); } },
+        { key: 'delete', label: 'Delete', icon: 'trash-outline', onPress: () => { setMenuComment(null); handleDeleteComment(comment); }, destructive: true },
       );
     }
+
+    return items;
   };
 
   const handleCopyLink = async (comment: Comment) => {
@@ -648,17 +628,16 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         <Avatar
           source={authorAvatar}
           size="sm"
-          verified={isVerified}
           fallback={authorName}
         />
         <View style={styles.commentContent}>
           <View style={styles.commentHeader}>
             <View style={styles.commentHeaderLeft}>
               <Text style={[styles.commentAuthor, { color: themeColors.text }]}>{authorName}</Text>
+              {isVerified && <VerifiedBadge size={14} />}
               {resolveBadges(author?.meta?.badge_slug || []).map((badge) => (
                 <ProfileBadge key={badge.slug} badge={badge} />
               ))}
-              <Text style={[styles.commentTime, { color: themeColors.textTertiary }]}>{timestamp}</Text>
             </View>
             {/* 3-dot menu */}
             <TouchableOpacity
@@ -670,8 +649,15 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
             </TouchableOpacity>
           </View>
 
-          {/* Comment text with clickable mentions */}
-          {renderCommentText(item.message_rendered || item.message)}
+          {/* Comment text with timestamp on right */}
+          <View style={styles.commentTextRow}>
+            <View style={styles.commentTextContent}>
+              {renderCommentText(item.message_rendered || item.message)}
+            </View>
+            <Text style={[styles.commentTimeInline, { color: themeColors.textTertiary }]}>
+              {timestamp}
+            </Text>
+          </View>
 
           {/* Comment images */}
           {commentImages.length > 0 && (
@@ -922,6 +908,13 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         objectType="comment"
         objectId={breakdownComment?.id || 0}
       />
+
+      {/* Comment Options Menu */}
+      <DropdownMenu
+        visible={!!menuComment}
+        onClose={() => setMenuComment(null)}
+        items={getCommentMenuItems()}
+      />
     </>
   );
 }
@@ -1013,8 +1006,19 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
 
-  commentTime: {
+  commentTextRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+
+  commentTextContent: {
+    flex: 1,
+  },
+
+  commentTimeInline: {
     fontSize: typography.size.xs,
+    marginLeft: spacing.sm,
+    marginTop: 2,
   },
 
   commentText: {

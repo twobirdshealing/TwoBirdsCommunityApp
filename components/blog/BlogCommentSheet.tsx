@@ -16,14 +16,22 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { SITE_URL } from '@/constants/config';
 import { WPComment } from '@/types/blog';
 import { blogApi } from '@/services/api';
 import { Avatar } from '@/components/common/Avatar';
+import { ProfileBadge } from '@/components/common/ProfileBadge';
+import { VerifiedBadge } from '@/components/common/VerifiedBadge';
 import { BottomSheet } from '@/components/common/BottomSheet';
+import { DropdownMenu } from '@/components/common/DropdownMenu';
+import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
+import { useBadgeDefinitions } from '@/hooks';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { stripHtmlTags } from '@/utils/htmlToText';
 
@@ -43,7 +51,9 @@ interface BlogCommentSheetProps {
 
 export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetProps) {
   const { colors: themeColors } = useTheme();
+  const { user } = useAuth();
   const router = useRouter();
+  const { resolveBadges } = useBadgeDefinitions();
 
   const [comments, setComments] = useState<WPComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,6 +65,11 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
 
   // Reply state
   const [replyingTo, setReplyingTo] = useState<WPComment | null>(null);
+
+  // Edit mode state
+  const [editingComment, setEditingComment] = useState<WPComment | null>(null);
+  // Menu state
+  const [menuComment, setMenuComment] = useState<WPComment | null>(null);
 
   // ---------------------------------------------------------------------------
   // Fetch Comments
@@ -121,6 +136,27 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
     setIsSubmitting(true);
 
     try {
+      // EDIT MODE
+      if (editingComment) {
+        const response = await blogApi.updateBlogComment(editingComment.id, trimmed);
+
+        if (response.success) {
+          setComments((prev) =>
+            prev.map((c) =>
+              c.id === editingComment.id
+                ? { ...c, content: { ...c.content, rendered: `<p>${trimmed}</p>` } }
+                : c
+            )
+          );
+          setCommentText('');
+          setEditingComment(null);
+        } else {
+          throw new Error(response.error?.message || 'Failed to update comment');
+        }
+        return;
+      }
+
+      // CREATE MODE
       const response = await blogApi.createBlogComment({
         post: postId,
         content: trimmed,
@@ -130,7 +166,7 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
       if (response.success) {
         setCommentText('');
         setReplyingTo(null);
-        fetchComments(); // Refresh list
+        fetchComments();
       } else {
         throw new Error(response.error?.message || 'Failed to post comment');
       }
@@ -154,6 +190,11 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
     setCommentText('');
   };
 
+  const cancelEdit = () => {
+    setEditingComment(null);
+    setCommentText('');
+  };
+
   // Always reply to the top-level parent (same as FC CommentSheet)
   const getReplyParentId = (): number => {
     if (!replyingTo) return 0;
@@ -164,13 +205,92 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
   // Navigate to Author Profile
   // ---------------------------------------------------------------------------
 
-  const handleAuthorPress = async (wpUserId: number) => {
-    if (wpUserId === 0) return; // Guest comment
-    const slug = await blogApi.getWpUserSlug(wpUserId);
+  const handleAuthorPress = async (comment: WPComment) => {
+    if (comment.author === 0) return; // Guest comment
+    // Use server-embedded slug (instant)
+    const slug = comment.fcom_author_slug;
     if (slug) {
       onClose();
       router.push(`/profile/${slug}`);
+      return;
     }
+    // Fallback for old comments without embedded slug
+    const fetchedSlug = await blogApi.getWpUserSlug(comment.author);
+    if (fetchedSlug) {
+      onClose();
+      router.push(`/profile/${fetchedSlug}`);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Comment Menu Actions
+  // ---------------------------------------------------------------------------
+
+  const handleCommentMenu = (comment: WPComment) => {
+    setMenuComment(comment);
+  };
+
+  const getCommentMenuItems = (): DropdownMenuItem[] => {
+    if (!menuComment) return [];
+    const isOwner = Number(user?.id) === menuComment.author;
+    const comment = menuComment;
+
+    const items: DropdownMenuItem[] = [
+      { key: 'copy', label: 'Copy Link', icon: 'link-outline', onPress: () => { setMenuComment(null); handleCopyLink(comment); } },
+    ];
+
+    if (isOwner) {
+      items.push(
+        { key: 'edit', label: 'Edit', icon: 'create-outline', onPress: () => { setMenuComment(null); handleEditComment(comment); } },
+        { key: 'delete', label: 'Delete', icon: 'trash-outline', onPress: () => { setMenuComment(null); handleDeleteComment(comment); }, destructive: true },
+      );
+    }
+
+    return items;
+  };
+
+  const handleCopyLink = async (comment: WPComment) => {
+    const url = comment.link || `${SITE_URL}/?p=${comment.post}#comment-${comment.id}`;
+    try {
+      await Clipboard.setStringAsync(url);
+      Alert.alert('Copied!', 'Link copied to clipboard');
+    } catch (err) {
+      console.error('Copy failed:', err);
+      Alert.alert('Comment Link', url);
+    }
+  };
+
+  const handleEditComment = (comment: WPComment) => {
+    setEditingComment(comment);
+    setCommentText(stripHtmlTags(comment.content.rendered));
+    setReplyingTo(null);
+  };
+
+  const handleDeleteComment = (comment: WPComment) => {
+    Alert.alert(
+      'Delete Comment',
+      'Are you sure you want to delete this comment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await blogApi.deleteBlogComment(comment.id);
+              if (response.success) {
+                setComments((prev) => prev.filter((c) => c.id !== comment.id));
+              } else {
+                Alert.alert('Error', response.error?.message || 'Failed to delete');
+              }
+            } catch (err) {
+              console.error('Delete error:', err);
+              Alert.alert('Error', 'Failed to delete comment');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // ---------------------------------------------------------------------------
@@ -179,28 +299,47 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
 
   const renderComment = ({ item }: { item: WPComment }) => {
     const isReply = item.parent > 0;
-    const avatarUrl = item.author_avatar_urls?.['96'] || item.author_avatar_urls?.['48'] || null;
+    const avatarUrl = item.fcom_author_avatar || item.author_avatar_urls?.['96'] || item.author_avatar_urls?.['48'] || null;
+    const displayName = item.author_name;
+    const isVerified = item.fcom_author_is_verified === 1;
     const commentContent = stripHtmlTags(item.content.rendered);
 
     return (
       <View style={[styles.commentItem, isReply && [styles.commentReply, { borderLeftColor: themeColors.border }]]}>
-        <TouchableOpacity onPress={() => handleAuthorPress(item.author)} disabled={item.author === 0}>
-          <Avatar source={avatarUrl} size="sm" fallback={item.author_name} />
+        <TouchableOpacity onPress={() => handleAuthorPress(item)} disabled={item.author === 0}>
+          <Avatar source={avatarUrl} size="sm" fallback={displayName} />
         </TouchableOpacity>
         <View style={styles.commentContent}>
           <View style={styles.commentHeader}>
-            <TouchableOpacity onPress={() => handleAuthorPress(item.author)} disabled={item.author === 0}>
-              <Text style={[styles.commentAuthor, { color: themeColors.text }]}>
-                {item.author_name}
-              </Text>
+            <View style={styles.commentHeaderLeft}>
+              <TouchableOpacity onPress={() => handleAuthorPress(item)} disabled={item.author === 0}>
+                <Text style={[styles.commentAuthor, { color: themeColors.text }]}>
+                  {displayName}
+                </Text>
+              </TouchableOpacity>
+              {isVerified && <VerifiedBadge size={14} />}
+              {resolveBadges(item.fcom_author_badge_slugs || []).map((badge) => (
+                <ProfileBadge key={badge.slug} badge={badge} />
+              ))}
+            </View>
+            <TouchableOpacity
+              style={styles.commentMenuButton}
+              onPress={() => handleCommentMenu(item)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="ellipsis-vertical" size={16} color={themeColors.textTertiary} />
             </TouchableOpacity>
-            <Text style={[styles.commentTime, { color: themeColors.textTertiary }]}>
+          </View>
+          <View style={styles.commentTextRow}>
+            <View style={styles.commentTextContent}>
+              <Text style={[styles.commentText, { color: themeColors.text }]}>
+                {commentContent}
+              </Text>
+            </View>
+            <Text style={[styles.commentTimeInline, { color: themeColors.textTertiary }]}>
               {formatRelativeTime(item.date)}
             </Text>
           </View>
-          <Text style={[styles.commentText, { color: themeColors.text }]}>
-            {commentContent}
-          </Text>
           <TouchableOpacity style={styles.replyAction} onPress={() => handleReply(item)}>
             <Text style={[styles.replyActionText, { color: themeColors.textSecondary }]}>Reply</Text>
           </TouchableOpacity>
@@ -220,6 +359,7 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
   // ---------------------------------------------------------------------------
 
   return (
+    <>
     <BottomSheet
       visible={visible}
       onClose={onClose}
@@ -262,7 +402,7 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
       )}
 
       {/* Reply indicator */}
-      {replyingTo && (
+      {replyingTo && !editingComment && (
         <View style={[styles.replyIndicator, { backgroundColor: themeColors.primaryLight + '20' }]}>
           <Text style={[styles.replyIndicatorText, { color: themeColors.textSecondary }]}>
             Replying to{' '}
@@ -271,6 +411,18 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
             </Text>
           </Text>
           <TouchableOpacity onPress={cancelReply}>
+            <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Edit indicator */}
+      {editingComment && (
+        <View style={[styles.replyIndicator, { backgroundColor: themeColors.warning + '20' }]}>
+          <Text style={[styles.replyIndicatorText, { color: themeColors.textSecondary }]}>
+            Editing comment
+          </Text>
+          <TouchableOpacity onPress={cancelEdit}>
             <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -299,11 +451,19 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
           {isSubmitting ? (
             <ActivityIndicator size="small" color={themeColors.textInverse} />
           ) : (
-            <Ionicons name="send" size={20} color={themeColors.textInverse} />
+            <Ionicons name={editingComment ? "checkmark" : "send"} size={20} color={themeColors.textInverse} />
           )}
         </TouchableOpacity>
       </View>
     </BottomSheet>
+
+    {/* Comment Options Menu */}
+    <DropdownMenu
+      visible={!!menuComment}
+      onClose={() => setMenuComment(null)}
+      items={getCommentMenuItems()}
+    />
+    </>
   );
 }
 
@@ -374,7 +534,18 @@ const styles = StyleSheet.create({
   commentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
+  },
+
+  commentHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  commentMenuButton: {
+    padding: 4,
   },
 
   commentAuthor: {
@@ -383,8 +554,19 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
 
-  commentTime: {
+  commentTextRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+
+  commentTextContent: {
+    flex: 1,
+  },
+
+  commentTimeInline: {
     fontSize: typography.size.xs,
+    marginLeft: spacing.sm,
+    marginTop: 2,
   },
 
   commentText: {

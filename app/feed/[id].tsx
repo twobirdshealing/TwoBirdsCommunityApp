@@ -20,6 +20,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { FeedCard } from '@/components/feed/FeedCard';
 import { CommentSheet } from '@/components/feed/CommentSheet';
+import { CreatePostModal, ComposerSubmitData } from '@/components/composer';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, sizing, typography } from '@/constants/layout';
 import { Feed } from '@/types';
@@ -40,6 +41,7 @@ export default function SinglePostScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(false);
+  const [showComposer, setShowComposer] = useState(false);
 
   // Adapt single-feed state for the shared reaction hook
   const feedsArray = useMemo(() => feed ? [feed] : [], [feed]);
@@ -119,6 +121,31 @@ export default function SinglePostScreen() {
     );
   };
 
+  const handleEdit = () => {
+    setShowComposer(true);
+  };
+
+  const handleEditPost = async (data: ComposerSubmitData) => {
+    if (!feed) return;
+    try {
+      const response = await feedsApi.updateFeed(feed.id, {
+        message: data.message,
+        title: data.title,
+        content_type: data.content_type,
+        media_images: data.media_images,
+      });
+
+      if (response.success && response.data?.feed) {
+        setFeed(response.data.feed);
+      } else {
+        throw new Error(response.error?.message || 'Failed to update post');
+      }
+    } catch (err) {
+      console.error('Edit post error:', err);
+      throw new Error(err instanceof Error ? err.message : 'Failed to update post');
+    }
+  };
+
   const handleCommentAdded = () => {
     fetchFeed(); // Refresh to update comment count
   };
@@ -187,9 +214,18 @@ export default function SinglePostScreen() {
           }}
           onCommentPress={() => setShowComments(true)}
           onBookmarkToggle={handleBookmarkToggle}
+          onEdit={handleEdit}
           onDelete={handleDelete}
         />
       </ScrollView>
+
+      {/* ===== Edit Post Modal ===== */}
+      <CreatePostModal
+        visible={showComposer}
+        onClose={() => setShowComposer(false)}
+        onSubmit={handleEditPost}
+        editFeed={feed}
+      />
 
       {/* ===== Comment Sheet ===== */}
       <CommentSheet

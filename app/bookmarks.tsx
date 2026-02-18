@@ -7,6 +7,7 @@
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { FeedList } from '@/components/feed/FeedList';
 import { PageHeader } from '@/components/navigation';
+import { CreatePostModal, ComposerSubmitData } from '@/components/composer';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { feedsApi } from '@/services/api';
@@ -41,6 +42,10 @@ export default function BookmarksScreen() {
   const [showComments, setShowComments] = useState(false);
   const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
   const [selectedFeedSlug, setSelectedFeedSlug] = useState<string | undefined>(undefined);
+
+  // Edit state
+  const [showComposer, setShowComposer] = useState(false);
+  const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
   
   // ---------------------------------------------------------------------------
   // Fetch Bookmarks
@@ -184,11 +189,34 @@ export default function BookmarksScreen() {
   // ---------------------------------------------------------------------------
 
   const handleEdit = (feed: Feed) => {
-    Alert.alert(
-      'Edit Post',
-      'Edit functionality coming soon!',
-      [{ text: 'OK' }]
-    );
+    setEditingFeed(feed);
+    setShowComposer(true);
+  };
+
+  const handleEditPost = async (data: ComposerSubmitData) => {
+    if (!editingFeed) return;
+    try {
+      const response = await feedsApi.updateFeed(editingFeed.id, {
+        message: data.message,
+        title: data.title,
+        content_type: data.content_type,
+        media_images: data.media_images,
+      });
+
+      if (response.success && response.data?.feed) {
+        setFeeds(prevFeeds =>
+          prevFeeds.map(f => f.id === editingFeed.id
+            ? { ...response.data!.feed, bookmarked: true }
+            : f
+          )
+        );
+      } else {
+        throw new Error(response.error?.message || 'Failed to update post');
+      }
+    } catch (err) {
+      console.error('Edit post error:', err);
+      throw new Error(err instanceof Error ? err.message : 'Failed to update post');
+    }
   };
 
   const handleDelete = async (feed: Feed) => {
@@ -254,6 +282,17 @@ export default function BookmarksScreen() {
           emptyIcon="📖"
         />
         
+        {/* Edit Post Modal */}
+        <CreatePostModal
+          visible={showComposer}
+          onClose={() => {
+            setShowComposer(false);
+            setEditingFeed(null);
+          }}
+          onSubmit={handleEditPost}
+          editFeed={editingFeed || undefined}
+        />
+
         {/* Comment Sheet */}
         <CommentSheet
           visible={showComments}

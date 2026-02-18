@@ -176,7 +176,7 @@ export async function createFeed(data: CreateFeedData) {
 // -----------------------------------------------------------------------------
 
 export async function updateFeed(id: number, data: Partial<CreateFeedData>) {
-  return post<{ message: string; data: Feed }>(`${ENDPOINTS.FEEDS}/${id}`, data);
+  return post<{ feed: Feed }>(`${ENDPOINTS.FEEDS}/${id}`, data);
 }
 
 // -----------------------------------------------------------------------------

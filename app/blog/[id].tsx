@@ -18,39 +18,20 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import RenderHtml from 'react-native-render-html';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { WPPost } from '@/types/blog';
-import { Profile } from '@/types';
-import { blogApi, profilesApi } from '@/services/api';
+import { blogApi } from '@/services/api';
 import { PageHeader } from '@/components/navigation';
 import { Avatar } from '@/components/common/Avatar';
+import { ProfileBadge } from '@/components/common/ProfileBadge';
+import { VerifiedBadge } from '@/components/common/VerifiedBadge';
 import { BlogCommentSheet } from '@/components/blog';
-import { stripHtmlTags } from '@/utils/htmlToText';
+import { useProfileBadges } from '@/hooks';
+import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 import { formatFullDate } from '@/utils/formatDate';
-
-// -----------------------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------------------
-
-function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&#8217;/g, '\u2019')
-    .replace(/&#8216;/g, '\u2018')
-    .replace(/&#8220;/g, '\u201C')
-    .replace(/&#8221;/g, '\u201D')
-    .replace(/&#8211;/g, '\u2013')
-    .replace(/&#8212;/g, '\u2014')
-    .replace(/&#8230;/g, '\u2026')
-    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(Number(num)))
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ');
-}
 
 // -----------------------------------------------------------------------------
 // Component
@@ -68,7 +49,6 @@ export default function BlogDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(false);
-  const [authorProfile, setAuthorProfile] = useState<Profile | null>(null);
 
   // Content width for RenderHtml (screen width minus padding)
   const contentWidth = width - spacing.lg * 2;
@@ -102,28 +82,6 @@ export default function BlogDetailScreen() {
   }, [id]);
 
   // ---------------------------------------------------------------------------
-  // Fetch Fluent Community profile for the author (real avatar, verified badge)
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    const authorSlug = post?._embedded?.author?.[0]?.slug;
-    if (!authorSlug) return;
-
-    const fetchAuthorProfile = async () => {
-      try {
-        const response = await profilesApi.getProfile(authorSlug);
-        if (response.success && response.data.profile) {
-          setAuthorProfile(response.data.profile);
-        }
-      } catch {
-        // Silent fail — will fall back to WP data
-      }
-    };
-
-    fetchAuthorProfile();
-  }, [post]);
-
-  // ---------------------------------------------------------------------------
   // Share handler
   // ---------------------------------------------------------------------------
 
@@ -146,11 +104,11 @@ export default function BlogDetailScreen() {
   // ---------------------------------------------------------------------------
 
   const handleAuthorPress = useCallback(() => {
-    const username = authorProfile?.username || post?._embedded?.author?.[0]?.slug;
-    if (username) {
-      router.push(`/profile/${username}`);
+    const slug = post?._embedded?.author?.[0]?.slug;
+    if (slug) {
+      router.push(`/profile/${slug}`);
     }
-  }, [authorProfile, post, router]);
+  }, [post, router]);
 
   // ---------------------------------------------------------------------------
   // RenderHtml Tag Styles (theme-aware, memoized)
@@ -248,15 +206,19 @@ export default function BlogDetailScreen() {
     null;
 
   const title = post ? decodeHtmlEntities(stripHtmlTags(post.title.rendered)) : '';
-  const authorName = authorProfile?.display_name || author?.name || 'Unknown';
-  const authorAvatar = authorProfile?.avatar || author?.avatar_urls?.['96'] || null;
-  const authorVerified = authorProfile ? authorProfile.is_verified === 1 : false;
+  const authorName = author?.name || 'Unknown';
+  const authorAvatar = author?.fcom_avatar || author?.avatar_urls?.['96'] || null;
+  const authorVerified = author?.fcom_is_verified === 1;
+  const authorBadges = useProfileBadges(author?.fcom_badge_slugs);
   const date = post ? formatFullDate(post.date) : '';
   const commentCount = embeddedComments.length;
 
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  // Hero image height
+  const heroHeight = width * 0.75;
 
   return (
     <>
@@ -291,48 +253,109 @@ export default function BlogDetailScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Featured Image */}
-            {featuredImageUrl && (
-              <Image
-                source={{ uri: featuredImageUrl }}
-                style={[styles.featuredImage, { backgroundColor: themeColors.skeleton }]}
-                resizeMode="cover"
-              />
+            {/* Hero Section */}
+            {featuredImageUrl ? (
+              <View style={[styles.heroContainer, { height: heroHeight }]}>
+                <Image
+                  source={{ uri: featuredImageUrl }}
+                  style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColors.skeleton }]}
+                  resizeMode="cover"
+                />
+                {/* Gradient overlay */}
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.7)']}
+                  locations={[0, 0.4, 1]}
+                  style={styles.heroGradient}
+                >
+                  {/* Title at top, centered */}
+                  <Text style={styles.heroTitle}>{title}</Text>
+
+                  {/* Bottom: Categories, Author + Comments */}
+                  <View>
+                    {categories.length > 0 && (
+                      <View style={styles.heroCategories}>
+                        {categories.map((cat) => (
+                          <View
+                            key={cat.id}
+                            style={styles.heroCategoryPill}
+                          >
+                            <Text style={styles.heroCategoryText}>{cat.name}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                  {/* Author + Date + Comments */}
+                  <View style={styles.heroBottomRow}>
+                    <TouchableOpacity style={styles.heroAuthorRow} onPress={handleAuthorPress} activeOpacity={0.7}>
+                      <Avatar source={authorAvatar} size="sm" fallback={authorName} />
+                      <View style={styles.heroAuthorInfo}>
+                        <View style={styles.heroAuthorNameRow}>
+                          <Text style={styles.heroAuthorName}>{authorName}</Text>
+                          {authorVerified && <VerifiedBadge size={14} />}
+                          {authorBadges.map((badge) => (
+                            <ProfileBadge key={badge.slug} badge={badge} />
+                          ))}
+                        </View>
+                        <Text style={styles.heroDate}>{date}</Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    {post.comment_status === 'open' && (
+                      <TouchableOpacity style={styles.heroCommentBadge} onPress={() => setShowComments(true)} activeOpacity={0.7}>
+                        <Ionicons name="chatbubble-outline" size={14} color="#fff" />
+                        {commentCount > 0 && <Text style={styles.heroCommentText}>{commentCount}</Text>}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  </View>
+                </LinearGradient>
+              </View>
+            ) : (
+              /* No featured image — show title/author normally */
+              <View style={styles.articleHeader}>
+                {categories.length > 0 && (
+                  <View style={styles.categories}>
+                    {categories.map((cat) => (
+                      <View
+                        key={cat.id}
+                        style={[styles.categoryPill, { backgroundColor: themeColors.primaryLight + '20' }]}
+                      >
+                        <Text style={[styles.categoryText, { color: themeColors.primary }]}>
+                          {cat.name}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                <Text style={[styles.fallbackTitle, { color: themeColors.text }]}>{title}</Text>
+                <View style={styles.fallbackBottomRow}>
+                  <TouchableOpacity style={styles.fallbackAuthorRow} onPress={handleAuthorPress} activeOpacity={0.7}>
+                    <Avatar source={authorAvatar} size="sm" fallback={authorName} />
+                    <View style={styles.fallbackAuthorInfo}>
+                      <View style={styles.fallbackAuthorNameRow}>
+                        <Text style={[styles.fallbackAuthorName, { color: themeColors.text }]}>{authorName}</Text>
+                        {authorVerified && <VerifiedBadge size={14} />}
+                        {authorBadges.map((badge) => (
+                          <ProfileBadge key={badge.slug} badge={badge} />
+                        ))}
+                      </View>
+                      <Text style={[styles.fallbackDate, { color: themeColors.textTertiary }]}>{date}</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {post.comment_status === 'open' && (
+                    <TouchableOpacity style={styles.fallbackCommentBadge} onPress={() => setShowComments(true)} activeOpacity={0.7}>
+                      <Ionicons name="chatbubble-outline" size={14} color={themeColors.textTertiary} />
+                      {commentCount > 0 && <Text style={[styles.fallbackCommentText, { color: themeColors.textTertiary }]}>{commentCount}</Text>}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
             )}
 
+            {/* Article Content */}
             <View style={styles.articleContent}>
-              {/* Categories */}
-              {categories.length > 0 && (
-                <View style={styles.categories}>
-                  {categories.map((cat) => (
-                    <View
-                      key={cat.id}
-                      style={[styles.categoryPill, { backgroundColor: themeColors.primaryLight + '20' }]}
-                    >
-                      <Text style={[styles.categoryText, { color: themeColors.primary }]}>
-                        {cat.name}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Title */}
-              <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
-
-              {/* Author + Date */}
-              <TouchableOpacity style={styles.authorRow} onPress={handleAuthorPress} activeOpacity={0.7}>
-                <Avatar source={authorAvatar} size="sm" fallback={authorName} verified={authorVerified} />
-                <View style={styles.authorInfo}>
-                  <Text style={[styles.authorName, { color: themeColors.text }]}>{authorName}</Text>
-                  <Text style={[styles.date, { color: themeColors.textTertiary }]}>{date}</Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Divider */}
-              <View style={[styles.divider, { backgroundColor: themeColors.borderLight }]} />
-
-              {/* Rich HTML Content */}
               <RenderHtml
                 contentWidth={contentWidth}
                 source={{ html: post.content.rendered }}
@@ -429,13 +452,107 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  featuredImage: {
-    width: '100%',
-    height: 240,
+  // ---------------------------------------------------------------------------
+  // Hero (featured image with gradient overlay)
+  // ---------------------------------------------------------------------------
+
+  heroContainer: {
+    position: 'relative',
+    overflow: 'hidden',
   },
 
-  articleContent: {
+  heroGradient: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
     padding: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+
+  heroCategories: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+
+  heroCategoryPill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: sizing.borderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+
+  heroCategoryText: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  heroTitle: {
+    fontSize: typography.size.xxl,
+    fontWeight: '700',
+    lineHeight: typography.size.xxl * typography.lineHeight.tight,
+    color: '#fff',
+    textAlign: 'center',
+  },
+
+  heroBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+
+  heroAuthorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  heroCommentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: sizing.borderRadius.full,
+  },
+
+  heroCommentText: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  heroAuthorInfo: {
+    marginLeft: spacing.md,
+  },
+
+  heroAuthorNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+
+  heroAuthorName: {
+    fontSize: typography.size.sm,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  heroDate: {
+    fontSize: typography.size.xs,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+  },
+
+  // ---------------------------------------------------------------------------
+  // Fallback header (no featured image)
+  // ---------------------------------------------------------------------------
+
+  articleHeader: {
+    padding: spacing.lg,
+    paddingBottom: spacing.sm,
   },
 
   categories: {
@@ -456,36 +573,62 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  title: {
+  fallbackTitle: {
     fontSize: typography.size.xxl,
     fontWeight: '700',
     lineHeight: typography.size.xxl * typography.lineHeight.tight,
     marginBottom: spacing.md,
   },
 
-  authorRow: {
+  fallbackBottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
   },
 
-  authorInfo: {
+  fallbackAuthorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  fallbackCommentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  fallbackCommentText: {
+    fontSize: typography.size.xs,
+  },
+
+  fallbackAuthorInfo: {
     marginLeft: spacing.md,
   },
 
-  authorName: {
+  fallbackAuthorNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+
+  fallbackAuthorName: {
     fontSize: typography.size.sm,
     fontWeight: '600',
   },
 
-  date: {
+  fallbackDate: {
     fontSize: typography.size.xs,
     marginTop: 2,
   },
 
-  divider: {
-    height: 1,
-    marginBottom: spacing.md,
+  // ---------------------------------------------------------------------------
+  // Article content
+  // ---------------------------------------------------------------------------
+
+  articleContent: {
+    padding: spacing.lg,
   },
 
   commentButton: {

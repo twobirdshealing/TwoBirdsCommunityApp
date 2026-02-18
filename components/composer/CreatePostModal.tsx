@@ -16,6 +16,9 @@ import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { BottomSheet } from '@/components/common/BottomSheet';
 import { Composer, ComposerSubmitData } from './Composer';
+import { Feed } from '@/types';
+import { MediaItem } from '@/services/api/media';
+import { stripHtmlTags } from '@/utils/htmlToText';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -27,6 +30,7 @@ interface CreatePostModalProps {
   onSubmit: (data: ComposerSubmitData) => Promise<void>;
   spaceSlug?: string;  // SLUG not ID!
   spaceName?: string;
+  editFeed?: Feed;     // When provided, opens in edit mode
 }
 
 // -----------------------------------------------------------------------------
@@ -39,8 +43,45 @@ export function CreatePostModal({
   onSubmit,
   spaceSlug,
   spaceName,
+  editFeed,
 }: CreatePostModalProps) {
   const { colors: themeColors } = useTheme();
+  const isEditing = !!editFeed;
+
+  // Extract initial values from feed being edited
+  const initialMessage = editFeed
+    ? (editFeed.message || stripHtmlTags(editFeed.message_rendered))
+    : undefined;
+  const initialTitle = editFeed?.title || undefined;
+
+  // Convert existing media_items to MediaItem format for the Composer
+  const initialAttachments: MediaItem[] | undefined = editFeed?.meta?.media_items
+    ? editFeed.meta.media_items
+        .filter(item => item.type === 'image')
+        .map(item => ({
+          media_id: item.media_id,
+          url: item.url,
+          type: 'image' as const,
+          width: item.width || 0,
+          height: item.height || 0,
+        }))
+    : undefined;
+
+  // Extract video embed if present
+  const initialVideo = editFeed?.meta?.media_preview?.provider === 'youtube'
+    ? {
+        url: editFeed.meta.media_preview.url || '',
+        title: editFeed.meta.media_preview.title || '',
+        image: editFeed.meta.media_preview.image || '',
+        provider: 'youtube',
+        type: 'video',
+        content_type: 'video',
+      }
+    : undefined;
+
+  // Resolve space slug: editing uses the feed's space, creating uses the prop
+  const effectiveSpaceSlug = isEditing ? editFeed.space?.slug : spaceSlug;
+  const effectiveSpaceName = isEditing ? editFeed.space?.title : spaceName;
 
   const handleSubmit = async (data: ComposerSubmitData) => {
     await onSubmit(data);
@@ -49,11 +90,11 @@ export function CreatePostModal({
 
   // If space is pre-selected, ensure the space slug is in submit data
   const handleSubmitWithSpace = async (data: ComposerSubmitData) => {
-    const finalData = spaceSlug
-      ? { ...data, space: spaceSlug }
+    const finalData = effectiveSpaceSlug
+      ? { ...data, space: effectiveSpaceSlug }
       : data;
 
-    console.log('[CreatePostModal] Submitting:', JSON.stringify(finalData, null, 2));
+    console.log(`[CreatePostModal] ${isEditing ? 'Updating' : 'Submitting'}:`, JSON.stringify(finalData, null, 2));
     await handleSubmit(finalData);
   };
 
@@ -63,26 +104,31 @@ export function CreatePostModal({
       onClose={onClose}
       heightMode="percentage"
       heightPercentage={95}
-      title="Create Post"
+      title={isEditing ? 'Edit Post' : 'Create Post'}
       keyboardAvoiding
     >
       {/* Space indicator - shown when space is pre-selected */}
-      {spaceName && (
+      {effectiveSpaceName && (
         <View style={styles.spaceIndicator}>
           <Ionicons name="people-outline" size={16} color={themeColors.primary} />
-          <Text style={[styles.spaceText, { color: themeColors.textSecondary }]}>Posting to <Text style={[styles.spaceName, { color: themeColors.primary }]}>{spaceName}</Text></Text>
+          <Text style={[styles.spaceText, { color: themeColors.textSecondary }]}>{isEditing ? 'Editing in' : 'Posting to'} <Text style={[styles.spaceName, { color: themeColors.primary }]}>{effectiveSpaceName}</Text></Text>
         </View>
       )}
 
       {/* Composer */}
       <View style={styles.composerContainer}>
         <Composer
+          key={editFeed ? `edit-${editFeed.id}` : 'create'}
           mode="feed"
           placeholder="What's happening?"
-          submitLabel="Post"
           autoFocus={true}
-          initialSpaceSlug={spaceSlug}
-          initialSpaceName={spaceName}
+          initialSpaceSlug={effectiveSpaceSlug}
+          initialSpaceName={effectiveSpaceName}
+          initialMessage={initialMessage}
+          initialTitle={initialTitle}
+          initialAttachments={initialAttachments}
+          initialVideo={initialVideo}
+          isEditMode={isEditing}
           onSubmit={handleSubmitWithSpace}
           onCancel={onClose}
         />

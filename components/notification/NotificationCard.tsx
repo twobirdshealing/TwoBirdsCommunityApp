@@ -54,7 +54,6 @@ export function NotificationCard({
   const actor = notification.xprofile;
   const actorName = actor?.display_name || 'Someone';
   const actorAvatar = actor?.avatar || null;
-  const isVerified = actor?.is_verified === 1;
   const isUnread = !notification.is_read;
   const timestamp = formatRelativeTime(notification.created_at);
 
@@ -131,7 +130,6 @@ export function NotificationCard({
           <Avatar
             source={actorAvatar}
             size="md"
-            verified={isVerified}
             fallback={actorName}
           />
           <View style={styles.typeIconOverlay}>

@@ -45,7 +45,7 @@ export const sizing = {
   avatar: {
     xs: 24,    // Tiny - in lists
     sm: 32,    // Small - comments
-    md: 40,    // Medium - feed cards
+    md: 48,    // Medium - feed cards
     lg: 56,    // Large - profile headers
     xl: 80,    // Extra large - my profile
     xxl: 120,  // Huge - profile page hero

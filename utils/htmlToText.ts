@@ -62,6 +62,28 @@ export function stripHtmlPreserveBreaks(html: string | null | undefined): string
 }
 
 // -----------------------------------------------------------------------------
+// Decode HTML Entities (WordPress title entities like &#8217;)
+// -----------------------------------------------------------------------------
+
+export function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#8217;/g, '\u2019')  // right single quote
+    .replace(/&#8216;/g, '\u2018')  // left single quote
+    .replace(/&#8220;/g, '\u201C')  // left double quote
+    .replace(/&#8221;/g, '\u201D')  // right double quote
+    .replace(/&#8211;/g, '\u2013')  // en dash
+    .replace(/&#8212;/g, '\u2014')  // em dash
+    .replace(/&#8230;/g, '\u2026')  // ellipsis
+    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(Number(num)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+}
+
+// -----------------------------------------------------------------------------
 // Truncate Text with Ellipsis
 // -----------------------------------------------------------------------------
 
@@ -127,6 +149,7 @@ export function hasMediaContent(html: string | null | undefined): boolean {
 export default {
   strip: stripHtmlTags,
   stripPreserveBreaks: stripHtmlPreserveBreaks,
+  decodeEntities: decodeHtmlEntities,
   truncate: truncateText,
   preview: extractPreview,
   mentions: extractMentions,

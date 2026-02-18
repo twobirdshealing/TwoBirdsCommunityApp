@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "bundleIdentifier": "com.twobirds.community",
+      "bundleIdentifier": "com.twobirdschurch.community",
       "supportsTablet": true,
       "icon": "./assets/images/app_icon_ios.png",
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -18,7 +18,7 @@
       }
     },
     "android": {
-      "package": "com.twobirds.community",
+      "package": "com.community.twobirdschurch",
       "adaptiveIcon": {
         "backgroundColor": "#2196F3",
         "foregroundImage": "./assets/images/app_icon_android_adaptive_fg.png",

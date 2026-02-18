@@ -1,7 +1,8 @@
 // =============================================================================
 // BLOG CARD - Card component for blog post list items
 // =============================================================================
-// Displays: featured image, title, excerpt, author + date
+// Hero-style card: featured image with gradient overlay (title, author, date)
+// Footer: excerpt + "Read Article" button + read time + comment count
 // Used in: app/blog/index.tsx (blog list)
 // =============================================================================
 
@@ -14,11 +15,15 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { WPPost } from '@/types/blog';
 import { Avatar } from '@/components/common/Avatar';
-import { stripHtmlTags } from '@/utils/htmlToText';
+import { ProfileBadge } from '@/components/common/ProfileBadge';
+import { VerifiedBadge } from '@/components/common/VerifiedBadge';
+import { useProfileBadges } from '@/hooks';
+import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 import { formatSmartDate } from '@/utils/formatDate';
 
 // -----------------------------------------------------------------------------
@@ -29,29 +34,6 @@ interface BlogCardProps {
   post: WPPost;
   onPress: () => void;
   onAuthorPress?: (authorSlug: string) => void;
-}
-
-// -----------------------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------------------
-
-/** Decode HTML entities that WordPress puts in titles */
-function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&#8217;/g, '\u2019')  // right single quote
-    .replace(/&#8216;/g, '\u2018')  // left single quote
-    .replace(/&#8220;/g, '\u201C')  // left double quote
-    .replace(/&#8221;/g, '\u201D')  // right double quote
-    .replace(/&#8211;/g, '\u2013')  // en dash
-    .replace(/&#8212;/g, '\u2014')  // em dash
-    .replace(/&#8230;/g, '\u2026')  // ellipsis
-    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(Number(num)))
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ');
 }
 
 // -----------------------------------------------------------------------------
@@ -74,9 +56,10 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
     null;
 
   const title = decodeHtmlEntities(stripHtmlTags(post.title.rendered));
-  const excerpt = stripHtmlTags(post.excerpt.rendered);
   const authorName = author?.name || 'Unknown';
-  const authorAvatar = author?.avatar_urls?.['96'] || author?.avatar_urls?.['48'] || null;
+  const authorAvatar = author?.fcom_avatar || author?.avatar_urls?.['96'] || null;
+  const authorVerified = author?.fcom_is_verified === 1;
+  const authorBadges = useProfileBadges(author?.fcom_badge_slugs);
   const date = formatSmartDate(post.date);
   const commentCount = embeddedComments.length;
 
@@ -86,73 +69,125 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
       onPress={onPress}
       activeOpacity={0.7}
     >
-      {/* Featured Image */}
-      {featuredImageUrl && (
-        <Image
-          source={{ uri: featuredImageUrl }}
-          style={[styles.featuredImage, { backgroundColor: themeColors.skeleton }]}
-          resizeMode="cover"
-        />
-      )}
-
-      <View style={styles.content}>
-        {/* Categories */}
-        {categories.length > 0 && (
-          <View style={styles.categories}>
-            {categories.map((cat) => (
-              <View
-                key={cat.id}
-                style={[styles.categoryPill, { backgroundColor: themeColors.primaryLight + '20' }]}
-              >
-                <Text style={[styles.categoryText, { color: themeColors.primary }]}>
-                  {cat.name}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Title */}
-        <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={3}>
-          {title}
-        </Text>
-
-        {/* Excerpt */}
-        {excerpt ? (
-          <Text style={[styles.excerpt, { color: themeColors.textSecondary }]} numberOfLines={3}>
-            {excerpt}
-          </Text>
-        ) : null}
-
-        {/* Author Row */}
-        <View style={styles.authorRow}>
-          <TouchableOpacity
-            style={styles.authorTouchable}
-            onPress={() => {
-              if (onAuthorPress && author?.slug) onAuthorPress(author.slug);
-            }}
-            activeOpacity={onAuthorPress && author?.slug ? 0.7 : 1}
-            disabled={!onAuthorPress || !author?.slug}
+      {/* Hero Section */}
+      {featuredImageUrl ? (
+        <View style={styles.heroContainer}>
+          <Image
+            source={{ uri: featuredImageUrl }}
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColors.skeleton }]}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.7)']}
+            locations={[0, 0.4, 1]}
+            style={styles.heroGradient}
           >
-            <Avatar source={authorAvatar} size="xs" fallback={authorName} />
-            <Text style={[styles.authorName, { color: themeColors.text }]} numberOfLines={1}>
-              {authorName}
+            {/* Title at top, centered */}
+            <Text style={styles.heroTitle} numberOfLines={3}>
+              {title}
             </Text>
-          </TouchableOpacity>
-          <Text style={[styles.dot, { color: themeColors.textTertiary }]}>{'\u00B7'}</Text>
-          <Text style={[styles.date, { color: themeColors.textTertiary }]}>{date}</Text>
 
-          {/* Comment count */}
-          {commentCount > 0 && (
-            <View style={styles.commentCount}>
-              <Ionicons name="chatbubble-outline" size={14} color={themeColors.textTertiary} />
-              <Text style={[styles.commentCountText, { color: themeColors.textTertiary }]}>
-                {commentCount}
-              </Text>
+            {/* Bottom: Author left, Comments right */}
+            <View>
+              {categories.length > 0 && (
+                <View style={styles.heroCategories}>
+                  {categories.map((cat) => (
+                    <View key={cat.id} style={styles.heroCategoryPill}>
+                      <Text style={styles.heroCategoryText}>{cat.name}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <View style={styles.heroBottomRow}>
+                <TouchableOpacity
+                  style={styles.heroAuthorRow}
+                  onPress={() => {
+                    if (onAuthorPress && author?.slug) onAuthorPress(author.slug);
+                  }}
+                  activeOpacity={onAuthorPress && author?.slug ? 0.7 : 1}
+                  disabled={!onAuthorPress || !author?.slug}
+                >
+                  <Avatar source={authorAvatar} size="sm" fallback={authorName} />
+                  <View style={styles.heroAuthorInfo}>
+                    <View style={styles.heroAuthorNameRow}>
+                      <Text style={styles.heroAuthorName} numberOfLines={1}>
+                        {authorName}
+                      </Text>
+                      {authorVerified && <VerifiedBadge size={14} />}
+                      {authorBadges.map((badge) => (
+                        <ProfileBadge key={badge.slug} badge={badge} />
+                      ))}
+                    </View>
+                    <Text style={styles.heroDate}>{date}</Text>
+                  </View>
+                </TouchableOpacity>
+
+                {commentCount > 0 && (
+                  <View style={styles.heroCommentBadge}>
+                    <Ionicons name="chatbubble-outline" size={14} color="#fff" />
+                    <Text style={styles.heroCommentText}>{commentCount}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+      ) : (
+        /* No featured image — simple header */
+        <View style={styles.fallbackHeader}>
+          {categories.length > 0 && (
+            <View style={styles.categories}>
+              {categories.map((cat) => (
+                <View
+                  key={cat.id}
+                  style={[styles.categoryPill, { backgroundColor: themeColors.primaryLight + '20' }]}
+                >
+                  <Text style={[styles.categoryText, { color: themeColors.primary }]}>
+                    {cat.name}
+                  </Text>
+                </View>
+              ))}
             </View>
           )}
+          <Text style={[styles.fallbackTitle, { color: themeColors.text }]} numberOfLines={3}>
+            {title}
+          </Text>
+          <View style={styles.fallbackBottomRow}>
+            <TouchableOpacity
+              style={styles.fallbackAuthorRow}
+              onPress={() => {
+                if (onAuthorPress && author?.slug) onAuthorPress(author.slug);
+              }}
+              activeOpacity={onAuthorPress && author?.slug ? 0.7 : 1}
+              disabled={!onAuthorPress || !author?.slug}
+            >
+              <Avatar source={authorAvatar} size="sm" fallback={authorName} />
+              <View style={styles.fallbackAuthorInfo}>
+                <View style={styles.fallbackAuthorNameRow}>
+                  <Text style={[styles.fallbackAuthorName, { color: themeColors.text }]} numberOfLines={1}>
+                    {authorName}
+                  </Text>
+                  {authorVerified && <VerifiedBadge size={14} />}
+                  {authorBadges.map((badge) => (
+                    <ProfileBadge key={badge.slug} badge={badge} />
+                  ))}
+                </View>
+                <Text style={[styles.fallbackDate, { color: themeColors.textTertiary }]}>{date}</Text>
+              </View>
+            </TouchableOpacity>
+
+            {commentCount > 0 && (
+              <View style={styles.fallbackCommentBadge}>
+                <Ionicons name="chatbubble-outline" size={14} color={themeColors.textTertiary} />
+                <Text style={[styles.fallbackCommentText, { color: themeColors.textTertiary }]}>
+                  {commentCount}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -169,12 +204,106 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
 
-  featuredImage: {
-    width: '100%',
-    height: 200,
+  // ---------------------------------------------------------------------------
+  // Hero (featured image with gradient overlay)
+  // ---------------------------------------------------------------------------
+
+  heroContainer: {
+    height: 220,
+    position: 'relative',
+    overflow: 'hidden',
   },
 
-  content: {
+  heroGradient: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
+    padding: spacing.lg,
+  },
+
+  heroCategories: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+
+  heroCategoryPill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: sizing.borderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+
+  heroCategoryText: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  heroTitle: {
+    fontSize: typography.size.lg,
+    fontWeight: '700',
+    lineHeight: typography.size.lg * typography.lineHeight.tight,
+    color: '#fff',
+    textAlign: 'center',
+  },
+
+  heroBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+
+  heroAuthorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  heroCommentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: sizing.borderRadius.full,
+  },
+
+  heroCommentText: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  heroAuthorInfo: {
+    marginLeft: spacing.sm,
+    flexShrink: 1,
+  },
+
+  heroAuthorNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+
+  heroAuthorName: {
+    fontSize: typography.size.sm,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  heroDate: {
+    fontSize: typography.size.xs,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+  },
+
+  // ---------------------------------------------------------------------------
+  // Fallback header (no featured image)
+  // ---------------------------------------------------------------------------
+
+  fallbackHeader: {
     padding: spacing.lg,
   },
 
@@ -196,56 +325,56 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  title: {
+  fallbackTitle: {
     fontSize: typography.size.lg,
     fontWeight: '700',
     lineHeight: typography.size.lg * typography.lineHeight.tight,
     marginBottom: spacing.sm,
   },
 
-  excerpt: {
-    fontSize: typography.size.sm,
-    lineHeight: typography.size.sm * typography.lineHeight.normal,
-    marginBottom: spacing.md,
-  },
-
-  authorRow: {
+  fallbackBottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
 
-  authorTouchable: {
+  fallbackAuthorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexShrink: 1,
+    flex: 1,
   },
 
-  authorName: {
-    fontSize: typography.size.sm,
-    fontWeight: '500',
+  fallbackCommentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  fallbackCommentText: {
+    fontSize: typography.size.xs,
+  },
+
+  fallbackAuthorInfo: {
     marginLeft: spacing.sm,
     flexShrink: 1,
   },
 
-  dot: {
-    fontSize: typography.size.sm,
-    marginHorizontal: spacing.xs,
-  },
-
-  date: {
-    fontSize: typography.size.xs,
-  },
-
-  commentCount: {
+  fallbackAuthorNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 'auto',
-    gap: 4,
+    flexWrap: 'wrap',
   },
 
-  commentCountText: {
-    fontSize: typography.size.xs,
+  fallbackAuthorName: {
+    fontSize: typography.size.sm,
+    fontWeight: '600',
   },
+
+  fallbackDate: {
+    fontSize: typography.size.xs,
+    marginTop: 2,
+  },
+
 });
 
 export default BlogCard;

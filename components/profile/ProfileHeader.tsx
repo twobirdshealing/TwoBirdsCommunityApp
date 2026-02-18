@@ -9,7 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Profile } from '@/types';
-import { Avatar, ProfileBadge } from '@/components/common';
+import { Avatar, ProfileBadge, VerifiedBadge } from '@/components/common';
 import { useProfileBadges } from '@/hooks';
 import { formatCompactNumber } from '@/utils/formatNumber';
 
@@ -115,7 +115,6 @@ export function ProfileHeader({
           <Avatar
             source={profile.avatar}
             size="xxl"
-            verified={isVerified}
             fallback={profile.display_name}
           />
 
@@ -130,6 +129,7 @@ export function ProfileHeader({
         {/* Name & Badges */}
         <View style={styles.nameRow}>
           <Text style={[styles.displayName, { color: themeColors.text }]}>{profile.display_name}</Text>
+          {isVerified && <VerifiedBadge size={20} />}
           {profileBadges.map((badge) => (
             <ProfileBadge key={badge.slug} badge={badge} />
           ))}

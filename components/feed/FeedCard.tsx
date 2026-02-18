@@ -9,10 +9,8 @@
 
 import React, { useState } from 'react';
 import {
-  ActionSheetIOS,
   Alert,
   Image,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -23,6 +21,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { Avatar } from '@/components/common/Avatar';
 import { ProfileBadge } from '@/components/common/ProfileBadge';
+import { VerifiedBadge } from '@/components/common/VerifiedBadge';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 import { MediaViewer } from '@/components/media/MediaViewer';
 import { ReactionPicker } from './ReactionPicker';
@@ -38,6 +37,8 @@ import { stripHtmlTags, stripHtmlPreserveBreaks, truncateText } from '@/utils/ht
 import { useAuth } from '@/contexts/AuthContext';
 import { SITE_URL } from '@/constants/config';
 import { REACTION_EMOJI, REACTION_COLORS, REACTION_NAMES } from '@/constants/reactions';
+import { DropdownMenu } from '@/components/common/DropdownMenu';
+import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 
 // -----------------------------------------------------------------------------
 // Media Detection Helper
@@ -111,7 +112,8 @@ interface FeedCardProps {
   onBookmarkToggle?: (isBookmarked: boolean) => void;
   onEdit?: () => void;
   onDelete?: () => void;
-  onPin?: () => void;  // NEW: Pin callback (only passed if user can pin)
+  onPin?: () => void;  // Pin callback (only passed if user can pin)
+  canModerate?: boolean; // If true, shows Edit/Delete/Pin for any post (admin/mod)
   variant?: 'compact' | 'full';  // compact = list view (truncated), full = single post view
 }
 
@@ -129,6 +131,7 @@ export function FeedCard({
   onEdit,
   onDelete,
   onPin,
+  canModerate = false,
   variant = 'compact',
 }: FeedCardProps) {
   const { user } = useAuth();
@@ -141,6 +144,7 @@ export function FeedCard({
   const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const longPressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Extract data
@@ -151,6 +155,7 @@ export function FeedCard({
   const isOwner = user?.id === Number(feed.user_id);
   const isSticky = feed.is_sticky === true || feed.is_sticky === 1;
   const canPin = !!onPin; // If onPin is passed, user can pin
+  const canEditOrDelete = isOwner || canModerate;
   
   const authorBadges = useProfileBadges(author?.meta?.badge_slug);
   const spaceName = feed.space?.title || null;
@@ -207,78 +212,33 @@ export function FeedCard({
     }
   };
 
-  const handleMenuPress = () => {
-    // Debug: Log what options will be shown
-    console.log('[FEEDCARD MENU DEBUG]', {
-      isOwner,
-      canPin,
-      onPinProvided: !!onPin,
-      isSticky,
-      feedId: feed.id,
-      userId: user?.id,
-      feedUserId: feed.user_id,
-    });
+  // Build menu items for Android DropdownMenu
+  const getMenuItems = (): DropdownMenuItem[] => {
+    const items: DropdownMenuItem[] = [
+      { key: 'copy', label: 'Copy Link', icon: 'link-outline', onPress: () => { setShowMenu(false); handleCopyLink(); } },
+    ];
 
-    if (Platform.OS === 'ios') {
-      // Build options array
-      const options: string[] = ['Cancel', 'Copy Link'];
-      
-      // Pin option (for admins/mods)
-      if (canPin) {
-        options.push(isSticky ? 'Unpin from Top' : 'Pin to Top');
-      }
-      
-      // Owner options
-      if (isOwner) {
-        options.push('Edit', 'Delete');
-      }
-      
-      const cancelIndex = 0;
-      const destructiveIndex = isOwner ? options.indexOf('Delete') : undefined;
-      
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options,
-          cancelButtonIndex: cancelIndex,
-          destructiveButtonIndex: destructiveIndex,
-        },
-        (buttonIndex) => {
-          const selectedOption = options[buttonIndex];
-          
-          if (selectedOption === 'Copy Link') handleCopyLink();
-          else if (selectedOption === 'Pin to Top' || selectedOption === 'Unpin from Top') onPin?.();
-          else if (selectedOption === 'Edit') onEdit?.();
-          else if (selectedOption === 'Delete') handleDelete();
-        }
-      );
-    } else {
-      // Android - Build buttons array
-      const buttons: any[] = [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Copy Link', onPress: handleCopyLink },
-      ];
-      
-      // Pin option (for admins/mods)
-      if (canPin) {
-        buttons.push({ 
-          text: isSticky ? 'Unpin from Top' : 'Pin to Top', 
-          onPress: onPin 
-        });
-      }
-      
-      // Owner options
-      if (isOwner) {
-        buttons.push({ text: 'Edit', onPress: onEdit });
-        buttons.push({ text: 'Delete', onPress: handleDelete, style: 'destructive' });
-      }
-      
-      Alert.alert(
-        'Post Options',
-        'Choose an action',
-        buttons,
-        { cancelable: true }
+    if (canPin) {
+      items.push({
+        key: 'pin',
+        label: isSticky ? 'Unpin from Top' : 'Pin to Top',
+        icon: 'pin-outline',
+        onPress: () => { setShowMenu(false); onPin?.(); },
+      });
+    }
+
+    if (canEditOrDelete) {
+      items.push(
+        { key: 'edit', label: 'Edit', icon: 'create-outline', onPress: () => { setShowMenu(false); onEdit?.(); } },
+        { key: 'delete', label: 'Delete', icon: 'trash-outline', onPress: () => { setShowMenu(false); handleDelete(); }, destructive: true },
       );
     }
+
+    return items;
+  };
+
+  const handleMenuPress = () => {
+    setShowMenu(true);
   };
 
   const handleDelete = () => {
@@ -316,7 +276,6 @@ export function FeedCard({
           <Avatar
             source={authorAvatar}
             size="md"
-            verified={isVerified}
             fallback={authorName}
           />
 
@@ -325,6 +284,7 @@ export function FeedCard({
               <Text style={[styles.authorName, { color: themeColors.text }]} numberOfLines={1}>
                 {authorName}
               </Text>
+              {isVerified && <VerifiedBadge />}
               {authorBadges.map((badge) => (
                 <ProfileBadge key={badge.slug} badge={badge} />
               ))}
@@ -624,6 +584,13 @@ export function FeedCard({
           onClose={() => setShowMediaViewer(false)}
         />
       )}
+
+      {/* ===== Post Options Menu ===== */}
+      <DropdownMenu
+        visible={showMenu}
+        onClose={() => setShowMenu(false)}
+        items={getMenuItems()}
+      />
     </View>
   );
 }

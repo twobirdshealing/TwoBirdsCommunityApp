@@ -1,16 +1,17 @@
 // =============================================================================
 // AVATAR - Reusable user avatar component
 // =============================================================================
-// Displays a user's profile picture with optional verified badge and online status.
+// Displays a user's profile picture with optional online status indicator.
+// Verification checkmark is now rendered inline next to display names
+// using the VerifiedBadge component instead.
 //
 // Usage:
 //   <Avatar source={user.avatar} size="md" />
-//   <Avatar source={user.avatar} size="lg" verified online />
+//   <Avatar source={user.avatar} size="lg" online />
 // =============================================================================
 
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -21,16 +22,13 @@ import { useTheme } from '@/contexts/ThemeContext';
 interface AvatarProps {
   // Image URL (can be null/undefined - will show placeholder)
   source?: string | null;
-  
+
   // Size preset
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
-  
-  // Show verified badge
-  verified?: boolean;
-  
+
   // Show online indicator
   online?: boolean;
-  
+
   // Fallback text (usually initials) if no image
   fallback?: string;
 }
@@ -48,38 +46,37 @@ const sizeMap = {
   xxl: sizing.avatar.xxl, // 120
 };
 
-// Badge size relative to avatar
-const badgeSizeMap = {
-  xs: 10,
-  sm: 12,
-  md: 14,
-  lg: 18,
-  xl: 22,
-  xxl: 28,
+// Online indicator size relative to avatar
+const indicatorSizeMap = {
+  xs: 7,
+  sm: 8,
+  md: 10,
+  lg: 13,
+  xl: 15,
+  xxl: 20,
 };
 
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
-export function Avatar({ 
-  source, 
-  size = 'md', 
-  verified = false, 
+export function Avatar({
+  source,
+  size = 'md',
   online = false,
   fallback = '?',
 }: AvatarProps) {
   const { colors: themeColors } = useTheme();
   const avatarSize = sizeMap[size];
-  const badgeSize = badgeSizeMap[size];
-  
+  const indicatorSize = indicatorSizeMap[size];
+
   // Dynamic styles based on size
   const containerStyle = {
     width: avatarSize,
     height: avatarSize,
     borderRadius: avatarSize / 2,
   };
-  
+
   return (
     <View style={[styles.container, containerStyle]}>
       {/* Avatar Image or Placeholder */}
@@ -96,28 +93,18 @@ export function Avatar({
         </View>
       )}
 
-      {/* Verified Badge */}
-      {verified && (
-        <View style={[styles.verifiedBadge, { right: -3, bottom: -3 }]}>
-          <MaterialCommunityIcons
-            name="check-decagram"
-            size={badgeSize + 2}
-            color={themeColors.verified}
-          />
-        </View>
-      )}
-      
       {/* Online Indicator */}
-      {online && !verified && (
+      {online && (
         <View style={[
           styles.onlineIndicator,
           {
-            width: badgeSize * 0.7,
-            height: badgeSize * 0.7,
-            borderRadius: badgeSize / 2,
+            width: indicatorSize,
+            height: indicatorSize,
+            borderRadius: indicatorSize / 2,
             right: 0,
             bottom: 0,
             borderColor: themeColors.surface,
+            backgroundColor: themeColors.online,
           }
         ]} />
       )}
@@ -133,7 +120,7 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
   },
-  
+
   image: {
   },
 
@@ -144,10 +131,6 @@ const styles = StyleSheet.create({
 
   placeholderText: {
     fontWeight: '600',
-  },
-
-  verifiedBadge: {
-    position: 'absolute',
   },
 
   onlineIndicator: {

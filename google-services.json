@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "743811105713",
+    "project_id": "two-birds-community",
+    "storage_bucket": "two-birds-community.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:743811105713:android:6dabb6fd91faf537847390",
+        "android_client_info": {
+          "package_name": "com.community.twobirdschurch"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAET8fC7-cOKPIAqW8A0knAsz9DZ2suKfY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:743811105713:android:2ac15fd11e4b040c847390",
+        "android_client_info": {
+          "package_name": "com.twobirds.community"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAET8fC7-cOKPIAqW8A0knAsz9DZ2suKfY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

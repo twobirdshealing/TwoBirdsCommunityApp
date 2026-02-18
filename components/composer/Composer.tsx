@@ -39,15 +39,22 @@ export interface ComposerProps {
   submitLabel?: string;
   autoFocus?: boolean;
   maxLength?: number;
-  
+
   // For comments/replies
   feedId?: number;
   parentId?: number;
-  
+
   // For feeds - can preset a space (use SLUG not ID!)
   initialSpaceSlug?: string;
   initialSpaceName?: string;
-  
+
+  // Edit mode - pre-fill with existing content
+  initialMessage?: string;
+  initialTitle?: string;
+  initialAttachments?: MediaItem[];
+  initialVideo?: OembedData | null;
+  isEditMode?: boolean;
+
   // Callbacks
   onSubmit: (data: ComposerSubmitData) => Promise<void>;
   onCancel?: () => void;
@@ -93,6 +100,11 @@ export function Composer({
   parentId,
   initialSpaceSlug,
   initialSpaceName,
+  initialMessage,
+  initialTitle,
+  initialAttachments,
+  initialVideo,
+  isEditMode = false,
   onSubmit,
   onCancel,
   onFocus,
@@ -101,10 +113,10 @@ export function Composer({
   const { colors: themeColors } = useTheme();
 
   // State
-  const [message, setMessage] = useState('');
-  const [title, setTitle] = useState('');
-  const [attachments, setAttachments] = useState<MediaItem[]>([]);
-  const [videoAttachment, setVideoAttachment] = useState<OembedData | null>(null);
+  const [message, setMessage] = useState(initialMessage || '');
+  const [title, setTitle] = useState(initialTitle || '');
+  const [attachments, setAttachments] = useState<MediaItem[]>(initialAttachments || []);
+  const [videoAttachment, setVideoAttachment] = useState<OembedData | null>(initialVideo || null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -132,10 +144,10 @@ export function Composer({
     reply: 'Reply',
   };
 
-  const showSpaceSelector = mode === 'feed' && !initialSpaceSlug;
+  const showSpaceSelector = mode === 'feed' && !initialSpaceSlug && !isEditMode;
   const showTitle = mode === 'feed';
   const actualPlaceholder = placeholder || defaultPlaceholder[mode];
-  const actualSubmitLabel = submitLabel || defaultSubmitLabel[mode];
+  const actualSubmitLabel = submitLabel || (isEditMode ? 'Save' : defaultSubmitLabel[mode]);
 
   // ---------------------------------------------------------------------------
   // Handle Space Selection - now receives SLUG

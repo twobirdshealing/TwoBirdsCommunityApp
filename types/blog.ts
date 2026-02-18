@@ -29,6 +29,9 @@ export interface WPAuthorEmbedded {
     '48'?: string;
     '96'?: string;
   };
+  fcom_avatar?: string | null;
+  fcom_is_verified?: number;
+  fcom_badge_slugs?: string[];
 }
 
 // -----------------------------------------------------------------------------
@@ -116,6 +119,10 @@ export interface WPComment {
   link?: string;
   type?: string;
   status?: string;
+  fcom_author_avatar?: string | null;
+  fcom_author_is_verified?: number;
+  fcom_author_slug?: string;
+  fcom_author_badge_slugs?: string[];
 }
 
 // -----------------------------------------------------------------------------

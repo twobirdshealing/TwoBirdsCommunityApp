@@ -29,7 +29,8 @@ interface FeedListProps {
   onBookmarkToggle?: (feed: Feed, isBookmarked: boolean) => void;
   onEdit?: (feed: Feed) => void;
   onDelete?: (feed: Feed) => void;
-  onPin?: (feed: Feed) => void;  // NEW: Pin callback
+  onPin?: (feed: Feed) => void;  // Pin callback
+  canModerate?: boolean; // If true, shows Edit/Delete for any post (admin/mod)
   onLoadMore?: () => void;
   emptyMessage?: string;
   emptyIcon?: string;
@@ -54,6 +55,7 @@ export function FeedList({
   onEdit,
   onDelete,
   onPin,
+  canModerate = false,
   onLoadMore,
   emptyMessage = 'No posts yet',
   emptyIcon = '📭',
@@ -91,11 +93,6 @@ export function FeedList({
 
   // Render feed item
   const renderItem = ({ item }: { item: Feed }) => {
-    // Debug: Log if onPin is being passed
-    if (onPin) {
-      console.log('[FEEDLIST DEBUG] onPin callback provided for feed:', item.id);
-    }
-    
     return (
       <FeedCard
         feed={item}
@@ -115,6 +112,7 @@ export function FeedList({
         onEdit={() => onEdit?.(item)}
         onDelete={() => onDelete?.(item)}
         onPin={onPin ? () => onPin(item) : undefined}  // Only pass if parent provides it
+        canModerate={canModerate}
       />
     );
   };
