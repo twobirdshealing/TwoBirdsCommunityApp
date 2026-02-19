@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
+import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -55,7 +56,7 @@ interface MenuItemProps {
 function MenuItem({ icon, label, onPress, destructive = false }: MenuItemProps) {
   const { colors: themeColors } = useTheme();
   return (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.menuItem} onPress={() => { destructive ? hapticWarning() : hapticLight(); onPress(); }} activeOpacity={0.7}>
       <Ionicons
         name={icon}
         size={22}
@@ -90,6 +91,7 @@ export function UserMenu({
   const themeModeLabel = isDark ? 'Dark' : 'Light';
 
   const handleThemeToggle = () => {
+    hapticMedium();
     setTheme(isDark ? 'light' : 'dark');
   };
 

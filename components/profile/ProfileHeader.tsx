@@ -5,7 +5,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import { hapticLight } from '@/utils/haptics';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Profile } from '@/types';
@@ -57,14 +57,14 @@ export function ProfileHeader({
 
   const handleCoverPress = () => {
     if (isOwnProfile && onCoverPhotoPress) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      hapticLight();
       onCoverPhotoPress();
     }
   };
 
   const handleAvatarPress = () => {
     if (isOwnProfile && onAvatarPress) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      hapticLight();
       onAvatarPress();
     }
   };

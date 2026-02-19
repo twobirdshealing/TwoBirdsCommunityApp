@@ -9,7 +9,7 @@ import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { MediaItem, mediaApi } from '@/services/api/media';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import { hapticLight } from '@/utils/haptics';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
@@ -144,7 +144,7 @@ export function ChatInput({
     setText('');
     setAttachments([]);
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    hapticLight();
 
     try {
       await onSend(messageText, messageAttachments.length > 0 ? messageAttachments : undefined);

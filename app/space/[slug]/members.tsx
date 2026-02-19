@@ -8,6 +8,7 @@
 // - Message and Follow buttons (placeholders)
 // =============================================================================
 
+import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -277,7 +278,7 @@ export default function SpaceMembersScreen() {
         {/* Error State */}
         {error && !loading && members.length === 0 && (
           <View style={styles.centerContainer}>
-            <Text style={styles.errorIcon}>⚠️</Text>
+            <Ionicons name="alert-circle-outline" size={48} color={themeColors.error} style={styles.errorIcon} />
             <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
             <Text style={[styles.retryButton, { color: themeColors.primary }]} onPress={handleRefresh}>
               Tap to retry
@@ -332,7 +333,7 @@ export default function SpaceMembersScreen() {
             ListEmptyComponent={
               !loading && !error ? (
                 <View style={styles.centerContainer}>
-                  <Text style={styles.emptyIcon}>👥</Text>
+                  <Ionicons name="people-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
                   <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No members found</Text>
                 </View>
               ) : null
@@ -373,7 +374,6 @@ const styles = StyleSheet.create({
   },
 
   errorIcon: {
-    fontSize: 48,
     marginBottom: spacing.md,
   },
 
@@ -389,7 +389,6 @@ const styles = StyleSheet.create({
   },
 
   emptyIcon: {
-    fontSize: 48,
     marginBottom: spacing.md,
   },
 

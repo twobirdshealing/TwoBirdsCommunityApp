@@ -7,18 +7,20 @@
 // - Sticky badge for pinned posts
 // =============================================================================
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Alert,
+  Dimensions,
   Image,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
+import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
 import { Avatar } from '@/components/common/Avatar';
 import { ProfileBadge } from '@/components/common/ProfileBadge';
 import { VerifiedBadge } from '@/components/common/VerifiedBadge';
@@ -33,7 +35,8 @@ import { shadows, sizing, spacing, typography } from '@/constants/layout';
 import { Feed, ReactionType } from '@/types';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { formatCompactNumber } from '@/utils/formatNumber';
-import { stripHtmlTags, stripHtmlPreserveBreaks, truncateText } from '@/utils/htmlToText';
+import { stripHtmlTags } from '@/utils/htmlToText';
+import { HtmlContent } from '@/components/common/HtmlContent';
 import { useAuth } from '@/contexts/AuthContext';
 import { SITE_URL } from '@/constants/config';
 import { REACTION_EMOJI, REACTION_COLORS, REACTION_NAMES } from '@/constants/reactions';
@@ -145,6 +148,8 @@ export function FeedCard({
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | undefined>();
+  const menuButtonRef = useRef<View>(null);
   const longPressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Extract data
@@ -162,12 +167,13 @@ export function FeedCard({
   const timestamp = formatRelativeTime(feed.created_at);
   
   // Content processing
-  const rawContent = variant === 'full'
-    ? stripHtmlPreserveBreaks(feed.message_rendered || feed.message || '')
-    : stripHtmlTags(feed.message_rendered || feed.message || '');
-  const isLongContent = variant === 'compact' && rawContent.length > 300;
+  const rawHtml = feed.message_rendered || feed.message || '';
+  const plainTextLength = stripHtmlTags(rawHtml).length;
+  const isLongContent = variant === 'compact' && plainTextLength > 300;
   const [expanded, setExpanded] = useState(false);
-  const displayContent = variant === 'full' ? rawContent : (expanded ? rawContent : truncateText(rawContent, 300));
+  const { width: windowWidth } = useWindowDimensions();
+  // Card has marginHorizontal: spacing.md (12) + padding: spacing.lg (16) on each side
+  const contentWidth = windowWidth - spacing.md * 2 - spacing.lg * 2;
   
   // Media detection
   const media = detectMedia(feed);
@@ -197,6 +203,7 @@ export function FeedCard({
   // ---------------------------------------------------------------------------
 
   const handleBookmarkPress = () => {
+    hapticLight();
     const newState = !isBookmarked;
     setIsBookmarked(newState);
     onBookmarkToggle?.(newState);
@@ -238,10 +245,16 @@ export function FeedCard({
   };
 
   const handleMenuPress = () => {
-    setShowMenu(true);
+    hapticLight();
+    (menuButtonRef.current as any)?.measureInWindow?.((x: number, y: number, width: number, height: number) => {
+      const screenWidth = Dimensions.get('window').width;
+      setMenuAnchor({ top: y + height + 4, right: screenWidth - x - width });
+      setShowMenu(true);
+    });
   };
 
   const handleDelete = () => {
+    hapticWarning();
     Alert.alert(
       'Delete Post',
       'Are you sure you want to delete this post?',
@@ -321,6 +334,7 @@ export function FeedCard({
           </TouchableOpacity>
 
           <TouchableOpacity
+            ref={menuButtonRef}
             style={styles.headerButton}
             onPress={handleMenuPress}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -338,10 +352,13 @@ export function FeedCard({
       )}
 
       {/* ===== Content ===== */}
-      {displayContent.length > 0 && (
-        <Text style={[styles.content, { color: themeColors.textSecondary }]} numberOfLines={variant === 'full' ? undefined : (expanded ? undefined : 6)}>
-          {displayContent}
-        </Text>
+      {rawHtml.length > 0 && (
+        <View style={[
+          styles.contentContainer,
+          variant !== 'full' && !expanded ? styles.contentCollapsed : undefined,
+        ]}>
+          <HtmlContent html={rawHtml} contentWidth={contentWidth} />
+        </View>
       )}
 
       {/* ===== Show More / Show Less ===== */}
@@ -484,7 +501,7 @@ export function FeedCard({
               ],
             ]}
             onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              hapticLight();
               if (hasUserReact && userReactionType) {
                 onReact?.(userReactionType);
               } else {
@@ -492,7 +509,7 @@ export function FeedCard({
               }
             }}
             onLongPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              hapticMedium();
               setShowReactionPicker(true);
             }}
             delayLongPress={400}
@@ -590,6 +607,7 @@ export function FeedCard({
         visible={showMenu}
         onClose={() => setShowMenu(false)}
         items={getMenuItems()}
+        anchor={menuAnchor}
       />
     </View>
   );
@@ -694,10 +712,13 @@ const styles = StyleSheet.create({
   },
 
   // Content
-  content: {
-    fontSize: typography.size.md,
-    lineHeight: 22,
+  contentContainer: {
     marginBottom: spacing.sm,
+  },
+
+  contentCollapsed: {
+    maxHeight: 132, // ~6 lines at lineHeight 22
+    overflow: 'hidden' as const,
   },
 
   showMoreText: {

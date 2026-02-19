@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { NotificationTypeIcon } from './NotificationTypeIcon';
+import { hapticLight } from '@/utils/haptics';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -66,6 +67,7 @@ export function NotificationCard({
   };
 
   const handleMarkAsRead = () => {
+    hapticLight();
     closeSwipeable();
     onMarkAsRead?.(notification);
   };

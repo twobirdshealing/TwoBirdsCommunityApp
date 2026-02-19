@@ -3,10 +3,10 @@
 // =============================================================================
 // Usage:
 //   <EmptyState message="No posts yet" />
-//   <EmptyState 
-//     icon="📝" 
-//     title="No posts" 
-//     message="Be the first to post!" 
+//   <EmptyState
+//     icon="document-text-outline"
+//     title="No posts"
+//     message="Be the first to post!"
 //     actionLabel="Create Post"
 //     onAction={() => navigate('create')}
 //   />
@@ -14,6 +14,7 @@
 
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
 
@@ -22,15 +23,18 @@ import { spacing, typography, sizing } from '@/constants/layout';
 // -----------------------------------------------------------------------------
 
 interface EmptyStateProps {
-  // Emoji or icon
-  icon?: string;
-  
+  // Ionicons icon name
+  icon?: keyof typeof Ionicons.glyphMap;
+
+  // Optional icon color (defaults to textTertiary)
+  iconColor?: string;
+
   // Title text
   title?: string;
-  
+
   // Description message
   message: string;
-  
+
   // Optional action button
   actionLabel?: string;
   onAction?: () => void;
@@ -41,7 +45,8 @@ interface EmptyStateProps {
 // -----------------------------------------------------------------------------
 
 export function EmptyState({
-  icon = '📭',
+  icon = 'mail-open-outline',
+  iconColor,
   title,
   message,
   actionLabel,
@@ -52,7 +57,7 @@ export function EmptyState({
   return (
     <View style={styles.container}>
       {/* Icon */}
-      <Text style={styles.icon}>{icon}</Text>
+      <Ionicons name={icon} size={56} color={iconColor || themeColors.textTertiary} style={styles.icon} />
 
       {/* Title */}
       {title && (
@@ -86,7 +91,6 @@ const styles = StyleSheet.create({
   },
   
   icon: {
-    fontSize: 56,
     marginBottom: spacing.md,
   },
   

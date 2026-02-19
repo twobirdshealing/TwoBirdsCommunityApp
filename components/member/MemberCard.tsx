@@ -21,6 +21,7 @@ import { useProfileBadges } from '@/hooks';
 import { ProfileBadge } from '@/components/common/ProfileBadge';
 import { VerifiedBadge } from '@/components/common/VerifiedBadge';
 import { spacing, typography } from '@/constants/layout';
+import { hapticLight, hapticMedium } from '@/utils/haptics';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -229,7 +230,7 @@ export function MemberCard({
           {onMessagePress && (
             <Pressable
               style={[styles.actionButton, { backgroundColor: themeColors.backgroundSecondary }]}
-              onPress={() => onMessagePress(member)}
+              onPress={() => { hapticLight(); onMessagePress(member); }}
             >
               <Ionicons name="chatbubble-outline" size={16} color={themeColors.text} />
             </Pressable>
@@ -244,7 +245,7 @@ export function MemberCard({
                 { backgroundColor: themeColors.primary },
                 isFollowing && { backgroundColor: 'transparent', borderWidth: 1, borderColor: themeColors.primary },
               ]}
-              onPress={() => onFollowPress(member)}
+              onPress={() => { hapticMedium(); onFollowPress(member); }}
               disabled={followLoading}
             >
               {followLoading ? (

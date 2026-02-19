@@ -211,7 +211,7 @@ export default function BookmarksScreen() {
           )
         );
       } else {
-        throw new Error(response.error?.message || 'Failed to update post');
+        throw new Error(!response.success ? response.error.message : 'Failed to update post');
       }
     } catch (err) {
       console.error('Edit post error:', err);
@@ -279,7 +279,7 @@ export default function BookmarksScreen() {
           onDelete={handleDelete}
           ListHeaderComponent={<BookmarksHeader />}
           emptyMessage="No saved posts yet. Tap the bookmark icon on any post to save it here."
-          emptyIcon="📖"
+          emptyIcon="book-outline"
         />
         
         {/* Edit Post Modal */}

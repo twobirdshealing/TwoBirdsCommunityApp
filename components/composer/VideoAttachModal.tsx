@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { BottomSheet } from '@/components/common/BottomSheet';
+import { BottomSheet, SheetInput } from '@/components/common/BottomSheet';
 import { feedsApi, OembedData } from '@/services/api/feeds';
 
 // -----------------------------------------------------------------------------
@@ -99,8 +99,6 @@ export function VideoAttachModal({
     <BottomSheet
       visible={visible}
       onClose={handleClose}
-      heightMode="content"
-      maxHeight="80%"
       title="Attach Video"
     >
       {/* Tab indicator (just visual, oembed only for now) */}
@@ -124,16 +122,21 @@ export function VideoAttachModal({
 
             {/* URL Input */}
             <View style={[styles.inputRow, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
-              <TextInput
-                style={[styles.input, { color: themeColors.text }]}
-                placeholder="Paste a URL to embed"
-                placeholderTextColor={themeColors.textTertiary}
-                value={url}
-                onChangeText={setUrl}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-              />
+              <SheetInput>
+                {(inputProps) => (
+                  <TextInput
+                    {...inputProps}
+                    style={[styles.input, { color: themeColors.text }]}
+                    placeholder="Paste a URL to embed"
+                    placeholderTextColor={themeColors.textTertiary}
+                    value={url}
+                    onChangeText={setUrl}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                  />
+                )}
+              </SheetInput>
               <TouchableOpacity
                 style={[styles.embedButton, { backgroundColor: themeColors.background, borderColor: themeColors.border }, isLoading && styles.embedButtonDisabled]}
                 onPress={handleEmbed}

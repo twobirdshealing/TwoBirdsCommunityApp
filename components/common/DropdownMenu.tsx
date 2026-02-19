@@ -1,5 +1,9 @@
 // =============================================================================
-// DROPDOWN MENU - Reusable top-right dropdown menu component
+// DROPDOWN MENU - Reusable dropdown menu component
+// =============================================================================
+// Supports two positioning modes:
+// - Default (no anchor): top-right corner with topOffset (used by ProfileMenu, SpaceMenu)
+// - Anchored: positioned absolutely near the trigger button (used by FeedCard, CommentSheet)
 // =============================================================================
 
 import React from 'react';
@@ -7,6 +11,7 @@ import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
+import { hapticLight, hapticWarning } from '@/utils/haptics';
 
 export interface DropdownMenuItem {
   key: string;
@@ -22,19 +27,31 @@ export interface DropdownMenuProps {
   onClose: () => void;
   items: DropdownMenuItem[];
   topOffset?: number;
+  anchor?: { top: number; right: number };
 }
 
-export function DropdownMenu({ visible, onClose, items, topOffset = 100 }: DropdownMenuProps) {
+export function DropdownMenu({ visible, onClose, items, topOffset = 100, anchor }: DropdownMenuProps) {
   const { colors: themeColors } = useTheme();
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity
-        style={[styles.modalOverlay, { paddingTop: topOffset, backgroundColor: themeColors.overlay }]}
+        style={[
+          styles.modalOverlay,
+          { backgroundColor: themeColors.overlay },
+          !anchor && { paddingTop: topOffset, justifyContent: 'flex-start', alignItems: 'flex-end', paddingRight: spacing.lg },
+        ]}
         activeOpacity={1}
         onPress={onClose}
       >
-        <View style={[styles.menuContainer, { backgroundColor: themeColors.surface }, shadows.lg]}>
+        <View
+          style={[
+            styles.menuContainer,
+            { backgroundColor: themeColors.surface },
+            shadows.lg,
+            anchor && { position: 'absolute', top: anchor.top, right: anchor.right },
+          ]}
+        >
           {items.map((item, index) => (
             <React.Fragment key={item.key}>
               {index > 0 && (
@@ -42,7 +59,10 @@ export function DropdownMenu({ visible, onClose, items, topOffset = 100 }: Dropd
               )}
               <TouchableOpacity
                 style={styles.menuItem}
-                onPress={item.onPress}
+                onPress={() => {
+                  item.destructive ? hapticWarning() : hapticLight();
+                  item.onPress();
+                }}
                 disabled={item.disabled}
                 activeOpacity={0.7}
               >
@@ -73,10 +93,6 @@ export function DropdownMenu({ visible, onClose, items, topOffset = 100 }: Dropd
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-end',
-    paddingRight: spacing.lg,
   },
 
   menuContainer: {

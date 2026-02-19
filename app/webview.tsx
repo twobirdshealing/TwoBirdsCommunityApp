@@ -32,7 +32,7 @@ import { WebView, WebViewNavigation } from 'react-native-webview';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
+import { hapticLight } from '@/utils/haptics';
 import { spacing, typography } from '@/constants/layout';
 import { SITE_URL } from '@/constants/config';
 import { appApi } from '@/services/api/app';
@@ -160,7 +160,7 @@ export default function WebViewScreen() {
   // ---------------------------------------------------------------------------
 
   const handleRightPress = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    hapticLight();
 
     switch (params.rightAction) {
       case 'cart':

@@ -10,7 +10,7 @@
 
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { hapticLight } from '@/utils/haptics';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CalendarEvent, EventsByDate } from '@/types/calendar';
@@ -106,7 +106,7 @@ function DayCell({ day, dateKey, isToday, isSelected, isPast, events, onPress }:
 
   const handlePress = () => {
     if (hasEvents) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      hapticLight();
     }
     onPress();
   };

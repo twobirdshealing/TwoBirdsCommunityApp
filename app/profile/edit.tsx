@@ -23,7 +23,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import { hapticLight } from '@/utils/haptics';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -218,7 +218,7 @@ export default function EditProfileScreen() {
 
   const handleAvatarPress = () => {
     if (!username) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    hapticLight();
     showAvatarPicker({
       onUploadStart: (localUri) => {
         setAvatarUploading(true);
@@ -247,7 +247,7 @@ export default function EditProfileScreen() {
 
   const handleCoverPhotoPress = () => {
     if (!username) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    hapticLight();
     showCoverPicker({
       onUploadStart: (localUri) => {
         setCoverUploading(true);

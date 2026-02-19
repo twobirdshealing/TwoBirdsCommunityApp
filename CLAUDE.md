@@ -4,6 +4,24 @@ do not create new depndacies or utilites without asking. check entire project fi
 
 we DONT want to break things! 
 
+## Companion Plugins & Themes
+
+The `companion plugins/` folder contains WordPress plugins and themes that work with this app. Always reference when needed.
+
+### Native Fluent Plugins (official, by the Fluent team — we built our app around these)
+- **fluent-community** — Core Fluent Community plugin
+- **fluent-community-pro** — Pro add-on
+- **fluent-messaging** — Messaging add-on
+
+### Our Custom Plugins (all custom APIs exposed through tbc-community-app)
+- **tbc-community-app** — Main bridge plugin connecting our app to WordPress. All custom REST endpoints live here.
+- **tbc-fluent-profiles** — Custom profile fields for Fluent Community
+- **tbc-multi-reactions** — Multi-reaction support for Fluent Community
+- **tbc-otp-verification** — OTP verification for registration (Twilio)
+
+### Our Custom Theme
+- **fluent-starter** — Custom WordPress theme
+
 Current TEST credtials for when YOU give me commands curl -s -u "tas:WZm0 KKI7 g0H0 2CYd rJkx 6Ra1"
 
 dont try running commands your self jsut give them to me and wait for response. if unsure always ask for a API response to understand full pciture

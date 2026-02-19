@@ -16,7 +16,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { hapticLight } from '@/utils/haptics';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -131,7 +131,7 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
   };
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    hapticLight();
     onPress?.();
   };
 

@@ -8,8 +8,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,10 +15,13 @@ import {
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Avatar } from '@/components/common/Avatar';
-import { BottomSheet } from '@/components/common/BottomSheet';
+import { VerifiedBadge } from '@/components/common/VerifiedBadge';
+import { ProfileBadge } from '@/components/common/ProfileBadge';
+import { BottomSheet, BottomSheetFlatList, BottomSheetScrollView } from '@/components/common/BottomSheet';
 import { ReactionIcon } from './ReactionIcon';
 import { feedsApi } from '@/services/api';
-import { BreakdownItem } from '@/services/api/feeds';
+import { BreakdownItem, BreakdownUser } from '@/services/api/feeds';
+import { useBadgeDefinitions } from '@/hooks/useBadgeDefinitions';
 import { spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -45,6 +46,7 @@ export function ReactionBreakdownModal({
   objectId,
 }: ReactionBreakdownModalProps) {
   const { colors: themeColors } = useTheme();
+  const { resolveBadges } = useBadgeDefinitions();
   const [breakdown, setBreakdown] = useState<BreakdownItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -77,7 +79,8 @@ export function ReactionBreakdownModal({
   };
 
   // Get users for active tab
-  const activeUsers = activeTab === 'all'
+  type ActiveUser = BreakdownUser & { reactionType: string; emoji: string; icon_url?: string | null };
+  const activeUsers: ActiveUser[] = activeTab === 'all'
     ? breakdown.flatMap(b => b.users.map(u => ({ ...u, reactionType: b.type, emoji: b.emoji, icon_url: b.icon_url })))
     : (() => {
         const item = breakdown.find(b => b.type === activeTab);
@@ -88,18 +91,10 @@ export function ReactionBreakdownModal({
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      heightMode="content"
-      minHeight={300}
-      maxHeight="60%"
       title="Reactions"
     >
-      {/* Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={[styles.tabBar, { borderBottomColor: themeColors.borderLight }]}
-        contentContainerStyle={styles.tabBarContent}
-      >
+      {/* Tabs — "All" pinned, reaction icons scroll */}
+      <View style={[styles.tabBar, { borderBottomColor: themeColors.borderLight }]}>
         <TouchableOpacity
           style={[
             styles.tab,
@@ -114,27 +109,33 @@ export function ReactionBreakdownModal({
             All {total}
           </Text>
         </TouchableOpacity>
-        {breakdown.map(item => (
-          <TouchableOpacity
-            key={item.type}
-            style={[
-              styles.tab,
-              activeTab === item.type && [styles.tabActive, { borderBottomColor: item.color }],
-            ]}
-            onPress={() => setActiveTab(item.type)}
-          >
-            <View style={styles.tabIcon}>
-              <ReactionIcon iconUrl={item.icon_url} emoji={item.emoji} size={22} />
-            </View>
-            <Text style={[
-              styles.tabText,
-              { color: activeTab === item.type ? item.color : themeColors.textSecondary },
-            ]}>
-              {item.count}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+        <BottomSheetScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabBarContent}
+        >
+          {breakdown.map(item => (
+            <TouchableOpacity
+              key={item.type}
+              style={[
+                styles.tab,
+                activeTab === item.type && [styles.tabActive, { borderBottomColor: item.color }],
+              ]}
+              onPress={() => setActiveTab(item.type)}
+            >
+              <View style={styles.tabIcon}>
+                <ReactionIcon iconUrl={item.icon_url} emoji={item.emoji} size={22} />
+              </View>
+              <Text style={[
+                styles.tabText,
+                { color: activeTab === item.type ? item.color : themeColors.textSecondary },
+              ]}>
+                {item.count}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </BottomSheetScrollView>
+      </View>
 
       {/* Content */}
       {loading ? (
@@ -146,24 +147,31 @@ export function ReactionBreakdownModal({
           <Text style={{ color: themeColors.textSecondary }}>No reactions yet</Text>
         </View>
       ) : (
-        <FlatList
+        <BottomSheetFlatList
           data={activeUsers}
-          keyExtractor={(item, index) => `${item.user_id}-${index}`}
+          keyExtractor={(item: ActiveUser, index: number) => `${item.user_id}-${index}`}
           style={styles.userList}
-          renderItem={({ item }) => (
+          renderItem={({ item }: { item: ActiveUser }) => (
             <View style={[styles.userRow, { borderBottomColor: themeColors.borderLight }]}>
               <Avatar source={item.avatar} size="sm" />
-              <Text style={[styles.userName, { color: themeColors.text }]} numberOfLines={1}>
-                {item.display_name}
-              </Text>
+              <View style={styles.nameRow}>
+                <Text style={[styles.userName, { color: themeColors.text }]} numberOfLines={1}>
+                  {item.display_name}
+                </Text>
+                {item.is_verified === 1 && <VerifiedBadge size={14} />}
+                {resolveBadges(item.badge_slugs || []).map((badge) => (
+                  <ProfileBadge key={badge.slug} badge={badge} />
+                ))}
+              </View>
               {activeTab === 'all' && (
-                <ReactionIcon iconUrl={item.icon_url} emoji={item.emoji} size={16} />
+                <ReactionIcon iconUrl={item.icon_url} emoji={item.emoji} size={30} />
               )}
             </View>
           )}
         />
       )}
     </BottomSheet>
+
   );
 }
 
@@ -173,11 +181,15 @@ export function ReactionBreakdownModal({
 
 const styles = StyleSheet.create({
   tabBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderBottomWidth: 1,
     maxHeight: 44,
+    paddingLeft: spacing.md,
+    gap: spacing.md,
   },
   tabBarContent: {
-    paddingHorizontal: spacing.md,
+    paddingRight: spacing.md,
     gap: spacing.md,
   },
   tab: {
@@ -204,7 +216,6 @@ const styles = StyleSheet.create({
   },
   userList: {
     flex: 1,
-    minHeight: 200,
   },
   userRow: {
     flexDirection: 'row',
@@ -214,8 +225,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  userName: {
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
+  },
+  userName: {
+    flexShrink: 1,
     fontSize: typography.size.md,
   },
 });

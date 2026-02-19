@@ -5,6 +5,7 @@
 // to display grouped spaces with member counts and role badges.
 // =============================================================================
 
+import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -227,7 +228,7 @@ export default function SpacesScreen() {
       {/* Search Bar */}
       <View style={[styles.searchContainer, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
         <View style={[styles.searchInputContainer, { backgroundColor: themeColors.backgroundSecondary }]}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Ionicons name="search-outline" size={20} color={themeColors.textTertiary} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: themeColors.text }]}
             placeholder="Search spaces..."
@@ -256,7 +257,7 @@ export default function SpacesScreen() {
       {/* Error State */}
       {error && !loading && spaces.length === 0 && (
         <View style={styles.centerContainer}>
-          <Text style={styles.errorIcon}>⚠️</Text>
+          <Ionicons name="alert-circle-outline" size={48} color={themeColors.error} />
           <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
           <Text style={[styles.retryButton, { color: themeColors.primary }]} onPress={handleRefresh}>
             Tap to retry
@@ -296,7 +297,7 @@ export default function SpacesScreen() {
           ListEmptyComponent={
             searchQuery.length > 0 ? (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>🔍</Text>
+                <Ionicons name="search-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
                 <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No spaces match "{searchQuery}"</Text>
                 <Text style={[styles.clearSearchButton, { color: themeColors.primary }]} onPress={handleClearSearch}>
                   Clear search
@@ -310,7 +311,7 @@ export default function SpacesScreen() {
       {/* Empty State (no spaces at all) */}
       {!loading && !error && spaces.length === 0 && (
         <View style={styles.centerContainer}>
-          <Text style={styles.emptyIcon}>👥</Text>
+          <Ionicons name="people-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
           <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No spaces yet</Text>
           <Text style={[styles.emptySubtext, { color: themeColors.textTertiary }]}>
             Join a space to see it here
@@ -345,7 +346,6 @@ const styles = StyleSheet.create({
   },
 
   searchIcon: {
-    fontSize: 16,
     marginRight: spacing.sm,
   },
 
@@ -412,7 +412,6 @@ const styles = StyleSheet.create({
   },
 
   errorIcon: {
-    fontSize: 48,
     marginBottom: spacing.md,
   },
 
@@ -433,7 +432,6 @@ const styles = StyleSheet.create({
   },
 
   emptyIcon: {
-    fontSize: 48,
     marginBottom: spacing.md,
   },
 

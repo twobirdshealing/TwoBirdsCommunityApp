@@ -9,7 +9,7 @@ import React, { useRef, useCallback } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import * as Haptics from 'expo-haptics';
+import { hapticHeavy } from '@/utils/haptics';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -55,7 +55,7 @@ function TabItemButton({ routeKey, label, icon, isFocused, color, accessibilityL
   const wobble = useRef(new Animated.Value(0)).current;
 
   const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    hapticHeavy();
     Animated.sequence([
       Animated.timing(wobble, { toValue: 1, duration: 40, useNativeDriver: true }),
       Animated.timing(wobble, { toValue: -1, duration: 80, useNativeDriver: true }),

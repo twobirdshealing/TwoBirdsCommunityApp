@@ -45,7 +45,7 @@ app-example
 # companion plugins (reference only)
 companion plugins/
 
-# Firebase config files (safe to commit - contain only project IDs and restricted API keys)
+# Firebase config files (client-side by design, but API keys MUST be restricted in Google Cloud Console)
 
 # junk
 nul

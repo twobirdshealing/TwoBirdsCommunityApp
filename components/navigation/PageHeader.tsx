@@ -38,7 +38,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import { hapticLight } from '@/utils/haptics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing } from '@/constants/layout';
 
@@ -85,12 +85,12 @@ export function PageHeader({
   // ---------------------------------------------------------------------------
   
   const handleLeftPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    hapticLight();
     onLeftPress?.();
   };
   
   const handleRightPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    hapticLight();
     onRightPress?.();
   };
   

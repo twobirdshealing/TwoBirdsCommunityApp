@@ -14,6 +14,8 @@ import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { syncBadgeCount } from '@/services/push';
 import { notificationsApi } from '@/services/api';
 import 'react-native-reanimated';
@@ -226,17 +228,25 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <PusherProvider>
-          <RootLayoutNav />
-        </PusherProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={styles.flex}>
+      <ThemeProvider>
+        <AuthProvider>
+          <PusherProvider>
+            <BottomSheetModalProvider>
+              <RootLayoutNav />
+            </BottomSheetModalProvider>
+          </PusherProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
+
   loading: {
     flex: 1,
     justifyContent: 'center',

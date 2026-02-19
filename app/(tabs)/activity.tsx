@@ -282,8 +282,8 @@ export default function ActivityScreen() {
           media_images: data.media_images,
         });
 
-        if (response.success && response.data?.data) {
-          setFeeds(prevFeeds => [response.data!.data, ...prevFeeds]);
+        if (response.success && response.data?.feed) {
+          setFeeds(prevFeeds => [response.data!.feed, ...prevFeeds]);
         } else {
           throw new Error(response.error?.message || 'Failed to create post');
         }

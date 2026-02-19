@@ -1,26 +1,24 @@
 // =============================================================================
-// REACTION PICKER - Floating emoji picker for multi-reactions
+// REACTION PICKER - Bottom sheet emoji picker for multi-reactions
 // =============================================================================
-// Shows on long-press of the reaction button. Anchored near the bottom of the
-// screen for easy thumb access. Wraps into multiple rows if many reactions.
+// Shows on long-press of the reaction button. Uses BottomSheet for consistent
+// appearance with all other popups. Wraps into multiple rows if many reactions.
 // =============================================================================
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import {
-  Animated,
-  Modal,
-  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
+  View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useReactionConfig } from '@/hooks';
 import { ReactionIcon } from './ReactionIcon';
 import { ReactionType } from '@/types/feed';
-import { shadows, spacing, typography } from '@/constants/layout';
-import * as Haptics from 'expo-haptics';
+import { spacing, typography } from '@/constants/layout';
+import { hapticLight } from '@/utils/haptics';
+import { BottomSheet } from '@/components/common/BottomSheet';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -45,84 +43,44 @@ export function ReactionPicker({
 }: ReactionPickerProps) {
   const { colors: themeColors } = useTheme();
   const { reactions } = useReactionConfig();
-  const insets = useSafeAreaInsets();
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          tension: 200,
-          friction: 15,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      scaleAnim.setValue(0);
-      opacityAnim.setValue(0);
-    }
-  }, [visible]);
-
-  if (!visible) return null;
 
   return (
-    <Modal
-      transparent
+    <BottomSheet
       visible={visible}
-      animationType="none"
-      onRequestClose={onClose}
+      onClose={onClose}
+      title="Reactions"
     >
-      <Pressable style={[styles.overlay, { backgroundColor: themeColors.overlay }]} onPress={onClose}>
-        <Animated.View
-          style={[
-            styles.picker,
-            {
-              backgroundColor: themeColors.surface,
-              borderColor: themeColors.borderLight,
-              opacity: opacityAnim,
-              transform: [{ scale: scaleAnim }],
-              marginBottom: insets.bottom + 16,
-            },
-          ]}
-        >
-          {reactions.map((r) => {
-            const isActive = currentType === r.id;
-            return (
-              <TouchableOpacity
-                key={r.id}
+      <View style={styles.picker}>
+        {reactions.map((r) => {
+          const isActive = currentType === r.id;
+          return (
+            <TouchableOpacity
+              key={r.id}
+              style={[
+                styles.emojiButton,
+                isActive && [styles.emojiButtonActive, { backgroundColor: (r.color || '#1877F2') + '20' }],
+              ]}
+              onPress={() => {
+                hapticLight();
+                onSelect(r.id as ReactionType);
+                onClose();
+              }}
+              activeOpacity={0.7}
+            >
+              <ReactionIcon iconUrl={r.icon_url} emoji={r.emoji} size={35} />
+              <Text
                 style={[
-                  styles.emojiButton,
-                  isActive && [styles.emojiButtonActive, { backgroundColor: (r.color || '#1877F2') + '20' }],
+                  styles.emojiLabel,
+                  { color: isActive ? (r.color || '#1877F2') : themeColors.textTertiary },
                 ]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  onSelect(r.id as ReactionType);
-                  onClose();
-                }}
-                activeOpacity={0.7}
               >
-                <ReactionIcon iconUrl={r.icon_url} emoji={r.emoji} size={35} />
-                <Text
-                  style={[
-                    styles.emojiLabel,
-                    { color: isActive ? (r.color || '#1877F2') : themeColors.textTertiary },
-                  ]}
-                >
-                  {r.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </Animated.View>
-      </Pressable>
-    </Modal>
+                {r.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </BottomSheet>
   );
 }
 
@@ -131,35 +89,23 @@ export function ReactionPicker({
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
   picker: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    borderRadius: 28,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    borderWidth: 1,
-    marginHorizontal: spacing.md,
-    maxWidth: 400,
-    ...shadows.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: 50,
+    paddingBottom: spacing.md,
+    gap: spacing.sm,
   },
   emojiButton: {
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: 16,
   },
   emojiButtonActive: {
     borderRadius: 16,
-  },
-  emoji: {
-    fontSize: 28,
   },
   emojiLabel: {
     fontSize: typography.size.xs,

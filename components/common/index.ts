@@ -12,3 +12,4 @@ export { ProfileBadge } from './ProfileBadge';
 export { VerifiedBadge } from './VerifiedBadge';
 export { SocialLinksForm } from './SocialLinksForm';
 export { ProfilePhotoPicker } from './ProfilePhotoPicker';
+export { HtmlContent } from './HtmlContent';

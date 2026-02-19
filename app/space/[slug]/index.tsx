@@ -316,10 +316,10 @@ export default function SpacePage() {
           media_images: data.media_images,
         });
 
-        if (response.success) {
-          fetchFeeds(true);
+        if (response.success && response.data?.feed) {
+          setFeeds(prevFeeds => [response.data!.feed, ...prevFeeds]);
         } else {
-          Alert.alert('Error', response.error?.message || 'Failed to create post');
+          throw new Error(response.error?.message || 'Failed to create post');
         }
       }
     } catch (err) {
@@ -511,7 +511,7 @@ export default function SpacePage() {
         canModerate={canPinResult}
         ListHeaderComponent={<SpaceInfoHeader />}
         emptyMessage="No posts in this space yet"
-        emptyIcon="📝"
+        emptyIcon="document-text-outline"
       />
       
       {/* Create/Edit Post Modal */}
@@ -523,6 +523,7 @@ export default function SpacePage() {
         }}
         onSubmit={handleCreateOrEditPost}
         spaceSlug={slug}
+        spaceName={space?.title}
         editFeed={editingFeed || undefined}
       />
       

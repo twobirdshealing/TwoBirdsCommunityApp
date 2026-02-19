@@ -46,6 +46,7 @@ import {
   type RegistrationField,
   type FieldsResponse,
 } from '@/services/api/registration';
+import { hapticLight, hapticMedium, hapticSelection } from '@/utils/haptics';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -214,12 +215,14 @@ export default function RegisterScreen() {
   // ---------------------------------------------------------------------------
 
   const handleNextStep = useCallback(() => {
+    hapticMedium();
     setError(null);
     if (!validateStep(step)) return;
     setStep((prev) => (prev + 1) as Step);
   }, [step, validateStep]);
 
   const handleSubmitRegistration = useCallback(async (otpSessionKey?: string, emailCode?: string, emailToken?: string) => {
+    hapticMedium();
     setError(null);
 
     // Validate step 2 fields first (if coming from step 2 directly)
@@ -315,6 +318,7 @@ export default function RegisterScreen() {
   }, [formData, validateStep, registerAndLogin, getFieldsForStep, verificationToken, emailVerifyCode]);
 
   const handleVerifyOtp = useCallback(async () => {
+    hapticMedium();
     setError(null);
 
     if (!otpCode.length) {
@@ -375,6 +379,7 @@ export default function RegisterScreen() {
   // ---------------------------------------------------------------------------
 
   const handleVerifyEmail = useCallback(async () => {
+    hapticMedium();
     setError(null);
 
     if (!emailVerifyCode.length) {
@@ -428,6 +433,7 @@ export default function RegisterScreen() {
   // ---------------------------------------------------------------------------
 
   const handleSaveSocialLinks = useCallback(async () => {
+    hapticMedium();
     const hasAnyLink = Object.values(socialLinks).some(v => v.trim() !== '');
     if (!hasAnyLink) {
       setStep(6);
@@ -511,6 +517,7 @@ export default function RegisterScreen() {
   }, [currentUser, formData.username]);
 
   const handleFinish = useCallback(() => {
+    hapticMedium();
     router.replace('/(tabs)');
   }, [router]);
 
@@ -528,7 +535,7 @@ export default function RegisterScreen() {
         <View key={key} style={styles.inputContainer}>
           <TouchableOpacity
             style={styles.checkboxRow}
-            onPress={() => setFieldValue(key, !value)}
+            onPress={() => { hapticSelection(); setFieldValue(key, !value); }}
             activeOpacity={0.7}
           >
             <View style={[
@@ -565,6 +572,7 @@ export default function RegisterScreen() {
               },
             ]}
             onPress={() => {
+              hapticLight();
               setSelectModalField(key);
               setSelectModalVisible(true);
             }}
@@ -618,8 +626,8 @@ export default function RegisterScreen() {
       const isConfirm = key === 'conf_password';
       const visible = isConfirm ? showConfPassword : showPassword;
       const toggleVisible = isConfirm
-        ? () => setShowConfPassword(!showConfPassword)
-        : () => setShowPassword(!showPassword);
+        ? () => { hapticLight(); setShowConfPassword(!showConfPassword); }
+        : () => { hapticLight(); setShowPassword(!showPassword); };
 
       return (
         <View key={key} style={styles.inputContainer}>
@@ -757,6 +765,7 @@ export default function RegisterScreen() {
                     },
                   ]}
                   onPress={() => {
+                    hapticSelection();
                     setFieldValue(selectModalField!, option);
                     setSelectModalVisible(false);
                   }}

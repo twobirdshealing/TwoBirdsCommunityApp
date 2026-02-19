@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
+import { hapticLight, hapticMedium } from '@/utils/haptics';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -54,7 +55,7 @@ export function ComposerToolbar({
         {/* Image Picker */}
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={onImagePress}
+          onPress={() => { hapticLight(); onImagePress(); }}
           disabled={isUploading || hasVideo}
         >
           {isUploading ? (
@@ -72,7 +73,7 @@ export function ComposerToolbar({
         {onVideoPress && (
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={onVideoPress}
+            onPress={() => { hapticLight(); onVideoPress?.(); }}
             disabled={hasVideo}
           >
             <Ionicons
@@ -105,7 +106,7 @@ export function ComposerToolbar({
           { backgroundColor: themeColors.primary },
           !canSubmit && styles.submitButtonDisabled,
         ]}
-        onPress={onSubmit}
+        onPress={() => { hapticMedium(); onSubmit(); }}
         disabled={!canSubmit}
       >
         {isSubmitting ? (

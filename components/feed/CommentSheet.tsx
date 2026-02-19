@@ -12,20 +12,23 @@
 // REFACTORED: Uses shared BottomSheet component
 // =============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
+  Dimensions,
   Image,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import MarkdownTextInput from '@expensify/react-native-live-markdown/src/MarkdownTextInput';
+import { parseMarkdown } from '@/utils/markdownParser';
+import { getMarkdownStyle } from '@/constants/markdownStyle';
 import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
+import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -37,14 +40,19 @@ import { commentsApi, mediaApi } from '@/services/api';
 import { Avatar } from '@/components/common/Avatar';
 import { ProfileBadge } from '@/components/common/ProfileBadge';
 import { VerifiedBadge } from '@/components/common/VerifiedBadge';
-import { BottomSheet } from '@/components/common/BottomSheet';
+import { BottomSheet, BottomSheetFlatList, BottomSheetFooter, SheetInput } from '@/components/common/BottomSheet';
+import type { BottomSheetFooterProps } from '@/components/common/BottomSheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
+import { MarkdownToolbar } from '@/components/composer/MarkdownToolbar';
+import { type FormatResult } from '@/utils/markdown';
 import { ReactionPicker } from './ReactionPicker';
 import { ReactionBreakdownModal } from './ReactionBreakdownModal';
 import { ReactionIcon } from './ReactionIcon';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { stripHtmlTags } from '@/utils/htmlToText';
+import { HtmlContent } from '@/components/common/HtmlContent';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReactionConfig, useBadgeDefinitions } from '@/hooks';
 import { updateBreakdownOptimistically } from '@/utils/reactionHelpers';
@@ -70,76 +78,6 @@ interface AttachedImage {
 }
 
 // -----------------------------------------------------------------------------
-// Mention Parsing Helper
-// -----------------------------------------------------------------------------
-
-interface TextPart {
-  type: 'text' | 'mention';
-  content: string;
-  username?: string;
-  displayName?: string;
-}
-
-/**
- * Parse HTML to extract mentions and plain text
- * API returns: <a href="https://site.com/portal/u/username/">Display Name</a> some text
- * We need to make mentions clickable
- */
-function parseCommentContent(html: string): TextPart[] {
-  if (!html) return [];
-
-  const parts: TextPart[] = [];
-
-  // Regex to match profile links in format:
-  // <a href="https://staging.twobirdschurch.com/portal/u/bluejay/">James Elrod</a>
-  // Captures: username from URL, display name from link text
-  const mentionRegex = /<a\s+href=["'](?:https?:\/\/[^\/]+)?\/portal\/u\/([^"'\/]+)\/?["'][^>]*>([^<]+)<\/a>/gi;
-
-  let lastIndex = 0;
-  let match;
-
-  while ((match = mentionRegex.exec(html)) !== null) {
-    // Add text before this match
-    if (match.index > lastIndex) {
-      const textBefore = html.substring(lastIndex, match.index);
-      const strippedText = stripHtmlTags(textBefore);
-      if (strippedText) {
-        parts.push({ type: 'text', content: strippedText });
-      }
-    }
-
-    // Add the mention
-    parts.push({
-      type: 'mention',
-      content: match[2], // Display name
-      username: match[1], // Username from URL
-      displayName: match[2],
-    });
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add remaining text after last match
-  if (lastIndex < html.length) {
-    const remainingText = html.substring(lastIndex);
-    const strippedText = stripHtmlTags(remainingText);
-    if (strippedText) {
-      parts.push({ type: 'text', content: strippedText });
-    }
-  }
-
-  // If no mentions found, just return stripped text
-  if (parts.length === 0) {
-    const stripped = stripHtmlTags(html);
-    if (stripped) {
-      parts.push({ type: 'text', content: stripped });
-    }
-  }
-
-  return parts;
-}
-
-// -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
@@ -147,6 +85,9 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   const router = useRouter();
   const { user } = useAuth();
   const { colors: themeColors } = useTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  // Comment content width: window - list padding(16*2) - avatar(32) - avatar margin(12)
+  const commentContentWidth = windowWidth - spacing.lg * 2 - sizing.avatar.sm - spacing.md;
   const { reactions, getReaction, display } = useReactionConfig();
   const { resolveBadges } = useBadgeDefinitions();
   const defaultReactionId = reactions[0]?.id || 'like';
@@ -157,6 +98,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 
   // Comment input state
   const [commentText, setCommentText] = useState('');
+  const [commentSelection, setCommentSelection] = useState({ start: 0, end: 0 });
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -170,6 +112,8 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   const [breakdownComment, setBreakdownComment] = useState<Comment | null>(null);
   // Menu state
   const [menuComment, setMenuComment] = useState<Comment | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | undefined>();
+  const menuButtonRefs = useRef<Record<number, View | null>>({});
 
   // ---------------------------------------------------------------------------
   // Fetch Comments
@@ -221,6 +165,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   // ---------------------------------------------------------------------------
 
   const handlePickImage = async () => {
+    hapticLight();
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -269,6 +214,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   // ---------------------------------------------------------------------------
 
   const handleSubmitComment = async () => {
+    hapticLight();
     if (!feedId) return;
 
     const trimmedText = commentText.trim();
@@ -281,6 +227,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
       if (editingComment) {
         const response = await commentsApi.updateComment(feedId, editingComment.id, {
           comment: trimmedText,
+          content_type: 'markdown',
         });
 
         if (response.success) {
@@ -322,6 +269,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 
       const response = await commentsApi.createComment(feedId, {
         comment: trimmedText,
+        content_type: 'markdown',
         parent_id: parentId,
         media_images,
       });
@@ -351,6 +299,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   // ---------------------------------------------------------------------------
 
   const handleReply = (comment: Comment) => {
+    hapticLight();
     // If this comment has a parent_id, it's already a reply
     // We should reply to the TOP-LEVEL comment, not nest deeper
     // Also pre-fill with @username mention
@@ -467,7 +416,17 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   // ---------------------------------------------------------------------------
 
   const handleCommentMenu = (comment: Comment) => {
-    setMenuComment(comment);
+    hapticLight();
+    const ref = menuButtonRefs.current[comment.id];
+    if (ref) {
+      (ref as any).measureInWindow?.((x: number, y: number, width: number, height: number) => {
+        const screenWidth = Dimensions.get('window').width;
+        setMenuAnchor({ top: y + height + 4, right: screenWidth - x - width });
+        setMenuComment(comment);
+      });
+    } else {
+      setMenuComment(comment);
+    }
   };
 
   const getCommentMenuItems = (): DropdownMenuItem[] => {
@@ -511,6 +470,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   };
 
   const handleDeleteComment = (comment: Comment) => {
+    hapticWarning();
     Alert.alert(
       'Delete Comment',
       'Are you sure you want to delete this comment?',
@@ -548,54 +508,12 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   };
 
   // ---------------------------------------------------------------------------
-  // Navigate to profile
+  // Handle Markdown Format
   // ---------------------------------------------------------------------------
 
-  const handleMentionPress = (username: string) => {
-    onClose(); // Close comment sheet first
-    router.push({
-      pathname: '/profile/[username]',
-      params: { username },
-    });
-  };
-
-  // ---------------------------------------------------------------------------
-  // Render comment text with clickable mentions
-  // ---------------------------------------------------------------------------
-
-  const renderCommentText = (html: string) => {
-    const parts = parseCommentContent(html);
-
-    if (parts.length === 0) {
-      return null;
-    }
-
-    // If only one text part, render simple Text
-    if (parts.length === 1 && parts[0].type === 'text') {
-      return <Text style={[styles.commentText, { color: themeColors.text }]}>{parts[0].content}</Text>;
-    }
-
-    // Render with clickable mentions
-    return (
-      <Text style={[styles.commentText, { color: themeColors.text }]}>
-        {parts.map((part, index) => {
-          if (part.type === 'mention' && part.username) {
-            return (
-              <Text
-                key={index}
-                style={[styles.mentionText, { color: themeColors.primary }]}
-                onPress={() => handleMentionPress(part.username!)}
-              >
-                {part.content}
-                {/* Add space after mention for natural reading */}
-                <Text style={[styles.commentText, { color: themeColors.text }]}> </Text>
-              </Text>
-            );
-          }
-          return <Text key={index}>{part.content}</Text>;
-        })}
-      </Text>
-    );
+  const handleFormat = (result: FormatResult) => {
+    setCommentText(result.text);
+    setTimeout(() => setCommentSelection(result.selection), 0);
   };
 
   // ---------------------------------------------------------------------------
@@ -641,6 +559,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
             </View>
             {/* 3-dot menu */}
             <TouchableOpacity
+              ref={(el: any) => { menuButtonRefs.current[item.id] = el; }}
               style={styles.commentMenuButton}
               onPress={() => handleCommentMenu(item)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -652,7 +571,11 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
           {/* Comment text with timestamp on right */}
           <View style={styles.commentTextRow}>
             <View style={styles.commentTextContent}>
-              {renderCommentText(item.message_rendered || item.message)}
+              <HtmlContent
+                html={item.message_rendered || item.message || ''}
+                contentWidth={commentContentWidth}
+                onLinkNavigate={onClose}
+              />
             </View>
             <Text style={[styles.commentTimeInline, { color: themeColors.textTertiary }]}>
               {timestamp}
@@ -691,12 +614,12 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
                       hasReacted && { backgroundColor: reactionColor + '15' },
                     ]}
                     onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      hapticLight();
                       const type = item.user_reaction_type || defaultReactionId;
                       handleCommentReaction(item, type);
                     }}
                     onLongPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      hapticMedium();
                       setReactionPickerComment(item);
                     }}
                     delayLongPress={400}
@@ -761,47 +684,19 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   const canSubmit = (commentText.trim().length > 0 || attachedImages.length > 0) && !isSubmitting && !isUploading;
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Safe area insets (for footer bottom spacing)
   // ---------------------------------------------------------------------------
 
-  return (
-    <>
-      <BottomSheet
-        visible={visible}
-        onClose={onClose}
-        heightMode="percentage"
-        heightPercentage={75}
-        title="Comments"
-        keyboardAvoiding
-      >
-        {/* Content */}
-        {loading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color={themeColors.primary} />
-          </View>
-        ) : error ? (
-          <View style={styles.centered}>
-            <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-            <TouchableOpacity onPress={fetchComments} style={[styles.retryButton, { backgroundColor: themeColors.primary }]}>
-              <Text style={[styles.retryText, { color: themeColors.textInverse }]}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
-        ) : comments.length === 0 ? (
-          <View style={styles.centered}>
-            <Text style={styles.emptyIcon}>💬</Text>
-            <Text style={[styles.emptyTitle, { color: themeColors.text }]}>No Comments Yet</Text>
-            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>Be the first to comment!</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={comments}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderComment}
-            contentContainerStyle={styles.commentsList}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
+  const insets = useSafeAreaInsets();
 
+  // ---------------------------------------------------------------------------
+  // Footer — sticky input pinned to bottom via gorhom footerComponent
+  // ---------------------------------------------------------------------------
+
+  const renderFooter = useCallback(
+    (props: BottomSheetFooterProps) => (
+      <BottomSheetFooter {...props} bottomInset={0}>
+        <View style={[styles.footerInner, { backgroundColor: themeColors.surface, paddingBottom: insets.bottom }]}>
         {/* Reply indicator - shows who you're mentioning */}
         {replyingTo && !editingComment && (
           <View style={[styles.replyIndicator, { backgroundColor: themeColors.primaryLight + '20' }]}>
@@ -848,6 +743,14 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
           </View>
         )}
 
+        {/* Markdown Formatting Toolbar */}
+        <MarkdownToolbar
+          text={commentText}
+          selection={commentSelection}
+          onFormat={handleFormat}
+          compact
+        />
+
         {/* Comment Input */}
         <View style={[styles.inputContainer, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
           {/* Image picker button */}
@@ -863,16 +766,25 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
             />
           </TouchableOpacity>
 
-          {/* Text input */}
-          <TextInput
-            style={[styles.textInput, { backgroundColor: themeColors.background, color: themeColors.text }]}
-            placeholder={replyingTo ? 'Write your reply...' : 'Write a comment...'}
-            placeholderTextColor={themeColors.textTertiary}
-            value={commentText}
-            onChangeText={setCommentText}
-            multiline
-            maxLength={2000}
-          />
+          {/* Text input — wrapped with SheetInput for keyboard handling */}
+          <SheetInput>
+            {(inputProps) => (
+              <MarkdownTextInput
+                {...inputProps}
+                style={[styles.textInput, { backgroundColor: themeColors.background, color: themeColors.text }]}
+                placeholder={replyingTo ? 'Write your reply...' : 'Write a comment...'}
+                placeholderTextColor={themeColors.textTertiary}
+                value={commentText}
+                onChangeText={setCommentText}
+                multiline
+                maxLength={2000}
+                selection={commentSelection}
+                onSelectionChange={(e) => setCommentSelection(e.nativeEvent.selection)}
+                parser={parseMarkdown}
+                markdownStyle={getMarkdownStyle(themeColors)}
+              />
+            )}
+          </SheetInput>
 
           {/* Submit button */}
           <TouchableOpacity
@@ -887,6 +799,55 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
             )}
           </TouchableOpacity>
         </View>
+        </View>
+      </BottomSheetFooter>
+    ),
+    [replyingTo, editingComment, attachedImages, isUploading, commentText,
+     commentSelection, canSubmit, isSubmitting, themeColors, insets.bottom],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
+  return (
+    <>
+      <BottomSheet
+        visible={visible}
+        onClose={onClose}
+        title="Comments"
+        footerComponent={renderFooter}
+      >
+          {/* Scrollable content area — fills remaining space above input */}
+          <View style={styles.contentArea}>
+            {loading ? (
+              <View style={styles.centered}>
+                <ActivityIndicator size="large" color={themeColors.primary} />
+              </View>
+            ) : error ? (
+              <View style={styles.centered}>
+                <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
+                <TouchableOpacity onPress={fetchComments} style={[styles.retryButton, { backgroundColor: themeColors.primary }]}>
+                  <Text style={[styles.retryText, { color: themeColors.textInverse }]}>Try Again</Text>
+                </TouchableOpacity>
+              </View>
+            ) : comments.length === 0 ? (
+              <View style={styles.centered}>
+                <Ionicons name="chatbubble-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
+                <Text style={[styles.emptyTitle, { color: themeColors.text }]}>No Comments Yet</Text>
+                <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>Be the first to comment!</Text>
+              </View>
+            ) : (
+              <BottomSheetFlatList
+                data={comments}
+                keyExtractor={(item: Comment) => item.id.toString()}
+                renderItem={renderComment}
+                contentContainerStyle={styles.commentsList}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              />
+            )}
+          </View>
       </BottomSheet>
 
       {/* Reaction Picker for comments */}
@@ -914,6 +875,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         visible={!!menuComment}
         onClose={() => setMenuComment(null)}
         items={getCommentMenuItems()}
+        anchor={menuAnchor}
       />
     </>
   );
@@ -924,11 +886,17 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
+  footerInner: {},
+
+  contentArea: {
+    flex: 1,
+  },
+
   centered: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.xl,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
   },
 
   errorText: {
@@ -948,7 +916,6 @@ const styles = StyleSheet.create({
   },
 
   emptyIcon: {
-    fontSize: 48,
     marginBottom: spacing.md,
   },
 
@@ -964,7 +931,7 @@ const styles = StyleSheet.create({
 
   commentsList: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: 160,
   },
 
   commentItem: {
@@ -1019,15 +986,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     marginLeft: spacing.sm,
     marginTop: 2,
-  },
-
-  commentText: {
-    fontSize: typography.size.md,
-    lineHeight: 20,
-  },
-
-  mentionText: {
-    fontWeight: '600',
   },
 
   commentImages: {

@@ -2,8 +2,7 @@
 // COMPOSER COMPONENTS - Barrel export
 // =============================================================================
 
-export { Composer } from './Composer';
-export type { ComposerProps, ComposerMode, ComposerSubmitData } from './Composer';
+export type { ComposerSubmitData } from './CreatePostModal';
 
 export { ComposerToolbar } from './ComposerToolbar';
 export { MediaPreview } from './MediaPreview';

@@ -70,7 +70,7 @@ export function EventList({
     return (
       <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         {ListHeaderComponent}
-        <EmptyState icon="📅" message={emptyMessage} />
+        <EmptyState icon="calendar-outline" message={emptyMessage} />
       </View>
     );
   }

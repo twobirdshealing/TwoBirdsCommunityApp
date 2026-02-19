@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Space } from '@/types';
@@ -56,14 +57,14 @@ export function SpaceHeader({ space }: SpaceHeaderProps) {
         {showStats && (
           <View style={styles.stats}>
             <View style={styles.stat}>
-              <Text style={styles.statIcon}>👥</Text>
+              <Ionicons name="people-outline" size={16} color={themeColors.textSecondary} style={styles.statIcon} />
               <Text style={[styles.statText, { color: themeColors.textSecondary }]}>Members</Text>
             </View>
 
             <View style={[styles.statDivider, { backgroundColor: themeColors.border }]} />
 
             <View style={styles.stat}>
-              <Text style={styles.statIcon}>📝</Text>
+              <Ionicons name="document-text-outline" size={16} color={themeColors.textSecondary} style={styles.statIcon} />
               <Text style={[styles.statText, { color: themeColors.textSecondary }]}>Posts</Text>
             </View>
           </View>
@@ -119,7 +120,6 @@ const styles = StyleSheet.create({
   },
 
   statIcon: {
-    fontSize: 16,
     marginRight: spacing.xs,
   },
 

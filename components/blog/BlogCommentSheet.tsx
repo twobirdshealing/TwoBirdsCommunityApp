@@ -5,15 +5,15 @@
 // No reactions, no image attachments, no edit/delete, no mentions.
 // =============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
+  Dimensions,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -28,12 +28,21 @@ import { blogApi } from '@/services/api';
 import { Avatar } from '@/components/common/Avatar';
 import { ProfileBadge } from '@/components/common/ProfileBadge';
 import { VerifiedBadge } from '@/components/common/VerifiedBadge';
-import { BottomSheet } from '@/components/common/BottomSheet';
+import { BottomSheet, BottomSheetFlatList, BottomSheetFooter, SheetInput } from '@/components/common/BottomSheet';
+import type { BottomSheetFooterProps } from '@/components/common/BottomSheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { useBadgeDefinitions } from '@/hooks';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { stripHtmlTags } from '@/utils/htmlToText';
+import { HtmlContent } from '@/components/common/HtmlContent';
+import { hapticLight, hapticWarning } from '@/utils/haptics';
+import MarkdownTextInput from '@expensify/react-native-live-markdown/src/MarkdownTextInput';
+import { parseMarkdown } from '@/utils/markdownParser';
+import { getMarkdownStyle } from '@/constants/markdownStyle';
+import { MarkdownToolbar } from '@/components/composer/MarkdownToolbar';
+import { type FormatResult } from '@/utils/markdown';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -54,6 +63,9 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
   const { user } = useAuth();
   const router = useRouter();
   const { resolveBadges } = useBadgeDefinitions();
+  const { width: windowWidth } = useWindowDimensions();
+  // Comment content width: window - list padding(16*2) - avatar(32) - avatar margin(12)
+  const commentContentWidth = windowWidth - spacing.lg * 2 - sizing.avatar.sm - spacing.md;
 
   const [comments, setComments] = useState<WPComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,6 +73,7 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
 
   // Input state
   const [commentText, setCommentText] = useState('');
+  const [commentSelection, setCommentSelection] = useState({ start: 0, end: 0 });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reply state
@@ -70,6 +83,8 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
   const [editingComment, setEditingComment] = useState<WPComment | null>(null);
   // Menu state
   const [menuComment, setMenuComment] = useState<WPComment | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | undefined>();
+  const menuButtonRefs = useRef<Record<number, View | null>>({});
 
   // ---------------------------------------------------------------------------
   // Fetch Comments
@@ -128,6 +143,7 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
   // ---------------------------------------------------------------------------
 
   const handleSubmitComment = async () => {
+    hapticLight();
     if (!postId) return;
 
     const trimmed = commentText.trim();
@@ -182,6 +198,7 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
   // ---------------------------------------------------------------------------
 
   const handleReply = (comment: WPComment) => {
+    hapticLight();
     setReplyingTo(comment);
   };
 
@@ -193,6 +210,15 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
   const cancelEdit = () => {
     setEditingComment(null);
     setCommentText('');
+  };
+
+  // ---------------------------------------------------------------------------
+  // Handle Markdown Format
+  // ---------------------------------------------------------------------------
+
+  const handleFormat = (result: FormatResult) => {
+    setCommentText(result.text);
+    setTimeout(() => setCommentSelection(result.selection), 0);
   };
 
   // Always reply to the top-level parent (same as FC CommentSheet)
@@ -227,7 +253,17 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
   // ---------------------------------------------------------------------------
 
   const handleCommentMenu = (comment: WPComment) => {
-    setMenuComment(comment);
+    hapticLight();
+    const ref = menuButtonRefs.current[comment.id];
+    if (ref) {
+      (ref as any).measureInWindow?.((x: number, y: number, width: number, height: number) => {
+        const screenWidth = Dimensions.get('window').width;
+        setMenuAnchor({ top: y + height + 4, right: screenWidth - x - width });
+        setMenuComment(comment);
+      });
+    } else {
+      setMenuComment(comment);
+    }
   };
 
   const getCommentMenuItems = (): DropdownMenuItem[] => {
@@ -250,6 +286,7 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
   };
 
   const handleCopyLink = async (comment: WPComment) => {
+    hapticLight();
     const url = comment.link || `${SITE_URL}/?p=${comment.post}#comment-${comment.id}`;
     try {
       await Clipboard.setStringAsync(url);
@@ -267,6 +304,7 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
   };
 
   const handleDeleteComment = (comment: WPComment) => {
+    hapticWarning();
     Alert.alert(
       'Delete Comment',
       'Are you sure you want to delete this comment?',
@@ -302,7 +340,6 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
     const avatarUrl = item.fcom_author_avatar || item.author_avatar_urls?.['96'] || item.author_avatar_urls?.['48'] || null;
     const displayName = item.author_name;
     const isVerified = item.fcom_author_is_verified === 1;
-    const commentContent = stripHtmlTags(item.content.rendered);
 
     return (
       <View style={[styles.commentItem, isReply && [styles.commentReply, { borderLeftColor: themeColors.border }]]}>
@@ -323,6 +360,7 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
               ))}
             </View>
             <TouchableOpacity
+              ref={(el: any) => { menuButtonRefs.current[item.id] = el; }}
               style={styles.commentMenuButton}
               onPress={() => handleCommentMenu(item)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -332,9 +370,11 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
           </View>
           <View style={styles.commentTextRow}>
             <View style={styles.commentTextContent}>
-              <Text style={[styles.commentText, { color: themeColors.text }]}>
-                {commentContent}
-              </Text>
+              <HtmlContent
+                html={item.content.rendered || ''}
+                contentWidth={commentContentWidth}
+                onLinkNavigate={onClose}
+              />
             </View>
             <Text style={[styles.commentTimeInline, { color: themeColors.textTertiary }]}>
               {formatRelativeTime(item.date)}
@@ -355,6 +395,98 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
   const canSubmit = commentText.trim().length > 0 && !isSubmitting;
 
   // ---------------------------------------------------------------------------
+  // Safe area insets (for footer bottom spacing)
+  // ---------------------------------------------------------------------------
+
+  const insets = useSafeAreaInsets();
+
+  // ---------------------------------------------------------------------------
+  // Footer — sticky input pinned to bottom via gorhom footerComponent
+  // ---------------------------------------------------------------------------
+
+  const renderFooter = useCallback(
+    (props: BottomSheetFooterProps) => (
+      <BottomSheetFooter {...props} bottomInset={0}>
+        <View style={{ backgroundColor: themeColors.surface, paddingBottom: insets.bottom }}>
+        {/* Reply indicator */}
+        {replyingTo && !editingComment && (
+          <View style={[styles.replyIndicator, { backgroundColor: themeColors.primaryLight + '20' }]}>
+            <Text style={[styles.replyIndicatorText, { color: themeColors.textSecondary }]}>
+              Replying to{' '}
+              <Text style={[styles.replyName, { color: themeColors.primary }]}>
+                {replyingTo.author_name}
+              </Text>
+            </Text>
+            <TouchableOpacity onPress={cancelReply}>
+              <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Edit indicator */}
+        {editingComment && (
+          <View style={[styles.replyIndicator, { backgroundColor: themeColors.warning + '20' }]}>
+            <Text style={[styles.replyIndicatorText, { color: themeColors.textSecondary }]}>
+              Editing comment
+            </Text>
+            <TouchableOpacity onPress={cancelEdit}>
+              <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Markdown Formatting Toolbar */}
+        <MarkdownToolbar
+          text={commentText}
+          selection={commentSelection}
+          onFormat={handleFormat}
+          compact
+        />
+
+        {/* Comment Input */}
+        <View style={[styles.inputContainer, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
+          <SheetInput>
+            {(inputProps) => (
+              <MarkdownTextInput
+                {...inputProps}
+                style={[styles.textInput, { backgroundColor: themeColors.background, color: themeColors.text }]}
+                placeholder={replyingTo ? 'Write your reply...' : 'Write a comment...'}
+                placeholderTextColor={themeColors.textTertiary}
+                value={commentText}
+                onChangeText={setCommentText}
+                multiline
+                maxLength={2000}
+                selection={commentSelection}
+                onSelectionChange={(e) => setCommentSelection(e.nativeEvent.selection)}
+                parser={parseMarkdown}
+                markdownStyle={getMarkdownStyle(themeColors)}
+              />
+            )}
+          </SheetInput>
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              { backgroundColor: themeColors.primary },
+              !canSubmit && [styles.sendButtonDisabled, { backgroundColor: themeColors.textTertiary }],
+            ]}
+            onPress={handleSubmitComment}
+            disabled={!canSubmit}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color={themeColors.textInverse} />
+            ) : (
+              <Ionicons name={editingComment ? "checkmark" : "send"} size={20} color={themeColors.textInverse} />
+            )}
+          </TouchableOpacity>
+        </View>
+        </View>
+      </BottomSheetFooter>
+    ),
+    [replyingTo, editingComment, commentText, commentSelection, canSubmit,
+     isSubmitting, themeColors, insets.bottom],
+  );
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
@@ -363,98 +495,44 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      heightMode="percentage"
-      heightPercentage={75}
       title="Comments"
-      keyboardAvoiding
+      footerComponent={renderFooter}
     >
-      {/* Content */}
-      {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={themeColors.primary} />
-        </View>
-      ) : error ? (
-        <View style={styles.centered}>
-          <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-          <TouchableOpacity
-            onPress={fetchComments}
-            style={[styles.retryButton, { backgroundColor: themeColors.primary }]}
-          >
-            <Text style={[styles.retryText, { color: themeColors.textInverse }]}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
-      ) : comments.length === 0 ? (
-        <View style={styles.centered}>
-          <Text style={styles.emptyIcon}>{'\uD83D\uDCAC'}</Text>
-          <Text style={[styles.emptyTitle, { color: themeColors.text }]}>No Comments Yet</Text>
-          <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
-            Be the first to comment!
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={comments}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderComment}
-          contentContainerStyle={styles.commentsList}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-
-      {/* Reply indicator */}
-      {replyingTo && !editingComment && (
-        <View style={[styles.replyIndicator, { backgroundColor: themeColors.primaryLight + '20' }]}>
-          <Text style={[styles.replyIndicatorText, { color: themeColors.textSecondary }]}>
-            Replying to{' '}
-            <Text style={[styles.replyName, { color: themeColors.primary }]}>
-              {replyingTo.author_name}
-            </Text>
-          </Text>
-          <TouchableOpacity onPress={cancelReply}>
-            <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Edit indicator */}
-      {editingComment && (
-        <View style={[styles.replyIndicator, { backgroundColor: themeColors.warning + '20' }]}>
-          <Text style={[styles.replyIndicatorText, { color: themeColors.textSecondary }]}>
-            Editing comment
-          </Text>
-          <TouchableOpacity onPress={cancelEdit}>
-            <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Comment Input */}
-      <View style={[styles.inputContainer, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
-        <TextInput
-          style={[styles.textInput, { backgroundColor: themeColors.background, color: themeColors.text }]}
-          placeholder={replyingTo ? 'Write your reply...' : 'Write a comment...'}
-          placeholderTextColor={themeColors.textTertiary}
-          value={commentText}
-          onChangeText={setCommentText}
-          multiline
-          maxLength={2000}
-        />
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            { backgroundColor: themeColors.primary },
-            !canSubmit && [styles.sendButtonDisabled, { backgroundColor: themeColors.textTertiary }],
-          ]}
-          onPress={handleSubmitComment}
-          disabled={!canSubmit}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color={themeColors.textInverse} />
+        {/* Scrollable content area — fills remaining space above input */}
+        <View style={styles.contentArea}>
+          {loading ? (
+            <View style={styles.centered}>
+              <ActivityIndicator size="large" color={themeColors.primary} />
+            </View>
+          ) : error ? (
+            <View style={styles.centered}>
+              <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
+              <TouchableOpacity
+                onPress={fetchComments}
+                style={[styles.retryButton, { backgroundColor: themeColors.primary }]}
+              >
+                <Text style={[styles.retryText, { color: themeColors.textInverse }]}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : comments.length === 0 ? (
+            <View style={styles.centered}>
+              <Ionicons name="chatbubble-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
+              <Text style={[styles.emptyTitle, { color: themeColors.text }]}>No Comments Yet</Text>
+              <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
+                Be the first to comment!
+              </Text>
+            </View>
           ) : (
-            <Ionicons name={editingComment ? "checkmark" : "send"} size={20} color={themeColors.textInverse} />
+            <BottomSheetFlatList
+              data={comments}
+              keyExtractor={(item: WPComment) => item.id.toString()}
+              renderItem={renderComment}
+              contentContainerStyle={styles.commentsList}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            />
           )}
-        </TouchableOpacity>
-      </View>
+        </View>
     </BottomSheet>
 
     {/* Comment Options Menu */}
@@ -462,6 +540,7 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
       visible={!!menuComment}
       onClose={() => setMenuComment(null)}
       items={getCommentMenuItems()}
+      anchor={menuAnchor}
     />
     </>
   );
@@ -472,11 +551,15 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
+  contentArea: {
+    flex: 1,
+  },
+
   centered: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.xl,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
   },
 
   errorText: {
@@ -496,7 +579,6 @@ const styles = StyleSheet.create({
   },
 
   emptyIcon: {
-    fontSize: 48,
     marginBottom: spacing.md,
   },
 
@@ -512,7 +594,7 @@ const styles = StyleSheet.create({
 
   commentsList: {
     padding: spacing.lg,
-    paddingBottom: 100,
+    paddingBottom: 160,
   },
 
   commentItem: {
@@ -569,10 +651,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  commentText: {
-    fontSize: typography.size.md,
-    lineHeight: 20,
-  },
 
   replyAction: {
     paddingVertical: spacing.xs,

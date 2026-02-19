@@ -576,8 +576,8 @@ export default function UserChatScreen() {
         {/* Chat Area */}
         <KeyboardAvoidingView
           style={styles.chatArea}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 52 : 0}
+          behavior="padding"
+          keyboardVerticalOffset={insets.top + 52}
         >
           {loading ? (
             <View style={styles.loadingContainer}>

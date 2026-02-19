@@ -2,11 +2,10 @@
 // BLOG DETAIL SCREEN - Full blog post with rich HTML rendering
 // =============================================================================
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  Linking,
   ScrollView,
   Share,
   StyleSheet,
@@ -19,8 +18,8 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import RenderHtml from 'react-native-render-html';
 import { useTheme } from '@/contexts/ThemeContext';
+import { HtmlContent } from '@/components/common/HtmlContent';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { WPPost } from '@/types/blog';
 import { blogApi } from '@/services/api';
@@ -109,87 +108,6 @@ export default function BlogDetailScreen() {
       router.push(`/profile/${slug}`);
     }
   }, [post, router]);
-
-  // ---------------------------------------------------------------------------
-  // RenderHtml Tag Styles (theme-aware, memoized)
-  // ---------------------------------------------------------------------------
-
-  const tagsStyles = useMemo(
-    () => ({
-      body: {
-        color: themeColors.text,
-        fontSize: typography.size.md,
-        lineHeight: typography.size.md * typography.lineHeight.relaxed,
-      },
-      p: {
-        marginVertical: spacing.sm,
-        color: themeColors.text,
-      },
-      h1: {
-        color: themeColors.text,
-        fontSize: typography.size.xxl,
-        fontWeight: '700' as const,
-        marginVertical: spacing.md,
-      },
-      h2: {
-        color: themeColors.text,
-        fontSize: typography.size.xl,
-        fontWeight: '600' as const,
-        marginVertical: spacing.md,
-      },
-      h3: {
-        color: themeColors.text,
-        fontSize: typography.size.lg,
-        fontWeight: '600' as const,
-        marginVertical: spacing.sm,
-      },
-      a: {
-        color: themeColors.primary,
-        textDecorationLine: 'underline' as const,
-      },
-      blockquote: {
-        borderLeftWidth: 3,
-        borderLeftColor: themeColors.primary,
-        paddingLeft: spacing.md,
-        marginVertical: spacing.md,
-        fontStyle: 'italic' as const,
-        color: themeColors.textSecondary,
-      },
-      img: {
-        borderRadius: sizing.borderRadius.sm,
-      },
-      ul: { color: themeColors.text },
-      ol: { color: themeColors.text },
-      li: { color: themeColors.text, marginVertical: spacing.xs },
-      pre: {
-        backgroundColor: themeColors.backgroundSecondary,
-        padding: spacing.md,
-        borderRadius: sizing.borderRadius.sm,
-        overflow: 'hidden' as const,
-      },
-      code: {
-        backgroundColor: themeColors.backgroundSecondary,
-        fontSize: typography.size.sm,
-      },
-      em: {
-        color: themeColors.text,
-      },
-      strong: {
-        color: themeColors.text,
-        fontWeight: '700' as const,
-      },
-      figure: {
-        marginVertical: spacing.md,
-      },
-      figcaption: {
-        color: themeColors.textSecondary,
-        fontSize: typography.size.sm,
-        textAlign: 'center' as const,
-        marginTop: spacing.xs,
-      },
-    }),
-    [themeColors]
-  );
 
   // ---------------------------------------------------------------------------
   // Extract post data (prefer Fluent profile over WP Gravatar)
@@ -356,25 +274,10 @@ export default function BlogDetailScreen() {
 
             {/* Article Content */}
             <View style={styles.articleContent}>
-              <RenderHtml
+              <HtmlContent
+                html={post.content.rendered}
                 contentWidth={contentWidth}
-                source={{ html: post.content.rendered }}
-                tagsStyles={tagsStyles}
-                enableExperimentalBRCollapsing={true}
-                enableExperimentalGhostLinesPrevention={true}
-                renderersProps={{
-                  a: {
-                    onPress: (_event: any, href: string) => {
-                      if (href) Linking.openURL(href);
-                    },
-                  },
-                  img: {
-                    enableExperimentalPercentWidth: true,
-                  },
-                }}
-                defaultTextProps={{
-                  selectable: true,
-                }}
+                selectable={true}
               />
 
               {/* Comments Button */}

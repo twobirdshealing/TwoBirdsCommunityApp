@@ -168,7 +168,7 @@ export async function createFeed(data: CreateFeedData) {
 
   console.log('[FeedsAPI] Creating feed with:', JSON.stringify(requestData, null, 2));
 
-  return post<{ message: string; data: Feed }>(ENDPOINTS.FEEDS, requestData);
+  return post<{ feed: Feed }>(ENDPOINTS.FEEDS, requestData);
 }
 
 // -----------------------------------------------------------------------------
@@ -276,6 +276,8 @@ export interface BreakdownUser {
   display_name: string;
   avatar: string;
   user_url?: string;
+  is_verified?: number;
+  badge_slugs?: string[];
 }
 
 export interface BreakdownItem {

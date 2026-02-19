@@ -6,6 +6,7 @@
 
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { Space } from '@/types';
@@ -19,16 +20,16 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
   const { colors: themeColors, isDark } = useTheme();
 
   // Privacy icon and label helpers
-  const getPrivacyIcon = (): string => {
+  const getPrivacyIcon = (): keyof typeof Ionicons.glyphMap => {
     switch (space.privacy) {
       case 'public':
-        return '🌍';
+        return 'globe-outline';
       case 'private':
-        return '🔒';
+        return 'lock-closed-outline';
       case 'secret':
-        return '🔐';
+        return 'eye-off-outline';
       default:
-        return '🌍';
+        return 'globe-outline';
     }
   };
 
@@ -97,13 +98,19 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
 
         {/* Footer: Privacy + Members Count */}
         <View style={styles.footer}>
-          <Text style={[styles.privacy, { color: themeColors.textTertiary }]}>
-            {getPrivacyIcon()} {getPrivacyLabel()}
-          </Text>
-          {space.members_count != null && space.members_count > 0 && (
-            <Text style={[styles.membersCount, { color: themeColors.textTertiary }]}>
-              👥 {space.members_count} {space.members_count === 1 ? 'Member' : 'Members'}
+          <View style={styles.footerItem}>
+            <Ionicons name={getPrivacyIcon()} size={14} color={themeColors.textTertiary} />
+            <Text style={[styles.privacy, { color: themeColors.textTertiary }]}>
+              {getPrivacyLabel()}
             </Text>
+          </View>
+          {space.members_count != null && space.members_count > 0 && (
+            <View style={styles.footerItem}>
+              <Ionicons name="people-outline" size={14} color={themeColors.textTertiary} />
+              <Text style={[styles.membersCount, { color: themeColors.textTertiary }]}>
+                {space.members_count} {space.members_count === 1 ? 'Member' : 'Members'}
+              </Text>
+            </View>
           )}
         </View>
       </View>
@@ -198,6 +205,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  footerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   privacy: {
     fontSize: 13,

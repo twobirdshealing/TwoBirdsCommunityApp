@@ -227,7 +227,7 @@ export default function MessagesScreen() {
 
     return (
       <EmptyState
-        icon="💬"
+        icon="chatbubbles-outline"
         title="No Conversations"
         message="Start a conversation by visiting someone's profile and tapping the message button."
       />

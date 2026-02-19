@@ -4,6 +4,7 @@
 // UPDATED: Added onPin callback for pin functionality
 // =============================================================================
 
+import { Ionicons } from '@expo/vector-icons';
 import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing } from '@/constants/layout';
@@ -33,7 +34,7 @@ interface FeedListProps {
   canModerate?: boolean; // If true, shows Edit/Delete for any post (admin/mod)
   onLoadMore?: () => void;
   emptyMessage?: string;
-  emptyIcon?: string;
+  emptyIcon?: keyof typeof Ionicons.glyphMap;
   ListHeaderComponent?: React.ReactElement;
 }
 
@@ -58,7 +59,7 @@ export function FeedList({
   canModerate = false,
   onLoadMore,
   emptyMessage = 'No posts yet',
-  emptyIcon = '📭',
+  emptyIcon = 'mail-open-outline',
   ListHeaderComponent,
 }: FeedListProps) {
   const { colors: themeColors } = useTheme();

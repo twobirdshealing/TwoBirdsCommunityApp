@@ -23,6 +23,7 @@ import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
+import { hapticLight, hapticMedium } from '@/utils/haptics';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -40,6 +41,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
+    hapticMedium();
     setError(null);
 
     if (!username.trim()) {
@@ -128,7 +130,7 @@ export default function LoginScreen() {
                 />
                 <TouchableOpacity
                   style={styles.showPasswordButton}
-                  onPress={() => setShowPassword(!showPassword)}
+                  onPress={() => { hapticLight(); setShowPassword(!showPassword); }}
                 >
                   <Text style={styles.showPasswordText}>
                     {showPassword ? '🙈' : '👁️'}
