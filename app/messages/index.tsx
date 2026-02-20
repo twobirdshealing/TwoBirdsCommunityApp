@@ -14,9 +14,9 @@ import { ConversationCard, NewMessageModal } from '@/components/message';
 import { PageHeader } from '@/components/navigation';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { getMessagePreview, getOtherParticipants } from '@/types/message';
+import { getMessagePreview, getThreadDisplayName, getThreadAvatar, getThreadUserId, getThreadUsername } from '@/types/message';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNewMessageListener, useNewThreadListener } from '@/contexts/PusherContext';
+import { useNewMessageListener, useNewThreadListener, useMessageDeletedListener, useThreadUpdatedListener } from '@/contexts/PusherContext';
 import { messagesApi } from '@/services/api/messages';
 import { ChatThread } from '@/types/message';
 import { FlashList } from '@shopify/flash-list';
@@ -25,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   RefreshControl,
   StyleSheet,
   Text,
@@ -134,7 +135,7 @@ export default function MessagesScreen() {
       status: (data.thread.status as ChatThread['status']) || 'active',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      xprofiles: data.thread.xprofiles || [],
+      info: data.thread.info,
       messages: data.thread.messages || [],
     };
 
@@ -148,25 +149,54 @@ export default function MessagesScreen() {
 
   // Handle new message notifications - update thread preview
   useNewMessageListener((data) => {
-    // Update the thread's last message when a new message arrives
-    setThreads(prev => prev.map(thread => {
-      if (String(thread.id) === String(data.message.thread_id)) {
-        // Update thread with new message in preview
-        return {
-          ...thread,
-          message_count: String(Number(thread.message_count || 0) + 1),
-          messages: [{
-            id: data.message.id,
-            thread_id: data.message.thread_id,
-            user_id: data.message.user_id,
-            text: data.message.text,
-            created_at: data.message.created_at,
-            xprofile: data.message.xprofile,
-          }],
-        };
+    const threadId = data.thread_id || data.message.thread_id;
+
+    setThreads(prev => {
+      const threadExists = prev.some(t => String(t.id) === String(threadId));
+
+      if (threadExists) {
+        // Update existing thread with new message preview
+        return prev.map(thread => {
+          if (String(thread.id) === String(threadId)) {
+            return {
+              ...thread,
+              message_count: String(Number(thread.message_count || 0) + 1),
+              updated_at: new Date().toISOString(),
+              messages: [{
+                id: data.message.id,
+                thread_id: data.message.thread_id,
+                user_id: data.message.user_id,
+                text: data.message.text,
+                created_at: data.message.created_at,
+              }],
+            };
+          }
+          return thread;
+        });
+      } else {
+        // Thread not in our list — refetch to pick up the new thread
+        fetchThreads();
+        return prev;
       }
-      return thread;
-    }));
+    });
+  }, [fetchThreads]);
+
+  // Handle message deleted — update thread if the deleted message was the preview
+  useMessageDeletedListener((data) => {
+    // Just refetch to get updated preview since we can't reconstruct it
+    fetchThreads();
+  }, [fetchThreads]);
+
+  // Handle thread updated — update thread metadata
+  useThreadUpdatedListener((data) => {
+    if (data.thread) {
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === data.thread.id) {
+          return { ...thread, ...data.thread };
+        }
+        return thread;
+      }));
+    }
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -178,12 +208,13 @@ export default function MessagesScreen() {
 
     const query = searchQuery.toLowerCase().trim();
     return threads.filter(thread => {
-      // Search by participant names
-      const others = getOtherParticipants(thread, user?.id || 0);
-      const nameMatch = others.some(p =>
-        p.display_name?.toLowerCase().includes(query) ||
-        p.username?.toLowerCase().includes(query)
-      );
+      // Search by participant name (from info field)
+      const displayName = getThreadDisplayName(thread);
+      const nameMatch = displayName.toLowerCase().includes(query);
+
+      // Search by username
+      const username = getThreadUsername(thread);
+      const usernameMatch = username ? username.toLowerCase().includes(query) : false;
 
       // Search by last message preview
       const lastMessage = thread.messages?.[thread.messages.length - 1];
@@ -191,9 +222,9 @@ export default function MessagesScreen() {
         ? getMessagePreview(lastMessage.text, 200).toLowerCase().includes(query)
         : false;
 
-      return nameMatch || messageMatch;
+      return nameMatch || usernameMatch || messageMatch;
     });
-  }, [threads, searchQuery, user?.id]);
+  }, [threads, searchQuery]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -205,17 +236,47 @@ export default function MessagesScreen() {
   };
 
   const handleThreadPress = (thread: ChatThread) => {
-    const others = getOtherParticipants(thread, user?.id || 0);
-    const other = others[0];
+    const userId = getThreadUserId(thread);
+    const displayName = getThreadDisplayName(thread);
+    const avatarUrl = getThreadAvatar(thread);
+
     router.push({
       pathname: '/messages/user/[userId]',
       params: {
-        userId: String(other?.user_id || 0),
+        userId: String(userId || 0),
         threadId: String(thread.id),
-        displayName: other?.display_name || 'Chat',
-        avatar: other?.avatar || '',
+        displayName: displayName || 'Chat',
+        avatar: avatarUrl || '',
       },
     } as any);
+  };
+
+  const handleDeleteThread = (thread: ChatThread) => {
+    const displayName = getThreadDisplayName(thread);
+    Alert.alert(
+      'Delete Conversation',
+      `Are you sure you want to delete your conversation with ${displayName}? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const result = await messagesApi.deleteThread(thread.id);
+              if (result.success) {
+                setThreads(prev => prev.filter(t => t.id !== thread.id));
+              } else {
+                Alert.alert('Error', 'Failed to delete conversation');
+              }
+            } catch (err) {
+              console.error('[Messages] Delete thread error:', err);
+              Alert.alert('Error', 'Failed to delete conversation');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // ---------------------------------------------------------------------------
@@ -296,6 +357,7 @@ export default function MessagesScreen() {
                 currentUserId={user?.id || 0}
                 isUnread={unreadThreadIds.includes(item.id)}
                 onPress={handleThreadPress}
+                onDelete={handleDeleteThread}
               />
             )}
             keyExtractor={(item) => item.id.toString()}

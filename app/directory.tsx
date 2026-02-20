@@ -253,7 +253,7 @@ export default function ChurchDirectoryScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
+      <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         {/* Header */}
         <PageHeader
           leftAction="back"

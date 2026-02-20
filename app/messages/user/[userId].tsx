@@ -12,18 +12,20 @@
 import { Avatar } from '@/components/common/Avatar';
 import { DropdownMenu } from '@/components/common';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
-import { ChatInput, ChatInputAttachment, DateSeparator, MessageBubble } from '@/components/message';
+import { ChatInput, ChatInputAttachment, ChatInputReplyTo, DateSeparator, MessageBubble } from '@/components/message';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNewMessageListener } from '@/contexts/PusherContext';
+import { useNewMessageListener, useMessageDeletedListener, useReactionListener } from '@/contexts/PusherContext';
 import { messagesApi } from '@/services/api/messages';
-import { IntendedObject } from '@/services/api/messages';
+import { isUserOnline, formatLastActivity } from '@/utils/formatDate';
+import { IntendedObject } from '@/types/message';
 import {
   ChatMessage,
   ChatThread,
-  getOtherParticipants,
+  ThreadDetails,
+  getMessagePreview,
 } from '@/types/message';
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -64,22 +66,24 @@ export default function UserChatScreen() {
 
   // State
   const [thread, setThread] = useState<ChatThread | null>(null);
+  const [threadDetails, setThreadDetails] = useState<ThreadDetails | null>(null);
   const [intendedUser, setIntendedUser] = useState<IntendedObject | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [lastPage, setLastPage] = useState(1);
+  // Cursor-based pagination state (v2.2.0)
+  const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const hasOlderMessages = currentPage < lastPage;
 
   // Block state
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
   const [chatMenuVisible, setChatMenuVisible] = useState(false);
+
+  // Reply state
+  const [replyTo, setReplyTo] = useState<ChatInputReplyTo | null>(null);
 
   // Refs
   const listRef = useRef<any>(null);
@@ -90,21 +94,21 @@ export default function UserChatScreen() {
   const knownThreadId = threadIdParam ? parseInt(threadIdParam, 10) : null;
   const currentUserId = user?.id || 0;
 
-  // Header display: prefer thread data > server intended_object > route params
-  // Guard: selected_thread from pre_selected may not have xprofiles loaded
-  const otherParticipant = thread?.xprofiles ? getOtherParticipants(thread, currentUserId)[0] : null;
-  const headerName = otherParticipant?.display_name
+  // Header display: prefer threadDetails.info > intendedUser > route params
+  const headerName = threadDetails?.info?.title
     || intendedUser?.title
     || displayName
     || 'Chat';
-  const headerAvatar = otherParticipant?.avatar
+  const headerAvatar = threadDetails?.info?.photo
     || intendedUser?.photo
     || avatar
     || null;
-  const headerUsername = otherParticipant?.username;
+  const headerUsername = threadDetails?.info?.username;
+  const headerOnline = isUserOnline(threadDetails?.info?.last_activity);
+  const headerActivity = formatLastActivity(threadDetails?.info?.last_activity);
 
   // ---------------------------------------------------------------------------
-  // Resolve Thread - Server-side resolution via pre_selected param
+  // Resolve Thread - Server-side resolution via user_id param
   // ---------------------------------------------------------------------------
 
   // Load messages for a known thread (direct access, like native chat?thread_id=X)
@@ -114,23 +118,20 @@ export default function UserChatScreen() {
       const response = await messagesApi.getMessages(threadId);
 
       if (response.success) {
-        const fetchedMessages = (response.data.messages?.data || []).slice().reverse();
+        // v2.2.0: messages is a flat array in descending order
+        const fetchedMessages = (response.data.messages || []).slice().reverse();
         setMessages(fetchedMessages);
+        setHasMore(response.data.has_more || false);
 
-        // Plugin returns threadDetails (metadata), not a ChatThread object.
-        // Set minimal thread with known ID so polling + Pusher work.
+        // Set thread with known ID so polling + Pusher work
         setThread({ id: threadId } as ChatThread);
 
-        // Seed pagination state from Laravel paginated response
-        const paginated = response.data.messages;
-        if (paginated) {
-          setCurrentPage(paginated.current_page);
-          setLastPage(paginated.last_page);
-        }
-
-        // Seed blocked state from threadDetails
-        if (response.data.threadDetails?.blocked_thread) {
-          setIsBlocked(true);
+        // Store thread details for header display
+        if (response.data.threadDetails) {
+          setThreadDetails(response.data.threadDetails);
+          if (response.data.threadDetails.blocked_thread) {
+            setIsBlocked(true);
+          }
         }
 
         if (fetchedMessages.length > 0) {
@@ -150,7 +151,7 @@ export default function UserChatScreen() {
     }
   }, []);
 
-  // Resolve thread by userId via pre_selected API (like native chat?user_id=X)
+  // Resolve thread by userId via user_id query param (v2.2.0)
   const resolveThreadByUser = useCallback(async () => {
     if (!targetUserId) return;
 
@@ -164,23 +165,20 @@ export default function UserChatScreen() {
       }
 
       if (response.data.selected_thread) {
-        // Thread exists — use full thread from threads array (has xprofiles)
-        const selectedThread = (response.data.threads || []).find(
-          t => t.id === response.data.selected_thread!.id
-        ) || response.data.selected_thread;
+        const selectedThread = response.data.selected_thread;
         setThread(selectedThread);
 
         const messagesResponse = await messagesApi.getMessages(selectedThread.id);
 
         if (messagesResponse.success) {
-          const fetchedMessages = (messagesResponse.data.messages?.data || []).slice().reverse();
+          // v2.2.0: flat array in descending order
+          const fetchedMessages = (messagesResponse.data.messages || []).slice().reverse();
           setMessages(fetchedMessages);
+          setHasMore(messagesResponse.data.has_more || false);
 
-          // Seed pagination state
-          const paginated = messagesResponse.data.messages;
-          if (paginated) {
-            setCurrentPage(paginated.current_page);
-            setLastPage(paginated.last_page);
+          // Store thread details for header
+          if (messagesResponse.data.threadDetails) {
+            setThreadDetails(messagesResponse.data.threadDetails);
           }
 
           if (fetchedMessages.length > 0) {
@@ -257,8 +255,9 @@ export default function UserChatScreen() {
   // ---------------------------------------------------------------------------
 
   useNewMessageListener((data) => {
+    const msgThreadId = data.thread_id || data.message.thread_id;
     // Only add message if it's for this thread
-    if (thread && String(data.message.thread_id) === String(thread.id)) {
+    if (thread && String(msgThreadId) === String(thread.id)) {
       const newMessage: ChatMessage = {
         id: data.message.id,
         thread_id: data.message.thread_id,
@@ -282,30 +281,49 @@ export default function UserChatScreen() {
     }
   }, [thread]);
 
+  // Handle message deleted by other user (v2.2.0)
+  useMessageDeletedListener((data) => {
+    if (thread && String(data.thread_id) === String(thread.id)) {
+      setMessages(prev => prev.filter(m => m.id !== data.message_id));
+    }
+  }, [thread]);
+
+  // Handle reaction updates (v2.2.0 — prep for reaction UI)
+  useReactionListener((data) => {
+    if (thread && String(data.thread_id) === String(thread.id)) {
+      setMessages(prev => prev.map(m => {
+        if (m.id === data.message_id) {
+          return { ...m, meta: { ...m.meta, reactions: data.reactions } };
+        }
+        return m;
+      }));
+    }
+  }, [thread]);
+
   // ---------------------------------------------------------------------------
-  // Load Older Messages (Pagination)
+  // Load Older Messages (Cursor-based pagination v2.2.0)
   // ---------------------------------------------------------------------------
 
   const loadOlderMessages = useCallback(async () => {
-    if (loadingOlder || !hasOlderMessages || !thread) return;
+    if (loadingOlder || !hasMore || !thread || messages.length === 0) return;
 
     setLoadingOlder(true);
     try {
-      const nextPage = currentPage + 1;
-      const response = await messagesApi.getMessages(thread.id, nextPage);
+      // messages[0] is the oldest after reversal — use its ID as cursor
+      const oldestId = messages[0].id;
+      const response = await messagesApi.getMessages(thread.id, oldestId);
 
       if (response.success) {
-        const olderMessages = (response.data.messages?.data || []).slice().reverse();
+        const olderMessages = (response.data.messages || []).slice().reverse();
         setMessages(prev => [...olderMessages, ...prev]);
-        setCurrentPage(response.data.messages.current_page);
-        setLastPage(response.data.messages.last_page);
+        setHasMore(response.data.has_more || false);
       }
     } catch (err) {
       console.error('[UserChat] Load older error:', err);
     } finally {
       setLoadingOlder(false);
     }
-  }, [loadingOlder, hasOlderMessages, thread, currentPage]);
+  }, [loadingOlder, hasMore, thread, messages]);
 
   // ---------------------------------------------------------------------------
   // Delete Message
@@ -328,6 +346,37 @@ export default function UserChatScreen() {
       },
     ]);
   }, []);
+
+  // ---------------------------------------------------------------------------
+  // Long Press (Reply / Delete)
+  // ---------------------------------------------------------------------------
+
+  const handleLongPress = useCallback((message: ChatMessage) => {
+    const isOwn = Number(message.user_id) === currentUserId;
+    const options: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [
+      {
+        text: 'Reply',
+        onPress: () => {
+          setReplyTo({
+            messageId: message.id,
+            previewText: getMessagePreview(message.text, 80),
+          });
+        },
+      },
+    ];
+
+    if (isOwn) {
+      options.push({
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => handleDeleteMessage(message),
+      });
+    }
+
+    options.push({ text: 'Cancel', style: 'cancel' });
+
+    Alert.alert('Message', undefined, options);
+  }, [currentUserId, handleDeleteMessage]);
 
   // ---------------------------------------------------------------------------
   // Block User (from chat)
@@ -401,12 +450,19 @@ export default function UserChatScreen() {
   const handleSend = async (text: string, attachments?: ChatInputAttachment[]) => {
     if (!targetUserId) return;
 
+    // Capture and clear reply before sending
+    const currentReply = replyTo;
+    setReplyTo(null);
+
     setSending(true);
 
     try {
       if (thread) {
         // Existing thread — send message normally
-        const response = await messagesApi.sendMessage(thread.id, text, attachments);
+        const replyData = currentReply
+          ? { reply_to: currentReply.messageId, reply_text: currentReply.previewText }
+          : undefined;
+        const response = await messagesApi.sendMessage(thread.id, text, attachments, replyData);
 
         if (response.success && response.data.message) {
           setMessages(prev => [...prev, response.data.message]);
@@ -429,8 +485,14 @@ export default function UserChatScreen() {
           // Load the messages for the newly created thread
           const messagesResponse = await messagesApi.getMessages(newThread.id);
           if (messagesResponse.success) {
-            const fetchedMessages = (messagesResponse.data.messages?.data || []).slice().reverse();
+            // v2.2.0: flat array in descending order
+            const fetchedMessages = (messagesResponse.data.messages || []).slice().reverse();
             setMessages(fetchedMessages);
+            setHasMore(messagesResponse.data.has_more || false);
+
+            if (messagesResponse.data.threadDetails) {
+              setThreadDetails(messagesResponse.data.threadDetails);
+            }
 
             if (fetchedMessages.length > 0) {
               const maxId = Math.max(...fetchedMessages.map(m => m.id));
@@ -476,10 +538,24 @@ export default function UserChatScreen() {
         source={headerAvatar}
         size="sm"
         fallback={headerName}
+        online={headerOnline}
       />
-      <Text style={[styles.headerTitle, { color: themeColors.text }]} numberOfLines={1}>
-        {headerName}
-      </Text>
+      <View style={styles.headerTextColumn}>
+        <Text style={[styles.headerTitle, { color: themeColors.text }]} numberOfLines={1}>
+          {headerName}
+        </Text>
+        {headerActivity ? (
+          <Text
+            style={[
+              styles.headerSubtitle,
+              { color: headerOnline ? themeColors.online : themeColors.textTertiary },
+            ]}
+            numberOfLines={1}
+          >
+            {headerActivity}
+          </Text>
+        ) : null}
+      </View>
       {loading && (
         <ActivityIndicator size="small" color={themeColors.primary} style={styles.headerLoader} />
       )}
@@ -519,6 +595,7 @@ export default function UserChatScreen() {
           showAvatar={!isOwn && isFirstInGroup}
           showTimestamp={isLastInGroup}
           onAvatarPress={() => handleAvatarPress(item)}
+          onLongPress={handleLongPress}
           onDelete={isOwn ? handleDeleteMessage : undefined}
         />
       </>
@@ -597,7 +674,7 @@ export default function UserChatScreen() {
                   <View style={styles.loadOlderContainer}>
                     <ActivityIndicator size="small" color={themeColors.primary} />
                   </View>
-                ) : hasOlderMessages ? (
+                ) : hasMore ? (
                   <Pressable style={styles.loadOlderContainer} onPress={loadOlderMessages}>
                     <Text style={[styles.loadOlderText, { color: themeColors.primary }]}>
                       Load earlier messages
@@ -643,6 +720,8 @@ export default function UserChatScreen() {
                 sending={sending}
                 disabled={loading}
                 placeholder={thread ? 'Type a message...' : `Message ${headerName}...`}
+                replyTo={replyTo}
+                onCancelReply={() => setReplyTo(null)}
               />
             </View>
           )}
@@ -718,9 +797,19 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 
+  headerTextColumn: {
+    flexShrink: 1,
+    alignItems: 'center',
+  },
+
   headerTitle: {
     fontSize: typography.size.lg,
     fontWeight: '600',
+  },
+
+  headerSubtitle: {
+    fontSize: typography.size.xs,
+    marginTop: 1,
   },
 
   headerLoader: {

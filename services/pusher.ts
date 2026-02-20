@@ -3,6 +3,7 @@
 // =============================================================================
 // Handles Pusher connection, authentication, and channel subscriptions.
 // Uses private channels that require authentication via WordPress.
+// Updated for Fluent Messaging v2.2.0 event names and new events.
 // =============================================================================
 
 import { PUSHER_CONFIG } from '@/constants/config';
@@ -23,6 +24,7 @@ function log(...args: any[]) {
 // -----------------------------------------------------------------------------
 
 export interface PusherMessage {
+  thread_id?: string | number; // v2.2.0: thread_id at top level
   message: {
     id: number;
     thread_id: string | number;
@@ -38,13 +40,31 @@ export interface PusherThread {
     id: number;
     title: string;
     status: string;
-    xprofiles: any[];
+    info?: any;
     messages: any[];
   };
 }
 
+export interface PusherReaction {
+  message_id: number;
+  thread_id: string | number;
+  reactions: Record<string, number[]>; // { emoji: [user_ids] }
+}
+
+export interface PusherMessageDeleted {
+  thread_id: string | number;
+  message_id: number;
+}
+
+export interface PusherThreadUpdated {
+  thread: any;
+}
+
 export type MessageHandler = (data: PusherMessage) => void;
 export type ThreadHandler = (data: PusherThread) => void;
+export type ReactionHandler = (data: PusherReaction) => void;
+export type MessageDeletedHandler = (data: PusherMessageDeleted) => void;
+export type ThreadUpdatedHandler = (data: PusherThreadUpdated) => void;
 
 // -----------------------------------------------------------------------------
 // Pusher Client Singleton
@@ -57,6 +77,9 @@ let currentUserId: number | null = null;
 // Event handlers registry
 const messageHandlers: Set<MessageHandler> = new Set();
 const threadHandlers: Set<ThreadHandler> = new Set();
+const reactionHandlers: Set<ReactionHandler> = new Set();
+const messageDeletedHandlers: Set<MessageDeletedHandler> = new Set();
+const threadUpdatedHandlers: Set<ThreadUpdatedHandler> = new Set();
 
 // -----------------------------------------------------------------------------
 // Initialize Pusher Connection
@@ -157,7 +180,12 @@ export async function initializePusher(userId: number): Promise<boolean> {
       log('Subscription error:', error);
     });
 
-    // Bind event handlers
+    // v2.2.0: Bind both 'message' (new) and 'new_message' (legacy) for compat
+    userChannel.bind('message', (data: PusherMessage) => {
+      log('Received message:', data);
+      messageHandlers.forEach(handler => handler(data));
+    });
+
     userChannel.bind('new_message', (data: PusherMessage) => {
       log('Received new_message:', data);
       messageHandlers.forEach(handler => handler(data));
@@ -166,6 +194,22 @@ export async function initializePusher(userId: number): Promise<boolean> {
     userChannel.bind('new_thread', (data: PusherThread) => {
       log('Received new_thread:', data);
       threadHandlers.forEach(handler => handler(data));
+    });
+
+    // v2.2.0: New events
+    userChannel.bind('reaction', (data: PusherReaction) => {
+      log('Received reaction:', data);
+      reactionHandlers.forEach(handler => handler(data));
+    });
+
+    userChannel.bind('message_deleted', (data: PusherMessageDeleted) => {
+      log('Received message_deleted:', data);
+      messageDeletedHandlers.forEach(handler => handler(data));
+    });
+
+    userChannel.bind('thread_updated', (data: PusherThreadUpdated) => {
+      log('Received thread_updated:', data);
+      threadUpdatedHandlers.forEach(handler => handler(data));
     });
 
     currentUserId = userId;
@@ -197,6 +241,9 @@ export function disconnectPusher(): void {
   currentUserId = null;
   messageHandlers.clear();
   threadHandlers.clear();
+  reactionHandlers.clear();
+  messageDeletedHandlers.clear();
+  threadUpdatedHandlers.clear();
 }
 
 // -----------------------------------------------------------------------------
@@ -224,7 +271,7 @@ export async function reconnectPusher(): Promise<boolean> {
   }
 
   currentUserId = null;
-  // DO NOT clear messageHandlers/threadHandlers — keep existing subscriptions
+  // DO NOT clear handlers — keep existing subscriptions
 
   return initializePusher(userId);
 }
@@ -255,6 +302,27 @@ export function onNewThread(handler: ThreadHandler): () => void {
   };
 }
 
+export function onReaction(handler: ReactionHandler): () => void {
+  reactionHandlers.add(handler);
+  return () => {
+    reactionHandlers.delete(handler);
+  };
+}
+
+export function onMessageDeleted(handler: MessageDeletedHandler): () => void {
+  messageDeletedHandlers.add(handler);
+  return () => {
+    messageDeletedHandlers.delete(handler);
+  };
+}
+
+export function onThreadUpdated(handler: ThreadUpdatedHandler): () => void {
+  threadUpdatedHandlers.add(handler);
+  return () => {
+    threadUpdatedHandlers.delete(handler);
+  };
+}
+
 // -----------------------------------------------------------------------------
 // Connection State
 // -----------------------------------------------------------------------------
@@ -277,6 +345,9 @@ export const pusherService = {
   reconnect: reconnectPusher,
   onNewMessage,
   onNewThread,
+  onReaction,
+  onMessageDeleted,
+  onThreadUpdated,
   isConnected,
   getConnectionState,
 };

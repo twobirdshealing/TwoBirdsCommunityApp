@@ -81,6 +81,7 @@ export type CommentStatus =
 
 export interface CommentsResponse {
   comments: Comment[];
+  sticky_comment?: Comment | null;
 }
 
 export interface UserCommentsResponse {

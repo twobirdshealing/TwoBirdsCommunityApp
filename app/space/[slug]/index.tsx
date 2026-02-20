@@ -475,24 +475,22 @@ export default function SpacePage() {
   console.log('[SPACE PAGE RENDER] canPin():', canPinResult);
   
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
       {/* Header - Using PageHeader with SpaceMenu */}
-      <View style={{ paddingTop: insets.top }}>
-        <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title={space?.title || 'Space'}
-          rightElement={
-            slug ? (
-              <SpaceMenu 
-                slug={slug} 
-                role={space?.role}
-                onLeaveSuccess={handleLeaveSuccess}
-              />
-            ) : undefined
-          }
-        />
-      </View>
+      <PageHeader
+        leftAction="back"
+        onLeftPress={() => router.back()}
+        title={space?.title || 'Space'}
+        rightElement={
+          slug ? (
+            <SpaceMenu
+              slug={slug}
+              role={space?.role}
+              onLeaveSuccess={handleLeaveSuccess}
+            />
+          ) : undefined
+        }
+      />
       
       {/* Feed List */}
       <FeedList

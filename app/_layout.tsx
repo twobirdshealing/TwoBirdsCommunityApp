@@ -120,8 +120,12 @@ function RootLayoutNav() {
   }
 
   return (
-    <>
-      <Stack>
+    <View style={[styles.flex, { backgroundColor: themeColors.background }]}>
+      <Stack
+        screenOptions={{
+          contentStyle: { backgroundColor: themeColors.background },
+        }}
+      >
         {/* TABS */}
         <Stack.Screen
           name="(tabs)"
@@ -142,14 +146,10 @@ function RootLayoutNav() {
           options={{ headerShown: false }}
         />
 
-        {/* SPACE ROUTES */}
+        {/* SPACE ROUTES - nested layout handles screen options */}
         <Stack.Screen
-          name="space/[slug]/index"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="space/[slug]/members"
-          options={{ headerShown: true, title: 'Members' }}
+          name="space/[slug]"
+          options={{ presentation: 'card', headerShown: false }}
         />
 
         {/* SINGLE POST VIEW (notifications, deep links) */}
@@ -158,6 +158,9 @@ function RootLayoutNav() {
           options={{
             headerShown: true,
             animation: 'default',
+            headerStyle: { backgroundColor: themeColors.surface },
+            headerTintColor: themeColors.text,
+            headerShadowVisible: false,
           }}
         />
 
@@ -218,7 +221,7 @@ function RootLayoutNav() {
         />
       </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-    </>
+    </View>
   );
 }
 

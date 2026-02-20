@@ -431,8 +431,18 @@ export default function UserProfileScreen() {
             </View>
           )}
 
-          {/* About Content */}
-          <AboutTab profile={profile!} />
+          {/* About Content — hidden when profile is restricted (FC 2.2.01+ privacy) */}
+          {profile?.is_restricted ? (
+            <View style={[styles.restrictedContainer, { backgroundColor: themeColors.surface }]}>
+              <Ionicons name="lock-closed-outline" size={32} color={themeColors.textTertiary} />
+              <Text style={[styles.restrictedTitle, { color: themeColors.text }]}>Profile is Private</Text>
+              <Text style={[styles.restrictedText, { color: themeColors.textSecondary }]}>
+                This user's profile details are not visible.
+              </Text>
+            </View>
+          ) : (
+            <AboutTab profile={profile!} />
+          )}
         </ScrollView>
 
       {/* Profile Settings Dropdown (own profile) */}
@@ -554,5 +564,23 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  restrictedContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl * 2,
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+  },
+
+  restrictedTitle: {
+    fontSize: typography.size.lg,
+    fontWeight: '600',
+  },
+
+  restrictedText: {
+    fontSize: typography.size.md,
+    textAlign: 'center',
   },
 });

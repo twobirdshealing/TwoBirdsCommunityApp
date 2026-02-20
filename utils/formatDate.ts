@@ -17,6 +17,22 @@ const MONTH = 30 * DAY;
 const YEAR = 365 * DAY;
 
 // -----------------------------------------------------------------------------
+// Online Presence (5-minute threshold, matches Fluent Community)
+// -----------------------------------------------------------------------------
+
+export function isUserOnline(lastActivity?: string | null): boolean {
+  if (!lastActivity || lastActivity.trim() === '') return false;
+  const diff = Date.now() - new Date(lastActivity).getTime();
+  return diff < 5 * MINUTE;
+}
+
+export function formatLastActivity(lastActivity?: string | null): string {
+  if (!lastActivity || lastActivity.trim() === '') return '';
+  if (isUserOnline(lastActivity)) return 'Active Now';
+  return `Last seen ${formatRelativeTime(lastActivity)}`;
+}
+
+// -----------------------------------------------------------------------------
 // Format as Relative Time ("2 hours ago")
 // -----------------------------------------------------------------------------
 

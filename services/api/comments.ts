@@ -5,7 +5,7 @@
 // FIXED: Add media_images support for image comments
 // =============================================================================
 
-import { get, post, del } from './client';
+import { get, post, del, patch } from './client';
 import { ENDPOINTS, DEFAULT_PER_PAGE } from '@/constants/config';
 import { Comment, CommentsResponse, CreateCommentResponse } from '@/types';
 import { ReactionType } from '@/types/feed';
@@ -147,6 +147,19 @@ export async function reactToComment(
 }
 
 // -----------------------------------------------------------------------------
+// Pin/Unpin a Comment (mod/admin only)
+// -----------------------------------------------------------------------------
+// PATCH /feeds/{feedId}/comments/{commentId} with { is_sticky: 1|0 }
+// FC 2.2.01+ — only top-level comments, auto-unpins previous pinned comment
+
+export async function pinComment(feedId: number, commentId: number, pin: boolean) {
+  return patch<{ comment: Comment; message: string }>(
+    `${ENDPOINTS.FEED_COMMENTS(feedId)}/${commentId}`,
+    { is_sticky: pin ? 1 : 0 }
+  );
+}
+
+// -----------------------------------------------------------------------------
 // Export as object
 // -----------------------------------------------------------------------------
 
@@ -157,6 +170,7 @@ export const commentsApi = {
   updateComment,
   deleteComment,
   reactToComment,
+  pinComment,
 };
 
 export default commentsApi;

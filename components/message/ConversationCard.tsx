@@ -2,7 +2,7 @@
 // CONVERSATION CARD - Thread list item for messages screen
 // =============================================================================
 // Displays a conversation preview with:
-// - Other participant's avatar
+// - Other participant's avatar (from thread.info)
 // - Name and last message preview
 // - Timestamp
 // - Unread indicator
@@ -16,19 +16,21 @@ import {
   ChatThread,
   getLastMessage,
   getMessagePreview,
-  getOtherParticipants,
   getThreadAvatar,
   getThreadDisplayName,
+  isThreadVerified,
 } from '@/types/message';
-import { formatRelativeTime } from '@/utils/formatDate';
+import { formatRelativeTime, isUserOnline } from '@/utils/formatDate';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useRef } from 'react';
 import {
+  Animated,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -39,6 +41,7 @@ interface ConversationCardProps {
   currentUserId: number;
   isUnread?: boolean;
   onPress?: (thread: ChatThread) => void;
+  onDelete?: (thread: ChatThread) => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -50,15 +53,17 @@ export function ConversationCard({
   currentUserId,
   isUnread = false,
   onPress,
+  onDelete,
 }: ConversationCardProps) {
   const { colors: themeColors } = useTheme();
+  const swipeableRef = useRef<Swipeable>(null);
 
-  // Get display data
-  const displayName = getThreadDisplayName(thread, currentUserId);
-  const avatarUrl = getThreadAvatar(thread, currentUserId);
+  // Get display data from thread.info (v2.2.0)
+  const displayName = getThreadDisplayName(thread);
+  const avatarUrl = getThreadAvatar(thread);
   const lastMessage = getLastMessage(thread);
-  const otherParticipants = getOtherParticipants(thread, currentUserId);
-  const isVerified = otherParticipants.length === 1 && otherParticipants[0]?.is_verified === 1;
+  const verified = isThreadVerified(thread);
+  const online = isUserOnline(thread.info?.last_activity);
 
   // Message preview
   const messagePreview = lastMessage
@@ -74,10 +79,44 @@ export function ConversationCard({
   const isOwnLastMessage = lastMessage && Number(lastMessage.user_id) === currentUserId;
 
   // ---------------------------------------------------------------------------
+  // Swipe Delete Action
+  // ---------------------------------------------------------------------------
+
+  const handleDelete = () => {
+    swipeableRef.current?.close();
+    onDelete?.(thread);
+  };
+
+  const renderDeleteAction = (
+    _progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
+    const translateX = dragX.interpolate({
+      inputRange: [-80, 0],
+      outputRange: [0, 80],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View
+        style={[
+          styles.swipeAction,
+          { backgroundColor: themeColors.error, transform: [{ translateX }] },
+        ]}
+      >
+        <Pressable style={styles.swipeActionButton} onPress={handleDelete}>
+          <Ionicons name="trash" size={20} color={themeColors.textInverse} />
+          <Text style={[styles.swipeActionText, { color: themeColors.textInverse }]}>Delete</Text>
+        </Pressable>
+      </Animated.View>
+    );
+  };
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
-  return (
+  const cardContent = (
       <Pressable
         style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}
         onPress={() => onPress?.(thread)}
@@ -87,6 +126,7 @@ export function ConversationCard({
           source={avatarUrl}
           size="lg"
           fallback={displayName}
+          online={online}
         />
 
         {/* Content */}
@@ -97,7 +137,7 @@ export function ConversationCard({
             <Text style={[styles.name, { color: themeColors.text }, isUnread && styles.nameUnread]} numberOfLines={1}>
               {displayName}
             </Text>
-            {isVerified && <VerifiedBadge size={14} />}
+            {verified && <VerifiedBadge size={14} />}
             <Text style={[styles.timestamp, { color: themeColors.textTertiary }]}>{timestamp}</Text>
           </View>
 
@@ -121,6 +161,21 @@ export function ConversationCard({
         />
       </Pressable>
   );
+
+  if (onDelete) {
+    return (
+      <Swipeable
+        ref={swipeableRef}
+        renderRightActions={renderDeleteAction}
+        rightThreshold={40}
+        overshootRight={false}
+      >
+        {cardContent}
+      </Swipeable>
+    );
+  }
+
+  return cardContent;
 }
 
 // -----------------------------------------------------------------------------
@@ -189,6 +244,26 @@ const styles = StyleSheet.create({
 
   chevron: {
     marginLeft: spacing.sm,
+  },
+
+  // Swipe Actions
+  swipeAction: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+  },
+
+  swipeActionButton: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  swipeActionText: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
+    marginTop: 4,
   },
 
 });

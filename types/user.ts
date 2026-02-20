@@ -82,6 +82,9 @@ export interface Profile extends XProfile {
   // Block status (injected by BlockHandler): true if current user has blocked this profile
   is_blocked_by_you?: boolean;
   
+  // Privacy (FC 2.2.01+): true when profile_page_visibility restricts access
+  is_restricted?: boolean;
+
   // Permissions
   can_change_username?: boolean;
   can_change_email?: boolean;

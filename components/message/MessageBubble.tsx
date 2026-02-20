@@ -11,7 +11,7 @@
 import { Avatar } from '@/components/common/Avatar';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { ChatMessage, getMessageText } from '@/types/message';
+import { ChatMessage, getMessageText, getMessagePreview } from '@/types/message';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -138,6 +138,24 @@ export function MessageBubble({
         ]}
         onLongPress={() => onLongPress?.(message)}
       >
+        {/* Reply Quote */}
+        {message.meta?.reply_to && message.meta?.reply_text ? (
+          <View style={[
+            styles.replyQuote,
+            { borderLeftColor: isOwn ? themeColors.textInverse : themeColors.primary },
+          ]}>
+            <Text
+              style={[
+                styles.replyQuoteText,
+                { color: isOwn ? themeColors.textInverse : themeColors.textSecondary },
+              ]}
+              numberOfLines={2}
+            >
+              {getMessagePreview(message.meta.reply_text, 120)}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Images (extracted from HTML text) */}
         {hasImages && (
           <View style={styles.attachmentsContainer}>
@@ -330,6 +348,19 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 14,
+  },
+
+  replyQuote: {
+    borderLeftWidth: 3,
+    paddingLeft: spacing.sm,
+    marginBottom: spacing.xs,
+    opacity: 0.85,
+  },
+
+  replyQuoteText: {
+    fontSize: typography.size.sm,
+    fontStyle: 'italic',
+    lineHeight: 18,
   },
 
   text: {

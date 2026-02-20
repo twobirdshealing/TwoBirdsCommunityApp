@@ -78,6 +78,11 @@ export const ENDPOINTS = {
   CHAT_MESSAGE_DELETE: (messageId: number) => `/chat/messages/delete/${messageId}`,
   CHAT_THREAD_BLOCK: (threadId: number) => `/chat/threads/block/${threadId}`,
   CHAT_THREAD_UNBLOCK: (threadId: number) => `/chat/threads/unblock/${threadId}`,
+
+  // v2.2.0 new endpoints
+  CHAT_MESSAGE_REACT: (messageId: number) => `/chat/messages/${messageId}/react`,
+  CHAT_THREAD_DELETE: (threadId: number) => `/chat/threads/delete/${threadId}`,
+  CHAT_THREAD_BY_ID: (threadId: number) => `/chat/threads/${threadId}`,
 };
 
 // -----------------------------------------------------------------------------

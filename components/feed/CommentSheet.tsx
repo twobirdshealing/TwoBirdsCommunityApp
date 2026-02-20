@@ -92,6 +92,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   const { resolveBadges } = useBadgeDefinitions();
   const defaultReactionId = reactions[0]?.id || 'like';
   const [comments, setComments] = useState<Comment[]>([]);
+  const [stickyComment, setStickyComment] = useState<Comment | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
@@ -132,6 +133,9 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         setError(response.error?.message || 'Failed to load comments');
         return;
       }
+
+      // Handle pinned comment (FC 2.2.01+)
+      setStickyComment(response.data.sticky_comment || null);
 
       // Flatten nested comments for display
       const allComments: Comment[] = [];
@@ -433,10 +437,22 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
     if (!menuComment) return [];
     const isOwner = user?.id === Number(menuComment.user_id);
     const comment = menuComment;
+    const isTopLevel = !comment.parent_id;
+    const isPinned = Number(comment.is_sticky) === 1;
 
     const items: DropdownMenuItem[] = [
       { key: 'copy', label: 'Copy Link', icon: 'link-outline', onPress: () => { setMenuComment(null); handleCopyLink(comment); } },
     ];
+
+    // Pin/unpin: only top-level comments, server enforces mod/admin permission
+    if (isTopLevel) {
+      items.push({
+        key: 'pin',
+        label: isPinned ? 'Unpin' : 'Pin Comment',
+        icon: isPinned ? 'pin-outline' : 'pin',
+        onPress: () => { setMenuComment(null); handlePinComment(comment); },
+      });
+    }
 
     if (isOwner) {
       items.push(
@@ -505,6 +521,27 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   const cancelEdit = () => {
     setEditingComment(null);
     setCommentText('');
+  };
+
+  // ---------------------------------------------------------------------------
+  // Pin/Unpin Comment (mod/admin — server enforces permission)
+  // ---------------------------------------------------------------------------
+
+  const handlePinComment = async (comment: Comment) => {
+    if (!feedId) return;
+    const isPinned = Number(comment.is_sticky) === 1;
+
+    try {
+      const response = await commentsApi.pinComment(feedId, comment.id, !isPinned);
+      if (response.success) {
+        fetchComments(); // Refresh to get updated sticky state
+      } else {
+        Alert.alert('Error', response.error?.message || 'Failed to update pin');
+      }
+    } catch (err) {
+      console.error('[CommentSheet] Pin error:', err);
+      Alert.alert('Error', 'Failed to update pin');
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -831,7 +868,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
                   <Text style={[styles.retryText, { color: themeColors.textInverse }]}>Try Again</Text>
                 </TouchableOpacity>
               </View>
-            ) : comments.length === 0 ? (
+            ) : comments.length === 0 && !stickyComment ? (
               <View style={styles.centered}>
                 <Ionicons name="chatbubble-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
                 <Text style={[styles.emptyTitle, { color: themeColors.text }]}>No Comments Yet</Text>
@@ -842,6 +879,15 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
                 data={comments}
                 keyExtractor={(item: Comment) => item.id.toString()}
                 renderItem={renderComment}
+                ListHeaderComponent={stickyComment ? (
+                  <View style={[styles.pinnedCommentContainer, { borderBottomColor: themeColors.border }]}>
+                    <View style={styles.pinnedLabel}>
+                      <Ionicons name="pin" size={12} color={themeColors.textTertiary} />
+                      <Text style={[styles.pinnedLabelText, { color: themeColors.textTertiary }]}>Pinned</Text>
+                    </View>
+                    {renderComment({ item: stickyComment })}
+                  </View>
+                ) : null}
                 contentContainerStyle={styles.commentsList}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
@@ -932,6 +978,24 @@ const styles = StyleSheet.create({
   commentsList: {
     padding: spacing.lg,
     paddingBottom: 160,
+  },
+
+  pinnedCommentContainer: {
+    borderBottomWidth: 1,
+    paddingBottom: spacing.md,
+    marginBottom: spacing.sm,
+  },
+
+  pinnedLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: spacing.sm,
+  },
+
+  pinnedLabelText: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
   },
 
   commentItem: {

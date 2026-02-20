@@ -5,11 +5,9 @@
 import { ENDPOINTS } from '@/constants/config';
 import {
   ChatMessage,
-  ChatThread,
   CreateThreadRequest,
   CreateThreadResponse,
   MessagesResponse,
-  SendMessageRequest,
   SendMessageResponse,
   ThreadsResponse,
 } from '@/types/message';
@@ -33,24 +31,14 @@ export async function getThreads() {
 }
 
 // -----------------------------------------------------------------------------
-// Get Threads with Pre-Selected User (Server-Side Thread Resolution)
+// Get Threads with User Resolution (v2.2.0)
 // -----------------------------------------------------------------------------
-// Uses Fluent Messaging's pre_selected param to resolve a thread by user ID
-// Returns selected_thread if a thread exists, intended_object if not
-
-export interface IntendedObject {
-  id: number;
-  title: string;
-  photo: string;
-  type: string;
-}
+// Uses user_id query param to resolve an existing thread with a user.
+// Returns selected_thread if a thread exists, intended_object if not.
 
 export async function getThreadsForUser(userId: number) {
-  const result = await get<ThreadsResponse & {
-    selected_thread?: ChatThread;
-    intended_object?: IntendedObject;
-  }>(
-    `${ENDPOINTS.CHAT_THREADS}?pre_selected[id]=${userId}&pre_selected[type]=user`
+  const result = await get<ThreadsResponse>(
+    `${ENDPOINTS.CHAT_THREADS}?user_id=${userId}`
   );
 
   if (result.success) {
@@ -81,13 +69,16 @@ export async function createThread(request: CreateThreadRequest) {
 }
 
 // -----------------------------------------------------------------------------
-// Get Messages in Thread
+// Get Messages in Thread (v2.2.0 — cursor-based pagination)
 // -----------------------------------------------------------------------------
+// First load: no beforeId → returns newest messages + threadDetails
+// Older messages: pass beforeId (oldest message ID) to load earlier messages
 
-export async function getMessages(threadId: number, page = 1) {
-  const url = page > 1
-    ? `${ENDPOINTS.CHAT_MESSAGES(threadId)}?page=${page}`
-    : ENDPOINTS.CHAT_MESSAGES(threadId);
+export async function getMessages(threadId: number, beforeId?: number) {
+  let url = ENDPOINTS.CHAT_MESSAGES(threadId);
+  if (beforeId) {
+    url += `?before_id=${beforeId}`;
+  }
   const result = await get<MessagesResponse>(url);
 
   if (result.success) {
@@ -131,12 +122,21 @@ export interface MessageAttachment {
   height?: number;
 }
 
-export async function sendMessage(threadId: number, text: string, attachments?: MessageAttachment[]) {
+export async function sendMessage(
+  threadId: number,
+  text: string,
+  attachments?: MessageAttachment[],
+  replyData?: { reply_to: number; reply_text: string }
+) {
   // Build request matching native web app format
   const request: Record<string, any> = {
     text,
-    reply_text: '', // Required by API
+    reply_text: replyData?.reply_text || '',
   };
+
+  if (replyData?.reply_to) {
+    request.reply_to = replyData.reply_to;
+  }
 
   // Add attachments as array of URL strings (native app format)
   if (attachments && attachments.length > 0) {
@@ -213,6 +213,41 @@ export async function deleteMessage(messageId: number) {
 }
 
 // -----------------------------------------------------------------------------
+// Toggle Reaction (v2.2.0)
+// -----------------------------------------------------------------------------
+
+export async function toggleReaction(messageId: number, emoji: string) {
+  return post(ENDPOINTS.CHAT_MESSAGE_REACT(messageId), { emoji });
+}
+
+// -----------------------------------------------------------------------------
+// Delete Thread (v2.2.0 — DM threads only)
+// -----------------------------------------------------------------------------
+
+export async function deleteThread(threadId: number) {
+  return post(ENDPOINTS.CHAT_THREAD_DELETE(threadId), {});
+}
+
+// -----------------------------------------------------------------------------
+// Get Single Thread (v2.2.0)
+// -----------------------------------------------------------------------------
+
+export async function getThread(threadId: number) {
+  const result = await get<{ thread: import('@/types/message').ChatThread }>(
+    ENDPOINTS.CHAT_THREAD_BY_ID(threadId)
+  );
+
+  if (result.success) {
+    return {
+      success: true as const,
+      data: result.data,
+    };
+  }
+
+  return result;
+}
+
+// -----------------------------------------------------------------------------
 // Block Thread (Chat-level block)
 // -----------------------------------------------------------------------------
 
@@ -244,6 +279,9 @@ export const messagesApi = {
   getUnreadCount,
   markThreadsRead,
   deleteMessage,
+  toggleReaction,
+  deleteThread,
+  getThread,
   blockThread,
   unblockThread,
 };

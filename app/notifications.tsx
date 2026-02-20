@@ -351,7 +351,7 @@ export default function NotificationsScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <GestureHandlerRootView style={styles.gestureRoot}>
+    <GestureHandlerRootView style={[styles.gestureRoot, { backgroundColor: themeColors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>

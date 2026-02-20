@@ -1,10 +1,37 @@
 // =============================================================================
 // MESSAGE TYPES - TypeScript definitions for chat/messaging
 // =============================================================================
-// These types match the Fluent Community Chat API response structure.
+// These types match the Fluent Community Chat v2.2.0 API response structure.
 // =============================================================================
 
 import { XProfile } from './user';
+
+// -----------------------------------------------------------------------------
+// Thread Info - Replaces xprofiles[] in v2.2.0 thread responses
+// -----------------------------------------------------------------------------
+
+export interface ThreadInfo {
+  id: string | number;
+  title: string;       // Display name (was display_name in XProfile)
+  photo: string;       // Avatar URL (was avatar in XProfile)
+  username: string;
+  last_activity: string;
+  permalink: string;
+  type: string;
+  badge: string | null;
+  is_verified: number | boolean;
+}
+
+// -----------------------------------------------------------------------------
+// Intended Object - User info when no thread exists yet
+// -----------------------------------------------------------------------------
+
+export interface IntendedObject {
+  id: number;
+  title: string;
+  photo: string;
+  type: string;
+}
 
 // -----------------------------------------------------------------------------
 // Chat Thread - A conversation between users
@@ -14,14 +41,16 @@ export interface ChatThread {
   id: number;
   title: string;
   message_count: string | number;
-  status: 'active' | 'archived';
+  status: 'active' | 'inactive' | 'disabled';
   created_at: string;
   updated_at: string;
 
-  // Participants in the thread
-  xprofiles: XProfile[];
+  // v2.2.0: Thread info (replaces xprofiles for the other participant)
+  info?: ThreadInfo;
+  type?: 'user' | 'community';
+  provider?: string;
 
-  // Recent messages (usually last few for preview)
+  // Recent messages (preview — these do NOT have xprofile attached)
   messages: ChatMessage[];
 
   // Space ID if this is a group chat
@@ -40,8 +69,15 @@ export interface ChatMessage {
   created_at: string;
   updated_at?: string;
 
-  // Sender profile
-  xprofile: XProfile;
+  // Sender profile (present on individual messages, NOT on thread preview messages)
+  xprofile?: XProfile;
+
+  // Message metadata (reactions, reply info)
+  meta?: {
+    reactions?: Record<string, number[]>; // { emoji: [user_ids] }
+    reply_to?: number;
+    reply_text?: string;
+  } | null;
 
   // Attachments (if any)
   attachments?: ChatAttachment[];
@@ -65,36 +101,36 @@ export interface ChatAttachment {
 // -----------------------------------------------------------------------------
 
 export interface ThreadsResponse {
+  community_threads: ChatThread[];
+  left_community_threads: ChatThread[];
   threads: ChatThread[];
+  has_more_threads: boolean;
+  selected_thread?: ChatThread;
+  intended_object?: IntendedObject;
 }
 
 export interface ThreadResponse {
   thread: ChatThread;
 }
 
-// Paginated response from Laravel
-export interface PaginatedMessages {
-  current_page: number;
-  data: ChatMessage[];
-  last_page: number;
-  per_page: number;
-  total: number;
-}
-
-// Metadata about the other participant (returned by plugin on page 1)
+// v2.2.0: Thread details returned with messages (same shape as thread)
 export interface ThreadDetails {
   id: number;
   title: string;
-  photo: string;
-  type: 'user' | 'community';
-  user_id?: number;
-  username?: string;
+  space_id?: number | null;
+  message_count?: string | number;
+  status?: string;
+  provider?: string;
+  type?: 'user' | 'community';
+  info?: ThreadInfo;
   blocked_thread?: boolean;
 }
 
+// v2.2.0: Messages are a flat array with cursor-based pagination
 export interface MessagesResponse {
-  messages: PaginatedMessages;
-  threadDetails?: ThreadDetails; // plugin returns this on page 1 (NOT "thread")
+  messages: ChatMessage[];
+  has_more: boolean;
+  threadDetails?: ThreadDetails;
 }
 
 export interface SendMessageResponse {
@@ -161,47 +197,42 @@ export function getMessageText(text: string): string {
 }
 
 /**
- * Get the other participant(s) in a thread (excluding current user)
+ * Get thread display name from info field (v2.2.0)
  */
-export function getOtherParticipants(thread: ChatThread, currentUserId: number): XProfile[] {
-  // Use Number() to handle string/number type mismatch from API
-  return thread.xprofiles.filter(p => Number(p.user_id) !== currentUserId);
+export function getThreadDisplayName(thread: ChatThread): string {
+  return thread.info?.title || thread.title || 'Unknown';
 }
 
 /**
- * Get thread display name (other participant's name for DMs)
+ * Get thread avatar URL from info field (v2.2.0)
  */
-export function getThreadDisplayName(thread: ChatThread, currentUserId: number): string {
-  const others = getOtherParticipants(thread, currentUserId);
-
-  if (others.length === 0) {
-    return 'Unknown';
-  }
-
-  if (others.length === 1) {
-    return others[0].display_name;
-  }
-
-  // Group chat - show first few names
-  const names = others.slice(0, 3).map(p => p.display_name);
-  if (others.length > 3) {
-    return names.join(', ') + ` +${others.length - 3}`;
-  }
-
-  return names.join(', ');
+export function getThreadAvatar(thread: ChatThread): string | null {
+  return thread.info?.photo || null;
 }
 
 /**
- * Get thread avatar (other participant's avatar for DMs)
+ * Get thread user ID from info field (v2.2.0)
  */
-export function getThreadAvatar(thread: ChatThread, currentUserId: number): string | null {
-  const others = getOtherParticipants(thread, currentUserId);
-
-  if (others.length === 0) {
-    return null;
+export function getThreadUserId(thread: ChatThread): number | null {
+  if (thread.info?.id) {
+    return Number(thread.info.id);
   }
+  return null;
+}
 
-  return others[0].avatar;
+/**
+ * Get thread username from info field (v2.2.0)
+ */
+export function getThreadUsername(thread: ChatThread): string | null {
+  return thread.info?.username || null;
+}
+
+/**
+ * Check if thread participant is verified (v2.2.0)
+ */
+export function isThreadVerified(thread: ChatThread): boolean {
+  if (!thread.info) return false;
+  return thread.info.is_verified === 1 || thread.info.is_verified === true;
 }
 
 /**

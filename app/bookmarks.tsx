@@ -257,7 +257,7 @@ export default function BookmarksScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
         {/* Header - Using PageHeader for consistency */}
         <PageHeader
           leftAction="back"

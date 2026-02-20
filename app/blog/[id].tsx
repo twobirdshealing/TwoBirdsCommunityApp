@@ -142,7 +142,7 @@ export default function BlogDetailScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
         <PageHeader
           leftAction="back"
           onLeftPress={() => router.back()}

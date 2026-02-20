@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:dev.fluentcommunity.co)",
       "Bash(node --eval:*)",
-      "WebFetch(domain:reactnavigation.org)"
+      "WebFetch(domain:reactnavigation.org)",
+      "Bash(node:*)"
     ]
   }
 }

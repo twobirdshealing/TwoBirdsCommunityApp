@@ -18,6 +18,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -33,11 +34,18 @@ export interface ChatInputAttachment {
   height?: number;
 }
 
+export interface ChatInputReplyTo {
+  messageId: number;
+  previewText: string;
+}
+
 interface ChatInputProps {
   onSend: (text: string, attachments?: ChatInputAttachment[]) => void | Promise<void>;
   placeholder?: string;
   disabled?: boolean;
   sending?: boolean;
+  replyTo?: ChatInputReplyTo | null;
+  onCancelReply?: () => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -49,6 +57,8 @@ export function ChatInput({
   placeholder = 'Type a message...',
   disabled = false,
   sending = false,
+  replyTo = null,
+  onCancelReply,
 }: ChatInputProps) {
   const { colors: themeColors } = useTheme();
   const [text, setText] = useState('');
@@ -170,6 +180,21 @@ export function ChatInput({
         />
       )}
 
+      {/* Reply Bar */}
+      {replyTo && (
+        <View style={[styles.replyBar, { backgroundColor: themeColors.backgroundSecondary, borderLeftColor: themeColors.primary }]}>
+          <View style={styles.replyBarContent}>
+            <Text style={[styles.replyBarLabel, { color: themeColors.primary }]}>Replying to</Text>
+            <Text style={[styles.replyBarText, { color: themeColors.textSecondary }]} numberOfLines={1}>
+              {replyTo.previewText}
+            </Text>
+          </View>
+          <Pressable style={styles.replyBarClose} onPress={onCancelReply}>
+            <Ionicons name="close" size={18} color={themeColors.textTertiary} />
+          </Pressable>
+        </View>
+      )}
+
       <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
         {/* Image Picker Button */}
         <Pressable
@@ -283,6 +308,36 @@ const styles = StyleSheet.create({
   },
 
   sendButtonActive: {
+  },
+
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderLeftWidth: 3,
+    marginHorizontal: spacing.sm,
+    marginTop: spacing.sm,
+    borderRadius: 8,
+  },
+
+  replyBarContent: {
+    flex: 1,
+  },
+
+  replyBarLabel: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+
+  replyBarText: {
+    fontSize: typography.size.sm,
+  },
+
+  replyBarClose: {
+    padding: spacing.xs,
+    marginLeft: spacing.sm,
   },
 });
 
