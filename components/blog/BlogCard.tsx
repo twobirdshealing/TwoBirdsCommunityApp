@@ -20,9 +20,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { WPPost } from '@/types/blog';
 import { Avatar } from '@/components/common/Avatar';
-import { ProfileBadge } from '@/components/common/ProfileBadge';
-import { VerifiedBadge } from '@/components/common/VerifiedBadge';
-import { useProfileBadges } from '@/hooks';
+import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 import { formatSmartDate } from '@/utils/formatDate';
 
@@ -59,7 +57,6 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
   const authorName = author?.name || 'Unknown';
   const authorAvatar = author?.fcom_avatar || author?.avatar_urls?.['96'] || null;
   const authorVerified = author?.fcom_is_verified === 1;
-  const authorBadges = useProfileBadges(author?.fcom_badge_slugs);
   const date = formatSmartDate(post.date);
   const commentCount = embeddedComments.length;
 
@@ -110,15 +107,14 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
                 >
                   <Avatar source={authorAvatar} size="sm" fallback={authorName} />
                   <View style={styles.heroAuthorInfo}>
-                    <View style={styles.heroAuthorNameRow}>
-                      <Text style={styles.heroAuthorName} numberOfLines={1}>
-                        {authorName}
-                      </Text>
-                      {authorVerified && <VerifiedBadge size={14} />}
-                      {authorBadges.map((badge) => (
-                        <ProfileBadge key={badge.slug} badge={badge} />
-                      ))}
-                    </View>
+                    <UserDisplayName
+                      name={authorName}
+                      verified={authorVerified}
+                      badgeSlugs={author?.fcom_badge_slugs}
+                      size="sm"
+                      nameColor="#fff"
+                      numberOfLines={1}
+                    />
                     <Text style={styles.heroDate}>{date}</Text>
                   </View>
                 </TouchableOpacity>
@@ -164,15 +160,13 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
             >
               <Avatar source={authorAvatar} size="sm" fallback={authorName} />
               <View style={styles.fallbackAuthorInfo}>
-                <View style={styles.fallbackAuthorNameRow}>
-                  <Text style={[styles.fallbackAuthorName, { color: themeColors.text }]} numberOfLines={1}>
-                    {authorName}
-                  </Text>
-                  {authorVerified && <VerifiedBadge size={14} />}
-                  {authorBadges.map((badge) => (
-                    <ProfileBadge key={badge.slug} badge={badge} />
-                  ))}
-                </View>
+                <UserDisplayName
+                  name={authorName}
+                  verified={authorVerified}
+                  badgeSlugs={author?.fcom_badge_slugs}
+                  size="sm"
+                  numberOfLines={1}
+                />
                 <Text style={[styles.fallbackDate, { color: themeColors.textTertiary }]}>{date}</Text>
               </View>
             </TouchableOpacity>
@@ -281,18 +275,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 
-  heroAuthorNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-
-  heroAuthorName: {
-    fontSize: typography.size.sm,
-    fontWeight: '600',
-    color: '#fff',
-  },
-
   heroDate: {
     fontSize: typography.size.xs,
     color: 'rgba(255,255,255,0.7)',
@@ -357,17 +339,6 @@ const styles = StyleSheet.create({
   fallbackAuthorInfo: {
     marginLeft: spacing.sm,
     flexShrink: 1,
-  },
-
-  fallbackAuthorNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-
-  fallbackAuthorName: {
-    fontSize: typography.size.sm,
-    fontWeight: '600',
   },
 
   fallbackDate: {

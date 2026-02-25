@@ -17,9 +17,7 @@ import React from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useProfileBadges } from '@/hooks';
-import { ProfileBadge } from '@/components/common/ProfileBadge';
-import { VerifiedBadge } from '@/components/common/VerifiedBadge';
+import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { spacing, typography } from '@/constants/layout';
 import { hapticLight, hapticMedium } from '@/utils/haptics';
 
@@ -156,7 +154,6 @@ export function MemberCard({
   const role = member.role;
   const lastActivity = profile.last_activity || member.last_activity;
   
-  const memberBadges = useProfileBadges(profile.meta?.badge_slug);
   const roleLabel = getRoleLabel(role || '');
   const roleBadgeColor = getRoleBadgeColor(role || '', themeColors);
   const lastActiveText = formatLastActive(lastActivity);
@@ -185,15 +182,12 @@ export function MemberCard({
       <View style={styles.infoContainer}>
         {/* Name Row */}
         <View style={styles.nameRow}>
-          <Text style={[styles.displayName, { color: themeColors.text }]} numberOfLines={1}>
-            {displayName}
-          </Text>
-          {isVerified && <VerifiedBadge size={14} />}
-
-          {/* Profile Badges */}
-          {memberBadges.map((badge) => (
-            <ProfileBadge key={badge.slug} badge={badge} />
-          ))}
+          <UserDisplayName
+            name={displayName}
+            verified={!!isVerified}
+            badgeSlugs={profile.meta?.badge_slug}
+            numberOfLines={1}
+          />
 
           {/* Role Badge - inline with name */}
           {showRole && roleLabel ? (
@@ -231,6 +225,8 @@ export function MemberCard({
             <Pressable
               style={[styles.actionButton, { backgroundColor: themeColors.backgroundSecondary }]}
               onPress={() => { hapticLight(); onMessagePress(member); }}
+              accessibilityRole="button"
+              accessibilityLabel={`Message ${displayName}`}
             >
               <Ionicons name="chatbubble-outline" size={16} color={themeColors.text} />
             </Pressable>
@@ -247,6 +243,8 @@ export function MemberCard({
               ]}
               onPress={() => { hapticMedium(); onFollowPress(member); }}
               disabled={followLoading}
+              accessibilityRole="button"
+              accessibilityLabel={isFollowing ? `Unfollow ${displayName}` : `Follow ${displayName}`}
             >
               {followLoading ? (
                 <ActivityIndicator
@@ -275,6 +273,8 @@ export function MemberCard({
       <Pressable
         onPress={() => onPress(member)}
         style={({ pressed }) => pressed && [styles.pressed, { backgroundColor: themeColors.backgroundSecondary }]}
+        accessibilityRole="button"
+        accessibilityLabel={`View ${displayName}'s profile`}
       >
         {content}
       </Pressable>
@@ -338,12 +338,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     marginBottom: 2,
-  },
-
-  displayName: {
-    fontSize: typography.size.md,
-    fontWeight: '600',
-    marginRight: spacing.xs,
   },
 
   username: {

@@ -199,7 +199,7 @@ export function MediaViewer({
         Alert.alert('Sharing not available', 'Sharing is not supported on this device.');
       }
     } catch (err) {
-      console.error('Failed to share image:', err);
+      if (__DEV__) console.error('Failed to share image:', err);
       Alert.alert('Error', 'Failed to share image. Please try again.');
     } finally {
       setSaving(false);
@@ -233,7 +233,7 @@ export function MediaViewer({
       await MediaLibrary.saveToLibraryAsync(output.uri);
       Alert.alert('Saved', 'Image saved to your gallery.');
     } catch (err) {
-      console.error('Failed to save image:', err);
+      if (__DEV__) console.error('Failed to save image:', err);
       Alert.alert('Error', 'Failed to save image. Please try again.');
     } finally {
       setSaving(false);

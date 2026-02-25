@@ -8,15 +8,9 @@
 import { API_URL } from '@/constants/config';
 import { clearAuth, getAuthToken, silentRefresh } from '@/services/auth';
 import { ApiError } from '@/types/api';
+import { createLogger } from '@/utils/logger';
 
-// -----------------------------------------------------------------------------
-// Debug
-// -----------------------------------------------------------------------------
-
-const DEBUG = __DEV__;
-function log(...args: any[]) {
-  if (DEBUG) console.log('[API]', ...args);
-}
+const log = createLogger('API');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -26,15 +20,25 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
 interface RequestConfig {
   method?: HttpMethod;
-  body?: any;
-  params?: Record<string, any>;
+  body?: any; // eslint-disable-line @typescript-eslint/no-explicit-any -- accepts JSON, FormData, etc.
+  params?: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any -- query params
   headers?: Record<string, string>;
+  /** Override the base URL (defaults to Fluent Community API_URL) */
+  baseUrl?: string;
+  /** When true, body is sent as-is (e.g. FormData) instead of JSON.stringify */
+  rawBody?: boolean;
+  /** When true, response Headers object is included in the success result */
+  includeHeaders?: boolean;
   /** @internal Used to prevent infinite retry loops */
   _isRetry?: boolean;
 }
 
-type ApiResponse<T> =
+export type ApiResponse<T> =
   | { success: true; data: T }
+  | { success: false; error: ApiError };
+
+export type ApiResponseWithHeaders<T> =
+  | { success: true; data: T; headers: Headers }
   | { success: false; error: ApiError };
 
 // -----------------------------------------------------------------------------
@@ -58,8 +62,8 @@ async function getAuthHeader(): Promise<string | null> {
 // Build URL with query parameters
 // -----------------------------------------------------------------------------
 
-function buildUrl(endpoint: string, params?: Record<string, any>): string {
-  let url = `${API_URL}${endpoint}`;
+function buildUrl(endpoint: string, params?: Record<string, any>, baseUrl?: string): string {
+  let url = `${baseUrl || API_URL}${endpoint}`;
 
   if (params && Object.keys(params).length > 0) {
     const searchParams = new URLSearchParams();
@@ -86,25 +90,26 @@ function buildUrl(endpoint: string, params?: Record<string, any>): string {
 async function request<T>(
   endpoint: string,
   config: RequestConfig = {}
-): Promise<ApiResponse<T>> {
-  const { method = 'GET', body, params, headers = {} } = config;
+): Promise<ApiResponse<T> | ApiResponseWithHeaders<T>> {
+  const { method = 'GET', body, params, headers = {}, baseUrl, rawBody, includeHeaders } = config;
 
-  const url = buildUrl(endpoint, params);
+  const url = buildUrl(endpoint, params, baseUrl);
   log(`${method} ${url}`);
 
   try {
     const authHeader = await getAuthHeader();
 
-    // Build headers
+    // Build headers — skip Content-Type for raw bodies (e.g. FormData sets its own)
+    const isRaw = rawBody && body;
     const requestHeaders: Record<string, string> = {
       'Accept': 'application/json',
       ...(authHeader ? { Authorization: authHeader } : {}),
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(!isRaw && body ? { 'Content-Type': 'application/json' } : {}),
       ...headers,
     };
 
     // Debug: Log headers (without full token)
-    if (DEBUG) {
+    if (__DEV__) {
       const debugHeaders = { ...requestHeaders };
       if (debugHeaders.Authorization) {
         debugHeaders.Authorization = debugHeaders.Authorization.substring(0, 30) + '...';
@@ -112,14 +117,14 @@ async function request<T>(
       log('Request headers:', JSON.stringify(debugHeaders, null, 2));
     }
 
-    if (DEBUG && body) {
+    if (__DEV__ && body && !isRaw) {
       log('Request body (preview):', JSON.stringify(body).substring(0, 500));
     }
 
     const response = await fetch(url, {
       method,
       headers: requestHeaders,
-      ...(body ? { body: JSON.stringify(body) } : {}),
+      ...(body ? { body: isRaw ? body : JSON.stringify(body) } : {}),
     });
 
     // Debug: Log response status
@@ -128,7 +133,7 @@ async function request<T>(
     const data = await response.json();
 
     // Debug: Log first 500 chars of response
-    if (DEBUG) {
+    if (__DEV__) {
       log('Response data (preview):', JSON.stringify(data).substring(0, 500));
     }
 
@@ -173,7 +178,8 @@ async function request<T>(
     return {
       success: true,
       data: data as T,
-    };
+      ...(includeHeaders ? { headers: response.headers } : {}),
+    } as ApiResponse<T> | ApiResponseWithHeaders<T>;
   } catch (error) {
     console.error('[API Network Error]', error);
 
@@ -227,6 +233,12 @@ export function patch<T>(
 ) {
   return request<T>(endpoint, { method: 'PATCH', body, params });
 }
+
+// -----------------------------------------------------------------------------
+// Direct request access (for services needing baseUrl, rawBody, or headers)
+// -----------------------------------------------------------------------------
+
+export { request };
 
 // -----------------------------------------------------------------------------
 // Export client

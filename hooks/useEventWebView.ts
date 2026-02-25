@@ -14,8 +14,8 @@ export function useEventWebView() {
   const router = useRouter();
 
   const openEvent = useCallback((event: CalendarEvent) => {
-    console.log('[useEventWebView] Opening:', event.title);
-    console.log('[useEventWebView] URL:', event.url);
+    if (__DEV__) console.log('[useEventWebView] Opening:', event.title);
+    if (__DEV__) console.log('[useEventWebView] URL:', event.url);
 
     hapticMedium();
 

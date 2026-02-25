@@ -2,6 +2,7 @@
 // API SERVICES - Barrel export
 // =============================================================================
 
+export * from './account';
 export * from './app';
 export * from './badges';
 export * from './calendar';
@@ -18,6 +19,9 @@ export * from './profiles';
 export * from './registration';
 export * from './spaces';
 export * from './blog';
+export * from './socialProviders';
+export * from './courses';
+export * from './youtube';
 
 // Also export the api objects for convenience
 export { appApi } from './app';
@@ -34,3 +38,5 @@ export { default as profilesApi } from './profiles';
 export { default as registrationApi } from './registration';
 export { default as spacesApi } from './spaces';
 export { default as blogApi } from './blog';
+export { default as coursesApi } from './courses';
+export { default as youtubeApi } from './youtube';

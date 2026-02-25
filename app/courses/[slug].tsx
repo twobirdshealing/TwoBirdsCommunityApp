@@ -1,0 +1,581 @@
+// =============================================================================
+// COURSE DETAIL - Course overview with sections, lessons, and progress
+// =============================================================================
+// Route: /courses/[slug]
+// Features:
+// - Course hero with cover photo
+// - Instructor info (conditional on hide_instructor_view)
+// - Enrollment + progress tracking
+// - Collapsible sections with lesson rows
+// =============================================================================
+
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { ProgressBar, SectionList } from '@/components/course';
+import { LoadingSpinner, ErrorMessage } from '@/components/common';
+import { PageHeader } from '@/components/navigation/PageHeader';
+import { spacing, typography, sizing } from '@/constants/layout';
+import { withOpacity } from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
+import { coursesApi } from '@/services/api';
+import { Course, CourseLesson, CourseSection, CourseTrack } from '@/types';
+import { hapticMedium } from '@/utils/haptics';
+
+// -----------------------------------------------------------------------------
+// Component
+// -----------------------------------------------------------------------------
+
+export default function CourseDetailScreen() {
+  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { colors: themeColors } = useTheme();
+
+  // State
+  const [course, setCourse] = useState<Course | null>(null);
+  const [sections, setSections] = useState<CourseSection[]>([]);
+  const [track, setTrack] = useState<CourseTrack | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [enrolling, setEnrolling] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Fetch Course Detail
+  // ---------------------------------------------------------------------------
+
+  const fetchCourse = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const response = await coursesApi.getCourseBySlug(slug);
+
+      if (!response.success) {
+        setError(response.error?.message || 'Failed to load course');
+        return;
+      }
+
+      setCourse(response.data.course);
+      setSections(response.data.sections);
+      setTrack(response.data.track);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [slug]);
+
+  useEffect(() => {
+    fetchCourse();
+  }, [fetchCourse]);
+
+  // ---------------------------------------------------------------------------
+  // Enroll
+  // ---------------------------------------------------------------------------
+
+  const handleEnroll = async () => {
+    if (!course) return;
+    hapticMedium();
+    setEnrolling(true);
+
+    try {
+      const response = await coursesApi.enrollInCourse(course.id);
+
+      if (!response.success) {
+        Alert.alert('Error', response.error?.message || 'Failed to enroll');
+        return;
+      }
+
+      // Update local state
+      setTrack(response.data.track);
+      setCourse((prev) => prev ? { ...prev, isEnrolled: true, progress: 0 } : prev);
+
+      // Refetch to get unlocked lessons
+      fetchCourse(true);
+    } catch (err) {
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Lesson Press
+  // ---------------------------------------------------------------------------
+
+  const handleLessonPress = (lesson: CourseLesson) => {
+    if (lesson.is_locked || !lesson.can_view) return;
+
+    router.push({
+      pathname: '/courses/[slug]/lesson/[lessonSlug]',
+      params: { slug, lessonSlug: lesson.slug },
+    });
+  };
+
+  // ---------------------------------------------------------------------------
+  // Continue Learning — navigate to first incomplete lesson
+  // ---------------------------------------------------------------------------
+
+  const handleContinueLearning = () => {
+    if (!track || !sections.length) return;
+    hapticMedium();
+
+    for (const section of sections) {
+      for (const lesson of section.lessons) {
+        const isCompleted = track.completed_lessons.some(
+          (id) => String(id) === String(lesson.id)
+        );
+        if (!isCompleted && lesson.can_view && !lesson.is_locked) {
+          router.push({
+            pathname: '/courses/[slug]/lesson/[lessonSlug]',
+            params: { slug, lessonSlug: lesson.slug },
+          });
+          return;
+        }
+      }
+    }
+
+    // All complete — go to first lesson
+    const firstLesson = sections[0]?.lessons[0];
+    if (firstLesson) {
+      router.push({
+        pathname: '/courses/[slug]/lesson/[lessonSlug]',
+        params: { slug, lessonSlug: firstLesson.slug },
+      });
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render: Loading / Error
+  // ---------------------------------------------------------------------------
+
+  if (loading && !course) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
+          <PageHeader leftAction="back" onLeftPress={() => router.back()} title="Course" />
+          <LoadingSpinner />
+        </View>
+      </>
+    );
+  }
+
+  if (error && !course) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
+          <PageHeader leftAction="back" onLeftPress={() => router.back()} title="Course" />
+          <ErrorMessage message={error} onRetry={() => fetchCourse()} />
+        </View>
+      </>
+    );
+  }
+
+  if (!course) return null;
+
+  // ---------------------------------------------------------------------------
+  // Derived values
+  // ---------------------------------------------------------------------------
+
+  const isEnrolled = track?.isEnrolled ?? course.isEnrolled;
+  const progress = track?.progress ?? course.progress ?? 0;
+  const completedLessons = track?.completed_lessons ?? [];
+  const hideInstructor = course.settings?.hide_instructor_view === 'yes';
+  const hasCoverPhoto = course.cover_photo && course.cover_photo.trim() !== '';
+  const courseDetails = course.settings?.course_details_rendered;
+  const isComplete = progress === 100;
+
+  // Detail endpoint doesn't include counts — compute from sections array
+  const sectionsCount = sections.length;
+  const lessonsCount = sections.reduce((sum, s) => sum + s.lessons.length, 0);
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
+  return (
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <PageHeader
+          leftAction="back"
+          onLeftPress={() => router.back()}
+          title={course.title}
+        />
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchCourse(true)}
+              tintColor={themeColors.primary}
+              colors={[themeColors.primary]}
+            />
+          }
+        >
+          {/* Hero Section with stats overlay */}
+          {hasCoverPhoto ? (
+            <View style={styles.heroContainer}>
+              <Image source={{ uri: course.cover_photo! }} style={styles.heroCover} resizeMode="cover" />
+              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={styles.heroGradient}>
+                <Text style={styles.heroTitle}>{course.title}</Text>
+                <View style={styles.heroStats}>
+                  <View style={styles.heroStatItem}>
+                    <Ionicons name="layers-outline" size={14} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.heroStatText}>{sectionsCount} {sectionsCount === 1 ? 'Section' : 'Sections'}</Text>
+                  </View>
+                  <Text style={styles.heroStatDot}>&middot;</Text>
+                  <View style={styles.heroStatItem}>
+                    <Ionicons name="document-text-outline" size={14} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.heroStatText}>{lessonsCount} {lessonsCount === 1 ? 'Lesson' : 'Lessons'}</Text>
+                  </View>
+                </View>
+              </LinearGradient>
+            </View>
+          ) : (
+            <LinearGradient
+              colors={['#6366f1', '#8b5cf6', '#d946ef']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroContainer}
+            >
+              {course.settings?.emoji ? (
+                <Text style={styles.heroEmoji}>{course.settings.emoji}</Text>
+              ) : null}
+              <Text style={styles.heroTitle}>{course.title}</Text>
+              <View style={styles.heroStats}>
+                <View style={styles.heroStatItem}>
+                  <Ionicons name="layers-outline" size={14} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.heroStatText}>{sectionsCount} {sectionsCount === 1 ? 'Section' : 'Sections'}</Text>
+                </View>
+                <Text style={styles.heroStatDot}>&middot;</Text>
+                <View style={styles.heroStatItem}>
+                  <Ionicons name="document-text-outline" size={14} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.heroStatText}>{lessonsCount} {lessonsCount === 1 ? 'Lesson' : 'Lessons'}</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          )}
+
+          {/* Instructor */}
+          {!hideInstructor && course.creator && (
+            <TouchableOpacity
+              style={[styles.instructorRow, { backgroundColor: themeColors.surface }]}
+              onPress={() => course.creator?.username && router.push(`/profile/${course.creator.username}`)}
+              activeOpacity={0.7}
+            >
+              {course.creator.avatar ? (
+                <Image source={{ uri: course.creator.avatar }} style={styles.instructorAvatar} />
+              ) : (
+                <View style={[styles.instructorAvatar, styles.instructorAvatarPlaceholder, { backgroundColor: themeColors.primary }]}>
+                  <Text style={{ color: themeColors.textInverse, fontSize: 16, fontWeight: '600' }}>
+                    {course.creator.display_name?.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.instructorInfo}>
+                <Text style={[styles.instructorLabel, { color: themeColors.textTertiary }]}>Instructor</Text>
+                <Text style={[styles.instructorName, { color: themeColors.text }]}>
+                  {course.creator.display_name}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeColors.textTertiary} />
+            </TouchableOpacity>
+          )}
+
+          {/* Progress + Action Button */}
+          <View style={styles.actionSection}>
+            {isEnrolled ? (
+              <>
+                <View style={styles.progressSection}>
+                  <ProgressBar progress={progress} height={8} />
+                  <Text style={[styles.progressText, { color: themeColors.textSecondary }]}>
+                    {isComplete ? 'Course Complete!' : `${Math.round(progress)}% Complete`}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: themeColors.primary }]}
+                  onPress={handleContinueLearning}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={isComplete ? 'refresh-outline' : 'play-outline'} size={20} color={themeColors.textInverse} />
+                  <Text style={[styles.actionButtonText, { color: themeColors.textInverse }]}>
+                    {isComplete ? 'Review Course' : 'Continue Learning'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: themeColors.primary }]}
+                onPress={handleEnroll}
+                disabled={enrolling}
+                activeOpacity={0.7}
+              >
+                {enrolling ? (
+                  <ActivityIndicator size="small" color={themeColors.textInverse} />
+                ) : (
+                  <>
+                    <Ionicons name="add-circle-outline" size={20} color={themeColors.textInverse} />
+                    <Text style={[styles.actionButtonText, { color: themeColors.textInverse }]}>
+                      Enroll in Course
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Course Details (if any) */}
+          {courseDetails && courseDetails.trim() !== '' && (
+            <View style={[styles.detailsSection, { backgroundColor: themeColors.surface }]}>
+              <Text style={[styles.sectionHeading, { color: themeColors.text }]}>About This Course</Text>
+              <Text style={[styles.detailsText, { color: themeColors.textSecondary }]}>
+                {courseDetails.replace(/<[^>]*>/g, '').trim()}
+              </Text>
+            </View>
+          )}
+
+          {/* Course Links */}
+          {course.settings?.links && course.settings.links.length > 0 && (
+            <View style={[styles.linksSection, { backgroundColor: themeColors.surface }]}>
+              <Text style={[styles.sectionHeading, { color: themeColors.text }]}>Resources</Text>
+              {course.settings.links.map((link, i) => (
+                <View key={i} style={styles.linkRow}>
+                  <Ionicons name="link-outline" size={16} color={themeColors.primary} />
+                  <Text style={[styles.linkText, { color: themeColors.primary }]}>{link.title || link.url}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Sections & Lessons */}
+          <View style={styles.sectionsContainer}>
+            <Text style={[styles.sectionHeading, { color: themeColors.text, paddingHorizontal: spacing.lg }]}>
+              Course Content
+            </Text>
+            {sections.map((section) => (
+              <SectionList
+                key={section.id}
+                section={section}
+                completedLessons={completedLessons}
+                onLessonPress={handleLessonPress}
+                defaultExpanded={sections.length <= 3}
+              />
+            ))}
+          </View>
+
+          {/* Bottom padding */}
+          <View style={{ height: 80 }} />
+        </ScrollView>
+      </View>
+    </>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Styles
+// -----------------------------------------------------------------------------
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    flexGrow: 1,
+  },
+
+  // Hero
+  heroContainer: {
+    width: '100%',
+    height: 200,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+
+  heroCover: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+
+  heroGradient: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    padding: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+
+  heroTitle: {
+    fontSize: typography.size.xxl,
+    fontWeight: '700',
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+
+  heroEmoji: {
+    fontSize: 48,
+    marginBottom: spacing.sm,
+  },
+
+  heroStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: spacing.xs,
+    gap: 4,
+  },
+
+  heroStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  heroStatText: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+  },
+
+  heroStatDot: {
+    fontSize: typography.size.xs,
+    color: 'rgba(255,255,255,0.5)',
+    marginHorizontal: 2,
+  },
+
+  // Instructor
+  instructorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+
+  instructorAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+
+  instructorAvatarPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  instructorInfo: {
+    flex: 1,
+    marginLeft: spacing.md,
+  },
+
+  instructorLabel: {
+    fontSize: typography.size.xs,
+    fontWeight: '500',
+  },
+
+  instructorName: {
+    fontSize: typography.size.md,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+
+  // Action
+  actionSection: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+
+  progressSection: {
+    marginBottom: spacing.md,
+  },
+
+  progressText: {
+    fontSize: typography.size.sm,
+    fontWeight: '500',
+    marginTop: spacing.xs,
+  },
+
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    borderRadius: sizing.borderRadius.md,
+    gap: spacing.sm,
+  },
+
+  actionButtonText: {
+    fontSize: typography.size.md,
+    fontWeight: '600',
+  },
+
+  // Details
+  detailsSection: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+
+  sectionHeading: {
+    fontSize: typography.size.lg,
+    fontWeight: '600',
+    marginBottom: spacing.md,
+  },
+
+  detailsText: {
+    fontSize: typography.size.md,
+    lineHeight: 22,
+  },
+
+  // Links
+  linksSection: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+
+  linkText: {
+    fontSize: typography.size.md,
+    fontWeight: '500',
+  },
+
+  // Sections
+  sectionsContainer: {
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+});

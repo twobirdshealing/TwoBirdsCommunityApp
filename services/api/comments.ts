@@ -7,7 +7,7 @@
 
 import { get, post, del, patch } from './client';
 import { ENDPOINTS, DEFAULT_PER_PAGE } from '@/constants/config';
-import { Comment, CommentsResponse, CreateCommentResponse } from '@/types';
+import { Comment, CommentsResponse, CreateCommentResponse, ReactResponse } from '@/types';
 import { ReactionType } from '@/types/feed';
 
 // -----------------------------------------------------------------------------
@@ -23,10 +23,10 @@ export interface GetCommentsOptions {
 }
 
 // -----------------------------------------------------------------------------
-// Get Comments for a Feed
+// Get Comments for a Post
 // -----------------------------------------------------------------------------
 
-export async function getComments(feedId: number, options: GetCommentsOptions = {}) {
+export async function getComments(postId: number, options: GetCommentsOptions = {}) {
   const params = {
     page: options.page || 1,
     per_page: options.per_page || 50,
@@ -35,7 +35,7 @@ export async function getComments(feedId: number, options: GetCommentsOptions = 
     ...(options.order && { order: options.order }),
   };
   
-  return get<CommentsResponse>(ENDPOINTS.FEED_COMMENTS(feedId), params);
+  return get<CommentsResponse>(ENDPOINTS.POST_COMMENTS(postId), params);
 }
 
 // -----------------------------------------------------------------------------
@@ -66,7 +66,7 @@ export interface CreateCommentData {
   }>;
 }
 
-export async function createComment(feedId: number, data: CreateCommentData) {
+export async function createComment(postId: number, data: CreateCommentData) {
   // Build request matching EXACTLY what web app sends
   const requestData: Record<string, any> = {
     comment: data.comment,  // FIXED: 'comment' not 'message'
@@ -87,9 +87,9 @@ export async function createComment(feedId: number, data: CreateCommentData) {
     requestData.media_images = data.media_images;
   }
   
-  console.log('[CommentsAPI] Creating comment with:', JSON.stringify(requestData, null, 2));
+  if (__DEV__) console.log('[CommentsAPI] Creating comment with:', JSON.stringify(requestData, null, 2));
   
-  return post<CreateCommentResponse>(ENDPOINTS.FEED_COMMENTS(feedId), requestData);
+  return post<CreateCommentResponse>(ENDPOINTS.POST_COMMENTS(postId), requestData);
 }
 
 // -----------------------------------------------------------------------------
@@ -102,11 +102,11 @@ export interface UpdateCommentData {
   content_type?: 'text' | 'markdown' | 'html';
 }
 
-export async function updateComment(feedId: number, commentId: number, data: UpdateCommentData) {
-  console.log('[CommentsAPI] Updating comment:', { feedId, commentId, data });
+export async function updateComment(postId: number, commentId: number, data: UpdateCommentData) {
+  if (__DEV__) console.log('[CommentsAPI] Updating comment:', { postId, commentId, data });
   
   return post<{ message: string; data: Comment }>(
-    `${ENDPOINTS.FEED_COMMENTS(feedId)}/${commentId}`,
+    `${ENDPOINTS.POST_COMMENTS(postId)}/${commentId}`,
     data
   );
 }
@@ -115,8 +115,8 @@ export async function updateComment(feedId: number, commentId: number, data: Upd
 // Delete a Comment
 // -----------------------------------------------------------------------------
 
-export async function deleteComment(feedId: number, commentId: number) {
-  return del<{ message: string }>(`${ENDPOINTS.FEED_COMMENTS(feedId)}/${commentId}`);
+export async function deleteComment(postId: number, commentId: number) {
+  return del<{ message: string }>(`${ENDPOINTS.POST_COMMENTS(postId)}/${commentId}`);
 }
 
 // -----------------------------------------------------------------------------
@@ -126,7 +126,7 @@ export async function deleteComment(feedId: number, commentId: number) {
 // state: 1 = add reaction, state: 0 = remove reaction (toggle)
 
 export async function reactToComment(
-  feedId: number,
+  postId: number,
   commentId: number,
   hasReacted: boolean = false,
   reactionType: ReactionType = 'like'
@@ -141,20 +141,20 @@ export async function reactToComment(
     'X-TBC-Reaction-Type': reactionType,
   };
 
-  console.log('[CommentsAPI] Reacting to comment:', { feedId, commentId, payload, reactionType });
+  if (__DEV__) console.log('[CommentsAPI] Reacting to comment:', { postId, commentId, payload, reactionType });
 
-  return post<any>(`${ENDPOINTS.FEED_COMMENTS(feedId)}/${commentId}/reactions`, payload, undefined, headers);
+  return post<ReactResponse>(`${ENDPOINTS.POST_COMMENTS(postId)}/${commentId}/reactions`, payload, undefined, headers);
 }
 
 // -----------------------------------------------------------------------------
 // Pin/Unpin a Comment (mod/admin only)
 // -----------------------------------------------------------------------------
-// PATCH /feeds/{feedId}/comments/{commentId} with { is_sticky: 1|0 }
+// PATCH /feeds/{postId}/comments/{commentId} with { is_sticky: 1|0 }
 // FC 2.2.01+ — only top-level comments, auto-unpins previous pinned comment
 
-export async function pinComment(feedId: number, commentId: number, pin: boolean) {
+export async function pinComment(postId: number, commentId: number, pin: boolean) {
   return patch<{ comment: Comment; message: string }>(
-    `${ENDPOINTS.FEED_COMMENTS(feedId)}/${commentId}`,
+    `${ENDPOINTS.POST_COMMENTS(postId)}/${commentId}`,
     { is_sticky: pin ? 1 : 0 }
   );
 }

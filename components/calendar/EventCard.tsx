@@ -350,7 +350,6 @@ const styles = StyleSheet.create({
   },
 
   rsvpBadge: {
-    backgroundColor: '#FEF3C7',
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: 10,
@@ -359,7 +358,6 @@ const styles = StyleSheet.create({
   rsvpText: {
     fontSize: typography.size.xs,
     fontWeight: '600',
-    color: '#D97706',
   },
 
   progressContainer: {

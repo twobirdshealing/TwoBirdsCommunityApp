@@ -8,16 +8,11 @@
 
 import { PUSHER_CONFIG } from '@/constants/config';
 import { getAuthToken } from '@/services/auth';
+import type { ChatMessage, ChatThread, XProfile } from '@/types';
 import Pusher, { Channel } from 'pusher-js';
+import { createLogger } from '@/utils/logger';
 
-// -----------------------------------------------------------------------------
-// Debug
-// -----------------------------------------------------------------------------
-
-const DEBUG = __DEV__;
-function log(...args: any[]) {
-  if (DEBUG) console.log('[Pusher]', ...args);
-}
+const log = createLogger('Pusher');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -25,24 +20,11 @@ function log(...args: any[]) {
 
 export interface PusherMessage {
   thread_id?: string | number; // v2.2.0: thread_id at top level
-  message: {
-    id: number;
-    thread_id: string | number;
-    user_id: string | number;
-    text: string;
-    created_at: string;
-    xprofile: any;
-  };
+  message: ChatMessage;
 }
 
 export interface PusherThread {
-  thread: {
-    id: number;
-    title: string;
-    status: string;
-    info?: any;
-    messages: any[];
-  };
+  thread: ChatThread;
 }
 
 export interface PusherReaction {
@@ -57,7 +39,7 @@ export interface PusherMessageDeleted {
 }
 
 export interface PusherThreadUpdated {
-  thread: any;
+  thread: ChatThread;
 }
 
 export type MessageHandler = (data: PusherMessage) => void;

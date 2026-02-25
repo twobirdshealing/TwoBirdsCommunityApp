@@ -26,14 +26,12 @@ import { SITE_URL } from '@/constants/config';
 import { WPComment } from '@/types/blog';
 import { blogApi } from '@/services/api';
 import { Avatar } from '@/components/common/Avatar';
-import { ProfileBadge } from '@/components/common/ProfileBadge';
-import { VerifiedBadge } from '@/components/common/VerifiedBadge';
+import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { BottomSheet, BottomSheetFlatList, BottomSheetFooter, SheetInput } from '@/components/common/BottomSheet';
 import type { BottomSheetFooterProps } from '@/components/common/BottomSheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
-import { useBadgeDefinitions } from '@/hooks';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { stripHtmlTags } from '@/utils/htmlToText';
 import { HtmlContent } from '@/components/common/HtmlContent';
@@ -62,7 +60,6 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
   const { colors: themeColors } = useTheme();
   const { user } = useAuth();
   const router = useRouter();
-  const { resolveBadges } = useBadgeDefinitions();
   const { width: windowWidth } = useWindowDimensions();
   // Comment content width: window - list padding(16*2) - avatar(32) - avatar margin(12)
   const commentContentWidth = windowWidth - spacing.lg * 2 - sizing.avatar.sm - spacing.md;
@@ -292,7 +289,7 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
       await Clipboard.setStringAsync(url);
       Alert.alert('Copied!', 'Link copied to clipboard');
     } catch (err) {
-      console.error('Copy failed:', err);
+      if (__DEV__) console.error('Copy failed:', err);
       Alert.alert('Comment Link', url);
     }
   };
@@ -322,7 +319,7 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
                 Alert.alert('Error', response.error?.message || 'Failed to delete');
               }
             } catch (err) {
-              console.error('Delete error:', err);
+              if (__DEV__) console.error('Delete error:', err);
               Alert.alert('Error', 'Failed to delete comment');
             }
           },
@@ -348,17 +345,19 @@ export function BlogCommentSheet({ visible, postId, onClose }: BlogCommentSheetP
         </TouchableOpacity>
         <View style={styles.commentContent}>
           <View style={styles.commentHeader}>
-            <View style={styles.commentHeaderLeft}>
-              <TouchableOpacity onPress={() => handleAuthorPress(item)} disabled={item.author === 0}>
-                <Text style={[styles.commentAuthor, { color: themeColors.text }]}>
-                  {displayName}
-                </Text>
-              </TouchableOpacity>
-              {isVerified && <VerifiedBadge size={14} />}
-              {resolveBadges(item.fcom_author_badge_slugs || []).map((badge) => (
-                <ProfileBadge key={badge.slug} badge={badge} />
-              ))}
-            </View>
+            <TouchableOpacity
+              style={styles.commentHeaderLeft}
+              onPress={() => handleAuthorPress(item)}
+              disabled={item.author === 0}
+              activeOpacity={0.7}
+            >
+              <UserDisplayName
+                name={displayName}
+                verified={isVerified}
+                badgeSlugs={item.fcom_author_badge_slugs}
+                size="sm"
+              />
+            </TouchableOpacity>
             <TouchableOpacity
               ref={(el: any) => { menuButtonRefs.current[item.id] = el; }}
               style={styles.commentMenuButton}
@@ -628,12 +627,6 @@ const styles = StyleSheet.create({
 
   commentMenuButton: {
     padding: 4,
-  },
-
-  commentAuthor: {
-    fontSize: typography.size.sm,
-    fontWeight: '600',
-    marginRight: spacing.sm,
   },
 
   commentTextRow: {

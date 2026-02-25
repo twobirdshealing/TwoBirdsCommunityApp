@@ -212,7 +212,7 @@ export function CreatePostModal({
         }
       }
     } catch (error) {
-      console.error('Image picker error:', error);
+      if (__DEV__) console.error('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image');
     } finally {
       setIsUploading(false);
@@ -278,7 +278,7 @@ export function CreatePostModal({
       setVideoAttachment(null);
       onClose();
     } catch (error) {
-      console.error('Submit error:', error);
+      if (__DEV__) console.error('Submit error:', error);
       Alert.alert('Error', 'Failed to post. Please try again.');
     } finally {
       setIsSubmitting(false);

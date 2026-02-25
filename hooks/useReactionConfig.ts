@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { TBC_MR_URL } from '@/constants/config';
-import { getAuthToken } from '@/services/auth';
+import { request } from '@/services/api/client';
 import { REACTION_EMOJI, REACTION_COLORS, REACTION_NAMES, REACTION_TYPES } from '@/constants/reactions';
 import { ReactionType } from '@/types/feed';
 
@@ -51,20 +51,14 @@ let fetchPromise: Promise<ConfigResult> | null = null;
 
 async function fetchReactionConfig(): Promise<ConfigResult> {
   try {
-    const token = await getAuthToken();
-    const headers: Record<string, string> = {
-      'Accept': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
+    const result = await request<{ reactions?: ReactionConfig[]; display?: Partial<DisplayConfig> }>('/config', { baseUrl: TBC_MR_URL });
 
-    const response = await fetch(`${TBC_MR_URL}/config`, { method: 'GET', headers });
-
-    if (!response.ok) {
-      console.warn('[useReactionConfig] API returned', response.status);
+    if (!result.success) {
+      if (__DEV__) console.warn('[useReactionConfig] API error:', result.error.message);
       return buildFallbackConfig();
     }
 
-    const data = await response.json();
+    const data = result.data;
 
     if (data?.reactions && Array.isArray(data.reactions)) {
       // Normalize reactions: treat empty string icon_url as null
@@ -89,7 +83,7 @@ async function fetchReactionConfig(): Promise<ConfigResult> {
 
     return buildFallbackConfig();
   } catch (err) {
-    console.warn('[useReactionConfig] Fetch failed:', err);
+    if (__DEV__) console.warn('[useReactionConfig] Fetch failed:', err);
     return buildFallbackConfig();
   }
 }

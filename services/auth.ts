@@ -6,8 +6,10 @@
 // =============================================================================
 
 import { API_URL, SITE_URL, FEATURES } from '@/constants/config';
+import type { AuthUser } from '@/types/user';
 import * as SecureStore from 'expo-secure-store';
 import { registerDeviceToken, unregisterDeviceToken, clearBadgeCount } from './push';
+import { createLogger } from '@/utils/logger';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -21,30 +23,15 @@ const AUTH_KEY = 'tbc_auth_jwt';
 const USER_KEY = 'tbc_user_info';
 const CRED_KEY = 'tbc_auth_cred';
 
-// Debug mode
-const DEBUG = __DEV__;
-
-function log(...args: any[]) {
-  if (DEBUG) {
-    console.log('[Auth]', ...args);
-  }
-}
+const log = createLogger('Auth');
 
 // -----------------------------------------------------------------------------
-// Types - MUST match AuthContext.tsx User interface
+// Types
 // -----------------------------------------------------------------------------
-
-interface User {
-  id?: number;           // May not have ID from JWT, will get from profile API
-  username: string;
-  displayName: string;   // camelCase to match AuthContext
-  email: string;
-  avatar?: string;       // Will be fetched from Fluent profile API
-}
 
 interface LoginResult {
   success: boolean;
-  user?: User;
+  user?: AuthUser;
   error?: string;
 }
 
@@ -170,7 +157,7 @@ export async function login(username: string, password: string): Promise<LoginRe
 
     // Map JWT response to our User type
     // Note: JWT gives us username (user_nicename), email, and display_name
-    const user: User = {
+    const user: AuthUser = {
       username: jwtData.user_nicename,
       displayName: jwtData.user_display_name,
       email: jwtData.user_email,
@@ -244,7 +231,9 @@ export async function logout(): Promise<void> {
   // Unregister device from push notifications first
   // Pass the token to avoid circular dependency (push.ts doesn't import from auth.ts)
   if (FEATURES.PUSH_NOTIFICATIONS && token) {
-    await unregisterDeviceToken(token).catch(() => {});
+    await unregisterDeviceToken(token).catch((e) => {
+      if (__DEV__) console.warn('[Auth] Failed to unregister device token:', e);
+    });
   }
 
   // Clear app icon badge
@@ -281,13 +270,11 @@ export async function getAuthToken(): Promise<string | null> {
   }
 }
 
-// Keep old function name as alias for backwards compatibility during migration
-export const getBasicAuth = getAuthToken;
 
 /**
  * Get the stored user data
  */
-export async function getStoredUser(): Promise<User | null> {
+export async function getStoredUser(): Promise<AuthUser | null> {
   try {
     const userJson = await SecureStore.getItemAsync(USER_KEY);
     if (userJson) {
@@ -392,7 +379,7 @@ export async function silentRefresh(): Promise<boolean> {
  */
 export async function storeAuthDirect(
   token: string,
-  user: User,
+  user: AuthUser,
   credentials: { username: string; password: string }
 ): Promise<void> {
   await SecureStore.setItemAsync(AUTH_KEY, token);
@@ -404,7 +391,7 @@ export async function storeAuthDirect(
 /**
  * Update stored user data (e.g., after profile update)
  */
-export async function updateStoredUser(updates: Partial<User>): Promise<void> {
+export async function updateStoredUser(updates: Partial<AuthUser>): Promise<void> {
   try {
     const current = await getStoredUser();
     if (current) {

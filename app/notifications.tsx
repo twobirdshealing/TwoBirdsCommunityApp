@@ -10,6 +10,7 @@
 // - Navigate to related content on tap
 // =============================================================================
 
+import { LoadingSpinner, ErrorMessage } from '@/components/common';
 import { PageHeader } from '@/components/navigation';
 import { NotificationCard } from '@/components/notification';
 import { spacing, typography } from '@/constants/layout';
@@ -90,7 +91,7 @@ export default function NotificationsScreen() {
       }
     } catch (err) {
       setError('Failed to load notifications');
-      console.error('[Notifications] Fetch error:', err);
+      if (__DEV__) console.error('[Notifications] Fetch error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -245,9 +246,9 @@ export default function NotificationsScreen() {
         return;
       }
 
-      console.log('[Notifications] Could not determine navigation for:', notification.route);
+      if (__DEV__) console.log('[Notifications] Could not determine navigation for:', notification.route);
     } catch (err) {
-      console.error('[Notifications] Navigation error:', err);
+      if (__DEV__) console.error('[Notifications] Navigation error:', err);
     }
   };
 
@@ -364,16 +365,9 @@ export default function NotificationsScreen() {
           onRightPress={handleMoreOptions}
         />
         {loading && notifications.length === 0 ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={themeColors.primary} />
-          </View>
+          <LoadingSpinner />
         ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-            <Pressable style={[styles.retryButton, { backgroundColor: themeColors.primary }]} onPress={() => fetchNotifications(1)}>
-              <Text style={[styles.retryButtonText, { color: themeColors.textInverse }]}>Try Again</Text>
-            </Pressable>
-          </View>
+          <ErrorMessage message={error} onRetry={() => fetchNotifications(1)} />
         ) : (
           <FlashList
             data={notifications}
@@ -444,38 +438,6 @@ const styles = StyleSheet.create({
   filterButtonTextActive: {},
 
   filterBadge: {
-    fontWeight: '600',
-  },
-
-  // Loading
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // Error
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-
-  errorText: {
-    fontSize: typography.size.md,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-
-  retryButton: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
-  },
-
-  retryButtonText: {
-    fontSize: typography.size.md,
     fontWeight: '600',
   },
 

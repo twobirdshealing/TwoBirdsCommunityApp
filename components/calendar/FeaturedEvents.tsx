@@ -210,12 +210,7 @@ export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEvents
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
-      <View style={styles.header}>
-        <Text style={[styles.sectionTitle, { color: themeColors.textSecondary }]}>FEATURED</Text>
-        <View style={[styles.headerLine, { backgroundColor: themeColors.border }]} />
-      </View>
-      
+    <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
       <View style={styles.listContainer}>
         {events.slice(0, 4).map((item, index) => (
           <FeaturedItem
@@ -238,26 +233,6 @@ export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEvents
 const styles = StyleSheet.create({
   container: {
     paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-  },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-  },
-
-  sectionTitle: {
-    fontSize: typography.size.sm,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-
-  headerLine: {
-    flex: 1,
-    height: 1,
-    marginLeft: spacing.sm,
   },
 
   listContainer: {

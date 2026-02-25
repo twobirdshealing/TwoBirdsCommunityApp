@@ -129,6 +129,8 @@ export function PageHeader({
               pressed && [styles.buttonPressed, { backgroundColor: themeColors.backgroundSecondary }],
             ]}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={leftAction === 'close' ? 'Close' : 'Go back'}
           >
             <Ionicons name={leftIcon} size={24} color={themeColors.text} />
           </Pressable>
@@ -165,6 +167,8 @@ export function PageHeader({
               pressed && [styles.buttonPressed, { backgroundColor: themeColors.backgroundSecondary }],
             ]}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Action"
           >
             <Ionicons name={rightIcon} size={24} color={themeColors.text} />
           </Pressable>

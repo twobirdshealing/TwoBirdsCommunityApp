@@ -49,47 +49,48 @@ export default function ActivityScreen() {
       }
       
       const response = await feedsApi.getFeeds({ per_page: 20 });
-      
-      if (response.success && response.data) {
-        // BULLETPROOF: sticky can be null, undefined, object, or array
-        let stickyPosts: Feed[] = [];
-        const rawSticky = response.data.sticky;
-        
-        if (rawSticky) {
-          if (Array.isArray(rawSticky)) {
-            stickyPosts = rawSticky;
-          } else if (typeof rawSticky === 'object') {
-            // Handle object format
-            if (Array.isArray((rawSticky as any).data)) {
-              stickyPosts = (rawSticky as any).data;
-            } else if ((rawSticky as any).id) {
-              stickyPosts = [rawSticky as Feed];
-            } else {
-              const values = Object.values(rawSticky);
-              if (values.length > 0 && (values[0] as any)?.id) {
-                stickyPosts = values as Feed[];
-              }
+
+      if (!response.success) {
+        setError(response.error?.message || 'Failed to load feeds');
+        return;
+      }
+
+      // BULLETPROOF: sticky can be null, undefined, object, or array
+      let stickyPosts: Feed[] = [];
+      const rawSticky = response.data.sticky;
+
+      if (rawSticky) {
+        if (Array.isArray(rawSticky)) {
+          stickyPosts = rawSticky;
+        } else if (typeof rawSticky === 'object') {
+          // Handle object format
+          if (Array.isArray((rawSticky as any).data)) {
+            stickyPosts = (rawSticky as any).data;
+          } else if ((rawSticky as any).id) {
+            stickyPosts = [rawSticky as Feed];
+          } else {
+            const values = Object.values(rawSticky);
+            if (values.length > 0 && (values[0] as any)?.id) {
+              stickyPosts = values as Feed[];
             }
           }
         }
-        
-        // BULLETPROOF: feeds.data can also be missing
-        let regularFeeds: Feed[] = [];
-        if (response.data.feeds?.data && Array.isArray(response.data.feeds.data)) {
-          regularFeeds = response.data.feeds.data;
-        }
-        
-        // Remove duplicates (sticky might also appear in regular feeds)
-        const stickyIds = new Set(stickyPosts.map(f => f.id));
-        const filteredRegular = regularFeeds.filter(f => !stickyIds.has(f.id));
-        
-        // Ensure sticky posts are marked
-        const markedSticky = stickyPosts.map(f => ({ ...f, is_sticky: true }));
-        
-        setFeeds([...markedSticky, ...filteredRegular]);
-      } else {
-        setError(response.error?.message || 'Failed to load feeds');
       }
+
+      // BULLETPROOF: feeds.data can also be missing
+      let regularFeeds: Feed[] = [];
+      if (response.data.feeds?.data && Array.isArray(response.data.feeds.data)) {
+        regularFeeds = response.data.feeds.data;
+      }
+
+      // Remove duplicates (sticky might also appear in regular feeds)
+      const stickyIds = new Set(stickyPosts.map(f => f.id));
+      const filteredRegular = regularFeeds.filter(f => !stickyIds.has(f.id));
+
+      // Ensure sticky posts are marked
+      const markedSticky = stickyPosts.map(f => ({ ...f, is_sticky: true }));
+
+      setFeeds([...markedSticky, ...filteredRegular]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -160,7 +161,7 @@ export default function ActivityScreen() {
         )
       );
     } catch (err) {
-      console.error('Bookmark error:', err);
+      if (__DEV__) console.error('Bookmark error:', err);
       Alert.alert('Error', 'Failed to update bookmark');
     }
   };
@@ -207,7 +208,7 @@ export default function ActivityScreen() {
         Alert.alert('Error', response.error?.message || 'Failed to update pin status');
       }
     } catch (err) {
-      console.error('Pin error:', err);
+      if (__DEV__) console.error('Pin error:', err);
       Alert.alert('Error', 'Failed to update pin status');
     }
   };
@@ -241,7 +242,7 @@ export default function ActivityScreen() {
                 Alert.alert('Error', response.error?.message || 'Failed to delete post');
               }
             } catch (err) {
-              console.error('Delete error:', err);
+              if (__DEV__) console.error('Delete error:', err);
               Alert.alert('Error', 'Failed to delete post');
             }
           },
@@ -265,12 +266,13 @@ export default function ActivityScreen() {
           media_images: data.media_images,
         });
 
-        if (response.success && response.data?.feed) {
+        if (!response.success) {
+          throw new Error(response.error?.message || 'Failed to update post');
+        }
+        if (response.data?.feed) {
           setFeeds(prevFeeds =>
             prevFeeds.map(f => f.id === editingFeed.id ? response.data!.feed : f)
           );
-        } else {
-          throw new Error(response.error?.message || 'Failed to update post');
         }
       } else {
         // CREATE MODE
@@ -282,14 +284,15 @@ export default function ActivityScreen() {
           media_images: data.media_images,
         });
 
-        if (response.success && response.data?.feed) {
-          setFeeds(prevFeeds => [response.data!.feed, ...prevFeeds]);
-        } else {
+        if (!response.success) {
           throw new Error(response.error?.message || 'Failed to create post');
+        }
+        if (response.data?.feed) {
+          setFeeds(prevFeeds => [response.data!.feed, ...prevFeeds]);
         }
       }
     } catch (err) {
-      console.error(`${editingFeed ? 'Edit' : 'Create'} post error:`, err);
+      if (__DEV__) console.error(`${editingFeed ? 'Edit' : 'Create'} post error:`, err);
       throw new Error(err instanceof Error ? err.message : `Failed to ${editingFeed ? 'update' : 'create'} post`);
     }
   };
@@ -341,7 +344,7 @@ export default function ActivityScreen() {
       {/* Comment Sheet */}
       <CommentSheet
         visible={showComments}
-        feedId={selectedFeedId}
+        postId={selectedFeedId}
         feedSlug={selectedFeedSlug}
         onClose={handleCloseComments}
         onCommentAdded={handleCommentAdded}

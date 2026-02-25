@@ -94,7 +94,7 @@ export function NotificationCard({
           { backgroundColor: themeColors.success, transform: [{ translateX }] },
         ]}
       >
-        <Pressable style={styles.swipeActionButton} onPress={handleMarkAsRead}>
+        <Pressable style={styles.swipeActionButton} onPress={handleMarkAsRead} accessibilityRole="button" accessibilityLabel="Mark as read">
           <Ionicons name="checkmark-circle" size={24} color={themeColors.textInverse} />
           <Text style={[styles.swipeActionText, { color: themeColors.textInverse }]}>Read</Text>
         </Pressable>
@@ -120,6 +120,8 @@ export function NotificationCard({
           isUnread && [styles.containerUnread, { backgroundColor: themeColors.primary + '10' }],
         ]}
         onPress={() => onPress?.(notification)}
+        accessibilityRole="button"
+        accessibilityLabel={`${isUnread ? 'Unread: ' : ''}${notification.message || notification.title}, ${timestamp}`}
       >
         {/* Unread Indicator Dot */}
         {isUnread && <View style={[styles.unreadDot, { backgroundColor: themeColors.primary }]} />}
@@ -128,6 +130,8 @@ export function NotificationCard({
         <Pressable
           style={styles.avatarContainer}
           onPress={() => onAvatarPress?.(notification)}
+          accessibilityRole="button"
+          accessibilityLabel={`${actorName}'s profile`}
         >
           <Avatar
             source={actorAvatar}

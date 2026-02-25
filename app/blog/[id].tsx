@@ -4,7 +4,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   ScrollView,
   Share,
@@ -20,15 +19,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
 import { HtmlContent } from '@/components/common/HtmlContent';
+import { LoadingSpinner, ErrorMessage } from '@/components/common';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { WPPost } from '@/types/blog';
 import { blogApi } from '@/services/api';
 import { PageHeader } from '@/components/navigation';
 import { Avatar } from '@/components/common/Avatar';
-import { ProfileBadge } from '@/components/common/ProfileBadge';
-import { VerifiedBadge } from '@/components/common/VerifiedBadge';
+import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { BlogCommentSheet } from '@/components/blog';
-import { useProfileBadges } from '@/hooks';
 import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 import { formatFullDate } from '@/utils/formatDate';
 
@@ -127,7 +125,6 @@ export default function BlogDetailScreen() {
   const authorName = author?.name || 'Unknown';
   const authorAvatar = author?.fcom_avatar || author?.avatar_urls?.['96'] || null;
   const authorVerified = author?.fcom_is_verified === 1;
-  const authorBadges = useProfileBadges(author?.fcom_badge_slugs);
   const date = post ? formatFullDate(post.date) : '';
   const commentCount = embeddedComments.length;
 
@@ -152,19 +149,9 @@ export default function BlogDetailScreen() {
         />
 
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={themeColors.primary} />
-          </View>
+          <LoadingSpinner />
         ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={[styles.retryButton, { backgroundColor: themeColors.primary }]}
-            >
-              <Text style={[styles.retryText, { color: themeColors.textInverse }]}>Go Back</Text>
-            </TouchableOpacity>
-          </View>
+          <ErrorMessage message={error} onRetry={() => router.back()} />
         ) : post ? (
           <ScrollView
             style={styles.scrollView}
@@ -208,13 +195,14 @@ export default function BlogDetailScreen() {
                     <TouchableOpacity style={styles.heroAuthorRow} onPress={handleAuthorPress} activeOpacity={0.7}>
                       <Avatar source={authorAvatar} size="sm" fallback={authorName} />
                       <View style={styles.heroAuthorInfo}>
-                        <View style={styles.heroAuthorNameRow}>
-                          <Text style={styles.heroAuthorName}>{authorName}</Text>
-                          {authorVerified && <VerifiedBadge size={14} />}
-                          {authorBadges.map((badge) => (
-                            <ProfileBadge key={badge.slug} badge={badge} />
-                          ))}
-                        </View>
+                        <UserDisplayName
+                          name={authorName}
+                          verified={authorVerified}
+                          badgeSlugs={author?.fcom_badge_slugs}
+                          size="sm"
+                          nameColor="#fff"
+                          numberOfLines={1}
+                        />
                         <Text style={styles.heroDate}>{date}</Text>
                       </View>
                     </TouchableOpacity>
@@ -251,13 +239,13 @@ export default function BlogDetailScreen() {
                   <TouchableOpacity style={styles.fallbackAuthorRow} onPress={handleAuthorPress} activeOpacity={0.7}>
                     <Avatar source={authorAvatar} size="sm" fallback={authorName} />
                     <View style={styles.fallbackAuthorInfo}>
-                      <View style={styles.fallbackAuthorNameRow}>
-                        <Text style={[styles.fallbackAuthorName, { color: themeColors.text }]}>{authorName}</Text>
-                        {authorVerified && <VerifiedBadge size={14} />}
-                        {authorBadges.map((badge) => (
-                          <ProfileBadge key={badge.slug} badge={badge} />
-                        ))}
-                      </View>
+                      <UserDisplayName
+                        name={authorName}
+                        verified={authorVerified}
+                        badgeSlugs={author?.fcom_badge_slugs}
+                        size="sm"
+                        numberOfLines={1}
+                      />
                       <Text style={[styles.fallbackDate, { color: themeColors.textTertiary }]}>{date}</Text>
                     </View>
                   </TouchableOpacity>
@@ -324,35 +312,6 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     paddingBottom: spacing.xxxl * 2,
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-
-  errorText: {
-    fontSize: typography.size.md,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-
-  retryButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: sizing.borderRadius.md,
-  },
-
-  retryText: {
-    fontWeight: '600',
   },
 
   // ---------------------------------------------------------------------------
@@ -431,17 +390,6 @@ const styles = StyleSheet.create({
     marginLeft: spacing.md,
   },
 
-  heroAuthorNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-
-  heroAuthorName: {
-    fontSize: typography.size.sm,
-    fontWeight: '600',
-    color: '#fff',
-  },
 
   heroDate: {
     fontSize: typography.size.xs,
@@ -508,17 +456,6 @@ const styles = StyleSheet.create({
 
   fallbackAuthorInfo: {
     marginLeft: spacing.md,
-  },
-
-  fallbackAuthorNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-
-  fallbackAuthorName: {
-    fontSize: typography.size.sm,
-    fontWeight: '600',
   },
 
   fallbackDate: {

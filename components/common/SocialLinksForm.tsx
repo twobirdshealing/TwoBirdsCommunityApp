@@ -7,44 +7,34 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-
-// -----------------------------------------------------------------------------
-// Social provider config — single source of truth
-// -----------------------------------------------------------------------------
-
-export const SOCIAL_PROVIDERS = [
-  { key: 'instagram', label: 'Instagram', icon: 'logo-instagram' as const, prefix: 'https://instagram.com/' },
-  { key: 'youtube', label: 'YouTube', icon: 'logo-youtube' as const, prefix: 'https://youtube.com/' },
-  { key: 'fb', label: 'Facebook', icon: 'logo-facebook' as const, prefix: 'https://facebook.com/' },
-  { key: 'blue_sky', label: 'Bluesky', icon: 'cloud-outline' as const, prefix: 'https://bsky.app/profile/' },
-  { key: 'reddit', label: 'Reddit', icon: 'logo-reddit' as const, prefix: 'https://www.reddit.com/user/' },
-] as const;
+import { getProviderIcon, type SocialProvider } from '@/services/api/socialProviders';
 
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
 interface SocialLinksFormProps {
+  providers: SocialProvider[];
   values: Record<string, string>;
   onChange: (key: string, value: string) => void;
 }
 
-export function SocialLinksForm({ values, onChange }: SocialLinksFormProps) {
+export function SocialLinksForm({ providers, values, onChange }: SocialLinksFormProps) {
   const { colors } = useTheme();
 
   return (
     <>
-      {SOCIAL_PROVIDERS.map(({ key, label, icon, prefix }) => (
+      {providers.map(({ key, title, domain }) => (
         <View key={key} style={styles.container}>
           <View style={styles.labelRow}>
-            <Ionicons name={icon} size={18} color={colors.textSecondary} />
-            <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
+            <Ionicons name={getProviderIcon(key) as any} size={18} color={colors.textSecondary} />
+            <Text style={[styles.label, { color: colors.text }]}>{title}</Text>
           </View>
           <View style={[styles.inputRow, {
             backgroundColor: colors.background,
             borderColor: colors.border,
           }]}>
-            <Text style={[styles.prefix, { color: colors.textTertiary }]}>{prefix}</Text>
+            <Text style={[styles.prefix, { color: colors.textTertiary }]}>{domain}</Text>
             <TextInput
               style={[styles.input, { color: colors.text }]}
               value={values[key] || ''}

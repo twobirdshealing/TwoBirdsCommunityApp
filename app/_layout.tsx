@@ -5,6 +5,7 @@
 // UPDATED: Added push notification tap handler
 // =============================================================================
 
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { FEATURES } from '@/constants/config';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { PusherProvider } from '@/contexts/PusherContext';
@@ -19,6 +20,35 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { syncBadgeCount } from '@/services/push';
 import { notificationsApi } from '@/services/api';
 import 'react-native-reanimated';
+
+// -----------------------------------------------------------------------------
+// Deep link validation
+// -----------------------------------------------------------------------------
+
+const VALID_ROUTE_PREFIXES = [
+  '/(tabs)',
+  '/feed/',
+  '/profile/',
+  '/space/',
+  '/messages',
+  '/notifications',
+  '/blog/',
+  '/courses',
+  '/directory',
+  '/bookmarks',
+  '/notification-settings',
+  '/webview',
+];
+
+/** Validate that a push notification route matches a known app route */
+function isValidRoute(route: string): boolean {
+  return VALID_ROUTE_PREFIXES.some((prefix) => route.startsWith(prefix));
+}
+
+/** Sanitize a string parameter from notification data (strip non-alphanumeric except - and _) */
+function sanitizeParam(value: unknown): string {
+  return String(value ?? '').replace(/[^a-zA-Z0-9_\-]/g, '');
+}
 
 // -----------------------------------------------------------------------------
 // Auth-aware navigation
@@ -55,29 +85,23 @@ function RootLayoutNav() {
       const data = response.notification.request.content.data;
 
       // Route based on notification data
-      if (data?.route && typeof data.route === 'string') {
+      if (data?.route && typeof data.route === 'string' && isValidRoute(data.route)) {
         // Small delay to ensure navigation is ready
         setTimeout(() => {
           router.push(data.route as any);
         }, 100);
       } else if (data?.feed_id) {
-        // Legacy: navigate to feed detail
-        router.push({
-          pathname: '/feed/[id]',
-          params: { id: String(data.feed_id) },
-        });
+        const id = sanitizeParam(data.feed_id);
+        if (id) router.push({ pathname: '/feed/[id]', params: { id } });
       } else if (data?.space_slug) {
-        // Legacy: navigate to space
-        router.push({
-          pathname: '/space/[slug]',
-          params: { slug: String(data.space_slug) },
-        });
+        const slug = sanitizeParam(data.space_slug);
+        if (slug) router.push({ pathname: '/space/[slug]', params: { slug } });
+      } else if (data?.course_slug) {
+        const courseSlug = sanitizeParam(data.course_slug);
+        if (courseSlug) router.push({ pathname: '/courses/[slug]', params: { slug: courseSlug } });
       } else if (data?.profile_username) {
-        // Legacy: navigate to profile
-        router.push({
-          pathname: '/profile/[username]',
-          params: { username: String(data.profile_username) },
-        });
+        const username = sanitizeParam(data.profile_username);
+        if (username) router.push({ pathname: '/profile/[username]', params: { username } });
       } else {
         // Default: go to notifications screen
         router.push('/notifications');
@@ -95,7 +119,7 @@ function RootLayoutNav() {
     if (!isAuthenticated) return;
 
     const fetchAndSyncBadge = async () => {
-      const count = await notificationsApi.getUnreadCount();
+      const count = await notificationsApi.getNotificationUnreadCount();
       syncBadgeCount(count);
     };
 
@@ -204,6 +228,20 @@ function RootLayoutNav() {
           options={{ presentation: 'card', headerShown: false }}
         />
 
+        {/* COURSES */}
+        <Stack.Screen
+          name="courses/index"
+          options={{ presentation: 'card', headerShown: false }}
+        />
+        <Stack.Screen
+          name="courses/[slug]"
+          options={{ presentation: 'card', headerShown: false }}
+        />
+        <Stack.Screen
+          name="courses/[slug]/lesson/[lessonSlug]"
+          options={{ presentation: 'card', headerShown: false }}
+        />
+
         {/* NOTIFICATION SETTINGS */}
         <Stack.Screen
           name="notification-settings"
@@ -232,15 +270,17 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.flex}>
-      <ThemeProvider>
-        <AuthProvider>
-          <PusherProvider>
-            <BottomSheetModalProvider>
-              <RootLayoutNav />
-            </BottomSheetModalProvider>
-          </PusherProvider>
-        </AuthProvider>
-      </ThemeProvider>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <AuthProvider>
+            <PusherProvider>
+              <BottomSheetModalProvider>
+                <RootLayoutNav />
+              </BottomSheetModalProvider>
+            </PusherProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }

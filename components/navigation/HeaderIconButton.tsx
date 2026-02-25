@@ -19,6 +19,7 @@ interface HeaderIconButtonProps {
   badgeCount?: number;
   size?: number;
   color?: string;
+  accessibilityLabel?: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -31,6 +32,7 @@ export function HeaderIconButton({
   badgeCount = 0,
   size = 24,
   color,
+  accessibilityLabel,
 }: HeaderIconButtonProps) {
   const { colors: themeColors } = useTheme();
   const iconColor = color || themeColors.text;
@@ -44,12 +46,14 @@ export function HeaderIconButton({
         pressed && [styles.pressed, { backgroundColor: themeColors.backgroundSecondary }],
       ]}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
     >
       <Ionicons name={icon} size={size} color={iconColor} />
       
       {showBadge && (
         <View style={[styles.badge, { backgroundColor: themeColors.error, borderColor: themeColors.surface }]}>
-          <Text style={[styles.badgeText, { color: '#fff' }]}>{displayCount}</Text>
+          <Text style={[styles.badgeText, { color: themeColors.textInverse }]}>{displayCount}</Text>
         </View>
       )}
     </Pressable>

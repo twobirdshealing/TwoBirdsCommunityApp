@@ -100,7 +100,7 @@ export function LinkPreview({
   // Handle tap - open in browser or native app
   const handlePress = () => {
     Linking.openURL(url).catch(err => {
-      console.error('Failed to open URL:', err);
+      if (__DEV__) console.error('Failed to open URL:', err);
     });
   };
   

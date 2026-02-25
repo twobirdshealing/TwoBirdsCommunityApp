@@ -6,7 +6,7 @@
 // Follows the same pattern as push.ts for TBC-CA API calls.
 // =============================================================================
 
-import { SITE_URL } from '@/constants/config';
+import { TBC_CA_URL } from '@/constants/config';
 import { verifyOtp, resendOtp, requestVoiceCall } from './otp';
 
 // -----------------------------------------------------------------------------
@@ -73,12 +73,6 @@ export interface PasswordResetResponse {
 }
 
 // -----------------------------------------------------------------------------
-// Base URL for TBC-CA plugin
-// -----------------------------------------------------------------------------
-
-const TBC_CA_BASE = `${SITE_URL}/wp-json/tbc-ca/v1`;
-
-// -----------------------------------------------------------------------------
 // Helper: Make public (unauthenticated) request to TBC-CA endpoints
 // -----------------------------------------------------------------------------
 
@@ -87,7 +81,7 @@ async function tbcPublicRequest<T>(
   options: RequestInit = {}
 ): Promise<{ success: true; data: T } | { success: false; error: string; data?: any }> {
   try {
-    const response = await fetch(`${TBC_CA_BASE}${endpoint}`, {
+    const response = await fetch(`${TBC_CA_URL}${endpoint}`, {
       ...options,
       headers: {
         'Accept': 'application/json',
@@ -108,7 +102,7 @@ async function tbcPublicRequest<T>(
 
     return { success: true, data };
   } catch (error) {
-    console.error('[Registration API Error]', error);
+    if (__DEV__) console.error('[Registration API Error]', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Network request failed',
@@ -128,7 +122,7 @@ export async function getRegistrationFields(): Promise<FieldsResponse | null> {
   if (result.success) {
     return result.data;
   }
-  console.error('[Registration] Failed to get fields:', result.error);
+  if (__DEV__) console.error('[Registration] Failed to get fields:', result.error);
   return null;
 }
 

@@ -8,7 +8,7 @@
 
 import { DEFAULT_PER_PAGE, ENDPOINTS, TBC_MR_URL } from '@/constants/config';
 import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType, WelcomeBannerResponse } from '@/types';
-import { del, get, patch, post } from './client';
+import { del, get, patch, post, request } from './client';
 
 // -----------------------------------------------------------------------------
 // Request Options
@@ -166,7 +166,7 @@ export async function createFeed(data: CreateFeedData) {
     requestData.media = data.media;
   }
 
-  console.log('[FeedsAPI] Creating feed with:', JSON.stringify(requestData, null, 2));
+  if (__DEV__) console.log('[FeedsAPI] Creating feed with:', JSON.stringify(requestData, null, 2));
 
   return post<{ feed: Feed }>(ENDPOINTS.FEEDS, requestData);
 }
@@ -187,7 +187,7 @@ export async function updateFeed(id: number, data: Partial<CreateFeedData>) {
 // Web app sends: {is_sticky: 1, query_timestamp: ...}
 
 export async function toggleSticky(id: number, isSticky: boolean) {
-  console.log('[FeedsAPI] toggleSticky using PATCH:', { id, isSticky: isSticky ? 1 : 0 });
+  if (__DEV__) console.log('[FeedsAPI] toggleSticky using PATCH:', { id, isSticky: isSticky ? 1 : 0 });
   
   // Use PATCH for partial update (doesn't require all fields)
   return patch<{ message: string; data: Feed }>(`${ENDPOINTS.FEEDS}/${id}`, {
@@ -241,29 +241,11 @@ export async function swapReactionType(
   objectType: 'feed' | 'comment',
   reactionType: ReactionType
 ) {
-  // This calls the plugin's own REST endpoint (different base URL)
-  const url = `${TBC_MR_URL}/swap`;
-
-  const token = await import('@/services/auth').then(m => m.getAuthToken());
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
-  const response = await fetch(url, {
+  return request('/swap', {
     method: 'POST',
-    headers,
-    body: JSON.stringify({ object_id: objectId, object_type: objectType, reaction_type: reactionType }),
+    body: { object_id: objectId, object_type: objectType, reaction_type: reactionType },
+    baseUrl: TBC_MR_URL,
   });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    return { success: false as const, error: data };
-  }
-
-  return { success: true as const, data };
 }
 
 // -----------------------------------------------------------------------------
@@ -299,23 +281,10 @@ export interface BreakdownResponse {
 export async function getReactionBreakdownUsers(
   objectType: 'feed' | 'comment',
   objectId: number
-): Promise<{ success: true; data: BreakdownResponse } | { success: false; error: any }> {
-  const url = `${TBC_MR_URL}/breakdown/${objectType}/${objectId}/users`;
-
-  const token = await import('@/services/auth').then(m => m.getAuthToken());
-  const headers: Record<string, string> = {
-    'Accept': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-
-  const response = await fetch(url, { method: 'GET', headers });
-  const data = await response.json();
-
-  if (!response.ok) {
-    return { success: false as const, error: data };
-  }
-
-  return { success: true as const, data };
+) {
+  return request<BreakdownResponse>(`/breakdown/${objectType}/${objectId}/users`, {
+    baseUrl: TBC_MR_URL,
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -345,14 +314,21 @@ export interface GetBookmarksOptions {
   order_by_type?: 'latest' | 'oldest' | 'new_activity' | 'likes' | 'popular';
 }
 
+/** Bookmarks response — shape varies between FC versions */
+export interface BookmarksResponse {
+  feeds?: FeedsResponse['feeds'] | Feed[];
+  data?: Feed[];
+  [key: string]: unknown;
+}
+
 export async function getBookmarks(options: GetBookmarksOptions = {}) {
   const params = {
     page: options.page || 1,
     per_page: options.per_page || DEFAULT_PER_PAGE,
     ...(options.order_by_type && { order_by_type: options.order_by_type }),
   };
-  
-  return get<any>(`${ENDPOINTS.FEEDS}/bookmarks`, params);
+
+  return get<BookmarksResponse>(`${ENDPOINTS.FEEDS}/bookmarks`, params);
 }
 
 // -----------------------------------------------------------------------------
@@ -361,7 +337,7 @@ export async function getBookmarks(options: GetBookmarksOptions = {}) {
 
 export async function getFeedReactions(feedId: number, type?: ReactionType) {
   const params = type ? { type } : {};
-  return get<any>(ENDPOINTS.FEED_REACTIONS(feedId), params);
+  return get<{ reactions: Feed['reactions'] }>(ENDPOINTS.FEED_REACTIONS(feedId), params);
 }
 
 // -----------------------------------------------------------------------------

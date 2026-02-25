@@ -12,14 +12,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
+import { LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
 import { MemberCard, MemberCardData } from '@/components/member';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { profilesApi } from '@/services/api/profiles';
 import { spacesApi } from '@/services/api/spaces';
+import { useFollowToggle } from '@/hooks';
 
 // -----------------------------------------------------------------------------
 // Helper: Sort members with leaders at top
@@ -63,9 +64,8 @@ export default function SpaceMembersScreen() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // Follow state: maps userId → follow level (> 0 = following)
-  const [followMap, setFollowMap] = useState<Record<number, number>>({});
-  const [followLoadingMap, setFollowLoadingMap] = useState<Record<number, boolean>>({});
+  // Follow state
+  const { followMap, setFollowMap, followLoadingMap, handleFollowPress, isFollowing, isFollowLoading } = useFollowToggle();
 
   // ---------------------------------------------------------------------------
   // Sorted members (admins/facilitators first)
@@ -186,38 +186,6 @@ export default function SpaceMembersScreen() {
     } as any);
   };
 
-  const handleFollowPress = useCallback(async (member: MemberCardData) => {
-    const memberId = Number(member.xprofile?.user_id || member.user_id);
-    const username = member.xprofile?.username || member.username;
-    if (!username || !memberId) return;
-
-    const isCurrentlyFollowing = (followMap[memberId] || 0) > 0;
-
-    // Optimistic update
-    setFollowMap(prev => ({
-      ...prev,
-      [memberId]: isCurrentlyFollowing ? 0 : 1,
-    }));
-    setFollowLoadingMap(prev => ({ ...prev, [memberId]: true }));
-
-    try {
-      if (isCurrentlyFollowing) {
-        await profilesApi.unfollowUser(username);
-      } else {
-        await profilesApi.followUser(username);
-      }
-    } catch (err) {
-      console.error('[SpaceMembers] Follow error:', err);
-      // Revert on failure
-      setFollowMap(prev => ({
-        ...prev,
-        [memberId]: isCurrentlyFollowing ? 1 : 0,
-      }));
-      Alert.alert('Error', 'Failed to update follow status');
-    } finally {
-      setFollowLoadingMap(prev => ({ ...prev, [memberId]: false }));
-    }
-  }, [followMap]);
 
   // ---------------------------------------------------------------------------
   // Section Header (for Admins/Facilitators vs Members)
@@ -277,21 +245,12 @@ export default function SpaceMembersScreen() {
       <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         {/* Error State */}
         {error && !loading && members.length === 0 && (
-          <View style={styles.centerContainer}>
-            <Ionicons name="alert-circle-outline" size={48} color={themeColors.error} style={styles.errorIcon} />
-            <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-            <Text style={[styles.retryButton, { color: themeColors.primary }]} onPress={handleRefresh}>
-              Tap to retry
-            </Text>
-          </View>
+          <ErrorMessage message={error} onRetry={handleRefresh} />
         )}
 
         {/* Loading State */}
         {loading && members.length === 0 && !error && (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={themeColors.primary} />
-            <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Loading members...</Text>
-          </View>
+          <LoadingSpinner message="Loading members..." />
         )}
 
         {/* Members List */}
@@ -309,8 +268,8 @@ export default function SpaceMembersScreen() {
                     onPress={handleMemberPress}
                     onMessagePress={isSelf ? undefined : handleMessagePress}
                     onFollowPress={isSelf ? undefined : handleFollowPress}
-                    isFollowing={(followMap[memberId] || 0) > 0}
-                    followLoading={followLoadingMap[memberId] || false}
+                    isFollowing={isFollowing(memberId)}
+                    followLoading={isFollowLoading(memberId)}
                     showRole={true}
                     showBio={true}
                     showLastActive={true}
@@ -332,10 +291,10 @@ export default function SpaceMembersScreen() {
             }
             ListEmptyComponent={
               !loading && !error ? (
-                <View style={styles.centerContainer}>
-                  <Ionicons name="people-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
-                  <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No members found</Text>
-                </View>
+                <EmptyState
+                  icon="people-outline"
+                  message="No members found"
+                />
               ) : null
             }
             ListFooterComponent={
@@ -359,41 +318,6 @@ export default function SpaceMembersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: 14,
-  },
-
-  errorIcon: {
-    marginBottom: spacing.md,
-  },
-
-  errorText: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-
-  retryButton: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  emptyIcon: {
-    marginBottom: spacing.md,
-  },
-
-  emptyText: {
-    fontSize: 16,
   },
 
   footerLoader: {

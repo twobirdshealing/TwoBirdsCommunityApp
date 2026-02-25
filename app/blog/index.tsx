@@ -9,15 +9,13 @@ import {
   Platform,
   RefreshControl,
   StyleSheet,
-  Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
+import { spacing } from '@/constants/layout';
 import { WPPost } from '@/types/blog';
 import { blogApi } from '@/services/api';
 import { PageHeader } from '@/components/navigation';
@@ -136,13 +134,11 @@ export default function BlogListScreen() {
   const renderEmpty = () => {
     if (loading) return null;
     return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="newspaper-outline" size={48} color={themeColors.textTertiary} />
-        <Text style={[styles.emptyTitle, { color: themeColors.text }]}>No Blog Posts</Text>
-        <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
-          Check back soon for new content.
-        </Text>
-      </View>
+      <EmptyState
+        icon="newspaper-outline"
+        title="No Blog Posts"
+        message="Check back soon for new content."
+      />
     );
   };
 
@@ -163,20 +159,10 @@ export default function BlogListScreen() {
 
         {/* Error State */}
         {error && !loading ? (
-          <View style={styles.errorContainer}>
-            <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-            <TouchableOpacity
-              onPress={() => fetchPosts(1)}
-              style={[styles.retryButton, { backgroundColor: themeColors.primary }]}
-            >
-              <Text style={[styles.retryText, { color: themeColors.textInverse }]}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
+          <ErrorMessage message={error} onRetry={() => fetchPosts(1)} />
         ) : loading && posts.length === 0 ? (
           /* Loading State */
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={themeColors.primary} />
-          </View>
+          <LoadingSpinner />
         ) : (
           /* Post List */
           <FlatList
@@ -226,53 +212,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingTop: spacing.md,
     paddingBottom: spacing.xxxl,
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-
-  errorText: {
-    fontSize: typography.size.md,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-
-  retryButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: sizing.borderRadius.md,
-  },
-
-  retryText: {
-    fontWeight: '600',
-  },
-
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: spacing.xxxl * 2,
-    paddingHorizontal: spacing.xl,
-  },
-
-  emptyTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: '600',
-    marginTop: spacing.md,
-  },
-
-  emptyText: {
-    fontSize: typography.size.md,
-    marginTop: spacing.xs,
-    textAlign: 'center',
   },
 
   footer: {

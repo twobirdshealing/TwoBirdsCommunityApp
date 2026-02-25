@@ -16,10 +16,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { WelcomeBanner as WelcomeBannerType, WelcomeBannerButton } from '@/types';
 import { stripHtmlTags } from '@/utils/htmlToText';
+import { extractYouTubeId } from '@/utils/youtube';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = SCREEN_WIDTH - (spacing.md * 2);
@@ -31,24 +33,7 @@ const IMAGE_HEIGHT = 200;
 
 interface WelcomeBannerProps {
   banner: WelcomeBannerType;
-}
-
-// -----------------------------------------------------------------------------
-// Helper: Extract YouTube ID from URL
-// -----------------------------------------------------------------------------
-
-function extractYouTubeId(url: string): string | null {
-  const patterns = [
-    /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
-    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
-  ];
-
-  for (const p of patterns) {
-    const match = url.match(p);
-    if (match) return match[1];
-  }
-  return null;
+  onClose?: () => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -65,7 +50,7 @@ function CTAButton({ button }: CTAButtonProps) {
   const handlePress = () => {
     if (button.link) {
       Linking.openURL(button.link).catch(err => {
-        console.error('Failed to open URL:', err);
+        if (__DEV__) console.error('Failed to open URL:', err);
       });
     }
   };
@@ -129,7 +114,7 @@ function CTAButton({ button }: CTAButtonProps) {
 // Main Component
 // -----------------------------------------------------------------------------
 
-export function WelcomeBanner({ banner }: WelcomeBannerProps) {
+export function WelcomeBanner({ banner, onClose }: WelcomeBannerProps) {
   const { colors: themeColors, isDark } = useTheme();
 
   // Don't render if not enabled
@@ -153,13 +138,25 @@ export function WelcomeBanner({ banner }: WelcomeBannerProps) {
   const handleYouTubePress = () => {
     if (banner.bannerVideo?.url) {
       Linking.openURL(banner.bannerVideo.url).catch(err => {
-        console.error('Failed to open YouTube URL:', err);
+        if (__DEV__) console.error('Failed to open YouTube URL:', err);
       });
     }
   };
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
+      {/* Close button */}
+      {banner.allowClose === 'yes' && onClose && (
+        <TouchableOpacity
+          style={[styles.closeButton, { backgroundColor: themeColors.backgroundSecondary, borderColor: themeColors.border }]}
+          onPress={onClose}
+          activeOpacity={0.7}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="close" size={16} color={themeColors.text} />
+        </TouchableOpacity>
+      )}
+
       {/* Media: Image or YouTube Thumbnail */}
       {banner.mediaType === 'image' && banner.bannerImage && (
         <Image
@@ -231,6 +228,19 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
+  closeButton: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    zIndex: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   // Image
   bannerImage: {
     width: '100%',
@@ -253,7 +263,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -266,18 +275,21 @@ const styles = StyleSheet.create({
   // Content
   content: {
     padding: spacing.md,
+    alignItems: 'center',
   },
 
   title: {
     fontSize: typography.size.xl,
     fontWeight: '700',
     marginBottom: spacing.xs,
+    textAlign: 'center',
   },
 
   description: {
     fontSize: typography.size.md,
     lineHeight: typography.size.md * 1.5,
     marginBottom: spacing.md,
+    textAlign: 'center',
   },
 
   // Buttons

@@ -15,13 +15,11 @@ import {
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Avatar } from '@/components/common/Avatar';
-import { VerifiedBadge } from '@/components/common/VerifiedBadge';
-import { ProfileBadge } from '@/components/common/ProfileBadge';
+import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { BottomSheet, BottomSheetFlatList, BottomSheetScrollView } from '@/components/common/BottomSheet';
 import { ReactionIcon } from './ReactionIcon';
 import { feedsApi } from '@/services/api';
 import { BreakdownItem, BreakdownUser } from '@/services/api/feeds';
-import { useBadgeDefinitions } from '@/hooks/useBadgeDefinitions';
 import { spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -46,7 +44,6 @@ export function ReactionBreakdownModal({
   objectId,
 }: ReactionBreakdownModalProps) {
   const { colors: themeColors } = useTheme();
-  const { resolveBadges } = useBadgeDefinitions();
   const [breakdown, setBreakdown] = useState<BreakdownItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -154,15 +151,13 @@ export function ReactionBreakdownModal({
           renderItem={({ item }: { item: ActiveUser }) => (
             <View style={[styles.userRow, { borderBottomColor: themeColors.borderLight }]}>
               <Avatar source={item.avatar} size="sm" />
-              <View style={styles.nameRow}>
-                <Text style={[styles.userName, { color: themeColors.text }]} numberOfLines={1}>
-                  {item.display_name}
-                </Text>
-                {item.is_verified === 1 && <VerifiedBadge size={14} />}
-                {resolveBadges(item.badge_slugs || []).map((badge) => (
-                  <ProfileBadge key={badge.slug} badge={badge} />
-                ))}
-              </View>
+              <UserDisplayName
+                name={item.display_name}
+                verified={item.is_verified === 1}
+                badgeSlugs={item.badge_slugs}
+                numberOfLines={1}
+                style={styles.nameRow}
+              />
               {activeTab === 'all' && (
                 <ReactionIcon iconUrl={item.icon_url} emoji={item.emoji} size={30} />
               )}
@@ -229,9 +224,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-  },
-  userName: {
-    flexShrink: 1,
-    fontSize: typography.size.md,
   },
 });

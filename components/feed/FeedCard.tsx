@@ -22,15 +22,14 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
 import { Avatar } from '@/components/common/Avatar';
-import { ProfileBadge } from '@/components/common/ProfileBadge';
-import { VerifiedBadge } from '@/components/common/VerifiedBadge';
+import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 import { MediaViewer } from '@/components/media/MediaViewer';
 import { ReactionPicker } from './ReactionPicker';
 import { ReactionBreakdownModal } from './ReactionBreakdownModal';
 import { ReactionIcon } from './ReactionIcon';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useReactionConfig, useProfileBadges } from '@/hooks';
+import { useReactionConfig } from '@/hooks';
 import { shadows, sizing, spacing, typography } from '@/constants/layout';
 import { Feed, ReactionType } from '@/types';
 import { formatRelativeTime } from '@/utils/formatDate';
@@ -40,6 +39,7 @@ import { HtmlContent } from '@/components/common/HtmlContent';
 import { useAuth } from '@/contexts/AuthContext';
 import { SITE_URL } from '@/constants/config';
 import { REACTION_EMOJI, REACTION_COLORS, REACTION_NAMES } from '@/constants/reactions';
+import { extractYouTubeId } from '@/utils/youtube';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 
@@ -74,11 +74,11 @@ function detectMedia(feed: Feed): MediaInfo {
 
   // 2. Check for YouTube in meta.media_preview (oembed from native web)
   if (meta.media_preview?.provider === 'youtube' &&
-      meta.media_preview?.content_type === 'video') {
-    const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-    const match = meta.media_preview.url?.match(youtubeRegex);
-    if (match) {
-      return { type: 'youtube', youtubeId: match[1] };
+      meta.media_preview?.content_type === 'video' &&
+      meta.media_preview.url) {
+    const videoId = extractYouTubeId(meta.media_preview.url);
+    if (videoId) {
+      return { type: 'youtube', youtubeId: videoId };
     }
   }
 
@@ -93,10 +93,9 @@ function detectMedia(feed: Feed): MediaInfo {
   }
 
   // 5. Check for YouTube links in message text (fallback)
-  const youtubeRegex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-  const youtubeMatch = message.match(youtubeRegex) || messageRendered.match(youtubeRegex);
-  if (youtubeMatch) {
-    return { type: 'youtube', youtubeId: youtubeMatch[1] };
+  const videoIdFromMessage = extractYouTubeId(message) || extractYouTubeId(messageRendered);
+  if (videoIdFromMessage) {
+    return { type: 'youtube', youtubeId: videoIdFromMessage };
   }
 
   return { type: 'none' };
@@ -162,7 +161,6 @@ export function FeedCard({
   const canPin = !!onPin; // If onPin is passed, user can pin
   const canEditOrDelete = isOwner || canModerate;
   
-  const authorBadges = useProfileBadges(author?.meta?.badge_slug);
   const spaceName = feed.space?.title || null;
   const timestamp = formatRelativeTime(feed.created_at);
   
@@ -285,6 +283,8 @@ export function FeedCard({
           style={styles.authorRow}
           onPress={onAuthorPress}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`View ${authorName}'s profile`}
         >
           <Avatar
             source={authorAvatar}
@@ -293,15 +293,12 @@ export function FeedCard({
           />
 
           <View style={styles.authorInfo}>
-            <View style={styles.authorNameRow}>
-              <Text style={[styles.authorName, { color: themeColors.text }]} numberOfLines={1}>
-                {authorName}
-              </Text>
-              {isVerified && <VerifiedBadge />}
-              {authorBadges.map((badge) => (
-                <ProfileBadge key={badge.slug} badge={badge} />
-              ))}
-            </View>
+            <UserDisplayName
+              name={authorName}
+              verified={isVerified}
+              badgeSlugs={author?.meta?.badge_slug}
+              numberOfLines={1}
+            />
 
             <View style={styles.metaRow}>
               <Text style={[styles.timestamp, { color: themeColors.textTertiary }]}>{timestamp}</Text>
@@ -325,6 +322,8 @@ export function FeedCard({
             style={styles.headerButton}
             onPress={handleBookmarkPress}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={isBookmarked ? 'Remove bookmark' : 'Bookmark post'}
           >
             <Ionicons
               name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
@@ -338,6 +337,8 @@ export function FeedCard({
             style={styles.headerButton}
             onPress={handleMenuPress}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Post options"
           >
             <Ionicons name="ellipsis-vertical" size={20} color={themeColors.textSecondary} />
           </TouchableOpacity>
@@ -514,6 +515,9 @@ export function FeedCard({
             }}
             delayLongPress={400}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={hasUserReact ? 'Remove reaction' : 'React to post'}
+            accessibilityHint="Long press for more reactions"
           >
             <View style={{ opacity: hasUserReact ? 1 : 0.4 }}>
               <ReactionIcon iconUrl={userReactionIconUrl} emoji={userReactionEmoji} size={35} />
@@ -525,6 +529,8 @@ export function FeedCard({
             style={styles.footerButton}
             onPress={() => onCommentPress?.()}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={commentsCount > 0 ? `${commentsCount} comments` : 'Comment'}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Ionicons name="chatbubble-outline" size={20} color={themeColors.textSecondary} />
@@ -661,16 +667,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   
-  authorNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-
-  authorName: {
-    fontSize: typography.size.md,
-    fontWeight: '600',
-  },
   
   metaRow: {
     flexDirection: 'row',

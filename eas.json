@@ -6,13 +6,22 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "SITE_URL": "https://staging.twobirdschurch.com"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "SITE_URL": "https://staging.twobirdschurch.com"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "SITE_URL": "https://staging.twobirdschurch.com"
+      }
     }
   },
   "submit": {

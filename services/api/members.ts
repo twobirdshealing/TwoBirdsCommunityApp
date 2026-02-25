@@ -3,6 +3,7 @@
 // =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
+import { MembersListResponse } from '@/types';
 import { get } from './client';
 
 // -----------------------------------------------------------------------------
@@ -29,7 +30,7 @@ export async function getMembers(options: GetMembersOptions = {}) {
     ...(options.search && { search: options.search }),
   };
 
-  return get<any>(ENDPOINTS.MEMBERS, params);
+  return get<MembersListResponse>(ENDPOINTS.MEMBERS, params);
 }
 
 // -----------------------------------------------------------------------------

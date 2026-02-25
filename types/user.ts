@@ -24,16 +24,11 @@ export interface XProfile {
   meta?: {
     website?: string;
     cover_photo?: string;
-    social_links?: {
-      instagram?: string;
-      youtube?: string;
-      fb?: string;
-      blue_sky?: string;
-      reddit?: string;
-    };
+    bio?: string;
+    social_links?: Record<string, string>;
     badge_slug?: string[];
   };
-  
+
   // Badge info if assigned
   badge?: Badge | null;
 }
@@ -95,13 +90,7 @@ export interface Profile extends XProfile {
   profile_nav_actions?: any[];
 
   // Top-level social links (profile endpoint returns these at root, not in meta)
-  social_links?: {
-    instagram?: string;
-    youtube?: string;
-    fb?: string;
-    blue_sky?: string;
-    reddit?: string;
-  };
+  social_links?: Record<string, string>;
 
   // Website at top level (profile endpoint)
   website?: string;
@@ -145,35 +134,15 @@ export interface Badge {
 }
 
 // -----------------------------------------------------------------------------
-// Member - From the members list endpoint
+// Auth User - Shared between auth service and AuthContext
 // -----------------------------------------------------------------------------
+// id is optional because JWT login doesn't return it — it's fetched
+// separately from the profile API after login.
 
-export interface Member {
-  user_id: number;
+export interface AuthUser {
+  id?: number;
   username: string;
-  display_name: string;
-  avatar: string | null;
-  short_description: string | null;
-  total_points: number;
-  is_verified: number;
-  status: 'active' | 'suspended' | 'banned';
-  created_at: string;
-  last_activity?: string;
-  meta?: XProfile['meta'];
-  badge?: Badge | null;
-}
-
-// -----------------------------------------------------------------------------
-// Space Member - Membership in a specific space
-// -----------------------------------------------------------------------------
-
-export interface SpaceMember {
-  id: number;
-  space_id: number;
-  user_id: number;
-  role: 'member' | 'moderator' | 'admin';
-  status: 'active' | 'pending' | 'banned';
-  joined_at: string;
-  updated_at: string;
-  xprofile?: XProfile;
+  displayName: string;
+  email: string;
+  avatar?: string;
 }

@@ -108,7 +108,7 @@ export default function WebViewScreen() {
     const initSession = async () => {
       const url = params.url;
 
-      console.log('[WebView] Init with URL:', url);
+      if (__DEV__) console.log('[WebView] Init with URL:', url);
 
       if (!url) {
         setError('No URL provided');
@@ -117,10 +117,10 @@ export default function WebViewScreen() {
       }
 
       try {
-        console.log('[WebView] Creating session...');
+        if (__DEV__) console.log('[WebView] Creating session...');
         const response = await appApi.createWebSession(url);
 
-        console.log('[WebView] Session created:', response.success);
+        if (__DEV__) console.log('[WebView] Session created:', response.success);
 
         if (response.success && response.url) {
           setSessionUrl(response.url);
@@ -128,7 +128,7 @@ export default function WebViewScreen() {
           throw new Error('Invalid session response');
         }
       } catch (err) {
-        console.log('[WebView] Error:', err);
+        if (__DEV__) console.log('[WebView] Error:', err);
         const message = err instanceof Error ? err.message : 'Failed to load';
         setError(message);
       } finally {
@@ -175,17 +175,17 @@ export default function WebViewScreen() {
             setPageTitle('Cart');
           }
         } catch (err) {
-          console.log('[WebView] Cart error:', err);
+          if (__DEV__) console.log('[WebView] Cart error:', err);
         }
         break;
 
       case 'share':
         // Future: implement share functionality
-        console.log('[WebView] Share action - not implemented yet');
+        if (__DEV__) console.log('[WebView] Share action - not implemented yet');
         break;
 
       default:
-        console.log('[WebView] Unknown action:', params.rightAction);
+        if (__DEV__) console.log('[WebView] Unknown action:', params.rightAction);
     }
   };
 

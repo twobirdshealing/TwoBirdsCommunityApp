@@ -10,7 +10,6 @@ import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   RefreshControl,
   StyleSheet,
   Text,
@@ -18,6 +17,7 @@ import {
   View
 } from 'react-native';
 
+import { LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
 import { SpaceCard } from '@/components/space/SpaceCard';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -81,18 +81,18 @@ export default function SpacesScreen() {
       ]);
 
       // Process groups
-      if (groupsRes.success && groupsRes.data) {
+      if (groupsRes.success) {
         const groupsData = groupsRes.data as any;
         setGroups(groupsData?.groups || []);
       }
 
       // Process spaces
-      if (spacesRes.success && spacesRes.data) {
+      if (!spacesRes.success) {
+        setError(spacesRes.error?.message || 'Failed to load spaces');
+      } else {
         const spacesData = spacesRes.data as any;
         const spacesList = spacesData?.spaces || [];
         setSpaces(spacesList);
-      } else {
-        setError(spacesRes.error?.message || 'Failed to load spaces');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
@@ -256,21 +256,12 @@ export default function SpacesScreen() {
 
       {/* Error State */}
       {error && !loading && spaces.length === 0 && (
-        <View style={styles.centerContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color={themeColors.error} />
-          <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-          <Text style={[styles.retryButton, { color: themeColors.primary }]} onPress={handleRefresh}>
-            Tap to retry
-          </Text>
-        </View>
+        <ErrorMessage message={error} onRetry={handleRefresh} />
       )}
 
       {/* Loading State */}
       {loading && spaces.length === 0 && (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={themeColors.primary} />
-          <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Loading spaces...</Text>
-        </View>
+        <LoadingSpinner message="Loading spaces..." />
       )}
 
       {/* Grouped Spaces List */}
@@ -279,7 +270,6 @@ export default function SpacesScreen() {
           data={listData}
           renderItem={renderItem}
           getItemType={getItemType}
-          estimatedItemSize={180}
           keyExtractor={(item) =>
             item._type === 'group_header'
               ? `group-${item.id}`
@@ -310,13 +300,11 @@ export default function SpacesScreen() {
 
       {/* Empty State (no spaces at all) */}
       {!loading && !error && spaces.length === 0 && (
-        <View style={styles.centerContainer}>
-          <Ionicons name="people-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
-          <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No spaces yet</Text>
-          <Text style={[styles.emptySubtext, { color: themeColors.textTertiary }]}>
-            Join a space to see it here
-          </Text>
-        </View>
+        <EmptyState
+          icon="people-outline"
+          title="No spaces yet"
+          message="Join a space to see it here"
+        />
       )}
     </View>
   );
@@ -399,33 +387,6 @@ const styles = StyleSheet.create({
   },
 
   // States
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: typography.size.md,
-  },
-
-  errorIcon: {
-    marginBottom: spacing.md,
-  },
-
-  errorText: {
-    fontSize: typography.size.md,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-
-  retryButton: {
-    fontSize: typography.size.md,
-    fontWeight: '600',
-  },
-
   emptyContainer: {
     alignItems: 'center',
     padding: spacing.xxl,
@@ -438,11 +399,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: typography.size.md,
     textAlign: 'center',
-  },
-
-  emptySubtext: {
-    fontSize: typography.size.sm,
-    marginTop: spacing.xs,
   },
 
   clearSearchButton: {

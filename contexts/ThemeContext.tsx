@@ -8,8 +8,9 @@ import {
   lightColors,
   mapFluentToAppColors,
 } from '@/constants/colors';
-import { getThemeColors, ThemeColorsResponse } from '@/services/api/theme';
-import * as SecureStore from 'expo-secure-store';
+import { getAppConfig, AppConfigResponse, ThemeData } from '@/services/api/theme';
+import { setSocialProviders } from '@/services/api/socialProviders';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 // -----------------------------------------------------------------------------
@@ -30,7 +31,7 @@ interface ThemeContextType {
 // -----------------------------------------------------------------------------
 
 const THEME_PREF_KEY = 'theme_preference';
-const THEME_CACHE_KEY = 'theme_colors_cache';
+const CONFIG_CACHE_KEY = 'tbc_app_config_cache';
 
 // -----------------------------------------------------------------------------
 // Context
@@ -74,24 +75,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [isDark, fluentOverrides]);
 
   // ---------------------------------------------------------------------------
-  // Load saved preference + cached colors on mount
+  // Load saved preference + cached config on mount
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
     (async () => {
       try {
         // Load saved theme preference
-        const savedPref = await SecureStore.getItemAsync(THEME_PREF_KEY);
+        const savedPref = await AsyncStorage.getItem(THEME_PREF_KEY);
         if (savedPref === 'light' || savedPref === 'dark') {
           setThemeState(savedPref);
         }
-        // Legacy cleanup: if 'system' was stored, default to 'light'
 
-        // Load cached Fluent colors
-        const cachedColors = await SecureStore.getItemAsync(THEME_CACHE_KEY);
-        if (cachedColors) {
-          const parsed: ThemeColorsResponse = JSON.parse(cachedColors);
-          applyFluentColors(parsed);
+        // Load cached app config
+        const cached = await AsyncStorage.getItem(CONFIG_CACHE_KEY);
+        if (cached) {
+          const parsed: AppConfigResponse = JSON.parse(cached);
+          applyAppConfig(parsed);
         }
       } catch (e) {
         // Silent fail — defaults are fine
@@ -100,36 +100,47 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Background refresh
-      refreshFluentColors();
+      refreshAppConfig();
     })();
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Fetch fresh colors from API (background)
+  // Fetch fresh config from API (background)
   // ---------------------------------------------------------------------------
 
-  const refreshFluentColors = useCallback(async () => {
-    const data = await getThemeColors();
+  const refreshAppConfig = useCallback(async () => {
+    const data = await getAppConfig();
     if (!data) return;
 
     // Cache for next launch
     try {
-      await SecureStore.setItemAsync(THEME_CACHE_KEY, JSON.stringify(data));
+      await AsyncStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(data));
     } catch (e) {
-      // SecureStore has size limits — if cache fails, colors still work from API
+      // Cache failed — data still works from API
     }
 
-    applyFluentColors(data);
+    applyAppConfig(data);
   }, []);
 
-  const applyFluentColors = (data: ThemeColorsResponse) => {
-    if (!data.light && !data.dark) return;
+  const applyAppConfig = (data: AppConfigResponse) => {
+    // Apply theme colors
+    if (data.theme) {
+      applyThemeColors(data.theme);
+    }
+    // Apply social providers
+    if (data.social_providers?.length) {
+      setSocialProviders(data.social_providers);
+    }
+  };
 
-    const lightOverrides = data.light
-      ? mapFluentToAppColors(data.light.body, data.light.header)
+  const applyThemeColors = (theme: ThemeData) => {
+    if (!theme.light && !theme.dark) return;
+
+    const lightOverrides = theme.light
+      ? mapFluentToAppColors(theme.light.body, theme.light.header)
       : {};
-    const darkOverrides = data.dark
-      ? mapFluentToAppColors(data.dark.body, data.dark.header)
+    const darkOverrides = theme.dark
+      ? mapFluentToAppColors(theme.dark.body, theme.dark.header)
       : {};
 
     setFluentOverrides({ light: lightOverrides, dark: darkOverrides });
@@ -142,7 +153,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setTheme = useCallback(async (mode: ThemeMode) => {
     setThemeState(mode);
     try {
-      await SecureStore.setItemAsync(THEME_PREF_KEY, mode);
+      await AsyncStorage.setItem(THEME_PREF_KEY, mode);
     } catch (e) {
       // Silent fail
     }

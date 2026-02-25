@@ -2,6 +2,7 @@
 // FEED TYPES - TypeScript definitions for feed-related data
 // =============================================================================
 
+import type { Comment } from './comment';
 import { XProfile } from './user';
 
 // -----------------------------------------------------------------------------
@@ -74,9 +75,9 @@ export interface Feed {
   user?: XProfile;
   xprofile?: XProfile;
   space?: FeedSpace;
-  comments?: any[];
+  comments?: Comment[];
   reactions?: Reaction[];
-  terms?: any[];
+  terms?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any -- server shape varies
 }
 
 // -----------------------------------------------------------------------------

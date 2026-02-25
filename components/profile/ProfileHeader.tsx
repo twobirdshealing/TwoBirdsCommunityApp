@@ -3,14 +3,15 @@
 // =============================================================================
 
 import React from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { Alert, View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { hapticLight } from '@/utils/haptics';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Profile } from '@/types';
-import { Avatar, ProfileBadge, VerifiedBadge } from '@/components/common';
-import { useProfileBadges } from '@/hooks';
+import { Avatar } from '@/components/common';
+import { UserDisplayName } from '@/components/common/UserDisplayName';
+import { useSocialProviders, getProviderIcon } from '@/hooks';
 import { formatCompactNumber } from '@/utils/formatNumber';
 
 interface ProfileHeaderProps {
@@ -36,23 +37,17 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const { colors: themeColors, isDark } = useTheme();
   const isVerified = profile.is_verified === 1;
-  const profileBadges = useProfileBadges(profile.badge_slugs || profile.meta?.badge_slug);
   const coverPhoto = profile.cover_photo || profile.meta?.cover_photo;
   const socialLinks = profile.social_links || profile.meta?.social_links || {};
-
-  const socialConfig = [
-    { key: 'instagram', icon: 'logo-instagram' as const, baseUrl: 'https://instagram.com/' },
-    { key: 'youtube', icon: 'logo-youtube' as const, baseUrl: 'https://youtube.com/' },
-    { key: 'fb', icon: 'logo-facebook' as const, baseUrl: 'https://facebook.com/' },
-    { key: 'blue_sky', icon: 'cloud-outline' as const, baseUrl: 'https://bsky.app/profile/' },
-    { key: 'reddit', icon: 'logo-reddit' as const, baseUrl: 'https://www.reddit.com/user/' },
-  ];
-  const activeSocials = socialConfig.filter(s => socialLinks[s.key as keyof typeof socialLinks]);
+  const providers = useSocialProviders();
+  const activeSocials = providers.filter(p => socialLinks[p.key]);
 
   const handleOpenSocial = (value: string, baseUrl: string) => {
     // If already a full URL, use as-is; otherwise prepend the platform base URL
     const fullUrl = value.startsWith('http') ? value : `${baseUrl}${value}`;
-    Linking.openURL(fullUrl).catch(() => {});
+    Linking.openURL(fullUrl).catch(() => {
+      Alert.alert('Unable to open link', 'The link could not be opened.');
+    });
   };
 
   const handleCoverPress = () => {
@@ -127,26 +122,27 @@ export function ProfileHeader({
         </TouchableOpacity>
 
         {/* Name & Badges */}
-        <View style={styles.nameRow}>
-          <Text style={[styles.displayName, { color: themeColors.text }]}>{profile.display_name}</Text>
-          {isVerified && <VerifiedBadge size={20} />}
-          {profileBadges.map((badge) => (
-            <ProfileBadge key={badge.slug} badge={badge} />
-          ))}
-        </View>
+        <UserDisplayName
+          name={profile.display_name}
+          verified={isVerified}
+          badgeSlugs={profile.badge_slugs || profile.meta?.badge_slug}
+          size="xl"
+          center
+          style={styles.nameRow}
+        />
         <Text style={[styles.username, { color: themeColors.textSecondary }]}>@{profile.username}</Text>
 
         {/* Social Icons */}
         {activeSocials.length > 0 && (
           <View style={styles.socialRow}>
-            {activeSocials.map(({ key, icon, baseUrl }) => (
+            {activeSocials.map(({ key, domain }) => (
               <TouchableOpacity
                 key={key}
-                onPress={() => handleOpenSocial(socialLinks[key as keyof typeof socialLinks]!, baseUrl)}
+                onPress={() => handleOpenSocial(socialLinks[key]!, domain)}
                 activeOpacity={0.7}
                 style={styles.socialIconButton}
               >
-                <Ionicons name={icon} size={18} color={themeColors.textSecondary} />
+                <Ionicons name={getProviderIcon(key) as any} size={18} color={themeColors.textSecondary} />
               </TouchableOpacity>
             ))}
           </View>
@@ -234,17 +230,7 @@ const styles = StyleSheet.create({
   },
 
   nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
     marginTop: spacing.sm,
-  },
-
-  displayName: {
-    fontSize: typography.size.xxl,
-    fontWeight: typography.weight.bold,
-    textAlign: 'center',
   },
 
   username: {

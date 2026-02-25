@@ -4,28 +4,21 @@
 
 import * as authService from '@/services/auth';
 import { profilesApi } from '@/services/api/profiles';
+import type { AuthUser } from '@/types/user';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
 
-interface User {
-  id: number;
-  username: string;
-  displayName: string;
-  email: string;
-  avatar?: string;
-}
-
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: User | null;
+  user: AuthUser | null;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
-  registerAndLogin: (token: string, userData: User, credentials: { username: string; password: string }) => Promise<void>;
+  registerAndLogin: (token: string, userData: AuthUser, credentials: { username: string; password: string }) => Promise<void>;
 }
 
 // -----------------------------------------------------------------------------
@@ -41,7 +34,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   // Check auth status on mount
   useEffect(() => {
@@ -76,13 +69,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 storedUser.id = profileRes.data.profile.user_id;
                 storedUser.avatar = profileRes.data.profile.avatar || undefined;
                 await authService.updateStoredUser(storedUser);
-                console.log('[Auth] Fetched missing user_id:', storedUser.id);
+                if (__DEV__) console.log('[Auth] Fetched missing user_id:', storedUser.id);
               }
             } catch (e) {
-              console.error('[Auth] Could not fetch user_id:', e);
+              if (__DEV__) console.error('[Auth] Could not fetch user_id:', e);
             }
           }
-          setUser(storedUser as User);
+          setUser(storedUser);
           setIsAuthenticated(true);
         } else {
           // Has auth but no user info - clear it
@@ -93,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(false);
       }
     } catch (error) {
-      console.error('[Auth] Check status error:', error);
+      if (__DEV__) console.error('[Auth] Check status error:', error);
       setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
@@ -112,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: result.error || 'Login failed' };
       }
     } catch (error) {
-      console.error('[Auth] Login error:', error);
+      if (__DEV__) console.error('[Auth] Login error:', error);
       return { success: false, error: 'An unexpected error occurred' };
     }
   }, []);
@@ -123,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {
-      console.error('[Auth] Logout error:', error);
+      if (__DEV__) console.error('[Auth] Logout error:', error);
       // Clear state anyway
       setUser(null);
       setIsAuthenticated(false);
@@ -136,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const registerAndLogin = useCallback(async (
     token: string,
-    userData: User,
+    userData: AuthUser,
     credentials: { username: string; password: string }
   ) => {
     await authService.storeAuthDirect(token, userData, credentials);

@@ -49,7 +49,7 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, { backgroundColor: themeColors.surface }, pressed && styles.cardPressed]}>
       {/* Cover Photo or Gradient Fallback */}
       {hasCoverPhoto ? (
-        <Image source={{ uri: space.cover_photo }} style={styles.cover} resizeMode="cover" />
+        <Image source={{ uri: space.cover_photo ?? undefined }} style={[styles.cover, { backgroundColor: themeColors.skeleton }]} resizeMode="cover" />
       ) : (
         <LinearGradient
           colors={['#6366f1', '#8b5cf6', '#d946ef']}
@@ -137,7 +137,6 @@ const styles = StyleSheet.create({
   cover: {
     width: '100%',
     height: 120,
-    backgroundColor: '#e0e0e0',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -159,7 +158,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 20,
     width: 40,
     height: 40,
@@ -181,7 +179,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1a1a1a',
     flex: 1,
   },
   roleBadge: {
@@ -197,7 +194,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    color: '#666',
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -213,7 +209,6 @@ const styles = StyleSheet.create({
   },
   privacy: {
     fontSize: 13,
-    color: '#888',
     fontWeight: '500',
   },
   membersCount: {

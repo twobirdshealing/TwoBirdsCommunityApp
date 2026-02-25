@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
-import { JoinSpaceResponse, SpaceDetailResponse, SpaceGroupOptionsResponse, SpaceGroupsResponse, SpacesResponse } from '@/types';
+import { JoinSpaceResponse, MembersListResponse, SpaceDetailResponse, SpaceGroupOptionsResponse, SpaceGroupsResponse, SpacesResponse } from '@/types';
 import { get, post } from './client';
 
 // -----------------------------------------------------------------------------
@@ -123,7 +123,7 @@ export async function getSpaceMembers(
     ...(options.search && { search: options.search }),
   };
   
-  return get<any>(`${ENDPOINTS.SPACES}/${spaceSlug}/members`, params);
+  return get<MembersListResponse>(`${ENDPOINTS.SPACES}/${spaceSlug}/members`, params);
 }
 
 // -----------------------------------------------------------------------------

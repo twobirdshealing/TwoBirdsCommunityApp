@@ -120,7 +120,7 @@ export function ChatInput({
         }
       }
     } catch (error) {
-      console.error('[ChatInput] Image picker error:', error);
+      if (__DEV__) console.error('[ChatInput] Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image');
     } finally {
       setIsUploading(false);

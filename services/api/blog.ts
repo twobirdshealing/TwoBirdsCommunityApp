@@ -1,12 +1,11 @@
 // =============================================================================
 // BLOG API - WordPress REST API for blog posts and comments
 // =============================================================================
-// Uses WP REST API (/wp-json/wp/v2) with JWT auth for comment creation.
-// Reuses auth token/refresh logic from services/auth.ts.
+// Uses WP REST API (/wp-json/wp/v2) via centralized client.
+// JWT auth + silent refresh handled automatically by client.ts.
 // =============================================================================
 
 import { WP_REST_URL, WP_ENDPOINTS, DEFAULT_PER_PAGE } from '@/constants/config';
-import { getAuthToken, silentRefresh, clearAuth } from '@/services/auth';
 import {
   WPPost,
   WPComment,
@@ -15,119 +14,31 @@ import {
   WPCategory,
   CreateWPCommentData,
 } from '@/types/blog';
-
-// -----------------------------------------------------------------------------
-// Debug
-// -----------------------------------------------------------------------------
-
-const DEBUG = __DEV__;
-function log(...args: any[]) {
-  if (DEBUG) console.log('[BlogAPI]', ...args);
-}
+import { request, type ApiResponseWithHeaders } from './client';
+import type { ApiError } from '@/types/api';
 
 // -----------------------------------------------------------------------------
 // WP REST Request Helper
 // -----------------------------------------------------------------------------
-// Mirrors client.ts pattern but uses WP_REST_URL base and returns headers
-// (needed for X-WP-Total / X-WP-TotalPages pagination).
+// Thin wrapper over the centralized client with WP_REST_URL base.
+// Always includes response headers (needed for X-WP-Total pagination).
+// JWT retry is handled automatically by client.ts.
 // -----------------------------------------------------------------------------
 
-interface WPRequestResult<T> {
-  success: true;
-  data: T;
-  headers: Headers;
-}
-
-interface WPRequestError {
-  success: false;
-  error: { code: string; message: string; data?: any };
-}
+type WPRequestResult<T> = { success: true; data: T; headers: Headers };
+type WPRequestError = { success: false; error: ApiError };
 
 async function wpRequest<T>(
   endpoint: string,
-  options: {
-    method?: string;
-    params?: Record<string, any>;
-    body?: any;
-    _isRetry?: boolean;
-  } = {}
+  options: { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; params?: Record<string, any>; body?: any } = {}
 ): Promise<WPRequestResult<T> | WPRequestError> {
-  const { method = 'GET', params, body, _isRetry = false } = options;
-
-  // Build URL with query params
-  let url = `${WP_REST_URL}${endpoint}`;
-  if (params) {
-    const searchParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        searchParams.append(key, String(value));
-      }
-    });
-    const qs = searchParams.toString();
-    if (qs) url += `?${qs}`;
-  }
-
-  log(`${method} ${url}`);
-
-  // Auth header (optional for public GET, required for POST)
-  const token = await getAuthToken();
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(body ? { 'Content-Type': 'application/json' } : {}),
-  };
-
-  try {
-    const response = await fetch(url, {
-      method,
-      headers,
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      // Handle JWT expiration (same pattern as client.ts)
-      const isJwtExpired =
-        response.status === 401 ||
-        (response.status === 403 &&
-          (data?.code === 'jwt_auth_invalid_token' ||
-            data?.code === 'jwt_auth_expired_token' ||
-            data?.code === 'rest_forbidden'));
-
-      if (isJwtExpired && !_isRetry) {
-        log('JWT expired, attempting silent refresh...');
-        const refreshed = await silentRefresh();
-        if (refreshed) {
-          log('Token refreshed, retrying...');
-          return wpRequest<T>(endpoint, { ...options, _isRetry: true });
-        }
-        await clearAuth();
-      } else if (isJwtExpired && _isRetry) {
-        await clearAuth();
-      }
-
-      return {
-        success: false,
-        error: {
-          code: data?.code || 'wp_error',
-          message: data?.message || 'Request failed',
-          data: data?.data,
-        },
-      };
-    }
-
-    return { success: true, data: data as T, headers: response.headers };
-  } catch (error) {
-    console.error('[BlogAPI] Network error:', error);
-    return {
-      success: false,
-      error: {
-        code: 'network_error',
-        message: error instanceof Error ? error.message : 'Network request failed',
-      },
-    };
-  }
+  return request<T>(endpoint, {
+    method: options.method || 'GET',
+    params: options.params,
+    body: options.body,
+    baseUrl: WP_REST_URL,
+    includeHeaders: true,
+  }) as Promise<WPRequestResult<T> | WPRequestError>;
 }
 
 // -----------------------------------------------------------------------------
@@ -198,7 +109,7 @@ export async function getBlogPostBySlug(
   if (result.data.length === 0) {
     return {
       success: false,
-      error: { code: 'not_found', message: 'Post not found' },
+      error: { code: 'not_found', message: 'Post not found', data: { status: 404 } },
     };
   }
   return { success: true, data: result.data[0] };

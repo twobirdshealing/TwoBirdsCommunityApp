@@ -236,6 +236,15 @@ export function isThreadVerified(thread: ChatThread): boolean {
 }
 
 /**
+ * Get thread participant's badge slugs (v2.2.0)
+ * ThreadInfo.badge is a single string; convert to array for useProfileBadges.
+ */
+export function getThreadBadgeSlugs(thread: ChatThread): string[] {
+  if (!thread.info?.badge) return [];
+  return [thread.info.badge];
+}
+
+/**
  * Get last message in thread for preview
  */
 export function getLastMessage(thread: ChatThread): ChatMessage | null {

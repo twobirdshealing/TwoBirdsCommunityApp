@@ -2,19 +2,23 @@
 // CONFIG - App configuration and API settings
 // =============================================================================
 
+import Constants from 'expo-constants';
+
 // -----------------------------------------------------------------------------
 // App Info
 // -----------------------------------------------------------------------------
 
 export const APP_NAME = 'Two Birds';
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = Constants.expoConfig?.version || '1.0.0';
 
 // -----------------------------------------------------------------------------
 // API Configuration
 // -----------------------------------------------------------------------------
 
-// IMPORTANT: Use HTTPS to prevent auth header stripping on redirects
-export const SITE_URL = 'https://staging.twobirdschurch.com';
+// Read SITE_URL from app.config.ts → extra.siteUrl (set per EAS build profile).
+// Falls back to staging if not set (e.g. local dev with `npx expo start`).
+export const SITE_URL: string =
+  Constants.expoConfig?.extra?.siteUrl || 'https://staging.twobirdschurch.com';
 export const API_URL = `${SITE_URL}/wp-json/fluent-community/v2`;
 
 // Default pagination
@@ -29,7 +33,7 @@ export const ENDPOINTS = {
   FEEDS: '/feeds',
   FEED_BY_ID: (id: number) => `/feeds/${id}/by-id`,
   FEED_BY_SLUG: (slug: string) => `/feeds/${slug}/by-slug`,
-  FEED_COMMENTS: (id: number) => `/feeds/${id}/comments`,
+  POST_COMMENTS: (id: number) => `/feeds/${id}/comments`,
   FEED_REACT: (id: number) => `/feeds/${id}/react`,
   FEED_REACTIONS: (id: number) => `/feeds/${id}/reactions`,
   WELCOME_BANNER: '/feeds/welcome-banner',
@@ -38,35 +42,19 @@ export const ENDPOINTS = {
   SPACES: '/spaces',
   SPACE_BY_ID: (id: number) => `/spaces/${id}/by-id`,
   SPACE_BY_SLUG: (slug: string) => `/spaces/${slug}/by-slug`,
-  SPACE_JOIN: (slug: string) => `/spaces/${slug}/join`,
-  SPACE_LEAVE: (slug: string) => `/spaces/${slug}/leave`,
-  SPACE_MEMBERS: (slug: string) => `/spaces/${slug}/members`,
-  
+
   // Profile - Use username, NOT "me"
+  // Sub-paths (/follow, /spaces, etc.) are built inline by services/api/profiles.ts
   PROFILE: (username: string) => `/profile/${username}`,
-  PROFILE_SPACES: (username: string) => `/profile/${username}/spaces`,
-  PROFILE_COMMENTS: (username: string) => `/profile/${username}/comments`,
-  PROFILE_FOLLOW: (username: string) => `/profile/${username}/follow`,
-  PROFILE_UNFOLLOW: (username: string) => `/profile/${username}/unfollow`,
-  PROFILE_FOLLOWERS: (username: string) => `/profile/${username}/followers`,
-  PROFILE_FOLLOWING: (username: string) => `/profile/${username}/followings`,
-  PROFILE_BLOCK: (username: string) => `/profile/${username}/block`,
-  PROFILE_UNBLOCK: (username: string) => `/profile/${username}/unblock`,
-  
+
   // Notifications
   NOTIFICATIONS: '/notifications',
   NOTIFICATIONS_UNREAD: '/notifications/unread',
   NOTIFICATIONS_MARK_READ: (id: number) => `/notifications/mark-read/${id}`,
   NOTIFICATIONS_MARK_ALL_READ: '/notifications/mark-all-read',
-  
+
   // Members
   MEMBERS: '/members',
-  
-  // Activities
-  ACTIVITIES: '/activities',
-
-  // Notification Preferences (email)
-  NOTIFICATION_PREFS: (username: string) => `/profile/${username}/notification-preferences`,
 
   // Chat/Messaging
   CHAT_THREADS: '/chat/threads',
@@ -83,6 +71,15 @@ export const ENDPOINTS = {
   CHAT_MESSAGE_REACT: (messageId: number) => `/chat/messages/${messageId}/react`,
   CHAT_THREAD_DELETE: (threadId: number) => `/chat/threads/delete/${threadId}`,
   CHAT_THREAD_BY_ID: (threadId: number) => `/chat/threads/${threadId}`,
+
+  // Courses (Fluent LMS)
+  COURSES: '/courses',
+  COURSE_BY_SLUG: (slug: string) => `/courses/${slug}/by-slug`,
+  COURSE_ENROLL: (courseId: number) => `/courses/${courseId}/enroll`,
+  COURSE_LESSON_BY_SLUG: (courseSlug: string, lessonSlug: string) =>
+    `/courses/${courseSlug}/lessons/${lessonSlug}/by-slug`,
+  COURSE_LESSON_COMPLETION: (courseId: number, lessonId: number) =>
+    `/courses/${courseId}/lessons/${lessonId}/completion`,
 };
 
 // -----------------------------------------------------------------------------
@@ -103,7 +100,7 @@ export const FEATURES = {
   DARK_MODE: true,         // Synced with Fluent Community theme
   PUSH_NOTIFICATIONS: true, // TBC-CA plugin push notifications
   MESSAGING: true,         // Fluent Messaging enabled
-  COURSES: false,          // Requires Fluent LMS
+  COURSES: true,           // Fluent LMS courses
 };
 
 // -----------------------------------------------------------------------------
@@ -130,3 +127,9 @@ export const WP_ENDPOINTS = {
   CATEGORIES: '/categories',
   COMMENTS: '/comments',
 };
+
+// -----------------------------------------------------------------------------
+// Legal / Policy URLs
+// -----------------------------------------------------------------------------
+
+export const PRIVACY_POLICY_URL = `${SITE_URL}/privacy-policy/`;

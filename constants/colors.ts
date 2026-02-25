@@ -120,14 +120,14 @@ export const lightColors: ColorTheme = {
   info: '#3B82F6',
   infoLight: '#DBEAFE',
 
-  // Reactions
+  // Reactions (aligned with REACTION_COLORS in constants/reactions.ts)
   reactions: {
-    like: '#3B82F6',
-    love: '#EF4444',
-    laugh: '#F59E0B',
-    wow: '#F59E0B',
-    sad: '#F59E0B',
-    angry: '#EF4444',
+    like: '#1877F2',
+    love: '#F02849',
+    laugh: '#FEEB30',
+    wow: '#FEEB30',
+    sad: '#FEEB30',
+    angry: '#E41E3F',
   },
 
   // Tab Bar
@@ -215,19 +215,12 @@ export const darkColors: ColorTheme = {
 };
 
 // -----------------------------------------------------------------------------
-// Legacy export — kept for backward compatibility during migration
-// Components should migrate to useTheme().colors
-// -----------------------------------------------------------------------------
-
-export const colors = lightColors;
-
-// -----------------------------------------------------------------------------
 // Helper: Map Fluent API response to app color overrides
 // -----------------------------------------------------------------------------
 
 export function mapFluentToAppColors(
-  fluentBody: Record<string, string>,
-  fluentHeader?: Record<string, string>,
+  fluentBody: Record<string, string | undefined>,
+  fluentHeader?: Record<string, string | undefined>,
 ): Partial<ColorTheme> {
   const result: Partial<ColorTheme> = {};
 

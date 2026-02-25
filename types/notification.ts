@@ -5,6 +5,7 @@
 // =============================================================================
 
 import { XProfile } from './user';
+import { stripHtmlTags } from '@/utils/htmlToText';
 
 // -----------------------------------------------------------------------------
 // Notification Types (from API action field)
@@ -149,26 +150,11 @@ export interface GetNotificationsOptions {
 // -----------------------------------------------------------------------------
 
 /**
- * Strip HTML tags from content string
- */
-export function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
-    .replace(/&nbsp;/g, ' ') // Replace &nbsp;
-    .replace(/&amp;/g, '&')  // Replace &amp;
-    .replace(/&lt;/g, '<')   // Replace &lt;
-    .replace(/&gt;/g, '>')   // Replace &gt;
-    .replace(/&quot;/g, '"') // Replace &quot;
-    .replace(/&#39;/g, "'")  // Replace &#39;
-    .replace(/\s+/g, ' ')    // Collapse whitespace
-    .trim();
-}
-
-/**
  * Transform API notification to app-friendly format
  * Populates computed properties from raw API response
  */
-export function transformNotification(raw: any): AppNotification {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw API data with loose shape
+export function transformNotification(raw: Record<string, any>): AppNotification {
   const subscriber = raw.subscriber || {};
 
   return {
@@ -191,8 +177,8 @@ export function transformNotification(raw: any): AppNotification {
     tbc_reaction_emoji: raw.tbc_reaction_emoji || null,
 
     // Legacy/convenience
-    message: stripHtml(raw.content || ''),
-    title: stripHtml(raw.content || '').split('\n')[0],
+    message: stripHtmlTags(raw.content || ''),
+    title: stripHtmlTags(raw.content || '').split('\n')[0],
     action_url: null, // We use route instead
     actor_id: raw.xprofile?.user_id || null,
     object_id: subscriber.object_id || null,

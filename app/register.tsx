@@ -29,10 +29,12 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { PRIVACY_POLICY_URL } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { SocialLinksForm } from '@/components/common/SocialLinksForm';
+import { useSocialProviders } from '@/hooks';
 import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
 import { updateStoredUser } from '@/services/auth';
 import { updateProfile, patchProfileMedia } from '@/services/api/profiles';
@@ -63,6 +65,7 @@ export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const { registerAndLogin, isAuthenticated, user: currentUser } = useAuth();
   const { colors: themeColors, isDark } = useTheme();
+  const socialProviders = useSocialProviders();
 
   // State
   const [step, setStep] = useState<Step>(1);
@@ -90,13 +93,7 @@ export default function RegisterScreen() {
   const [verificationToken, setVerificationToken] = useState('');
 
   // Social links state (step 5)
-  const [socialLinks, setSocialLinks] = useState<Record<string, string>>({
-    instagram: '',
-    youtube: '',
-    fb: '',
-    blue_sky: '',
-    reddit: '',
-  });
+  const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
   const [savingSocial, setSavingSocial] = useState(false);
 
   // Avatar + cover photo state (step 6)
@@ -893,11 +890,21 @@ export default function RegisterScreen() {
         onPress={handleNextStep}
         disabled={submitting}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Next step"
       >
         <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Next</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.linkButton} onPress={() => router.back()}>
+      <TouchableOpacity style={styles.linkButton} onPress={() => router.back()} accessibilityRole="link" accessibilityLabel="Back to login">
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Back to Login</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.linkButton}
+        onPress={() => router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy' } })}
+        accessibilityRole="link"
+        accessibilityLabel="Privacy Policy"
+      >
+        <Text style={[styles.privacyText, { color: themeColors.textTertiary }]}>Privacy Policy</Text>
       </TouchableOpacity>
     </>
   );
@@ -910,6 +917,8 @@ export default function RegisterScreen() {
         onPress={() => handleSubmitRegistration()}
         disabled={submitting}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Create account"
       >
         {submitting ? (
           <ActivityIndicator color={themeColors.textInverse} />
@@ -917,7 +926,7 @@ export default function RegisterScreen() {
           <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Create Account</Text>
         )}
       </TouchableOpacity>
-      <TouchableOpacity style={styles.linkButton} onPress={() => { setError(null); setStep(1); }}>
+      <TouchableOpacity style={styles.linkButton} onPress={() => { setError(null); setStep(1); }} accessibilityRole="button" accessibilityLabel="Go back">
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Back</Text>
       </TouchableOpacity>
     </>
@@ -958,6 +967,8 @@ export default function RegisterScreen() {
         onPress={handleVerifyEmail}
         disabled={submitting}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Verify email"
       >
         {submitting ? (
           <ActivityIndicator color={themeColors.textInverse} />
@@ -1022,6 +1033,8 @@ export default function RegisterScreen() {
         onPress={handleVerifyOtp}
         disabled={submitting}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Verify phone number"
       >
         {submitting ? (
           <ActivityIndicator color={themeColors.textInverse} />
@@ -1068,6 +1081,7 @@ export default function RegisterScreen() {
       </View>
 
       <SocialLinksForm
+        providers={socialProviders}
         values={socialLinks}
         onChange={(key, value) => setSocialLinks(prev => ({ ...prev, [key]: value }))}
       />
@@ -1077,6 +1091,8 @@ export default function RegisterScreen() {
         onPress={handleSaveSocialLinks}
         disabled={savingSocial}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Save and continue"
       >
         {savingSocial ? (
           <ActivityIndicator color={themeColors.textInverse} />
@@ -1089,6 +1105,8 @@ export default function RegisterScreen() {
         onPress={() => setStep(6)}
         disabled={savingSocial}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Skip social links"
       >
         <Text style={[styles.secondaryButtonText, { color: themeColors.text }]}>Skip for now</Text>
       </TouchableOpacity>
@@ -1121,6 +1139,8 @@ export default function RegisterScreen() {
         onPress={handleFinish}
         disabled={uploadingAvatar || uploadingCover}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={(avatarUri || coverUri) ? 'Done' : 'Skip profile photos'}
       >
         <Text style={[styles.secondaryButtonText, { color: themeColors.text }]}>
           {(avatarUri || coverUri) ? 'Done' : 'Skip for now'}
@@ -1412,6 +1432,10 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
+  },
+
+  privacyText: {
+    fontSize: typography.size.xs,
   },
 
   // Registration disabled

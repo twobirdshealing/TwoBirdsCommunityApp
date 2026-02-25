@@ -142,9 +142,11 @@ export default function UserChatScreen() {
         setError('Failed to load messages');
       }
 
-      messagesApi.markThreadsRead([threadId]).catch(() => {});
+      messagesApi.markThreadsRead([threadId]).catch((e) => {
+        if (__DEV__) console.warn('[UserChat] Mark read failed:', e);
+      });
     } catch (err) {
-      console.error('[UserChat] Load error:', err);
+      if (__DEV__) console.error('[UserChat] Load error:', err);
       setError('Failed to load conversation');
     } finally {
       setLoading(false);
@@ -187,13 +189,15 @@ export default function UserChatScreen() {
           }
         }
 
-        messagesApi.markThreadsRead([selectedThread.id]).catch(() => {});
+        messagesApi.markThreadsRead([selectedThread.id]).catch((e) => {
+          if (__DEV__) console.warn('[UserChat] Mark read failed:', e);
+        });
       } else if (response.data.intended_object) {
         // No thread yet — store intended user info for header display
         setIntendedUser(response.data.intended_object);
       }
     } catch (err) {
-      console.error('[UserChat] Resolve error:', err);
+      if (__DEV__) console.error('[UserChat] Resolve error:', err);
       setError('Failed to load conversation');
     } finally {
       setLoading(false);
@@ -232,7 +236,7 @@ export default function UserChatScreen() {
         }, 100);
       }
     } catch (err) {
-      console.error('[UserChat] Poll error:', err);
+      if (__DEV__) console.error('[UserChat] Poll error:', err);
     }
   }, [thread]);
 
@@ -258,14 +262,7 @@ export default function UserChatScreen() {
     const msgThreadId = data.thread_id || data.message.thread_id;
     // Only add message if it's for this thread
     if (thread && String(msgThreadId) === String(thread.id)) {
-      const newMessage: ChatMessage = {
-        id: data.message.id,
-        thread_id: data.message.thread_id,
-        user_id: data.message.user_id,
-        text: data.message.text,
-        created_at: data.message.created_at,
-        xprofile: data.message.xprofile,
-      };
+      const newMessage: ChatMessage = data.message;
 
       setMessages(prev => {
         const exists = prev.some(m => m.id === newMessage.id);
@@ -319,7 +316,7 @@ export default function UserChatScreen() {
         setHasMore(response.data.has_more || false);
       }
     } catch (err) {
-      console.error('[UserChat] Load older error:', err);
+      if (__DEV__) console.error('[UserChat] Load older error:', err);
     } finally {
       setLoadingOlder(false);
     }
@@ -415,7 +412,7 @@ export default function UserChatScreen() {
               }
             }
           } catch (err) {
-            console.error('[UserChat] Block error:', err);
+            if (__DEV__) console.error('[UserChat] Block error:', err);
             Alert.alert('Error', `Failed to ${action.toLowerCase()} user`);
           } finally {
             setBlockLoading(false);
@@ -436,7 +433,7 @@ export default function UserChatScreen() {
         Alert.alert('Error', 'Failed to unblock user');
       }
     } catch (err) {
-      console.error('[UserChat] Unblock error:', err);
+      if (__DEV__) console.error('[UserChat] Unblock error:', err);
       Alert.alert('Error', 'Failed to unblock user');
     } finally {
       setBlockLoading(false);
@@ -508,7 +505,7 @@ export default function UserChatScreen() {
         }
       }
     } catch (err) {
-      console.error('[UserChat] Send error:', err);
+      if (__DEV__) console.error('[UserChat] Send error:', err);
       Alert.alert('Error', 'Failed to send message');
     } finally {
       setSending(false);

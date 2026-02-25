@@ -1,19 +1,23 @@
 // =============================================================================
-// HOME SCREEN - Welcome page with user greeting and admin banner
+// HOME SCREEN - Widget-based dynamic home page
 // =============================================================================
-// Greeting with avatar + admin-set Welcome Banner
-// Future: Quick stats, highlights, action buttons
+// Renders self-contained widgets: Welcome Banner, Events, Media Carousel.
+// Each widget fetches its own data and manages its own loading/error state.
 // =============================================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { Image, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { spacing, typography } from '@/constants/layout';
-import { useAuth } from '@/contexts/AuthContext';
+import { spacing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { feedsApi, profilesApi } from '@/services/api';
-import { Profile, WelcomeBanner as WelcomeBannerType } from '@/types';
-import { WelcomeBanner } from '@/components/feed/WelcomeBanner';
+import { FEATURES } from '@/constants/config';
+import {
+  HomeWidget,
+  WelcomeBannerWidget,
+  MediaCarousel,
+  EventsWidget,
+  CoursesWidget,
+} from '@/components/home';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -21,51 +25,9 @@ import { WelcomeBanner } from '@/components/feed/WelcomeBanner';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user } = useAuth();
   const { colors: themeColors } = useTheme();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [welcomeBanner, setWelcomeBanner] = useState<WelcomeBannerType | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-
-  // ---------------------------------------------------------------------------
-  // Fetch Welcome Banner
-  // ---------------------------------------------------------------------------
-
-  const fetchWelcomeBanner = useCallback(async () => {
-    try {
-      const response = await feedsApi.getWelcomeBanner();
-      if (response.success && response.data?.welcome_banner) {
-        setWelcomeBanner(response.data.welcome_banner);
-      }
-    } catch (err) {
-      // Silent fail - banner is optional
-    }
-  }, []);
-
-  // ---------------------------------------------------------------------------
-  // Fetch Profile
-  // ---------------------------------------------------------------------------
-
-  const fetchProfile = useCallback(async () => {
-    if (!user?.username) return;
-    try {
-      const response = await profilesApi.getProfile(user.username);
-      if (response.success && response.data.profile) {
-        setProfile(response.data.profile);
-      }
-    } catch (err) {
-      // Silent fail
-    }
-  }, [user?.username]);
-
-  // ---------------------------------------------------------------------------
-  // Initial Load
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    fetchProfile();
-    fetchWelcomeBanner();
-  }, [fetchProfile, fetchWelcomeBanner]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // ---------------------------------------------------------------------------
   // Pull-to-Refresh
@@ -73,17 +35,14 @@ export default function HomeScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([fetchProfile(), fetchWelcomeBanner()]);
-    setRefreshing(false);
-  }, [fetchProfile, fetchWelcomeBanner]);
+    setRefreshKey((prev) => prev + 1);
+    // Small delay so widgets have time to start fetching
+    setTimeout(() => setRefreshing(false), 500);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
-
-  const displayName = profile?.display_name || user?.username || 'there';
-  const firstName = displayName.split(' ')[0]; // Get first name
-  const avatar = profile?.avatar;
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
@@ -93,30 +52,36 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        {/* Greeting Section */}
-        <View style={styles.greetingSection}>
-          {/* Avatar */}
-          <View style={styles.avatarContainer}>
-            {avatar ? (
-              <Image source={{ uri: avatar }} style={[styles.avatar, { backgroundColor: themeColors.skeleton }]} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
-                <Text style={styles.avatarText}>
-                  {firstName.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Greeting */}
-          <Text style={[styles.greeting, { color: themeColors.textSecondary }]}>Welcome back,</Text>
-          <Text style={[styles.name, { color: themeColors.text }]}>{firstName}! 👋</Text>
-        </View>
+        {/* Featured Events — top of page */}
+        <HomeWidget
+          title="Featured Events"
+          icon="calendar-outline"
+          onSeeAll={() => router.push('/(tabs)/calendar')}
+        >
+          <EventsWidget refreshKey={refreshKey} />
+        </HomeWidget>
 
         {/* Welcome Banner */}
-        {welcomeBanner && welcomeBanner.enabled === 'yes' && (
-          <WelcomeBanner banner={welcomeBanner} />
+        <WelcomeBannerWidget refreshKey={refreshKey} />
+
+        {/* My Courses */}
+        {FEATURES.COURSES && (
+          <HomeWidget
+            title="My Courses"
+            icon="school-outline"
+            onSeeAll={() => router.push('/courses')}
+          >
+            <CoursesWidget refreshKey={refreshKey} />
+          </HomeWidget>
         )}
+
+        {/* Media Carousel — swipeable blog + YouTube */}
+        <HomeWidget title="Latest" icon="sparkles-outline">
+          <MediaCarousel refreshKey={refreshKey} />
+        </HomeWidget>
+
+        {/* Bottom padding for tab bar */}
+        <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
   );
@@ -133,52 +98,10 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     flexGrow: 1,
-    paddingVertical: spacing.xl,
+    paddingTop: spacing.md,
   },
 
-  greetingSection: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    marginBottom: spacing.lg,
+  bottomPadding: {
+    height: 80,
   },
-
-  // Avatar
-  avatarContainer: {
-    marginBottom: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-
-  avatarPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  avatarText: {
-    fontSize: 40,
-    fontWeight: '600',
-    color: '#fff',
-  },
-
-  // Greeting
-  greeting: {
-    fontSize: typography.size.xl,
-    marginBottom: spacing.xs,
-  },
-
-  name: {
-    fontSize: 32,
-    fontWeight: '700',
-    marginBottom: spacing.xl,
-  },
-
 });

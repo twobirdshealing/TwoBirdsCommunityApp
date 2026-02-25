@@ -82,19 +82,20 @@ export function SpaceSelector({
       ]);
 
       // Process groups
-      if (groupsRes.success && groupsRes.data) {
+      if (groupsRes.success) {
         const groupsData = groupsRes.data as any;
         setGroups(groupsData?.groups || []);
       }
 
       // Process spaces
-      if (spacesRes.success && spacesRes.data?.spaces) {
-        const spacesList = spacesRes.data.spaces.data || spacesRes.data.spaces;
-        console.log('[SpaceSelector] Spaces count:', spacesList.length);
+      if (spacesRes.success) {
+        const spacesData = spacesRes.data as any;
+        const spacesList = spacesData?.spaces?.data || spacesData?.spaces || [];
+        if (__DEV__) console.log('[SpaceSelector] Spaces count:', spacesList.length);
         setSpaces(spacesList);
       }
     } catch (error) {
-      console.error('[SpaceSelector] Error fetching spaces:', error);
+      if (__DEV__) console.error('[SpaceSelector] Error fetching spaces:', error);
     } finally {
       setLoading(false);
     }
@@ -170,7 +171,7 @@ export function SpaceSelector({
   // ---------------------------------------------------------------------------
 
   const handleSelect = (space: Space) => {
-    console.log('[SpaceSelector] Selected:', space.slug, space.title);
+    if (__DEV__) console.log('[SpaceSelector] Selected:', space.slug, space.title);
     onSelect(space.slug, space.title);
     setIsOpen(false);
     setSearchQuery('');

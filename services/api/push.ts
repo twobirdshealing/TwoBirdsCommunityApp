@@ -6,7 +6,7 @@
 //       Auth token is passed as a parameter from the caller (push.ts).
 // =============================================================================
 
-import { SITE_URL } from '@/constants/config';
+import { TBC_CA_URL } from '@/constants/config';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -27,12 +27,6 @@ export interface PushSettingsResponse {
 }
 
 // -----------------------------------------------------------------------------
-// Base URL for TBC-CA plugin
-// -----------------------------------------------------------------------------
-
-const TBC_CA_BASE = `${SITE_URL}/wp-json/tbc-ca/v1`;
-
-// -----------------------------------------------------------------------------
 // Helper: Make authenticated request to TBC-CA endpoints
 // -----------------------------------------------------------------------------
 
@@ -42,7 +36,7 @@ async function tbcRequest<T>(
   options: RequestInit = {}
 ): Promise<{ success: true; data: T } | { success: false; error: string }> {
   try {
-    const response = await fetch(`${TBC_CA_BASE}${endpoint}`, {
+    const response = await fetch(`${TBC_CA_URL}${endpoint}`, {
       ...options,
       headers: {
         'Accept': 'application/json',
@@ -63,7 +57,7 @@ async function tbcRequest<T>(
 
     return { success: true, data };
   } catch (error) {
-    console.error('[Push API Error]', error);
+    if (__DEV__) console.error('[Push API Error]', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Network request failed',

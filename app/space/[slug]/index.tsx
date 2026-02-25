@@ -68,12 +68,9 @@ export default function SpacePage() {
     
     try {
       const response = await spacesApi.getSpaceBySlug(slug);
-      console.log('[SPACE DEBUG] Raw API response:', JSON.stringify(response, null, 2));
-      
+
       if (response.success) {
-        // API returns { data: { space: Space } } or { data: Space }
-        const spaceData = response.data.space || response.data;
-        console.log('[SPACE DEBUG] Extracted space data:', JSON.stringify(spaceData, null, 2));
+        const spaceData = response.data.space;
         setSpace(spaceData);
         
         // Check if counts are in response (docs say they should be!)
@@ -88,17 +85,19 @@ export default function SpacePage() {
       // Also fetch members count (since API doesn't return it reliably)
       try {
         const membersResponse = await spacesApi.getSpaceMembers(slug, { per_page: 1 });
-        const total = membersResponse.data?.members?.total
-          || membersResponse.data?.meta?.total;
-        if (membersResponse.success && total) {
-          setMembersCount(total);
+        if (membersResponse.success) {
+          const total = membersResponse.data?.members?.total
+            || membersResponse.data?.meta?.total;
+          if (total) {
+            setMembersCount(total);
+          }
         }
       } catch (err) {
-        console.log('[STATS] Could not fetch members count');
+        // Members count fetch failed silently
       }
       
     } catch (err) {
-      console.error('Failed to load space:', err);
+      if (__DEV__) console.error('Failed to load space:', err);
     }
   }, [slug]);
   
@@ -116,8 +115,7 @@ export default function SpacePage() {
       }
       
       const response = await feedsApi.getFeeds({ space: slug, per_page: 20 });
-      console.log('[FEEDS] Raw response type:', typeof response.data);
-      
+
       if (response.success && response.data) {
         // Handle the response structure
         let feedsData: Feed[] = [];
@@ -145,7 +143,7 @@ export default function SpacePage() {
         }
       }
     } catch (err) {
-      console.error('Fetch feeds error:', err);
+      if (__DEV__) console.error('Fetch feeds error:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
@@ -213,7 +211,7 @@ export default function SpacePage() {
         )
       );
     } catch (err) {
-      console.error('Bookmark toggle error:', err);
+      if (__DEV__) console.error('Bookmark toggle error:', err);
     }
   };
 
@@ -223,8 +221,6 @@ export default function SpacePage() {
 
   const handlePin = async (feed: Feed) => {
     const newStickyState = !feed.is_sticky;
-    
-    console.log('[PIN] Toggling sticky for feed:', feed.id, '-> sticky:', newStickyState);
     
     // Optimistic update
     setFeeds(prevFeeds => {
@@ -243,8 +239,6 @@ export default function SpacePage() {
     try {
       const response = await feedsApi.toggleSticky(feed.id, newStickyState);
       
-      console.log('[PIN] API response:', response);
-      
       if (!response.success) {
         // Revert on error
         setFeeds(prevFeeds =>
@@ -255,7 +249,7 @@ export default function SpacePage() {
         Alert.alert('Error', response.error?.message || 'Failed to update pin');
       }
     } catch (err) {
-      console.error('[PIN] Exception:', err);
+      if (__DEV__) console.error('Pin toggle error:', err);
       Alert.alert('Error', 'Failed to pin post');
     }
   };
@@ -280,7 +274,7 @@ export default function SpacePage() {
         Alert.alert('Error', response.error?.message || 'Failed to delete post');
       }
     } catch (err) {
-      console.error('Delete error:', err);
+      if (__DEV__) console.error('Delete error:', err);
       Alert.alert('Error', 'Failed to delete post');
     }
   };
@@ -300,12 +294,13 @@ export default function SpacePage() {
           media_images: data.media_images,
         });
 
-        if (response.success && response.data?.feed) {
+        if (!response.success) {
+          throw new Error(response.error?.message || 'Failed to update post');
+        }
+        if (response.data?.feed) {
           setFeeds(prevFeeds =>
             prevFeeds.map(f => f.id === editingFeed.id ? response.data!.feed : f)
           );
-        } else {
-          throw new Error(response.error?.message || 'Failed to update post');
         }
       } else {
         // CREATE MODE
@@ -316,14 +311,15 @@ export default function SpacePage() {
           media_images: data.media_images,
         });
 
-        if (response.success && response.data?.feed) {
-          setFeeds(prevFeeds => [response.data!.feed, ...prevFeeds]);
-        } else {
+        if (!response.success) {
           throw new Error(response.error?.message || 'Failed to create post');
+        }
+        if (response.data?.feed) {
+          setFeeds(prevFeeds => [response.data!.feed, ...prevFeeds]);
         }
       }
     } catch (err) {
-      console.error(`${editingFeed ? 'Edit' : 'Create'} post error:`, err);
+      if (__DEV__) console.error(`${editingFeed ? 'Edit' : 'Create'} post error:`, err);
       throw new Error(err instanceof Error ? err.message : `Failed to ${editingFeed ? 'update' : 'create'} post`);
     }
   };
@@ -341,40 +337,27 @@ export default function SpacePage() {
   // ---------------------------------------------------------------------------
 
   const canPin = () => {
-    if (!space) {
-      console.log('[PIN DEBUG] No space loaded yet');
-      return false;
-    }
-    
+    if (!space) return false;
+
     // API returns role in membership.pivot.role
     // AND permissions object with community_admin, community_moderator, edit_any_feed
-    const membershipRole = (space as any).membership?.pivot?.role;
-    const permissions = (space as any).permissions;
-    
-    console.log('[PIN DEBUG] membershipRole:', membershipRole);
-    console.log('[PIN DEBUG] permissions:', permissions ? {
-      community_admin: permissions.community_admin,
-      community_moderator: permissions.community_moderator,
-      edit_any_feed: permissions.edit_any_feed,
-    } : 'none');
-    
+    const membershipRole = space.membership?.pivot?.role;
+    const permissions = space.permissions;
+
     // Check if user has admin/mod role OR has edit_any_feed permission
     const hasRole = membershipRole === 'admin' || membershipRole === 'moderator';
-    const hasPermission = permissions?.community_admin || 
-                          permissions?.community_moderator || 
+    const hasPermission = permissions?.community_admin ||
+                          permissions?.community_moderator ||
                           permissions?.edit_any_feed;
-    
-    const result = hasRole || hasPermission;
-    console.log('[PIN DEBUG] canPin result:', result, '(hasRole:', hasRole, ', hasPermission:', hasPermission, ')');
-    
-    return result;
+
+    return hasRole || hasPermission;
   };
 
   // ---------------------------------------------------------------------------
   // Space Info Header (inside FeedList)
   // ---------------------------------------------------------------------------
   
-  const getPrivacyIcon = (privacy: string): string => {
+  const getPrivacyIcon = (privacy: string): keyof typeof Ionicons.glyphMap => {
     switch (privacy) {
       case 'public': return 'globe-outline';
       case 'private': return 'lock-closed-outline';
@@ -387,7 +370,7 @@ export default function SpacePage() {
     if (!space) return null;
 
     const descriptionText = stripHtmlPreserveBreaks(
-      (space as any).description_rendered || space.description
+      space.description_rendered || space.description
     );
 
     return (
@@ -470,9 +453,7 @@ export default function SpacePage() {
   // Render
   // ---------------------------------------------------------------------------
 
-  // Debug: Log canPin result on each render
   const canPinResult = canPin();
-  console.log('[SPACE PAGE RENDER] canPin():', canPinResult);
   
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
@@ -528,7 +509,7 @@ export default function SpacePage() {
       {/* Comment Sheet */}
       <CommentSheet
         visible={showComments}
-        feedId={selectedFeedId}
+        postId={selectedFeedId}
         feedSlug={selectedFeedSlug}
         onClose={handleCloseComments}
         onCommentAdded={handleCommentAdded}

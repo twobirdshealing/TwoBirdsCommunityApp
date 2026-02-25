@@ -38,8 +38,7 @@ import { Comment } from '@/types';
 import { ReactionType } from '@/types/feed';
 import { commentsApi, mediaApi } from '@/services/api';
 import { Avatar } from '@/components/common/Avatar';
-import { ProfileBadge } from '@/components/common/ProfileBadge';
-import { VerifiedBadge } from '@/components/common/VerifiedBadge';
+import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { BottomSheet, BottomSheetFlatList, BottomSheetFooter, SheetInput } from '@/components/common/BottomSheet';
 import type { BottomSheetFooterProps } from '@/components/common/BottomSheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -54,7 +53,7 @@ import { formatRelativeTime } from '@/utils/formatDate';
 import { stripHtmlTags } from '@/utils/htmlToText';
 import { HtmlContent } from '@/components/common/HtmlContent';
 import { useAuth } from '@/contexts/AuthContext';
-import { useReactionConfig, useBadgeDefinitions } from '@/hooks';
+import { useReactionConfig } from '@/hooks';
 import { updateBreakdownOptimistically } from '@/utils/reactionHelpers';
 import { SITE_URL } from '@/constants/config';
 import { REACTION_EMOJI } from '@/constants/reactions';
@@ -65,7 +64,7 @@ import { REACTION_EMOJI } from '@/constants/reactions';
 
 interface CommentSheetProps {
   visible: boolean;
-  feedId: number | null;
+  postId: number | null;
   feedSlug?: string;  // For copy link URL
   onClose: () => void;
   onCommentAdded?: () => void;
@@ -81,7 +80,7 @@ interface AttachedImage {
 // Component
 // -----------------------------------------------------------------------------
 
-export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdded }: CommentSheetProps) {
+export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdded }: CommentSheetProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { colors: themeColors } = useTheme();
@@ -89,7 +88,6 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   // Comment content width: window - list padding(16*2) - avatar(32) - avatar margin(12)
   const commentContentWidth = windowWidth - spacing.lg * 2 - sizing.avatar.sm - spacing.md;
   const { reactions, getReaction, display } = useReactionConfig();
-  const { resolveBadges } = useBadgeDefinitions();
   const defaultReactionId = reactions[0]?.id || 'like';
   const [comments, setComments] = useState<Comment[]>([]);
   const [stickyComment, setStickyComment] = useState<Comment | null>(null);
@@ -121,13 +119,13 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   // ---------------------------------------------------------------------------
 
   const fetchComments = async () => {
-    if (!feedId) return;
+    if (!postId) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const response = await commentsApi.getComments(feedId);
+      const response = await commentsApi.getComments(postId);
 
       if (!response.success) {
         setError(response.error?.message || 'Failed to load comments');
@@ -159,10 +157,10 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   };
 
   useEffect(() => {
-    if (visible && feedId) {
+    if (visible && postId) {
       fetchComments();
     }
-  }, [visible, feedId]);
+  }, [visible, postId]);
 
   // ---------------------------------------------------------------------------
   // Handle Image Pick
@@ -202,7 +200,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         }
       }
     } catch (error) {
-      console.error('Image picker error:', error);
+      if (__DEV__) console.error('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image');
     } finally {
       setIsUploading(false);
@@ -219,7 +217,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 
   const handleSubmitComment = async () => {
     hapticLight();
-    if (!feedId) return;
+    if (!postId) return;
 
     const trimmedText = commentText.trim();
     if (!trimmedText && attachedImages.length === 0) return;
@@ -229,7 +227,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
     try {
       // EDIT MODE
       if (editingComment) {
-        const response = await commentsApi.updateComment(feedId, editingComment.id, {
+        const response = await commentsApi.updateComment(postId, editingComment.id, {
           comment: trimmedText,
           content_type: 'markdown',
         });
@@ -263,7 +261,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 
       const parentId = getReplyParentId();
 
-      console.log('[CommentSheet] Submitting comment:', {
+      if (__DEV__) console.log('[CommentSheet] Submitting comment:', {
         comment: trimmedText,
         parent_id: parentId,
         replyingToId: replyingTo?.id,
@@ -271,7 +269,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         hasImages: !!media_images,
       });
 
-      const response = await commentsApi.createComment(feedId, {
+      const response = await commentsApi.createComment(postId, {
         comment: trimmedText,
         content_type: 'markdown',
         parent_id: parentId,
@@ -291,7 +289,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         throw new Error(response.error?.message || 'Failed to post comment');
       }
     } catch (err) {
-      console.error('[CommentSheet] ERROR:', err);
+      if (__DEV__) console.error('[CommentSheet] ERROR:', err);
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to post comment');
     } finally {
       setIsSubmitting(false);
@@ -342,7 +340,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   // ---------------------------------------------------------------------------
 
   const handleCommentReaction = async (comment: Comment, reactionType: ReactionType = 'like') => {
-    if (!feedId) return;
+    if (!postId) return;
 
     // Derive hasReacted from user_reaction_type (has_user_react not always in API)
     const hasReacted = !!(comment.has_user_react || comment.user_reaction_type);
@@ -404,10 +402,10 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         const { swapReactionType } = await import('@/services/api/feeds');
         await swapReactionType(comment.id, 'comment', reactionType);
       } else {
-        await commentsApi.reactToComment(feedId, comment.id, willRemove, reactionType);
+        await commentsApi.reactToComment(postId, comment.id, willRemove, reactionType);
       }
     } catch (err) {
-      console.error('[CommentSheet] Reaction error:', err);
+      if (__DEV__) console.error('[CommentSheet] Reaction error:', err);
       // Revert on error
       setComments(prevComments =>
         prevComments.map(c => c.id === comment.id ? comment : c)
@@ -466,7 +464,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
 
   const handleCopyLink = async (comment: Comment) => {
     // Build URL like: https://site.com/portal/post/feed-slug?comment_id=123
-    const slug = feedSlug || `feed-${feedId}`;
+    const slug = feedSlug || `feed-${postId}`;
     const url = `${SITE_URL}/portal/post/${slug}?comment_id=${comment.id}`;
 
     try {
@@ -474,7 +472,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
       Alert.alert('Copied!', 'Link copied to clipboard');
     } catch (err) {
       // If clipboard fails, show URL so user can manually copy
-      console.error('Copy failed:', err);
+      if (__DEV__) console.error('Copy failed:', err);
       Alert.alert('Comment Link', url);
     }
   };
@@ -496,10 +494,10 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            if (!feedId) return;
+            if (!postId) return;
 
             try {
-              const response = await commentsApi.deleteComment(feedId, comment.id);
+              const response = await commentsApi.deleteComment(postId, comment.id);
 
               if (response.success) {
                 // Remove from local state
@@ -509,7 +507,7 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
                 Alert.alert('Error', response.error?.message || 'Failed to delete');
               }
             } catch (err) {
-              console.error('Delete error:', err);
+              if (__DEV__) console.error('Delete error:', err);
               Alert.alert('Error', 'Failed to delete comment');
             }
           },
@@ -528,18 +526,18 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
   // ---------------------------------------------------------------------------
 
   const handlePinComment = async (comment: Comment) => {
-    if (!feedId) return;
+    if (!postId) return;
     const isPinned = Number(comment.is_sticky) === 1;
 
     try {
-      const response = await commentsApi.pinComment(feedId, comment.id, !isPinned);
+      const response = await commentsApi.pinComment(postId, comment.id, !isPinned);
       if (response.success) {
         fetchComments(); // Refresh to get updated sticky state
       } else {
         Alert.alert('Error', response.error?.message || 'Failed to update pin');
       }
     } catch (err) {
-      console.error('[CommentSheet] Pin error:', err);
+      if (__DEV__) console.error('[CommentSheet] Pin error:', err);
       Alert.alert('Error', 'Failed to update pin');
     }
   };
@@ -587,13 +585,13 @@ export function CommentSheet({ visible, feedId, feedSlug, onClose, onCommentAdde
         />
         <View style={styles.commentContent}>
           <View style={styles.commentHeader}>
-            <View style={styles.commentHeaderLeft}>
-              <Text style={[styles.commentAuthor, { color: themeColors.text }]}>{authorName}</Text>
-              {isVerified && <VerifiedBadge size={14} />}
-              {resolveBadges(author?.meta?.badge_slug || []).map((badge) => (
-                <ProfileBadge key={badge.slug} badge={badge} />
-              ))}
-            </View>
+            <UserDisplayName
+              name={authorName}
+              verified={isVerified}
+              badgeSlugs={author?.meta?.badge_slug}
+              size="sm"
+              style={styles.commentHeaderLeft}
+            />
             {/* 3-dot menu */}
             <TouchableOpacity
               ref={(el: any) => { menuButtonRefs.current[item.id] = el; }}
@@ -1029,12 +1027,6 @@ const styles = StyleSheet.create({
 
   commentMenuButton: {
     padding: 4,
-  },
-
-  commentAuthor: {
-    fontSize: typography.size.sm,
-    fontWeight: '600',
-    marginRight: spacing.sm,
   },
 
   commentTextRow: {

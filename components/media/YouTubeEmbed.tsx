@@ -30,8 +30,7 @@ try {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PLAYER_WIDTH = SCREEN_WIDTH - 48;
-const PLAYER_HEIGHT = (PLAYER_WIDTH * 9) / 16; // 16:9 aspect ratio
+const DEFAULT_PLAYER_WIDTH = SCREEN_WIDTH - 48;
 
 // -----------------------------------------------------------------------------
 // Props
@@ -39,7 +38,8 @@ const PLAYER_HEIGHT = (PLAYER_WIDTH * 9) / 16; // 16:9 aspect ratio
 
 interface YouTubeEmbedProps {
   videoId: string;
-  playing: boolean;
+  playing?: boolean;
+  onPlay?: () => void;
   onStateChange?: (state: string) => void;
   onReady?: () => void;
 }
@@ -50,20 +50,24 @@ interface YouTubeEmbedProps {
 
 export function YouTubeEmbed({
   videoId,
-  playing,
+  playing = false,
+  onPlay,
   onStateChange,
   onReady,
 }: YouTubeEmbedProps) {
   const { colors: themeColors } = useTheme();
   const [loading, setLoading] = React.useState(true);
+  const [playerWidth, setPlayerWidth] = React.useState(DEFAULT_PLAYER_WIDTH);
+  const playerHeight = (playerWidth * 9) / 16;
 
   // Handle player state change
   const handleStateChange = useCallback((state: string) => {
     if (state === 'playing') {
       setLoading(false);
+      onPlay?.();
     }
     onStateChange?.(state);
-  }, [onStateChange]);
+  }, [onStateChange, onPlay]);
 
   // Handle player ready
   const handleReady = useCallback(() => {
@@ -90,7 +94,13 @@ export function YouTubeEmbed({
 
   // Show YouTube player - parent controls play state
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      onLayout={(e) => {
+        const w = e.nativeEvent.layout.width;
+        if (w > 0 && w !== playerWidth) setPlayerWidth(w);
+      }}
+    >
       {loading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={themeColors.textInverse} />
@@ -98,8 +108,8 @@ export function YouTubeEmbed({
       )}
 
       <YoutubePlayer
-        height={PLAYER_HEIGHT}
-        width={PLAYER_WIDTH}
+        height={playerHeight}
+        width={playerWidth}
         videoId={videoId}
         play={playing}
         onChangeState={handleStateChange}
@@ -119,16 +129,16 @@ export function YouTubeEmbed({
 
 const styles = StyleSheet.create({
   container: {
-    width: PLAYER_WIDTH,
-    height: PLAYER_HEIGHT,
+    width: '100%',
+    aspectRatio: 16 / 9,
     borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
     backgroundColor: '#000',
   },
 
   fallbackContainer: {
-    width: PLAYER_WIDTH,
-    height: PLAYER_HEIGHT,
+    width: '100%',
+    aspectRatio: 16 / 9,
     borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
     backgroundColor: '#000',

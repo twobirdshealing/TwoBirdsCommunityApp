@@ -2,7 +2,6 @@
 // CALENDAR SCREEN - Modern native events calendar
 // =============================================================================
 // Features:
-// - Compact featured events (Instagram stories style)
 // - Slim month navigation header
 // - List view: Full-width event cards
 // - Month view: Grid with event dots + selected day events
@@ -21,7 +20,6 @@ import {
   CalendarHeader,
   EventCard,
   EventList,
-  FeaturedEvents,
   MonthGrid,
 } from '@/components/calendar';
 
@@ -67,10 +65,8 @@ export default function CalendarScreen() {
   const [currentMonth, setCurrentMonth] = useState(getCurrentMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [featuredEvents, setFeaturedEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [featuredLoading, setFeaturedLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Calculate month limits (current month to +2 months like web)
@@ -112,7 +108,7 @@ export default function CalendarScreen() {
 
       setEvents(response.data.events || []);
     } catch (err) {
-      console.error('[Calendar] Error fetching events:', err);
+      if (__DEV__) console.error('[Calendar] Error fetching events:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
@@ -121,36 +117,12 @@ export default function CalendarScreen() {
   }, [currentMonth]);
 
   // ---------------------------------------------------------------------------
-  // Fetch Featured Events
-  // ---------------------------------------------------------------------------
-
-  const fetchFeaturedEvents = useCallback(async () => {
-    try {
-      setFeaturedLoading(true);
-
-      const response = await calendarApi.getFeaturedEvents(5);
-
-      if (response.success) {
-        setFeaturedEvents(response.data.events || []);
-      }
-    } catch (err) {
-      console.error('[Calendar] Error fetching featured events:', err);
-    } finally {
-      setFeaturedLoading(false);
-    }
-  }, []);
-
-  // ---------------------------------------------------------------------------
   // Effects
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
-
-  useEffect(() => {
-    fetchFeaturedEvents();
-  }, [fetchFeaturedEvents]);
 
   // Reset selected date when month changes
   useEffect(() => {
@@ -163,7 +135,6 @@ export default function CalendarScreen() {
 
   const handleRefresh = () => {
     fetchEvents(true);
-    fetchFeaturedEvents();
   };
 
   const handlePrevMonth = () => {
@@ -195,13 +166,6 @@ export default function CalendarScreen() {
 
   const renderHeader = () => (
     <>
-      {/* Featured Events */}
-      <FeaturedEvents
-        events={featuredEvents}
-        loading={featuredLoading}
-        onEventPress={handleEventPress}
-      />
-
       {/* Calendar Header */}
       <CalendarHeader
         currentMonth={currentMonth}

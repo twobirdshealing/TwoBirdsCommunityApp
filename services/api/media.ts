@@ -3,11 +3,10 @@
 // =============================================================================
 // Handles file uploads to Fluent Community
 // Uses FormData for multipart/form-data uploads
-// Uses JWT Bearer token authentication
+// JWT auth + silent refresh handled automatically by client.ts (rawBody mode).
 // =============================================================================
 
-import { API_URL } from '@/constants/config';
-import { getAuthToken } from '@/services/auth';
+import { request } from './client';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -47,6 +46,19 @@ export interface MediaPreviewMeta {
   height?: number;
 }
 
+/** Raw API response from /feeds/media-upload */
+interface MediaUploadApiData {
+  media: {
+    url: string;
+    width?: number;
+    height?: number;
+    type: string;
+    media_key?: number;
+    media_id?: number;
+    id?: number;
+  };
+}
+
 // -----------------------------------------------------------------------------
 // Upload Media
 // -----------------------------------------------------------------------------
@@ -64,114 +76,52 @@ export async function uploadMedia(
   fileName: string,
   objectSource: string = 'feed'
 ): Promise<MediaUploadResponse> {
-  try {
-    const authToken = await getAuthToken();
+  // Create FormData
+  const formData = new FormData();
 
-    if (!authToken) {
-      return {
-        success: false,
-        error: {
-          code: 'unauthorized',
-          message: 'Not authenticated',
-        },
-      };
-    }
+  // Append file - React Native format
+  formData.append('file', {
+    uri,
+    type,
+    name: fileName,
+  } as any);
 
-    // Create FormData
-    const formData = new FormData();
+  // Add context
+  formData.append('object_source', objectSource);
 
-    // Append file - React Native format
-    formData.append('file', {
-      uri,
-      type,
-      name: fileName,
-    } as any);
+  if (__DEV__) console.log('[Media] Uploading:', fileName, type);
 
-    // Add context
-    formData.append('object_source', objectSource);
+  const result = await request<MediaUploadApiData>('/feeds/media-upload', {
+    method: 'POST',
+    body: formData,
+    rawBody: true,
+  });
 
-    console.log('[Media] Uploading:', fileName, type);
-
-    const response = await fetch(`${API_URL}/feeds/media-upload`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        // NOTE: Don't set Content-Type - fetch sets it with boundary for FormData
-      },
-      body: formData,
-    });
-
-    const data = await response.json();
-    console.log('[Media] Response:', data);
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: {
-          code: data?.code || 'upload_failed',
-          message: data?.message || 'Upload failed',
-        },
-      };
-    }
-
-    // API returns { media: { url, width, height, type, media_key } }
-    const media = data.media || data;
-
-    return {
-      success: true,
-      data: {
-        media_id: media.media_key || media.media_id || media.id || Date.now(),
-        url: media.url,
-        type: media.type?.startsWith('image') ? 'image' : media.type || 'image',
-        width: media.width,
-        height: media.height,
-        mime_type: media.type,
-      },
-    };
-  } catch (error) {
-    console.error('[Media] Upload error:', error);
+  if (!result.success) {
     return {
       success: false,
       error: {
-        code: 'network_error',
-        message: error instanceof Error ? error.message : 'Upload failed',
+        code: result.error.code || 'upload_failed',
+        message: result.error.message || 'Upload failed',
       },
     };
   }
-}
 
-// -----------------------------------------------------------------------------
-// Build Meta Objects for API
-// -----------------------------------------------------------------------------
+  if (__DEV__) console.log('[Media] Response:', result.data);
 
-/**
- * Build meta.media_items array for feed/comment creation
- */
-export function buildMediaItems(uploads: MediaItem[]): any[] {
-  return uploads.map(item => ({
-    media_id: item.media_id,
-    url: item.url,
-    type: item.type,
-    width: item.width,
-    height: item.height,
-  }));
-}
-
-/**
- * Build meta.media_preview object for feed/comment creation
- * Uses first image as preview
- */
-export function buildMediaPreview(uploads: MediaItem[]): MediaPreviewMeta | null {
-  const firstImage = uploads.find(u => u.type === 'image');
-
-  if (!firstImage) return null;
+  // API returns { media: { url, width, height, type, media_key } }
+  const media = result.data.media || result.data;
 
   return {
-    image: firstImage.url,
-    provider: 'uploader',
-    type: 'image',
-    width: firstImage.width,
-    height: firstImage.height,
+    success: true,
+    data: {
+      media_id: media.media_key || media.media_id || media.id || Date.now(),
+      url: media.url,
+      type: media.type?.startsWith('image') ? 'image' : media.type || 'image',
+      width: media.width,
+      height: media.height,
+      mime_type: media.type,
+    },
   };
 }
 
@@ -181,8 +131,6 @@ export function buildMediaPreview(uploads: MediaItem[]): MediaPreviewMeta | null
 
 export const mediaApi = {
   uploadMedia,
-  buildMediaItems,
-  buildMediaPreview,
 };
 
 export default mediaApi;

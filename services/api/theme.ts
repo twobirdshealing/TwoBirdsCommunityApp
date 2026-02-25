@@ -1,16 +1,18 @@
 // =============================================================================
-// THEME API SERVICE - Fetch Fluent Community theme colors
+// APP CONFIG API SERVICE - Fetch Fluent Community theme colors & app settings
 // =============================================================================
-// Public endpoint (no auth needed) — returns site color configuration
+// Public endpoint (no auth needed) — returns theme + social providers
 // =============================================================================
 
-import { SITE_URL } from '@/constants/config';
+import { TBC_CA_URL } from '@/constants/config';
+import type { SocialProvider } from './socialProviders';
 
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
 
 export interface FluentSectionColors {
+  [key: string]: string | undefined;
   primary_bg?: string;
   secondary_bg?: string;
   secondary_content_bg?: string;
@@ -32,8 +34,7 @@ export interface FluentSectionColors {
   menu_bg_hover?: string;
 }
 
-export interface ThemeColorsResponse {
-  success: boolean;
+export interface ThemeData {
   dark_mode_enabled: boolean;
   light_schema: string;
   dark_schema: string;
@@ -49,27 +50,31 @@ export interface ThemeColorsResponse {
   } | null;
 }
 
+export interface AppConfigResponse {
+  success: boolean;
+  theme: ThemeData;
+  social_providers: SocialProvider[];
+}
+
 // -----------------------------------------------------------------------------
 // API
 // -----------------------------------------------------------------------------
 
-const TBC_CA_BASE = `${SITE_URL}/wp-json/tbc-ca/v1`;
-
 /**
- * GET /theme/colors - Fetch site theme colors (public, no auth)
+ * GET /app-config - Fetch theme colors + social providers (public, no auth)
  */
-export async function getThemeColors(): Promise<ThemeColorsResponse | null> {
+export async function getAppConfig(): Promise<AppConfigResponse | null> {
   try {
-    const response = await fetch(`${TBC_CA_BASE}/theme/colors`, {
+    const response = await fetch(`${TBC_CA_URL}/app-config`, {
       headers: { 'Accept': 'application/json' },
     });
 
     if (!response.ok) return null;
 
-    const data: ThemeColorsResponse = await response.json();
+    const data: AppConfigResponse = await response.json();
     return data.success ? data : null;
   } catch (error) {
-    console.error('[Theme API]', error);
+    if (__DEV__) console.error('[App Config API]', error);
     return null;
   }
 }

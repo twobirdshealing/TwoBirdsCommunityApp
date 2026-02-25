@@ -52,7 +52,7 @@ export function PostComposer({
       }
     } catch (err) {
       // Error handling in parent
-      console.error('Post failed:', err);
+      if (__DEV__) console.error('Post failed:', err);
     } finally {
       setPosting(false);
     }
@@ -62,7 +62,7 @@ export function PostComposer({
   // Render
   // ---------------------------------------------------------------------------
 
-  const userPhoto = user?.photo || 'https://ui-avatars.com/api/?name=User&size=128';
+  const userPhoto = user?.avatar || 'https://ui-avatars.com/api/?name=User&size=128';
 
   if (compact) {
     // Compact version - single line

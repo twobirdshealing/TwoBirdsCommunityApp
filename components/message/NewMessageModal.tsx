@@ -62,7 +62,7 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Debounce timer
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   // ---------------------------------------------------------------------------
   // Search Members
@@ -91,7 +91,7 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
         setMembers([]);
       }
     } catch (err) {
-      console.error('[NewMessageModal] Search error:', err);
+      if (__DEV__) console.error('[NewMessageModal] Search error:', err);
       setError('Failed to search members');
       setMembers([]);
     } finally {

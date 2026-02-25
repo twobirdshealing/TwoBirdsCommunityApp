@@ -9,7 +9,7 @@
 // - Swipe to delete conversation
 // =============================================================================
 
-import { EmptyState } from '@/components/common/EmptyState';
+import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
 import { ConversationCard, NewMessageModal } from '@/components/message';
 import { PageHeader } from '@/components/navigation';
 import { spacing, typography } from '@/constants/layout';
@@ -24,11 +24,9 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   RefreshControl,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -85,7 +83,7 @@ export default function MessagesScreen() {
       }
     } catch (err) {
       setError('Failed to load conversations');
-      console.error('[Messages] Fetch error:', err);
+      if (__DEV__) console.error('[Messages] Fetch error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -98,7 +96,7 @@ export default function MessagesScreen() {
       const ids = await messagesApi.getUnreadThreadIds();
       setUnreadThreadIds(ids);
     } catch (err) {
-      console.error('[Messages] Fetch unread error:', err);
+      if (__DEV__) console.error('[Messages] Fetch unread error:', err);
     }
   }, []);
 
@@ -270,7 +268,7 @@ export default function MessagesScreen() {
                 Alert.alert('Error', 'Failed to delete conversation');
               }
             } catch (err) {
-              console.error('[Messages] Delete thread error:', err);
+              if (__DEV__) console.error('[Messages] Delete thread error:', err);
               Alert.alert('Error', 'Failed to delete conversation');
             }
           },
@@ -341,13 +339,9 @@ export default function MessagesScreen() {
         )}
 
         {loading && threads.length === 0 ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={themeColors.primary} />
-          </View>
+          <LoadingSpinner />
         ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-          </View>
+          <ErrorMessage message={error} onRetry={() => fetchThreads()} />
         ) : (
           <FlashList
             data={filteredThreads}
@@ -385,24 +379,6 @@ export default function MessagesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-
-  errorText: {
-    fontSize: 16,
-    textAlign: 'center',
   },
 
   searchContainer: {

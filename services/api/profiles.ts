@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { ENDPOINTS } from '@/constants/config';
-import { Feed, Profile } from '@/types';
+import { Comment, Feed, Profile, Space, XProfile } from '@/types';
 import { get, post, put } from './client';
 
 // -----------------------------------------------------------------------------
@@ -30,7 +30,7 @@ export async function getUserFeeds(username: string, page: number = 1, perPage: 
 // -----------------------------------------------------------------------------
 
 export async function getUserSpaces(username: string) {
-  return get<{ spaces: any[] }>(`${ENDPOINTS.PROFILE(username)}/spaces`);
+  return get<{ spaces: Space[] }>(`${ENDPOINTS.PROFILE(username)}/spaces`);
 }
 
 // -----------------------------------------------------------------------------
@@ -38,7 +38,7 @@ export async function getUserSpaces(username: string) {
 // -----------------------------------------------------------------------------
 
 export async function getUserComments(username: string, page: number = 1, perPage: number = 10) {
-  return get<any>(
+  return get<{ comments: { data: Comment[]; has_more: boolean } }>(
     `${ENDPOINTS.PROFILE(username)}/comments`,
     { page, per_page: perPage }
   );
@@ -65,7 +65,7 @@ export async function unfollowUser(username: string) {
 // -----------------------------------------------------------------------------
 
 export async function getFollowers(username: string, page: number = 1) {
-  return get<{ followers: any[] }>(`${ENDPOINTS.PROFILE(username)}/followers`, { page });
+  return get<{ followers: XProfile[] }>(`${ENDPOINTS.PROFILE(username)}/followers`, { page });
 }
 
 // -----------------------------------------------------------------------------
@@ -73,7 +73,7 @@ export async function getFollowers(username: string, page: number = 1) {
 // -----------------------------------------------------------------------------
 
 export async function getFollowing(username: string, page: number = 1) {
-  return get<{ followings: any[] }>(`${ENDPOINTS.PROFILE(username)}/followings`, { page });
+  return get<{ followings: XProfile[] }>(`${ENDPOINTS.PROFILE(username)}/followings`, { page });
 }
 
 // -----------------------------------------------------------------------------
@@ -114,7 +114,7 @@ export async function patchProfileMedia(username: string, data: {
 // -----------------------------------------------------------------------------
 
 export async function blockUser(username: string) {
-  return post<{ follow: any; xprofile: any }>(
+  return post<{ follow: { status: string } | null; xprofile: XProfile }>(
     `${ENDPOINTS.PROFILE(username)}/block`
   );
 }

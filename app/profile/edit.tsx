@@ -35,6 +35,7 @@ import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import { Profile, CustomFieldConfig } from '@/types';
 import { SocialLinksForm, ProfilePhotoPicker } from '@/components/common';
 import { PageHeader } from '@/components/navigation';
+import { useSocialProviders } from '@/hooks';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -47,13 +48,7 @@ interface FormData {
   username: string;
   short_description: string;
   website: string;
-  social_links: {
-    instagram: string;
-    youtube: string;
-    fb: string;
-    blue_sky: string;
-    reddit: string;
-  };
+  social_links: Record<string, string>;
   custom_fields: Record<string, any>;
 }
 
@@ -66,6 +61,7 @@ export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user: currentUser } = useAuth();
   const { colors: themeColors } = useTheme();
+  const providers = useSocialProviders();
 
   const username = currentUser?.username || '';
 
@@ -83,7 +79,7 @@ export default function EditProfileScreen() {
     username: '',
     short_description: '',
     website: '',
-    social_links: { instagram: '', youtube: '', fb: '', blue_sky: '', reddit: '' },
+    social_links: {},
     custom_fields: {},
   });
 
@@ -134,6 +130,13 @@ export default function EditProfileScreen() {
             });
           }
 
+          // Build social links from profile data using dynamic provider keys
+          const profileSocial = p.social_links || p.meta?.social_links || {};
+          const sl: Record<string, string> = {};
+          for (const provider of providers) {
+            sl[provider.key] = profileSocial[provider.key] || '';
+          }
+
           setFormData({
             first_name: p.first_name || '',
             last_name: p.last_name || '',
@@ -141,18 +144,12 @@ export default function EditProfileScreen() {
             username: p.username || '',
             short_description: p.short_description || '',
             website: p.website || p.meta?.website || '',
-            social_links: {
-              instagram: p.social_links?.instagram || p.meta?.social_links?.instagram || '',
-              youtube: p.social_links?.youtube || p.meta?.social_links?.youtube || '',
-              fb: p.social_links?.fb || p.meta?.social_links?.fb || '',
-              blue_sky: p.social_links?.blue_sky || p.meta?.social_links?.blue_sky || '',
-              reddit: p.social_links?.reddit || p.meta?.social_links?.reddit || '',
-            },
+            social_links: sl,
             custom_fields: customValues,
           });
         }
       } catch (err) {
-        console.error('Failed to load profile for edit:', err);
+        if (__DEV__) console.error('Failed to load profile for edit:', err);
         Alert.alert('Error', 'Failed to load profile.');
         router.back();
       } finally {
@@ -362,7 +359,7 @@ export default function EditProfileScreen() {
         }
       }
     } catch (err) {
-      console.error('Failed to save profile:', err);
+      if (__DEV__) console.error('Failed to save profile:', err);
       Alert.alert('Error', 'Failed to save profile.');
     } finally {
       setSaving(false);
@@ -902,6 +899,7 @@ export default function EditProfileScreen() {
           <Text style={[styles.sectionTitle, styles.sectionTitleSpaced, { color: themeColors.text }]}>Social Links</Text>
 
           <SocialLinksForm
+            providers={providers}
             values={formData.social_links}
             onChange={setSocialLink}
           />

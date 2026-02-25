@@ -14,11 +14,9 @@ import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -26,14 +24,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MemberCard, MemberCardData } from '@/components/member';
-import { DropdownMenu } from '@/components/common';
+import { DropdownMenu, LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { membersApi } from '@/services/api/members';
-import { profilesApi } from '@/services/api/profiles';
+import { useFollowToggle } from '@/hooks';
 
 // -----------------------------------------------------------------------------
 // Sort Options
@@ -72,8 +70,7 @@ export default function ChurchDirectoryScreen() {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Follow state
-  const [followMap, setFollowMap] = useState<Record<number, number>>({});
-  const [followLoadingMap, setFollowLoadingMap] = useState<Record<number, boolean>>({});
+  const { followMap, setFollowMap, followLoadingMap, handleFollowPress, isFollowing, isFollowLoading } = useFollowToggle();
 
   // ---------------------------------------------------------------------------
   // Fetch Members
@@ -198,38 +195,6 @@ export default function ChurchDirectoryScreen() {
     } as any);
   };
 
-  const handleFollowPress = useCallback(async (member: MemberCardData) => {
-    const memberId = Number(member.xprofile?.user_id || member.user_id);
-    const username = member.xprofile?.username || member.username;
-    if (!username || !memberId) return;
-
-    const isCurrentlyFollowing = (followMap[memberId] || 0) > 0;
-
-    // Optimistic update
-    setFollowMap(prev => ({
-      ...prev,
-      [memberId]: isCurrentlyFollowing ? 0 : 1,
-    }));
-    setFollowLoadingMap(prev => ({ ...prev, [memberId]: true }));
-
-    try {
-      if (isCurrentlyFollowing) {
-        await profilesApi.unfollowUser(username);
-      } else {
-        await profilesApi.followUser(username);
-      }
-    } catch (err) {
-      console.error('[Directory] Follow error:', err);
-      // Revert on failure
-      setFollowMap(prev => ({
-        ...prev,
-        [memberId]: isCurrentlyFollowing ? 1 : 0,
-      }));
-      Alert.alert('Error', 'Failed to update follow status');
-    } finally {
-      setFollowLoadingMap(prev => ({ ...prev, [memberId]: false }));
-    }
-  }, [followMap]);
 
   // ---------------------------------------------------------------------------
   // Sort Menu Items (for DropdownMenu)
@@ -298,21 +263,12 @@ export default function ChurchDirectoryScreen() {
 
         {/* Error State */}
         {error && !loading && members.length === 0 && (
-          <View style={styles.centerContainer}>
-            <Text style={styles.stateIcon}>!</Text>
-            <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-            <Text style={[styles.retryButton, { color: themeColors.primary }]} onPress={handleRefresh}>
-              Tap to retry
-            </Text>
-          </View>
+          <ErrorMessage message={error} onRetry={handleRefresh} />
         )}
 
         {/* Loading State */}
         {loading && members.length === 0 && !error && (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={themeColors.primary} />
-            <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Loading members...</Text>
-          </View>
+          <LoadingSpinner message="Loading members..." />
         )}
 
         {/* Members List */}
@@ -328,8 +284,8 @@ export default function ChurchDirectoryScreen() {
                   onPress={handleMemberPress}
                   onMessagePress={isSelf ? undefined : handleMessagePress}
                   onFollowPress={isSelf ? undefined : handleFollowPress}
-                  isFollowing={(followMap[memberId] || 0) > 0}
-                  followLoading={followLoadingMap[memberId] || false}
+                  isFollowing={isFollowing(memberId)}
+                  followLoading={isFollowLoading(memberId)}
                   showRole={false}
                   showBio={true}
                   showLastActive={true}
@@ -338,7 +294,6 @@ export default function ChurchDirectoryScreen() {
               );
             }}
             keyExtractor={(item) => (item.user_id || item.id)?.toString() || Math.random().toString()}
-            estimatedItemSize={80}
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.5}
             refreshControl={
@@ -351,12 +306,10 @@ export default function ChurchDirectoryScreen() {
             }
             ListEmptyComponent={
               !loading && !error ? (
-                <View style={styles.centerContainer}>
-                  <Ionicons name="people-outline" size={48} color={themeColors.textTertiary} />
-                  <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
-                    {search ? 'No members found' : 'No members yet'}
-                  </Text>
-                </View>
+                <EmptyState
+                  icon="people-outline"
+                  message={search ? 'No members found' : 'No members yet'}
+                />
               ) : null
             }
             ListFooterComponent={
@@ -410,40 +363,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.size.md,
     paddingVertical: 0,
-  },
-
-  // States
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-
-  stateIcon: {
-    fontSize: 48,
-    marginBottom: spacing.md,
-  },
-
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: 14,
-  },
-
-  errorText: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-
-  retryButton: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  emptyText: {
-    fontSize: 16,
-    marginTop: spacing.md,
   },
 
   footerLoader: {

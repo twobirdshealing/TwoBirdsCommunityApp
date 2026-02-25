@@ -4,7 +4,8 @@
       "WebFetch(domain:dev.fluentcommunity.co)",
       "Bash(node --eval:*)",
       "WebFetch(domain:reactnavigation.org)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(python3:*)"
     ]
   }
 }

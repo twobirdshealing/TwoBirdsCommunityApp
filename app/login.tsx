@@ -20,6 +20,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography } from '@/constants/layout';
+import { PRIVACY_POLICY_URL } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
@@ -131,6 +132,8 @@ export default function LoginScreen() {
                 <TouchableOpacity
                   style={styles.showPasswordButton}
                   onPress={() => { hapticLight(); setShowPassword(!showPassword); }}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                 >
                   <Text style={styles.showPasswordText}>
                     {showPassword ? '🙈' : '👁️'}
@@ -145,6 +148,8 @@ export default function LoginScreen() {
               onPress={handleLogin}
               disabled={isLoading}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in"
             >
               {isLoading ? (
                 <ActivityIndicator color={themeColors.textInverse} />
@@ -154,7 +159,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             {/* Forgot Password Link */}
-            <TouchableOpacity style={styles.forgotPassword} onPress={() => router.push('/forgot-password')}>
+            <TouchableOpacity style={styles.forgotPassword} onPress={() => router.push('/forgot-password')} accessibilityRole="link" accessibilityLabel="Forgot password">
               <Text style={[styles.forgotPasswordText, { color: themeColors.primary }]}>Forgot password?</Text>
             </TouchableOpacity>
           </View>
@@ -170,6 +175,14 @@ export default function LoginScreen() {
                 Sign up
               </Text>
             </Text>
+            <TouchableOpacity
+              style={styles.privacyLink}
+              onPress={() => router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy' } })}
+              accessibilityRole="link"
+              accessibilityLabel="Privacy Policy"
+            >
+              <Text style={[styles.privacyLinkText, { color: themeColors.textTertiary }]}>Privacy Policy</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -321,5 +334,13 @@ const styles = StyleSheet.create({
 
   footerLink: {
     fontWeight: '600',
+  },
+
+  privacyLink: {
+    marginTop: spacing.md,
+  },
+
+  privacyLinkText: {
+    fontSize: typography.size.xs,
   },
 });

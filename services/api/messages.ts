@@ -18,16 +18,7 @@ import { get, post } from './client';
 // -----------------------------------------------------------------------------
 
 export async function getThreads() {
-  const result = await get<ThreadsResponse>(ENDPOINTS.CHAT_THREADS);
-
-  if (result.success) {
-    return {
-      success: true as const,
-      data: result.data,
-    };
-  }
-
-  return result;
+  return get<ThreadsResponse>(ENDPOINTS.CHAT_THREADS);
 }
 
 // -----------------------------------------------------------------------------
@@ -37,35 +28,17 @@ export async function getThreads() {
 // Returns selected_thread if a thread exists, intended_object if not.
 
 export async function getThreadsForUser(userId: number) {
-  const result = await get<ThreadsResponse>(
+  return get<ThreadsResponse>(
     `${ENDPOINTS.CHAT_THREADS}?user_id=${userId}`
   );
-
-  if (result.success) {
-    return {
-      success: true as const,
-      data: result.data,
-    };
-  }
-
-  return result;
 }
 
 // -----------------------------------------------------------------------------
 // Create New Thread (Start Conversation)
 // -----------------------------------------------------------------------------
 
-export async function createThread(request: CreateThreadRequest) {
-  const result = await post<CreateThreadResponse>(ENDPOINTS.CHAT_THREADS, request);
-
-  if (result.success) {
-    return {
-      success: true as const,
-      data: result.data,
-    };
-  }
-
-  return result;
+export async function createThread(data: CreateThreadRequest) {
+  return post<CreateThreadResponse>(ENDPOINTS.CHAT_THREADS, data);
 }
 
 // -----------------------------------------------------------------------------
@@ -79,16 +52,7 @@ export async function getMessages(threadId: number, beforeId?: number) {
   if (beforeId) {
     url += `?before_id=${beforeId}`;
   }
-  const result = await get<MessagesResponse>(url);
-
-  if (result.success) {
-    return {
-      success: true as const,
-      data: result.data,
-    };
-  }
-
-  return result;
+  return get<MessagesResponse>(url);
 }
 
 // -----------------------------------------------------------------------------
@@ -97,18 +61,9 @@ export async function getMessages(threadId: number, beforeId?: number) {
 // Use this to poll for new messages after a certain message ID
 
 export async function getNewMessages(threadId: number, lastMessageId: number) {
-  const result = await get<{ messages: ChatMessage[] }>(
+  return get<{ messages: ChatMessage[] }>(
     ENDPOINTS.CHAT_MESSAGES_NEW(threadId, lastMessageId)
   );
-
-  if (result.success) {
-    return {
-      success: true as const,
-      data: result.data,
-    };
-  }
-
-  return result;
 }
 
 // -----------------------------------------------------------------------------
@@ -129,30 +84,21 @@ export async function sendMessage(
   replyData?: { reply_to: number; reply_text: string }
 ) {
   // Build request matching native web app format
-  const request: Record<string, any> = {
+  const body: Record<string, any> = {
     text,
     reply_text: replyData?.reply_text || '',
   };
 
   if (replyData?.reply_to) {
-    request.reply_to = replyData.reply_to;
+    body.reply_to = replyData.reply_to;
   }
 
   // Add attachments as array of URL strings (native app format)
   if (attachments && attachments.length > 0) {
-    request.mediaItems = attachments.map(a => a.url);
+    body.mediaItems = attachments.map(a => a.url);
   }
 
-  const result = await post<SendMessageResponse>(ENDPOINTS.CHAT_MESSAGES(threadId), request);
-
-  if (result.success) {
-    return {
-      success: true as const,
-      data: result.data,
-    };
-  }
-
-  return result;
+  return post<SendMessageResponse>(ENDPOINTS.CHAT_MESSAGES(threadId), body);
 }
 
 // -----------------------------------------------------------------------------
@@ -190,7 +136,7 @@ export async function getUnreadThreadIds(): Promise<number[]> {
 // -----------------------------------------------------------------------------
 // Returns the number of threads with unread messages
 
-export async function getUnreadCount(): Promise<number> {
+export async function getMessageUnreadCount(): Promise<number> {
   const threadIds = await getUnreadThreadIds();
   return threadIds.length;
 }
@@ -233,18 +179,9 @@ export async function deleteThread(threadId: number) {
 // -----------------------------------------------------------------------------
 
 export async function getThread(threadId: number) {
-  const result = await get<{ thread: import('@/types/message').ChatThread }>(
+  return get<{ thread: import('@/types/message').ChatThread }>(
     ENDPOINTS.CHAT_THREAD_BY_ID(threadId)
   );
-
-  if (result.success) {
-    return {
-      success: true as const,
-      data: result.data,
-    };
-  }
-
-  return result;
 }
 
 // -----------------------------------------------------------------------------
@@ -276,7 +213,7 @@ export const messagesApi = {
   sendMessage,
   startChatWithUser,
   getUnreadThreadIds,
-  getUnreadCount,
+  getMessageUnreadCount,
   markThreadsRead,
   deleteMessage,
   toggleReaction,

@@ -6,6 +6,7 @@
 // each notification concept, with per-space email settings at the bottom.
 // =============================================================================
 
+import { LoadingSpinner, ErrorMessage } from '@/components/common';
 import { PageHeader } from '@/components/navigation';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -18,13 +19,13 @@ import {
   EmailPrefsResponse,
   EmailUserGlobals,
 } from '@/services/api/emailPrefs';
-import { isPushAvailable } from '@/services/push';
+import { isPushAvailable, getPushPermissionStatus, registerDeviceToken, type PushPermissionStatus } from '@/services/push';
 import { getAuthToken } from '@/services/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
+  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -112,11 +113,12 @@ const NOTIFICATION_MAP: NotificationMapping[] = [
   },
   // Community — push only
   {
-    key: 'reaction_on_post',
-    label: 'Reaction on Your Post',
-    description: 'When someone reacts to your post',
+    key: 'reactions',
+    label: 'Reactions',
+    description: 'When someone reacts to your posts or comments',
     category: 'community',
-    pushIds: ['reaction_on_post'],
+    pushIds: ['reaction_on_post', 'reaction_on_comment'],
+    pushLabels: ['On your posts', 'On your comments'],
   },
   {
     key: 'comment_on_followed_post',
@@ -152,6 +154,13 @@ const NOTIFICATION_MAP: NotificationMapping[] = [
     description: 'When you receive an invitation',
     category: 'community',
     pushIds: ['invitation_received'],
+  },
+  {
+    key: 'course_enrolled',
+    label: 'Course Enrollment',
+    description: 'When you are enrolled in a course',
+    category: 'community',
+    pushIds: ['course_enrolled'],
   },
   // Social — push only
   {
@@ -189,12 +198,21 @@ const NOTIFICATION_MAP: NotificationMapping[] = [
     category: 'social',
     pushIds: ['quiz_result'],
   },
+  // Messaging — push only
+  {
+    key: 'new_direct_message',
+    label: 'Direct Messages',
+    description: 'When someone sends you a direct message',
+    category: 'messaging',
+    pushIds: ['new_direct_message'],
+  },
 ];
 
 // Category display order and titles
 const CATEGORY_CONFIG: Record<string, string> = {
   community: 'Community',
   social: 'Social',
+  messaging: 'Messaging',
 };
 
 // Frequency options for DM emails
@@ -470,6 +488,7 @@ export default function NotificationSettingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<{ push?: string; email?: string }>({});
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [pushPermission, setPushPermission] = useState<PushPermissionStatus>('undetermined');
 
   // ---------------------------------------------------------------------------
   // Feature Checks
@@ -477,7 +496,7 @@ export default function NotificationSettingsScreen() {
 
   const pushAvailable = isPushAvailable();
   const pushEnabled = FEATURES.PUSH_NOTIFICATIONS;
-  const showPush = pushAvailable && pushEnabled;
+  const showPush = pushAvailable && pushEnabled && pushPermission === 'granted';
 
   // ---------------------------------------------------------------------------
   // Fetch Settings
@@ -488,15 +507,22 @@ export default function NotificationSettingsScreen() {
       if (isRefresh) setRefreshing(true);
       setError({});
 
+      // Check OS-level push permission
+      const permStatus = await getPushPermissionStatus();
+      setPushPermission(permStatus);
+
       const authToken = await getAuthToken();
       if (!authToken || !user?.username) {
         setError({ push: 'Not authenticated', email: 'Not authenticated' });
         return;
       }
 
+      // Fetch push settings if device is capable AND permission is granted
+      const canFetchPush = pushAvailable && pushEnabled && permStatus === 'granted';
+
       // Fetch both APIs in parallel
       const [pushResult, emailResult] = await Promise.all([
-        showPush ? getPushSettings(authToken) : Promise.resolve(null),
+        canFetchPush ? getPushSettings(authToken) : Promise.resolve(null),
         getEmailPrefs(user.username),
       ]);
 
@@ -529,7 +555,7 @@ export default function NotificationSettingsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [showPush, user?.username]);
+  }, [pushAvailable, pushEnabled, user?.username]);
 
   useEffect(() => {
     fetchSettings();
@@ -905,9 +931,7 @@ export default function NotificationSettingsScreen() {
             onLeftPress={() => router.back()}
             title="Notifications"
           />
-          <View style={styles.centerContent}>
-            <ActivityIndicator size="large" color={themeColors.primary} />
-          </View>
+          <LoadingSpinner />
         </View>
       </>
     );
@@ -924,19 +948,11 @@ export default function NotificationSettingsScreen() {
             onLeftPress={() => router.back()}
             title="Notifications"
           />
-          <View style={styles.centerContent}>
-            <Ionicons name="alert-circle-outline" size={48} color={themeColors.error} />
-            <Text style={[styles.errorTitle, { color: themeColors.text }]}>Failed to Load</Text>
-            <Text style={[styles.errorText, { color: themeColors.textSecondary }]}>
-              {error.email || error.push}
-            </Text>
-            <Pressable
-              style={[styles.retryButton, { backgroundColor: themeColors.primary }]}
-              onPress={() => { setLoading(true); fetchSettings(); }}
-            >
-              <Text style={[styles.retryButtonText, { color: themeColors.textInverse }]}>Try Again</Text>
-            </Pressable>
-          </View>
+          <ErrorMessage
+            title="Failed to Load"
+            message={error.email || error.push || 'Something went wrong'}
+            onRetry={() => { setLoading(true); fetchSettings(); }}
+          />
         </View>
       </>
     );
@@ -973,16 +989,59 @@ export default function NotificationSettingsScreen() {
             </Text>
           </View>
 
-          {/* Push unavailable banner */}
-          {!showPush && (
+          {/* Push unavailable / permission banners */}
+          {!pushEnabled && (
             <View style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
               <Ionicons name="information-circle-outline" size={20} color={themeColors.textSecondary} />
               <Text style={[styles.infoBannerText, { color: themeColors.textSecondary }]}>
-                {!pushEnabled
-                  ? 'Push notifications are disabled.'
-                  : 'Push notifications require a physical device.'}
+                Push notifications are disabled.
               </Text>
             </View>
+          )}
+          {pushEnabled && !pushAvailable && (
+            <View style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+              <Ionicons name="information-circle-outline" size={20} color={themeColors.textSecondary} />
+              <Text style={[styles.infoBannerText, { color: themeColors.textSecondary }]}>
+                Push notifications require a physical device.
+              </Text>
+            </View>
+          )}
+          {pushEnabled && pushAvailable && pushPermission === 'denied' && (
+            <Pressable
+              style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.error }]}
+              onPress={() => Linking.openSettings()}
+            >
+              <Ionicons name="notifications-off-outline" size={20} color={themeColors.error} />
+              <Text style={[styles.infoBannerText, { color: themeColors.error, flex: 1 }]}>
+                Push notifications are turned off in your device settings.
+              </Text>
+              <Text style={[styles.bannerAction, { color: themeColors.primary }]}>Open Settings</Text>
+            </Pressable>
+          )}
+          {pushEnabled && pushAvailable && pushPermission === 'undetermined' && (
+            <Pressable
+              style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.primary }]}
+              onPress={async () => {
+                const authToken = await getAuthToken();
+                if (authToken) {
+                  const success = await registerDeviceToken(authToken);
+                  if (success) {
+                    setPushPermission('granted');
+                    fetchSettings(true);
+                  } else {
+                    // User may have denied — re-check
+                    const status = await getPushPermissionStatus();
+                    setPushPermission(status);
+                  }
+                }
+              }}
+            >
+              <Ionicons name="notifications-outline" size={20} color={themeColors.primary} />
+              <Text style={[styles.infoBannerText, { color: themeColors.textSecondary, flex: 1 }]}>
+                Enable push notifications to receive alerts.
+              </Text>
+              <Text style={[styles.bannerAction, { color: themeColors.primary }]}>Enable</Text>
+            </Pressable>
           )}
 
           {/* Partial error banners */}
@@ -1125,13 +1184,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
 
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-
   // Header Info
   headerInfo: {
     alignItems: 'center',
@@ -1169,29 +1221,10 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
   },
 
-  // Error state
-  errorTitle: {
-    fontSize: typography.size.lg,
+  bannerAction: {
+    fontSize: typography.size.sm,
     fontWeight: '600',
-    marginTop: spacing.md,
-  },
-
-  errorText: {
-    fontSize: typography.size.md,
-    marginTop: spacing.sm,
-    textAlign: 'center',
-  },
-
-  retryButton: {
-    marginTop: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
-  },
-
-  retryButtonText: {
-    fontSize: typography.size.md,
-    fontWeight: '600',
+    marginLeft: spacing.sm,
   },
 
   // Section

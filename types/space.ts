@@ -52,6 +52,22 @@ export interface Space {
     username: string;
     display_name: string;
   };
+
+  // Detail endpoint only — not present in list responses
+  permissions?: Record<string, boolean>;
+  membership?: {
+    ID: number;
+    display_name: string;
+    pivot: {
+      space_id: string;
+      user_id: string;
+      role: 'member' | 'moderator' | 'admin';
+      status: 'active' | 'pending';
+      created_at: string;
+    };
+  };
+  topics?: any[];
+  header_links?: { title: string; route: { name: string } }[];
 }
 
 // -----------------------------------------------------------------------------
@@ -144,7 +160,7 @@ export interface SpacesResponse {
 
 // Response from GET /spaces/{slug}/by-slug
 export interface SpaceDetailResponse {
-  data: Space;
+  space: Space;
 }
 
 // Response from GET /spaces/space_groups
@@ -183,5 +199,20 @@ export interface SpaceMembersResponse {
     per_page: number;
     current_page: number;
     total_pages: number;
+  };
+}
+
+// Response from GET /members and GET /spaces/{slug}/members (paginated list)
+export interface MembersListResponse {
+  members: {
+    data: SpaceMember[];
+    current_page?: number;
+    per_page?: number;
+    total?: number;
+    next_page_url?: string | null;
+  };
+  current_user_follows?: Record<number, number>;
+  meta?: {
+    total?: number;
   };
 }

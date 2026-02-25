@@ -11,5 +11,6 @@ export * from './htmlToText';
 export * from './reactionHelpers';
 export * from './avatarPicker';
 export * from './haptics';
+export * from './logger';
 export * from './markdown';
 export * from './markdownParser';

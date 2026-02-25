@@ -7,6 +7,8 @@ import {
   GetNotificationsOptions,
   MarkAllReadResponse,
   MarkReadResponse,
+  NotificationsResponse,
+  UnreadNotificationsResponse,
   transformNotification,
 } from '@/types';
 import { get, post } from './client';
@@ -15,30 +17,47 @@ import { get, post } from './client';
 // Transform Response Helpers
 // -----------------------------------------------------------------------------
 
+/** Raw paginated notifications from API (before transform) */
+interface RawNotificationsResponse {
+  notifications: {
+    current_page: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw API data passed to transformNotification
+    data: Record<string, any>[];
+    [key: string]: unknown;
+  };
+}
+
+/** Raw unread notifications from API (before transform) */
+interface RawUnreadResponse {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw API data passed to transformNotification
+  notifications: Record<string, any>[];
+  unread_count: number;
+}
+
 /**
  * Transform paginated notifications response
  * Applies transformNotification to each notification in the data array
  */
-function transformNotificationsResponse(response: any): NotificationsResponse {
-  const notifications = response.notifications || {};
+function transformNotificationsResponse(response: RawNotificationsResponse): NotificationsResponse {
+  const notifications = response.notifications || { current_page: 1, data: [] };
   const data = notifications.data || [];
 
   return {
     notifications: {
       ...notifications,
-      data: data.map((n: any) => transformNotification(n)),
+      data: data.map((n) => transformNotification(n)),
     },
-  };
+  } as NotificationsResponse;
 }
 
 /**
  * Transform unread notifications response
  */
-function transformUnreadResponse(response: any): UnreadNotificationsResponse {
+function transformUnreadResponse(response: RawUnreadResponse): UnreadNotificationsResponse {
   const notifications = response.notifications || [];
 
   return {
-    notifications: notifications.map((n: any) => transformNotification(n)),
+    notifications: notifications.map((n) => transformNotification(n)),
     unread_count: response.unread_count || 0,
   };
 }
@@ -48,7 +67,7 @@ function transformUnreadResponse(response: any): UnreadNotificationsResponse {
 // -----------------------------------------------------------------------------
 
 export async function getNotifications(options: GetNotificationsOptions = {}) {
-  const params: Record<string, any> = {
+  const params: Record<string, string | number | boolean> = {
     page: options.page || 1,
     per_page: options.per_page || DEFAULT_PER_PAGE,
   };
@@ -67,7 +86,7 @@ export async function getNotifications(options: GetNotificationsOptions = {}) {
     params.order = options.order;
   }
 
-  const result = await get<any>(ENDPOINTS.NOTIFICATIONS, params);
+  const result = await get<RawNotificationsResponse>(ENDPOINTS.NOTIFICATIONS, params);
 
   // Transform the response if successful
   if (result.success) {
@@ -86,7 +105,7 @@ export async function getNotifications(options: GetNotificationsOptions = {}) {
 // Returns unread notifications and total unread count for badge
 
 export async function getUnreadNotifications() {
-  const result = await get<any>(ENDPOINTS.NOTIFICATIONS_UNREAD);
+  const result = await get<RawUnreadResponse>(ENDPOINTS.NOTIFICATIONS_UNREAD);
 
   // Transform the response if successful
   if (result.success) {
@@ -104,7 +123,7 @@ export async function getUnreadNotifications() {
 // -----------------------------------------------------------------------------
 // Convenience function that just returns the count number
 
-export async function getUnreadCount(): Promise<number> {
+export async function getNotificationUnreadCount(): Promise<number> {
   const response = await getUnreadNotifications();
   if (response.success) {
     return response.data.unread_count;
@@ -135,7 +154,7 @@ export async function markAllAsRead() {
 export const notificationsApi = {
   getNotifications,
   getUnreadNotifications,
-  getUnreadCount,
+  getNotificationUnreadCount,
   markAsRead,
   markAllAsRead,
 };

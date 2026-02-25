@@ -45,7 +45,7 @@ export function SpaceMenu({ slug, role, onLeaveSuccess }: SpaceMenuProps) {
             router.back();
             onLeaveSuccess?.();
           } catch (error) {
-            console.error('Error leaving space:', error);
+            if (__DEV__) console.error('Error leaving space:', error);
             Alert.alert('Error', 'Failed to leave space. Please try again.');
           } finally {
             setIsLeaving(false);

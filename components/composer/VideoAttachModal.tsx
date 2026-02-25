@@ -60,13 +60,13 @@ export function VideoAttachModal({
     setIsLoading(true);
     try {
       const response = await feedsApi.getOembed(trimmedUrl);
-      if (response.oembed) {
-        setPreview(response.oembed);
+      if (response.success && response.data.oembed) {
+        setPreview(response.data.oembed);
       } else {
         Alert.alert('Invalid URL', 'Could not get video information. Please check the URL.');
       }
     } catch (error: any) {
-      console.error('[VideoAttachModal] Error fetching oembed:', error);
+      if (__DEV__) console.error('[VideoAttachModal] Error fetching oembed:', error);
       Alert.alert('Error', error.message || 'Could not fetch video information.');
     } finally {
       setIsLoading(false);

@@ -9,7 +9,7 @@
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
-import { VerifiedBadge } from '@/components/common/VerifiedBadge';
+import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -17,6 +17,7 @@ import {
   getLastMessage,
   getMessagePreview,
   getThreadAvatar,
+  getThreadBadgeSlugs,
   getThreadDisplayName,
   isThreadVerified,
 } from '@/types/message';
@@ -63,6 +64,7 @@ export function ConversationCard({
   const avatarUrl = getThreadAvatar(thread);
   const lastMessage = getLastMessage(thread);
   const verified = isThreadVerified(thread);
+  const badgeSlugs = getThreadBadgeSlugs(thread);
   const online = isUserOnline(thread.info?.last_activity);
 
   // Message preview
@@ -133,11 +135,17 @@ export function ConversationCard({
         <View style={styles.content}>
           {/* Header Row: Name + Timestamp */}
           <View style={styles.headerRow}>
-            {isUnread && <View style={[styles.unreadDot, { backgroundColor: themeColors.primary }]} />}
-            <Text style={[styles.name, { color: themeColors.text }, isUnread && styles.nameUnread]} numberOfLines={1}>
-              {displayName}
-            </Text>
-            {verified && <VerifiedBadge size={14} />}
+            <View style={styles.headerLeft}>
+              {isUnread && <View style={[styles.unreadDot, { backgroundColor: themeColors.primary }]} />}
+              <UserDisplayName
+                name={displayName}
+                verified={verified}
+                badgeSlugs={badgeSlugs}
+                numberOfLines={1}
+                bold={isUnread ? undefined : true}
+                style={styles.nameContainer}
+              />
+            </View>
             <Text style={[styles.timestamp, { color: themeColors.textTertiary }]}>{timestamp}</Text>
           </View>
 
@@ -204,15 +212,16 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
-  name: {
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    fontSize: typography.size.md,
-    fontWeight: '600',
     marginRight: spacing.sm,
   },
 
-  nameUnread: {
-    fontWeight: '700',
+  nameContainer: {
+    flexShrink: 1,
+    flexWrap: 'nowrap',
   },
 
   unreadDot: {

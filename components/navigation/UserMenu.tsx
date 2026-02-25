@@ -16,7 +16,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
+import { FEATURES, PRIVACY_POLICY_URL } from '@/constants/config';
 import { spacing, typography } from '@/constants/layout';
 import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
 
@@ -37,6 +39,7 @@ interface UserMenuProps {
   onMySpacesPress: () => void;
   onDirectoryPress: () => void;
   onBookmarksPress: () => void;
+  onCoursesPress: () => void;
   onBlogPress: () => void;
   onNotificationSettingsPress: () => void;
   onLogout: () => void;
@@ -56,7 +59,7 @@ interface MenuItemProps {
 function MenuItem({ icon, label, onPress, destructive = false }: MenuItemProps) {
   const { colors: themeColors } = useTheme();
   return (
-    <TouchableOpacity style={styles.menuItem} onPress={() => { destructive ? hapticWarning() : hapticLight(); onPress(); }} activeOpacity={0.7}>
+    <TouchableOpacity style={styles.menuItem} onPress={() => { destructive ? hapticWarning() : hapticLight(); onPress(); }} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={label}>
       <Ionicons
         name={icon}
         size={22}
@@ -81,10 +84,12 @@ export function UserMenu({
   onMySpacesPress,
   onDirectoryPress,
   onBookmarksPress,
+  onCoursesPress,
   onBlogPress,
   onNotificationSettingsPress,
   onLogout,
 }: UserMenuProps) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { theme, isDark, setTheme, colors: themeColors } = useTheme();
 
@@ -115,6 +120,11 @@ export function UserMenu({
     onBookmarksPress();
   };
 
+  const handleCoursesPress = () => {
+    onClose();
+    onCoursesPress();
+  };
+
   const handleBlogPress = () => {
     onClose();
     onBlogPress();
@@ -123,6 +133,11 @@ export function UserMenu({
   const handleNotificationSettingsPress = () => {
     onClose();
     onNotificationSettingsPress();
+  };
+
+  const handlePrivacyPolicyPress = () => {
+    onClose();
+    router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy' } });
   };
 
   const handleLogout = () => {
@@ -143,10 +158,12 @@ export function UserMenu({
         <View style={[styles.menuContainer, { top: insets.top + 50, backgroundColor: themeColors.surface }]}>
           <Pressable onPress={(e) => e.stopPropagation()}>
             {/* Profile Preview - Tappable to go to profile */}
-            <TouchableOpacity 
-              style={styles.profilePreview} 
+            <TouchableOpacity
+              style={styles.profilePreview}
               onPress={handleProfilePress}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="View profile"
             >
               {user.avatar ? (
                 <Image source={{ uri: user.avatar }} style={styles.avatar} />
@@ -193,6 +210,13 @@ export function UserMenu({
                 label="Bookmarks"
                 onPress={handleBookmarksPress}
               />
+              {FEATURES.COURSES && (
+                <MenuItem
+                  icon="school-outline"
+                  label="My Courses"
+                  onPress={handleCoursesPress}
+                />
+              )}
               <MenuItem
                 icon="newspaper-outline"
                 label="Blog"
@@ -203,9 +227,14 @@ export function UserMenu({
                 label="Notification Settings"
                 onPress={handleNotificationSettingsPress}
               />
+              <MenuItem
+                icon="shield-checkmark-outline"
+                label="Privacy Policy"
+                onPress={handlePrivacyPolicyPress}
+              />
 
               {/* Dark Mode Toggle */}
-              <TouchableOpacity style={styles.menuItem} onPress={handleThemeToggle} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.menuItem} onPress={handleThemeToggle} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`Toggle dark mode, currently ${themeModeLabel}`}>
                 <Ionicons
                   name={isDark ? 'sunny-outline' : 'moon-outline'}
                   size={22}
@@ -242,7 +271,6 @@ export function UserMenu({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
 
   menuContainer: {

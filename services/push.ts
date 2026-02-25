@@ -10,15 +10,9 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { registerDevice, unregisterDevice } from './api/push';
+import { createLogger } from '@/utils/logger';
 
-// -----------------------------------------------------------------------------
-// Debug
-// -----------------------------------------------------------------------------
-
-const DEBUG = __DEV__;
-function log(...args: any[]) {
-  if (DEBUG) console.log('[Push]', ...args);
-}
+const log = createLogger('Push');
 
 // -----------------------------------------------------------------------------
 // Module State
@@ -203,6 +197,24 @@ export function isPushAvailable(): boolean {
   return Device.isDevice;
 }
 
+export type PushPermissionStatus = 'granted' | 'denied' | 'undetermined';
+
+/**
+ * Get the OS-level push notification permission status.
+ * Returns 'granted', 'denied', or 'undetermined' (never asked).
+ */
+export async function getPushPermissionStatus(): Promise<PushPermissionStatus> {
+  if (!Device.isDevice) return 'denied';
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status === 'granted') return 'granted';
+    if (status === 'denied') return 'denied';
+    return 'undetermined';
+  } catch {
+    return 'denied';
+  }
+}
+
 // -----------------------------------------------------------------------------
 // Badge Count
 // -----------------------------------------------------------------------------
@@ -242,6 +254,7 @@ export const pushService = {
   unregisterDeviceToken,
   getStoredPushToken,
   isPushAvailable,
+  getPushPermissionStatus,
   syncBadgeCount,
   clearBadgeCount,
 };

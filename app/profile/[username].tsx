@@ -29,7 +29,7 @@ import { profilesApi, patchProfileMedia } from '@/services/api';
 import { updateStoredUser } from '@/services/auth';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import { Profile } from '@/types';
-import { DropdownMenu } from '@/components/common';
+import { DropdownMenu, LoadingSpinner, ErrorMessage } from '@/components/common';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 
 import { AboutTab, ProfileHeader, ProfileMenu } from '@/components/profile';
@@ -104,7 +104,7 @@ export default function UserProfileScreen() {
         setError('Failed to load profile');
       }
     } catch (err) {
-      console.error('Failed to fetch profile:', err);
+      if (__DEV__) console.error('Failed to fetch profile:', err);
       setError('Failed to load profile');
     } finally {
       setLoading(false);
@@ -152,7 +152,7 @@ export default function UserProfileScreen() {
         }
       }
     } catch (err) {
-      console.error('Follow action failed:', err);
+      if (__DEV__) console.error('Follow action failed:', err);
       Alert.alert('Error', 'Failed to update follow status');
     } finally {
       setFollowLoading(false);
@@ -193,7 +193,7 @@ export default function UserProfileScreen() {
               }
             }
           } catch (err) {
-            console.error('Block action failed:', err);
+            if (__DEV__) console.error('Block action failed:', err);
             Alert.alert('Error', `Failed to ${action.toLowerCase()} user`);
           } finally {
             setBlockLoading(false);
@@ -299,10 +299,7 @@ export default function UserProfileScreen() {
           onLeftPress={() => router.back()}
           title={username ? `@${username}` : 'Profile'}
         />
-        <View style={[styles.centerContainer, { backgroundColor: themeColors.background }]}>
-          <ActivityIndicator size="large" color={themeColors.primary} />
-          <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Loading profile...</Text>
-        </View>
+        <LoadingSpinner message="Loading profile..." />
       </View>
     );
   }
@@ -320,13 +317,7 @@ export default function UserProfileScreen() {
           onLeftPress={() => router.back()}
           title="Profile"
         />
-        <View style={[styles.centerContainer, { backgroundColor: themeColors.background }]}>
-          <Text style={styles.errorIcon}>😔</Text>
-          <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-          <Pressable style={[styles.retryButton, { backgroundColor: themeColors.primary }]} onPress={() => fetchProfile()}>
-            <Text style={[styles.retryButtonText, { color: themeColors.textInverse }]}>Try Again</Text>
-          </Pressable>
-        </View>
+        <ErrorMessage message={error} onRetry={() => fetchProfile()} />
       </View>
     );
   }
@@ -485,39 +476,6 @@ const styles = StyleSheet.create({
 
   scrollView: {
     flex: 1,
-  },
-
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: typography.size.md,
-  },
-
-  errorIcon: {
-    fontSize: 48,
-    marginBottom: spacing.md,
-  },
-
-  errorText: {
-    fontSize: typography.size.md,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-
-  retryButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-  },
-
-  retryButtonText: {
-    fontWeight: '600',
   },
 
   // Action Buttons

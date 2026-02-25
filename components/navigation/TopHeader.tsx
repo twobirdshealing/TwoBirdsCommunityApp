@@ -77,8 +77,8 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     try {
       // Fetch in parallel
       const [messagesCount, notificationsCount] = await Promise.all([
-        messagesApi.getUnreadCount(),
-        notificationsApi.getUnreadCount(),
+        messagesApi.getMessageUnreadCount(),
+        notificationsApi.getNotificationUnreadCount(),
       ]);
 
       setUnreadMessages(messagesCount);
@@ -186,6 +186,11 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     router.push('/bookmarks');
   };
 
+  const handleCoursesPress = () => {
+    setMenuVisible(false);
+    router.push('/courses');
+  };
+
   const handleBlogPress = () => {
     setMenuVisible(false);
     router.push('/blog');
@@ -246,6 +251,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             icon="mail-outline"
             onPress={handleMessagesPress}
             badgeCount={unreadMessages}
+            accessibilityLabel={unreadMessages > 0 ? `Messages, ${unreadMessages} unread` : 'Messages'}
           />
 
           {/* Notifications */}
@@ -253,12 +259,14 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             icon="notifications-outline"
             onPress={handleNotificationsPress}
             badgeCount={unreadNotifications}
+            accessibilityLabel={unreadNotifications > 0 ? `Notifications, ${unreadNotifications} unread` : 'Notifications'}
           />
 
           {/* Cart - no badge, just icon */}
           <HeaderIconButton
             icon="cart-outline"
             onPress={handleCartPress}
+            accessibilityLabel="Cart"
           />
 
           {/* Avatar with dropdown arrow */}
@@ -268,6 +276,8 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
               pressed && [styles.avatarButtonPressed, { backgroundColor: themeColors.backgroundSecondary }],
             ]}
             onPress={() => setMenuVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Open menu"
           >
             {avatar ? (
               <Image source={{ uri: avatar }} style={[styles.avatar, { backgroundColor: themeColors.skeleton }]} />
@@ -302,6 +312,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
         onMySpacesPress={handleMySpacesPress}
         onDirectoryPress={handleDirectoryPress}
         onBookmarksPress={handleBookmarksPress}
+        onCoursesPress={handleCoursesPress}
         onBlogPress={handleBlogPress}
         onNotificationSettingsPress={handleNotificationSettingsPress}
         onLogout={handleLogout}

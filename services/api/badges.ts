@@ -2,11 +2,11 @@
 // BADGE API SERVICE - Fetch & cache Fluent Community badge definitions
 // =============================================================================
 // Public endpoint (no auth needed) — returns badge colors, labels, icons
-// Two-layer cache: SecureStore (persists across restarts) + in-memory
+// Two-layer cache: AsyncStorage (persists across restarts) + in-memory
 // Same pattern as theme colors — instant on launch, background refresh
 // =============================================================================
 
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TBC_CA_URL } from '@/constants/config';
 import type { Badge } from '@/types/user';
 
@@ -34,14 +34,14 @@ let cachedBadges: BadgeDefinitions | null = null;
 // -----------------------------------------------------------------------------
 
 /**
- * Load badge definitions from SecureStore (instant, no network).
+ * Load badge definitions from AsyncStorage (instant, no network).
  * Called before the API fetch to provide immediate data.
  */
 export async function loadCachedBadges(): Promise<BadgeDefinitions> {
   if (cachedBadges) return cachedBadges;
 
   try {
-    const stored = await SecureStore.getItemAsync(BADGE_CACHE_KEY);
+    const stored = await AsyncStorage.getItem(BADGE_CACHE_KEY);
     if (stored) {
       cachedBadges = JSON.parse(stored);
       return cachedBadges!;
@@ -68,18 +68,18 @@ export async function fetchBadgeDefinitions(): Promise<BadgeDefinitions> {
     if (data.success && data.badges) {
       cachedBadges = data.badges;
 
-      // Persist to SecureStore for next launch
+      // Persist to AsyncStorage for next launch
       try {
-        await SecureStore.setItemAsync(BADGE_CACHE_KEY, JSON.stringify(data.badges));
+        await AsyncStorage.setItem(BADGE_CACHE_KEY, JSON.stringify(data.badges));
       } catch (e) {
-        // SecureStore has size limits — in-memory still works
+        // Persist failed — in-memory still works
       }
 
       return cachedBadges;
     }
     return cachedBadges || {};
   } catch (error) {
-    console.error('[Badge API]', error);
+    if (__DEV__) console.error('[Badge API]', error);
     return cachedBadges || {};
   }
 }
@@ -100,9 +100,11 @@ export function resolveBadges(slugs: string[]): Badge[] {
 }
 
 /**
- * Clear both in-memory and SecureStore badge cache (e.g. on logout)
+ * Clear both in-memory and AsyncStorage badge cache (e.g. on logout)
  */
 export function clearBadgeCache() {
   cachedBadges = null;
-  SecureStore.deleteItemAsync(BADGE_CACHE_KEY).catch(() => {});
+  AsyncStorage.removeItem(BADGE_CACHE_KEY).catch((e) => {
+    if (__DEV__) console.warn('[Badges] Cache clear failed:', e);
+  });
 }

@@ -5,7 +5,7 @@
 // All contexts use the same /otp/verify, /otp/resend, /otp/voice endpoints.
 // =============================================================================
 
-import { SITE_URL } from '@/constants/config';
+import { TBC_CA_URL } from '@/constants/config';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -26,12 +26,6 @@ export interface OtpResponse {
 }
 
 // -----------------------------------------------------------------------------
-// Base URL for TBC-CA plugin
-// -----------------------------------------------------------------------------
-
-const TBC_CA_BASE = `${SITE_URL}/wp-json/tbc-ca/v1`;
-
-// -----------------------------------------------------------------------------
 // Helper: Public request to TBC-CA OTP endpoints
 // -----------------------------------------------------------------------------
 
@@ -40,7 +34,7 @@ async function otpRequest<T>(
   body: Record<string, any>
 ): Promise<{ success: true; data: T } | { success: false; error: string }> {
   try {
-    const response = await fetch(`${TBC_CA_BASE}${endpoint}`, {
+    const response = await fetch(`${TBC_CA_URL}${endpoint}`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -60,7 +54,7 @@ async function otpRequest<T>(
 
     return { success: true, data };
   } catch (error) {
-    console.error('[OTP API Error]', error);
+    if (__DEV__) console.error('[OTP API Error]', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Network request failed',

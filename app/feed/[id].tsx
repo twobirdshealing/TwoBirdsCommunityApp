@@ -8,21 +8,18 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
-  Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { FeedCard } from '@/components/feed/FeedCard';
+import { LoadingSpinner, ErrorMessage } from '@/components/common';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { CreatePostModal, ComposerSubmitData } from '@/components/composer';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, sizing, typography } from '@/constants/layout';
+import { spacing } from '@/constants/layout';
 import { Feed } from '@/types';
 import { feedsApi } from '@/services/api';
 import { useFeedReactions } from '@/hooks';
@@ -94,7 +91,7 @@ export default function SinglePostScreen() {
       await feedsApi.toggleBookmark(feed.id, !isBookmarked);
       setFeed({ ...feed, bookmarked: isBookmarked });
     } catch (err) {
-      console.error('Failed to bookmark:', err);
+      if (__DEV__) console.error('Failed to bookmark:', err);
     }
   };
 
@@ -135,13 +132,14 @@ export default function SinglePostScreen() {
         media_images: data.media_images,
       });
 
-      if (response.success && response.data?.feed) {
-        setFeed(response.data.feed);
-      } else {
+      if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update post');
       }
+      if (response.data?.feed) {
+        setFeed(response.data.feed);
+      }
     } catch (err) {
-      console.error('Edit post error:', err);
+      if (__DEV__) console.error('Edit post error:', err);
       throw new Error(err instanceof Error ? err.message : 'Failed to update post');
     }
   };
@@ -156,24 +154,18 @@ export default function SinglePostScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: themeColors.background }]}>
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         <Stack.Screen options={{ title: 'Post', headerStyle: { backgroundColor: themeColors.surface }, headerTintColor: themeColors.text }} />
-        <ActivityIndicator size="large" color={themeColors.primary} />
+        <LoadingSpinner />
       </View>
     );
   }
 
   if (error || !feed) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: themeColors.background }]}>
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         <Stack.Screen options={{ title: 'Post', headerStyle: { backgroundColor: themeColors.surface }, headerTintColor: themeColors.text }} />
-        <Ionicons name="alert-circle-outline" size={48} color={themeColors.textTertiary} />
-        <Text style={[styles.errorText, { color: themeColors.textSecondary }]}>
-          {error || 'Post not found'}
-        </Text>
-        <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: themeColors.primary }]}>
-          <Text style={[styles.backButtonText, { color: themeColors.textInverse }]}>Go Back</Text>
-        </TouchableOpacity>
+        <ErrorMessage message={error || 'Post not found'} onRetry={fetchFeed} />
       </View>
     );
   }
@@ -230,7 +222,7 @@ export default function SinglePostScreen() {
       {/* ===== Comment Sheet ===== */}
       <CommentSheet
         visible={showComments}
-        feedId={feed.id}
+        postId={feed.id}
         onClose={() => setShowComments(false)}
         onCommentAdded={handleCommentAdded}
       />
@@ -247,33 +239,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
   scrollView: {
     flex: 1,
   },
 
   scrollContent: {
     paddingVertical: spacing.md,
-  },
-
-  errorText: {
-    fontSize: typography.size.md,
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
-  },
-
-  backButton: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    borderRadius: sizing.borderRadius.md,
-  },
-
-  backButtonText: {
-    fontSize: typography.size.md,
-    fontWeight: '600',
   },
 });

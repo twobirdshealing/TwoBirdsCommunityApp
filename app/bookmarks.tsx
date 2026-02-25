@@ -1,8 +1,6 @@
 // =============================================================================
 // BOOKMARKS SCREEN - Shows user's saved posts
 // =============================================================================
-// DEBUG VERSION - Added logging to trace 401 issue
-// =============================================================================
 
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { FeedList } from '@/components/feed/FeedList';
@@ -58,24 +56,13 @@ export default function BookmarksScreen() {
         setError(null);
       }
       
-      console.log('[BOOKMARKS DEBUG] Starting fetchBookmarks...');
-      
       const response = await feedsApi.getBookmarks();
-      
-      // DEBUG: Log full response
-      console.log('[BOOKMARKS DEBUG] Full response:', JSON.stringify(response, null, 2).substring(0, 1500));
-      console.log('[BOOKMARKS DEBUG] response.success:', response.success);
-      
+
       // FIXED: Check for failure first to properly narrow the discriminated union
       if (!response.success) {
-        console.log('[BOOKMARKS DEBUG] Response NOT successful');
-        console.log('[BOOKMARKS DEBUG] Error:', response.error);
         setError(response.error?.message || 'Failed to load bookmarks');
         return;
       }
-      
-      // Now TypeScript knows response.success === true, so response.data exists
-      console.log('[BOOKMARKS DEBUG] Response data keys:', Object.keys(response.data));
       
       // Bookmarks API might return different formats
       let bookmarkData: any[] = [];
@@ -90,10 +77,7 @@ export default function BookmarksScreen() {
         bookmarkData = response.data.feeds.data;
       }
       
-      console.log('[BOOKMARKS DEBUG] Extracted data count:', bookmarkData.length);
-      
       if (!Array.isArray(bookmarkData)) {
-        console.warn('[BOOKMARKS DEBUG] bookmarkData is not an array:', typeof bookmarkData);
         setFeeds([]);
         return;
       }
@@ -104,10 +88,9 @@ export default function BookmarksScreen() {
         return { ...feed, bookmarked: true };
       });
       
-      console.log('[BOOKMARKS DEBUG] Final feed count:', feedList.length);
       setFeeds(feedList);
     } catch (err) {
-      console.error('[BOOKMARKS DEBUG] CAUGHT ERROR:', err);
+      if (__DEV__) console.error('[Bookmarks] Error:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
@@ -179,7 +162,7 @@ export default function BookmarksScreen() {
         );
       }
     } catch (err) {
-      console.error('Bookmark error:', err);
+      if (__DEV__) console.error('Bookmark error:', err);
       Alert.alert('Error', 'Failed to update bookmark');
     }
   };
@@ -214,7 +197,7 @@ export default function BookmarksScreen() {
         throw new Error(!response.success ? response.error.message : 'Failed to update post');
       }
     } catch (err) {
-      console.error('Edit post error:', err);
+      if (__DEV__) console.error('Edit post error:', err);
       throw new Error(err instanceof Error ? err.message : 'Failed to update post');
     }
   };
@@ -230,7 +213,7 @@ export default function BookmarksScreen() {
         Alert.alert('Error', response.error?.message || 'Failed to delete post');
       }
     } catch (err) {
-      console.error('Delete error:', err);
+      if (__DEV__) console.error('Delete error:', err);
       Alert.alert('Error', 'Failed to delete post');
     }
   };
@@ -296,7 +279,7 @@ export default function BookmarksScreen() {
         {/* Comment Sheet */}
         <CommentSheet
           visible={showComments}
-          feedId={selectedFeedId}
+          postId={selectedFeedId}
           feedSlug={selectedFeedSlug}
           onClose={handleCloseComments}
           onCommentAdded={handleCommentAdded}
