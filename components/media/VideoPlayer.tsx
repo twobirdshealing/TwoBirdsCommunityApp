@@ -60,9 +60,9 @@ export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps)
   const { status } = useEvent(player, 'statusChange', { status: player.status });
 
   // Track time updates for progress bar
-  useEventListener(player, 'timeUpdate', ({ currentTime: ct, duration: dur }) => {
+  useEventListener(player, 'timeUpdate', ({ currentTime: ct }) => {
     setCurrentTime(ct);
-    if (dur > 0) setDuration(dur);
+    if (player.duration > 0) setDuration(player.duration);
   });
 
   // Handle play-to-end

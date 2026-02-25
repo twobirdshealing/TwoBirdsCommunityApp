@@ -53,7 +53,7 @@ export function HeaderIconButton({
       
       {showBadge && (
         <View style={[styles.badge, { backgroundColor: themeColors.error, borderColor: themeColors.surface }]}>
-          <Text style={[styles.badgeText, { color: themeColors.textInverse }]}>{displayCount}</Text>
+          <Text style={[styles.badgeText, { color: '#fff' }]}>{displayCount}</Text>
         </View>
       )}
     </Pressable>
