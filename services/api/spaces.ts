@@ -78,20 +78,6 @@ export async function getSpaceGroups(options: { with_spaces?: boolean; include_e
 }
 
 // -----------------------------------------------------------------------------
-// Discover Public Spaces
-// -----------------------------------------------------------------------------
-
-export async function discoverSpaces(options: { search?: string; page?: number; per_page?: number } = {}) {
-  const params = {
-    page: options.page || 1,
-    per_page: options.per_page || DEFAULT_PER_PAGE,
-    ...(options.search && { search: options.search }),
-  };
-  
-  return get<SpacesResponse>(`${ENDPOINTS.SPACES}/discover`, params);
-}
-
-// -----------------------------------------------------------------------------
 // Join a Space
 // -----------------------------------------------------------------------------
 
@@ -135,7 +121,6 @@ export const spacesApi = {
   getSpaceBySlug,
   getSpaceById,
   getSpaceGroups,
-  discoverSpaces,
   joinSpace,
   leaveSpace,
   getSpaceMembers,

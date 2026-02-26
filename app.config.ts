@@ -71,6 +71,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ],
       'expo-font',
       [
+        'expo-audio',
+        {
+          microphonePermission: false,
+        },
+      ],
+      [
         'expo-image-picker',
         {
           cameraPermission:

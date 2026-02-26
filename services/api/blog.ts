@@ -11,7 +11,6 @@ import {
   WPComment,
   WPPostsResponse,
   WPCommentsResponse,
-  WPCategory,
   CreateWPCommentData,
 } from '@/types/blog';
 import { request, type ApiResponseWithHeaders } from './client';
@@ -113,21 +112,6 @@ export async function getBlogPostBySlug(
     };
   }
   return { success: true, data: result.data[0] };
-}
-
-// -----------------------------------------------------------------------------
-// Get Categories
-// -----------------------------------------------------------------------------
-
-export async function getBlogCategories(): Promise<
-  { success: true; data: WPCategory[] } | WPRequestError
-> {
-  const result = await wpRequest<WPCategory[]>(WP_ENDPOINTS.CATEGORIES, {
-    params: { per_page: 100, hide_empty: true },
-  });
-
-  if (!result.success) return result;
-  return { success: true, data: result.data };
 }
 
 // -----------------------------------------------------------------------------
@@ -242,7 +226,6 @@ export const blogApi = {
   getBlogPosts,
   getBlogPost,
   getBlogPostBySlug,
-  getBlogCategories,
   getBlogComments,
   createBlogComment,
   updateBlogComment,

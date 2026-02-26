@@ -17,6 +17,7 @@ import {
   MediaCarousel,
   EventsWidget,
   CoursesWidget,
+  BookClubWidget,
 } from '@/components/home';
 
 // -----------------------------------------------------------------------------
@@ -72,6 +73,17 @@ export default function HomeScreen() {
             onSeeAll={() => router.push('/courses')}
           >
             <CoursesWidget refreshKey={refreshKey} />
+          </HomeWidget>
+        )}
+
+        {/* Book Club — only shows for Book Club space members */}
+        {FEATURES.BOOK_CLUB && (
+          <HomeWidget
+            title="Book Club"
+            icon="book-outline"
+            onSeeAll={() => router.push('/bookclub' as any)}
+          >
+            <BookClubWidget refreshKey={refreshKey} />
           </HomeWidget>
         )}
 

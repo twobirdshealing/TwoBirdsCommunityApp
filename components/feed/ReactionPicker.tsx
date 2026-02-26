@@ -1,14 +1,15 @@
 // =============================================================================
-// REACTION PICKER - Bottom sheet emoji picker for multi-reactions
+// REACTION PICKER - Popover emoji picker for multi-reactions
 // =============================================================================
-// Shows on long-press of the reaction button. Uses BottomSheet for consistent
-// appearance with all other popups. Wraps into multiple rows if many reactions.
+// Shows on long-press of the reaction button. Appears as a compact horizontal
+// pill near the press location using Modal + measureInWindow positioning.
 // =============================================================================
 
 import React from 'react';
 import {
+  Dimensions,
+  Modal,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -16,9 +17,21 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useReactionConfig } from '@/hooks';
 import { ReactionIcon } from './ReactionIcon';
 import { ReactionType } from '@/types/feed';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, sizing, shadows } from '@/constants/layout';
 import { hapticLight } from '@/utils/haptics';
-import { BottomSheet } from '@/components/common/BottomSheet';
+
+// -----------------------------------------------------------------------------
+// Constants
+// -----------------------------------------------------------------------------
+
+const EMOJI_SIZE = 42;
+const EMOJI_BUTTON_SIZE = 54;
+const EMOJI_GAP = 4;             // Gap between emoji buttons (matches web)
+const PICKER_VERTICAL_PAD = spacing.sm;
+const PICKER_HORIZONTAL_PAD = spacing.sm;
+const PICKER_GAP = 8;            // Gap between popover and trigger button
+const SCREEN_EDGE_PADDING = 12;  // Min distance from screen edge
+const BUTTON_HEIGHT_APPROX = 44; // Approx trigger button height for flip fallback
 
 // -----------------------------------------------------------------------------
 // Props
@@ -29,6 +42,7 @@ interface ReactionPickerProps {
   onSelect: (type: ReactionType) => void;
   onClose: () => void;
   currentType?: ReactionType | null;
+  anchor?: { top: number; left: number };
 }
 
 // -----------------------------------------------------------------------------
@@ -40,47 +54,81 @@ export function ReactionPicker({
   onSelect,
   onClose,
   currentType,
+  anchor,
 }: ReactionPickerProps) {
   const { colors: themeColors } = useTheme();
   const { reactions } = useReactionConfig();
 
+  // Calculate popover position
+  const screenWidth = Dimensions.get('window').width;
+  const screenHeight = Dimensions.get('window').height;
+  const pickerWidth = reactions.length * EMOJI_BUTTON_SIZE + (reactions.length - 1) * EMOJI_GAP + PICKER_HORIZONTAL_PAD * 2;
+  const pickerHeight = EMOJI_BUTTON_SIZE + PICKER_VERTICAL_PAD * 2;
+
+  let left: number;
+  let top: number;
+
+  if (anchor) {
+    // Center horizontally on the button
+    left = anchor.left - pickerWidth / 2;
+    // Position above the button
+    top = anchor.top - pickerHeight - PICKER_GAP;
+  } else {
+    // Fallback: center on screen
+    left = (screenWidth - pickerWidth) / 2;
+    top = screenHeight * 0.5;
+  }
+
+  // Clamp horizontal to screen edges
+  left = Math.max(SCREEN_EDGE_PADDING, Math.min(left, screenWidth - pickerWidth - SCREEN_EDGE_PADDING));
+
+  // If too close to top, flip below the button
+  if (top < SCREEN_EDGE_PADDING && anchor) {
+    top = anchor.top + BUTTON_HEIGHT_APPROX + PICKER_GAP;
+  }
+
   return (
-    <BottomSheet
-      visible={visible}
-      onClose={onClose}
-      title="Reactions"
-    >
-      <View style={styles.picker}>
-        {reactions.map((r) => {
-          const isActive = currentType === r.id;
-          return (
-            <TouchableOpacity
-              key={r.id}
-              style={[
-                styles.emojiButton,
-                isActive && [styles.emojiButtonActive, { backgroundColor: (r.color || '#1877F2') + '20' }],
-              ]}
-              onPress={() => {
-                hapticLight();
-                onSelect(r.id as ReactionType);
-                onClose();
-              }}
-              activeOpacity={0.7}
-            >
-              <ReactionIcon iconUrl={r.icon_url} emoji={r.emoji} size={35} />
-              <Text
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity
+        style={styles.backdrop}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <View
+          style={[
+            styles.pickerContainer,
+            {
+              backgroundColor: themeColors.surface,
+              borderColor: themeColors.border,
+              top,
+              left,
+            },
+            shadows.lg,
+          ]}
+        >
+          {reactions.map((r) => {
+            const isActive = currentType === r.id;
+            return (
+              <TouchableOpacity
+                key={r.id}
                 style={[
-                  styles.emojiLabel,
-                  { color: isActive ? (r.color || '#1877F2') : themeColors.textTertiary },
+                  styles.emojiButton,
+                  isActive && { backgroundColor: (r.color || '#1877F2') + '20' },
                 ]}
+                onPress={() => {
+                  hapticLight();
+                  onSelect(r.id as ReactionType);
+                  onClose();
+                }}
+                activeOpacity={0.7}
               >
-                {r.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </BottomSheet>
+                <ReactionIcon iconUrl={r.icon_url} emoji={r.emoji} size={EMOJI_SIZE} />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 }
 
@@ -89,28 +137,25 @@ export function ReactionPicker({
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  picker: {
+  backdrop: {
+    flex: 1,
+  },
+  pickerContainer: {
+    position: 'absolute',
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: 50,
-    paddingBottom: spacing.md,
-    gap: spacing.sm,
+    alignItems: 'center',
+    paddingHorizontal: PICKER_HORIZONTAL_PAD,
+    paddingVertical: PICKER_VERTICAL_PAD,
+    borderRadius: sizing.borderRadius.sm,
+    borderWidth: 1,
+    gap: EMOJI_GAP,
   },
   emojiButton: {
+    width: EMOJI_BUTTON_SIZE,
+    height: EMOJI_BUTTON_SIZE,
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 16,
-  },
-  emojiButtonActive: {
-    borderRadius: 16,
-  },
-  emojiLabel: {
-    fontSize: typography.size.xs,
-    fontWeight: '500',
-    marginTop: 2,
+    justifyContent: 'center',
+    borderRadius: sizing.borderRadius.xs,
   },
 });
 

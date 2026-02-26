@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { ENDPOINTS } from '@/constants/config';
-import { Comment, Feed, Profile, Space, XProfile } from '@/types';
+import { Feed, Profile, Space, XProfile } from '@/types';
 import { get, post, put } from './client';
 
 // -----------------------------------------------------------------------------
@@ -31,17 +31,6 @@ export async function getUserFeeds(username: string, page: number = 1, perPage: 
 
 export async function getUserSpaces(username: string) {
   return get<{ spaces: Space[] }>(`${ENDPOINTS.PROFILE(username)}/spaces`);
-}
-
-// -----------------------------------------------------------------------------
-// Get User's Comments
-// -----------------------------------------------------------------------------
-
-export async function getUserComments(username: string, page: number = 1, perPage: number = 10) {
-  return get<{ comments: { data: Comment[]; has_more: boolean } }>(
-    `${ENDPOINTS.PROFILE(username)}/comments`,
-    { page, per_page: perPage }
-  );
 }
 
 // -----------------------------------------------------------------------------
@@ -139,7 +128,6 @@ export const profilesApi = {
   patchProfileMedia,
   getUserFeeds,
   getUserSpaces,
-  getUserComments,
   followUser,
   unfollowUser,
   getFollowers,

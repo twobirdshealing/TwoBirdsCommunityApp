@@ -254,3 +254,4 @@ export function getLastMessage(thread: ChatThread): ChatMessage | null {
 
   return thread.messages[thread.messages.length - 1];
 }
+

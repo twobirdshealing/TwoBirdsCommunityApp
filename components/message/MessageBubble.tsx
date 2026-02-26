@@ -14,7 +14,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { ChatMessage, getMessageText, getMessagePreview } from '@/types/message';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef } from 'react';
-import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Swipeable } from 'react-native-gesture-handler';
 
 // -----------------------------------------------------------------------------
@@ -167,7 +168,8 @@ export function MessageBubble({
                   styles.attachmentImage,
                   images.length === 1 && styles.attachmentImageSingle,
                 ]}
-                resizeMode="cover"
+                contentFit="cover"
+                transition={200}
               />
             ))}
           </View>

@@ -10,7 +10,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { spacing } from '@/constants/layout';
 import { Feed, ReactionType } from '@/types';
 import React from 'react';
-import { FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
+import { RefreshControl, StyleSheet, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { FeedCard } from './FeedCard';
 
 // -----------------------------------------------------------------------------
@@ -119,7 +120,7 @@ export function FeedList({
   };
 
   return (
-    <FlatList
+    <FlashList
       data={feeds}
       keyExtractor={(item) => item.id.toString()}
       renderItem={renderItem}
@@ -138,11 +139,6 @@ export function FeedList({
       }
       onEndReached={onLoadMore}
       onEndReachedThreshold={0.5}
-      // Performance optimizations
-      removeClippedSubviews={Platform.OS === 'android'}
-      maxToRenderPerBatch={10}
-      windowSize={10}
-      initialNumToRender={5}
     />
   );
 }

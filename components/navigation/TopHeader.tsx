@@ -14,7 +14,8 @@ import { Profile } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, AppState, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { useNewMessageListener } from '@/contexts/PusherContext';
@@ -235,7 +236,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             <Image
               source={require('@/assets/images/logo.png')}
               style={styles.logo}
-              resizeMode="contain"
+              contentFit="contain"
             />
           ) : title ? (
             <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>
@@ -280,7 +281,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             accessibilityLabel="Open menu"
           >
             {avatar ? (
-              <Image source={{ uri: avatar }} style={[styles.avatar, { backgroundColor: themeColors.skeleton }]} />
+              <Image source={{ uri: avatar }} style={[styles.avatar, { backgroundColor: themeColors.skeleton }]} contentFit="cover" transition={200} />
             ) : (
               <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
                 <Text style={[styles.avatarText, { color: themeColors.textInverse }]}>

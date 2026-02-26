@@ -184,13 +184,6 @@ export async function unregisterDeviceToken(authToken: string): Promise<void> {
 // -----------------------------------------------------------------------------
 
 /**
- * Get the stored push token (if any)
- */
-export function getStoredPushToken(): string | null {
-  return storedPushToken;
-}
-
-/**
  * Check if push notifications are available
  */
 export function isPushAvailable(): boolean {
@@ -252,7 +245,6 @@ export const pushService = {
   registerForPushNotifications,
   registerDeviceToken,
   unregisterDeviceToken,
-  getStoredPushToken,
   isPushAvailable,
   getPushPermissionStatus,
   syncBadgeCount,

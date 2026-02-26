@@ -4,7 +4,8 @@
 // Shows: title, description, privacy icon, members count, role badge
 // =============================================================================
 
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -49,7 +50,7 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, { backgroundColor: themeColors.surface }, pressed && styles.cardPressed]}>
       {/* Cover Photo or Gradient Fallback */}
       {hasCoverPhoto ? (
-        <Image source={{ uri: space.cover_photo ?? undefined }} style={[styles.cover, { backgroundColor: themeColors.skeleton }]} resizeMode="cover" />
+        <Image source={{ uri: space.cover_photo ?? undefined }} style={[styles.cover, { backgroundColor: themeColors.skeleton }]} contentFit="cover" transition={200} />
       ) : (
         <LinearGradient
           colors={['#6366f1', '#8b5cf6', '#d946ef']}
@@ -65,7 +66,7 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
 
       {/* Logo Overlay (if exists and has cover photo) */}
       {space.logo && hasCoverPhoto && (
-        <Image source={{ uri: space.logo }} style={[styles.logo, { borderColor: themeColors.surface, backgroundColor: themeColors.surface }]} resizeMode="cover" />
+        <Image source={{ uri: space.logo }} style={[styles.logo, { borderColor: themeColors.surface, backgroundColor: themeColors.surface }]} contentFit="cover" transition={200} />
       )}
 
       {/* Emoji Badge (if exists and has cover photo) */}

@@ -22,6 +22,7 @@ export * from './blog';
 export * from './socialProviders';
 export * from './courses';
 export * from './youtube';
+export * from './bookclub';
 
 // Also export the api objects for convenience
 export { appApi } from './app';
@@ -40,3 +41,4 @@ export { default as spacesApi } from './spaces';
 export { default as blogApi } from './blog';
 export { default as coursesApi } from './courses';
 export { default as youtubeApi } from './youtube';
+export { default as bookclubApi } from './bookclub';

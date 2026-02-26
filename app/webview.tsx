@@ -59,6 +59,7 @@ export default function WebViewScreen() {
     title?: string;
     rightIcon?: string;   // Ionicons name (e.g., 'cart-outline')
     rightAction?: string; // Action type (e.g., 'cart')
+    noAuth?: string;      // Skip session creation, load URL directly (for public pages)
   }>();
 
   // Cast rightIcon to Ionicons type (validated at render time)
@@ -116,6 +117,14 @@ export default function WebViewScreen() {
         return;
       }
 
+      // Public pages (e.g., privacy policy) don't need authentication
+      if (params.noAuth) {
+        if (__DEV__) console.log('[WebView] Loading public URL (noAuth):', url);
+        setSessionUrl(url);
+        setLoading(false);
+        return;
+      }
+
       try {
         if (__DEV__) console.log('[WebView] Creating session...');
         const response = await appApi.createWebSession(url);
@@ -137,7 +146,7 @@ export default function WebViewScreen() {
     };
 
     initSession();
-  }, [params.url]);
+  }, [params.url, params.noAuth]);
 
   // ---------------------------------------------------------------------------
   // Handlers

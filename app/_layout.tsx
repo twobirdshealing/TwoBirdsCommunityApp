@@ -8,6 +8,7 @@
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { FEATURES } from '@/constants/config';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { AudioPlayerProvider } from '@/contexts/AudioPlayerContext';
 import { PusherProvider } from '@/contexts/PusherContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -38,6 +39,7 @@ const VALID_ROUTE_PREFIXES = [
   '/bookmarks',
   '/notification-settings',
   '/webview',
+  '/bookclub',
 ];
 
 /** Validate that a push notification route matches a known app route */
@@ -63,7 +65,7 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register' || segments[0] === 'forgot-password';
+    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register' || segments[0] === 'forgot-password' || segments[0] === 'webview';
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/login');
@@ -248,6 +250,16 @@ function RootLayoutNav() {
           options={{ presentation: 'card', headerShown: false }}
         />
 
+        {/* BOOK CLUB */}
+        <Stack.Screen
+          name="bookclub/index"
+          options={{ presentation: 'card', headerShown: false }}
+        />
+        <Stack.Screen
+          name="bookclub/[id]"
+          options={{ presentation: 'card', headerShown: false }}
+        />
+
         {/* WEBVIEW - for events, cart, etc */}
         <Stack.Screen
           name="webview"
@@ -273,11 +285,13 @@ export default function RootLayout() {
       <ErrorBoundary>
         <ThemeProvider>
           <AuthProvider>
-            <PusherProvider>
-              <BottomSheetModalProvider>
-                <RootLayoutNav />
-              </BottomSheetModalProvider>
-            </PusherProvider>
+            <AudioPlayerProvider>
+              <PusherProvider>
+                <BottomSheetModalProvider>
+                  <RootLayoutNav />
+                </BottomSheetModalProvider>
+              </PusherProvider>
+            </AudioPlayerProvider>
           </AuthProvider>
         </ThemeProvider>
       </ErrorBoundary>

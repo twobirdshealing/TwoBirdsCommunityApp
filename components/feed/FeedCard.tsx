@@ -148,7 +148,9 @@ export function FeedCard({
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | undefined>();
+  const [reactionAnchor, setReactionAnchor] = useState<{ top: number; left: number } | undefined>();
   const menuButtonRef = useRef<View>(null);
+  const reactionButtonRef = useRef<View>(null);
   const longPressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Extract data
@@ -494,6 +496,7 @@ export function FeedCard({
         <View style={styles.footerLeft}>
           {/* Reaction Button - tap for default like, long-press for picker */}
           <TouchableOpacity
+            ref={reactionButtonRef}
             style={[
               styles.footerButton,
               hasUserReact && [
@@ -511,7 +514,10 @@ export function FeedCard({
             }}
             onLongPress={() => {
               hapticMedium();
-              setShowReactionPicker(true);
+              (reactionButtonRef.current as any)?.measureInWindow?.((x: number, y: number, width: number, height: number) => {
+                setReactionAnchor({ top: y, left: x + width / 2 });
+                setShowReactionPicker(true);
+              });
             }}
             delayLongPress={400}
             activeOpacity={0.7}
@@ -582,6 +588,7 @@ export function FeedCard({
         onSelect={(type) => onReact?.(type)}
         onClose={() => setShowReactionPicker(false)}
         currentType={userReactionType}
+        anchor={reactionAnchor}
       />
 
       {/* ===== Reaction Breakdown Modal ===== */}

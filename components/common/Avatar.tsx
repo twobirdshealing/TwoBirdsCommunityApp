@@ -11,7 +11,8 @@
 // =============================================================================
 
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -84,6 +85,8 @@ export function Avatar({
         <Image
           source={{ uri: source }}
           style={[styles.image, containerStyle, { backgroundColor: themeColors.skeleton }]}
+          contentFit="cover"
+          transition={200}
         />
       ) : (
         <View style={[styles.placeholder, containerStyle, { backgroundColor: themeColors.primary }]}>

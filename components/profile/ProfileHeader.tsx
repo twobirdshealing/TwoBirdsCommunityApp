@@ -3,7 +3,8 @@
 // =============================================================================
 
 import React from 'react';
-import { Alert, View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { Alert, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { hapticLight } from '@/utils/haptics';
 import { spacing, typography } from '@/constants/layout';
@@ -77,7 +78,8 @@ export function ProfileHeader({
           <Image
             source={{ uri: coverPhoto }}
             style={styles.coverPhoto}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={200}
           />
         ) : (
           <View style={[styles.coverPhoto, styles.coverPlaceholder, { backgroundColor: themeColors.primary }]} />

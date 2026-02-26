@@ -9,6 +9,7 @@ export { ErrorMessage } from './ErrorMessage';
 export { EmptyState } from './EmptyState';
 export { BottomSheet } from './BottomSheet';
 export { DropdownMenu } from './DropdownMenu';
+export type { DropdownMenuItem } from './DropdownMenu';
 export { ProfileBadge } from './ProfileBadge';
 export { UserDisplayName } from './UserDisplayName';
 export { VerifiedBadge } from './VerifiedBadge';

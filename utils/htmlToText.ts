@@ -114,35 +114,6 @@ export function extractPreview(html: string | null | undefined, maxLength: numbe
 }
 
 // -----------------------------------------------------------------------------
-// Extract Mentions from Text (@username)
-// -----------------------------------------------------------------------------
-
-export function extractMentions(text: string): string[] {
-  const mentionRegex = /@([a-zA-Z0-9_]+)/g;
-  const matches = text.match(mentionRegex);
-  
-  if (!matches) return [];
-  
-  // Remove the @ symbol
-  return matches.map(m => m.substring(1));
-}
-
-// -----------------------------------------------------------------------------
-// Check if Content Has Media
-// -----------------------------------------------------------------------------
-
-export function hasMediaContent(html: string | null | undefined): boolean {
-  if (!html) return false;
-  
-  return (
-    /<img/i.test(html) ||
-    /<video/i.test(html) ||
-    /<iframe/i.test(html) ||
-    /<audio/i.test(html)
-  );
-}
-
-// -----------------------------------------------------------------------------
 // Default Export
 // -----------------------------------------------------------------------------
 
@@ -152,6 +123,4 @@ export default {
   decodeEntities: decodeHtmlEntities,
   truncate: truncateText,
   preview: extractPreview,
-  mentions: extractMentions,
-  hasMedia: hasMediaContent,
 };

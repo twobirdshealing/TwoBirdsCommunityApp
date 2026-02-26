@@ -7,3 +7,4 @@ export { WelcomeBannerWidget } from './WelcomeBannerWidget';
 export { MediaCarousel } from './MediaCarousel';
 export { EventsWidget } from './EventsWidget';
 export { CoursesWidget } from './CoursesWidget';
+export { BookClubWidget } from './BookClubWidget';

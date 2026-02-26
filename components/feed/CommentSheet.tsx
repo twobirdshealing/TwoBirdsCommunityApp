@@ -107,6 +107,8 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
 
   // Reaction picker state
   const [reactionPickerComment, setReactionPickerComment] = useState<Comment | null>(null);
+  const [reactionAnchor, setReactionAnchor] = useState<{ top: number; left: number } | undefined>();
+  const reactionButtonRefs = useRef<Record<number, View | null>>({});
   // Breakdown modal state
   const [breakdownComment, setBreakdownComment] = useState<Comment | null>(null);
   // Menu state
@@ -644,6 +646,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
 
                 return (
                   <TouchableOpacity
+                    ref={(el: any) => { reactionButtonRefs.current[item.id] = el; }}
                     style={[
                       styles.commentReactionButton,
                       hasReacted && { backgroundColor: reactionColor + '15' },
@@ -655,7 +658,15 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
                     }}
                     onLongPress={() => {
                       hapticMedium();
-                      setReactionPickerComment(item);
+                      const ref = reactionButtonRefs.current[item.id];
+                      if (ref) {
+                        (ref as any).measureInWindow?.((x: number, y: number, width: number, height: number) => {
+                          setReactionAnchor({ top: y, left: x + width / 2 });
+                          setReactionPickerComment(item);
+                        });
+                      } else {
+                        setReactionPickerComment(item);
+                      }
                     }}
                     delayLongPress={400}
                   >
@@ -904,6 +915,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
         }}
         onClose={() => setReactionPickerComment(null)}
         currentType={reactionPickerComment?.user_reaction_type || null}
+        anchor={reactionAnchor}
       />
 
       {/* Reaction Breakdown Modal for comments */}

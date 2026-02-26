@@ -117,27 +117,6 @@ export function formatFullDate(dateString: string): string {
 }
 
 // -----------------------------------------------------------------------------
-// Format as Date + Time ("Oct 27 at 3:45 PM")
-// -----------------------------------------------------------------------------
-
-export function formatDateTime(dateString: string): string {
-  const date = new Date(dateString);
-  
-  const datePart = date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  });
-  
-  const timePart = date.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-  
-  return `${datePart} at ${timePart}`;
-}
-
-// -----------------------------------------------------------------------------
 // Smart Format (relative if recent, date if older)
 // -----------------------------------------------------------------------------
 
@@ -160,14 +139,3 @@ export function formatSmartDate(dateString: string): string {
   return formatFullDate(dateString);
 }
 
-// -----------------------------------------------------------------------------
-// Default Export
-// -----------------------------------------------------------------------------
-
-export default {
-  relative: formatRelativeTime,
-  short: formatShortDate,
-  full: formatFullDate,
-  dateTime: formatDateTime,
-  smart: formatSmartDate,
-};

@@ -5,7 +5,8 @@
 // =============================================================================
 
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -38,7 +39,7 @@ export function CourseCard({ course, onPress }: CourseCardProps) {
       {/* Cover Photo or Gradient Fallback */}
       {hasCoverPhoto ? (
         <View style={styles.coverContainer}>
-          <Image source={{ uri: course.cover_photo! }} style={[styles.cover, { backgroundColor: themeColors.skeleton }]} resizeMode="cover" />
+          <Image source={{ uri: course.cover_photo! }} style={[styles.cover, { backgroundColor: themeColors.skeleton }]} contentFit="cover" transition={200} />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.3)']}
             style={styles.coverGradient}

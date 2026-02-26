@@ -16,14 +16,8 @@ export const hapticMedium = () => Haptics.impactAsync(Haptics.ImpactFeedbackStyl
 /** Major navigation: tab bar only */
 export const hapticHeavy = () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-/** Successful completion */
-export const hapticSuccess = () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
 /** Destructive actions: delete, logout */
 export const hapticWarning = () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-
-/** Error/failure feedback */
-export const hapticError = () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
 /** Checkboxes, radio buttons, select picker options */
 export const hapticSelection = () => Haptics.selectionAsync();

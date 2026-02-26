@@ -12,7 +12,6 @@ import {
   EventsResponse,
   GetEventsOptions,
   UserWaitlistResponse,
-  WaitlistActionResponse
 } from '@/types/calendar';
 
 // -----------------------------------------------------------------------------
@@ -61,36 +60,6 @@ export async function getUserWaitlist() {
 }
 
 // -----------------------------------------------------------------------------
-// Join Waitlist
-// -----------------------------------------------------------------------------
-
-export async function joinWaitlist(productId: number, eventDate: string) {
-  return request<WaitlistActionResponse>('/waitlist/join', {
-    method: 'POST',
-    body: {
-      product_id: productId,
-      event_date: eventDate,
-    },
-    baseUrl: CALENDAR_API_URL,
-  });
-}
-
-// -----------------------------------------------------------------------------
-// Leave Waitlist
-// -----------------------------------------------------------------------------
-
-export async function leaveWaitlist(productId: number, eventDate: string) {
-  return request<WaitlistActionResponse>('/waitlist/leave', {
-    method: 'POST',
-    body: {
-      product_id: productId,
-      event_date: eventDate,
-    },
-    baseUrl: CALENDAR_API_URL,
-  });
-}
-
-// -----------------------------------------------------------------------------
 // Export as object
 // -----------------------------------------------------------------------------
 
@@ -98,8 +67,6 @@ export const calendarApi = {
   getEvents,
   getFeaturedEvents,
   getUserWaitlist,
-  joinWaitlist,
-  leaveWaitlist,
 };
 
 export default calendarApi;

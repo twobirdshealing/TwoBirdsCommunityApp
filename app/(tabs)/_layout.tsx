@@ -14,6 +14,7 @@ import { hapticHeavy } from '@/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { TopHeader } from '@/components/navigation';
+import { MiniPlayer } from '@/components/bookclub';
 
 // -----------------------------------------------------------------------------
 // Tab Bar Icon Component
@@ -116,6 +117,7 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
         },
       ]}
     >
+      <MiniPlayer />
       <View style={styles.tabBarInner}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];

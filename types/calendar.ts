@@ -121,15 +121,6 @@ export interface UserWaitlistResponse {
   };
 }
 
-export interface WaitlistActionResponse {
-  success: boolean;
-  message: string;
-  data?: {
-    product_id: number;
-    event_date: string;
-  };
-}
-
 // -----------------------------------------------------------------------------
 // Request Options
 // -----------------------------------------------------------------------------

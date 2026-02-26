@@ -9,6 +9,7 @@ import { API_URL } from '@/constants/config';
 import { clearAuth, getAuthToken, silentRefresh } from '@/services/auth';
 import { ApiError } from '@/types/api';
 import { createLogger } from '@/utils/logger';
+import NetInfo from '@react-native-community/netinfo';
 
 const log = createLogger('API');
 
@@ -95,6 +96,23 @@ async function request<T>(
 
   const url = buildUrl(endpoint, params, baseUrl);
   log(`${method} ${url}`);
+
+  // Pre-flight connectivity check — fail fast instead of waiting for fetch timeout
+  try {
+    const netState = await NetInfo.fetch();
+    if (!netState.isConnected) {
+      return {
+        success: false,
+        error: {
+          code: 'network_error',
+          message: 'No internet connection',
+          data: { status: 0 },
+        },
+      };
+    }
+  } catch {
+    // NetInfo failed — proceed with fetch anyway (let fetch handle the error)
+  }
 
   try {
     const authHeader = await getAuthHeader();

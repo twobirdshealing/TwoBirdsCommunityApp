@@ -5,12 +5,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
-  Platform,
   RefreshControl,
   StyleSheet,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -165,7 +164,7 @@ export default function BlogListScreen() {
           <LoadingSpinner />
         ) : (
           /* Post List */
-          <FlatList
+          <FlashList
             data={posts}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
@@ -189,10 +188,6 @@ export default function BlogListScreen() {
             ListFooterComponent={renderFooter}
             ListEmptyComponent={renderEmpty}
             showsVerticalScrollIndicator={false}
-            removeClippedSubviews={Platform.OS === 'android'}
-            maxToRenderPerBatch={10}
-            windowSize={10}
-            initialNumToRender={5}
           />
         )}
       </View>

@@ -19,12 +19,3 @@ export function extractYouTubeId(url: string): string | null {
   return null;
 }
 
-/**
- * Get YouTube thumbnail URL for a video ID
- */
-export function getYouTubeThumbnail(
-  videoId: string,
-  quality: 'default' | 'hqdefault' | 'maxresdefault' = 'hqdefault'
-): string {
-  return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`;
-}

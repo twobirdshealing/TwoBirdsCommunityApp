@@ -101,6 +101,7 @@ export const FEATURES = {
   PUSH_NOTIFICATIONS: true, // TBC-CA plugin push notifications
   MESSAGING: true,         // Fluent Messaging enabled
   COURSES: true,           // Fluent LMS courses
+  BOOK_CLUB: true,         // TBC Book Club audiobook player
 };
 
 // -----------------------------------------------------------------------------
@@ -124,7 +125,6 @@ export const WP_REST_URL = `${SITE_URL}/wp-json/wp/v2`;
 export const WP_ENDPOINTS = {
   POSTS: '/posts',
   POST_BY_ID: (id: number) => `/posts/${id}`,
-  CATEGORIES: '/categories',
   COMMENTS: '/comments',
 };
 
