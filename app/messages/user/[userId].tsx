@@ -12,41 +12,31 @@
 import { Avatar } from '@/components/common/Avatar';
 import { DropdownMenu } from '@/components/common';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
-import { ChatInput, ChatInputAttachment, ChatInputReplyTo, DateSeparator, MessageBubble } from '@/components/message';
+import { ChatInput, DateSeparator, MessageBubble } from '@/components/message';
+import { MediaViewer } from '@/components/media';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNewMessageListener, useMessageDeletedListener, useReactionListener } from '@/contexts/PusherContext';
-import { messagesApi } from '@/services/api/messages';
+import { ReactionPicker } from '@/components/feed/ReactionPicker';
+import { useChatMessages } from '@/hooks/useChatMessages';
+import { useChatReactions } from '@/hooks/useChatReactions';
+import { useMessageMenu } from '@/hooks/useMessageMenu';
 import { isUserOnline, formatLastActivity } from '@/utils/formatDate';
-import { IntendedObject } from '@/types/message';
-import {
-  ChatMessage,
-  ChatThread,
-  ThreadDetails,
-  getMessagePreview,
-} from '@/types/message';
+import { ChatMessage, getMessagePreview } from '@/types/message';
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-// -----------------------------------------------------------------------------
-// Constants
-// -----------------------------------------------------------------------------
-
-const POLL_INTERVAL = 3000;
 
 // -----------------------------------------------------------------------------
 // Component
@@ -63,454 +53,56 @@ export default function UserChatScreen() {
   }>();
   const { user } = useAuth();
   const { colors: themeColors } = useTheme();
-
-  // State
-  const [thread, setThread] = useState<ChatThread | null>(null);
-  const [threadDetails, setThreadDetails] = useState<ThreadDetails | null>(null);
-  const [intendedUser, setIntendedUser] = useState<IntendedObject | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Cursor-based pagination state (v2.2.0)
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingOlder, setLoadingOlder] = useState(false);
-
-  // Block state
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [blockLoading, setBlockLoading] = useState(false);
-  const [chatMenuVisible, setChatMenuVisible] = useState(false);
-
-  // Reply state
-  const [replyTo, setReplyTo] = useState<ChatInputReplyTo | null>(null);
-
-  // Refs
-  const listRef = useRef<any>(null);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const lastMessageIdRef = useRef<number>(0);
-
   const targetUserId = parseInt(userId || '0', 10);
   const knownThreadId = threadIdParam ? parseInt(threadIdParam, 10) : null;
   const currentUserId = user?.id || 0;
 
-  // Header display: prefer threadDetails.info > intendedUser > route params
-  const headerName = threadDetails?.info?.title
-    || intendedUser?.title
+  // Refs
+  const listRef = useRef<any>(null);
+
+  // ---------------------------------------------------------------------------
+  // Hooks
+  // ---------------------------------------------------------------------------
+
+  const chat = useChatMessages({
+    targetUserId,
+    knownThreadId,
+    currentUserId,
+    listRef,
+  });
+
+  const reactions = useChatReactions({
+    currentUserId,
+    setMessages: chat.setMessages,
+  });
+
+  const menu = useMessageMenu({
+    messages: chat.messages,
+    listRef,
+  });
+
+  // Chat menu (settings gear) state
+  const [chatMenuVisible, setChatMenuVisible] = React.useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Header display: prefer threadDetails > intendedUser > route params
+  // ---------------------------------------------------------------------------
+
+  const headerName = chat.threadDetails?.info?.title
+    || chat.intendedUser?.title
     || displayName
     || 'Chat';
-  const headerAvatar = threadDetails?.info?.photo
-    || intendedUser?.photo
+  const headerAvatar = chat.threadDetails?.info?.photo
+    || chat.intendedUser?.photo
     || avatar
     || null;
-  const headerUsername = threadDetails?.info?.username;
-  const headerOnline = isUserOnline(threadDetails?.info?.last_activity);
-  const headerActivity = formatLastActivity(threadDetails?.info?.last_activity);
+  const headerUsername = chat.threadDetails?.info?.username;
+  const headerOnline = isUserOnline(chat.threadDetails?.info?.last_activity);
+  const headerActivity = formatLastActivity(chat.threadDetails?.info?.last_activity);
 
   // ---------------------------------------------------------------------------
-  // Resolve Thread - Server-side resolution via user_id param
+  // Navigation Handlers
   // ---------------------------------------------------------------------------
-
-  // Load messages for a known thread (direct access, like native chat?thread_id=X)
-  const loadThreadMessages = useCallback(async (threadId: number) => {
-    try {
-      setError(null);
-      const response = await messagesApi.getMessages(threadId);
-
-      if (response.success) {
-        // v2.2.0: messages is a flat array in descending order
-        const fetchedMessages = (response.data.messages || []).slice().reverse();
-        setMessages(fetchedMessages);
-        setHasMore(response.data.has_more || false);
-
-        // Set thread with known ID so polling + Pusher work
-        setThread({ id: threadId } as ChatThread);
-
-        // Store thread details for header display
-        if (response.data.threadDetails) {
-          setThreadDetails(response.data.threadDetails);
-          if (response.data.threadDetails.blocked_thread) {
-            setIsBlocked(true);
-          }
-        }
-
-        if (fetchedMessages.length > 0) {
-          const maxId = Math.max(...fetchedMessages.map(m => m.id));
-          lastMessageIdRef.current = maxId;
-        }
-      } else {
-        setError('Failed to load messages');
-      }
-
-      messagesApi.markThreadsRead([threadId]).catch((e) => {
-        if (__DEV__) console.warn('[UserChat] Mark read failed:', e);
-      });
-    } catch (err) {
-      if (__DEV__) console.error('[UserChat] Load error:', err);
-      setError('Failed to load conversation');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Resolve thread by userId via user_id query param (v2.2.0)
-  const resolveThreadByUser = useCallback(async () => {
-    if (!targetUserId) return;
-
-    try {
-      setError(null);
-      const response = await messagesApi.getThreadsForUser(targetUserId);
-
-      if (!response.success) {
-        setLoading(false);
-        return;
-      }
-
-      if (response.data.selected_thread) {
-        const selectedThread = response.data.selected_thread;
-        setThread(selectedThread);
-
-        const messagesResponse = await messagesApi.getMessages(selectedThread.id);
-
-        if (messagesResponse.success) {
-          // v2.2.0: flat array in descending order
-          const fetchedMessages = (messagesResponse.data.messages || []).slice().reverse();
-          setMessages(fetchedMessages);
-          setHasMore(messagesResponse.data.has_more || false);
-
-          // Store thread details for header
-          if (messagesResponse.data.threadDetails) {
-            setThreadDetails(messagesResponse.data.threadDetails);
-          }
-
-          if (fetchedMessages.length > 0) {
-            const maxId = Math.max(...fetchedMessages.map(m => m.id));
-            lastMessageIdRef.current = maxId;
-          }
-        }
-
-        messagesApi.markThreadsRead([selectedThread.id]).catch((e) => {
-          if (__DEV__) console.warn('[UserChat] Mark read failed:', e);
-        });
-      } else if (response.data.intended_object) {
-        // No thread yet — store intended user info for header display
-        setIntendedUser(response.data.intended_object);
-      }
-    } catch (err) {
-      if (__DEV__) console.error('[UserChat] Resolve error:', err);
-      setError('Failed to load conversation');
-    } finally {
-      setLoading(false);
-    }
-  }, [targetUserId]);
-
-  // Initial load — branch like native: thread_id (direct) vs user_id (resolve)
-  useEffect(() => {
-    if (knownThreadId) {
-      loadThreadMessages(knownThreadId);
-    } else {
-      resolveThreadByUser();
-    }
-  }, [knownThreadId, loadThreadMessages, resolveThreadByUser]);
-
-  // ---------------------------------------------------------------------------
-  // Poll for new messages (only when thread exists)
-  // ---------------------------------------------------------------------------
-
-  const pollNewMessages = useCallback(async () => {
-    if (!thread || lastMessageIdRef.current === 0) return;
-
-    try {
-      const response = await messagesApi.getNewMessages(thread.id, lastMessageIdRef.current);
-
-      if (response.success && response.data.messages?.length > 0) {
-        const newMessages = response.data.messages;
-
-        setMessages(prev => [...prev, ...newMessages]);
-
-        const maxId = Math.max(...newMessages.map(m => m.id));
-        lastMessageIdRef.current = maxId;
-
-        setTimeout(() => {
-          listRef.current?.scrollToEnd({ animated: true });
-        }, 100);
-      }
-    } catch (err) {
-      if (__DEV__) console.error('[UserChat] Poll error:', err);
-    }
-  }, [thread]);
-
-  useEffect(() => {
-    if (!thread) return;
-
-    pollIntervalRef.current = setInterval(() => {
-      pollNewMessages();
-    }, POLL_INTERVAL);
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
-  }, [pollNewMessages, thread]);
-
-  // ---------------------------------------------------------------------------
-  // Pusher Real-time Messages
-  // ---------------------------------------------------------------------------
-
-  useNewMessageListener((data) => {
-    const msgThreadId = data.thread_id || data.message.thread_id;
-    // Only add message if it's for this thread
-    if (thread && String(msgThreadId) === String(thread.id)) {
-      const newMessage: ChatMessage = data.message;
-
-      setMessages(prev => {
-        const exists = prev.some(m => m.id === newMessage.id);
-        if (exists) return prev;
-        return [...prev, newMessage];
-      });
-
-      lastMessageIdRef.current = Math.max(lastMessageIdRef.current, newMessage.id);
-
-      setTimeout(() => {
-        listRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
-  }, [thread]);
-
-  // Handle message deleted by other user (v2.2.0)
-  useMessageDeletedListener((data) => {
-    if (thread && String(data.thread_id) === String(thread.id)) {
-      setMessages(prev => prev.filter(m => m.id !== data.message_id));
-    }
-  }, [thread]);
-
-  // Handle reaction updates (v2.2.0 — prep for reaction UI)
-  useReactionListener((data) => {
-    if (thread && String(data.thread_id) === String(thread.id)) {
-      setMessages(prev => prev.map(m => {
-        if (m.id === data.message_id) {
-          return { ...m, meta: { ...m.meta, reactions: data.reactions } };
-        }
-        return m;
-      }));
-    }
-  }, [thread]);
-
-  // ---------------------------------------------------------------------------
-  // Load Older Messages (Cursor-based pagination v2.2.0)
-  // ---------------------------------------------------------------------------
-
-  const loadOlderMessages = useCallback(async () => {
-    if (loadingOlder || !hasMore || !thread || messages.length === 0) return;
-
-    setLoadingOlder(true);
-    try {
-      // messages[0] is the oldest after reversal — use its ID as cursor
-      const oldestId = messages[0].id;
-      const response = await messagesApi.getMessages(thread.id, oldestId);
-
-      if (response.success) {
-        const olderMessages = (response.data.messages || []).slice().reverse();
-        setMessages(prev => [...olderMessages, ...prev]);
-        setHasMore(response.data.has_more || false);
-      }
-    } catch (err) {
-      if (__DEV__) console.error('[UserChat] Load older error:', err);
-    } finally {
-      setLoadingOlder(false);
-    }
-  }, [loadingOlder, hasMore, thread, messages]);
-
-  // ---------------------------------------------------------------------------
-  // Delete Message
-  // ---------------------------------------------------------------------------
-
-  const handleDeleteMessage = useCallback(async (message: ChatMessage) => {
-    Alert.alert('Delete Message', 'Delete this message?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          const result = await messagesApi.deleteMessage(message.id);
-          if (result.success) {
-            setMessages(prev => prev.filter(m => m.id !== message.id));
-          } else {
-            Alert.alert('Error', 'Failed to delete message');
-          }
-        },
-      },
-    ]);
-  }, []);
-
-  // ---------------------------------------------------------------------------
-  // Long Press (Reply / Delete)
-  // ---------------------------------------------------------------------------
-
-  const handleLongPress = useCallback((message: ChatMessage) => {
-    const isOwn = Number(message.user_id) === currentUserId;
-    const options: { text: string; style?: 'cancel' | 'destructive'; onPress?: () => void }[] = [
-      {
-        text: 'Reply',
-        onPress: () => {
-          setReplyTo({
-            messageId: message.id,
-            previewText: getMessagePreview(message.text, 80),
-          });
-        },
-      },
-    ];
-
-    if (isOwn) {
-      options.push({
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => handleDeleteMessage(message),
-      });
-    }
-
-    options.push({ text: 'Cancel', style: 'cancel' });
-
-    Alert.alert('Message', undefined, options);
-  }, [currentUserId, handleDeleteMessage]);
-
-  // ---------------------------------------------------------------------------
-  // Block User (from chat)
-  // ---------------------------------------------------------------------------
-
-  const handleBlockPress = useCallback(() => {
-    if (!thread || blockLoading) return;
-
-    const action = isBlocked ? 'Unblock' : 'Block';
-    const message = isBlocked
-      ? `Are you sure you want to unblock ${headerName}?`
-      : 'Blocking this user will hide their posts from your feed and prevent them from interacting with you.';
-
-    Alert.alert(`${action} User`, message, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: action,
-        style: isBlocked ? 'default' : 'destructive',
-        onPress: async () => {
-          try {
-            setBlockLoading(true);
-
-            if (isBlocked) {
-              const result = await messagesApi.unblockThread(thread.id);
-              if (result.success) {
-                setIsBlocked(false);
-              } else {
-                Alert.alert('Error', 'Failed to unblock user');
-              }
-            } else {
-              const result = await messagesApi.blockThread(thread.id);
-              if (result.success) {
-                setIsBlocked(true);
-              } else {
-                Alert.alert('Error', 'Failed to block user');
-              }
-            }
-          } catch (err) {
-            if (__DEV__) console.error('[UserChat] Block error:', err);
-            Alert.alert('Error', `Failed to ${action.toLowerCase()} user`);
-          } finally {
-            setBlockLoading(false);
-          }
-        },
-      },
-    ]);
-  }, [thread, headerName, isBlocked, blockLoading]);
-
-  const handleUnblockPress = useCallback(async () => {
-    if (!thread || blockLoading) return;
-    try {
-      setBlockLoading(true);
-      const result = await messagesApi.unblockThread(thread.id);
-      if (result.success) {
-        setIsBlocked(false);
-      } else {
-        Alert.alert('Error', 'Failed to unblock user');
-      }
-    } catch (err) {
-      if (__DEV__) console.error('[UserChat] Unblock error:', err);
-      Alert.alert('Error', 'Failed to unblock user');
-    } finally {
-      setBlockLoading(false);
-    }
-  }, [thread, blockLoading]);
-
-  // ---------------------------------------------------------------------------
-  // Handlers
-  // ---------------------------------------------------------------------------
-
-  const handleSend = async (text: string, attachments?: ChatInputAttachment[]) => {
-    if (!targetUserId) return;
-
-    // Capture and clear reply before sending
-    const currentReply = replyTo;
-    setReplyTo(null);
-
-    setSending(true);
-
-    try {
-      if (thread) {
-        // Existing thread — send message normally
-        const replyData = currentReply
-          ? { reply_to: currentReply.messageId, reply_text: currentReply.previewText }
-          : undefined;
-        const response = await messagesApi.sendMessage(thread.id, text, attachments, replyData);
-
-        if (response.success && response.data.message) {
-          setMessages(prev => [...prev, response.data.message]);
-          lastMessageIdRef.current = response.data.message.id;
-
-          setTimeout(() => {
-            listRef.current?.scrollToEnd({ animated: true });
-          }, 100);
-        } else {
-          Alert.alert('Error', 'Failed to send message');
-        }
-      } else {
-        // No thread yet — create one with the first message
-        const response = await messagesApi.startChatWithUser(targetUserId, text);
-
-        if (response.success && response.data?.thread) {
-          const newThread = response.data.thread;
-          setThread(newThread);
-
-          // Load the messages for the newly created thread
-          const messagesResponse = await messagesApi.getMessages(newThread.id);
-          if (messagesResponse.success) {
-            // v2.2.0: flat array in descending order
-            const fetchedMessages = (messagesResponse.data.messages || []).slice().reverse();
-            setMessages(fetchedMessages);
-            setHasMore(messagesResponse.data.has_more || false);
-
-            if (messagesResponse.data.threadDetails) {
-              setThreadDetails(messagesResponse.data.threadDetails);
-            }
-
-            if (fetchedMessages.length > 0) {
-              const maxId = Math.max(...fetchedMessages.map(m => m.id));
-              lastMessageIdRef.current = maxId;
-            }
-          }
-
-          setTimeout(() => {
-            listRef.current?.scrollToEnd({ animated: true });
-          }, 100);
-        } else {
-          Alert.alert('Error', 'Failed to start conversation');
-        }
-      }
-    } catch (err) {
-      if (__DEV__) console.error('[UserChat] Send error:', err);
-      Alert.alert('Error', 'Failed to send message');
-    } finally {
-      setSending(false);
-    }
-  };
 
   const handleAvatarPress = (message: ChatMessage) => {
     const username = message.xprofile?.username;
@@ -553,7 +145,7 @@ export default function UserChatScreen() {
           </Text>
         ) : null}
       </View>
-      {loading && (
+      {chat.loading && (
         <ActivityIndicator size="small" color={themeColors.primary} style={styles.headerLoader} />
       )}
     </Pressable>
@@ -570,7 +162,7 @@ export default function UserChatScreen() {
   const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
     const isOwn = Number(item.user_id) === currentUserId;
 
-    const prevMessage = index > 0 ? messages[index - 1] : null;
+    const prevMessage = index > 0 ? chat.messages[index - 1] : null;
     const showDateSeparator = !prevMessage ||
       getMessageDate(item.created_at) !== getMessageDate(prevMessage.created_at);
 
@@ -578,7 +170,7 @@ export default function UserChatScreen() {
       Number(prevMessage.user_id) !== Number(item.user_id) ||
       getMessageDate(item.created_at) !== getMessageDate(prevMessage.created_at);
 
-    const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+    const nextMessage = index < chat.messages.length - 1 ? chat.messages[index + 1] : null;
     const isLastInGroup = !nextMessage ||
       Number(nextMessage.user_id) !== Number(item.user_id) ||
       getMessageDate(item.created_at) !== getMessageDate(nextMessage.created_at);
@@ -592,8 +184,16 @@ export default function UserChatScreen() {
           showAvatar={!isOwn && isFirstInGroup}
           showTimestamp={isLastInGroup}
           onAvatarPress={() => handleAvatarPress(item)}
-          onLongPress={handleLongPress}
-          onDelete={isOwn ? handleDeleteMessage : undefined}
+          onDelete={isOwn ? chat.handleDeleteMessage : undefined}
+          onDefaultReact={reactions.handleDefaultReact}
+          onReactionLongPress={reactions.handleReactionLongPress}
+          onReactionPress={reactions.handleReactionPillPress}
+          onMenuPress={menu.handleMenuPress}
+          onImagePress={menu.handleImagePress}
+          onReplyPress={menu.handleReplyQuotePress}
+          currentUserId={currentUserId}
+          userReactionRenderer={reactions.renderUserReactionIcon(item)}
+          reactionRenderer={reactions.renderReactionIcon}
         />
       </>
     );
@@ -623,6 +223,78 @@ export default function UserChatScreen() {
   // Main Render
   // ---------------------------------------------------------------------------
 
+  const chatAreaContent = (
+    <>
+      {chat.loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={themeColors.primary} />
+        </View>
+      ) : chat.messages.length === 0 ? (
+        renderEmptyCompose()
+      ) : (
+        <FlashList
+          ref={listRef}
+          data={chat.messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          ListHeaderComponent={
+            chat.loadingOlder ? (
+              <View style={styles.loadOlderContainer}>
+                <ActivityIndicator size="small" color={themeColors.primary} />
+              </View>
+            ) : chat.hasMore ? (
+              <Pressable style={styles.loadOlderContainer} onPress={chat.loadOlderMessages}>
+                <Text style={[styles.loadOlderText, { color: themeColors.primary }]}>
+                  Load earlier messages
+                </Text>
+              </Pressable>
+            ) : null
+          }
+          onLoad={() => {
+            listRef.current?.scrollToEnd({ animated: false });
+          }}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+        />
+      )}
+
+      {/* Blocked State or Input */}
+      {chat.isBlocked ? (
+        <View style={[styles.blockedContainer, { borderTopColor: themeColors.border }]}>
+          <Text style={[styles.blockedTitle, { color: themeColors.text }]}>
+            You blocked messages from {headerName}
+          </Text>
+          <Text style={[styles.blockedDescription, { color: themeColors.textSecondary }]}>
+            You can't send or receive messages in this chat unless you unblock the user.
+          </Text>
+          <Pressable
+            style={[styles.unblockButton, { borderColor: themeColors.border }]}
+            onPress={chat.handleUnblockPress}
+            disabled={chat.blockLoading}
+          >
+            {chat.blockLoading ? (
+              <ActivityIndicator size="small" color={themeColors.text} />
+            ) : (
+              <Text style={[styles.unblockButtonText, { color: themeColors.text }]}>
+                Unblock User
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      ) : (
+        <ChatInput
+          onSend={chat.handleSend}
+          sending={chat.sending}
+          disabled={chat.loading}
+          placeholder={chat.thread ? 'Type a message...' : `Message ${headerName}...`}
+          replyTo={chat.replyTo}
+          onCancelReply={() => chat.setReplyTo(null)}
+        />
+      )}
+    </>
+  );
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -651,78 +323,12 @@ export default function UserChatScreen() {
         <KeyboardAvoidingView
           style={styles.chatArea}
           behavior="padding"
-          keyboardVerticalOffset={insets.top + 52}
         >
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={themeColors.primary} />
-            </View>
-          ) : messages.length === 0 ? (
-            renderEmptyCompose()
-          ) : (
-            <FlashList
-              ref={listRef}
-              data={messages}
-              renderItem={renderMessage}
-              keyExtractor={(item) => item.id.toString()}
-              contentContainerStyle={styles.listContent}
-              ListHeaderComponent={
-                loadingOlder ? (
-                  <View style={styles.loadOlderContainer}>
-                    <ActivityIndicator size="small" color={themeColors.primary} />
-                  </View>
-                ) : hasMore ? (
-                  <Pressable style={styles.loadOlderContainer} onPress={loadOlderMessages}>
-                    <Text style={[styles.loadOlderText, { color: themeColors.primary }]}>
-                      Load earlier messages
-                    </Text>
-                  </Pressable>
-                ) : null
-              }
-              onLoad={() => {
-                listRef.current?.scrollToEnd({ animated: false });
-              }}
-              keyboardDismissMode="interactive"
-              keyboardShouldPersistTaps="handled"
-            />
-          )}
-
-          {/* Blocked State or Input */}
-          {isBlocked ? (
-            <View style={[styles.blockedContainer, { borderTopColor: themeColors.border, paddingBottom: insets.bottom }]}>
-              <Text style={[styles.blockedTitle, { color: themeColors.text }]}>
-                You blocked messages from {headerName}
-              </Text>
-              <Text style={[styles.blockedDescription, { color: themeColors.textSecondary }]}>
-                You can't send or receive messages in this chat unless you unblock the user.
-              </Text>
-              <Pressable
-                style={[styles.unblockButton, { borderColor: themeColors.border }]}
-                onPress={handleUnblockPress}
-                disabled={blockLoading}
-              >
-                {blockLoading ? (
-                  <ActivityIndicator size="small" color={themeColors.text} />
-                ) : (
-                  <Text style={[styles.unblockButtonText, { color: themeColors.text }]}>
-                    Unblock User
-                  </Text>
-                )}
-              </Pressable>
-            </View>
-          ) : (
-            <View style={{ paddingBottom: insets.bottom }}>
-              <ChatInput
-                onSend={handleSend}
-                sending={sending}
-                disabled={loading}
-                placeholder={thread ? 'Type a message...' : `Message ${headerName}...`}
-                replyTo={replyTo}
-                onCancelReply={() => setReplyTo(null)}
-              />
-            </View>
-          )}
+          {chatAreaContent}
         </KeyboardAvoidingView>
+
+        {/* Bottom safe area - outside KAV so keyboard calc is correct */}
+        <View style={{ height: insets.bottom, backgroundColor: themeColors.surface }} />
       </View>
 
       {/* Chat Menu Dropdown (block) */}
@@ -732,12 +338,67 @@ export default function UserChatScreen() {
         items={[
           {
             key: 'block',
-            label: isBlocked ? 'Unblock User' : 'Block User',
-            icon: isBlocked ? 'person-add-outline' : 'ban-outline',
-            onPress: () => { setChatMenuVisible(false); handleBlockPress(); },
-            destructive: !isBlocked,
+            label: chat.isBlocked ? 'Unblock User' : 'Block User',
+            icon: chat.isBlocked ? 'person-add-outline' : 'ban-outline',
+            onPress: () => { setChatMenuVisible(false); chat.handleBlockPress(headerName); },
+            destructive: !chat.isBlocked,
           },
         ] as DropdownMenuItem[]}
+      />
+
+      {/* Message Menu Dropdown (Reply / Delete) */}
+      <DropdownMenu
+        visible={menu.messageMenuVisible}
+        onClose={menu.closeMessageMenu}
+        anchor={menu.messageMenuAnchor}
+        items={[
+          {
+            key: 'reply',
+            label: 'Reply',
+            icon: 'arrow-undo-outline',
+            onPress: () => {
+              menu.closeMessageMenu();
+              if (menu.messageMenuTarget) {
+                chat.setReplyTo({
+                  messageId: menu.messageMenuTarget.id,
+                  previewText: getMessagePreview(menu.messageMenuTarget.text, 80),
+                });
+              }
+            },
+          },
+          ...(menu.messageMenuTarget && Number(menu.messageMenuTarget.user_id) === currentUserId
+            ? [{
+                key: 'delete',
+                label: 'Delete',
+                icon: 'trash-outline' as const,
+                destructive: true,
+                onPress: () => {
+                  const target = menu.messageMenuTarget;
+                  menu.closeMessageMenu();
+                  if (target) {
+                    chat.handleDeleteMessage(target);
+                  }
+                },
+              }]
+            : []),
+        ] as DropdownMenuItem[]}
+      />
+
+      {/* Reaction Picker for chat messages */}
+      <ReactionPicker
+        visible={reactions.reactionPickerVisible}
+        onSelect={reactions.handleReactionSelect}
+        onClose={reactions.handleReactionPickerClose}
+        currentType={reactions.reactionTargetMessageRef.current ? reactions.getUserReactionType(reactions.reactionTargetMessageRef.current) : null}
+        anchor={reactions.reactionPickerAnchor}
+      />
+
+      {/* Image Viewer */}
+      <MediaViewer
+        visible={menu.mediaViewerVisible}
+        images={menu.mediaViewerImages}
+        initialIndex={menu.mediaViewerIndex}
+        onClose={menu.closeMediaViewer}
       />
     </>
   );

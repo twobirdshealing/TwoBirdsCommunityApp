@@ -10,20 +10,17 @@ import { LoadingSpinner, ErrorMessage } from '@/components/common';
 import { PageHeader } from '@/components/navigation';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { FEATURES } from '@/constants/config';
-import { getPushSettings, updatePushSettings, PushPreference } from '@/services/api/push';
 import {
-  getEmailPrefs,
-  updateEmailPrefs,
-  EmailPrefsResponse,
-  EmailUserGlobals,
-} from '@/services/api/emailPrefs';
-import { isPushAvailable, getPushPermissionStatus, registerDeviceToken, type PushPermissionStatus } from '@/services/push';
-import { getAuthToken } from '@/services/auth';
+  ChannelType,
+  FREQUENCY_OPTIONS,
+  SPACE_PREF_OPTIONS,
+  SpacePrefValue,
+  UnifiedItem,
+} from '@/constants/notificationMap';
+import { useNotificationSettings } from '@/hooks/useNotificationSettings';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React from 'react';
 import {
   Linking,
   Pressable,
@@ -34,202 +31,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-// -----------------------------------------------------------------------------
-// Types
-// -----------------------------------------------------------------------------
-
-interface CategoryPreferences {
-  [category: string]: PushPreference[];
-}
-
-type ChannelType = 'push' | 'email';
-
-interface ChannelInfo {
-  type: ChannelType;
-  id: string;        // push pref id or email key
-  label: string;
-  enabled: boolean;
-}
-
-interface UnifiedItem {
-  key: string;
-  label: string;
-  description: string;
-  channels: ChannelInfo[];
-  note?: string;
-}
-
-interface UnifiedSection {
-  category: string;
-  title: string;
-  items: UnifiedItem[];
-}
-
-type SpacePrefValue = '' | 'admin_only_posts' | 'all_member_posts';
-
-// -----------------------------------------------------------------------------
-// Notification Mapping — links push type IDs to email pref keys
-// -----------------------------------------------------------------------------
-
-interface NotificationMapping {
-  key: string;
-  label: string;
-  description: string;
-  category: string;
-  pushIds?: string[];
-  pushLabels?: string[];
-  emailKey?: keyof EmailUserGlobals;
-  note?: string;
-}
-
-const NOTIFICATION_MAP: NotificationMapping[] = [
-  // Community — dual channel
-  {
-    key: 'comment_on_post',
-    label: 'Comment on Your Post',
-    description: 'When someone comments on your post',
-    category: 'community',
-    pushIds: ['comment_on_post'],
-    emailKey: 'com_my_post_mail',
-  },
-  {
-    key: 'reply_to_comment',
-    label: 'Reply to Your Comment',
-    description: 'When someone replies to your comment',
-    category: 'community',
-    pushIds: ['reply_to_comment'],
-    emailKey: 'reply_my_com_mail',
-  },
-  {
-    key: 'mentions',
-    label: 'Mentions',
-    description: 'When someone mentions you in a post or comment',
-    category: 'community',
-    pushIds: ['mentioned_in_comment', 'mentioned_in_post'],
-    pushLabels: ['In comments', 'In posts'],
-    emailKey: 'mention_mail',
-    note: 'Email setting also controls announcement emails',
-  },
-  // Community — push only
-  {
-    key: 'reactions',
-    label: 'Reactions',
-    description: 'When someone reacts to your posts or comments',
-    category: 'community',
-    pushIds: ['reaction_on_post', 'reaction_on_comment'],
-    pushLabels: ['On your posts', 'On your comments'],
-  },
-  {
-    key: 'comment_on_followed_post',
-    label: 'Comment on Followed Post',
-    description: 'When someone comments on a post you follow',
-    category: 'community',
-    pushIds: ['comment_on_followed_post'],
-  },
-  {
-    key: 'new_space_post',
-    label: 'New Post in Your Space',
-    description: 'When a new post is created in a space you belong to',
-    category: 'community',
-    pushIds: ['new_space_post'],
-  },
-  {
-    key: 'space_join',
-    label: 'Someone Joined Your Space',
-    description: 'When someone joins a space you moderate',
-    category: 'community',
-    pushIds: ['space_join'],
-  },
-  {
-    key: 'space_role_change',
-    label: 'Your Role Changed',
-    description: 'When your role is changed in a space',
-    category: 'community',
-    pushIds: ['space_role_change'],
-  },
-  {
-    key: 'invitation_received',
-    label: 'Invitation Received',
-    description: 'When you receive an invitation',
-    category: 'community',
-    pushIds: ['invitation_received'],
-  },
-  {
-    key: 'course_enrolled',
-    label: 'Course Enrollment',
-    description: 'When you are enrolled in a course',
-    category: 'community',
-    pushIds: ['course_enrolled'],
-  },
-  // Social — push only
-  {
-    key: 'friend_new_post',
-    label: 'Friend Posted',
-    description: 'When someone you follow creates a new post',
-    category: 'social',
-    pushIds: ['friend_new_post'],
-  },
-  {
-    key: 'new_follower',
-    label: 'New Follower',
-    description: 'When someone follows you',
-    category: 'social',
-    pushIds: ['new_follower'],
-  },
-  {
-    key: 'level_up',
-    label: 'You Leveled Up',
-    description: 'When you reach a new level',
-    category: 'social',
-    pushIds: ['level_up'],
-  },
-  {
-    key: 'points_earned',
-    label: 'Points Earned',
-    description: 'When you earn points',
-    category: 'social',
-    pushIds: ['points_earned'],
-  },
-  {
-    key: 'quiz_result',
-    label: 'Quiz Submitted',
-    description: 'When a quiz is submitted',
-    category: 'social',
-    pushIds: ['quiz_result'],
-  },
-  // Messaging — push only
-  {
-    key: 'new_direct_message',
-    label: 'Direct Messages',
-    description: 'When someone sends you a direct message',
-    category: 'messaging',
-    pushIds: ['new_direct_message'],
-  },
-];
-
-// Category display order and titles
-const CATEGORY_CONFIG: Record<string, string> = {
-  community: 'Community',
-  social: 'Social',
-  messaging: 'Messaging',
-};
-
-// Frequency options for DM emails
-const FREQUENCY_OPTIONS: { value: string; label: string }[] = [
-  { value: 'default', label: 'Default' },
-  { value: 'hourly', label: 'Hourly' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'disabled', label: 'Off' },
-];
-
-// Space email pref options
-const SPACE_PREF_OPTIONS: { value: SpacePrefValue; label: string }[] = [
-  { value: '', label: 'Off' },
-  { value: 'admin_only_posts', label: 'Admin Posts' },
-  { value: 'all_member_posts', label: 'All Posts' },
-];
 
 // =============================================================================
 // Sub-components
@@ -421,7 +222,6 @@ function SpaceEmailRow({ spaceTitle, value, onChange, disabled }: SpaceEmailRowP
   const currentLabel = SPACE_PREF_OPTIONS.find(o => o.value === value)?.label ?? 'Off';
   const isActive = value !== '';
 
-  // Cycle to next option on tap
   const handleCycle = () => {
     if (disabled) return;
     const currentIndex = SPACE_PREF_OPTIONS.findIndex(o => o.value === value);
@@ -474,454 +274,14 @@ export default function NotificationSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
-  const { user } = useAuth();
+
+  const settings = useNotificationSettings();
 
   // ---------------------------------------------------------------------------
-  // State
-  // ---------------------------------------------------------------------------
-
-  const [pushPrefs, setPushPrefs] = useState<CategoryPreferences>({});
-  const [emailPrefs, setEmailPrefs] = useState<EmailPrefsResponse | null>(null);
-  const emailPrefsRef = useRef<EmailPrefsResponse | null>(null);
-
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<{ push?: string; email?: string }>({});
-  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
-  const [pushPermission, setPushPermission] = useState<PushPermissionStatus>('undetermined');
-
-  // ---------------------------------------------------------------------------
-  // Feature Checks
-  // ---------------------------------------------------------------------------
-
-  const pushAvailable = isPushAvailable();
-  const pushEnabled = FEATURES.PUSH_NOTIFICATIONS;
-  const showPush = pushAvailable && pushEnabled && pushPermission === 'granted';
-
-  // ---------------------------------------------------------------------------
-  // Fetch Settings
-  // ---------------------------------------------------------------------------
-
-  const fetchSettings = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) setRefreshing(true);
-      setError({});
-
-      // Check OS-level push permission
-      const permStatus = await getPushPermissionStatus();
-      setPushPermission(permStatus);
-
-      const authToken = await getAuthToken();
-      if (!authToken || !user?.username) {
-        setError({ push: 'Not authenticated', email: 'Not authenticated' });
-        return;
-      }
-
-      // Fetch push settings if device is capable AND permission is granted
-      const canFetchPush = pushAvailable && pushEnabled && permStatus === 'granted';
-
-      // Fetch both APIs in parallel
-      const [pushResult, emailResult] = await Promise.all([
-        canFetchPush ? getPushSettings(authToken) : Promise.resolve(null),
-        getEmailPrefs(user.username),
-      ]);
-
-      const newError: { push?: string; email?: string } = {};
-
-      if (pushResult && pushResult.success && pushResult.data?.preferences) {
-        setPushPrefs(pushResult.data.preferences);
-      } else if (pushResult && !pushResult.success) {
-        newError.push = pushResult.error || 'Failed to load push settings';
-      }
-
-      if (emailResult.success && emailResult.data) {
-        setEmailPrefs(emailResult.data);
-        emailPrefsRef.current = emailResult.data;
-      } else if (!emailResult.success) {
-        newError.email = typeof emailResult.error === 'object'
-          ? emailResult.error.message
-          : 'Failed to load email settings';
-      }
-
-      if (newError.push || newError.email) {
-        setError(newError);
-      }
-    } catch (err) {
-      setError({
-        push: err instanceof Error ? err.message : 'Something went wrong',
-        email: err instanceof Error ? err.message : 'Something went wrong',
-      });
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [pushAvailable, pushEnabled, user?.username]);
-
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
-
-  // ---------------------------------------------------------------------------
-  // Build Unified Model
-  // ---------------------------------------------------------------------------
-
-  // Flatten push prefs into a lookup by id
-  const pushLookup = useMemo(() => {
-    const lookup: Record<string, PushPreference> = {};
-    for (const prefs of Object.values(pushPrefs)) {
-      for (const pref of prefs) {
-        lookup[pref.id] = pref;
-      }
-    }
-    return lookup;
-  }, [pushPrefs]);
-
-  const unifiedSections = useMemo(() => {
-    const sections: UnifiedSection[] = [];
-    const categoryMap: Record<string, UnifiedItem[]> = {};
-
-    for (const mapping of NOTIFICATION_MAP) {
-      const channels: ChannelInfo[] = [];
-
-      // Add push channels
-      if (mapping.pushIds) {
-        for (let i = 0; i < mapping.pushIds.length; i++) {
-          const pushId = mapping.pushIds[i];
-          const pushPref = pushLookup[pushId];
-          if (pushPref) {
-            channels.push({
-              type: 'push',
-              id: pushId,
-              label: mapping.pushLabels?.[i]
-                ? `Push: ${mapping.pushLabels[i]}`
-                : 'Push notification',
-              enabled: pushPref.enabled,
-            });
-          }
-        }
-      }
-
-      // Add email channel
-      if (mapping.emailKey && emailPrefs?.user_globals) {
-        const emailValue = emailPrefs.user_globals[mapping.emailKey];
-        if (mapping.emailKey !== 'message_email_frequency') {
-          channels.push({
-            type: 'email',
-            id: mapping.emailKey,
-            label: 'Email notification',
-            enabled: emailValue === 'yes',
-          });
-        }
-      }
-
-      // Only include items that have at least one visible channel
-      const hasVisibleChannel = channels.some(
-        ch => ch.type === 'email' || (ch.type === 'push' && showPush)
-      );
-      if (!hasVisibleChannel) continue;
-
-      if (!categoryMap[mapping.category]) {
-        categoryMap[mapping.category] = [];
-      }
-
-      categoryMap[mapping.category].push({
-        key: mapping.key,
-        label: mapping.label,
-        description: mapping.description,
-        channels,
-        note: mapping.note,
-      });
-    }
-
-    // Build sections in display order
-    for (const [catKey, catTitle] of Object.entries(CATEGORY_CONFIG)) {
-      const items = categoryMap[catKey];
-      if (items && items.length > 0) {
-        sections.push({ category: catKey, title: catTitle, items });
-      }
-    }
-
-    return sections;
-  }, [pushLookup, emailPrefs, showPush]);
-
-  // ---------------------------------------------------------------------------
-  // Toggle Handlers
-  // ---------------------------------------------------------------------------
-
-  const addSaving = (key: string) => {
-    setSavingIds(prev => new Set(prev).add(key));
-  };
-
-  const removeSaving = (key: string) => {
-    setSavingIds(prev => {
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-  };
-
-  // Push toggle — partial update
-  const handlePushToggle = async (prefId: string, currentEnabled: boolean) => {
-    const savingKey = `push-${prefId}`;
-    addSaving(savingKey);
-
-    // Optimistic update
-    setPushPrefs(prev => {
-      const updated = { ...prev };
-      for (const category of Object.keys(updated)) {
-        updated[category] = updated[category].map(pref =>
-          pref.id === prefId ? { ...pref, enabled: !currentEnabled } : pref
-        );
-      }
-      return updated;
-    });
-
-    try {
-      const authToken = await getAuthToken();
-      if (!authToken) throw new Error('Not authenticated');
-
-      const response = await updatePushSettings(authToken, { [prefId]: !currentEnabled });
-      if (!response.success) throw new Error('Save failed');
-    } catch {
-      // Revert
-      setPushPrefs(prev => {
-        const updated = { ...prev };
-        for (const category of Object.keys(updated)) {
-          updated[category] = updated[category].map(pref =>
-            pref.id === prefId ? { ...pref, enabled: currentEnabled } : pref
-          );
-        }
-        return updated;
-      });
-    } finally {
-      removeSaving(savingKey);
-    }
-  };
-
-  // Email toggle — full replacement POST
-  const handleEmailToggle = async (emailKey: string, currentEnabled: boolean) => {
-    if (!emailPrefsRef.current || !user?.username) return;
-
-    const savingKey = `email-${emailKey}`;
-    addSaving(savingKey);
-
-    const newValue = currentEnabled ? 'no' : 'yes';
-    const oldValue = currentEnabled ? 'yes' : 'no';
-
-    // Optimistic update
-    setEmailPrefs(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        user_globals: { ...prev.user_globals, [emailKey]: newValue },
-      };
-    });
-
-    // Update ref for full-replacement POST
-    const prevGlobals = { ...emailPrefsRef.current.user_globals };
-    emailPrefsRef.current = {
-      ...emailPrefsRef.current,
-      user_globals: { ...emailPrefsRef.current.user_globals, [emailKey]: newValue } as EmailUserGlobals,
-    };
-
-    try {
-      const result = await updateEmailPrefs(user.username, {
-        user_globals: emailPrefsRef.current.user_globals,
-        space_prefs: buildSpacePrefsPayload(),
-      });
-      if (!result.success) throw new Error('Save failed');
-    } catch {
-      // Revert
-      setEmailPrefs(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          user_globals: { ...prev.user_globals, [emailKey]: oldValue },
-        };
-      });
-      emailPrefsRef.current = {
-        ...emailPrefsRef.current,
-        user_globals: prevGlobals as EmailUserGlobals,
-      };
-    } finally {
-      removeSaving(savingKey);
-    }
-  };
-
-  // DM frequency change — full replacement POST
-  const handleFrequencyChange = async (newValue: string) => {
-    if (!emailPrefsRef.current || !user?.username) return;
-
-    const savingKey = 'email-message_email_frequency';
-    addSaving(savingKey);
-
-    const oldValue = emailPrefsRef.current.user_globals.message_email_frequency;
-
-    // Optimistic update
-    setEmailPrefs(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        user_globals: {
-          ...prev.user_globals,
-          message_email_frequency: newValue as EmailUserGlobals['message_email_frequency'],
-        },
-      };
-    });
-
-    emailPrefsRef.current = {
-      ...emailPrefsRef.current,
-      user_globals: {
-        ...emailPrefsRef.current.user_globals,
-        message_email_frequency: newValue as EmailUserGlobals['message_email_frequency'],
-      },
-    };
-
-    try {
-      const result = await updateEmailPrefs(user.username, {
-        user_globals: emailPrefsRef.current.user_globals,
-        space_prefs: buildSpacePrefsPayload(),
-      });
-      if (!result.success) throw new Error('Save failed');
-    } catch {
-      // Revert
-      setEmailPrefs(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          user_globals: {
-            ...prev.user_globals,
-            message_email_frequency: oldValue,
-          },
-        };
-      });
-      emailPrefsRef.current = {
-        ...emailPrefsRef.current,
-        user_globals: {
-          ...emailPrefsRef.current.user_globals,
-          message_email_frequency: oldValue,
-        },
-      };
-    } finally {
-      removeSaving(savingKey);
-    }
-  };
-
-  // Space email pref change — full replacement POST
-  const handleSpacePrefChange = async (spaceId: number, newValue: SpacePrefValue) => {
-    if (!emailPrefsRef.current || !user?.username) return;
-
-    const savingKey = `space-${spaceId}`;
-    addSaving(savingKey);
-
-    const oldValue = getSpacePref(spaceId);
-
-    // Optimistic update in spaceGroups (for UI)
-    setEmailPrefs(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        spaceGroups: prev.spaceGroups.map(group => ({
-          ...group,
-          spaces: group.spaces.map(space =>
-            space.id === spaceId ? { ...space, pref: newValue } : space
-          ),
-        })),
-      };
-    });
-
-    // Update ref
-    const prevSpaceGroups = emailPrefsRef.current.spaceGroups;
-    emailPrefsRef.current = {
-      ...emailPrefsRef.current,
-      spaceGroups: emailPrefsRef.current.spaceGroups.map(group => ({
-        ...group,
-        spaces: group.spaces.map(space =>
-          space.id === spaceId ? { ...space, pref: newValue } : space
-        ),
-      })),
-    };
-
-    try {
-      const result = await updateEmailPrefs(user.username, {
-        user_globals: emailPrefsRef.current.user_globals,
-        space_prefs: buildSpacePrefsPayload(),
-      });
-      if (!result.success) throw new Error('Save failed');
-    } catch {
-      // Revert
-      setEmailPrefs(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          spaceGroups: prev.spaceGroups.map(group => ({
-            ...group,
-            spaces: group.spaces.map(space =>
-              space.id === spaceId ? { ...space, pref: oldValue } : space
-            ),
-          })),
-        };
-      });
-      emailPrefsRef.current = {
-        ...emailPrefsRef.current,
-        spaceGroups: prevSpaceGroups,
-      };
-    } finally {
-      removeSaving(savingKey);
-    }
-  };
-
-  // Unified toggle dispatcher
-  const handleToggle = (channelType: ChannelType, id: string, currentEnabled: boolean) => {
-    if (channelType === 'push') {
-      handlePushToggle(id, currentEnabled);
-    } else {
-      handleEmailToggle(id, currentEnabled);
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-
-  /** Build the space_prefs payload from the ref's spaceGroups */
-  const buildSpacePrefsPayload = (): Record<string, SpacePrefValue> => {
-    const prefs: Record<string, SpacePrefValue> = {};
-    if (!emailPrefsRef.current) return prefs;
-    for (const group of emailPrefsRef.current.spaceGroups) {
-      for (const space of group.spaces) {
-        prefs[String(space.id)] = space.pref;
-      }
-    }
-    return prefs;
-  };
-
-  /** Get current space pref from state */
-  const getSpacePref = (spaceId: number): SpacePrefValue => {
-    if (!emailPrefs) return '';
-    for (const group of emailPrefs.spaceGroups) {
-      for (const space of group.spaces) {
-        if (space.id === spaceId) return space.pref;
-      }
-    }
-    return '';
-  };
-
-  /** Check if space groups have any spaces */
-  const hasSpaces = emailPrefs?.spaceGroups?.some(g => g.spaces.length > 0) ?? false;
-
-  // Default frequency label for helper text
-  const defaultFreqLabel = emailPrefs?.default_messaging_email_frequency
-    ? emailPrefs.default_messaging_email_frequency.charAt(0).toUpperCase() +
-      emailPrefs.default_messaging_email_frequency.slice(1)
-    : '';
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
-
   // Loading state
-  if (loading) {
+  // ---------------------------------------------------------------------------
+
+  if (settings.loading) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
@@ -938,7 +298,7 @@ export default function NotificationSettingsScreen() {
   }
 
   // Full error (both APIs failed)
-  if (error.push && error.email) {
+  if (settings.error.push && settings.error.email) {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
@@ -950,13 +310,17 @@ export default function NotificationSettingsScreen() {
           />
           <ErrorMessage
             title="Failed to Load"
-            message={error.email || error.push || 'Something went wrong'}
-            onRetry={() => { setLoading(true); fetchSettings(); }}
+            message={settings.error.email || settings.error.push || 'Something went wrong'}
+            onRetry={() => settings.fetchSettings()}
           />
         </View>
       </>
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <>
@@ -973,8 +337,8 @@ export default function NotificationSettingsScreen() {
           contentContainerStyle={styles.scrollContent}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => fetchSettings(true)}
+              refreshing={settings.refreshing}
+              onRefresh={() => settings.fetchSettings(true)}
               colors={[themeColors.primary]}
               tintColor={themeColors.primary}
             />
@@ -990,7 +354,7 @@ export default function NotificationSettingsScreen() {
           </View>
 
           {/* Push unavailable / permission banners */}
-          {!pushEnabled && (
+          {!settings.pushEnabled && (
             <View style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
               <Ionicons name="information-circle-outline" size={20} color={themeColors.textSecondary} />
               <Text style={[styles.infoBannerText, { color: themeColors.textSecondary }]}>
@@ -998,7 +362,7 @@ export default function NotificationSettingsScreen() {
               </Text>
             </View>
           )}
-          {pushEnabled && !pushAvailable && (
+          {settings.pushEnabled && !settings.pushAvailable && (
             <View style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
               <Ionicons name="information-circle-outline" size={20} color={themeColors.textSecondary} />
               <Text style={[styles.infoBannerText, { color: themeColors.textSecondary }]}>
@@ -1006,7 +370,7 @@ export default function NotificationSettingsScreen() {
               </Text>
             </View>
           )}
-          {pushEnabled && pushAvailable && pushPermission === 'denied' && (
+          {settings.pushEnabled && settings.pushAvailable && settings.pushPermission === 'denied' && (
             <Pressable
               style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.error }]}
               onPress={() => Linking.openSettings()}
@@ -1018,23 +382,10 @@ export default function NotificationSettingsScreen() {
               <Text style={[styles.bannerAction, { color: themeColors.primary }]}>Open Settings</Text>
             </Pressable>
           )}
-          {pushEnabled && pushAvailable && pushPermission === 'undetermined' && (
+          {settings.pushEnabled && settings.pushAvailable && settings.pushPermission === 'undetermined' && (
             <Pressable
               style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.primary }]}
-              onPress={async () => {
-                const authToken = await getAuthToken();
-                if (authToken) {
-                  const success = await registerDeviceToken(authToken);
-                  if (success) {
-                    setPushPermission('granted');
-                    fetchSettings(true);
-                  } else {
-                    // User may have denied — re-check
-                    const status = await getPushPermissionStatus();
-                    setPushPermission(status);
-                  }
-                }
-              }}
+              onPress={settings.handleEnablePush}
             >
               <Ionicons name="notifications-outline" size={20} color={themeColors.primary} />
               <Text style={[styles.infoBannerText, { color: themeColors.textSecondary, flex: 1 }]}>
@@ -1045,7 +396,7 @@ export default function NotificationSettingsScreen() {
           )}
 
           {/* Partial error banners */}
-          {error.push && !error.email && (
+          {settings.error.push && !settings.error.email && (
             <View style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.error }]}>
               <Ionicons name="alert-circle-outline" size={20} color={themeColors.error} />
               <Text style={[styles.infoBannerText, { color: themeColors.error }]}>
@@ -1053,7 +404,7 @@ export default function NotificationSettingsScreen() {
               </Text>
             </View>
           )}
-          {error.email && !error.push && (
+          {settings.error.email && !settings.error.push && (
             <View style={[styles.infoBanner, { backgroundColor: themeColors.surface, borderColor: themeColors.error }]}>
               <Ionicons name="alert-circle-outline" size={20} color={themeColors.error} />
               <Text style={[styles.infoBannerText, { color: themeColors.error }]}>
@@ -1063,7 +414,7 @@ export default function NotificationSettingsScreen() {
           )}
 
           {/* Unified notification sections */}
-          {unifiedSections.map(section => (
+          {settings.unifiedSections.map(section => (
             <View key={section.category} style={styles.section}>
               <Text style={[styles.sectionTitle, { color: themeColors.textSecondary }]}>
                 {section.title}
@@ -1072,16 +423,16 @@ export default function NotificationSettingsScreen() {
                 <NotificationCard
                   key={item.key}
                   item={item}
-                  onToggle={handleToggle}
-                  savingIds={savingIds}
-                  showPush={showPush}
+                  onToggle={settings.handleToggle}
+                  savingIds={settings.savingIds}
+                  showPush={settings.showPush}
                 />
               ))}
             </View>
           ))}
 
           {/* Email-only section: Digest + DM frequency */}
-          {emailPrefs && (
+          {settings.emailPrefs && (
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: themeColors.textSecondary }]}>
                 Email
@@ -1091,19 +442,19 @@ export default function NotificationSettingsScreen() {
               <NotificationCard
                 item={{
                   key: 'digest',
-                  label: `Weekly Digest${emailPrefs.digestEmailDay ? ` (${emailPrefs.digestEmailDay})` : ''}`,
+                  label: `Weekly Digest${settings.emailPrefs.digestEmailDay ? ` (${settings.emailPrefs.digestEmailDay})` : ''}`,
                   description: 'Receive a weekly summary email with community highlights',
                   channels: [
                     {
                       type: 'email',
                       id: 'digest_mail',
                       label: 'Email notification',
-                      enabled: emailPrefs.user_globals.digest_mail === 'yes',
+                      enabled: settings.emailPrefs.user_globals.digest_mail === 'yes',
                     },
                   ],
                 }}
-                onToggle={handleToggle}
-                savingIds={savingIds}
+                onToggle={settings.handleToggle}
+                savingIds={settings.savingIds}
                 showPush={false}
               />
 
@@ -1111,17 +462,17 @@ export default function NotificationSettingsScreen() {
               <FrequencyPicker
                 label="Message Emails"
                 description="How often to receive email notifications for direct messages"
-                value={emailPrefs.user_globals.message_email_frequency}
+                value={settings.emailPrefs.user_globals.message_email_frequency}
                 options={FREQUENCY_OPTIONS}
-                onChange={handleFrequencyChange}
-                disabled={savingIds.has('email-message_email_frequency')}
-                note={defaultFreqLabel ? `Community default: ${defaultFreqLabel}` : undefined}
+                onChange={settings.handleFrequencyChange}
+                disabled={settings.savingIds.has('email-message_email_frequency')}
+                note={settings.defaultFreqLabel ? `Community default: ${settings.defaultFreqLabel}` : undefined}
               />
             </View>
           )}
 
           {/* Per-space email notifications */}
-          {emailPrefs && hasSpaces && (
+          {settings.emailPrefs && settings.hasSpaces && (
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: themeColors.textSecondary }]}>
                 Space Email Notifications
@@ -1131,7 +482,7 @@ export default function NotificationSettingsScreen() {
               </Text>
 
               <View style={[styles.spaceCard, { backgroundColor: themeColors.surface }]}>
-                {emailPrefs.spaceGroups.map(group => (
+                {settings.emailPrefs.spaceGroups.map(group => (
                   <React.Fragment key={group.id}>
                     {group.spaces.length > 0 && (
                       <>
@@ -1146,8 +497,8 @@ export default function NotificationSettingsScreen() {
                             <SpaceEmailRow
                               spaceTitle={space.title}
                               value={space.pref}
-                              onChange={(val) => handleSpacePrefChange(space.id, val)}
-                              disabled={savingIds.has(`space-${space.id}`)}
+                              onChange={(val) => settings.handleSpacePrefChange(space.id, val)}
+                              disabled={settings.savingIds.has(`space-${space.id}`)}
                             />
                           </React.Fragment>
                         ))}
@@ -1294,10 +645,10 @@ const styles = StyleSheet.create({
 
   channelDivider: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: spacing.md + 18 + spacing.sm, // icon width + margin
+    marginLeft: spacing.md + 18 + spacing.sm,
   },
 
-  // Toggle (reused from original)
+  // Toggle
   toggle: {
     width: 50,
     height: 30,

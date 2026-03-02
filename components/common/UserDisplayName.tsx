@@ -10,7 +10,7 @@ import React from 'react';
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { VerifiedBadge } from '@/components/common/VerifiedBadge';
 import { ProfileBadge } from '@/components/common/ProfileBadge';
-import { useProfileBadges } from '@/hooks';
+import { useProfileBadges } from '@/hooks/useBadgeDefinitions';
 import { useTheme } from '@/contexts/ThemeContext';
 import { typography } from '@/constants/layout';
 

@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS, TBC_MR_URL } from '@/constants/config';
-import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType, WelcomeBannerResponse } from '@/types';
+import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType, WelcomeBannerResponse } from '@/types/feed';
 import { del, get, patch, post, request } from './client';
 
 // -----------------------------------------------------------------------------

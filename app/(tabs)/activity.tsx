@@ -4,55 +4,48 @@
 // UPDATED: Added pin support for admins
 // =============================================================================
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Feed } from '@/types';
-import { feedsApi } from '@/services/api';
+import { Feed } from '@/types/feed';
+import { feedsApi } from '@/services/api/feeds';
 import { FeedList } from '@/components/feed/FeedList';
 import { CommentSheet } from '@/components/feed/CommentSheet';
-import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/composer';
+import { QuickPostBox } from '@/components/composer/QuickPostBox';
+import { CreatePostModal } from '@/components/composer/CreatePostModal';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFeedReactions } from '@/hooks';
+import { useTabBar } from '@/contexts/TabBarContext';
+import { useFeedReactions } from '@/hooks/useFeedReactions';
+import { useCachedData } from '@/hooks/useCachedData';
+import { useFeedActions } from '@/hooks/useFeedActions';
 
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
 export default function ActivityScreen() {
-  const router = useRouter();
   const { user } = useAuth();
   const { colors: themeColors } = useTheme();
-  // Feed state
-  const [feeds, setFeeds] = useState<Feed[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Modal states
-  const [showComposer, setShowComposer] = useState(false);
-  const [showComments, setShowComments] = useState(false);
-  const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
-  const [selectedFeedSlug, setSelectedFeedSlug] = useState<string | undefined>(undefined);
-  const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
-  
+  const { handleScroll } = useTabBar();
+
   // ---------------------------------------------------------------------------
-  // Fetch Feeds - Now merges sticky posts at top!
+  // Fetch Feeds (cached + focus refresh, merges sticky posts at top)
   // ---------------------------------------------------------------------------
-  
-  const fetchFeeds = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-        setError(null);
-      }
-      
+
+  const {
+    data: feedsData,
+    isLoading: loading,
+    isRefreshing: refreshing,
+    error: fetchError,
+    refresh,
+    mutate,
+  } = useCachedData<Feed[]>({
+    cacheKey: 'tbc_activity_feeds',
+    fetcher: async () => {
       const response = await feedsApi.getFeeds({ per_page: 20 });
 
       if (!response.success) {
-        setError(response.error?.message || 'Failed to load feeds');
-        return;
+        throw new Error(response.error?.message || 'Failed to load feeds');
       }
 
       // BULLETPROOF: sticky can be null, undefined, object, or array
@@ -63,7 +56,6 @@ export default function ActivityScreen() {
         if (Array.isArray(rawSticky)) {
           stickyPosts = rawSticky;
         } else if (typeof rawSticky === 'object') {
-          // Handle object format
           if (Array.isArray((rawSticky as any).data)) {
             stickyPosts = (rawSticky as any).data;
           } else if ((rawSticky as any).id) {
@@ -90,89 +82,41 @@ export default function ActivityScreen() {
       // Ensure sticky posts are marked
       const markedSticky = stickyPosts.map(f => ({ ...f, is_sticky: true }));
 
-      setFeeds([...markedSticky, ...filteredRegular]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+      return [...markedSticky, ...filteredRegular];
+    },
+  });
+
+  const feeds = feedsData || [];
+  const error = fetchError?.message || null;
+
+  // Adapter: wraps mutate to match React.Dispatch<SetStateAction<Feed[]>> signature
+  const setFeeds: React.Dispatch<React.SetStateAction<Feed[]>> = useCallback(
+    (action) => {
+      mutate(prev => {
+        const current = prev || [];
+        return typeof action === 'function' ? action(current) : action;
+      });
+    },
+    [mutate],
+  );
   
-  // Initial load
-  useEffect(() => {
-    fetchFeeds();
-  }, [fetchFeeds]);
-  
-  // ---------------------------------------------------------------------------
-  // Handlers
-  // ---------------------------------------------------------------------------
-  
-  const handleRefresh = () => {
-    fetchFeeds(true);
-  };
-  
+  // Shared feed actions (comment sheet, composer, bookmark, delete, navigation)
+  const {
+    showComments, selectedFeedId, selectedFeedSlug,
+    handleCommentPress, handleCloseComments, handleCommentAdded,
+    showComposer, editingFeed, openComposer, handleEdit, closeComposer,
+    handleCreateOrEditPost,
+    handleBookmarkToggle, handleDelete,
+    handleAuthorPress, handleSpacePress,
+  } = useFeedActions({ setFeeds, refresh });
+
   const handleReact = useFeedReactions(feeds, setFeeds);
-  
-  const handleAuthorPress = (username: string) => {
-    router.push({
-      pathname: '/profile/[username]',
-      params: { username },
-    });
-  };
-  
-  const handleSpacePress = (spaceSlug: string) => {
-    router.push({
-      pathname: '/space/[slug]',
-      params: { slug: spaceSlug },
-    });
-  };
-  
-  // Open comment sheet
-  const handleCommentPress = (feed: Feed) => {
-    setSelectedFeedId(feed.id);
-    setSelectedFeedSlug(feed.slug);
-    setShowComments(true);
-  };
-  
-  const handleCloseComments = () => {
-    setShowComments(false);
-    setSelectedFeedId(null);
-    setSelectedFeedSlug(undefined);
-  };
-  
-  const handleCommentAdded = () => {
-    // Refresh to update comment count
-    fetchFeeds(true);
-  };
 
   // ---------------------------------------------------------------------------
-  // Bookmark Toggle
-  // ---------------------------------------------------------------------------
-
-  const handleBookmarkToggle = async (feed: Feed, isBookmarked: boolean) => {
-    try {
-      await feedsApi.toggleBookmark(feed.id, !isBookmarked);
-      
-      // Update local state
-      setFeeds(prevFeeds =>
-        prevFeeds.map(f => 
-          f.id === feed.id ? { ...f, bookmarked: isBookmarked } : f
-        )
-      );
-    } catch (err) {
-      if (__DEV__) console.error('Bookmark error:', err);
-      Alert.alert('Error', 'Failed to update bookmark');
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Pin Handler (for admins - on activity feed, user must be admin of the space)
+  // Pin Handler (activity-specific: user must own the post)
   // ---------------------------------------------------------------------------
 
   const handlePin = async (feed: Feed) => {
-    // On activity feed, we can only pin if user owns the post
-    // (Space-level admin pinning is handled in space page)
     if (Number(feed.user_id) !== user?.id) {
       Alert.alert('Cannot Pin', 'You can only pin your own posts from this view. Go to the space to pin other posts.');
       return;
@@ -180,28 +124,24 @@ export default function ActivityScreen() {
 
     try {
       const newStickyState = !feed.is_sticky;
-      
-      // Optimistic update
+
       setFeeds(prevFeeds =>
-        prevFeeds.map(f => 
+        prevFeeds.map(f =>
           f.id === feed.id ? { ...f, is_sticky: newStickyState } : f
         )
       );
 
-      // Use toggleSticky with PATCH - doesn't require message field
       const response = await feedsApi.toggleSticky(feed.id, newStickyState);
-      
+
       if (response.success) {
         Alert.alert(
           newStickyState ? 'Pinned' : 'Unpinned',
           newStickyState ? 'Post pinned to top!' : 'Post unpinned'
         );
-        // Refresh to get proper order
-        fetchFeeds(true);
+        refresh();
       } else {
-        // Revert
         setFeeds(prevFeeds =>
-          prevFeeds.map(f => 
+          prevFeeds.map(f =>
             f.id === feed.id ? { ...f, is_sticky: !newStickyState } : f
           )
         );
@@ -214,97 +154,11 @@ export default function ActivityScreen() {
   };
 
   // ---------------------------------------------------------------------------
-  // Edit & Delete Handlers
-  // ---------------------------------------------------------------------------
-
-  const handleEdit = (feed: Feed) => {
-    setEditingFeed(feed);
-    setShowComposer(true);
-  };
-
-  const handleDelete = async (feed: Feed) => {
-    Alert.alert(
-      'Delete Post',
-      'Are you sure you want to delete this post? This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await feedsApi.deleteFeed(feed.id);
-              
-              if (response.success) {
-                setFeeds(prevFeeds => prevFeeds.filter(f => f.id !== feed.id));
-                Alert.alert('Deleted', 'Post deleted successfully');
-              } else {
-                Alert.alert('Error', response.error?.message || 'Failed to delete post');
-              }
-            } catch (err) {
-              if (__DEV__) console.error('Delete error:', err);
-              Alert.alert('Error', 'Failed to delete post');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  // ---------------------------------------------------------------------------
-  // Create Post Handler
-  // ---------------------------------------------------------------------------
-
-  const handleCreateOrEditPost = async (data: ComposerSubmitData) => {
-    try {
-      if (editingFeed) {
-        // EDIT MODE
-        const response = await feedsApi.updateFeed(editingFeed.id, {
-          message: data.message,
-          title: data.title,
-          content_type: data.content_type,
-          media_images: data.media_images,
-        });
-
-        if (!response.success) {
-          throw new Error(response.error?.message || 'Failed to update post');
-        }
-        if (response.data?.feed) {
-          setFeeds(prevFeeds =>
-            prevFeeds.map(f => f.id === editingFeed.id ? response.data!.feed : f)
-          );
-        }
-      } else {
-        // CREATE MODE
-        const response = await feedsApi.createFeed({
-          message: data.message,
-          title: data.title,
-          space: data.space,
-          content_type: data.content_type,
-          media_images: data.media_images,
-        });
-
-        if (!response.success) {
-          throw new Error(response.error?.message || 'Failed to create post');
-        }
-        if (response.data?.feed) {
-          setFeeds(prevFeeds => [response.data!.feed, ...prevFeeds]);
-        }
-      }
-    } catch (err) {
-      if (__DEV__) console.error(`${editingFeed ? 'Edit' : 'Create'} post error:`, err);
-      throw new Error(err instanceof Error ? err.message : `Failed to ${editingFeed ? 'update' : 'create'} post`);
-    }
-  };
-
-  // ---------------------------------------------------------------------------
   // Header Component
   // ---------------------------------------------------------------------------
 
   const FeedHeader = () => (
-    <QuickPostBox
-      onPress={() => setShowComposer(true)}
-    />
+    <QuickPostBox onPress={openComposer} />
   );
   
   // ---------------------------------------------------------------------------
@@ -318,7 +172,7 @@ export default function ActivityScreen() {
         loading={loading}
         refreshing={refreshing}
         error={error}
-        onRefresh={handleRefresh}
+        onRefresh={refresh}
         onReact={handleReact}
         onAuthorPress={handleAuthorPress}
         onSpacePress={handleSpacePress}
@@ -327,16 +181,14 @@ export default function ActivityScreen() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onPin={handlePin}
+        onScroll={handleScroll}
         ListHeaderComponent={<FeedHeader />}
       />
       
       {/* Create/Edit Post Modal */}
       <CreatePostModal
         visible={showComposer}
-        onClose={() => {
-          setShowComposer(false);
-          setEditingFeed(null);
-        }}
+        onClose={closeComposer}
         onSubmit={handleCreateOrEditPost}
         editFeed={editingFeed || undefined}
       />

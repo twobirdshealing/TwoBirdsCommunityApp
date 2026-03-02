@@ -65,9 +65,9 @@ export function VideoAttachModal({
       } else {
         Alert.alert('Invalid URL', 'Could not get video information. Please check the URL.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (__DEV__) console.error('[VideoAttachModal] Error fetching oembed:', error);
-      Alert.alert('Error', error.message || 'Could not fetch video information.');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Could not fetch video information.');
     } finally {
       setIsLoading(false);
     }

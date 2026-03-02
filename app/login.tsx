@@ -9,14 +9,13 @@ import {
   ActivityIndicator,
   Image,
   ImageBackground,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography } from '@/constants/layout';
@@ -71,8 +70,8 @@ export default function LoginScreen() {
       resizeMode="cover"
     >
       <KeyboardAvoidingView
-        style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={[styles.container, { paddingTop: insets.top }]}
+        behavior="padding"
       >
         <View style={styles.content}>
           {/* Logo / Header */}
@@ -186,6 +185,9 @@ export default function LoginScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Bottom safe area - outside KAV so keyboard calc is correct */}
+      <View style={{ height: insets.bottom }} />
     </ImageBackground>
   );
 }

@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
-import { JoinSpaceResponse, MembersListResponse, SpaceDetailResponse, SpaceGroupOptionsResponse, SpaceGroupsResponse, SpacesResponse } from '@/types';
+import { JoinSpaceResponse, MembersListResponse, SpaceDetailResponse, SpaceGroupOptionsResponse, SpaceGroupsResponse, SpacesResponse } from '@/types/space';
 import { get, post } from './client';
 
 // -----------------------------------------------------------------------------

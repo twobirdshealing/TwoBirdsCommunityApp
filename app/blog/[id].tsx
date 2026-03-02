@@ -2,7 +2,7 @@
 // BLOG DETAIL SCREEN - Full blog post with rich HTML rendering
 // =============================================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Image,
   ScrollView,
@@ -18,11 +18,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useCachedData } from '@/hooks/useCachedData';
 import { HtmlContent } from '@/components/common/HtmlContent';
 import { LoadingSpinner, ErrorMessage } from '@/components/common';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { WPPost } from '@/types/blog';
-import { blogApi } from '@/services/api';
+import { blogApi } from '@/services/api/blog';
 import { PageHeader } from '@/components/navigation';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
@@ -42,9 +43,6 @@ export default function BlogDetailScreen() {
   const { colors: themeColors } = useTheme();
 
   // State
-  const [post, setPost] = useState<WPPost | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(false);
 
   // Content width for RenderHtml (screen width minus padding)
@@ -54,29 +52,19 @@ export default function BlogDetailScreen() {
   // Fetch Post
   // ---------------------------------------------------------------------------
 
-  useEffect(() => {
-    if (!id) return;
-
-    const fetchPost = async () => {
-      setLoading(true);
-      setError(null);
-
+  const { data: post, isLoading: loading, error: fetchError } = useCachedData<WPPost>({
+    cacheKey: `tbc_blog_${id}`,
+    fetcher: async () => {
       const numericId = Number(id);
       const response = isNaN(numericId)
-        ? await blogApi.getBlogPostBySlug(id)
+        ? await blogApi.getBlogPostBySlug(id!)
         : await blogApi.getBlogPost(numericId);
-
-      if (response.success) {
-        setPost(response.data);
-      } else {
-        setError(response.error?.message || 'Failed to load post');
-      }
-
-      setLoading(false);
-    };
-
-    fetchPost();
-  }, [id]);
+      if (!response.success) throw new Error(response.error?.message || 'Failed to load post');
+      return response.data;
+    },
+    enabled: !!id,
+  });
+  const error = fetchError?.message || null;
 
   // ---------------------------------------------------------------------------
   // Share handler
@@ -139,7 +127,7 @@ export default function BlogDetailScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         <PageHeader
           leftAction="back"
           onLeftPress={() => router.back()}

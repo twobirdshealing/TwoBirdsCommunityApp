@@ -20,7 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacesApi } from '@/services/api/spaces';
-import { SpaceGroupOption } from '@/types';
+import { SpaceGroupOption } from '@/types/space';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -30,7 +30,7 @@ interface Space {
   id: number;
   title: string;
   slug: string;
-  logo?: string;
+  logo?: string | null;
   privacy?: string;
   parent_id?: number | string | null;
   serial?: string | number;
@@ -83,14 +83,12 @@ export function SpaceSelector({
 
       // Process groups
       if (groupsRes.success) {
-        const groupsData = groupsRes.data as any;
-        setGroups(groupsData?.groups || []);
+        setGroups(groupsRes.data.groups || []);
       }
 
       // Process spaces
       if (spacesRes.success) {
-        const spacesData = spacesRes.data as any;
-        const spacesList = spacesData?.spaces?.data || spacesData?.spaces || [];
+        const spacesList = spacesRes.data.spaces || [];
         if (__DEV__) console.log('[SpaceSelector] Spaces count:', spacesList.length);
         setSpaces(spacesList);
       }

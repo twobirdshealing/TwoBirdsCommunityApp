@@ -12,7 +12,7 @@ import { ColorTheme } from '@/constants/colors';
 import { ReactionIcon } from '@/components/feed/ReactionIcon';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { useTheme } from '@/contexts/ThemeContext';
-import { NotificationType } from '@/types';
+import { NotificationType } from '@/types/notification';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';

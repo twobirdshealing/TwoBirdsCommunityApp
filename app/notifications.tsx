@@ -15,13 +15,15 @@ import { PageHeader } from '@/components/navigation';
 import { NotificationCard } from '@/components/notification';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { notificationsApi } from '@/services/api';
+import { notificationsApi } from '@/services/api/notifications';
 import { syncBadgeCount } from '@/services/push';
-import { AppNotification } from '@/types';
+import { AppNotification } from '@/types/notification';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useCachedData } from '@/hooks/useCachedData';
+
 import {
   ActivityIndicator,
   Alert,
@@ -31,7 +33,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // -----------------------------------------------------------------------------
@@ -44,85 +45,112 @@ export default function NotificationsScreen() {
   const { colors: themeColors } = useTheme();
 
   // State
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+  const [extraNotifications, setExtraNotifications] = useState<AppNotification[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
-  // Fetch Notifications
+  // Fetch Page 1 (cached + focus refresh, dynamic key per filter)
   // ---------------------------------------------------------------------------
 
-  const fetchNotifications = useCallback(async (pageNum: number, isRefresh = false) => {
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else if (pageNum === 1) {
-        setLoading(true);
-      } else {
-        setLoadingMore(true);
-      }
-      setError(null);
+  interface NotificationsPage1 {
+    notifications: AppNotification[];
+    hasMore: boolean;
+  }
 
+  const {
+    data: page1Data,
+    isLoading: loading,
+    isRefreshing: refreshing,
+    error: fetchError,
+    refresh,
+    mutate,
+  } = useCachedData<NotificationsPage1>({
+    cacheKey: `tbc_notifications_${showUnreadOnly ? 'unread' : 'all'}`,
+    fetcher: async () => {
       const response = await notificationsApi.getNotifications({
-        page: pageNum,
+        page: 1,
         per_page: 20,
         is_read: showUnreadOnly ? false : undefined,
       });
 
-      if (response.success) {
-        const newNotifications = response.data.notifications.data;
-        const pagination = response.data.notifications;
-
-        if (pageNum === 1) {
-          setNotifications(newNotifications);
-        } else {
-          setNotifications(prev => [...prev, ...newNotifications]);
-        }
-
-        setHasMore(pagination.current_page < pagination.last_page);
-        setPage(pageNum);
-      } else {
-        setError('Failed to load notifications');
+      if (!response.success) {
+        throw new Error('Failed to load notifications');
       }
-    } catch (err) {
-      setError('Failed to load notifications');
-      if (__DEV__) console.error('[Notifications] Fetch error:', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-      setLoadingMore(false);
-    }
-  }, [showUnreadOnly]);
 
-  // Initial load
-  useEffect(() => {
-    fetchNotifications(1);
-  }, [fetchNotifications]);
+      const pagination = response.data.notifications;
+      return {
+        notifications: pagination.data,
+        hasMore: pagination.current_page < pagination.last_page,
+      };
+    },
+  });
+
+  // Combined list: page 1 (cached) + pages 2+ (manual)
+  const notifications = useMemo(
+    () => [...(page1Data?.notifications || []), ...extraNotifications],
+    [page1Data, extraNotifications],
+  );
+  const error = fetchError?.message || null;
+
+  // Update hasMore from page 1 data when it loads
+  // (subsequent pages update hasMore via loadMore)
+
+  // Helper: update notifications across both page 1 cache and extra pages
+  const updateNotifications = useCallback(
+    (updater: (items: AppNotification[]) => AppNotification[]) => {
+      mutate(prev => prev ? { ...prev, notifications: updater(prev.notifications) } : prev);
+      setExtraNotifications(prev => updater(prev));
+    },
+    [mutate],
+  );
 
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
 
   const handleRefresh = () => {
-    fetchNotifications(1, true);
+    setExtraNotifications([]);
+    setPage(1);
+    setHasMore(true);
+    refresh();
   };
 
-  const handleLoadMore = () => {
-    if (!loadingMore && hasMore && !loading) {
-      fetchNotifications(page + 1);
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore || loading) return;
+    const effectiveHasMore = page === 1 ? (page1Data?.hasMore ?? true) : hasMore;
+    if (!effectiveHasMore) return;
+
+    try {
+      setLoadingMore(true);
+      const nextPage = page + 1;
+      const response = await notificationsApi.getNotifications({
+        page: nextPage,
+        per_page: 20,
+        is_read: showUnreadOnly ? false : undefined,
+      });
+
+      if (response.success) {
+        const pagination = response.data.notifications;
+        setExtraNotifications(prev => [...prev, ...pagination.data]);
+        setHasMore(pagination.current_page < pagination.last_page);
+        setPage(nextPage);
+      }
+    } catch (err) {
+      if (__DEV__) console.error('[Notifications] Load more error:', err);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
   const handleToggleFilter = () => {
     setShowUnreadOnly(prev => !prev);
+    setExtraNotifications([]);
     setPage(1);
-    setNotifications([]);
-    // Will refetch via useEffect when showUnreadOnly changes
+    setHasMore(true);
+    // Cache key changes → useCachedData auto-loads the correct cache
   };
 
   const handleMarkAllAsRead = async () => {
@@ -143,8 +171,8 @@ export default function NotificationsScreen() {
             try {
               const response = await notificationsApi.markAllAsRead();
               if (response.success) {
-                setNotifications(prev =>
-                  prev.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
+                updateNotifications(items =>
+                  items.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
                 );
                 syncBadgeCount(0);
               }
@@ -166,8 +194,8 @@ export default function NotificationsScreen() {
     if (!notification.is_read) {
       try {
         const response = await notificationsApi.markAsRead(notification.id);
-        setNotifications(prev =>
-          prev.map(n =>
+        updateNotifications(items =>
+          items.map(n =>
             n.id === notification.id
               ? { ...n, is_read: true, read_at: new Date().toISOString() }
               : n
@@ -255,8 +283,8 @@ export default function NotificationsScreen() {
   const handleMarkAsRead = async (notification: AppNotification) => {
     try {
       const response = await notificationsApi.markAsRead(notification.id);
-      setNotifications(prev =>
-        prev.map(n =>
+      updateNotifications(items =>
+        items.map(n =>
           n.id === notification.id
             ? { ...n, is_read: true, read_at: new Date().toISOString() }
             : n
@@ -352,10 +380,10 @@ export default function NotificationsScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <GestureHandlerRootView style={[styles.gestureRoot, { backgroundColor: themeColors.background }]}>
+    <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         {/* Header - Using PageHeader for consistency */}
         <PageHeader
           leftAction="back"
@@ -367,10 +395,11 @@ export default function NotificationsScreen() {
         {loading && notifications.length === 0 ? (
           <LoadingSpinner />
         ) : error ? (
-          <ErrorMessage message={error} onRetry={() => fetchNotifications(1)} />
+          <ErrorMessage message={error} onRetry={() => refresh()} />
         ) : (
           <FlashList
             data={notifications}
+            contentContainerStyle={{ paddingBottom: insets.bottom }}
             renderItem={({ item }) => (
               <NotificationCard
                 notification={item}
@@ -396,7 +425,7 @@ export default function NotificationsScreen() {
           />
         )}
       </View>
-    </GestureHandlerRootView>
+    </>
   );
 }
 
@@ -405,10 +434,6 @@ export default function NotificationsScreen() {
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  gestureRoot: {
-    flex: 1,
-  },
-
   container: {
     flex: 1,
   },

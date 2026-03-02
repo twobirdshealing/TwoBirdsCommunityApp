@@ -57,7 +57,6 @@ export interface Feed {
       title?: string;
     }[];
 
-    [key: string]: any;
   };
 
   // User reaction state (from API when authenticated)
@@ -77,7 +76,7 @@ export interface Feed {
   space?: FeedSpace;
   comments?: Comment[];
   reactions?: Reaction[];
-  terms?: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any -- server shape varies
+  terms?: Record<string, unknown>[];
 }
 
 // -----------------------------------------------------------------------------

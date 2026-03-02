@@ -20,7 +20,7 @@ import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacesApi } from '@/services/api/spaces';
-import { useFollowToggle } from '@/hooks';
+import { useFollowToggle } from '@/hooks/useFollowToggle';
 
 // -----------------------------------------------------------------------------
 // Helper: Sort members with leaders at top
@@ -107,18 +107,10 @@ export default function SpaceMembersScreen() {
         return;
       }
 
-      const apiData = response.data as any;
-      
+      const apiData = response.data;
+
       // Extract members from nested structure: { members: { data: [...] } }
-      let newMembers: MemberCardData[] = [];
-      
-      if (apiData?.members?.data && Array.isArray(apiData.members.data)) {
-        newMembers = apiData.members.data;
-      } else if (apiData?.data && Array.isArray(apiData.data)) {
-        newMembers = apiData.data;
-      } else if (Array.isArray(apiData)) {
-        newMembers = apiData;
-      }
+      const newMembers: MemberCardData[] = apiData.members?.data || [];
 
       if (shouldAppend) {
         setMembers((prev) => [...prev, ...newMembers]);
@@ -127,11 +119,11 @@ export default function SpaceMembersScreen() {
       }
 
       // Extract follow state from API response (injected by FollowHandler)
-      if (apiData?.current_user_follows) {
+      if (apiData.current_user_follows) {
         setFollowMap(prev => ({ ...prev, ...apiData.current_user_follows }));
       }
 
-      const hasMorePages = apiData?.members?.next_page_url != null || newMembers.length === 20;
+      const hasMorePages = apiData.members?.next_page_url != null || newMembers.length === 20;
       setHasMore(hasMorePages);
       
     } catch (err) {

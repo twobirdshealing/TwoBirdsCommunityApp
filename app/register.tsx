@@ -12,13 +12,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   ImageBackground,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,29 +21,30 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { spacing, typography } from '@/constants/layout';
 import { PRIVACY_POLICY_URL } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { SocialLinksForm } from '@/components/common/SocialLinksForm';
-import { useSocialProviders } from '@/hooks';
+import { DynamicFormField } from '@/components/common/DynamicFormField';
+import { SelectModal } from '@/components/common/SelectModal';
+import { useSocialProviders } from '@/hooks/useSocialProviders';
 import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
+import { useOtpVerification } from '@/hooks/useOtpVerification';
 import { updateStoredUser } from '@/services/auth';
 import { updateProfile, patchProfileMedia } from '@/services/api/profiles';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import {
   getRegistrationFields,
   submitRegistration,
-  verifyOtp,
-  resendOtp,
-  requestVoiceCall,
   type RegistrationField,
   type FieldsResponse,
 } from '@/services/api/registration';
-import { hapticLight, hapticMedium, hapticSelection } from '@/utils/haptics';
+import { hapticMedium } from '@/utils/haptics';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -64,7 +60,7 @@ export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { registerAndLogin, isAuthenticated, user: currentUser } = useAuth();
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors } = useTheme();
   const socialProviders = useSocialProviders();
 
   // State
@@ -78,18 +74,9 @@ export default function RegisterScreen() {
   // Form data (all steps)
   const [formData, setFormData] = useState<Record<string, any>>({});
 
-  // Password visibility
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfPassword, setShowConfPassword] = useState(false);
-
-  // OTP state (step 3)
-  const [otpCode, setOtpCode] = useState('');
-  const [sessionKey, setSessionKey] = useState('');
-  const [phoneMasked, setPhoneMasked] = useState('');
-  const [resendTimer, setResendTimer] = useState(0);
-
   // Email verification state (step 3, if enabled)
   const [emailVerifyCode, setEmailVerifyCode] = useState('');
+  const [emailResendTimer, setEmailResendTimer] = useState(0);
   const [verificationToken, setVerificationToken] = useState('');
 
   // Social links state (step 5)
@@ -109,6 +96,26 @@ export default function RegisterScreen() {
   const [selectModalVisible, setSelectModalVisible] = useState(false);
   const [selectModalField, setSelectModalField] = useState<string | null>(null);
 
+  // OTP verification (step 4 — phone)
+  // We use a ref for handleSubmitRegistration so the hook callback always
+  // sees the latest version without needing to be in its dependency array.
+  const submitRef = useRef<(otpSessionKey?: string) => Promise<void>>(undefined);
+
+  const otp = useOtpVerification({
+    onVerified: async (sessionKey) => {
+      await submitRef.current?.(sessionKey);
+    },
+  });
+
+  // Email resend timer
+  useEffect(() => {
+    if (emailResendTimer <= 0) return;
+    const interval = setInterval(() => {
+      setEmailResendTimer((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [emailResendTimer]);
+
   // ---------------------------------------------------------------------------
   // Fetch fields on mount
   // ---------------------------------------------------------------------------
@@ -124,18 +131,6 @@ export default function RegisterScreen() {
       setLoading(false);
     })();
   }, []);
-
-  // ---------------------------------------------------------------------------
-  // OTP resend timer
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    if (resendTimer <= 0) return;
-    const interval = setInterval(() => {
-      setResendTimer((prev) => (prev <= 1 ? 0 : prev - 1));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [resendTimer]);
 
   // ---------------------------------------------------------------------------
   // Helpers
@@ -261,9 +256,11 @@ export default function RegisterScreen() {
 
       if (result.otp_required && result.session_key) {
         // Phone OTP needed — go to step 4
-        setSessionKey(result.session_key);
-        setPhoneMasked(result.phone_masked || '');
-        setResendTimer(60);
+        otp.start({
+          sessionKey: result.session_key,
+          phoneMasked: result.phone_masked,
+          voiceFallback: fieldsConfig?.voice_fallback,
+        });
         setStep(4);
         return;
       }
@@ -312,64 +309,10 @@ export default function RegisterScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData, validateStep, registerAndLogin, getFieldsForStep, verificationToken, emailVerifyCode]);
+  }, [formData, validateStep, registerAndLogin, getFieldsForStep, verificationToken, emailVerifyCode, otp, fieldsConfig?.voice_fallback]);
 
-  const handleVerifyOtp = useCallback(async () => {
-    hapticMedium();
-    setError(null);
-
-    if (!otpCode.length) {
-      setError('Please enter the verification code.');
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      const result = await verifyOtp(sessionKey, otpCode);
-
-      if (result.success) {
-        // OTP verified - resubmit registration with session key
-        await handleSubmitRegistration(sessionKey);
-      } else {
-        setError(result.message || 'Invalid code. Please try again.');
-      }
-    } catch (e) {
-      setError('Verification failed. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  }, [otpCode, sessionKey, handleSubmitRegistration]);
-
-  const handleResendOtp = useCallback(async () => {
-    if (resendTimer > 0) return;
-
-    try {
-      const result = await resendOtp(sessionKey);
-      if (result.success) {
-        setResendTimer(60);
-        setError(null);
-      } else {
-        setError(result.message || 'Failed to resend code.');
-      }
-    } catch (e) {
-      setError('Failed to resend code.');
-    }
-  }, [sessionKey, resendTimer]);
-
-  const handleVoiceCall = useCallback(async () => {
-    try {
-      const result = await requestVoiceCall(sessionKey);
-      if (result.success) {
-        setResendTimer(60);
-        setError(null);
-      } else {
-        setError(result.message || 'Failed to initiate call.');
-      }
-    } catch (e) {
-      setError('Failed to initiate call.');
-    }
-  }, [sessionKey]);
+  // Keep ref in sync so OTP onVerified always calls latest version
+  submitRef.current = handleSubmitRegistration;
 
   // ---------------------------------------------------------------------------
   // Email verification (Step 3)
@@ -397,7 +340,7 @@ export default function RegisterScreen() {
   }, [emailVerifyCode, verificationToken, handleSubmitRegistration]);
 
   const handleResendEmailCode = useCallback(async () => {
-    if (resendTimer > 0) return;
+    if (emailResendTimer > 0) return;
 
     setError(null);
     setSubmitting(true);
@@ -413,7 +356,7 @@ export default function RegisterScreen() {
 
       if (result.email_verification_required && result.verification_token) {
         setVerificationToken(result.verification_token);
-        setResendTimer(60);
+        setEmailResendTimer(60);
         setEmailVerifyCode('');
       } else {
         setError('Failed to resend code.');
@@ -423,7 +366,7 @@ export default function RegisterScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData, resendTimer]);
+  }, [formData, emailResendTimer]);
 
   // ---------------------------------------------------------------------------
   // Social links (Step 5)
@@ -523,279 +466,25 @@ export default function RegisterScreen() {
   // ---------------------------------------------------------------------------
 
   const renderField = useCallback((key: string, field: RegistrationField) => {
-    const value = formData[key] ?? '';
-    const fieldError = fieldErrors[key];
-
-    // Checkbox type
-    if (field.type === 'inline_checkbox') {
-      return (
-        <View key={key} style={styles.inputContainer}>
-          <TouchableOpacity
-            style={styles.checkboxRow}
-            onPress={() => { hapticSelection(); setFieldValue(key, !value); }}
-            activeOpacity={0.7}
-          >
-            <View style={[
-              styles.checkbox,
-              { borderColor: fieldError ? themeColors.error : themeColors.border },
-              value && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
-            ]}>
-              {value && <Text style={[styles.checkmark, { color: themeColors.textInverse }]}>✓</Text>}
-            </View>
-            <Text style={[styles.checkboxLabel, { color: themeColors.text }]}>
-              {field.inline_label || field.label}
-              {field.required && <Text style={{ color: themeColors.error }}> *</Text>}
-            </Text>
-          </TouchableOpacity>
-          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
-        </View>
-      );
-    }
-
-    // Select / Radio / Gender type
-    if (field.type === 'select' || field.type === 'radio' || field.type === 'gender') {
-      return (
-        <View key={key} style={styles.inputContainer}>
-          <Text style={[styles.label, { color: themeColors.text }]}>
-            {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
-          </Text>
-          <TouchableOpacity
-            style={[
-              styles.input,
-              styles.selectInput,
-              {
-                backgroundColor: themeColors.background,
-                borderColor: fieldError ? themeColors.error : themeColors.border,
-              },
-            ]}
-            onPress={() => {
-              hapticLight();
-              setSelectModalField(key);
-              setSelectModalVisible(true);
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={[
-              styles.selectText,
-              { color: value ? themeColors.text : themeColors.textTertiary },
-            ]}>
-              {value || field.placeholder || `Select ${field.label}`}
-            </Text>
-            <Text style={{ color: themeColors.textSecondary }}>▼</Text>
-          </TouchableOpacity>
-          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
-        </View>
-      );
-    }
-
-    // Textarea
-    if (field.type === 'textarea') {
-      return (
-        <View key={key} style={styles.inputContainer}>
-          <Text style={[styles.label, { color: themeColors.text }]}>
-            {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              styles.textareaInput,
-              {
-                backgroundColor: themeColors.background,
-                borderColor: fieldError ? themeColors.error : themeColors.border,
-                color: themeColors.text,
-              },
-            ]}
-            value={value}
-            onChangeText={(text) => setFieldValue(key, text)}
-            placeholder={field.placeholder || ''}
-            placeholderTextColor={themeColors.textTertiary}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
-          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
-        </View>
-      );
-    }
-
-    // Password type
-    if (field.type === 'password') {
-      const isConfirm = key === 'conf_password';
-      const visible = isConfirm ? showConfPassword : showPassword;
-      const toggleVisible = isConfirm
-        ? () => { hapticLight(); setShowConfPassword(!showConfPassword); }
-        : () => { hapticLight(); setShowPassword(!showPassword); };
-
-      return (
-        <View key={key} style={styles.inputContainer}>
-          <Text style={[styles.label, { color: themeColors.text }]}>
-            {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
-          </Text>
-          <View style={[
-            styles.passwordContainer,
-            {
-              backgroundColor: themeColors.background,
-              borderColor: fieldError ? themeColors.error : themeColors.border,
-            },
-          ]}>
-            <TextInput
-              style={[styles.passwordInput, { color: themeColors.text }]}
-              value={value}
-              onChangeText={(text) => setFieldValue(key, text)}
-              placeholder={field.placeholder || ''}
-              placeholderTextColor={themeColors.textTertiary}
-              secureTextEntry={!visible}
-              textContentType={isConfirm ? 'newPassword' : 'newPassword'}
-              autoComplete={isConfirm ? 'password-new' : 'password-new'}
-            />
-            <TouchableOpacity
-              style={styles.showPasswordButton}
-              onPress={toggleVisible}
-            >
-              <Text style={styles.showPasswordText}>{visible ? '🙈' : '👁️'}</Text>
-            </TouchableOpacity>
-          </View>
-          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
-        </View>
-      );
-    }
-
-    // Default: text, email, phone, date, number, url
-    let keyboardType: TextInput['props']['keyboardType'] = 'default';
-    let autoCapitalize: TextInput['props']['autoCapitalize'] = 'sentences';
-    let autoComplete: TextInput['props']['autoComplete'] = 'off';
-    let placeholder = field.placeholder || '';
-
-    switch (field.type) {
-      case 'email':
-        keyboardType = 'email-address';
-        autoCapitalize = 'none';
-        autoComplete = 'email';
-        break;
-      case 'phone':
-        keyboardType = 'phone-pad';
-        autoCapitalize = 'none';
-        break;
-      case 'number':
-        keyboardType = 'numeric';
-        break;
-      case 'date':
-        placeholder = placeholder || 'YYYY-MM-DD';
-        autoCapitalize = 'none';
-        break;
-      case 'url':
-        keyboardType = 'url';
-        autoCapitalize = 'none';
-        break;
-      case 'text':
-      default:
-        if (key === 'username') {
-          autoCapitalize = 'none';
-          autoComplete = 'username-new';
-        }
-        break;
-    }
-
     return (
-      <View key={key} style={styles.inputContainer}>
-        <Text style={[styles.label, { color: themeColors.text }]}>
-          {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
-        </Text>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: themeColors.background,
-              borderColor: fieldError ? themeColors.error : themeColors.border,
-              color: themeColors.text,
-            },
-          ]}
-          value={value}
-          onChangeText={(text) => setFieldValue(key, text)}
-          placeholder={placeholder}
-          placeholderTextColor={themeColors.textTertiary}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize}
-          autoComplete={autoComplete}
-          autoCorrect={false}
-          editable={!submitting}
-        />
-        {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
-      </View>
+      <DynamicFormField
+        key={key}
+        fieldKey={key}
+        field={field}
+        value={formData[key] ?? ''}
+        onChange={(val) => setFieldValue(key, val)}
+        error={fieldErrors[key]}
+        onSelectPress={(k) => {
+          setSelectModalField(k);
+          setSelectModalVisible(true);
+        }}
+        disabled={submitting}
+      />
     );
-  }, [formData, fieldErrors, themeColors, showPassword, showConfPassword, submitting, setFieldValue]);
+  }, [formData, fieldErrors, submitting, setFieldValue]);
 
-  // ---------------------------------------------------------------------------
-  // Select modal
-  // ---------------------------------------------------------------------------
-
-  const renderSelectModal = () => {
-    if (!selectModalField || !fieldsConfig?.fields[selectModalField]) return null;
-
-    const field = fieldsConfig.fields[selectModalField];
-    const options = field.options || [];
-
-    return (
-      <Modal
-        visible={selectModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectModalVisible(false)}
-      >
-        <Pressable
-          style={[styles.modalOverlay, { backgroundColor: themeColors.overlay }]}
-          onPress={() => setSelectModalVisible(false)}
-        >
-          <View style={[styles.modalContent, { backgroundColor: themeColors.surface }]}>
-            <Text style={[styles.modalTitle, { color: themeColors.text }]}>
-              Select {field.label}
-            </Text>
-            <ScrollView style={styles.modalScroll}>
-              {options.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[
-                    styles.modalOption,
-                    { borderBottomColor: themeColors.border },
-                    formData[selectModalField!] === option && {
-                      backgroundColor: `${themeColors.primary}15`,
-                    },
-                  ]}
-                  onPress={() => {
-                    hapticSelection();
-                    setFieldValue(selectModalField!, option);
-                    setSelectModalVisible(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.modalOptionText,
-                    { color: themeColors.text },
-                    formData[selectModalField!] === option && {
-                      color: themeColors.primary,
-                      fontWeight: typography.weight.semibold,
-                    },
-                  ]}>
-                    {option}
-                  </Text>
-                  {formData[selectModalField!] === option && (
-                    <Text style={{ color: themeColors.primary }}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <TouchableOpacity
-              style={[styles.modalCancel, { borderTopColor: themeColors.border }]}
-              onPress={() => setSelectModalVisible(false)}
-            >
-              <Text style={[styles.modalCancelText, { color: themeColors.textSecondary }]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </Pressable>
-      </Modal>
-    );
-  };
+  // Select modal field config
+  const selectField = selectModalField ? fieldsConfig?.fields[selectModalField] : null;
 
   // ---------------------------------------------------------------------------
   // Step indicator
@@ -979,14 +668,14 @@ export default function RegisterScreen() {
       <View style={styles.otpActions}>
         <TouchableOpacity
           onPress={handleResendEmailCode}
-          disabled={resendTimer > 0}
+          disabled={emailResendTimer > 0}
           style={styles.otpAction}
         >
           <Text style={[
             styles.linkText,
-            { color: resendTimer > 0 ? themeColors.textTertiary : themeColors.primary },
+            { color: emailResendTimer > 0 ? themeColors.textTertiary : themeColors.primary },
           ]}>
-            {resendTimer > 0 ? `Resend code (${resendTimer}s)` : 'Resend code'}
+            {emailResendTimer > 0 ? `Resend code (${emailResendTimer}s)` : 'Resend code'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -1003,7 +692,7 @@ export default function RegisterScreen() {
           Verify Your Phone
         </Text>
         <Text style={[styles.otpSubtitle, { color: themeColors.textSecondary }]}>
-          Enter the code sent to {phoneMasked}
+          Enter the code sent to {otp.phoneMasked}
         </Text>
       </View>
       <View style={styles.inputContainer}>
@@ -1017,8 +706,8 @@ export default function RegisterScreen() {
               color: themeColors.text,
             },
           ]}
-          value={otpCode}
-          onChangeText={(text) => setOtpCode(text.replace(/[^0-9]/g, ''))}
+          value={otp.code}
+          onChangeText={(text) => otp.setCode(text.replace(/[^0-9]/g, ''))}
           placeholder="0000"
           placeholderTextColor={themeColors.textTertiary}
           keyboardType="number-pad"
@@ -1028,15 +717,20 @@ export default function RegisterScreen() {
           autoFocus
         />
       </View>
+      {otp.error ? (
+        <View style={[styles.errorContainer, { backgroundColor: themeColors.errorLight, borderColor: withOpacity(themeColors.error, 0.3) }]}>
+          <Text style={[styles.errorText, { color: themeColors.error }]}>{otp.error}</Text>
+        </View>
+      ) : null}
       <TouchableOpacity
-        style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
-        onPress={handleVerifyOtp}
-        disabled={submitting}
+        style={[styles.primaryButton, { backgroundColor: themeColors.primary }, (otp.verifying || submitting) && styles.buttonDisabled]}
+        onPress={() => { hapticMedium(); otp.handleVerify(); }}
+        disabled={otp.verifying || submitting}
         activeOpacity={0.8}
         accessibilityRole="button"
         accessibilityLabel="Verify phone number"
       >
-        {submitting ? (
+        {otp.verifying || submitting ? (
           <ActivityIndicator color={themeColors.textInverse} />
         ) : (
           <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Verify</Text>
@@ -1044,26 +738,26 @@ export default function RegisterScreen() {
       </TouchableOpacity>
       <View style={styles.otpActions}>
         <TouchableOpacity
-          onPress={handleResendOtp}
-          disabled={resendTimer > 0}
+          onPress={otp.handleResend}
+          disabled={otp.resendTimer > 0}
           style={styles.otpAction}
         >
           <Text style={[
             styles.linkText,
-            { color: resendTimer > 0 ? themeColors.textTertiary : themeColors.primary },
+            { color: otp.resendTimer > 0 ? themeColors.textTertiary : themeColors.primary },
           ]}>
-            {resendTimer > 0 ? `Resend code (${resendTimer}s)` : 'Resend code'}
+            {otp.resendTimer > 0 ? `Resend code (${otp.resendTimer}s)` : 'Resend code'}
           </Text>
         </TouchableOpacity>
-        {fieldsConfig?.voice_fallback && (
-          <TouchableOpacity onPress={handleVoiceCall} style={styles.otpAction}>
+        {otp.voiceFallback && (
+          <TouchableOpacity onPress={otp.handleVoiceCall} style={styles.otpAction}>
             <Text style={[styles.linkText, { color: themeColors.primary }]}>
               Try voice call
             </Text>
           </TouchableOpacity>
         )}
       </View>
-      <TouchableOpacity style={styles.linkButton} onPress={() => { setError(null); setOtpCode(''); setStep(hasEmailVerify ? 3 : 2); }}>
+      <TouchableOpacity style={styles.linkButton} onPress={() => { setError(null); otp.setCode(''); setStep(hasEmailVerify ? 3 : 2); }}>
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Go Back</Text>
       </TouchableOpacity>
     </>
@@ -1165,8 +859,8 @@ export default function RegisterScreen() {
       resizeMode="cover"
     >
       <KeyboardAvoidingView
-        style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={[styles.container, { paddingTop: insets.top }]}
+        behavior="padding"
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -1209,7 +903,19 @@ export default function RegisterScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {renderSelectModal()}
+      {/* Bottom safe area - outside KAV so keyboard calc is correct */}
+      <View style={{ height: insets.bottom }} />
+
+      {selectField && (
+        <SelectModal
+          visible={selectModalVisible}
+          title={`Select ${selectField.label}`}
+          options={selectField.options || []}
+          selectedValue={formData[selectModalField!]}
+          onSelect={(val) => setFieldValue(selectModalField!, val)}
+          onClose={() => setSelectModalVisible(false)}
+        />
+      )}
     </ImageBackground>
   );
 }
@@ -1290,15 +996,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
 
-  // Inputs
+  // Inputs (used for OTP code inputs)
   inputContainer: {
     marginBottom: spacing.lg,
-  },
-
-  label: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    marginBottom: spacing.sm,
   },
 
   input: {
@@ -1307,71 +1007,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: typography.size.md,
-  },
-
-  textareaInput: {
-    height: 80,
-    paddingTop: spacing.md,
-  },
-
-  selectInput: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-
-  selectText: {
-    fontSize: typography.size.md,
-    flex: 1,
-  },
-
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 12,
-  },
-
-  passwordInput: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    fontSize: typography.size.md,
-  },
-
-  showPasswordButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-
-  showPasswordText: {
-    fontSize: 20,
-  },
-
-  // Checkbox
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 4,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-
-  checkmark: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  checkboxLabel: {
-    fontSize: typography.size.sm,
-    flex: 1,
   },
 
   // Errors
@@ -1385,11 +1020,6 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: typography.size.sm,
     textAlign: 'center',
-  },
-
-  fieldError: {
-    fontSize: typography.size.xs,
-    marginTop: spacing.xs,
   },
 
   // Buttons
@@ -1494,75 +1124,4 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
 
-  avatarContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    position: 'relative',
-  },
-
-  avatarPreview: {
-    width: sizing.avatar.xxl,
-    height: sizing.avatar.xxl,
-    borderRadius: sizing.avatar.xxl / 2,
-  },
-
-  avatarOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    borderRadius: sizing.avatar.xxl / 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: sizing.avatar.xxl,
-    alignSelf: 'center',
-    height: sizing.avatar.xxl,
-  },
-
-  // Select Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-
-  modalContent: {
-    borderRadius: 16,
-    maxHeight: '60%',
-    overflow: 'hidden',
-  },
-
-  modalTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.bold,
-    padding: spacing.lg,
-    textAlign: 'center',
-  },
-
-  modalScroll: {
-    maxHeight: 300,
-  },
-
-  modalOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-
-  modalOptionText: {
-    fontSize: typography.size.md,
-  },
-
-  modalCancel: {
-    padding: spacing.lg,
-    alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-
-  modalCancelText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.medium,
-  },
 });

@@ -66,7 +66,7 @@ export interface Space {
       created_at: string;
     };
   };
-  topics?: any[];
+  topics?: Record<string, unknown>[];
   header_links?: { title: string; route: { name: string } }[];
 }
 
@@ -92,7 +92,7 @@ export interface SpaceSettings {
   layout_style?: 'timeline' | 'grid';
   show_sidebar?: 'yes' | 'no';
   og_image?: string;
-  links?: any[];
+  links?: Record<string, unknown>[];
   topic_required?: 'yes' | 'no';
   hide_members_count?: 'yes' | 'no';
   members_page_status?: 'public' | 'private' | 'members_only';

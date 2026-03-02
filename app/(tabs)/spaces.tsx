@@ -8,7 +8,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   RefreshControl,
   StyleSheet,
@@ -19,12 +19,16 @@ import {
 
 import { LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
 import { SpaceCard } from '@/components/space/SpaceCard';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAudioPlayerContext } from '@/contexts/AudioPlayerContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTabBar } from '@/contexts/TabBarContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { profilesApi } from '@/services/api/profiles';
 import { spacesApi } from '@/services/api/spaces';
-import { Space, SpaceGroupOption } from '@/types';
+import { useCachedData } from '@/hooks/useCachedData';
+import { Space, SpaceGroupOption } from '@/types/space';
 
 // -----------------------------------------------------------------------------
 // Types for the flat list (spaces + group headers)
@@ -51,28 +55,31 @@ type ListItem = GroupHeaderItem | SpaceItem;
 export default function SpacesScreen() {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { currentBook } = useAudioPlayerContext();
+  const bottomPadding = sizing.height.tabBar + insets.bottom + (currentBook ? 59 : 0) + spacing.md;
+  const { handleScroll } = useTabBar();
   const { user } = useAuth();
-  const [spaces, setSpaces] = useState<Space[]>([]);
-  const [groups, setGroups] = useState<SpaceGroupOption[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // ---------------------------------------------------------------------------
-  // Fetch Groups + Spaces in parallel
+  // Fetch Groups + Spaces in parallel (cached + auto-refresh on app focus)
   // ---------------------------------------------------------------------------
 
-  const fetchData = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
+  interface SpacesData {
+    spaces: Space[];
+    groups: SpaceGroupOption[];
+  }
 
-      // Fetch groups and spaces in parallel
+  const {
+    data,
+    isLoading: loading,
+    isRefreshing: refreshing,
+    error: fetchError,
+    refresh,
+  } = useCachedData<SpacesData>({
+    cacheKey: 'tbc_spaces_list',
+    fetcher: async () => {
       const [groupsRes, spacesRes] = await Promise.all([
         spacesApi.getSpaceGroups({ options_only: true }),
         user?.username
@@ -80,31 +87,20 @@ export default function SpacesScreen() {
           : spacesApi.getSpaces({ status: 'published' }),
       ]);
 
-      // Process groups
-      if (groupsRes.success) {
-        const groupsData = groupsRes.data as any;
-        setGroups(groupsData?.groups || []);
-      }
-
-      // Process spaces
       if (!spacesRes.success) {
-        setError(spacesRes.error?.message || 'Failed to load spaces');
-      } else {
-        const spacesData = spacesRes.data as any;
-        const spacesList = spacesData?.spaces || [];
-        setSpaces(spacesList);
+        throw new Error(spacesRes.error?.message || 'Failed to load spaces');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [user?.username]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+      return {
+        spaces: spacesRes.data.spaces || [],
+        groups: groupsRes.success ? (groupsRes.data.groups || []) : [],
+      };
+    },
+  });
+
+  const spaces = data?.spaces || [];
+  const groups = data?.groups || [];
+  const error = fetchError?.message || null;
 
   // ---------------------------------------------------------------------------
   // Client-side Search Filter
@@ -190,7 +186,7 @@ export default function SpacesScreen() {
   // Handlers
   // ---------------------------------------------------------------------------
 
-  const handleRefresh = () => fetchData(true);
+  const handleRefresh = () => { refresh(); };
 
   const handleSpacePress = (space: Space) => {
     router.push(`/space/${space.slug}`);
@@ -275,6 +271,8 @@ export default function SpacesScreen() {
               ? `group-${item.id}`
               : `space-${item.space.id}`
           }
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -283,7 +281,7 @@ export default function SpacesScreen() {
               colors={[themeColors.primary]}
             />
           }
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
           ListEmptyComponent={
             searchQuery.length > 0 ? (
               <View style={styles.emptyContainer}>
@@ -382,9 +380,7 @@ const styles = StyleSheet.create({
   },
 
   // List
-  listContent: {
-    paddingBottom: 100, // Space for tab bar
-  },
+  listContent: {},
 
   // States
   emptyContainer: {

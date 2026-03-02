@@ -10,7 +10,7 @@ import {
   NotificationsResponse,
   UnreadNotificationsResponse,
   transformNotification,
-} from '@/types';
+} from '@/types/notification';
 import { get, post } from './client';
 
 // -----------------------------------------------------------------------------

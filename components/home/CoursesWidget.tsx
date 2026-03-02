@@ -2,10 +2,11 @@
 // COURSES WIDGET - Enrolled courses carousel for home page
 // =============================================================================
 // Fetches user's enrolled courses and renders horizontal cards.
+// Uses useCachedData for stale-while-revalidate caching.
 // Returns null if no enrolled courses or fetch fails.
 // =============================================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -23,9 +24,10 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
-import { coursesApi } from '@/services/api';
-import { Course } from '@/types';
+import { coursesApi } from '@/services/api/courses';
+import { Course } from '@/types/course';
 import { ProgressBar } from '@/components/course';
+import { useCachedData } from '@/hooks/useCachedData';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -50,28 +52,20 @@ interface CoursesWidgetProps {
 export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  const fetchCourses = useCallback(async () => {
-    try {
+  const { data: courses, isLoading } = useCachedData<Course[]>({
+    cacheKey: 'tbc_widget_enrolled_courses',
+    fetcher: async () => {
       const response = await coursesApi.getCourses({ type: 'enrolled', per_page: 5 });
-      if (response.success) {
-        setCourses(response.data.courses.data);
-      }
-    } catch (err) {
-      if (__DEV__) console.error('[CoursesWidget] fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      if (!response.success) return [];
+      return response.data.courses.data;
+    },
+    refreshKey,
+    refreshOnFocus: false,
+  });
 
-  useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses, refreshKey]);
-
-  // Loading state on first load only
-  if (loading && courses.length === 0) {
+  // Loading state on first load only (no cache yet)
+  if (isLoading) {
     return (
       <View style={{ padding: spacing.lg, alignItems: 'center' }}>
         <ActivityIndicator size="small" color={themeColors.primary} />
@@ -80,7 +74,7 @@ export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
   }
 
   // No enrolled courses — show browse CTA
-  if (courses.length === 0) {
+  if (!courses || courses.length === 0) {
     return (
       <TouchableOpacity
         style={[styles.ctaCard, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}
@@ -136,7 +130,9 @@ export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
                 {course.title}
               </Text>
               <View style={styles.cardProgress}>
-                <ProgressBar progress={progress} />
+                <View style={{ flex: 1 }}>
+                  <ProgressBar progress={progress} />
+                </View>
                 <Text style={[styles.cardProgressText, { color: themeColors.textTertiary }]}>
                   {progress === 100 ? 'Complete' : `${Math.round(progress)}%`}
                 </Text>
@@ -180,6 +176,7 @@ const styles = StyleSheet.create({
   },
 
   cardContent: {
+    flex: 1,
     padding: spacing.md,
   },
 
@@ -193,6 +190,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    marginTop: 'auto',
   },
 
   cardProgressText: {

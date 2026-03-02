@@ -15,11 +15,12 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { syncBadgeCount } from '@/services/push';
-import { notificationsApi } from '@/services/api';
+import { notificationsApi } from '@/services/api/notifications';
 import 'react-native-reanimated';
 
 // -----------------------------------------------------------------------------
@@ -40,6 +41,7 @@ const VALID_ROUTE_PREFIXES = [
   '/notification-settings',
   '/webview',
   '/bookclub',
+  '/youtube',
 ];
 
 /** Validate that a push notification route matches a known app route */
@@ -114,27 +116,12 @@ function RootLayoutNav() {
   }, [router]);
 
   // ---------------------------------------------------------------------------
-  // Badge Sync - correct app icon badge on foreground
+  // Badge Sync - initial sync on app open (resume sync handled by TopHeader)
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
     if (!isAuthenticated) return;
-
-    const fetchAndSyncBadge = async () => {
-      const count = await notificationsApi.getNotificationUnreadCount();
-      syncBadgeCount(count);
-    };
-
-    // Sync on mount (app just opened)
-    fetchAndSyncBadge();
-
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') {
-        fetchAndSyncBadge();
-      }
-    });
-
-    return () => subscription.remove();
+    notificationsApi.getNotificationUnreadCount().then(syncBadgeCount);
   }, [isAuthenticated]);
 
   if (isLoading) {
@@ -250,6 +237,16 @@ function RootLayoutNav() {
           options={{ presentation: 'card', headerShown: false }}
         />
 
+        {/* YOUTUBE */}
+        <Stack.Screen
+          name="youtube/index"
+          options={{ presentation: 'card', headerShown: false }}
+        />
+        <Stack.Screen
+          name="youtube/playlist/[id]"
+          options={{ presentation: 'card', headerShown: false }}
+        />
+
         {/* BOOK CLUB */}
         <Stack.Screen
           name="bookclub/index"
@@ -287,9 +284,11 @@ export default function RootLayout() {
           <AuthProvider>
             <AudioPlayerProvider>
               <PusherProvider>
-                <BottomSheetModalProvider>
-                  <RootLayoutNav />
-                </BottomSheetModalProvider>
+                <KeyboardProvider>
+                  <BottomSheetModalProvider>
+                    <RootLayoutNav />
+                  </BottomSheetModalProvider>
+                </KeyboardProvider>
               </PusherProvider>
             </AudioPlayerProvider>
           </AuthProvider>

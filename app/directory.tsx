@@ -31,7 +31,7 @@ import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { membersApi } from '@/services/api/members';
-import { useFollowToggle } from '@/hooks';
+import { useFollowToggle } from '@/hooks/useFollowToggle';
 
 // -----------------------------------------------------------------------------
 // Sort Options
@@ -99,18 +99,10 @@ export default function ChurchDirectoryScreen() {
         return;
       }
 
-      const apiData = response.data as any;
+      const apiData = response.data;
 
       // Extract members from nested structure: { members: { data: [...] } }
-      let newMembers: MemberCardData[] = [];
-
-      if (apiData?.members?.data && Array.isArray(apiData.members.data)) {
-        newMembers = apiData.members.data;
-      } else if (apiData?.data && Array.isArray(apiData.data)) {
-        newMembers = apiData.data;
-      } else if (Array.isArray(apiData)) {
-        newMembers = apiData;
-      }
+      const newMembers: MemberCardData[] = apiData.members?.data || [];
 
       if (shouldAppend) {
         setMembers((prev) => [...prev, ...newMembers]);
@@ -119,12 +111,12 @@ export default function ChurchDirectoryScreen() {
       }
 
       // Extract follow state if present
-      if (apiData?.current_user_follows) {
+      if (apiData.current_user_follows) {
         setFollowMap(prev => ({ ...prev, ...apiData.current_user_follows }));
       }
 
       // Check if more pages exist
-      const hasMorePages = apiData?.members?.next_page_url != null || newMembers.length === 20;
+      const hasMorePages = apiData.members?.next_page_url != null || newMembers.length === 20;
       setHasMore(hasMorePages);
 
     } catch (err) {
@@ -218,7 +210,7 @@ export default function ChurchDirectoryScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
         {/* Header */}
         <PageHeader
           leftAction="back"
@@ -275,6 +267,7 @@ export default function ChurchDirectoryScreen() {
         {(members.length > 0 || (!loading && !error)) && (
           <FlashList
             data={members}
+            contentContainerStyle={{ paddingBottom: insets.bottom }}
             renderItem={({ item }) => {
               const memberId = Number(item.xprofile?.user_id || item.user_id || item.id);
               const isSelf = memberId === currentUser?.id;

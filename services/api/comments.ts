@@ -7,8 +7,8 @@
 
 import { get, post, del, patch } from './client';
 import { ENDPOINTS, DEFAULT_PER_PAGE } from '@/constants/config';
-import { Comment, CommentsResponse, CreateCommentResponse, ReactResponse } from '@/types';
-import { ReactionType } from '@/types/feed';
+import { Comment, CommentsResponse, CreateCommentResponse } from '@/types/comment';
+import { ReactResponse, ReactionType } from '@/types/feed';
 
 // -----------------------------------------------------------------------------
 // Request Options

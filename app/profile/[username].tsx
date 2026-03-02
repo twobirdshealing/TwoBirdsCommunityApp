@@ -8,7 +8,7 @@
 //   - Other: Follow, Message
 // =============================================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,16 +19,17 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { profilesApi, patchProfileMedia } from '@/services/api';
+import { useCachedData } from '@/hooks/useCachedData';
+import { profilesApi, patchProfileMedia } from '@/services/api/profiles';
 import { updateStoredUser } from '@/services/auth';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
-import { Profile } from '@/types';
+import { Profile } from '@/types/user';
 import { DropdownMenu, LoadingSpinner, ErrorMessage } from '@/components/common';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 
@@ -49,11 +50,23 @@ export default function UserProfileScreen() {
   // Check if viewing own profile
   const isOwnProfile = currentUser?.username === username;
 
-  // State
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Fetch Profile (refreshOnFocus replaces useFocusEffect)
+  const { data: profile, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh, mutate } = useCachedData<Profile>({
+    cacheKey: `tbc_profile_${username}`,
+    fetcher: async () => {
+      const response = await profilesApi.getProfile(username!);
+      if (response.success && response.data.profile) {
+        return response.data.profile;
+      }
+      throw new Error('Failed to load profile');
+    },
+    enabled: !!username,
+  });
+  const error = fetchError?.message || null;
+
+  // Derived state from profile data
+  const isFollowing = (profile?.follow || 0) > 0;
+  const isBlocked = profile?.is_blocked_by_you === true;
 
   // Avatar/cover upload state
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -65,65 +78,16 @@ export default function UserProfileScreen() {
   // Other-user menu state (block etc.)
   const [otherMenuVisible, setOtherMenuVisible] = useState(false);
 
-  // Follow state (for other users only)
-  const [isFollowing, setIsFollowing] = useState(false);
+  // Follow/Block loading (UI-only state)
   const [followLoading, setFollowLoading] = useState(false);
-
-  // Block state (for other users only)
-  const [isBlocked, setIsBlocked] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
-
-  // ---------------------------------------------------------------------------
-  // Fetch Profile
-  // ---------------------------------------------------------------------------
-
-  const fetchProfile = useCallback(async (isRefresh = false) => {
-    if (!username) {
-      setError('User not found');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
-
-      const response = await profilesApi.getProfile(username);
-
-      if (response.success && response.data.profile) {
-        setProfile(response.data.profile);
-        // Init follow state from API (FollowHandler injects follow level)
-        setIsFollowing((response.data.profile.follow || 0) > 0);
-        // Init block state from API (BlockHandler injects is_blocked_by_you)
-        setIsBlocked(response.data.profile.is_blocked_by_you === true);
-      } else {
-        setError('Failed to load profile');
-      }
-    } catch (err) {
-      if (__DEV__) console.error('Failed to fetch profile:', err);
-      setError('Failed to load profile');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [username]);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchProfile();
-    }, [fetchProfile])
-  );
 
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
 
   const handleRefresh = () => {
-    fetchProfile(true);
+    refresh();
   };
 
   const handleFollowPress = async () => {
@@ -134,22 +98,18 @@ export default function UserProfileScreen() {
 
       if (isFollowing) {
         await profilesApi.unfollowUser(username);
-        setIsFollowing(false);
-        if (profile) {
-          setProfile({
-            ...profile,
-            followers_count: Math.max(0, (profile.followers_count || 0) - 1),
-          });
-        }
+        mutate(prev => prev ? {
+          ...prev,
+          follow: 0,
+          followers_count: Math.max(0, (prev.followers_count || 0) - 1),
+        } : prev);
       } else {
         await profilesApi.followUser(username);
-        setIsFollowing(true);
-        if (profile) {
-          setProfile({
-            ...profile,
-            followers_count: (profile.followers_count || 0) + 1,
-          });
-        }
+        mutate(prev => prev ? {
+          ...prev,
+          follow: 1,
+          followers_count: (prev.followers_count || 0) + 1,
+        } : prev);
       }
     } catch (err) {
       if (__DEV__) console.error('Follow action failed:', err);
@@ -179,15 +139,14 @@ export default function UserProfileScreen() {
             if (isBlocked) {
               const result = await profilesApi.unblockUser(username);
               if (result.success) {
-                setIsBlocked(false);
+                mutate(prev => prev ? { ...prev, is_blocked_by_you: false } : prev);
               } else {
                 Alert.alert('Error', 'Failed to unblock user');
               }
             } else {
               const result = await profilesApi.blockUser(username);
               if (result.success) {
-                setIsBlocked(true);
-                setIsFollowing(false);
+                mutate(prev => prev ? { ...prev, is_blocked_by_you: true, follow: 0 } : prev);
               } else {
                 Alert.alert('Error', 'Failed to block user');
               }
@@ -225,9 +184,7 @@ export default function UserProfileScreen() {
     showCoverPicker({
       onUploadStart: (localUri) => {
         setCoverUploading(true);
-        if (profile) {
-          setProfile({ ...profile, cover_photo: localUri });
-        }
+        mutate(prev => prev ? { ...prev, cover_photo: localUri } : prev);
       },
       onSuccess: async (remoteUrl) => {
         try {
@@ -236,13 +193,11 @@ export default function UserProfileScreen() {
           // Fall through — cover was uploaded, just assignment failed
         }
         setCoverUploading(false);
-        if (profile) {
-          setProfile({ ...profile, cover_photo: remoteUrl });
-        }
+        mutate(prev => prev ? { ...prev, cover_photo: remoteUrl } : prev);
       },
       onError: (message) => {
         setCoverUploading(false);
-        fetchProfile();
+        refresh();
         Alert.alert('Upload Failed', message);
       },
     });
@@ -254,9 +209,7 @@ export default function UserProfileScreen() {
     showAvatarPicker({
       onUploadStart: (localUri) => {
         setAvatarUploading(true);
-        if (profile) {
-          setProfile({ ...profile, avatar: localUri });
-        }
+        mutate(prev => prev ? { ...prev, avatar: localUri } : prev);
       },
       onSuccess: async (remoteUrl) => {
         try {
@@ -265,14 +218,12 @@ export default function UserProfileScreen() {
           // Fall through — avatar was uploaded, just assignment failed
         }
         setAvatarUploading(false);
-        if (profile) {
-          setProfile({ ...profile, avatar: remoteUrl });
-        }
+        mutate(prev => prev ? { ...prev, avatar: remoteUrl } : prev);
         await updateStoredUser({ avatar: remoteUrl });
       },
       onError: (message) => {
         setAvatarUploading(false);
-        fetchProfile();
+        refresh();
         Alert.alert('Upload Failed', message);
       },
     });
@@ -317,7 +268,7 @@ export default function UserProfileScreen() {
           onLeftPress={() => router.back()}
           title="Profile"
         />
-        <ErrorMessage message={error} onRetry={() => fetchProfile()} />
+        <ErrorMessage message={error} onRetry={refresh} />
       </View>
     );
   }
@@ -327,7 +278,7 @@ export default function UserProfileScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <PageHeader
@@ -348,6 +299,7 @@ export default function UserProfileScreen() {
       />
         <ScrollView
           style={styles.scrollView}
+          contentContainerStyle={{ paddingBottom: insets.bottom }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

@@ -148,7 +148,7 @@ export interface CourseLessonMeta {
   document_ids?: number[];
   featured_image_id?: number;
   free_preview_lesson?: 'yes' | 'no';
-  quiz_questions?: any[]; // Phase 2
+  quiz_questions?: unknown[]; // Phase 2
   enable_passing_score?: 'yes' | 'no';
   enforce_passing_score?: 'yes' | 'no';
   hide_result?: 'yes' | 'no';

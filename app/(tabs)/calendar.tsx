@@ -9,11 +9,15 @@
 // - WebView integration for event booking (Phase 2)
 // =============================================================================
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTabBar } from '@/contexts/TabBarContext';
+import { useAudioPlayerContext } from '@/contexts/AudioPlayerContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { calendarApi } from '@/services/api/calendar';
+import { useCachedData } from '@/hooks/useCachedData';
 import { CalendarEvent, CalendarViewMode } from '@/types/calendar';
 import { useEventWebView } from '@/hooks/useEventWebView';
 import {
@@ -59,19 +63,46 @@ export default function CalendarScreen() {
   // WebView hook for opening events
   const { openEvent } = useEventWebView();
   const { colors: themeColors } = useTheme();
+  const { handleScroll } = useTabBar();
+  const insets = useSafeAreaInsets();
+  const { currentBook } = useAudioPlayerContext();
+  const bottomPadding = sizing.height.tabBar + insets.bottom + (currentBook ? 59 : 0) + spacing.md;
 
   // State
   const [viewMode, setViewMode] = useState<CalendarViewMode>('list');
   const [currentMonth, setCurrentMonth] = useState(getCurrentMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Calculate month limits (current month to +2 months like web)
   const minMonth = getCurrentMonth();
   const maxMonth = addMonths(getCurrentMonth(), 2);
+
+  // ---------------------------------------------------------------------------
+  // Fetch Events (cached per month)
+  // ---------------------------------------------------------------------------
+
+  const {
+    data: eventsData,
+    isLoading: loading,
+    isRefreshing: refreshing,
+    error: fetchError,
+    refresh,
+  } = useCachedData<CalendarEvent[]>({
+    cacheKey: `tbc_calendar_events_${currentMonth}`,
+    fetcher: async () => {
+      const response = await calendarApi.getEvents({
+        month: currentMonth,
+        limit: 50,
+      });
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to load events');
+      }
+      return response.data.events || [];
+    },
+  });
+
+  const events = eventsData || [];
+  const error = fetchError?.message || null;
 
   // Get events for selected date (month view)
   const selectedDateEvents = useMemo(() => {
@@ -83,47 +114,6 @@ export default function CalendarScreen() {
     });
   }, [events, selectedDate]);
 
-  // ---------------------------------------------------------------------------
-  // Fetch Events
-  // ---------------------------------------------------------------------------
-
-  const fetchEvents = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
-
-      const response = await calendarApi.getEvents({
-        month: currentMonth,
-        limit: 50,
-      });
-
-      if (!response.success) {
-        setError(response.error?.message || 'Failed to load events');
-        return;
-      }
-
-      setEvents(response.data.events || []);
-    } catch (err) {
-      if (__DEV__) console.error('[Calendar] Error fetching events:', err);
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [currentMonth]);
-
-  // ---------------------------------------------------------------------------
-  // Effects
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
-
   // Reset selected date when month changes
   useEffect(() => {
     setSelectedDate(null);
@@ -134,7 +124,7 @@ export default function CalendarScreen() {
   // ---------------------------------------------------------------------------
 
   const handleRefresh = () => {
-    fetchEvents(true);
+    refresh();
   };
 
   const handlePrevMonth = () => {
@@ -186,6 +176,8 @@ export default function CalendarScreen() {
   const renderMonthView = () => (
     <ScrollView
       style={styles.container}
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -228,7 +220,7 @@ export default function CalendarScreen() {
       )}
 
       {/* Bottom padding */}
-      <View style={styles.bottomPadding} />
+      <View style={{ height: bottomPadding }} />
     </ScrollView>
   );
 
@@ -244,6 +236,7 @@ export default function CalendarScreen() {
       error={error}
       onRefresh={handleRefresh}
       onEventPress={handleEventPress}
+      onScroll={handleScroll}
       ListHeaderComponent={renderHeader()}
       emptyMessage={`No events in ${new Date(currentMonth + '-01').toLocaleDateString('en-US', { month: 'long' })}`}
     />
@@ -287,7 +280,4 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
   },
 
-  bottomPadding: {
-    height: spacing.xl,
-  },
 });

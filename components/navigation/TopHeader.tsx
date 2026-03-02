@@ -9,16 +9,20 @@ import { SITE_URL } from '@/constants/config';
 import { spacing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { messagesApi, notificationsApi, profilesApi } from '@/services/api';
-import { Profile } from '@/types';
+import { messagesApi } from '@/services/api/messages';
+import { notificationsApi } from '@/services/api/notifications';
+import { profilesApi } from '@/services/api/profiles';
+import { Profile } from '@/types/user';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAppFocus } from '@/hooks/useAppFocus';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { useNewMessageListener } from '@/contexts/PusherContext';
+import { syncBadgeCount } from '@/services/push';
 import { HeaderIconButton } from './HeaderIconButton';
 import { UserMenu } from './UserMenu';
 
@@ -84,6 +88,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
 
       setUnreadMessages(messagesCount);
       setUnreadNotifications(notificationsCount);
+      syncBadgeCount(notificationsCount); // Also sync app icon badge
     } catch (err) {
       // Silent fail - badges just won't update
     }
@@ -129,17 +134,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   // Background → Foreground: refetch both counts
   // ---------------------------------------------------------------------------
 
-  useEffect(() => {
-    if (!user) return;
-
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') {
-        fetchUnreadCounts();
-      }
-    });
-
-    return () => subscription.remove();
-  }, [user, fetchUnreadCounts]);
+  useAppFocus(useCallback(() => fetchUnreadCounts(), [fetchUnreadCounts]), !!user);
 
   // ---------------------------------------------------------------------------
   // Handlers

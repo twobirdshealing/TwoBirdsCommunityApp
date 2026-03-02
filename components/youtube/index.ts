@@ -1,5 +1,5 @@
 // =============================================================================
-// CONTEXTS - Barrel export
+// YOUTUBE COMPONENTS - Barrel export
 // =============================================================================
 
-export { AuthProvider, useAuth } from './AuthContext';
+export { YouTubeVideoCard } from './YouTubeVideoCard';

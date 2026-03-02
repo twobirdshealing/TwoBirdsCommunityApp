@@ -36,15 +36,14 @@ export interface MemberCardData {
     user_id?: number;
     display_name?: string;
     username?: string;
-    avatar?: string;
-    short_description?: string;
+    avatar?: string | null;
+    short_description?: string | null;
     total_points?: number;
     is_verified?: number | boolean;
     last_activity?: string;
     created_at?: string;
     meta?: {
       badge_slug?: string[];
-      [key: string]: any;
     };
   };
   // Alternative direct fields (for flexibility)

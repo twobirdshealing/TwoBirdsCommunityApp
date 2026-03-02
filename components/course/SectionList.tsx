@@ -8,7 +8,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
-import { CourseLesson, CourseSection } from '@/types';
+import { CourseLesson, CourseSection } from '@/types/course';
 import { spacing, typography } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { LessonRow } from './LessonRow';

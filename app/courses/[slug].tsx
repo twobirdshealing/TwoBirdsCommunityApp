@@ -10,7 +10,7 @@
 // =============================================================================
 
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -32,8 +32,9 @@ import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { useTheme } from '@/contexts/ThemeContext';
-import { coursesApi } from '@/services/api';
-import { Course, CourseLesson, CourseSection, CourseTrack } from '@/types';
+import { useCachedData } from '@/hooks/useCachedData';
+import { coursesApi } from '@/services/api/courses';
+import { Course, CourseLesson, CourseSection, CourseTrack } from '@/types/course';
 import { hapticMedium } from '@/utils/haptics';
 
 // -----------------------------------------------------------------------------
@@ -46,49 +47,33 @@ export default function CourseDetailScreen() {
   const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
 
-  // State
-  const [course, setCourse] = useState<Course | null>(null);
-  const [sections, setSections] = useState<CourseSection[]>([]);
-  const [track, setTrack] = useState<CourseTrack | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [enrolling, setEnrolling] = useState(false);
-
-  // ---------------------------------------------------------------------------
   // Fetch Course Detail
-  // ---------------------------------------------------------------------------
+  interface CourseDetailData {
+    course: Course;
+    sections: CourseSection[];
+    track: CourseTrack | null;
+  }
 
-  const fetchCourse = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
-
+  const { data, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh, mutate } = useCachedData<CourseDetailData>({
+    cacheKey: `tbc_course_${slug}`,
+    fetcher: async () => {
       const response = await coursesApi.getCourseBySlug(slug);
-
       if (!response.success) {
-        setError(response.error?.message || 'Failed to load course');
-        return;
+        throw new Error(response.error?.message || 'Failed to load course');
       }
+      return {
+        course: response.data.course,
+        sections: response.data.sections,
+        track: response.data.track,
+      };
+    },
+  });
 
-      setCourse(response.data.course);
-      setSections(response.data.sections);
-      setTrack(response.data.track);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [slug]);
-
-  useEffect(() => {
-    fetchCourse();
-  }, [fetchCourse]);
+  const course = data?.course || null;
+  const sections = data?.sections || [];
+  const track = data?.track || null;
+  const error = fetchError?.message || null;
+  const [enrolling, setEnrolling] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Enroll
@@ -107,12 +92,13 @@ export default function CourseDetailScreen() {
         return;
       }
 
-      // Update local state
-      setTrack(response.data.track);
-      setCourse((prev) => prev ? { ...prev, isEnrolled: true, progress: 0 } : prev);
-
-      // Refetch to get unlocked lessons
-      fetchCourse(true);
+      // Update local state + refetch to get unlocked lessons
+      mutate(prev => prev ? {
+        ...prev,
+        track: response.data.track,
+        course: { ...prev.course, isEnrolled: true, progress: 0 },
+      } : prev);
+      refresh();
     } catch (err) {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
@@ -188,7 +174,7 @@ export default function CourseDetailScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
           <PageHeader leftAction="back" onLeftPress={() => router.back()} title="Course" />
-          <ErrorMessage message={error} onRetry={() => fetchCourse()} />
+          <ErrorMessage message={error} onRetry={refresh} />
         </View>
       </>
     );
@@ -220,7 +206,7 @@ export default function CourseDetailScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
         <PageHeader
           leftAction="back"
           onLeftPress={() => router.back()}
@@ -232,7 +218,7 @@ export default function CourseDetailScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => fetchCourse(true)}
+              onRefresh={refresh}
               tintColor={themeColors.primary}
               colors={[themeColors.primary]}
             />
@@ -390,7 +376,7 @@ export default function CourseDetailScreen() {
           </View>
 
           {/* Bottom padding */}
-          <View style={{ height: 80 }} />
+          <View style={{ height: spacing.xxxl * 2 }} />
         </ScrollView>
       </View>
     </>

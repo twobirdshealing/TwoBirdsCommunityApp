@@ -75,7 +75,7 @@ export const sizing = {
     button: 48,
     buttonSmall: 36,
     input: 48,
-    tabBar: 60,
+    tabBar: 46,
     header: 56,
   },
   

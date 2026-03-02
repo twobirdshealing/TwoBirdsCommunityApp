@@ -2,14 +2,24 @@
 // HOME WIDGET - Shared wrapper for home page widget sections
 // =============================================================================
 // Provides consistent section header with title, icon, and "See all" link.
+// Supports edit mode with drag handle, toggle switch, and long-press entry.
 // Children render the actual widget content.
 // =============================================================================
 
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, shadows } from '@/constants/layout';
+import { withOpacity } from '@/constants/colors';
 import { useTheme } from '@/contexts/ThemeContext';
+import { hapticMedium } from '@/utils/haptics';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -22,6 +32,14 @@ interface HomeWidgetProps {
   onSeeAll?: () => void;
   children: React.ReactNode;
   hidden?: boolean;
+  // Edit mode
+  isEditing?: boolean;
+  isEnabled?: boolean;
+  canDisable?: boolean;
+  onToggle?: () => void;
+  drag?: () => void;
+  isActive?: boolean;
+  onEnterEditMode?: () => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -35,15 +53,82 @@ export function HomeWidget({
   onSeeAll,
   children,
   hidden,
+  isEditing,
+  isEnabled = true,
+  canDisable = true,
+  onToggle,
+  drag,
+  isActive,
+  onEnterEditMode,
 }: HomeWidgetProps) {
   const { colors: themeColors } = useTheme();
 
   if (hidden) return null;
 
+  const containerStyle = [
+    styles.container,
+    isActive && [styles.activeContainer, shadows.md],
+    isEditing && !isEnabled && { opacity: 0.4 },
+  ];
+
+  // In edit mode, header has drag grip + toggle instead of "See all"
+  if (isEditing) {
+    return (
+      <View style={containerStyle}>
+        <View style={styles.header}>
+          {/* Drag Handle */}
+          <Pressable
+            onPressIn={drag}
+            style={styles.dragHandle}
+            hitSlop={8}
+          >
+            <Ionicons name="reorder-three" size={24} color={themeColors.textSecondary} />
+          </Pressable>
+
+          {/* Title */}
+          <View style={styles.headerLeft}>
+            {icon && (
+              <Ionicons
+                name={icon}
+                size={20}
+                color={themeColors.text}
+                style={styles.headerIcon}
+              />
+            )}
+            <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
+          </View>
+
+          {/* Toggle */}
+          {canDisable && onToggle && (
+            <Switch
+              value={isEnabled}
+              onValueChange={onToggle}
+              trackColor={{
+                false: withOpacity(themeColors.textTertiary, 0.3),
+                true: withOpacity(themeColors.primary, 0.4),
+              }}
+              thumbColor={isEnabled ? themeColors.primary : themeColors.textTertiary}
+            />
+          )}
+        </View>
+
+        {/* Widget Content — hidden when disabled in edit mode */}
+        {isEnabled && children}
+      </View>
+    );
+  }
+
+  // Normal mode — long-press header to enter edit mode
   return (
     <View style={styles.container}>
-      {/* Section Header */}
-      <View style={styles.header}>
+      <Pressable
+        onLongPress={() => {
+          hapticMedium();
+          onEnterEditMode?.();
+        }}
+        delayLongPress={400}
+        style={styles.header}
+      >
         <View style={styles.headerLeft}>
           {icon && (
             <Ionicons
@@ -68,7 +153,7 @@ export function HomeWidget({
             <Ionicons name="chevron-forward" size={14} color={themeColors.primary} />
           </TouchableOpacity>
         )}
-      </View>
+      </Pressable>
 
       {/* Widget Content */}
       {children}
@@ -83,6 +168,12 @@ export function HomeWidget({
 const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.lg,
+  },
+
+  activeContainer: {
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    borderRadius: 12,
+    transform: [{ scale: 1.02 }],
   },
 
   header: {
@@ -101,6 +192,11 @@ const styles = StyleSheet.create({
 
   headerIcon: {
     marginRight: spacing.sm,
+  },
+
+  dragHandle: {
+    marginRight: spacing.sm,
+    padding: spacing.xs,
   },
 
   title: {

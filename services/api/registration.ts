@@ -79,7 +79,7 @@ export interface PasswordResetResponse {
 async function tbcPublicRequest<T>(
   endpoint: string,
   options: RequestInit = {}
-): Promise<{ success: true; data: T } | { success: false; error: string; data?: any }> {
+): Promise<{ success: true; data: T } | { success: false; error: string; data?: Record<string, unknown> }> {
   try {
     const response = await fetch(`${TBC_CA_URL}${endpoint}`, {
       ...options,
@@ -143,7 +143,7 @@ export async function submitRegistration(data: Record<string, any>): Promise<Reg
   return {
     success: false,
     message: result.error,
-    errors: 'data' in result ? result.data?.errors : undefined,
+    errors: 'data' in result ? result.data?.errors as Record<string, string> | undefined : undefined,
   };
 }
 

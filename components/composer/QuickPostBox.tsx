@@ -15,7 +15,7 @@ import {
 import { shadows, spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { profilesApi } from '@/services/api';
+import { profilesApi } from '@/services/api/profiles';
 
 // -----------------------------------------------------------------------------
 // Types

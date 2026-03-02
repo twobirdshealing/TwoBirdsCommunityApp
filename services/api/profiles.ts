@@ -3,7 +3,9 @@
 // =============================================================================
 
 import { ENDPOINTS } from '@/constants/config';
-import { Feed, Profile, Space, XProfile } from '@/types';
+import { Feed } from '@/types/feed';
+import { Profile, XProfile } from '@/types/user';
+import { Space } from '@/types/space';
 import { get, post, put } from './client';
 
 // -----------------------------------------------------------------------------

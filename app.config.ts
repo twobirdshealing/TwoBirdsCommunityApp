@@ -39,6 +39,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundImage: './assets/images/app_icon_android_adaptive_bg.png',
       },
       edgeToEdgeEnabled: true,
+      softwareKeyboardLayoutMode: 'adjustNothing',
       predictiveBackGestureEnabled: false,
       googleServicesFile: './google-services.json',
     },

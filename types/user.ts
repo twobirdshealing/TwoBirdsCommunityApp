@@ -87,7 +87,7 @@ export interface Profile extends XProfile {
   
   // Navigation items
   profile_navs?: ProfileNav[];
-  profile_nav_actions?: any[];
+  profile_nav_actions?: unknown[];
 
   // Top-level social links (profile endpoint returns these at root, not in meta)
   social_links?: Record<string, string>;

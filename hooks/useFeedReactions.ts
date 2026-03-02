@@ -6,10 +6,10 @@
 // =============================================================================
 
 import { useCallback } from 'react';
-import { Feed, ReactionType } from '@/types';
+import { Feed, ReactionType } from '@/types/feed';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { updateBreakdownOptimistically } from '@/utils/reactionHelpers';
-import { feedsApi } from '@/services/api';
+import { feedsApi } from '@/services/api/feeds';
 
 export function useFeedReactions(
   feeds: Feed[],

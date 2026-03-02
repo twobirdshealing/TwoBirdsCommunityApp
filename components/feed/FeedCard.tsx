@@ -29,9 +29,9 @@ import { ReactionPicker } from './ReactionPicker';
 import { ReactionBreakdownModal } from './ReactionBreakdownModal';
 import { ReactionIcon } from './ReactionIcon';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useReactionConfig } from '@/hooks';
+import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { shadows, sizing, spacing, typography } from '@/constants/layout';
-import { Feed, ReactionType } from '@/types';
+import { Feed, ReactionType } from '@/types/feed';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { formatCompactNumber } from '@/utils/formatNumber';
 import { stripHtmlTags } from '@/utils/htmlToText';
@@ -465,12 +465,11 @@ export function FeedCard({
                 activeOpacity={0.8}
               >
                 <View style={styles.playButtonInner}>
-                  <Ionicons name="play" size={24} color="#fff" />
+                  <Ionicons name="play" size={20} color="#fff" />
                 </View>
               </TouchableOpacity>
               <View style={styles.youtubeLabel}>
-                <Ionicons name="logo-youtube" size={14} color="#fff" />
-                <Text style={styles.youtubeLabelText}>YouTube</Text>
+                <Ionicons name="logo-youtube" size={12} color="#fff" />
               </View>
             </>
           ) : (
@@ -791,31 +790,22 @@ const styles = StyleSheet.create({
   },
 
   playButtonInner: {
-    width: 60,
-    height: 42,
-    borderRadius: sizing.borderRadius.md,
-    backgroundColor: 'rgba(255, 0, 0, 0.9)',
+    width: 48,
+    height: 34,
+    borderRadius: sizing.borderRadius.sm,
+    backgroundColor: 'rgba(255, 0, 0, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   youtubeLabel: {
     position: 'absolute',
-    bottom: spacing.sm,
+    top: spacing.sm,
     left: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
     borderRadius: sizing.borderRadius.xs,
-    gap: 4,
-  },
-
-  youtubeLabelText: {
-    color: '#fff',
-    fontSize: typography.size.xs,
-    fontWeight: '500',
   },
 
   playIcon: {

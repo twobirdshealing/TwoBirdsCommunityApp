@@ -7,12 +7,14 @@
 
 import React, { useRef, useCallback } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import ReanimatedAnimated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Tabs } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { hapticHeavy } from '@/utils/haptics';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
+import { TabBarProvider, useTabBar } from '@/contexts/TabBarContext';
 import { TopHeader } from '@/components/navigation';
 import { MiniPlayer } from '@/components/bookclub';
 
@@ -96,9 +98,14 @@ function TabItemButton({ routeKey, label, icon, isFocused, color, accessibilityL
 
 function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
   const { colors: themeColors } = useTheme();
+  const { translateY } = useTabBar();
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   return (
-    <View
+    <ReanimatedAnimated.View
       style={[
         styles.tabBarOuter,
         {
@@ -115,6 +122,7 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
             },
           }),
         },
+        animatedStyle,
       ]}
     >
       <MiniPlayer />
@@ -154,7 +162,7 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
           );
         })}
       </View>
-    </View>
+    </ReanimatedAnimated.View>
   );
 }
 
@@ -162,8 +170,9 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
 // Component
 // -----------------------------------------------------------------------------
 
-export default function TabLayout() {
+function TabLayoutInner() {
   const { colors: themeColors } = useTheme();
+  const { showTabBar } = useTabBar();
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
@@ -174,11 +183,12 @@ export default function TabLayout() {
       <Tabs
         tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{ headerShown: false }}
+        screenListeners={{ tabPress: () => showTabBar() }}
       >
         {/* ============================================= */}
         {/* 4 TABS: Home, Activity, Spaces, Calendar     */}
         {/* ============================================= */}
-        
+
         {/* Home Tab - Welcome page */}
         <Tabs.Screen
           name="index"
@@ -227,6 +237,14 @@ export default function TabLayout() {
   );
 }
 
+export default function TabLayout() {
+  return (
+    <TabBarProvider>
+      <TabLayoutInner />
+    </TabBarProvider>
+  );
+}
+
 // -----------------------------------------------------------------------------
 // Styles
 // -----------------------------------------------------------------------------
@@ -246,14 +264,14 @@ const styles = StyleSheet.create({
 
   tabBarInner: {
     flexDirection: 'row',
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
 
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 1,
   },
 
   tabLabel: {

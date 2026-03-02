@@ -9,10 +9,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { hapticLight } from '@/utils/haptics';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Profile } from '@/types';
+import { Profile } from '@/types/user';
 import { Avatar } from '@/components/common';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
-import { useSocialProviders, getProviderIcon } from '@/hooks';
+import { useSocialProviders, getProviderIcon } from '@/hooks/useSocialProviders';
 import { formatCompactNumber } from '@/utils/formatNumber';
 
 interface ProfileHeaderProps {

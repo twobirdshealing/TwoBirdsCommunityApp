@@ -13,29 +13,17 @@ import {
   reconnectPusher,
   MessageHandler,
   onNewMessage,
-  onNewThread,
   onReaction,
-  onMessageDeleted,
-  onThreadUpdated,
-  PusherMessage,
-  PusherThread,
-  PusherReaction,
-  PusherMessageDeleted,
-  PusherThreadUpdated,
-  ThreadHandler,
   ReactionHandler,
-  MessageDeletedHandler,
-  ThreadUpdatedHandler,
 } from '@/services/pusher';
 import React, {
   createContext,
   useCallback,
   useContext,
   useEffect,
-  useRef,
   useState,
 } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { useAppFocus } from '@/hooks/useAppFocus';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -44,10 +32,7 @@ import { AppState, AppStateStatus } from 'react-native';
 interface PusherContextType {
   isConnected: boolean;
   subscribeToMessages: (handler: MessageHandler) => () => void;
-  subscribeToThreads: (handler: ThreadHandler) => () => void;
   subscribeToReactions: (handler: ReactionHandler) => () => void;
-  subscribeToMessageDeleted: (handler: MessageDeletedHandler) => () => void;
-  subscribeToThreadUpdated: (handler: ThreadUpdatedHandler) => () => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -63,7 +48,6 @@ const PusherContext = createContext<PusherContextType | undefined>(undefined);
 export function PusherProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
-  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   // ---------------------------------------------------------------------------
   // Connect/Disconnect based on auth state
@@ -88,29 +72,16 @@ export function PusherProvider({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, user?.id]);
 
   // ---------------------------------------------------------------------------
-  // Reconnect on app foreground (v2.2.0)
+  // Reconnect on app foreground
   // The server's 5-minute activity gate means backgrounded apps miss pushes.
   // ---------------------------------------------------------------------------
 
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (
-        appStateRef.current.match(/inactive|background/) &&
-        nextAppState === 'active' &&
-        isAuthenticated &&
-        user?.id
-      ) {
-        reconnectPusher().then(success => {
-          setIsConnected(success);
-        });
-      }
-      appStateRef.current = nextAppState;
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [isAuthenticated, user?.id]);
+  useAppFocus(
+    useCallback(() => {
+      reconnectPusher().then(success => setIsConnected(success));
+    }, []),
+    isAuthenticated && !!user?.id,
+  );
 
   // ---------------------------------------------------------------------------
   // Subscription methods
@@ -120,20 +91,8 @@ export function PusherProvider({ children }: { children: React.ReactNode }) {
     return onNewMessage(handler);
   }, []);
 
-  const subscribeToThreads = useCallback((handler: ThreadHandler) => {
-    return onNewThread(handler);
-  }, []);
-
   const subscribeToReactions = useCallback((handler: ReactionHandler) => {
     return onReaction(handler);
-  }, []);
-
-  const subscribeToMessageDeleted = useCallback((handler: MessageDeletedHandler) => {
-    return onMessageDeleted(handler);
-  }, []);
-
-  const subscribeToThreadUpdated = useCallback((handler: ThreadUpdatedHandler) => {
-    return onThreadUpdated(handler);
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -145,10 +104,7 @@ export function PusherProvider({ children }: { children: React.ReactNode }) {
       value={{
         isConnected,
         subscribeToMessages,
-        subscribeToThreads,
         subscribeToReactions,
-        subscribeToMessageDeleted,
-        subscribeToThreadUpdated,
       }}
     >
       {children}
@@ -173,7 +129,7 @@ export function usePusher() {
 // -----------------------------------------------------------------------------
 
 /**
- * Subscribe to new message events (both 'message' and 'new_message')
+ * Subscribe to new message events
  */
 export function useNewMessageListener(
   handler: MessageHandler,
@@ -186,22 +142,6 @@ export function useNewMessageListener(
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscribeToMessages, ...deps]);
-}
-
-/**
- * Subscribe to new thread events
- */
-export function useNewThreadListener(
-  handler: ThreadHandler,
-  deps: React.DependencyList = []
-) {
-  const { subscribeToThreads } = usePusher();
-
-  useEffect(() => {
-    const unsubscribe = subscribeToThreads(handler);
-    return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subscribeToThreads, ...deps]);
 }
 
 /**
@@ -218,38 +158,6 @@ export function useReactionListener(
     return unsubscribe;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subscribeToReactions, ...deps]);
-}
-
-/**
- * Subscribe to message deleted events
- */
-export function useMessageDeletedListener(
-  handler: MessageDeletedHandler,
-  deps: React.DependencyList = []
-) {
-  const { subscribeToMessageDeleted } = usePusher();
-
-  useEffect(() => {
-    const unsubscribe = subscribeToMessageDeleted(handler);
-    return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subscribeToMessageDeleted, ...deps]);
-}
-
-/**
- * Subscribe to thread updated events
- */
-export function useThreadUpdatedListener(
-  handler: ThreadUpdatedHandler,
-  deps: React.DependencyList = []
-) {
-  const { subscribeToThreadUpdated } = usePusher();
-
-  useEffect(() => {
-    const unsubscribe = subscribeToThreadUpdated(handler);
-    return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subscribeToThreadUpdated, ...deps]);
 }
 
 export default PusherContext;

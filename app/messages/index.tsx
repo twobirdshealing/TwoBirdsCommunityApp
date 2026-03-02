@@ -16,13 +16,14 @@ import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getMessagePreview, getThreadDisplayName, getThreadAvatar, getThreadUserId, getThreadUsername } from '@/types/message';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNewMessageListener, useNewThreadListener, useMessageDeletedListener, useThreadUpdatedListener } from '@/contexts/PusherContext';
+import { useNewMessageListener } from '@/contexts/PusherContext';
 import { messagesApi } from '@/services/api/messages';
 import { ChatThread } from '@/types/message';
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useCachedData } from '@/hooks/useCachedData';
 import {
   Alert,
   RefreshControl,
@@ -32,12 +33,6 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-// -----------------------------------------------------------------------------
-// Constants
-// -----------------------------------------------------------------------------
-
-const POLL_INTERVAL = 30000; // 30 seconds for background polling
 
 // -----------------------------------------------------------------------------
 // Component
@@ -50,152 +45,90 @@ export default function MessagesScreen() {
   const { colors: themeColors } = useTheme();
 
   // State
-  const [threads, setThreads] = useState<ChatThread[]>([]);
-  const [unreadThreadIds, setUnreadThreadIds] = useState<number[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Polling ref
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   // ---------------------------------------------------------------------------
-  // Fetch Threads
+  // Fetch Threads + Unread IDs (cached + focus refresh)
   // ---------------------------------------------------------------------------
 
-  const fetchThreads = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else if (threads.length === 0) {
-        setLoading(true);
+  interface MessagesData {
+    threads: ChatThread[];
+    unreadThreadIds: number[];
+  }
+
+  const {
+    data: messagesData,
+    isLoading: loading,
+    isRefreshing: refreshing,
+    error: fetchError,
+    refresh,
+    mutate,
+  } = useCachedData<MessagesData>({
+    cacheKey: 'tbc_messages_threads',
+    fetcher: async () => {
+      const [threadsRes, unreadIds] = await Promise.all([
+        messagesApi.getThreads(),
+        messagesApi.getUnreadThreadIds(),
+      ]);
+
+      if (!threadsRes.success) {
+        throw new Error('Failed to load conversations');
       }
-      setError(null);
 
-      const response = await messagesApi.getThreads();
+      return {
+        threads: threadsRes.data.threads || [],
+        unreadThreadIds: unreadIds,
+      };
+    },
+  });
 
-      if (response.success) {
-        setThreads(response.data.threads || []);
-      } else {
-        setError('Failed to load conversations');
-      }
-    } catch (err) {
-      setError('Failed to load conversations');
-      if (__DEV__) console.error('[Messages] Fetch error:', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [threads.length]);
-
-  // Fetch unread thread IDs
-  const fetchUnreadThreadIds = useCallback(async () => {
-    try {
-      const ids = await messagesApi.getUnreadThreadIds();
-      setUnreadThreadIds(ids);
-    } catch (err) {
-      if (__DEV__) console.error('[Messages] Fetch unread error:', err);
-    }
-  }, []);
-
-  // Initial load
-  useEffect(() => {
-    fetchThreads();
-    fetchUnreadThreadIds();
-  }, []);
-
-  // Background polling (fallback if Pusher disconnects)
-  useEffect(() => {
-    pollIntervalRef.current = setInterval(() => {
-      fetchThreads();
-      fetchUnreadThreadIds();
-    }, POLL_INTERVAL);
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-    };
-  }, [fetchThreads]);
+  const threads = messagesData?.threads || [];
+  const unreadThreadIds = messagesData?.unreadThreadIds || [];
+  const error = fetchError?.message || null;
 
   // ---------------------------------------------------------------------------
   // Pusher Real-time Updates
   // ---------------------------------------------------------------------------
 
-  // Handle new thread notifications
-  useNewThreadListener((data) => {
-    const newThread: ChatThread = {
-      id: data.thread.id,
-      title: data.thread.title,
-      message_count: String(data.thread.messages?.length || 1),
-      status: (data.thread.status as ChatThread['status']) || 'active',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      info: data.thread.info,
-      messages: data.thread.messages || [],
-    };
-
-    // Add to top of list if not already present
-    setThreads(prev => {
-      const exists = prev.some(t => t.id === newThread.id);
-      if (exists) return prev;
-      return [newThread, ...prev];
-    });
-  }, []);
-
   // Handle new message notifications - update thread preview
   useNewMessageListener((data) => {
     const threadId = data.thread_id || data.message.thread_id;
 
-    setThreads(prev => {
-      const threadExists = prev.some(t => String(t.id) === String(threadId));
+    mutate(prev => {
+      if (!prev) return prev;
+      const threadExists = prev.threads.some(t => String(t.id) === String(threadId));
 
       if (threadExists) {
         // Update existing thread with new message preview
-        return prev.map(thread => {
-          if (String(thread.id) === String(threadId)) {
-            return {
-              ...thread,
-              message_count: String(Number(thread.message_count || 0) + 1),
-              updated_at: new Date().toISOString(),
-              messages: [{
-                id: data.message.id,
-                thread_id: data.message.thread_id,
-                user_id: data.message.user_id,
-                text: data.message.text,
-                created_at: data.message.created_at,
-              }],
-            };
-          }
-          return thread;
-        });
+        return {
+          ...prev,
+          threads: prev.threads.map(thread => {
+            if (String(thread.id) === String(threadId)) {
+              return {
+                ...thread,
+                message_count: String(Number(thread.message_count || 0) + 1),
+                updated_at: new Date().toISOString(),
+                messages: [{
+                  id: data.message.id,
+                  thread_id: data.message.thread_id,
+                  user_id: data.message.user_id,
+                  text: data.message.text,
+                  created_at: data.message.created_at,
+                }],
+              };
+            }
+            return thread;
+          }),
+        };
       } else {
         // Thread not in our list — refetch to pick up the new thread
-        fetchThreads();
+        refresh();
         return prev;
       }
     });
-  }, [fetchThreads]);
+  }, [refresh]);
 
-  // Handle message deleted — update thread if the deleted message was the preview
-  useMessageDeletedListener((data) => {
-    // Just refetch to get updated preview since we can't reconstruct it
-    fetchThreads();
-  }, [fetchThreads]);
-
-  // Handle thread updated — update thread metadata
-  useThreadUpdatedListener((data) => {
-    if (data.thread) {
-      setThreads(prev => prev.map(thread => {
-        if (thread.id === data.thread.id) {
-          return { ...thread, ...data.thread };
-        }
-        return thread;
-      }));
-    }
-  }, []);
 
   // ---------------------------------------------------------------------------
   // Filtered Threads (Client-side search)
@@ -229,8 +162,7 @@ export default function MessagesScreen() {
   // ---------------------------------------------------------------------------
 
   const handleRefresh = () => {
-    fetchThreads(true);
-    fetchUnreadThreadIds();
+    refresh();
   };
 
   const handleThreadPress = (thread: ChatThread) => {
@@ -263,7 +195,7 @@ export default function MessagesScreen() {
             try {
               const result = await messagesApi.deleteThread(thread.id);
               if (result.success) {
-                setThreads(prev => prev.filter(t => t.id !== thread.id));
+                mutate(prev => prev ? { ...prev, threads: prev.threads.filter(t => t.id !== thread.id) } : prev);
               } else {
                 Alert.alert('Error', 'Failed to delete conversation');
               }
@@ -301,7 +233,7 @@ export default function MessagesScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         {/* Header */}
         <PageHeader
           leftAction="back"
@@ -341,10 +273,11 @@ export default function MessagesScreen() {
         {loading && threads.length === 0 ? (
           <LoadingSpinner />
         ) : error ? (
-          <ErrorMessage message={error} onRetry={() => fetchThreads()} />
+          <ErrorMessage message={error} onRetry={() => refresh()} />
         ) : (
           <FlashList
             data={filteredThreads}
+            contentContainerStyle={{ paddingBottom: insets.bottom }}
             renderItem={({ item }) => (
               <ConversationCard
                 thread={item}

@@ -12,7 +12,7 @@
 import { Avatar } from '@/components/common/Avatar';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
-import { AppNotification } from '@/types';
+import { AppNotification } from '@/types/notification';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef } from 'react';

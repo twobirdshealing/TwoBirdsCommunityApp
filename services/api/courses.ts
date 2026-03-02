@@ -11,7 +11,7 @@ import {
   CourseEnrollResponse,
   LessonCompletionResponse,
   LessonDetailResponse,
-} from '@/types';
+} from '@/types/course';
 import { get, post, put } from './client';
 
 // -----------------------------------------------------------------------------

@@ -16,7 +16,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
 import { spacing } from '@/constants/layout';
 import { WPPost } from '@/types/blog';
-import { blogApi } from '@/services/api';
+import { blogApi } from '@/services/api/blog';
 import { PageHeader } from '@/components/navigation';
 import { BlogCard } from '@/components/blog';
 
@@ -149,7 +149,7 @@ export default function BlogListScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         <PageHeader
           leftAction="back"
           onLeftPress={() => router.back()}

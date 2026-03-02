@@ -133,3 +133,9 @@ export const WP_ENDPOINTS = {
 // -----------------------------------------------------------------------------
 
 export const PRIVACY_POLICY_URL = `${SITE_URL}/privacy-policy/`;
+
+// -----------------------------------------------------------------------------
+// YouTube Channel
+// -----------------------------------------------------------------------------
+
+export const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/c/twobirdschurch?sub_confirmation=1';

@@ -11,8 +11,6 @@ import {
   ActivityIndicator,
   Image,
   ImageBackground,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography } from '@/constants/layout';
@@ -41,7 +40,7 @@ type Step = 1 | 2 | 3;
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors } = useTheme();
 
   // State
   const [step, setStep] = useState<Step>(1);
@@ -481,8 +480,8 @@ export default function ForgotPasswordScreen() {
       resizeMode="cover"
     >
       <KeyboardAvoidingView
-        style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={[styles.container, { paddingTop: insets.top }]}
+        behavior="padding"
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -524,6 +523,9 @@ export default function ForgotPasswordScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Bottom safe area - outside KAV so keyboard calc is correct */}
+      <View style={{ height: insets.bottom }} />
     </ImageBackground>
   );
 }

@@ -35,7 +35,7 @@ import { VideoPreview } from './VideoPreview';
 import { MediaItem, mediaApi } from '@/services/api/media';
 import { OembedData } from '@/services/api/feeds';
 import { type FormatResult } from '@/utils/markdown';
-import { Feed } from '@/types';
+import { Feed } from '@/types/feed';
 import { stripHtmlTags } from '@/utils/htmlToText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';

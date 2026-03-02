@@ -11,8 +11,8 @@ import { ActivityIndicator, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { spacing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { feedsApi } from '@/services/api';
-import { WelcomeBanner as WelcomeBannerType } from '@/types';
+import { feedsApi } from '@/services/api/feeds';
+import { WelcomeBanner as WelcomeBannerType } from '@/types/feed';
 import { WelcomeBanner } from '@/components/feed/WelcomeBanner';
 
 // -----------------------------------------------------------------------------

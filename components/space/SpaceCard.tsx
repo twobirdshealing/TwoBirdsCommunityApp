@@ -10,7 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/contexts/ThemeContext';
-import { Space } from '@/types';
+import { Space } from '@/types/space';
 
 interface SpaceCardProps {
   space: Space;

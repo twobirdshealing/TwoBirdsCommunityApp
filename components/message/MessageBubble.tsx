@@ -9,12 +9,13 @@
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
+import { withOpacity } from '@/constants/colors';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ChatMessage, getMessageText, getMessagePreview } from '@/types/message';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Swipeable } from 'react-native-gesture-handler';
 
@@ -28,8 +29,24 @@ interface MessageBubbleProps {
   showAvatar?: boolean;
   showTimestamp?: boolean;
   onAvatarPress?: () => void;
-  onLongPress?: (message: ChatMessage) => void;
   onDelete?: (message: ChatMessage) => void;
+  /** Tap the smiley button to toggle default reaction */
+  onDefaultReact?: (message: ChatMessage) => void;
+  /** Long-press the smiley button to open picker (passes anchor for positioning) */
+  onReactionLongPress?: (message: ChatMessage, anchor: { top: number; left: number }) => void;
+  /** Tap an existing reaction pill to toggle it */
+  onReactionPress?: (message: ChatMessage, emoji: string) => void;
+  /** Tap the ... menu button (passes anchor for DropdownMenu positioning) */
+  onMenuPress?: (message: ChatMessage, anchor: { top: number; right: number }) => void;
+  /** Tap an image to open in MediaViewer */
+  onImagePress?: (images: { url: string }[], index: number) => void;
+  /** Tap a reply quote to scroll to the original message */
+  onReplyPress?: (messageId: number) => void;
+  currentUserId?: number;
+  /** Render the user's current reaction icon (or default greyed smiley) */
+  userReactionRenderer?: () => React.ReactNode;
+  /** Render a reaction icon for breakdown pills */
+  reactionRenderer?: (emoji: string) => React.ReactNode;
 }
 
 // -----------------------------------------------------------------------------
@@ -53,11 +70,21 @@ export function MessageBubble({
   showAvatar = true,
   showTimestamp = false,
   onAvatarPress,
-  onLongPress,
   onDelete,
+  onDefaultReact,
+  onReactionLongPress,
+  onReactionPress,
+  onMenuPress,
+  onImagePress,
+  onReplyPress,
+  currentUserId,
+  userReactionRenderer,
+  reactionRenderer,
 }: MessageBubbleProps) {
   const { colors: themeColors } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
+  const reactionBtnRef = useRef<View>(null);
+  const menuBtnRef = useRef<View>(null);
   const messageText = getMessageText(message.text);
   const senderName = message.xprofile?.display_name || 'Unknown';
   const avatarUrl = message.xprofile?.avatar || null;
@@ -65,6 +92,13 @@ export function MessageBubble({
   // Get images from HTML text (API embeds images as <img> tags in text field)
   const images = extractImagesFromHtml(message.text);
   const hasImages = images.length > 0;
+
+  // Reactions
+  const reactions = message.meta?.reactions;
+  const hasReactions = reactions && Object.keys(reactions).length > 0;
+  const hasUserReacted = hasReactions && currentUserId
+    ? Object.values(reactions!).some(ids => ids.includes(currentUserId))
+    : false;
 
   // Format timestamp
   const formatTime = (dateString: string) => {
@@ -130,65 +164,160 @@ export function MessageBubble({
       {/* Spacer when no avatar */}
       {!isOwn && !showAvatar && <View style={styles.avatarSpacer} />}
 
-      {/* Message Bubble */}
-      <Pressable
-        style={[
-          styles.bubble,
-          isOwn ? [styles.bubbleOwn, { backgroundColor: themeColors.primary }] : [styles.bubbleOther, { backgroundColor: themeColors.backgroundSecondary }],
-          hasImages && styles.bubbleWithImage,
-        ]}
-        onLongPress={() => onLongPress?.(message)}
-      >
-        {/* Reply Quote */}
-        {message.meta?.reply_to && message.meta?.reply_text ? (
-          <View style={[
-            styles.replyQuote,
-            { borderLeftColor: isOwn ? themeColors.textInverse : themeColors.primary },
-          ]}>
-            <Text
-              style={[
-                styles.replyQuoteText,
-                { color: isOwn ? themeColors.textInverse : themeColors.textSecondary },
-              ]}
-              numberOfLines={2}
-            >
-              {getMessagePreview(message.meta.reply_text, 120)}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* Images (extracted from HTML text) */}
-        {hasImages && (
-          <View style={styles.attachmentsContainer}>
-            {images.map((image, index) => (
-              <Image
-                key={index}
-                source={{ uri: image.url }}
-                style={[
-                  styles.attachmentImage,
-                  images.length === 1 && styles.attachmentImageSingle,
-                ]}
-                contentFit="cover"
-                transition={200}
-              />
-            ))}
-          </View>
-        )}
-
-        {/* Text (if any) */}
-        {messageText.length > 0 && (
-          <Text style={[styles.text, { color: themeColors.text }, isOwn && { color: themeColors.textInverse }, hasImages && styles.textWithImage]}>
-            {messageText}
+      {/* Bubble column: sender name + bubble + reactions + timestamp */}
+      <View style={[styles.bubbleColumn, isOwn && styles.bubbleColumnOwn]}>
+        {/* Sender name (first message in received group) */}
+        {!isOwn && showAvatar && (
+          <Text style={[styles.senderName, { color: themeColors.textSecondary }]}>
+            {senderName}
           </Text>
         )}
-      </Pressable>
 
-      {/* Timestamp (optional, shown below bubble) */}
-      {showTimestamp && (
-        <Text style={[styles.timestamp, { color: themeColors.textTertiary }, isOwn && styles.timestampOwn]}>
-          {formatTime(message.created_at)}
-        </Text>
-      )}
+        {/* Message Bubble */}
+        <View
+          style={[
+            styles.bubble,
+            { backgroundColor: themeColors.surface },
+            hasImages && styles.bubbleWithImage,
+          ]}
+        >
+          {/* Reply Quote (tappable — scrolls to original message) */}
+          {message.meta?.reply_to && message.meta?.reply_text ? (
+            <Pressable
+              style={[
+                styles.replyQuote,
+                { borderLeftColor: themeColors.primaryDark, backgroundColor: withOpacity(themeColors.text, 0.04) },
+              ]}
+              onPress={() => onReplyPress?.(message.meta!.reply_to!)}
+              disabled={!onReplyPress}
+            >
+              <Text
+                style={[
+                  styles.replyQuoteText,
+                  { color: themeColors.textSecondary },
+                ]}
+                numberOfLines={2}
+              >
+                {getMessagePreview(message.meta.reply_text, 120)}
+              </Text>
+            </Pressable>
+          ) : null}
+
+          {/* Images (extracted from HTML text — tappable to open MediaViewer) */}
+          {hasImages && (
+            <View style={styles.attachmentsContainer}>
+              {images.map((image, index) => (
+                <Pressable
+                  key={index}
+                  onPress={() => onImagePress?.(images, index)}
+                >
+                  <Image
+                    source={{ uri: image.url }}
+                    style={[
+                      styles.attachmentImage,
+                      images.length === 1 && styles.attachmentImageSingle,
+                    ]}
+                    contentFit="cover"
+                    transition={200}
+                  />
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          {/* Text (if any) */}
+          {messageText.length > 0 && (
+            <Text style={[styles.text, { color: themeColors.text }, hasImages && styles.textWithImage]}>
+              {messageText}
+            </Text>
+          )}
+        </View>
+
+        {/* Reaction row: [smiley far-left] ... [pills + menu far-right] */}
+        <View style={styles.reactionsRow}>
+          {/* Smiley button — tap for default react, long-press for picker */}
+          <Pressable
+            ref={reactionBtnRef}
+            style={[
+              styles.reactionButton,
+              hasUserReacted && {
+                backgroundColor: withOpacity(themeColors.primary, 0.15),
+              },
+            ]}
+            onPress={() => onDefaultReact?.(message)}
+            onLongPress={() => {
+              (reactionBtnRef.current as any)?.measureInWindow?.((x: number, y: number, width: number, height: number) => {
+                onReactionLongPress?.(message, { top: y, left: x + width / 2 });
+              });
+            }}
+          >
+            <View style={{ opacity: hasUserReacted ? 1 : 0.4 }}>
+              {userReactionRenderer ? userReactionRenderer() : (
+                <Text style={{ fontSize: 18 }}>👍</Text>
+              )}
+            </View>
+          </Pressable>
+
+          {/* Spacer pushes pills + menu to far right */}
+          <View style={{ flex: 1 }} />
+
+          {/* Reaction breakdown pills */}
+          {hasReactions && Object.entries(reactions!).map(([emoji, userIds]) => {
+            const hasReacted = currentUserId ? userIds.includes(currentUserId) : false;
+            return (
+              <Pressable
+                key={emoji}
+                style={[
+                  styles.reactionPill,
+                  {
+                    backgroundColor: hasReacted
+                      ? withOpacity(themeColors.primary, 0.15)
+                      : themeColors.backgroundSecondary,
+                    borderColor: hasReacted
+                      ? withOpacity(themeColors.primary, 0.3)
+                      : themeColors.borderLight,
+                  },
+                ]}
+                onPress={() => onReactionPress?.(message, emoji)}
+              >
+                {reactionRenderer ? reactionRenderer(emoji) : (
+                  <Text style={{ fontSize: 14 }}>{emoji}</Text>
+                )}
+                <Text style={[
+                  styles.reactionCount,
+                  { color: hasReacted ? themeColors.primary : themeColors.textSecondary },
+                ]}>
+                  {userIds.length}
+                </Text>
+              </Pressable>
+            );
+          })}
+
+          {/* ... menu button (Reply / Delete) */}
+          {onMenuPress && (
+            <Pressable
+              ref={menuBtnRef}
+              style={styles.menuButton}
+              onPress={() => {
+                (menuBtnRef.current as any)?.measureInWindow?.((x: number, y: number, width: number, height: number) => {
+                  const screenWidth = Dimensions.get('window').width;
+                  onMenuPress(message, { top: y + height + 4, right: screenWidth - x - width });
+                });
+              }}
+              hitSlop={8}
+            >
+              <Ionicons name="ellipsis-horizontal" size={16} color={themeColors.textTertiary} />
+            </Pressable>
+          )}
+        </View>
+
+        {/* Timestamp (optional, shown below bubble) */}
+        {showTimestamp && (
+          <Text style={[styles.timestamp, { color: themeColors.textTertiary }]}>
+            {formatTime(message.created_at)}
+          </Text>
+        )}
+      </View>
     </View>
   );
 
@@ -218,14 +347,12 @@ interface MessageGroupProps {
   messages: ChatMessage[];
   isOwn: boolean;
   onAvatarPress?: () => void;
-  onLongPress?: (message: ChatMessage) => void;
 }
 
 export function MessageGroup({
   messages,
   isOwn,
   onAvatarPress,
-  onLongPress,
 }: MessageGroupProps) {
   if (messages.length === 0) return null;
 
@@ -236,10 +363,9 @@ export function MessageGroup({
           key={message.id}
           message={message}
           isOwn={isOwn}
-          showAvatar={index === 0} // Only show avatar for first message in group
-          showTimestamp={index === messages.length - 1} // Show timestamp for last message
+          showAvatar={index === 0}
+          showTimestamp={index === messages.length - 1}
           onAvatarPress={onAvatarPress}
-          onLongPress={onLongPress}
         />
       ))}
     </View>
@@ -296,8 +422,8 @@ export function DateSeparator({ date }: DateSeparatorProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginBottom: spacing.xs,
+    alignItems: 'flex-start',
+    marginBottom: 4,
     paddingHorizontal: spacing.md,
   },
 
@@ -307,26 +433,33 @@ const styles = StyleSheet.create({
 
   avatarContainer: {
     marginRight: spacing.xs,
-    marginBottom: 2,
+    marginTop: 2,
   },
 
   avatarSpacer: {
     width: 32 + spacing.xs, // Avatar size + margin
   },
 
-  bubble: {
+  bubbleColumn: {
     maxWidth: '75%',
+    minWidth: '60%',
+  },
+
+  bubbleColumnOwn: {
+    // Right-alignment handled by container's flexDirection: 'row-reverse'
+  },
+
+  senderName: {
+    fontSize: typography.size.sm,
+    fontWeight: '600',
+    marginBottom: 2,
+    marginLeft: spacing.xs,
+  },
+
+  bubble: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 18,
-  },
-
-  bubbleOwn: {
-    borderBottomRightRadius: 4,
-  },
-
-  bubbleOther: {
-    borderBottomLeftRadius: 4,
+    borderRadius: 8,
   },
 
   bubbleWithImage: {
@@ -349,14 +482,16 @@ const styles = StyleSheet.create({
   attachmentImageSingle: {
     width: 200,
     height: 200,
-    borderRadius: 14,
+    borderRadius: 8,
   },
 
   replyQuote: {
     borderLeftWidth: 3,
     paddingLeft: spacing.sm,
+    paddingRight: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: 6,
     marginBottom: spacing.xs,
-    opacity: 0.85,
   },
 
   replyQuoteText: {
@@ -370,9 +505,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  textOwn: {
-  },
-
   textWithImage: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -381,18 +513,12 @@ const styles = StyleSheet.create({
   timestamp: {
     fontSize: typography.size.xs,
     marginTop: 4,
-    marginLeft: 32 + spacing.xs + spacing.sm,
-  },
-
-  timestampOwn: {
-    marginLeft: 0,
-    marginRight: spacing.sm,
-    textAlign: 'right',
+    marginLeft: spacing.sm,
   },
 
   // Group styles
   groupContainer: {
-    marginBottom: spacing.sm,
+    marginBottom: 24,
   },
 
   // Date separator
@@ -412,6 +538,46 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     marginHorizontal: spacing.md,
     fontWeight: '500',
+  },
+
+  // Reaction row — smiley far-left, pills + menu far-right
+  reactionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    gap: 4,
+    marginTop: 4,
+  },
+
+  reactionButton: {
+    width: 32,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+  },
+
+  reactionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+
+  reactionCount: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
+  },
+
+  menuButton: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
   },
 
   // Swipe Actions

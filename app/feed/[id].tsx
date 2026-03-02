@@ -6,7 +6,7 @@
 // Reuses FeedCard with variant="full" for consistent rendering
 // =============================================================================
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -17,12 +17,13 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { FeedCard } from '@/components/feed/FeedCard';
 import { LoadingSpinner, ErrorMessage } from '@/components/common';
 import { CommentSheet } from '@/components/feed/CommentSheet';
-import { CreatePostModal, ComposerSubmitData } from '@/components/composer';
+import { CreatePostModal, ComposerSubmitData } from '@/components/composer/CreatePostModal';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing } from '@/constants/layout';
-import { Feed } from '@/types';
-import { feedsApi } from '@/services/api';
-import { useFeedReactions } from '@/hooks';
+import { Feed } from '@/types/feed';
+import { feedsApi } from '@/services/api/feeds';
+import { useFeedReactions } from '@/hooks/useFeedReactions';
+import { useCachedData } from '@/hooks/useCachedData';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -34,52 +35,39 @@ export default function SinglePostScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   // State
-  const [feed, setFeed] = useState<Feed | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
-
-  // Adapt single-feed state for the shared reaction hook
-  const feedsArray = useMemo(() => feed ? [feed] : [], [feed]);
-  const setFeedsArray = useCallback<React.Dispatch<React.SetStateAction<Feed[]>>>((updater) => {
-    setFeed(prev => {
-      const arr = prev ? [prev] : [];
-      const result = typeof updater === 'function' ? updater(arr) : updater;
-      return result[0] ?? prev;
-    });
-  }, []);
-  const handleReact = useFeedReactions(feedsArray, setFeedsArray);
 
   // ---------------------------------------------------------------------------
   // Fetch single feed
   // ---------------------------------------------------------------------------
 
-  useEffect(() => {
-    if (id) fetchFeed();
-  }, [id]);
-
-  const fetchFeed = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
+  const { data: feed, isLoading: loading, error: fetchError, refresh, mutate } = useCachedData<Feed>({
+    cacheKey: `tbc_feed_${id}`,
+    fetcher: async () => {
       const numericId = Number(id);
       const response = isNaN(numericId)
         ? await feedsApi.getFeedBySlug(id!)
         : await feedsApi.getFeedById(numericId);
-
       if (response.success && response.data?.feed) {
-        setFeed(response.data.feed);
-      } else {
-        setError('Post not found');
+        return response.data.feed;
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setLoading(false);
-    }
-  };
+      throw new Error('Post not found');
+    },
+    enabled: !!id,
+  });
+  const error = fetchError?.message || null;
+
+  // Adapt single-feed state for the shared reaction hook
+  const feedsArray = useMemo(() => feed ? [feed] : [], [feed]);
+  const setFeedsArray = useCallback<React.Dispatch<React.SetStateAction<Feed[]>>>((updater) => {
+    mutate(prev => {
+      const arr = prev ? [prev] : [];
+      const result = typeof updater === 'function' ? updater(arr) : updater;
+      return result[0] ?? prev;
+    });
+  }, [mutate]);
+  const handleReact = useFeedReactions(feedsArray, setFeedsArray);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -89,7 +77,7 @@ export default function SinglePostScreen() {
     if (!feed) return;
     try {
       await feedsApi.toggleBookmark(feed.id, !isBookmarked);
-      setFeed({ ...feed, bookmarked: isBookmarked });
+      mutate(prev => prev ? { ...prev, bookmarked: isBookmarked } : prev);
     } catch (err) {
       if (__DEV__) console.error('Failed to bookmark:', err);
     }
@@ -136,7 +124,7 @@ export default function SinglePostScreen() {
         throw new Error(response.error?.message || 'Failed to update post');
       }
       if (response.data?.feed) {
-        setFeed(response.data.feed);
+        mutate(response.data.feed);
       }
     } catch (err) {
       if (__DEV__) console.error('Edit post error:', err);
@@ -145,7 +133,7 @@ export default function SinglePostScreen() {
   };
 
   const handleCommentAdded = () => {
-    fetchFeed(); // Refresh to update comment count
+    refresh(); // Refresh to update comment count
   };
 
   // ---------------------------------------------------------------------------
@@ -165,7 +153,7 @@ export default function SinglePostScreen() {
     return (
       <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         <Stack.Screen options={{ title: 'Post', headerStyle: { backgroundColor: themeColors.surface }, headerTintColor: themeColors.text }} />
-        <ErrorMessage message={error || 'Post not found'} onRetry={fetchFeed} />
+        <ErrorMessage message={error || 'Post not found'} onRetry={refresh} />
       </View>
     );
   }

@@ -35,8 +35,8 @@ import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { useTheme } from '@/contexts/ThemeContext';
-import { coursesApi } from '@/services/api';
-import { CourseLesson, CourseSection, CourseTrack } from '@/types';
+import { coursesApi } from '@/services/api/courses';
+import { CourseLesson, CourseSection, CourseTrack } from '@/types/course';
 import { extractYouTubeId } from '@/utils/youtube';
 import { hapticMedium, hapticLight } from '@/utils/haptics';
 
@@ -350,7 +350,7 @@ export default function LessonViewScreen() {
     return (
       <>
         <Stack.Screen options={{ headerShown: false }} />
-        <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
           <PageHeader leftAction="back" onLeftPress={() => router.back()} title={lesson.title} />
           <View style={styles.centerContainer}>
             <Ionicons name="lock-closed" size={64} color={themeColors.textTertiary} />
@@ -379,7 +379,7 @@ export default function LessonViewScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
         <PageHeader leftAction="back" onLeftPress={() => router.back()} title={navTitle} />
 
         <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContent}>
@@ -512,7 +512,7 @@ export default function LessonViewScreen() {
         )}
 
         {/* Sticky Bottom Bar */}
-        <View style={[styles.bottomBar, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
+        <View style={[styles.bottomBar, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border, paddingBottom: insets.bottom }]}>
           {/* State: Completing / Just completed — animated button */}
           {track?.isEnrolled && (completing || justCompleted) && (
             <Animated.View

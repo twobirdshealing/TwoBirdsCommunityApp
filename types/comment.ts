@@ -63,7 +63,7 @@ export interface CommentMeta {
     image?: string;
     type?: 'image' | 'video' | 'link';
   };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // -----------------------------------------------------------------------------

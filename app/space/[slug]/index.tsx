@@ -11,26 +11,24 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Alert,
-  Image,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Feed, Space } from '@/types';
-import { feedsApi, spacesApi } from '@/services/api';
+import { Feed } from '@/types/feed';
+import { Space } from '@/types/space';
+import { feedsApi } from '@/services/api/feeds';
+import { spacesApi } from '@/services/api/spaces';
 import { FeedList } from '@/components/feed/FeedList';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { SpaceMenu } from '@/components/space/SpaceMenu';
+import { SpaceInfoHeader } from '@/components/space/SpaceInfoHeader';
 import { PageHeader } from '@/components/navigation';
-import { QuickPostBox, CreatePostModal, ComposerSubmitData } from '@/components/composer';
-import { useFeedReactions } from '@/hooks';
-import { stripHtmlPreserveBreaks } from '@/utils/htmlToText';
+import { CreatePostModal } from '@/components/composer/CreatePostModal';
+import { useFeedReactions } from '@/hooks/useFeedReactions';
+import { useFeedActions } from '@/hooks/useFeedActions';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -48,12 +46,6 @@ export default function SpacePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Modal states
-  const [showComposer, setShowComposer] = useState(false);
-  const [showComments, setShowComments] = useState(false);
-  const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
-  const [selectedFeedSlug, setSelectedFeedSlug] = useState<string | undefined>(undefined);
-  const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
   
   // Stats - API doesn't return counts reliably
   const [membersCount, setMembersCount] = useState<number>(0);
@@ -158,65 +150,27 @@ export default function SpacePage() {
   }, [fetchSpace, fetchFeeds]);
   
   // ---------------------------------------------------------------------------
-  // Navigation Handlers
+  // Shared Feed Actions
   // ---------------------------------------------------------------------------
-  
-  const handleRefresh = () => {
-    fetchSpace(); // Also refresh space stats
-    fetchFeeds(true);
-  };
-  
-  const handleAuthorPress = (username: string) => {
-    router.push({
-      pathname: '/profile/[username]',
-      params: { username },
-    });
-  };
+
+  const {
+    showComments, selectedFeedId, selectedFeedSlug,
+    handleCommentPress, handleCloseComments, handleCommentAdded,
+    showComposer, editingFeed, openComposer, handleEdit, closeComposer,
+    handleCreateOrEditPost,
+    handleBookmarkToggle, handleDelete,
+    handleAuthorPress,
+  } = useFeedActions({ setFeeds, refresh: () => fetchFeeds(true), defaultSpace: slug });
 
   const handleReact = useFeedReactions(feeds, setFeeds);
-  
-  // ---------------------------------------------------------------------------
-  // Comment Handlers
-  // ---------------------------------------------------------------------------
-  
-  const handleCommentPress = (feed: Feed) => {
-    setSelectedFeedId(feed.id);
-    setSelectedFeedSlug(feed.slug);
-    setShowComments(true);
-  };
 
-  const handleCloseComments = () => {
-    setShowComments(false);
-    setSelectedFeedId(null);
-    setSelectedFeedSlug(undefined);
-  };
-  
-  const handleCommentAdded = () => {
+  const handleRefresh = () => {
+    fetchSpace();
     fetchFeeds(true);
   };
 
   // ---------------------------------------------------------------------------
-  // Bookmark Handler
-  // ---------------------------------------------------------------------------
-
-  const handleBookmarkToggle = async (feed: Feed, isBookmarked: boolean) => {
-    try {
-      await feedsApi.toggleBookmark(feed.id, !isBookmarked);
-      
-      setFeeds(prevFeeds =>
-        prevFeeds.map(f => 
-          f.id === feed.id 
-            ? { ...f, is_bookmarked: !isBookmarked } 
-            : f
-        )
-      );
-    } catch (err) {
-      if (__DEV__) console.error('Bookmark toggle error:', err);
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Pin Handler
+  // Pin Handler (space-specific: checks admin/moderator permissions)
   // ---------------------------------------------------------------------------
 
   const handlePin = async (feed: Feed) => {
@@ -255,76 +209,6 @@ export default function SpacePage() {
   };
 
   // ---------------------------------------------------------------------------
-  // Edit/Delete Handlers
-  // ---------------------------------------------------------------------------
-
-  const handleEdit = (feed: Feed) => {
-    setEditingFeed(feed);
-    setShowComposer(true);
-  };
-
-  const handleDelete = async (feed: Feed) => {
-    try {
-      const response = await feedsApi.deleteFeed(feed.id);
-
-      if (response.success) {
-        setFeeds(prevFeeds => prevFeeds.filter(f => f.id !== feed.id));
-        Alert.alert('Deleted', 'Post deleted successfully');
-      } else {
-        Alert.alert('Error', response.error?.message || 'Failed to delete post');
-      }
-    } catch (err) {
-      if (__DEV__) console.error('Delete error:', err);
-      Alert.alert('Error', 'Failed to delete post');
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Create/Edit Post Handler
-  // ---------------------------------------------------------------------------
-
-  const handleCreateOrEditPost = async (data: ComposerSubmitData) => {
-    try {
-      if (editingFeed) {
-        // EDIT MODE
-        const response = await feedsApi.updateFeed(editingFeed.id, {
-          message: data.message,
-          title: data.title,
-          content_type: data.content_type,
-          media_images: data.media_images,
-        });
-
-        if (!response.success) {
-          throw new Error(response.error?.message || 'Failed to update post');
-        }
-        if (response.data?.feed) {
-          setFeeds(prevFeeds =>
-            prevFeeds.map(f => f.id === editingFeed.id ? response.data!.feed : f)
-          );
-        }
-      } else {
-        // CREATE MODE
-        const response = await feedsApi.createFeed({
-          message: data.message,
-          space: data.space || slug,
-          content_type: data.content_type,
-          media_images: data.media_images,
-        });
-
-        if (!response.success) {
-          throw new Error(response.error?.message || 'Failed to create post');
-        }
-        if (response.data?.feed) {
-          setFeeds(prevFeeds => [response.data!.feed, ...prevFeeds]);
-        }
-      }
-    } catch (err) {
-      if (__DEV__) console.error(`${editingFeed ? 'Edit' : 'Create'} post error:`, err);
-      throw new Error(err instanceof Error ? err.message : `Failed to ${editingFeed ? 'update' : 'create'} post`);
-    }
-  };
-
-  // ---------------------------------------------------------------------------
   // Leave Space Handler (for SpaceMenu)
   // ---------------------------------------------------------------------------
 
@@ -354,109 +238,13 @@ export default function SpacePage() {
   };
 
   // ---------------------------------------------------------------------------
-  // Space Info Header (inside FeedList)
-  // ---------------------------------------------------------------------------
-  
-  const getPrivacyIcon = (privacy: string): keyof typeof Ionicons.glyphMap => {
-    switch (privacy) {
-      case 'public': return 'globe-outline';
-      case 'private': return 'lock-closed-outline';
-      case 'secret': return 'eye-off-outline';
-      default: return 'globe-outline';
-    }
-  };
-
-  const SpaceInfoHeader = () => {
-    if (!space) return null;
-
-    const descriptionText = stripHtmlPreserveBreaks(
-      space.description_rendered || space.description
-    );
-
-    return (
-      <View style={styles.spaceHeader}>
-        {/* Hero Cover Section */}
-        <View style={styles.heroContainer}>
-          {space.cover_photo ? (
-            <Image
-              source={{ uri: space.cover_photo }}
-              style={styles.coverImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <LinearGradient
-              colors={['#6366f1', '#8b5cf6', '#d946ef']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.coverImage}
-            />
-          )}
-
-          {/* Gradient Overlay */}
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.7)']}
-            style={styles.heroOverlay}
-          >
-            {/* Logo + Title + Stats overlaid on cover */}
-            <View style={styles.heroContent}>
-              {space.logo && (
-                <Image
-                  source={{ uri: space.logo }}
-                  style={styles.heroLogo}
-                  resizeMode="cover"
-                />
-              )}
-              <View style={styles.heroTextContainer}>
-                <Text style={styles.heroTitle} numberOfLines={2}>{space.title}</Text>
-                <View style={styles.heroStats}>
-                  <View style={styles.heroStatItem}>
-                    <Ionicons name={getPrivacyIcon(space.privacy)} size={14} color="rgba(255,255,255,0.85)" />
-                    <Text style={styles.heroStatText}>
-                      {space.privacy.charAt(0).toUpperCase() + space.privacy.slice(1)}
-                    </Text>
-                  </View>
-                  <View style={styles.heroStatDot} />
-                  <View style={styles.heroStatItem}>
-                    <Ionicons name="people-outline" size={14} color="rgba(255,255,255,0.85)" />
-                    <Text style={styles.heroStatText}>{membersCount}</Text>
-                  </View>
-                  <View style={styles.heroStatDot} />
-                  <View style={styles.heroStatItem}>
-                    <Ionicons name="document-text-outline" size={14} color="rgba(255,255,255,0.85)" />
-                    <Text style={styles.heroStatText}>{postsCount}</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* Description (below cover, respects theme) */}
-        {descriptionText ? (
-          <View style={styles.descriptionContainer}>
-            <Text style={[styles.spaceDescription, { color: themeColors.textSecondary }]} numberOfLines={3}>
-              {descriptionText}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* Quick Post Box */}
-        <QuickPostBox
-          onPress={() => setShowComposer(true)}
-          placeholder={`Post in ${space.title}...`}
-        />
-      </View>
-    );
-  };
-  
-  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
   const canPinResult = canPin();
   
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
       {/* Header - Using PageHeader with SpaceMenu */}
       <PageHeader
         leftAction="back"
@@ -488,7 +276,16 @@ export default function SpacePage() {
         onDelete={handleDelete}
         onPin={canPinResult ? handlePin : undefined}
         canModerate={canPinResult}
-        ListHeaderComponent={<SpaceInfoHeader />}
+        ListHeaderComponent={
+          space ? (
+            <SpaceInfoHeader
+              space={space}
+              membersCount={membersCount}
+              postsCount={postsCount}
+              onPostPress={openComposer}
+            />
+          ) : undefined
+        }
         emptyMessage="No posts in this space yet"
         emptyIcon="document-text-outline"
       />
@@ -496,10 +293,7 @@ export default function SpacePage() {
       {/* Create/Edit Post Modal */}
       <CreatePostModal
         visible={showComposer}
-        onClose={() => {
-          setShowComposer(false);
-          setEditingFeed(null);
-        }}
+        onClose={closeComposer}
         onSubmit={handleCreateOrEditPost}
         spaceSlug={slug}
         spaceName={space?.title}
@@ -525,96 +319,5 @@ export default function SpacePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-
-  // Space Header (inside FeedList)
-  spaceHeader: {
-    marginBottom: spacing.md,
-  },
-
-  // Hero Cover
-  heroContainer: {
-    height: 200,
-    position: 'relative',
-  },
-
-  coverImage: {
-    width: '100%',
-    height: '100%',
-  },
-
-  heroOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingTop: 60,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-  },
-
-  heroContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-  },
-
-  heroLogo: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.9)',
-    marginRight: spacing.sm,
-  },
-
-  heroTextContainer: {
-    flex: 1,
-  },
-
-  heroTitle: {
-    fontSize: typography.size.xl,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 4,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-
-  heroStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  heroStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-
-  heroStatText: {
-    fontSize: typography.size.sm,
-    color: 'rgba(255,255,255,0.85)',
-    fontWeight: '500',
-  },
-
-  heroStatDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    marginHorizontal: 8,
-  },
-
-  // Description (below cover)
-  descriptionContainer: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-  },
-
-  spaceDescription: {
-    fontSize: typography.size.md,
-    lineHeight: typography.size.md * 1.4,
-    marginBottom: spacing.sm,
   },
 });

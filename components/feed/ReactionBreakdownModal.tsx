@@ -18,7 +18,7 @@ import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { BottomSheet, BottomSheetFlatList, BottomSheetScrollView } from '@/components/common/BottomSheet';
 import { ReactionIcon } from './ReactionIcon';
-import { feedsApi } from '@/services/api';
+import { feedsApi } from '@/services/api/feeds';
 import { BreakdownItem, BreakdownUser } from '@/services/api/feeds';
 import { spacing, typography } from '@/constants/layout';
 

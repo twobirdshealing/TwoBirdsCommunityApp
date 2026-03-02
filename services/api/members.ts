@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
-import { MembersListResponse } from '@/types';
+import { MembersListResponse } from '@/types/space';
 import { get } from './client';
 
 // -----------------------------------------------------------------------------

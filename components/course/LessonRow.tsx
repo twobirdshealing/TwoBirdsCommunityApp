@@ -8,7 +8,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
-import { CourseLesson } from '@/types';
+import { CourseLesson } from '@/types/course';
 import { spacing, typography } from '@/constants/layout';
 
 interface LessonRowProps {

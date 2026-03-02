@@ -1,24 +1,67 @@
 // =============================================================================
 // HOME SCREEN - Widget-based dynamic home page
 // =============================================================================
-// Renders self-contained widgets: Welcome Banner, Events, Media Carousel.
-// Each widget fetches its own data and manages its own loading/error state.
+// Renders self-contained widgets in a user-customizable order.
+// Long-press any widget header to enter edit mode (drag to reorder, toggle
+// visibility). Preferences persist across sessions via AsyncStorage.
+//
+// Normal mode: FlashList with RefreshControl (pull-to-refresh works)
+// Edit mode: DraggableFlatList (drag-to-reorder works)
+// We split these because DraggableFlatList's PanGestureHandler steals the
+// vertical pan gesture from RefreshControl even when drag is disabled.
 // =============================================================================
 
-import React, { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { RefreshControl, StyleSheet, View } from 'react-native';
+import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
+import DraggableFlatList, {
+  RenderItemParams,
+  ScaleDecorator,
+} from 'react-native-draggable-flatlist';
 import { useRouter } from 'expo-router';
-import { spacing } from '@/constants/layout';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { spacing, sizing } from '@/constants/layout';
+import { useAudioPlayerContext } from '@/contexts/AudioPlayerContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { FEATURES } from '@/constants/config';
-import {
-  HomeWidget,
-  WelcomeBannerWidget,
-  MediaCarousel,
-  EventsWidget,
-  CoursesWidget,
-  BookClubWidget,
-} from '@/components/home';
+import { useTabBar } from '@/contexts/TabBarContext';
+import { hapticMedium } from '@/utils/haptics';
+import { useWidgetPreferences, WidgetPreference } from '@/hooks/useWidgetPreferences';
+import { useAppFocus } from '@/hooks/useAppFocus';
+import { getAvailableWidgets, WidgetConfig } from '@/components/home/widgetRegistry';
+import { HomeWidget } from '@/components/home/HomeWidget';
+import { WelcomeBannerWidget } from '@/components/home/WelcomeBannerWidget';
+import { BlogWidget } from '@/components/home/BlogWidget';
+import { YouTubeWidget } from '@/components/home/YouTubeWidget';
+import { EventsWidget } from '@/components/home/EventsWidget';
+import { CoursesWidget } from '@/components/home/CoursesWidget';
+import { BookClubWidget } from '@/components/home/BookClubWidget';
+import { EditModeBar } from '@/components/home/EditModeBar';
+import { EditableWidgetWrapper } from '@/components/home/EditableWidgetWrapper';
+
+// -----------------------------------------------------------------------------
+// Widget Component Map
+// -----------------------------------------------------------------------------
+
+const WIDGET_COMPONENTS: Record<
+  string,
+  React.ComponentType<{ refreshKey: number }>
+> = {
+  'featured-events': EventsWidget,
+  'welcome-banner': WelcomeBannerWidget,
+  'my-courses': CoursesWidget,
+  'book-club': BookClubWidget,
+  'latest-blog': BlogWidget,
+  'latest-youtube': YouTubeWidget,
+};
+
+// -----------------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------------
+
+interface WidgetItem {
+  pref: WidgetPreference;
+  config: WidgetConfig;
+}
 
 // -----------------------------------------------------------------------------
 // Component
@@ -27,8 +70,28 @@ import {
 export default function HomeScreen() {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { currentBook } = useAudioPlayerContext();
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Refresh all widgets when app returns from background
+  useAppFocus(useCallback(() => setRefreshKey((prev) => prev + 1), []));
+
+  // Dynamic bottom padding: tab bar + safe area + mini player (if active)
+  const MINI_PLAYER_HEIGHT = 59;
+  const bottomInset = sizing.height.tabBar + insets.bottom + (currentBook ? MINI_PLAYER_HEIGHT : 0) + spacing.md;
+
+  const { handleScroll, setLocked } = useTabBar();
+
+  const {
+    preferences,
+    isLoading,
+    reorder,
+    toggleWidget,
+    resetToDefaults,
+  } = useWidgetPreferences();
 
   // ---------------------------------------------------------------------------
   // Pull-to-Refresh
@@ -42,59 +105,188 @@ export default function HomeScreen() {
   }, []);
 
   // ---------------------------------------------------------------------------
+  // Build Widget List
+  // ---------------------------------------------------------------------------
+
+  const widgetItems = useMemo<WidgetItem[]>(() => {
+    if (!preferences) return [];
+    const available = getAvailableWidgets();
+    const registryMap = new Map(available.map((w) => [w.id, w]));
+
+    return preferences.order
+      .map((pref) => {
+        const config = registryMap.get(pref.id);
+        if (!config) return null;
+        return { pref, config };
+      })
+      .filter((item): item is WidgetItem => item !== null);
+  }, [preferences]);
+
+  // ---------------------------------------------------------------------------
+  // Edit Mode
+  // ---------------------------------------------------------------------------
+
+  const enterEditMode = useCallback(() => {
+    hapticMedium();
+    setIsEditing(true);
+    setLocked(true);
+  }, [setLocked]);
+
+  const exitEditMode = useCallback(() => {
+    setIsEditing(false);
+    setLocked(false);
+  }, [setLocked]);
+
+  // ---------------------------------------------------------------------------
+  // Drag End
+  // ---------------------------------------------------------------------------
+
+  const handleDragEnd = useCallback(
+    ({ data }: { data: WidgetItem[] }) => {
+      reorder(data.map((item) => item.pref));
+    },
+    [reorder],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Shared Widget Renderer
+  // ---------------------------------------------------------------------------
+
+  const renderWidget = useCallback(
+    (
+      item: WidgetItem,
+      drag?: () => void,
+      isActive?: boolean,
+    ): React.ReactElement | null => {
+      const { pref, config } = item;
+      const WidgetComponent = WIDGET_COMPONENTS[config.id];
+      if (!WidgetComponent) return null;
+
+      // In normal mode, skip disabled widgets entirely
+      if (!isEditing && !pref.enabled) return null;
+
+      const seeAllHandler = config.seeAllRoute
+        ? () => router.push(config.seeAllRoute as any)
+        : undefined;
+
+      // Headerless widgets (e.g. WelcomeBanner)
+      if (!config.externalWrapper) {
+        if (isEditing) {
+          return (
+            <EditableWidgetWrapper
+              config={config}
+              isEnabled={pref.enabled}
+              isEditing={isEditing}
+              drag={drag}
+              isActive={isActive}
+              onToggle={() => toggleWidget(config.id)}
+            >
+              {pref.enabled && <WidgetComponent refreshKey={refreshKey} />}
+            </EditableWidgetWrapper>
+          );
+        }
+        return <WidgetComponent refreshKey={refreshKey} />;
+      }
+
+      // Standard wrapped widgets
+      return (
+        <HomeWidget
+          title={config.title}
+          icon={config.icon}
+          onSeeAll={!isEditing ? seeAllHandler : undefined}
+          isEditing={isEditing}
+          isEnabled={pref.enabled}
+          canDisable={config.canDisable}
+          onToggle={() => toggleWidget(config.id)}
+          drag={drag}
+          isActive={isActive}
+          onEnterEditMode={enterEditMode}
+        >
+          {pref.enabled && <WidgetComponent refreshKey={refreshKey} />}
+        </HomeWidget>
+      );
+    },
+    [isEditing, refreshKey, toggleWidget, router, enterEditMode],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Render Item (Normal mode — FlashList)
+  // ---------------------------------------------------------------------------
+
+  const renderNormalItem = useCallback(
+    ({ item }: ListRenderItemInfo<WidgetItem>) => renderWidget(item),
+    [renderWidget],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Render Item (Edit mode — DraggableFlatList)
+  // ---------------------------------------------------------------------------
+
+  const renderDragItem = useCallback(
+    ({ item, drag, isActive }: RenderItemParams<WidgetItem>) => (
+      <ScaleDecorator>{renderWidget(item, drag, isActive)}</ScaleDecorator>
+    ),
+    [renderWidget],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Key Extractor
+  // ---------------------------------------------------------------------------
+
+  const keyExtractor = useCallback((item: WidgetItem) => item.config.id, []);
+
+  // ---------------------------------------------------------------------------
+  // Footer
+  // ---------------------------------------------------------------------------
+
+  const ListFooter = useCallback(
+    () => <View style={{ height: bottomInset }} />,
+    [bottomInset],
+  );
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
+  if (isLoading || !preferences) {
+    return (
+      <View style={[styles.container, { backgroundColor: themeColors.background }]} />
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-      >
-        {/* Featured Events — top of page */}
-        <HomeWidget
-          title="Featured Events"
-          icon="calendar-outline"
-          onSeeAll={() => router.push('/(tabs)/calendar')}
-        >
-          <EventsWidget refreshKey={refreshKey} />
-        </HomeWidget>
+      {/* Edit Mode Header Bar */}
+      {isEditing && (
+        <EditModeBar onDone={exitEditMode} onReset={resetToDefaults} />
+      )}
 
-        {/* Welcome Banner */}
-        <WelcomeBannerWidget refreshKey={refreshKey} />
-
-        {/* My Courses */}
-        {FEATURES.COURSES && (
-          <HomeWidget
-            title="My Courses"
-            icon="school-outline"
-            onSeeAll={() => router.push('/courses')}
-          >
-            <CoursesWidget refreshKey={refreshKey} />
-          </HomeWidget>
-        )}
-
-        {/* Book Club — only shows for Book Club space members */}
-        {FEATURES.BOOK_CLUB && (
-          <HomeWidget
-            title="Book Club"
-            icon="book-outline"
-            onSeeAll={() => router.push('/bookclub' as any)}
-          >
-            <BookClubWidget refreshKey={refreshKey} />
-          </HomeWidget>
-        )}
-
-        {/* Media Carousel — swipeable blog + YouTube */}
-        <HomeWidget title="Latest" icon="sparkles-outline">
-          <MediaCarousel refreshKey={refreshKey} />
-        </HomeWidget>
-
-        {/* Bottom padding for tab bar */}
-        <View style={styles.bottomPadding} />
-      </ScrollView>
+      {isEditing ? (
+        // Edit mode: DraggableFlatList for drag-to-reorder
+        <DraggableFlatList
+          data={widgetItems}
+          keyExtractor={keyExtractor}
+          renderItem={renderDragItem}
+          onDragEnd={handleDragEnd}
+          onDragBegin={() => hapticMedium()}
+          contentContainerStyle={styles.scrollContent}
+          ListFooterComponent={ListFooter}
+        />
+      ) : (
+        // Normal mode: FlashList with pull-to-refresh
+        <FlashList
+          data={widgetItems}
+          keyExtractor={keyExtractor}
+          renderItem={renderNormalItem}
+          contentContainerStyle={styles.scrollContent}
+          ListFooterComponent={ListFooter}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          }
+        />
+      )}
     </View>
   );
 }
@@ -111,9 +303,5 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingTop: spacing.md,
-  },
-
-  bottomPadding: {
-    height: 80,
   },
 });

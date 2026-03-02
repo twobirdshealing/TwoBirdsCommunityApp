@@ -10,7 +10,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Course } from '@/types';
+import { Course } from '@/types/course';
 import { spacing, typography } from '@/constants/layout';
 import { ProgressBar } from './ProgressBar';
 

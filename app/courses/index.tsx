@@ -26,10 +26,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CourseCard } from '@/components/course';
 import { LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
 import { PageHeader } from '@/components/navigation/PageHeader';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { coursesApi } from '@/services/api';
-import { Course } from '@/types';
+import { coursesApi } from '@/services/api/courses';
+import { Course } from '@/types/course';
 
 // -----------------------------------------------------------------------------
 // Tab type
@@ -154,7 +154,7 @@ export default function CoursesListScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
         {/* Header */}
         <PageHeader
           leftAction="back"
@@ -250,7 +250,7 @@ export default function CoursesListScreen() {
                 </View>
               ) : null
             }
-            contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: 100 }}
+            contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: sizing.height.tabBar + insets.bottom + spacing.md }}
           />
         )}
       </View>

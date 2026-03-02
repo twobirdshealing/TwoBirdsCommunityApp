@@ -6,10 +6,13 @@
 
 import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAudioPlayerContext } from '@/contexts/AudioPlayerContext';
+import { spacing, sizing } from '@/constants/layout';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarEvent } from '@/types/calendar';
 import { FlashList } from '@shopify/flash-list';
 import React from 'react';
-import { RefreshControl, StyleSheet, View } from 'react-native';
+import { NativeScrollEvent, NativeSyntheticEvent, RefreshControl, StyleSheet, View } from 'react-native';
 import { EventCard } from './EventCard';
 
 // -----------------------------------------------------------------------------
@@ -24,6 +27,7 @@ interface EventListProps {
   onRefresh?: () => void;
   onEventPress?: (event: CalendarEvent) => void;
   ListHeaderComponent?: React.ReactElement;
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   emptyMessage?: string;
   compact?: boolean;
 }
@@ -39,11 +43,15 @@ export function EventList({
   error = null,
   onRefresh,
   onEventPress,
+  onScroll,
   ListHeaderComponent,
   emptyMessage = 'No events scheduled',
   compact = false,
 }: EventListProps) {
   const { colors: themeColors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { currentBook } = useAudioPlayerContext();
+  const bottomPadding = sizing.height.tabBar + insets.bottom + (currentBook ? 59 : 0) + spacing.md;
 
   // Initial loading state
   if (loading && events.length === 0) {
@@ -88,8 +96,10 @@ export function EventList({
           />
         )}
         ListHeaderComponent={ListHeaderComponent}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           onRefresh ? (
             <RefreshControl
@@ -114,9 +124,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  listContent: {
-    paddingBottom: 100,
-  },
+  listContent: {},
 });
 
 export default EventList;

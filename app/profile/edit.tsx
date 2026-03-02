@@ -9,9 +9,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,14 +27,17 @@ import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
-import { profilesApi, patchProfileMedia } from '@/services/api';
-import { verifyOtp, resendOtp, requestVoiceCall } from '@/services/api/otp';
+import { profilesApi, patchProfileMedia } from '@/services/api/profiles';
 import { updateStoredUser } from '@/services/auth';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
-import { Profile, CustomFieldConfig } from '@/types';
-import { SocialLinksForm, ProfilePhotoPicker } from '@/components/common';
+import { Profile, CustomFieldConfig } from '@/types/user';
+import { SocialLinksForm } from '@/components/common/SocialLinksForm';
+import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
+import { DynamicFormField } from '@/components/common/DynamicFormField';
+import { SelectModal } from '@/components/common/SelectModal';
 import { PageHeader } from '@/components/navigation';
-import { useSocialProviders } from '@/hooks';
+import { useSocialProviders } from '@/hooks/useSocialProviders';
+import { useOtpVerification } from '@/hooks/useOtpVerification';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -93,15 +95,17 @@ export default function EditProfileScreen() {
   const [selectModalVisible, setSelectModalVisible] = useState(false);
   const [selectModalField, setSelectModalField] = useState<string | null>(null);
 
-  // OTP state (phone change verification)
+  // OTP verification (phone change)
   const [showOtp, setShowOtp] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [otpSessionKey, setOtpSessionKey] = useState('');
-  const [otpPhoneMasked, setOtpPhoneMasked] = useState('');
-  const [otpVoiceFallback, setOtpVoiceFallback] = useState(false);
-  const [otpResendTimer, setOtpResendTimer] = useState(0);
-  const [otpError, setOtpError] = useState('');
-  const [otpVerifying, setOtpVerifying] = useState(false);
+
+  // We need a ref pattern to avoid circular dependency between handleSave and otp.onVerified
+  const handleSaveRef = React.useRef<(otpSessionKey?: string) => Promise<void>>(undefined);
+
+  const otp = useOtpVerification({
+    onVerified: async (sessionKey) => {
+      await handleSaveRef.current?.(sessionKey);
+    },
+  });
 
   // ---------------------------------------------------------------------------
   // Load Profile
@@ -157,18 +161,6 @@ export default function EditProfileScreen() {
       }
     })();
   }, [username]);
-
-  // ---------------------------------------------------------------------------
-  // OTP resend timer
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    if (otpResendTimer <= 0) return;
-    const interval = setInterval(() => {
-      setOtpResendTimer((prev) => (prev <= 1 ? 0 : prev - 1));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [otpResendTimer]);
 
   // ---------------------------------------------------------------------------
   // Field helpers
@@ -346,12 +338,11 @@ export default function EditProfileScreen() {
         // Check for OTP required response (phone change verification)
         const otpData = errorData?.data || errorData;
         if (otpData?.otp_required) {
-          setOtpSessionKey(otpData.session_key || '');
-          setOtpPhoneMasked(otpData.phone_masked || '');
-          setOtpVoiceFallback(otpData.voice_fallback || false);
-          setOtpCode('');
-          setOtpError('');
-          setOtpResendTimer(60);
+          otp.start({
+            sessionKey: otpData.session_key || '',
+            phoneMasked: otpData.phone_masked,
+            voiceFallback: otpData.voice_fallback,
+          });
           setShowOtp(true);
         } else {
           const message = otpData?.message || errorData?.message;
@@ -366,65 +357,8 @@ export default function EditProfileScreen() {
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // OTP handlers
-  // ---------------------------------------------------------------------------
-
-  const handleVerifyOtp = async () => {
-    if (otpVerifying || !otpCode.length) {
-      if (!otpCode.length) setOtpError('Please enter the verification code.');
-      return;
-    }
-
-    setOtpError('');
-    setOtpVerifying(true);
-
-    try {
-      const result = await verifyOtp(otpSessionKey, otpCode);
-
-      if (result.success) {
-        // OTP verified — resubmit profile save with the verified session key
-        setOtpVerifying(false);
-        await handleSave(otpSessionKey);
-      } else {
-        setOtpError(result.message || 'Invalid code. Please try again.');
-      }
-    } catch {
-      setOtpError('Verification failed. Please try again.');
-    } finally {
-      setOtpVerifying(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (otpResendTimer > 0) return;
-
-    try {
-      const result = await resendOtp(otpSessionKey);
-      if (result.success) {
-        setOtpResendTimer(60);
-        setOtpError('');
-      } else {
-        setOtpError(result.message || 'Failed to resend code.');
-      }
-    } catch {
-      setOtpError('Failed to resend code.');
-    }
-  };
-
-  const handleOtpVoiceCall = async () => {
-    try {
-      const result = await requestVoiceCall(otpSessionKey);
-      if (result.success) {
-        setOtpResendTimer(60);
-        setOtpError('');
-      } else {
-        setOtpError(result.message || 'Failed to initiate call.');
-      }
-    } catch {
-      setOtpError('Failed to initiate call.');
-    }
-  };
+  // Keep ref in sync so OTP onVerified always calls latest handleSave
+  handleSaveRef.current = handleSave;
 
   // ---------------------------------------------------------------------------
   // Visibility selector (shared across custom field types)
@@ -471,242 +405,24 @@ export default function EditProfileScreen() {
   // Custom field renderer
   // ---------------------------------------------------------------------------
 
-  const renderCustomField = (key: string, config: CustomFieldConfig) => {
-    const value = formData.custom_fields[key] ?? '';
-    const fieldError = fieldErrors[`cf_${key}`];
+  const renderCustomField = (key: string, config: CustomFieldConfig) => (
+    <DynamicFormField
+      key={key}
+      fieldKey={key}
+      field={config}
+      value={formData.custom_fields[key] ?? ''}
+      onChange={(val) => setCustomField(key, val)}
+      error={fieldErrors[`cf_${key}`]}
+      onSelectPress={(k) => {
+        setSelectModalField(k);
+        setSelectModalVisible(true);
+      }}
+      extraContent={renderVisibilityRow(key, config)}
+    />
+  );
 
-    // Select / Radio / Gender
-    if (config.type === 'select' || config.type === 'radio' || config.type === 'gender') {
-      return (
-        <View key={key} style={styles.inputContainer}>
-          <Text style={[styles.label, { color: themeColors.text }]}>
-            {config.label}{config.required && <Text style={[styles.required, { color: themeColors.error }]}> *</Text>}
-          </Text>
-          {config.instructions ? <Text style={[styles.fieldInstructions, { color: themeColors.textTertiary }]}>{config.instructions}</Text> : null}
-          <TouchableOpacity
-            style={[
-              styles.input,
-              styles.selectInput,
-              {
-                backgroundColor: themeColors.background,
-                borderColor: fieldError ? themeColors.error : themeColors.border,
-              },
-            ]}
-            onPress={() => {
-              setSelectModalField(key);
-              setSelectModalVisible(true);
-            }}
-            activeOpacity={0.7}
-          >
-            <Text style={[
-              styles.selectText,
-              { color: value ? themeColors.text : themeColors.textTertiary },
-            ]}>
-              {value || config.placeholder || `Select ${config.label}`}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color={themeColors.textSecondary} />
-          </TouchableOpacity>
-          {renderVisibilityRow(key, config)}
-          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
-        </View>
-      );
-    }
-
-    // Textarea
-    if (config.type === 'textarea') {
-      return (
-        <View key={key} style={styles.inputContainer}>
-          <Text style={[styles.label, { color: themeColors.text }]}>
-            {config.label}{config.required && <Text style={[styles.required, { color: themeColors.error }]}> *</Text>}
-          </Text>
-          {config.instructions ? <Text style={[styles.fieldInstructions, { color: themeColors.textTertiary }]}>{config.instructions}</Text> : null}
-          <TextInput
-            style={[
-              styles.input,
-              styles.textareaInput,
-              {
-                backgroundColor: themeColors.background,
-                borderColor: fieldError ? themeColors.error : themeColors.border,
-                color: themeColors.text,
-              },
-            ]}
-            value={value}
-            onChangeText={(text) => setCustomField(key, text)}
-            placeholder={config.placeholder || ''}
-            placeholderTextColor={themeColors.textTertiary}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
-          {renderVisibilityRow(key, config)}
-          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
-        </View>
-      );
-    }
-
-    // Checkbox / Multiselect — toggle chips
-    if (config.type === 'checkbox' || config.type === 'multiselect') {
-      let selected: string[] = [];
-      try {
-        selected = typeof value === 'string' ? JSON.parse(value || '[]') : (Array.isArray(value) ? value : []);
-      } catch {
-        selected = [];
-      }
-
-      const toggleOption = (option: string) => {
-        const next = selected.includes(option)
-          ? selected.filter(s => s !== option)
-          : [...selected, option];
-        setCustomField(key, JSON.stringify(next));
-      };
-
-      return (
-        <View key={key} style={styles.inputContainer}>
-          <Text style={[styles.label, { color: themeColors.text }]}>
-            {config.label}{config.required && <Text style={[styles.required, { color: themeColors.error }]}> *</Text>}
-          </Text>
-          {config.instructions ? <Text style={[styles.fieldInstructions, { color: themeColors.textTertiary }]}>{config.instructions}</Text> : null}
-          <View style={styles.chipRow}>
-            {(config.options || []).map((option) => {
-              const isSelected = selected.includes(option);
-              return (
-                <TouchableOpacity
-                  key={option}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: isSelected ? themeColors.primary : themeColors.background,
-                      borderColor: isSelected ? themeColors.primary : themeColors.border,
-                    },
-                  ]}
-                  onPress={() => toggleOption(option)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.chipText, { color: isSelected ? themeColors.textInverse : themeColors.text }]}>
-                    {option}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {renderVisibilityRow(key, config)}
-          {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
-        </View>
-      );
-    }
-
-    // Default: text, phone, number, date, url
-    let keyboardType: TextInput['props']['keyboardType'] = 'default';
-    let autoCapitalize: TextInput['props']['autoCapitalize'] = 'sentences';
-    let placeholder = config.placeholder || '';
-
-    switch (config.type) {
-      case 'phone':
-        keyboardType = 'phone-pad';
-        autoCapitalize = 'none';
-        break;
-      case 'number':
-        keyboardType = 'numeric';
-        break;
-      case 'date':
-        placeholder = placeholder || 'YYYY-MM-DD';
-        autoCapitalize = 'none';
-        break;
-      case 'url':
-        keyboardType = 'url';
-        autoCapitalize = 'none';
-        break;
-      default:
-        break;
-    }
-
-    return (
-      <View key={key} style={styles.inputContainer}>
-        <Text style={[styles.label, { color: themeColors.text }]}>
-          {config.label}{config.required && <Text style={[styles.required, { color: themeColors.error }]}> *</Text>}
-        </Text>
-        {config.instructions ? <Text style={[styles.fieldInstructions, { color: themeColors.textTertiary }]}>{config.instructions}</Text> : null}
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: themeColors.background,
-              borderColor: fieldError ? themeColors.error : themeColors.border,
-              color: themeColors.text,
-            },
-          ]}
-          value={value}
-          onChangeText={(text) => setCustomField(key, text)}
-          placeholder={placeholder}
-          placeholderTextColor={themeColors.textTertiary}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize}
-          autoCorrect={false}
-        />
-        {renderVisibilityRow(key, config)}
-        {fieldError && <Text style={[styles.fieldError, { color: themeColors.error }]}>{fieldError}</Text>}
-      </View>
-    );
-  };
-
-  // ---------------------------------------------------------------------------
-  // Select modal
-  // ---------------------------------------------------------------------------
-
-  const renderSelectModal = () => {
-    if (!selectModalField || !profile?.custom_field_configs?.[selectModalField]) return null;
-
-    const config = profile.custom_field_configs[selectModalField];
-    const options = config.options || [];
-    const currentValue = formData.custom_fields[selectModalField];
-
-    return (
-      <Modal
-        visible={selectModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectModalVisible(false)}
-      >
-        <Pressable
-          style={[styles.modalOverlay, { backgroundColor: themeColors.overlay }]}
-          onPress={() => setSelectModalVisible(false)}
-        >
-          <View style={[styles.modalContent, { backgroundColor: themeColors.surface }]}>
-            <Text style={[styles.modalTitle, { color: themeColors.text }]}>
-              Select {config.label}
-            </Text>
-            <ScrollView style={styles.modalScroll}>
-              {options.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[
-                    styles.modalOption,
-                    { borderBottomColor: themeColors.border },
-                    currentValue === option && { backgroundColor: `${themeColors.primary}15` },
-                  ]}
-                  onPress={() => {
-                    setCustomField(selectModalField, option);
-                    setSelectModalVisible(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.modalOptionText,
-                    { color: themeColors.text },
-                    currentValue === option && { color: themeColors.primary, fontWeight: typography.weight.semibold },
-                  ]}>
-                    {option}
-                  </Text>
-                  {currentValue === option && (
-                    <Ionicons name="checkmark" size={20} color={themeColors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </Pressable>
-      </Modal>
-    );
-  };
+  // Select modal field config
+  const selectConfig = selectModalField ? profile?.custom_field_configs?.[selectModalField] : null;
 
   // ---------------------------------------------------------------------------
   // Render: Loading
@@ -736,7 +452,7 @@ export default function EditProfileScreen() {
   const hasCustomFields = Object.keys(customFieldConfigs).length > 0;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: themeColors.background }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <PageHeader
@@ -761,7 +477,7 @@ export default function EditProfileScreen() {
 
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
       >
         <ScrollView
           style={styles.flex}
@@ -919,8 +635,20 @@ export default function EditProfileScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Bottom safe area - outside KAV so keyboard calc is correct */}
+      <View style={{ height: insets.bottom }} />
+
       {/* Select modal for custom fields */}
-      {renderSelectModal()}
+      {selectConfig && (
+        <SelectModal
+          visible={selectModalVisible}
+          title={`Select ${selectConfig.label}`}
+          options={selectConfig.options || []}
+          selectedValue={formData.custom_fields[selectModalField!]}
+          onSelect={(val) => setCustomField(selectModalField!, val)}
+          onClose={() => setSelectModalVisible(false)}
+        />
+      )}
 
       {/* OTP verification modal */}
       <Modal
@@ -938,12 +666,12 @@ export default function EditProfileScreen() {
               Verify Your Phone
             </Text>
             <Text style={[styles.otpSubtitle, { color: themeColors.textSecondary }]}>
-              Enter the code sent to {otpPhoneMasked}
+              Enter the code sent to {otp.phoneMasked}
             </Text>
 
-            {otpError ? (
+            {otp.error ? (
               <View style={[styles.otpErrorContainer, { backgroundColor: themeColors.errorLight, borderColor: withOpacity(themeColors.error, 0.3) }]}>
-                <Text style={[styles.otpErrorText, { color: themeColors.error }]}>{otpError}</Text>
+                <Text style={[styles.otpErrorText, { color: themeColors.error }]}>{otp.error}</Text>
               </View>
             ) : null}
 
@@ -957,8 +685,8 @@ export default function EditProfileScreen() {
                   color: themeColors.text,
                 },
               ]}
-              value={otpCode}
-              onChangeText={(text) => setOtpCode(text.replace(/[^0-9]/g, ''))}
+              value={otp.code}
+              onChangeText={(text) => otp.setCode(text.replace(/[^0-9]/g, ''))}
               placeholder="0000"
               placeholderTextColor={themeColors.textTertiary}
               keyboardType="number-pad"
@@ -969,12 +697,12 @@ export default function EditProfileScreen() {
             />
 
             <TouchableOpacity
-              style={[styles.otpVerifyButton, { backgroundColor: themeColors.primary }, (otpVerifying || saving) && styles.otpButtonDisabled]}
-              onPress={handleVerifyOtp}
-              disabled={otpVerifying || saving}
+              style={[styles.otpVerifyButton, { backgroundColor: themeColors.primary }, (otp.verifying || saving) && styles.otpButtonDisabled]}
+              onPress={otp.handleVerify}
+              disabled={otp.verifying || saving}
               activeOpacity={0.8}
             >
-              {otpVerifying || saving ? (
+              {otp.verifying || saving ? (
                 <ActivityIndicator color={themeColors.textInverse} />
               ) : (
                 <Text style={[styles.otpVerifyButtonText, { color: themeColors.textInverse }]}>Verify</Text>
@@ -983,18 +711,18 @@ export default function EditProfileScreen() {
 
             <View style={styles.otpActions}>
               <TouchableOpacity
-                onPress={handleResendOtp}
-                disabled={otpResendTimer > 0}
+                onPress={otp.handleResend}
+                disabled={otp.resendTimer > 0}
               >
                 <Text style={[
                   styles.otpActionText,
-                  { color: otpResendTimer > 0 ? themeColors.textTertiary : themeColors.primary },
+                  { color: otp.resendTimer > 0 ? themeColors.textTertiary : themeColors.primary },
                 ]}>
-                  {otpResendTimer > 0 ? `Resend code (${otpResendTimer}s)` : 'Resend code'}
+                  {otp.resendTimer > 0 ? `Resend code (${otp.resendTimer}s)` : 'Resend code'}
                 </Text>
               </TouchableOpacity>
-              {otpVoiceFallback && (
-                <TouchableOpacity onPress={handleOtpVoiceCall}>
+              {otp.voiceFallback && (
+                <TouchableOpacity onPress={otp.handleVoiceCall}>
                   <Text style={[styles.otpActionText, { color: themeColors.primary }]}>
                     Try voice call
                   </Text>
@@ -1090,17 +818,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm + 2,
   },
 
-  selectInput: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-
-  selectText: {
-    fontSize: typography.size.md,
-    flex: 1,
-  },
-
   fieldInstructions: {
     fontSize: typography.size.xs,
     marginBottom: spacing.xs,
@@ -1130,26 +847,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
-  // Chip toggles (checkbox/multiselect)
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-
-  chipText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-  },
-
-  // Select modal
+  // OTP + Select overlay
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1158,36 +856,11 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
 
-  modalContent: {
-    borderRadius: 16,
-    width: '100%',
-    maxHeight: '60%',
-    overflow: 'hidden',
-  },
-
   modalTitle: {
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold,
     padding: spacing.lg,
     textAlign: 'center',
-  },
-
-  modalScroll: {
-    maxHeight: 300,
-  },
-
-  modalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-
-  modalOptionText: {
-    fontSize: typography.size.md,
-    flex: 1,
   },
 
   // OTP modal

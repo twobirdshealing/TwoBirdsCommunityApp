@@ -7,7 +7,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native'
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
-import { Profile, CustomFieldValue } from '@/types';
+import { Profile, CustomFieldValue } from '@/types/user';
 import { formatRelativeTime } from '@/utils/formatDate';
 
 interface AboutTabProps {

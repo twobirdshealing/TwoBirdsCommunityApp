@@ -19,7 +19,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { WelcomeBanner as WelcomeBannerType, WelcomeBannerButton } from '@/types';
+import { WelcomeBanner as WelcomeBannerType, WelcomeBannerButton } from '@/types/feed';
 import { stripHtmlTags } from '@/utils/htmlToText';
 import { extractYouTubeId } from '@/utils/youtube';
 

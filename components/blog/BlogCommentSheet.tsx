@@ -24,7 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { SITE_URL } from '@/constants/config';
 import { WPComment } from '@/types/blog';
-import { blogApi } from '@/services/api';
+import { blogApi } from '@/services/api/blog';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { BottomSheet, BottomSheetFlatList, BottomSheetFooter, SheetInput } from '@/components/common/BottomSheet';

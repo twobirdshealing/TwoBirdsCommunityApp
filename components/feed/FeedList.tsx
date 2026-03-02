@@ -7,10 +7,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing } from '@/constants/layout';
-import { Feed, ReactionType } from '@/types';
+import { useAudioPlayerContext } from '@/contexts/AudioPlayerContext';
+import { spacing, sizing } from '@/constants/layout';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Feed, ReactionType } from '@/types/feed';
 import React from 'react';
-import { RefreshControl, StyleSheet, View } from 'react-native';
+import { NativeScrollEvent, NativeSyntheticEvent, RefreshControl, StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { FeedCard } from './FeedCard';
 
@@ -34,6 +36,7 @@ interface FeedListProps {
   onPin?: (feed: Feed) => void;  // Pin callback
   canModerate?: boolean; // If true, shows Edit/Delete for any post (admin/mod)
   onLoadMore?: () => void;
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   emptyMessage?: string;
   emptyIcon?: keyof typeof Ionicons.glyphMap;
   ListHeaderComponent?: React.ReactElement;
@@ -59,11 +62,15 @@ export function FeedList({
   onPin,
   canModerate = false,
   onLoadMore,
+  onScroll,
   emptyMessage = 'No posts yet',
   emptyIcon = 'mail-open-outline',
   ListHeaderComponent,
 }: FeedListProps) {
   const { colors: themeColors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { currentBook } = useAudioPlayerContext();
+  const bottomPadding = sizing.height.tabBar + insets.bottom + (currentBook ? 59 : 0) + spacing.md;
 
   // Initial loading state
   if (loading && feeds.length === 0) {
@@ -124,9 +131,11 @@ export function FeedList({
       data={feeds}
       keyExtractor={(item) => item.id.toString()}
       renderItem={renderItem}
-      contentContainerStyle={styles.list}
+      contentContainerStyle={[styles.list, { paddingBottom: bottomPadding }]}
       showsVerticalScrollIndicator={false}
       ListHeaderComponent={ListHeaderComponent}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       refreshControl={
         onRefresh ? (
           <RefreshControl
@@ -154,7 +163,6 @@ const styles = StyleSheet.create({
   
   list: {
     paddingVertical: spacing.sm,
-    paddingBottom: 100,
   },
 });
 
