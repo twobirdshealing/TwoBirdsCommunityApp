@@ -12,12 +12,17 @@
 // REFACTORED: Uses shared BottomSheet component
 // =============================================================================
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Dimensions,
+  FlatList,
   Image,
+  Keyboard,
+  Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -44,9 +49,7 @@ import { commentsApi } from '@/services/api/comments';
 import { mediaApi } from '@/services/api/media';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
-import { BottomSheet, BottomSheetFlatList, BottomSheetFooter } from '@/components/common/BottomSheet';
-import type { BottomSheetFooterProps } from '@/components/common/BottomSheet';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { MarkdownToolbar } from '@/components/composer/MarkdownToolbar';
@@ -124,7 +127,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
   const commentEditor = useEditorBridge({
     initialContent: '',
     autofocus: false,
-    avoidIosKeyboard: false, // gorhom bottom sheet handles keyboard
+    avoidIosKeyboard: true,
     bridgeExtensions: [
       ...TenTapStartKit,
       PlaceholderBridge.configureExtension({
@@ -139,7 +142,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
     commentEditor.injectCSS(`
       body {
         color: ${themeColors.text};
-        background: transparent;
+        background: ${themeColors.surface};
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
         font-size: 15px;
         line-height: 1.4;
@@ -799,106 +802,41 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
   const insets = useSafeAreaInsets();
 
   // ---------------------------------------------------------------------------
-  // Footer — sticky input pinned to bottom via gorhom footerComponent
+  // Keyboard height tracking (WebView-based editor doesn't trigger gorhom's
+  // built-in keyboard detection, so we track it manually)
   // ---------------------------------------------------------------------------
 
-  const renderFooter = useCallback(
-    (props: BottomSheetFooterProps) => (
-      <BottomSheetFooter {...props} bottomInset={insets.bottom}>
-        <View style={[styles.footerInner, { backgroundColor: themeColors.surface }]}>
-        {/* Reply indicator - shows who you're mentioning */}
-        {replyingTo && !editingComment && (
-          <View style={[styles.replyIndicator, { backgroundColor: themeColors.primaryLight + '20' }]}>
-            <Text style={[styles.replyText, { color: themeColors.textSecondary }]}>
-              Replying to <Text style={[styles.replyName, { color: themeColors.primary }]}>@{replyingTo.xprofile?.username || replyingTo.xprofile?.display_name}</Text>
-            </Text>
-            <TouchableOpacity onPress={cancelReply}>
-              <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        )}
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-        {/* Edit indicator */}
-        {editingComment && (
-          <View style={[styles.replyIndicator, styles.editIndicator, { backgroundColor: themeColors.warning + '20' }]}>
-            <Text style={[styles.replyText, { color: themeColors.textSecondary }]}>
-              Editing comment
-            </Text>
-            <TouchableOpacity onPress={cancelEdit}>
-              <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        )}
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-        {/* Attached Images Preview */}
-        {attachedImages.length > 0 && (
-          <View style={styles.attachedImagesContainer}>
-            {attachedImages.map((img, idx) => (
-              <View key={idx} style={styles.attachedImageWrapper}>
-                <Image source={{ uri: img.url }} style={styles.attachedImage} />
-                <TouchableOpacity
-                  style={styles.removeImageButton}
-                  onPress={() => removeImage(idx)}
-                >
-                  <Ionicons name="close-circle" size={20} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            ))}
-            {isUploading && (
-              <View style={[styles.uploadingIndicator, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
-                <ActivityIndicator size="small" color={themeColors.primary} />
-              </View>
-            )}
-          </View>
-        )}
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
 
-        {/* Markdown Formatting Toolbar */}
-        <MarkdownToolbar editor={commentEditor} compact />
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
-        {/* Comment Input — 10tap RichText editor + action buttons */}
-        <View style={[styles.inputContainer, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
-          {/* Image picker button */}
-          <TouchableOpacity
-            style={styles.imageButton}
-            onPress={handlePickImage}
-            disabled={isUploading || attachedImages.length >= 4}
-          >
-            <Ionicons
-              name="image-outline"
-              size={24}
-              color={attachedImages.length >= 4 ? themeColors.textTertiary : themeColors.primary}
-            />
-          </TouchableOpacity>
+  // ---------------------------------------------------------------------------
+  // Android back button
+  // ---------------------------------------------------------------------------
 
-          {/* Rich text editor */}
-          <View style={styles.commentEditorWrapper}>
-            <RichText
-              editor={commentEditor}
-              style={styles.commentRichText}
-              scrollEnabled={true}
-              nestedScrollEnabled={true}
-            />
-          </View>
-
-          {/* Submit button */}
-          <TouchableOpacity
-            style={[styles.sendButton, { backgroundColor: themeColors.primary }, !canSubmit && [styles.sendButtonDisabled, { backgroundColor: themeColors.textTertiary }]]}
-            onPress={handleSubmitComment}
-            disabled={!canSubmit}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color={themeColors.textInverse} />
-            ) : (
-              <Ionicons name={editingComment ? "checkmark" : "send"} size={20} color={themeColors.textInverse} />
-            )}
-          </TouchableOpacity>
-        </View>
-        </View>
-      </BottomSheetFooter>
-    ),
-    [replyingTo, editingComment, attachedImages, isUploading, commentEditor,
-     canSubmit, isSubmitting, themeColors, insets.bottom],
-  );
+  useEffect(() => {
+    if (!visible) return;
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => backHandler.remove();
+  }, [visible, onClose]);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -906,13 +844,27 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
 
   return (
     <>
-      <BottomSheet
+      <Modal
         visible={visible}
-        onClose={onClose}
-        title="Comments"
-        footerComponent={renderFooter}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={onClose}
       >
-          {/* Scrollable content area — fills remaining space above input */}
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.surface }]} edges={['top']}>
+          {/* Header */}
+          <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close" size={24} color={themeColors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: themeColors.text }]}>Comments</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          {/* Comments list */}
           <View style={styles.contentArea}>
             {loading ? (
               <View style={styles.centered}>
@@ -932,7 +884,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
                 <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>Be the first to comment!</Text>
               </View>
             ) : (
-              <BottomSheetFlatList
+              <FlatList
                 data={comments}
                 keyExtractor={(item: Comment) => item.id.toString()}
                 renderItem={renderComment}
@@ -951,7 +903,100 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
               />
             )}
           </View>
-      </BottomSheet>
+
+          {/* Editor section */}
+          <View style={[styles.editorSection, { backgroundColor: themeColors.surface }]}>
+            {/* Reply indicator */}
+            {replyingTo && !editingComment && (
+              <View style={[styles.replyIndicator, { backgroundColor: themeColors.primaryLight + '20' }]}>
+                <Text style={[styles.replyText, { color: themeColors.textSecondary }]}>
+                  Replying to <Text style={[styles.replyName, { color: themeColors.primary }]}>@{replyingTo.xprofile?.username || replyingTo.xprofile?.display_name}</Text>
+                </Text>
+                <TouchableOpacity onPress={cancelReply}>
+                  <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Edit indicator */}
+            {editingComment && (
+              <View style={[styles.replyIndicator, styles.editIndicator, { backgroundColor: themeColors.warning + '20' }]}>
+                <Text style={[styles.replyText, { color: themeColors.textSecondary }]}>
+                  Editing comment
+                </Text>
+                <TouchableOpacity onPress={cancelEdit}>
+                  <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Attached Images Preview */}
+            {attachedImages.length > 0 && (
+              <View style={styles.attachedImagesContainer}>
+                {attachedImages.map((img, idx) => (
+                  <View key={idx} style={styles.attachedImageWrapper}>
+                    <Image source={{ uri: img.url }} style={styles.attachedImage} />
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => removeImage(idx)}
+                    >
+                      <Ionicons name="close-circle" size={20} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                {isUploading && (
+                  <View style={[styles.uploadingIndicator, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
+                    <ActivityIndicator size="small" color={themeColors.primary} />
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Rich text editor */}
+            <View style={[styles.commentEditorWrapper, { backgroundColor: themeColors.surface }]}>
+              <RichText
+                editor={commentEditor}
+                style={[styles.commentRichText, { backgroundColor: themeColors.surface }]}
+              />
+            </View>
+
+            {/* Markdown Formatting Toolbar */}
+            <MarkdownToolbar editor={commentEditor} compact />
+
+            {/* Action bar — image picker + send button */}
+            <View style={[styles.inputContainer, { borderTopColor: themeColors.border }]}>
+              <TouchableOpacity
+                style={styles.imageButton}
+                onPress={handlePickImage}
+                disabled={isUploading || attachedImages.length >= 4}
+              >
+                <Ionicons
+                  name="image-outline"
+                  size={24}
+                  color={attachedImages.length >= 4 ? themeColors.textTertiary : themeColors.primary}
+                />
+              </TouchableOpacity>
+
+              <View style={{ flex: 1 }} />
+
+              <TouchableOpacity
+                style={[styles.sendButton, { backgroundColor: themeColors.primary }, !canSubmit && [styles.sendButtonDisabled, { backgroundColor: themeColors.textTertiary }]]}
+                onPress={handleSubmitComment}
+                disabled={!canSubmit}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color={themeColors.textInverse} />
+                ) : (
+                  <Ionicons name={editingComment ? "checkmark" : "send"} size={20} color={themeColors.textInverse} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Keyboard spacer */}
+          <View style={{ height: keyboardHeight > 0 ? keyboardHeight : insets.bottom }} />
+        </SafeAreaView>
+      </Modal>
 
       {/* Reaction Picker for comments */}
       <ReactionPicker
@@ -990,7 +1035,40 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  footerInner: {},
+  modalContainer: {
+    flex: 1,
+  },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+  },
+
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: typography.size.lg,
+    fontWeight: '600',
+  },
+
+  closeButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  headerSpacer: {
+    width: 40,
+  },
+
+  editorSection: {
+    borderTopWidth: 1,
+    borderTopColor: 'transparent',
+  },
 
   contentArea: {
     flex: 1,
@@ -1035,7 +1113,7 @@ const styles = StyleSheet.create({
 
   commentsList: {
     padding: spacing.lg,
-    paddingBottom: 160,
+    paddingBottom: 20,
   },
 
   pinnedCommentContainer: {
@@ -1240,15 +1318,12 @@ const styles = StyleSheet.create({
 
   commentEditorWrapper: {
     flex: 1,
-    minHeight: 40,
-    maxHeight: 150,
-    borderRadius: 12,
-    overflow: 'hidden',
+    minHeight: 120,
   },
 
   commentRichText: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 120,
   },
 
   sendButton: {

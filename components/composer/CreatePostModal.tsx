@@ -3,15 +3,21 @@
 // =============================================================================
 // Uses @10play/tentap-editor (TipTap/ProseMirror) for WYSIWYG editing.
 // On submit, HTML is converted to markdown via turndown for server compatibility.
+// Uses React Native Modal (not gorhom BottomSheet) to avoid gesture conflicts
+// with the WebView-based editor.
 // =============================================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  BackHandler,
   Keyboard,
+  Modal,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import {
@@ -23,11 +29,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import {
-  BottomSheet,
-  BottomSheetFooter,
-} from '@/components/common/BottomSheet';
-import type { BottomSheetFooterProps } from '@/components/common/BottomSheet';
 import { ComposerToolbar } from './ComposerToolbar';
 import { MarkdownToolbar } from './MarkdownToolbar';
 import { SpaceSelector } from './SpaceSelector';
@@ -39,6 +40,7 @@ import { OembedData } from '@/services/api/feeds';
 import { Feed } from '@/types/feed';
 import { htmlToMarkdown } from '@/utils/htmlToMarkdown';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 
 // -----------------------------------------------------------------------------
@@ -131,7 +133,7 @@ export function CreatePostModal({
   const editor = useEditorBridge({
     initialContent,
     autofocus: false,
-    avoidIosKeyboard: false, // gorhom bottom sheet handles keyboard
+    avoidIosKeyboard: true,
     bridgeExtensions: [
       ...TenTapStartKit,
       PlaceholderBridge.configureExtension({
@@ -146,7 +148,7 @@ export function CreatePostModal({
     editor.injectCSS(`
       body {
         color: ${themeColors.text};
-        background: transparent;
+        background: ${themeColors.surface};
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
         font-size: 16px;
         line-height: 1.5;
@@ -215,6 +217,42 @@ export function CreatePostModal({
   const showSpaceSelector = !effectiveSpaceSlug && !isEditing;
   const actualSubmitLabel = isEditing ? 'Save' : 'Post';
   const canSubmit = !isSubmitting && !isUploading;
+
+  // ---------------------------------------------------------------------------
+  // Keyboard height tracking
+  // ---------------------------------------------------------------------------
+
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Android back button
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (!visible) return;
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => backHandler.remove();
+  }, [visible, onClose]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -349,101 +387,109 @@ export function CreatePostModal({
   };
 
   // ---------------------------------------------------------------------------
-  // Footer — MarkdownToolbar + ComposerToolbar pinned above keyboard
-  // ---------------------------------------------------------------------------
-
-  const renderFooter = useCallback(
-    (props: BottomSheetFooterProps) => (
-      <BottomSheetFooter {...props} bottomInset={insets.bottom}>
-        <View style={[styles.footerInner, { backgroundColor: themeColors.surface }]}>
-          <MarkdownToolbar editor={editor} />
-          <ComposerToolbar
-            onImagePress={handleImagePicker}
-            onVideoPress={handleVideoPress}
-            onSubmit={handleSubmit}
-            submitLabel={actualSubmitLabel}
-            canSubmit={canSubmit}
-            isSubmitting={isSubmitting}
-            isUploading={isUploading}
-            hasVideo={videoAttachment !== null}
-          />
-        </View>
-      </BottomSheetFooter>
-    ),
-    [editor, canSubmit, isSubmitting, isUploading, videoAttachment,
-     actualSubmitLabel, themeColors, insets.bottom],
-  );
-
-  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
   return (
     <>
-      <BottomSheet
+      <Modal
         visible={visible}
-        onClose={onClose}
-        title={isEditing ? 'Edit Post' : 'Create Post'}
-        footerComponent={renderFooter}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={onClose}
       >
-        <View style={[styles.content, { backgroundColor: themeColors.surface }]}>
-          {/* Space indicator or selector */}
-          {effectiveSpaceName ? (
-            <View style={[styles.spaceIndicator, { borderBottomColor: themeColors.border }]}>
-              <Ionicons name="people-outline" size={16} color={themeColors.primary} />
-              <Text style={[styles.spaceText, { color: themeColors.textSecondary }]}>
-                {isEditing ? 'Editing in' : 'Posting to'}{' '}
-                <Text style={[styles.spaceName, { color: themeColors.primary }]}>{effectiveSpaceName}</Text>
-              </Text>
-            </View>
-          ) : showSpaceSelector ? (
-            <View style={[styles.spaceRow, { borderBottomColor: themeColors.border }]}>
-              <SpaceSelector
-                selectedSpaceSlug={selectedSpaceSlug}
-                selectedSpaceName={selectedSpaceName}
-                onSelect={handleSpaceSelect}
-              />
-            </View>
-          ) : null}
-
-          {/* Title Input */}
-          <TextInput
-            style={[styles.titleInput, { color: themeColors.text, borderBottomColor: themeColors.border }]}
-            placeholder="Title (optional)"
-            placeholderTextColor={themeColors.textTertiary}
-            value={title}
-            onChangeText={setTitle}
-            maxLength={200}
-          />
-
-          {/* Rich Text Editor — 10tap WebView */}
-          <View style={styles.editorContainer}>
-            <RichText
-              editor={editor}
-              style={styles.richText}
-              scrollEnabled={true}
-              nestedScrollEnabled={true}
-            />
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.surface }]} edges={['top']}>
+          {/* Header */}
+          <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close" size={24} color={themeColors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: themeColors.text }]}>
+              {isEditing ? 'Edit Post' : 'Create Post'}
+            </Text>
+            <View style={styles.headerSpacer} />
           </View>
 
-          {/* Media Preview */}
-          {attachments.length > 0 && (
-            <MediaPreview
-              items={attachments}
-              onRemove={removeAttachment}
-              isUploading={isUploading}
-            />
-          )}
+          {/* Content */}
+          <View style={styles.content}>
+            {/* Space indicator or selector */}
+            {effectiveSpaceName ? (
+              <View style={[styles.spaceIndicator, { borderBottomColor: themeColors.border }]}>
+                <Ionicons name="people-outline" size={16} color={themeColors.primary} />
+                <Text style={[styles.spaceText, { color: themeColors.textSecondary }]}>
+                  {isEditing ? 'Editing in' : 'Posting to'}{' '}
+                  <Text style={[styles.spaceName, { color: themeColors.primary }]}>{effectiveSpaceName}</Text>
+                </Text>
+              </View>
+            ) : showSpaceSelector ? (
+              <View style={[styles.spaceRow, { borderBottomColor: themeColors.border }]}>
+                <SpaceSelector
+                  selectedSpaceSlug={selectedSpaceSlug}
+                  selectedSpaceName={selectedSpaceName}
+                  onSelect={handleSpaceSelect}
+                />
+              </View>
+            ) : null}
 
-          {/* Video Preview */}
-          {videoAttachment && (
-            <VideoPreview
-              video={videoAttachment}
-              onRemove={handleVideoRemove}
+            {/* Title Input */}
+            <TextInput
+              style={[styles.titleInput, { color: themeColors.text, borderBottomColor: themeColors.border }]}
+              placeholder="Title (optional)"
+              placeholderTextColor={themeColors.textTertiary}
+              value={title}
+              onChangeText={setTitle}
+              maxLength={200}
             />
-          )}
-        </View>
-      </BottomSheet>
+
+            {/* Rich Text Editor */}
+            <View style={styles.editorContainer}>
+              <RichText
+                editor={editor}
+                style={[styles.richText, { backgroundColor: themeColors.surface }]}
+              />
+            </View>
+
+            {/* Media Preview */}
+            {attachments.length > 0 && (
+              <MediaPreview
+                items={attachments}
+                onRemove={removeAttachment}
+                isUploading={isUploading}
+              />
+            )}
+
+            {/* Video Preview */}
+            {videoAttachment && (
+              <VideoPreview
+                video={videoAttachment}
+                onRemove={handleVideoRemove}
+              />
+            )}
+
+            {/* Toolbar */}
+            <View style={[styles.toolbarArea, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
+              <MarkdownToolbar editor={editor} />
+              <ComposerToolbar
+                onImagePress={handleImagePicker}
+                onVideoPress={handleVideoPress}
+                onSubmit={handleSubmit}
+                submitLabel={actualSubmitLabel}
+                canSubmit={canSubmit}
+                isSubmitting={isSubmitting}
+                isUploading={isUploading}
+                hasVideo={videoAttachment !== null}
+              />
+            </View>
+
+            {/* Keyboard spacer */}
+            <View style={{ height: keyboardHeight > 0 ? keyboardHeight : insets.bottom }} />
+          </View>
+        </SafeAreaView>
+      </Modal>
 
       {/* Video Attach Modal */}
       <VideoAttachModal
@@ -460,6 +506,36 @@ export function CreatePostModal({
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+  },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+  },
+
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: typography.size.lg,
+    fontWeight: '600',
+  },
+
+  closeButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  headerSpacer: {
+    width: 40,
+  },
+
   content: {
     flex: 1,
   },
@@ -504,9 +580,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  footerInner: {
+  toolbarArea: {
     borderTopWidth: 1,
-    borderTopColor: 'transparent',
   },
 });
 
