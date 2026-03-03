@@ -1,19 +1,7 @@
-// =============================================================================
-// CREATE POST MODAL - Near-fullscreen post composer with 10tap rich text editor
-// =============================================================================
-// Uses @10play/tentap-editor (TipTap/ProseMirror) for WYSIWYG editing.
-// On submit, HTML is converted to markdown via turndown for server compatibility.
-// Uses React Native Modal (not gorhom BottomSheet) to avoid gesture conflicts
-// with the WebView-based editor.
-// =============================================================================
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  BackHandler,
   Keyboard,
-  Modal,
-  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -23,9 +11,10 @@ import {
 import {
   RichText,
   useEditorBridge,
+  BridgeExtension,
   TenTapStartKit,
-  PlaceholderBridge,
 } from '@10play/tentap-editor';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -39,8 +28,7 @@ import { MediaItem, mediaApi } from '@/services/api/media';
 import { OembedData } from '@/services/api/feeds';
 import { Feed } from '@/types/feed';
 import { htmlToMarkdown } from '@/utils/htmlToMarkdown';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 
 // -----------------------------------------------------------------------------
@@ -67,8 +55,7 @@ export interface ComposerSubmitData {
   meta?: Record<string, any>;
 }
 
-interface CreatePostModalProps {
-  visible: boolean;
+interface CreatePostContentProps {
   onClose: () => void;
   onSubmit: (data: ComposerSubmitData) => Promise<void>;
   spaceSlug?: string;
@@ -80,14 +67,13 @@ interface CreatePostModalProps {
 // Component
 // -----------------------------------------------------------------------------
 
-export function CreatePostModal({
-  visible,
+export function CreatePostContent({
   onClose,
   onSubmit,
   spaceSlug,
   spaceName,
   editFeed,
-}: CreatePostModalProps) {
+}: CreatePostContentProps) {
   const { colors: themeColors } = useTheme();
   const insets = useSafeAreaInsets();
   const isEditing = !!editFeed;
@@ -128,74 +114,96 @@ export function CreatePostModal({
 
   // ---------------------------------------------------------------------------
   // 10tap Editor Bridge
+  // Theme CSS is provided via a custom BridgeExtension's extendCSS, which gets
+  // baked into the WebView's injectedJavaScript prop and runs immediately when
+  // the page loads — no race condition, no flash of unstyled content.
+  // PlaceholderBridge.configureExtension() crashes the WebView, so we set the
+  // placeholder text at runtime once the editor signals readiness.
   // ---------------------------------------------------------------------------
+
+  const themeCSS = useMemo(() => `
+    body {
+      color: ${themeColors.text};
+      background: ${themeColors.surface};
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      padding: 0 ${spacing.md}px;
+      margin: 0;
+    }
+    h2 { font-size: 20px; font-weight: 600; margin: 12px 0; color: ${themeColors.text}; }
+    h3 { font-size: 18px; font-weight: 600; margin: 8px 0; color: ${themeColors.text}; }
+    h4 { font-size: 16px; font-weight: 600; margin: 8px 0; color: ${themeColors.text}; }
+    p { margin: 6px 0; }
+    a { color: ${themeColors.primary}; text-decoration: underline; }
+    blockquote {
+      border-left: 3px solid ${themeColors.primary};
+      padding-left: 12px;
+      margin: 8px 0;
+      color: ${themeColors.textSecondary};
+      font-style: italic;
+    }
+    ul, ol { padding-left: 24px; margin: 6px 0; }
+    li { margin: 2px 0; }
+    code {
+      background: ${themeColors.backgroundSecondary};
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 14px;
+    }
+    pre {
+      background: ${themeColors.backgroundSecondary};
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    pre code { background: none; padding: 0; }
+    hr {
+      border: none;
+      border-top: 1px solid ${themeColors.border};
+      margin: 12px 0;
+    }
+    strong { font-weight: 700; }
+    del, s { text-decoration: line-through; }
+    .ProseMirror-focused { outline: none; }
+    .is-editor-empty:first-child::before {
+      color: ${themeColors.textTertiary};
+      font-style: normal;
+    }
+  `, [themeColors]);
+
+  const themeBridge = useMemo(
+    () => new BridgeExtension({ forceName: 'tbcTheme', extendCSS: themeCSS }),
+    [themeCSS],
+  );
+
+  const bridgeExtensions = useMemo(
+    () => [...TenTapStartKit, themeBridge],
+    [themeBridge],
+  );
+
+  const editorTheme = useMemo(() => ({
+    webview: { backgroundColor: themeColors.surface },
+  }), [themeColors.surface]);
 
   const editor = useEditorBridge({
     initialContent,
     autofocus: false,
     avoidIosKeyboard: true,
-    bridgeExtensions: [
-      ...TenTapStartKit,
-      PlaceholderBridge.configureExtension({
-        placeholder: "What's happening?",
-      }),
-    ],
+    theme: editorTheme,
+    bridgeExtensions,
   });
 
-  // Inject theme CSS into the editor WebView
+  // Set placeholder once editor WebView is ready (avoids "Editor isn't ready yet" warning).
+  // _subscribeToEditorStateUpdate fires when the WebView sends its first state update.
   useEffect(() => {
     if (!editor) return;
-    editor.injectCSS(`
-      body {
-        color: ${themeColors.text};
-        background: ${themeColors.surface};
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-        font-size: 16px;
-        line-height: 1.5;
-        padding: 0 ${spacing.md}px;
-        margin: 0;
-      }
-      h2 { font-size: 20px; font-weight: 600; margin: 12px 0; color: ${themeColors.text}; }
-      h3 { font-size: 18px; font-weight: 600; margin: 8px 0; color: ${themeColors.text}; }
-      h4 { font-size: 16px; font-weight: 600; margin: 8px 0; color: ${themeColors.text}; }
-      p { margin: 6px 0; }
-      a { color: ${themeColors.primary}; text-decoration: underline; }
-      blockquote {
-        border-left: 3px solid ${themeColors.primary};
-        padding-left: 12px;
-        margin: 8px 0;
-        color: ${themeColors.textSecondary};
-        font-style: italic;
-      }
-      ul, ol { padding-left: 24px; margin: 6px 0; }
-      li { margin: 2px 0; }
-      code {
-        background: ${themeColors.backgroundSecondary};
-        padding: 2px 4px;
-        border-radius: 3px;
-        font-size: 14px;
-      }
-      pre {
-        background: ${themeColors.backgroundSecondary};
-        padding: 12px;
-        border-radius: 6px;
-        overflow-x: auto;
-      }
-      pre code { background: none; padding: 0; }
-      hr {
-        border: none;
-        border-top: 1px solid ${themeColors.border};
-        margin: 12px 0;
-      }
-      strong { font-weight: 700; }
-      del, s { text-decoration: line-through; }
-      .ProseMirror-focused { outline: none; }
-      .is-editor-empty:first-child::before {
-        color: ${themeColors.textTertiary};
-        font-style: normal;
-      }
-    `, 'theme');
-  }, [editor, themeColors]);
+    const unsub = (editor as any)._subscribeToEditorStateUpdate(() => {
+      editor.setPlaceholder("What's happening?");
+      unsub();
+    });
+    return unsub;
+  }, [editor]);
 
   // ---------------------------------------------------------------------------
   // State
@@ -217,42 +225,6 @@ export function CreatePostModal({
   const showSpaceSelector = !effectiveSpaceSlug && !isEditing;
   const actualSubmitLabel = isEditing ? 'Save' : 'Post';
   const canSubmit = !isSubmitting && !isUploading;
-
-  // ---------------------------------------------------------------------------
-  // Keyboard height tracking
-  // ---------------------------------------------------------------------------
-
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
-  // ---------------------------------------------------------------------------
-  // Android back button
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    if (!visible) return;
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      onClose();
-      return true;
-    });
-    return () => backHandler.remove();
-  }, [visible, onClose]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -325,7 +297,6 @@ export function CreatePostModal({
   const handleVideoRemove = () => setVideoAttachment(null);
 
   const handleSubmit = async () => {
-    // Get content from the editor
     const html = await editor.getHTML();
     const markdown = htmlToMarkdown(html);
     const plainText = await editor.getText();
@@ -372,7 +343,6 @@ export function CreatePostModal({
 
       await onSubmit(submitData);
 
-      // Clear form on success
       editor.setContent('');
       setTitle('');
       setAttachments([]);
@@ -392,104 +362,91 @@ export function CreatePostModal({
 
   return (
     <>
-      <Modal
-        visible={visible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={onClose}
-      >
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.surface }]} edges={['top']}>
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
-            <TouchableOpacity
-              onPress={onClose}
-              style={styles.closeButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="close" size={24} color={themeColors.text} />
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: themeColors.text }]}>
-              {isEditing ? 'Edit Post' : 'Create Post'}
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.surface }]} edges={['top']}>
+        {/* Header */}
+        <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.closeButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="close" size={24} color={themeColors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: themeColors.text }]}>
+            {isEditing ? 'Edit Post' : 'Create Post'}
+          </Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        {/* Space indicator or selector */}
+        {effectiveSpaceName ? (
+          <View style={[styles.spaceIndicator, { borderBottomColor: themeColors.border }]}>
+            <Ionicons name="people-outline" size={16} color={themeColors.primary} />
+            <Text style={[styles.spaceText, { color: themeColors.textSecondary }]}>
+              {isEditing ? 'Editing in' : 'Posting to'}{' '}
+              <Text style={[styles.spaceName, { color: themeColors.primary }]}>{effectiveSpaceName}</Text>
             </Text>
-            <View style={styles.headerSpacer} />
           </View>
-
-          {/* Content */}
-          <View style={styles.content}>
-            {/* Space indicator or selector */}
-            {effectiveSpaceName ? (
-              <View style={[styles.spaceIndicator, { borderBottomColor: themeColors.border }]}>
-                <Ionicons name="people-outline" size={16} color={themeColors.primary} />
-                <Text style={[styles.spaceText, { color: themeColors.textSecondary }]}>
-                  {isEditing ? 'Editing in' : 'Posting to'}{' '}
-                  <Text style={[styles.spaceName, { color: themeColors.primary }]}>{effectiveSpaceName}</Text>
-                </Text>
-              </View>
-            ) : showSpaceSelector ? (
-              <View style={[styles.spaceRow, { borderBottomColor: themeColors.border }]}>
-                <SpaceSelector
-                  selectedSpaceSlug={selectedSpaceSlug}
-                  selectedSpaceName={selectedSpaceName}
-                  onSelect={handleSpaceSelect}
-                />
-              </View>
-            ) : null}
-
-            {/* Title Input */}
-            <TextInput
-              style={[styles.titleInput, { color: themeColors.text, borderBottomColor: themeColors.border }]}
-              placeholder="Title (optional)"
-              placeholderTextColor={themeColors.textTertiary}
-              value={title}
-              onChangeText={setTitle}
-              maxLength={200}
+        ) : showSpaceSelector ? (
+          <View style={[styles.spaceRow, { borderBottomColor: themeColors.border }]}>
+            <SpaceSelector
+              selectedSpaceSlug={selectedSpaceSlug}
+              selectedSpaceName={selectedSpaceName}
+              onSelect={handleSpaceSelect}
             />
-
-            {/* Rich Text Editor */}
-            <View style={styles.editorContainer}>
-              <RichText
-                editor={editor}
-                style={[styles.richText, { backgroundColor: themeColors.surface }]}
-              />
-            </View>
-
-            {/* Media Preview */}
-            {attachments.length > 0 && (
-              <MediaPreview
-                items={attachments}
-                onRemove={removeAttachment}
-                isUploading={isUploading}
-              />
-            )}
-
-            {/* Video Preview */}
-            {videoAttachment && (
-              <VideoPreview
-                video={videoAttachment}
-                onRemove={handleVideoRemove}
-              />
-            )}
-
-            {/* Toolbar */}
-            <View style={[styles.toolbarArea, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
-              <MarkdownToolbar editor={editor} />
-              <ComposerToolbar
-                onImagePress={handleImagePicker}
-                onVideoPress={handleVideoPress}
-                onSubmit={handleSubmit}
-                submitLabel={actualSubmitLabel}
-                canSubmit={canSubmit}
-                isSubmitting={isSubmitting}
-                isUploading={isUploading}
-                hasVideo={videoAttachment !== null}
-              />
-            </View>
-
-            {/* Keyboard spacer */}
-            <View style={{ height: keyboardHeight > 0 ? keyboardHeight : insets.bottom }} />
           </View>
-        </SafeAreaView>
-      </Modal>
+        ) : null}
+
+        {/* Title Input */}
+        <TextInput
+          style={[styles.titleInput, { color: themeColors.text, borderBottomColor: themeColors.border }]}
+          placeholder="Title (optional)"
+          placeholderTextColor={themeColors.textTertiary}
+          value={title}
+          onChangeText={setTitle}
+          maxLength={200}
+        />
+
+        {/* Rich text editor */}
+        <RichText editor={editor} />
+      </SafeAreaView>
+
+      {/* Toolbar — sticks above keyboard (10tap docs pattern) */}
+      <KeyboardAvoidingView
+        behavior="padding"
+        style={[styles.keyboardToolbar, { bottom: insets.bottom }]}
+      >
+        {/* Media Preview */}
+        {attachments.length > 0 && (
+          <MediaPreview
+            items={attachments}
+            onRemove={removeAttachment}
+            isUploading={isUploading}
+          />
+        )}
+
+        {/* Video Preview */}
+        {videoAttachment && (
+          <VideoPreview
+            video={videoAttachment}
+            onRemove={handleVideoRemove}
+          />
+        )}
+
+        <View style={[styles.toolbarArea, { borderTopColor: themeColors.border, backgroundColor: themeColors.surface }]}>
+          <MarkdownToolbar editor={editor} />
+          <ComposerToolbar
+            onImagePress={handleImagePicker}
+            onVideoPress={handleVideoPress}
+            onSubmit={handleSubmit}
+            submitLabel={actualSubmitLabel}
+            canSubmit={canSubmit}
+            isSubmitting={isSubmitting}
+            isUploading={isUploading}
+            hasVideo={videoAttachment !== null}
+          />
+        </View>
+      </KeyboardAvoidingView>
 
       {/* Video Attach Modal */}
       <VideoAttachModal
@@ -506,7 +463,7 @@ export function CreatePostModal({
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  modalContainer: {
+  container: {
     flex: 1,
   },
 
@@ -534,10 +491,6 @@ const styles = StyleSheet.create({
 
   headerSpacer: {
     width: 40,
-  },
-
-  content: {
-    flex: 1,
   },
 
   spaceIndicator: {
@@ -571,13 +524,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
 
-  editorContainer: {
-    flex: 1,
-    minHeight: 200,
-  },
-
-  richText: {
-    flex: 1,
+  keyboardToolbar: {
+    position: 'absolute',
+    width: '100%',
+    bottom: 0,
   },
 
   toolbarArea: {
@@ -585,4 +535,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CreatePostModal;
+export default CreatePostContent;

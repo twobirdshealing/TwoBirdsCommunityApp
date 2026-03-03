@@ -42,6 +42,9 @@ const VALID_ROUTE_PREFIXES = [
   '/webview',
   '/bookclub',
   '/youtube',
+  '/create-post',
+  '/comments/',
+  '/blog-comments/',
 ];
 
 /** Validate that a push notification route matches a known app route */
@@ -255,6 +258,36 @@ function RootLayoutNav() {
         <Stack.Screen
           name="bookclub/[id]"
           options={{ presentation: 'card', headerShown: false }}
+        />
+
+        {/* CREATE POST */}
+        <Stack.Screen
+          name="create-post"
+          options={{
+            presentation: 'fullScreenModal',
+            headerShown: false,
+            animation: 'slide_from_bottom',
+          }}
+        />
+
+        {/* COMMENTS */}
+        <Stack.Screen
+          name="comments/[postId]"
+          options={{
+            presentation: 'fullScreenModal',
+            headerShown: false,
+            animation: 'slide_from_bottom',
+          }}
+        />
+
+        {/* BLOG COMMENTS */}
+        <Stack.Screen
+          name="blog-comments/[postId]"
+          options={{
+            presentation: 'fullScreenModal',
+            headerShown: false,
+            animation: 'slide_from_bottom',
+          }}
         />
 
         {/* WEBVIEW - for events, cart, etc */}

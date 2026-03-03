@@ -29,7 +29,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HtmlContent } from '@/components/common/HtmlContent';
-import { CommentSheet } from '@/components/feed/CommentSheet';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography, sizing } from '@/constants/layout';
@@ -73,7 +72,6 @@ export default function LessonViewScreen() {
   const [error, setError] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
-  const [showComments, setShowComments] = useState(false);
   const [commentsCount, setCommentsCount] = useState(0);
 
   // Refs for scroll-to
@@ -404,7 +402,7 @@ export default function LessonViewScreen() {
                   {commentsEnabled && (
                     <TouchableOpacity
                       style={styles.heroBadge}
-                      onPress={() => setShowComments(true)}
+                      onPress={() => router.push({ pathname: '/comments/[postId]', params: { postId: lesson.id.toString() } })}
                       activeOpacity={0.7}
                     >
                       <Ionicons name="chatbubble-outline" size={14} color="#fff" />
@@ -486,7 +484,7 @@ export default function LessonViewScreen() {
           {commentsEnabled && (
             <TouchableOpacity
               style={[styles.commentsButton, { borderTopColor: themeColors.border }]}
-              onPress={() => setShowComments(true)}
+              onPress={() => router.push({ pathname: '/comments/[postId]', params: { postId: lesson.id.toString() } })}
               activeOpacity={0.7}
             >
               <Ionicons name="chatbubble-outline" size={18} color={themeColors.primary} />
@@ -501,15 +499,6 @@ export default function LessonViewScreen() {
           <View style={{ height: 120 }} />
         </ScrollView>
 
-        {/* Comment Sheet */}
-        {commentsEnabled && (
-          <CommentSheet
-            visible={showComments}
-            postId={lesson.id}
-            onClose={() => setShowComments(false)}
-            onCommentAdded={() => setCommentsCount((c) => c + 1)}
-          />
-        )}
 
         {/* Sticky Bottom Bar */}
         <View style={[styles.bottomBar, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border, paddingBottom: insets.bottom }]}>

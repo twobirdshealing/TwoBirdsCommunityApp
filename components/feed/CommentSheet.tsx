@@ -1,28 +1,17 @@
 // =============================================================================
-// COMMENT SHEET - Slide-up comments panel with real input
+// COMMENT SHEET - Full-screen comments panel with rich text editor
 // =============================================================================
-// FIXED: Use 'comment' not 'message' for API
-// FIXED: Add media_images support for image comments
-// FIXED: Comment reactions use {state: 1} format
-// FIXED: Swipe down on handle to close
-// FIXED: Reply uses top-level parent_id with @mention
-// FIXED: Mentions are now clickable and link to profiles
-// FIXED: Reply button no longer has emoji (cleaner look)
-// ADDED: 3-dot menu with Copy Link, Edit, Delete
-// REFACTORED: Uses shared BottomSheet component
+// Rendered as a dedicated stack screen (app/comments/[postId].tsx) — NOT a
+// Modal, because RN Modal creates an Android Dialog that blocks WebView touches.
 // =============================================================================
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  BackHandler,
   Dimensions,
   FlatList,
   Image,
-  Keyboard,
-  Modal,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -32,9 +21,10 @@ import {
 import {
   RichText,
   useEditorBridge,
+  BridgeExtension,
   TenTapStartKit,
-  PlaceholderBridge,
 } from '@10play/tentap-editor';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { htmlToMarkdown } from '@/utils/htmlToMarkdown';
 import * as Clipboard from 'expo-clipboard';
 import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
@@ -69,7 +59,6 @@ import { REACTION_EMOJI } from '@/constants/reactions';
 // -----------------------------------------------------------------------------
 
 interface CommentSheetProps {
-  visible: boolean;
   postId: number | null;
   feedSlug?: string;  // For copy link URL
   onClose: () => void;
@@ -86,7 +75,7 @@ interface AttachedImage {
 // Component
 // -----------------------------------------------------------------------------
 
-export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdded }: CommentSheetProps) {
+export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: CommentSheetProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { colors: themeColors } = useTheme();
@@ -122,70 +111,87 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
 
   // ---------------------------------------------------------------------------
   // 10tap Editor Bridge for comment input
+  // Theme CSS via BridgeExtension.extendCSS — runs on WebView load, no flash.
   // ---------------------------------------------------------------------------
+
+  const themeCSS = useMemo(() => `
+    body {
+      color: ${themeColors.text};
+      background: ${themeColors.surface};
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.4;
+      padding: 0 12px;
+      margin: 0;
+    }
+    h2 { font-size: 18px; font-weight: 600; margin: 8px 0; }
+    h3 { font-size: 16px; font-weight: 600; margin: 6px 0; }
+    h4 { font-size: 15px; font-weight: 600; margin: 6px 0; }
+    p { margin: 4px 0; }
+    a { color: ${themeColors.primary}; text-decoration: underline; }
+    blockquote {
+      border-left: 3px solid ${themeColors.primary};
+      padding-left: 10px;
+      margin: 6px 0;
+      color: ${themeColors.textSecondary};
+      font-style: italic;
+    }
+    ul, ol { padding-left: 20px; margin: 4px 0; }
+    li { margin: 2px 0; }
+    code {
+      background: ${themeColors.backgroundSecondary};
+      padding: 1px 3px;
+      border-radius: 3px;
+      font-size: 13px;
+    }
+    pre {
+      background: ${themeColors.backgroundSecondary};
+      padding: 8px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    pre code { background: none; padding: 0; }
+    hr { border: none; border-top: 1px solid ${themeColors.border}; margin: 8px 0; }
+    strong { font-weight: 700; }
+    del, s { text-decoration: line-through; }
+    .ProseMirror-focused { outline: none; }
+    .is-editor-empty:first-child::before {
+      color: ${themeColors.textTertiary};
+      font-style: normal;
+    }
+  `, [themeColors]);
+
+  const themeBridge = useMemo(
+    () => new BridgeExtension({ forceName: 'tbcTheme', extendCSS: themeCSS }),
+    [themeCSS],
+  );
+
+  const bridgeExtensions = useMemo(
+    () => [...TenTapStartKit, themeBridge],
+    [themeBridge],
+  );
+
+  const editorTheme = useMemo(() => ({
+    webview: { backgroundColor: themeColors.surface },
+  }), [themeColors.surface]);
 
   const commentEditor = useEditorBridge({
     initialContent: '',
     autofocus: false,
     avoidIosKeyboard: true,
-    bridgeExtensions: [
-      ...TenTapStartKit,
-      PlaceholderBridge.configureExtension({
-        placeholder: 'Write a comment...',
-      }),
-    ],
+    theme: editorTheme,
+    bridgeExtensions,
   });
 
-  // Inject theme CSS into the comment editor WebView
+  // Set placeholder once editor WebView is ready (avoids "Editor isn't ready yet" warning)
   useEffect(() => {
     if (!commentEditor) return;
-    commentEditor.injectCSS(`
-      body {
-        color: ${themeColors.text};
-        background: ${themeColors.surface};
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-        font-size: 15px;
-        line-height: 1.4;
-        padding: 0 12px;
-        margin: 0;
-      }
-      h2 { font-size: 18px; font-weight: 600; margin: 8px 0; }
-      h3 { font-size: 16px; font-weight: 600; margin: 6px 0; }
-      h4 { font-size: 15px; font-weight: 600; margin: 6px 0; }
-      p { margin: 4px 0; }
-      a { color: ${themeColors.primary}; text-decoration: underline; }
-      blockquote {
-        border-left: 3px solid ${themeColors.primary};
-        padding-left: 10px;
-        margin: 6px 0;
-        color: ${themeColors.textSecondary};
-        font-style: italic;
-      }
-      ul, ol { padding-left: 20px; margin: 4px 0; }
-      li { margin: 2px 0; }
-      code {
-        background: ${themeColors.backgroundSecondary};
-        padding: 1px 3px;
-        border-radius: 3px;
-        font-size: 13px;
-      }
-      pre {
-        background: ${themeColors.backgroundSecondary};
-        padding: 8px;
-        border-radius: 4px;
-        overflow-x: auto;
-      }
-      pre code { background: none; padding: 0; }
-      hr { border: none; border-top: 1px solid ${themeColors.border}; margin: 8px 0; }
-      strong { font-weight: 700; }
-      del, s { text-decoration: line-through; }
-      .ProseMirror-focused { outline: none; }
-      .is-editor-empty:first-child::before {
-        color: ${themeColors.textTertiary};
-        font-style: normal;
-      }
-    `, 'theme');
-  }, [commentEditor, themeColors]);
+    const unsub = (commentEditor as any)._subscribeToEditorStateUpdate(() => {
+      commentEditor.setPlaceholder('Write a comment...');
+      unsub();
+    });
+    return unsub;
+  }, [commentEditor]);
 
   // ---------------------------------------------------------------------------
   // Fetch Comments
@@ -230,10 +236,10 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
   };
 
   useEffect(() => {
-    if (visible && postId) {
+    if (postId) {
       fetchComments();
     }
-  }, [visible, postId]);
+  }, [postId]);
 
   // ---------------------------------------------------------------------------
   // Handle Image Pick
@@ -292,7 +298,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
     hapticLight();
     if (!postId) return;
 
-    // Get content from 10tap editor and convert to markdown
+    // Get HTML from 10tap editor and convert to markdown
     const html = await commentEditor.getHTML();
     const markdown = htmlToMarkdown(html);
     if (!markdown.trim() && attachedImages.length === 0) return;
@@ -645,13 +651,16 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
     }
 
     return (
-      <View style={[styles.commentItem, isReply && [styles.commentReply, { borderLeftColor: themeColors.border }]]}>
+      <View style={[
+        styles.commentItem,
+        isReply && [styles.commentReply, { borderLeftColor: themeColors.border }],
+      ]}>
         <Avatar
           source={authorAvatar}
           size="sm"
           fallback={authorName}
         />
-        <View style={styles.commentContent}>
+        <View style={[styles.commentContent, styles.commentBubble, { backgroundColor: themeColors.surface, borderColor: themeColors.borderLight }]}>
           <View style={styles.commentHeader}>
             <UserDisplayName
               name={authorName}
@@ -802,55 +811,13 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
   const insets = useSafeAreaInsets();
 
   // ---------------------------------------------------------------------------
-  // Keyboard height tracking (WebView-based editor doesn't trigger gorhom's
-  // built-in keyboard detection, so we track it manually)
-  // ---------------------------------------------------------------------------
-
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
-  // ---------------------------------------------------------------------------
-  // Android back button
-  // ---------------------------------------------------------------------------
-
-  useEffect(() => {
-    if (!visible) return;
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      onClose();
-      return true;
-    });
-    return () => backHandler.remove();
-  }, [visible, onClose]);
-
-  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
   return (
     <>
-      <Modal
-        visible={visible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={onClose}
-      >
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.surface }]} edges={['top']}>
+      <KeyboardAvoidingView behavior="padding" style={styles.modalContainer}>
+      <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.surface }]} edges={['top']}>
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
             <TouchableOpacity
@@ -865,7 +832,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
           </View>
 
           {/* Comments list */}
-          <View style={styles.contentArea}>
+          <View style={[styles.contentArea, { backgroundColor: themeColors.background }]}>
             {loading ? (
               <View style={styles.centered}>
                 <ActivityIndicator size="large" color={themeColors.primary} />
@@ -905,7 +872,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
           </View>
 
           {/* Editor section */}
-          <View style={[styles.editorSection, { backgroundColor: themeColors.surface }]}>
+          <View style={[styles.editorSection, { borderTopColor: themeColors.border, backgroundColor: themeColors.surface }]}>
             {/* Reply indicator */}
             {replyingTo && !editingComment && (
               <View style={[styles.replyIndicator, { backgroundColor: themeColors.primaryLight + '20' }]}>
@@ -993,10 +960,9 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
             </View>
           </View>
 
-          {/* Keyboard spacer */}
-          <View style={{ height: keyboardHeight > 0 ? keyboardHeight : insets.bottom }} />
         </SafeAreaView>
-      </Modal>
+      </KeyboardAvoidingView>
+      <View style={{ height: insets.bottom, backgroundColor: themeColors.surface }} />
 
       {/* Reaction Picker for comments */}
       <ReactionPicker
@@ -1067,7 +1033,6 @@ const styles = StyleSheet.create({
 
   editorSection: {
     borderTopWidth: 1,
-    borderTopColor: 'transparent',
   },
 
   contentArea: {
@@ -1136,7 +1101,13 @@ const styles = StyleSheet.create({
 
   commentItem: {
     flexDirection: 'row',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+
+  commentBubble: {
+    padding: spacing.md,
+    borderRadius: sizing.borderRadius.md,
+    borderWidth: 1,
   },
 
   commentReply: {
@@ -1317,13 +1288,11 @@ const styles = StyleSheet.create({
   },
 
   commentEditorWrapper: {
-    flex: 1,
-    minHeight: 120,
+    height: 120,
   },
 
   commentRichText: {
     flex: 1,
-    minHeight: 120,
   },
 
   sendButton: {

@@ -6,7 +6,7 @@
 // Reuses FeedCard with variant="full" for consistent rendering
 // =============================================================================
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Alert,
   ScrollView,
@@ -17,8 +17,6 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { FeedCard } from '@/components/feed/FeedCard';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
-import { CommentSheet } from '@/components/feed/CommentSheet';
-import { CreatePostModal, ComposerSubmitData } from '@/components/composer/CreatePostModal';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing } from '@/constants/layout';
 import { Feed } from '@/types/feed';
@@ -34,10 +32,6 @@ export default function SinglePostScreen() {
   const { colors: themeColors } = useTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-
-  // State
-  const [showComments, setShowComments] = useState(false);
-  const [showComposer, setShowComposer] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Fetch single feed
@@ -108,33 +102,19 @@ export default function SinglePostScreen() {
   };
 
   const handleEdit = () => {
-    setShowComposer(true);
-  };
-
-  const handleEditPost = async (data: ComposerSubmitData) => {
     if (!feed) return;
-    try {
-      const response = await feedsApi.updateFeed(feed.id, {
-        message: data.message,
-        title: data.title,
-        content_type: data.content_type,
-        media_images: data.media_images,
-      });
-
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to update post');
-      }
-      if (response.data?.feed) {
-        mutate(response.data.feed);
-      }
-    } catch (err) {
-      if (__DEV__) console.error('Edit post error:', err);
-      throw new Error(err instanceof Error ? err.message : 'Failed to update post');
-    }
+    router.push({
+      pathname: '/create-post',
+      params: { editId: feed.id.toString() },
+    });
   };
 
-  const handleCommentAdded = () => {
-    refresh(); // Refresh to update comment count
+  const handleCommentPress = () => {
+    if (!feed) return;
+    router.push({
+      pathname: '/comments/[postId]',
+      params: { postId: feed.id.toString() },
+    });
   };
 
   // ---------------------------------------------------------------------------
@@ -193,28 +173,12 @@ export default function SinglePostScreen() {
               router.push(`/space/${feed.space.slug}`);
             }
           }}
-          onCommentPress={() => setShowComments(true)}
+          onCommentPress={handleCommentPress}
           onBookmarkToggle={handleBookmarkToggle}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
       </ScrollView>
-
-      {/* ===== Edit Post Modal ===== */}
-      <CreatePostModal
-        visible={showComposer}
-        onClose={() => setShowComposer(false)}
-        onSubmit={handleEditPost}
-        editFeed={feed}
-      />
-
-      {/* ===== Comment Sheet ===== */}
-      <CommentSheet
-        visible={showComments}
-        postId={feed.id}
-        onClose={() => setShowComments(false)}
-        onCommentAdded={handleCommentAdded}
-      />
     </View>
   );
 }

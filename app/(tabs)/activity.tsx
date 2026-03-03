@@ -10,9 +10,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Feed } from '@/types/feed';
 import { feedsApi } from '@/services/api/feeds';
 import { FeedList } from '@/components/feed/FeedList';
-import { CommentSheet } from '@/components/feed/CommentSheet';
 import { QuickPostBox } from '@/components/composer/QuickPostBox';
-import { CreatePostModal } from '@/components/composer/CreatePostModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTabBar } from '@/contexts/TabBarContext';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
@@ -100,12 +98,9 @@ export default function ActivityScreen() {
     [mutate],
   );
   
-  // Shared feed actions (comment sheet, composer, bookmark, delete, navigation)
+  // Shared feed actions (navigation to composer/comments, bookmark, delete)
   const {
-    showComments, selectedFeedId, selectedFeedSlug,
-    handleCommentPress, handleCloseComments, handleCommentAdded,
-    showComposer, editingFeed, openComposer, handleEdit, closeComposer,
-    handleCreateOrEditPost,
+    handleCommentPress, openComposer, handleEdit,
     handleBookmarkToggle, handleDelete,
     handleAuthorPress, handleSpacePress,
   } = useFeedActions({ setFeeds, refresh });
@@ -183,23 +178,6 @@ export default function ActivityScreen() {
         onPin={handlePin}
         onScroll={handleScroll}
         ListHeaderComponent={<FeedHeader />}
-      />
-      
-      {/* Create/Edit Post Modal */}
-      <CreatePostModal
-        visible={showComposer}
-        onClose={closeComposer}
-        onSubmit={handleCreateOrEditPost}
-        editFeed={editingFeed || undefined}
-      />
-      
-      {/* Comment Sheet */}
-      <CommentSheet
-        visible={showComments}
-        postId={selectedFeedId}
-        feedSlug={selectedFeedSlug}
-        onClose={handleCloseComments}
-        onCommentAdded={handleCommentAdded}
       />
     </View>
   );

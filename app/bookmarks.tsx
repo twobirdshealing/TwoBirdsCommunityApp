@@ -2,10 +2,8 @@
 // BOOKMARKS SCREEN - Shows user's saved posts
 // =============================================================================
 
-import { CommentSheet } from '@/components/feed/CommentSheet';
 import { FeedList } from '@/components/feed/FeedList';
 import { PageHeader } from '@/components/navigation/PageHeader';
-import { CreatePostModal } from '@/components/composer/CreatePostModal';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { feedsApi } from '@/services/api/feeds';
@@ -94,10 +92,7 @@ export default function BookmarksScreen() {
   
   // Shared feed actions
   const {
-    showComments, selectedFeedId, selectedFeedSlug,
-    handleCommentPress, handleCloseComments, handleCommentAdded,
-    showComposer, editingFeed, handleEdit, closeComposer,
-    handleCreateOrEditPost, handleDelete,
+    handleCommentPress, handleEdit, handleDelete,
     handleAuthorPress, handleSpacePress,
   } = useFeedActions({ setFeeds, refresh });
 
@@ -165,23 +160,6 @@ export default function BookmarksScreen() {
           ListHeaderComponent={<BookmarksHeader />}
           emptyMessage="No saved posts yet. Tap the bookmark icon on any post to save it here."
           emptyIcon="book-outline"
-        />
-        
-        {/* Edit Post Modal */}
-        <CreatePostModal
-          visible={showComposer}
-          onClose={closeComposer}
-          onSubmit={handleCreateOrEditPost}
-          editFeed={editingFeed || undefined}
-        />
-
-        {/* Comment Sheet */}
-        <CommentSheet
-          visible={showComments}
-          postId={selectedFeedId}
-          feedSlug={selectedFeedSlug}
-          onClose={handleCloseComments}
-          onCommentAdded={handleCommentAdded}
         />
       </View>
     </>

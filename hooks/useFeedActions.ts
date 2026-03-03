@@ -1,18 +1,16 @@
 // =============================================================================
-// USE FEED ACTIONS - Shared feed action state & handlers
+// USE FEED ACTIONS - Shared feed action handlers for feed-list screens
 // =============================================================================
-// Extracts the duplicated comment sheet, composer modal, bookmark, delete,
-// create/edit post, and navigation handlers used across feed-list screens.
+// Handles navigation to composer/comments screens, bookmark, delete, and
+// profile/space navigation.
 //
 // Used by: activity.tsx, bookmarks.tsx, space/[slug]/index.tsx
 // NOT used by: feed/[id].tsx (single-feed view, different patterns)
 // =============================================================================
 
-import { useState } from 'react';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feed } from '@/types/feed';
-import { ComposerSubmitData } from '@/components/composer/CreatePostModal';
 import { feedsApi } from '@/services/api/feeds';
 
 // -----------------------------------------------------------------------------
@@ -26,6 +24,8 @@ interface UseFeedActionsOptions {
   refresh: () => void;
   /** Default space slug for new post creation (space page only) */
   defaultSpace?: string;
+  /** Default space name for new post creation (space page only) */
+  defaultSpaceName?: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -36,36 +36,19 @@ export function useFeedActions({
   setFeeds,
   refresh,
   defaultSpace,
+  defaultSpaceName,
 }: UseFeedActionsOptions) {
   const router = useRouter();
 
-  // -- Comment Sheet State --
-  const [showComments, setShowComments] = useState(false);
-  const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null);
-  const [selectedFeedSlug, setSelectedFeedSlug] = useState<string | undefined>(undefined);
-
-  // -- Composer Modal State --
-  const [showComposer, setShowComposer] = useState(false);
-  const [editingFeed, setEditingFeed] = useState<Feed | null>(null);
-
   // ---------------------------------------------------------------------------
-  // Comment Handlers
+  // Comments — navigate to comments screen
   // ---------------------------------------------------------------------------
 
   const handleCommentPress = (feed: Feed) => {
-    setSelectedFeedId(feed.id);
-    setSelectedFeedSlug(feed.slug);
-    setShowComments(true);
-  };
-
-  const handleCloseComments = () => {
-    setShowComments(false);
-    setSelectedFeedId(null);
-    setSelectedFeedSlug(undefined);
-  };
-
-  const handleCommentAdded = () => {
-    refresh();
+    router.push({
+      pathname: '/comments/[postId]',
+      params: { postId: feed.id.toString(), feedSlug: feed.slug },
+    });
   };
 
   // ---------------------------------------------------------------------------
@@ -87,63 +70,26 @@ export function useFeedActions({
   };
 
   // ---------------------------------------------------------------------------
-  // Composer (Create + Edit)
+  // Composer — navigate to create-post screen
   // ---------------------------------------------------------------------------
 
-  const openComposer = () => setShowComposer(true);
+  const openComposer = () => {
+    router.push({
+      pathname: '/create-post',
+      params: {
+        ...(defaultSpace ? { spaceSlug: defaultSpace } : {}),
+        ...(defaultSpaceName ? { spaceName: defaultSpaceName } : {}),
+      },
+    });
+  };
 
   const handleEdit = (feed: Feed) => {
-    setEditingFeed(feed);
-    setShowComposer(true);
-  };
-
-  const closeComposer = () => {
-    setShowComposer(false);
-    setEditingFeed(null);
-  };
-
-  const handleCreateOrEditPost = async (data: ComposerSubmitData) => {
-    try {
-      if (editingFeed) {
-        // EDIT MODE
-        const response = await feedsApi.updateFeed(editingFeed.id, {
-          message: data.message,
-          title: data.title,
-          content_type: data.content_type,
-          media_images: data.media_images,
-        });
-
-        if (!response.success) {
-          throw new Error(response.error?.message || 'Failed to update post');
-        }
-        if (response.data?.feed) {
-          setFeeds(prev =>
-            prev.map(f => f.id === editingFeed.id ? response.data!.feed : f)
-          );
-        }
-      } else {
-        // CREATE MODE
-        const response = await feedsApi.createFeed({
-          message: data.message,
-          title: data.title,
-          space: data.space || defaultSpace,
-          content_type: data.content_type,
-          media_images: data.media_images,
-        });
-
-        if (!response.success) {
-          throw new Error(response.error?.message || 'Failed to create post');
-        }
-        if (response.data?.feed) {
-          setFeeds(prev => [response.data!.feed, ...prev]);
-        }
-      }
-    } catch (err) {
-      if (__DEV__) console.error(`${editingFeed ? 'Edit' : 'Create'} post error:`, err);
-      throw new Error(
-        err instanceof Error ? err.message : `Failed to ${editingFeed ? 'update' : 'create'} post`
-      );
-    }
+    router.push({
+      pathname: '/create-post',
+      params: {
+        editId: feed.id.toString(),
+      },
+    });
   };
 
   // ---------------------------------------------------------------------------
@@ -201,21 +147,12 @@ export function useFeedActions({
   // ---------------------------------------------------------------------------
 
   return {
-    // Comment sheet
-    showComments,
-    selectedFeedId,
-    selectedFeedSlug,
+    // Comments
     handleCommentPress,
-    handleCloseComments,
-    handleCommentAdded,
 
     // Composer
-    showComposer,
-    editingFeed,
     openComposer,
     handleEdit,
-    closeComposer,
-    handleCreateOrEditPost,
 
     // Actions
     handleBookmarkToggle,
@@ -224,5 +161,8 @@ export function useFeedActions({
     // Navigation
     handleAuthorPress,
     handleSpacePress,
+
+    // Refresh (exposed for parent focus-based refresh)
+    refresh,
   };
 }

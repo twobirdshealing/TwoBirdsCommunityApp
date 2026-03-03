@@ -22,11 +22,9 @@ import { Space } from '@/types/space';
 import { feedsApi } from '@/services/api/feeds';
 import { spacesApi } from '@/services/api/spaces';
 import { FeedList } from '@/components/feed/FeedList';
-import { CommentSheet } from '@/components/feed/CommentSheet';
 import { SpaceMenu } from '@/components/space/SpaceMenu';
 import { SpaceInfoHeader } from '@/components/space/SpaceInfoHeader';
 import { PageHeader } from '@/components/navigation/PageHeader';
-import { CreatePostModal } from '@/components/composer/CreatePostModal';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useFeedActions } from '@/hooks/useFeedActions';
 
@@ -154,13 +152,10 @@ export default function SpacePage() {
   // ---------------------------------------------------------------------------
 
   const {
-    showComments, selectedFeedId, selectedFeedSlug,
-    handleCommentPress, handleCloseComments, handleCommentAdded,
-    showComposer, editingFeed, openComposer, handleEdit, closeComposer,
-    handleCreateOrEditPost,
+    handleCommentPress, openComposer, handleEdit,
     handleBookmarkToggle, handleDelete,
     handleAuthorPress,
-  } = useFeedActions({ setFeeds, refresh: () => fetchFeeds(true), defaultSpace: slug });
+  } = useFeedActions({ setFeeds, refresh: () => fetchFeeds(true), defaultSpace: slug, defaultSpaceName: space?.title });
 
   const handleReact = useFeedReactions(feeds, setFeeds);
 
@@ -290,24 +285,6 @@ export default function SpacePage() {
         emptyIcon="document-text-outline"
       />
       
-      {/* Create/Edit Post Modal */}
-      <CreatePostModal
-        visible={showComposer}
-        onClose={closeComposer}
-        onSubmit={handleCreateOrEditPost}
-        spaceSlug={slug}
-        spaceName={space?.title}
-        editFeed={editingFeed || undefined}
-      />
-      
-      {/* Comment Sheet */}
-      <CommentSheet
-        visible={showComments}
-        postId={selectedFeedId}
-        feedSlug={selectedFeedSlug}
-        onClose={handleCloseComments}
-        onCommentAdded={handleCommentAdded}
-      />
     </View>
   );
 }

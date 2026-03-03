@@ -2,7 +2,7 @@
 // BLOG DETAIL SCREEN - Full blog post with rich HTML rendering
 // =============================================================================
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   Image,
   ScrollView,
@@ -28,7 +28,6 @@ import { blogApi } from '@/services/api/blog';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
-import { BlogCommentSheet } from '@/components/blog/BlogCommentSheet';
 import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 import { formatFullDate } from '@/utils/formatDate';
 
@@ -43,8 +42,15 @@ export default function BlogDetailScreen() {
   const { width } = useWindowDimensions();
   const { colors: themeColors } = useTheme();
 
-  // State
-  const [showComments, setShowComments] = useState(false);
+  // Comment navigation
+  const openBlogComments = () => {
+    if (post?.id) {
+      router.push({
+        pathname: '/blog-comments/[postId]',
+        params: { postId: post.id.toString() },
+      });
+    }
+  };
 
   // Content width for RenderHtml (screen width minus padding)
   const contentWidth = width - spacing.lg * 2;
@@ -197,7 +203,7 @@ export default function BlogDetailScreen() {
                     </TouchableOpacity>
 
                     {post.comment_status === 'open' && (
-                      <TouchableOpacity style={styles.heroCommentBadge} onPress={() => setShowComments(true)} activeOpacity={0.7}>
+                      <TouchableOpacity style={styles.heroCommentBadge} onPress={() => openBlogComments()} activeOpacity={0.7}>
                         <Ionicons name="chatbubble-outline" size={14} color="#fff" />
                         {commentCount > 0 && <Text style={styles.heroCommentText}>{commentCount}</Text>}
                       </TouchableOpacity>
@@ -240,7 +246,7 @@ export default function BlogDetailScreen() {
                   </TouchableOpacity>
 
                   {post.comment_status === 'open' && (
-                    <TouchableOpacity style={styles.fallbackCommentBadge} onPress={() => setShowComments(true)} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.fallbackCommentBadge} onPress={() => openBlogComments()} activeOpacity={0.7}>
                       <Ionicons name="chatbubble-outline" size={14} color={themeColors.textTertiary} />
                       {commentCount > 0 && <Text style={[styles.fallbackCommentText, { color: themeColors.textTertiary }]}>{commentCount}</Text>}
                     </TouchableOpacity>
@@ -261,7 +267,7 @@ export default function BlogDetailScreen() {
               {post.comment_status === 'open' && (
                 <TouchableOpacity
                   style={[styles.commentButton, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
-                  onPress={() => setShowComments(true)}
+                  onPress={() => openBlogComments()}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="chatbubble-outline" size={20} color={themeColors.textSecondary} />
@@ -276,12 +282,6 @@ export default function BlogDetailScreen() {
         ) : null}
       </View>
 
-      {/* Comment Sheet */}
-      <BlogCommentSheet
-        visible={showComments}
-        postId={post?.id || null}
-        onClose={() => setShowComments(false)}
-      />
     </>
   );
 }
