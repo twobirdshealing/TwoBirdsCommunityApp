@@ -39,6 +39,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundImage: './assets/images/app_icon_android_adaptive_bg.png',
       },
       edgeToEdgeEnabled: true,
+      // @ts-expect-error 'adjustNothing' works at runtime but Expo types only allow 'resize' | 'pan'
       softwareKeyboardLayoutMode: 'adjustNothing',
       predictiveBackGestureEnabled: false,
       googleServicesFile: './google-services.json',

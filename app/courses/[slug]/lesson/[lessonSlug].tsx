@@ -28,9 +28,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { HtmlContent } from '@/components/common';
+import { HtmlContent } from '@/components/common/HtmlContent';
 import { CommentSheet } from '@/components/feed/CommentSheet';
-import { YouTubeEmbed } from '@/components/media';
+import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';

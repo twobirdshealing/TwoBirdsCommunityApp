@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FEATURES, PRIVACY_POLICY_URL } from '@/constants/config';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, shadows } from '@/constants/layout';
 import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
 
 // -----------------------------------------------------------------------------
@@ -278,11 +278,7 @@ const styles = StyleSheet.create({
     right: spacing.md,
     width: 280,
     borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    ...shadows.lg,
     overflow: 'hidden',
   },
 

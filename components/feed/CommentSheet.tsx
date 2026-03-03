@@ -24,9 +24,13 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import MarkdownTextInput from '@expensify/react-native-live-markdown/src/MarkdownTextInput';
-import { parseMarkdown } from '@/utils/markdownParser';
-import { getMarkdownStyle } from '@/constants/markdownStyle';
+import {
+  RichText,
+  useEditorBridge,
+  TenTapStartKit,
+  PlaceholderBridge,
+} from '@10play/tentap-editor';
+import { htmlToMarkdown } from '@/utils/htmlToMarkdown';
 import * as Clipboard from 'expo-clipboard';
 import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,18 +44,16 @@ import { commentsApi } from '@/services/api/comments';
 import { mediaApi } from '@/services/api/media';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
-import { BottomSheet, BottomSheetFlatList, BottomSheetFooter, SheetInput } from '@/components/common/BottomSheet';
+import { BottomSheet, BottomSheetFlatList, BottomSheetFooter } from '@/components/common/BottomSheet';
 import type { BottomSheetFooterProps } from '@/components/common/BottomSheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { MarkdownToolbar } from '@/components/composer/MarkdownToolbar';
-import { type FormatResult } from '@/utils/markdown';
 import { ReactionPicker } from './ReactionPicker';
 import { ReactionBreakdownModal } from './ReactionBreakdownModal';
 import { ReactionIcon } from './ReactionIcon';
 import { formatRelativeTime } from '@/utils/formatDate';
-import { stripHtmlTags } from '@/utils/htmlToText';
 import { HtmlContent } from '@/components/common/HtmlContent';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
@@ -97,8 +99,6 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
 
   // Comment input state
-  const [commentText, setCommentText] = useState('');
-  const [commentSelection, setCommentSelection] = useState({ start: 0, end: 0 });
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -116,6 +116,73 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
   const [menuComment, setMenuComment] = useState<Comment | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | undefined>();
   const menuButtonRefs = useRef<Record<number, View | null>>({});
+
+  // ---------------------------------------------------------------------------
+  // 10tap Editor Bridge for comment input
+  // ---------------------------------------------------------------------------
+
+  const commentEditor = useEditorBridge({
+    initialContent: '',
+    autofocus: false,
+    avoidIosKeyboard: false, // gorhom bottom sheet handles keyboard
+    bridgeExtensions: [
+      ...TenTapStartKit,
+      PlaceholderBridge.configureExtension({
+        placeholder: 'Write a comment...',
+      }),
+    ],
+  });
+
+  // Inject theme CSS into the comment editor WebView
+  useEffect(() => {
+    if (!commentEditor) return;
+    commentEditor.injectCSS(`
+      body {
+        color: ${themeColors.text};
+        background: transparent;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        font-size: 15px;
+        line-height: 1.4;
+        padding: 0 12px;
+        margin: 0;
+      }
+      h2 { font-size: 18px; font-weight: 600; margin: 8px 0; }
+      h3 { font-size: 16px; font-weight: 600; margin: 6px 0; }
+      h4 { font-size: 15px; font-weight: 600; margin: 6px 0; }
+      p { margin: 4px 0; }
+      a { color: ${themeColors.primary}; text-decoration: underline; }
+      blockquote {
+        border-left: 3px solid ${themeColors.primary};
+        padding-left: 10px;
+        margin: 6px 0;
+        color: ${themeColors.textSecondary};
+        font-style: italic;
+      }
+      ul, ol { padding-left: 20px; margin: 4px 0; }
+      li { margin: 2px 0; }
+      code {
+        background: ${themeColors.backgroundSecondary};
+        padding: 1px 3px;
+        border-radius: 3px;
+        font-size: 13px;
+      }
+      pre {
+        background: ${themeColors.backgroundSecondary};
+        padding: 8px;
+        border-radius: 4px;
+        overflow-x: auto;
+      }
+      pre code { background: none; padding: 0; }
+      hr { border: none; border-top: 1px solid ${themeColors.border}; margin: 8px 0; }
+      strong { font-weight: 700; }
+      del, s { text-decoration: line-through; }
+      .ProseMirror-focused { outline: none; }
+      .is-editor-empty:first-child::before {
+        color: ${themeColors.textTertiary};
+        font-style: normal;
+      }
+    `, 'theme');
+  }, [commentEditor, themeColors]);
 
   // ---------------------------------------------------------------------------
   // Fetch Comments
@@ -222,8 +289,10 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
     hapticLight();
     if (!postId) return;
 
-    const trimmedText = commentText.trim();
-    if (!trimmedText && attachedImages.length === 0) return;
+    // Get content from 10tap editor and convert to markdown
+    const html = await commentEditor.getHTML();
+    const markdown = htmlToMarkdown(html);
+    if (!markdown.trim() && attachedImages.length === 0) return;
 
     setIsSubmitting(true);
 
@@ -231,7 +300,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
       // EDIT MODE
       if (editingComment) {
         const response = await commentsApi.updateComment(postId, editingComment.id, {
-          comment: trimmedText,
+          comment: markdown,
           content_type: 'markdown',
         });
 
@@ -239,10 +308,10 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
           // Update local state
           setComments(prev => prev.map(c =>
             c.id === editingComment.id
-              ? { ...c, message: trimmedText, message_rendered: `<p>${trimmedText}</p>` }
+              ? { ...c, message: markdown, message_rendered: html }
               : c
           ));
-          setCommentText('');
+          commentEditor.setContent('');
           setEditingComment(null);
         } else {
           throw new Error(response.error?.message || 'Failed to update comment');
@@ -265,7 +334,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
       const parentId = getReplyParentId();
 
       if (__DEV__) console.log('[CommentSheet] Submitting comment:', {
-        comment: trimmedText,
+        comment: markdown,
         parent_id: parentId,
         replyingToId: replyingTo?.id,
         replyingToParentId: replyingTo?.parent_id,
@@ -273,7 +342,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
       });
 
       const response = await commentsApi.createComment(postId, {
-        comment: trimmedText,
+        comment: markdown,
         content_type: 'markdown',
         parent_id: parentId,
         media_images,
@@ -281,7 +350,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
 
       if (response.success) {
         // Clear input
-        setCommentText('');
+        commentEditor.setContent('');
         setAttachedImages([]);
         setReplyingTo(null);
         // Refresh comments
@@ -313,13 +382,13 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
     // Add @username mention to input
     const username = comment.xprofile?.username || comment.xprofile?.display_name || '';
     if (username) {
-      setCommentText(`@${username} `);
+      commentEditor.setContent(`<p>@${username} </p>`);
     }
   };
 
   const cancelReply = () => {
     setReplyingTo(null);
-    setCommentText('');
+    commentEditor.setContent('');
   };
 
   // Get the correct parent_id for replies
@@ -482,7 +551,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
 
   const handleEditComment = (comment: Comment) => {
     setEditingComment(comment);
-    setCommentText(stripHtmlTags(comment.message_rendered || comment.message));
+    commentEditor.setContent(comment.message_rendered || comment.message);
     setReplyingTo(null);
   };
 
@@ -521,7 +590,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
 
   const cancelEdit = () => {
     setEditingComment(null);
-    setCommentText('');
+    commentEditor.setContent('');
   };
 
   // ---------------------------------------------------------------------------
@@ -545,14 +614,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Handle Markdown Format
-  // ---------------------------------------------------------------------------
-
-  const handleFormat = (result: FormatResult) => {
-    setCommentText(result.text);
-    setTimeout(() => setCommentSelection(result.selection), 0);
-  };
+  // handleFormat removed — 10tap editor handles formatting via MarkdownToolbar
 
   // ---------------------------------------------------------------------------
   // Render comment item
@@ -728,7 +790,7 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
   // Can Submit
   // ---------------------------------------------------------------------------
 
-  const canSubmit = (commentText.trim().length > 0 || attachedImages.length > 0) && !isSubmitting && !isUploading;
+  const canSubmit = !isSubmitting && !isUploading;
 
   // ---------------------------------------------------------------------------
   // Safe area insets (for footer bottom spacing)
@@ -742,8 +804,8 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
 
   const renderFooter = useCallback(
     (props: BottomSheetFooterProps) => (
-      <BottomSheetFooter {...props} bottomInset={0}>
-        <View style={[styles.footerInner, { backgroundColor: themeColors.surface, paddingBottom: insets.bottom }]}>
+      <BottomSheetFooter {...props} bottomInset={insets.bottom}>
+        <View style={[styles.footerInner, { backgroundColor: themeColors.surface }]}>
         {/* Reply indicator - shows who you're mentioning */}
         {replyingTo && !editingComment && (
           <View style={[styles.replyIndicator, { backgroundColor: themeColors.primaryLight + '20' }]}>
@@ -791,14 +853,9 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
         )}
 
         {/* Markdown Formatting Toolbar */}
-        <MarkdownToolbar
-          text={commentText}
-          selection={commentSelection}
-          onFormat={handleFormat}
-          compact
-        />
+        <MarkdownToolbar editor={commentEditor} compact />
 
-        {/* Comment Input */}
+        {/* Comment Input — 10tap RichText editor + action buttons */}
         <View style={[styles.inputContainer, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
           {/* Image picker button */}
           <TouchableOpacity
@@ -813,25 +870,15 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
             />
           </TouchableOpacity>
 
-          {/* Text input — wrapped with SheetInput for keyboard handling */}
-          <SheetInput>
-            {(inputProps) => (
-              <MarkdownTextInput
-                {...inputProps}
-                style={[styles.textInput, { backgroundColor: themeColors.background, color: themeColors.text }]}
-                placeholder={replyingTo ? 'Write your reply...' : 'Write a comment...'}
-                placeholderTextColor={themeColors.textTertiary}
-                value={commentText}
-                onChangeText={setCommentText}
-                multiline
-                maxLength={2000}
-                selection={commentSelection}
-                onSelectionChange={(e) => setCommentSelection(e.nativeEvent.selection)}
-                parser={parseMarkdown}
-                markdownStyle={getMarkdownStyle(themeColors)}
-              />
-            )}
-          </SheetInput>
+          {/* Rich text editor */}
+          <View style={styles.commentEditorWrapper}>
+            <RichText
+              editor={commentEditor}
+              style={styles.commentRichText}
+              scrollEnabled={true}
+              nestedScrollEnabled={true}
+            />
+          </View>
 
           {/* Submit button */}
           <TouchableOpacity
@@ -849,8 +896,8 @@ export function CommentSheet({ visible, postId, feedSlug, onClose, onCommentAdde
         </View>
       </BottomSheetFooter>
     ),
-    [replyingTo, editingComment, attachedImages, isUploading, commentText,
-     commentSelection, canSubmit, isSubmitting, themeColors, insets.bottom],
+    [replyingTo, editingComment, attachedImages, isUploading, commentEditor,
+     canSubmit, isSubmitting, themeColors, insets.bottom],
   );
 
   // ---------------------------------------------------------------------------
@@ -1189,6 +1236,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: 20,
     fontSize: typography.size.md,
+  },
+
+  commentEditorWrapper: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 150,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+
+  commentRichText: {
+    flex: 1,
+    minHeight: 40,
   },
 
   sendButton: {

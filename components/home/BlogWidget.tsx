@@ -7,18 +7,19 @@
 // =============================================================================
 
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { blogApi } from '@/services/api/blog';
 import { useCachedData } from '@/hooks/useCachedData';
 import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 import { formatSmartDate } from '@/utils/formatDate';
 import type { WPPost } from '@/types/blog';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -59,7 +60,7 @@ export function BlogWidget({ refreshKey }: BlogWidgetProps) {
   const categories = post._embedded?.['wp:term']?.[0] || [];
 
   return (
-    <Pressable
+    <AnimatedPressable
       style={[styles.card, { backgroundColor: themeColors.surface }]}
       onPress={() =>
         router.push({ pathname: '/blog/[id]', params: { id: String(post.id) } })
@@ -96,7 +97,7 @@ export function BlogWidget({ refreshKey }: BlogWidgetProps) {
           <Text style={[styles.dateDark, { color: themeColors.textSecondary }]}>{date}</Text>
         </View>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -109,11 +110,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
     borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    ...shadows.sm,
   },
 
   image: {

@@ -4,13 +4,16 @@
 // Shows: title, description, privacy icon, members count, role badge
 // =============================================================================
 
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/contexts/ThemeContext';
+import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { Space } from '@/types/space';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { stripHtmlTags } from '@/utils/htmlToText';
 
 interface SpaceCardProps {
   space: Space;
@@ -47,7 +50,7 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
   const hasCoverPhoto = space.cover_photo && space.cover_photo.trim() !== '';
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, { backgroundColor: themeColors.surface }, pressed && styles.cardPressed]}>
+    <AnimatedPressable onPress={onPress} style={[styles.card, { backgroundColor: themeColors.surface }]}>
       {/* Cover Photo or Gradient Fallback */}
       {hasCoverPhoto ? (
         <Image source={{ uri: space.cover_photo ?? undefined }} style={[styles.cover, { backgroundColor: themeColors.skeleton }]} contentFit="cover" transition={200} />
@@ -93,7 +96,7 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
         {/* Description */}
         {space.description && (
           <Text style={[styles.description, { color: themeColors.textSecondary }]} numberOfLines={2}>
-            {space.description.replace(/<[^>]*>/g, '')}
+            {stripHtmlTags(space.description)}
           </Text>
         )}
 
@@ -115,25 +118,17 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
           )}
         </View>
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginVertical: 8,
+    borderRadius: sizing.borderRadius.md,
+    marginHorizontal: spacing.lg,
+    marginVertical: spacing.sm,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
+    ...shadows.md,
   },
   cover: {
     width: '100%',
@@ -147,7 +142,7 @@ const styles = StyleSheet.create({
   logo: {
     position: 'absolute',
     top: 70,
-    left: 16,
+    left: spacing.lg,
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -157,8 +152,8 @@ const styles = StyleSheet.create({
   },
   emojiContainer: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    top: spacing.sm,
+    right: spacing.sm,
     borderRadius: 20,
     width: 40,
     height: 40,
@@ -169,34 +164,34 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   content: {
-    padding: 16,
-    paddingTop: 12,
+    padding: spacing.lg,
+    paddingTop: spacing.md,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.semibold,
     flex: 1,
   },
   roleBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: 6,
-    marginLeft: 8,
+    borderRadius: sizing.borderRadius.xs,
+    marginLeft: spacing.sm,
   },
   roleBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.bold,
     textTransform: 'uppercase',
   },
   description: {
-    fontSize: 14,
+    fontSize: typography.size.sm,
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   footer: {
     flexDirection: 'row',
@@ -206,14 +201,14 @@ const styles = StyleSheet.create({
   footerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
   privacy: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
   },
   membersCount: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
   },
 });

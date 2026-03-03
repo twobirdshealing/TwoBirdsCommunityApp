@@ -5,14 +5,16 @@
 // =============================================================================
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Course } from '@/types/course';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { ProgressBar } from './ProgressBar';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { stripHtmlTags } from '@/utils/htmlToText';
 
 interface CourseCardProps {
   course: Course;
@@ -28,13 +30,9 @@ export function CourseCard({ course, onPress }: CourseCardProps) {
   const progress = course.progress ?? 0;
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        { backgroundColor: themeColors.surface },
-        pressed && styles.cardPressed,
-      ]}
+      style={[styles.card, { backgroundColor: themeColors.surface }]}
     >
       {/* Cover Photo or Gradient Fallback */}
       {hasCoverPhoto ? (
@@ -110,7 +108,7 @@ export function CourseCard({ course, onPress }: CourseCardProps) {
         {/* Description */}
         {course.description ? (
           <Text style={[styles.description, { color: themeColors.textSecondary }]} numberOfLines={2}>
-            {course.description.replace(/<[^>]*>/g, '')}
+            {stripHtmlTags(course.description)}
           </Text>
         ) : null}
 
@@ -121,25 +119,17 @@ export function CourseCard({ course, onPress }: CourseCardProps) {
           </View>
         )}
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.sm,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
+    ...shadows.md,
   },
   coverContainer: {
     position: 'relative',

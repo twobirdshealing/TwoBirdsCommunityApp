@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { FeedCard } from '@/components/feed/FeedCard';
-import { LoadingSpinner, ErrorMessage } from '@/components/common';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { CreatePostModal, ComposerSubmitData } from '@/components/composer/CreatePostModal';
 import { useTheme } from '@/contexts/ThemeContext';

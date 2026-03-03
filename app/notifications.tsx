@@ -10,9 +10,10 @@
 // - Navigate to related content on tap
 // =============================================================================
 
-import { LoadingSpinner, ErrorMessage } from '@/components/common';
-import { PageHeader } from '@/components/navigation';
-import { NotificationCard } from '@/components/notification';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { PageHeader } from '@/components/navigation/PageHeader';
+import { NotificationCard } from '@/components/notification/NotificationCard';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { notificationsApi } from '@/services/api/notifications';

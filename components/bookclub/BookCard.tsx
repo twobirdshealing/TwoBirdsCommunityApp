@@ -3,13 +3,14 @@
 // =============================================================================
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import type { BookSummary } from '@/types/bookclub';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -28,12 +29,8 @@ export function BookCard({ book, onPress }: BookCardProps) {
   const { colors: themeColors } = useTheme();
 
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        { backgroundColor: themeColors.surface },
-        pressed && styles.pressed,
-      ]}
+    <AnimatedPressable
+      style={[styles.card, { backgroundColor: themeColors.surface }]}
       onPress={onPress}
     >
       {/* Cover Image */}
@@ -69,7 +66,7 @@ export function BookCard({ book, onPress }: BookCardProps) {
 
       {/* Chevron */}
       <Ionicons name="chevron-forward" size={20} color={themeColors.textTertiary} />
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -84,10 +81,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: sizing.borderRadius.md,
     gap: spacing.md,
-  },
-
-  pressed: {
-    opacity: 0.7,
   },
 
   cover: {

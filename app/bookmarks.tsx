@@ -4,7 +4,7 @@
 
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { FeedList } from '@/components/feed/FeedList';
-import { PageHeader } from '@/components/navigation';
+import { PageHeader } from '@/components/navigation/PageHeader';
 import { CreatePostModal } from '@/components/composer/CreatePostModal';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';

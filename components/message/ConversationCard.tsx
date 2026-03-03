@@ -32,6 +32,7 @@ import {
   View,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -119,7 +120,7 @@ export function ConversationCard({
   // ---------------------------------------------------------------------------
 
   const cardContent = (
-      <Pressable
+      <AnimatedPressable
         style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}
         onPress={() => onPress?.(thread)}
       >
@@ -167,7 +168,7 @@ export function ConversationCard({
           color={themeColors.textTertiary}
           style={styles.chevron}
         />
-      </Pressable>
+      </AnimatedPressable>
   );
 
   if (onDelete) {

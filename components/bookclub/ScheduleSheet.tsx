@@ -7,7 +7,8 @@ import { Linking, Pressable, StyleSheet, Text, TouchableOpacity, View } from 're
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { BottomSheetScrollView } from '@/components/common/BottomSheet';
-import { Avatar, UserDisplayName } from '@/components/common';
+import { Avatar } from '@/components/common/Avatar';
+import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import type { BookModerator, MeetingSchedule } from '@/types/bookclub';

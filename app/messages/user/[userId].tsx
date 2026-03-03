@@ -10,10 +10,11 @@
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
-import { DropdownMenu } from '@/components/common';
+import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
-import { ChatInput, DateSeparator, MessageBubble } from '@/components/message';
-import { MediaViewer } from '@/components/media';
+import { ChatInput } from '@/components/message/ChatInput';
+import { DateSeparator, MessageBubble } from '@/components/message/MessageBubble';
+import { MediaViewer } from '@/components/media/MediaViewer';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';

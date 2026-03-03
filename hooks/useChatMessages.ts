@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { ChatMessage, ChatThread, ThreadDetails, IntendedObject } from '@/types/message';
-import { ChatInputAttachment, ChatInputReplyTo } from '@/components/message';
+import type { ChatInputAttachment, ChatInputReplyTo } from '@/components/message/ChatInput';
 import { messagesApi } from '@/services/api/messages';
 import { useNewMessageListener, useReactionListener } from '@/contexts/PusherContext';
 

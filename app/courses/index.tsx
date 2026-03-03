@@ -23,8 +23,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CourseCard } from '@/components/course';
-import { LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
+import { CourseCard } from '@/components/course/CourseCard';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { EmptyState } from '@/components/common/EmptyState';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';

@@ -46,13 +46,6 @@ export const WIDGET_REGISTRY: WidgetConfig[] = [
     externalWrapper: true,
   },
   {
-    id: 'welcome-banner',
-    title: 'Welcome Banner',
-    defaultEnabled: true,
-    canDisable: true,
-    externalWrapper: false,
-  },
-  {
     id: 'my-courses',
     title: 'My Courses',
     icon: 'school-outline',

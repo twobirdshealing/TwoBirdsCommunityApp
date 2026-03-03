@@ -26,8 +26,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ProgressBar, SectionList } from '@/components/course';
-import { LoadingSpinner, ErrorMessage } from '@/components/common';
+import { stripHtmlTags } from '@/utils/htmlToText';
+import { ProgressBar } from '@/components/course/ProgressBar';
+import { SectionList } from '@/components/course/SectionList';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
@@ -341,7 +344,7 @@ export default function CourseDetailScreen() {
             <View style={[styles.detailsSection, { backgroundColor: themeColors.surface }]}>
               <Text style={[styles.sectionHeading, { color: themeColors.text }]}>About This Course</Text>
               <Text style={[styles.detailsText, { color: themeColors.textSecondary }]}>
-                {courseDetails.replace(/<[^>]*>/g, '').trim()}
+                {stripHtmlTags(courseDetails).trim()}
               </Text>
             </View>
           )}

@@ -36,7 +36,6 @@ import { EventsWidget } from '@/components/home/EventsWidget';
 import { CoursesWidget } from '@/components/home/CoursesWidget';
 import { BookClubWidget } from '@/components/home/BookClubWidget';
 import { EditModeBar } from '@/components/home/EditModeBar';
-import { EditableWidgetWrapper } from '@/components/home/EditableWidgetWrapper';
 
 // -----------------------------------------------------------------------------
 // Widget Component Map
@@ -47,7 +46,6 @@ const WIDGET_COMPONENTS: Record<
   React.ComponentType<{ refreshKey: number }>
 > = {
   'featured-events': EventsWidget,
-  'welcome-banner': WelcomeBannerWidget,
   'my-courses': CoursesWidget,
   'book-club': BookClubWidget,
   'latest-blog': BlogWidget,
@@ -169,25 +167,6 @@ export default function HomeScreen() {
         ? () => router.push(config.seeAllRoute as any)
         : undefined;
 
-      // Headerless widgets (e.g. WelcomeBanner)
-      if (!config.externalWrapper) {
-        if (isEditing) {
-          return (
-            <EditableWidgetWrapper
-              config={config}
-              isEnabled={pref.enabled}
-              isEditing={isEditing}
-              drag={drag}
-              isActive={isActive}
-              onToggle={() => toggleWidget(config.id)}
-            >
-              {pref.enabled && <WidgetComponent refreshKey={refreshKey} />}
-            </EditableWidgetWrapper>
-          );
-        }
-        return <WidgetComponent refreshKey={refreshKey} />;
-      }
-
       // Standard wrapped widgets
       return (
         <HomeWidget
@@ -236,6 +215,19 @@ export default function HomeScreen() {
   const keyExtractor = useCallback((item: WidgetItem) => item.config.id, []);
 
   // ---------------------------------------------------------------------------
+  // Header (pinned welcome banner — always top, not part of widget system)
+  // ---------------------------------------------------------------------------
+
+  const ListHeader = useCallback(
+    () => (
+      <View style={{ paddingBottom: spacing.md }}>
+        <WelcomeBannerWidget refreshKey={refreshKey} />
+      </View>
+    ),
+    [refreshKey],
+  );
+
+  // ---------------------------------------------------------------------------
   // Footer
   // ---------------------------------------------------------------------------
 
@@ -270,6 +262,7 @@ export default function HomeScreen() {
           onDragEnd={handleDragEnd}
           onDragBegin={() => hapticMedium()}
           contentContainerStyle={styles.scrollContent}
+          ListHeaderComponent={ListHeader}
           ListFooterComponent={ListFooter}
         />
       ) : (
@@ -279,6 +272,7 @@ export default function HomeScreen() {
           keyExtractor={keyExtractor}
           renderItem={renderNormalItem}
           contentContainerStyle={styles.scrollContent}
+          ListHeaderComponent={ListHeader}
           ListFooterComponent={ListFooter}
           onScroll={handleScroll}
           scrollEventThrottle={16}

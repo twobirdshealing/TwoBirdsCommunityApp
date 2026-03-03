@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { SITE_URL } from '@/constants/config';
-import { spacing } from '@/constants/layout';
+import { spacing, shadows } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { messagesApi } from '@/services/api/messages';
@@ -16,7 +16,7 @@ import { Profile } from '@/types/user';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppFocus } from '@/hooks/useAppFocus';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -324,17 +324,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
 const styles = StyleSheet.create({
   container: {
     borderBottomWidth: 1,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    ...shadows.sm,
   },
 
   content: {

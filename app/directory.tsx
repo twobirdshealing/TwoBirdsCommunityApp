@@ -23,8 +23,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MemberCard, MemberCardData } from '@/components/member';
-import { DropdownMenu, LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
+import { MemberCard, type MemberCardData } from '@/components/member/MemberCard';
+import { DropdownMenu } from '@/components/common/DropdownMenu';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { EmptyState } from '@/components/common/EmptyState';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography } from '@/constants/layout';

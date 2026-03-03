@@ -7,16 +7,17 @@
 // =============================================================================
 
 import React, { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { youtubeApi } from '@/services/api/youtube';
 import { useCachedData } from '@/hooks/useCachedData';
 import { formatSmartDate } from '@/utils/formatDate';
 import type { YouTubeVideo } from '@/types/youtube';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -51,7 +52,7 @@ export function YouTubeWidget({ refreshKey }: YouTubeWidgetProps) {
   return (
     <View style={styles.card}>
       {!isPlaying ? (
-        <Pressable onPress={() => setIsPlaying(true)} style={styles.thumbnailContainer}>
+        <AnimatedPressable onPress={() => setIsPlaying(true)} style={styles.thumbnailContainer}>
           <Image
             source={{ uri: video.thumbnail }}
             style={[styles.thumbnail, { backgroundColor: themeColors.skeleton }]}
@@ -80,7 +81,7 @@ export function YouTubeWidget({ refreshKey }: YouTubeWidgetProps) {
             </Text>
             <Text style={styles.date}>{formatSmartDate(video.publishedAt)}</Text>
           </LinearGradient>
-        </Pressable>
+        </AnimatedPressable>
       ) : (
         <View style={styles.thumbnailContainer}>
           <YouTubeEmbed
@@ -106,11 +107,7 @@ const styles = StyleSheet.create({
     borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
     backgroundColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    ...shadows.sm,
   },
 
   thumbnailContainer: {

@@ -16,13 +16,15 @@ import { FlashList } from '@shopify/flash-list';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
-import { LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { EmptyState } from '@/components/common/EmptyState';
 import { BottomSheet, BottomSheetScrollView } from '@/components/common/BottomSheet';
 import { stripHtmlPreserveBreaks } from '@/utils/htmlToText';
 import { spacing, typography } from '@/constants/layout';
 import { youtubeApi } from '@/services/api/youtube';
-import { PageHeader } from '@/components/navigation';
-import { YouTubeVideoCard } from '@/components/youtube';
+import { PageHeader } from '@/components/navigation/PageHeader';
+import { YouTubeVideoCard } from '@/components/youtube/YouTubeVideoCard';
 import type { YouTubeVideo } from '@/types/youtube';
 
 // -----------------------------------------------------------------------------

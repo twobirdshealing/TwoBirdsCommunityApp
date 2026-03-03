@@ -6,8 +6,9 @@
 // each notification concept, with per-space email settings at the bottom.
 // =============================================================================
 
-import { LoadingSpinner, ErrorMessage } from '@/components/common';
-import { PageHeader } from '@/components/navigation';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import {

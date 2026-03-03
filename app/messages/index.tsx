@@ -9,9 +9,12 @@
 // - Swipe to delete conversation
 // =============================================================================
 
-import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
-import { ConversationCard, NewMessageModal } from '@/components/message';
-import { PageHeader } from '@/components/navigation';
+import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ConversationCard } from '@/components/message/ConversationCard';
+import { NewMessageModal } from '@/components/message/NewMessageModal';
+import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getMessagePreview, getThreadDisplayName, getThreadAvatar, getThreadUserId, getThreadUsername } from '@/types/message';

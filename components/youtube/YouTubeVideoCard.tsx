@@ -10,13 +10,13 @@ import {
   Image,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { formatSmartDate } from '@/utils/formatDate';
 import type { YouTubeVideo } from '@/types/youtube';
@@ -49,8 +49,7 @@ export function YouTubeVideoCard({ video, width }: YouTubeVideoCardProps) {
       ]}
     >
       {!isPlaying ? (
-        <TouchableOpacity
-          activeOpacity={0.8}
+        <AnimatedPressable
           onPress={() => setIsPlaying(true)}
           style={styles.thumbnailContainer}
         >
@@ -84,7 +83,7 @@ export function YouTubeVideoCard({ video, width }: YouTubeVideoCardProps) {
               {formatSmartDate(video.publishedAt)}
             </Text>
           </LinearGradient>
-        </TouchableOpacity>
+        </AnimatedPressable>
       ) : (
         <View style={styles.thumbnailContainer}>
           <YouTubeEmbed

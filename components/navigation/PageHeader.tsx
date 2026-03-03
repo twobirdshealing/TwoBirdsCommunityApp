@@ -31,7 +31,6 @@
 import React, { ReactNode } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -40,7 +39,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { hapticLight } from '@/utils/haptics';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing } from '@/constants/layout';
+import { spacing, shadows } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -187,17 +186,7 @@ export function PageHeader({
 const styles = StyleSheet.create({
   container: {
     borderBottomWidth: 1,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    ...shadows.sm,
   },
   
   content: {

@@ -26,6 +26,7 @@ import {
 import { Swipeable } from 'react-native-gesture-handler';
 import { NotificationTypeIcon } from './NotificationTypeIcon';
 import { hapticLight } from '@/utils/haptics';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -113,7 +114,7 @@ export function NotificationCard({
       rightThreshold={40}
       overshootRight={false}
     >
-      <Pressable
+      <AnimatedPressable
         style={[
           styles.container,
           { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border },
@@ -167,7 +168,7 @@ export function NotificationCard({
           color={themeColors.textTertiary}
           style={styles.chevron}
         />
-      </Pressable>
+      </AnimatedPressable>
     </Swipeable>
   );
 }

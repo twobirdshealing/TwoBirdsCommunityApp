@@ -36,7 +36,7 @@ import { hapticLight } from '@/utils/haptics';
 import { spacing, typography } from '@/constants/layout';
 import { SITE_URL } from '@/constants/config';
 import { appApi } from '@/services/api/app';
-import { PageHeader } from '@/components/navigation';
+import { PageHeader } from '@/components/navigation/PageHeader';
 import { useTheme } from '@/contexts/ThemeContext';
 
 // -----------------------------------------------------------------------------

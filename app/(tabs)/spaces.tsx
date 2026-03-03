@@ -17,7 +17,9 @@ import {
   View
 } from 'react-native';
 
-import { LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { EmptyState } from '@/components/common/EmptyState';
 import { SpaceCard } from '@/components/space/SpaceCard';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';

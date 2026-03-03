@@ -35,7 +35,7 @@ import { SocialLinksForm } from '@/components/common/SocialLinksForm';
 import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
 import { DynamicFormField } from '@/components/common/DynamicFormField';
 import { SelectModal } from '@/components/common/SelectModal';
-import { PageHeader } from '@/components/navigation';
+import { PageHeader } from '@/components/navigation/PageHeader';
 import { useSocialProviders } from '@/hooks/useSocialProviders';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
 

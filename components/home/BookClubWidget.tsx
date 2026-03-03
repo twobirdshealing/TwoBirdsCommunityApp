@@ -9,11 +9,12 @@
 
 import React from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, sizing } from '@/constants/layout';
+import { spacing, sizing, shadows } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { spacesApi } from '@/services/api/spaces';
 import bookclubApi from '@/services/api/bookclub';
@@ -73,7 +74,7 @@ export function BookClubWidget({ refreshKey }: BookClubWidgetProps) {
   return (
     <>
       {/* Book Card */}
-      <Pressable
+      <AnimatedPressable
         style={[styles.card, { backgroundColor: themeColors.surface }]}
         onPress={() => router.push({ pathname: '/bookclub/[id]', params: { id: String(book.id) } })}
       >
@@ -101,7 +102,7 @@ export function BookClubWidget({ refreshKey }: BookClubWidgetProps) {
           <Ionicons name="headset-outline" size={18} color={themeColors.textInverse} />
           <Text style={[styles.listenText, { color: themeColors.textInverse }]}>Listen</Text>
         </View>
-      </Pressable>
+      </AnimatedPressable>
 
       {/* Next Meeting Row — only shown when server says there's an upcoming meeting */}
       {nextMeeting && (
@@ -143,11 +144,7 @@ const styles = StyleSheet.create({
     borderRadius: sizing.borderRadius.md,
     gap: spacing.md,
     marginHorizontal: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    ...shadows.sm,
   },
 
   cover: {

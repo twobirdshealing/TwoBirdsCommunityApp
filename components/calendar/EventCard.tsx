@@ -1,8 +1,9 @@
 // =============================================================================
-// EVENT CARD - Modern full-width event card
+// EVENT CARD - Hero-style event card with gradient overlay
 // =============================================================================
 // Features:
-// - Full-width hero image with status badge
+// - Hero image with gradient overlay (matches BlogCard/CourseCard pattern)
+// - Prominent date chip as primary visual element
 // - Haptic feedback on press
 // - Deposit display when applicable
 // - "Waitlist" status (not "Full")
@@ -10,23 +11,17 @@
 
 import React from 'react';
 import {
-  Image,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { hapticLight } from '@/utils/haptics';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CalendarEvent } from '@/types/calendar';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -53,22 +48,41 @@ function formatTime(time: string | null): string {
 function formatEventDate(start: string, end: string, startTime: string | null): string {
   const startDate = new Date(start + 'T12:00:00');
   const endDate = new Date(end + 'T12:00:00');
-  
+
   const dateStr = startDate.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
   });
-  
+
   const timeStr = startTime ? formatTime(startTime) : '';
   const isMultiDay = start !== end;
-  
+
   if (isMultiDay) {
     const endStr = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     return `${dateStr} - ${endStr}`;
   }
-  
+
   return timeStr ? `${dateStr} • ${timeStr}` : dateStr;
+}
+
+function formatDateChip(start: string, end: string, startTime: string | null): { month: string; day: string; timeLabel: string } {
+  const startDate = new Date(start + 'T12:00:00');
+  const month = startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  const day = String(startDate.getDate());
+  const isMultiDay = start !== end;
+
+  let timeLabel: string;
+  if (isMultiDay) {
+    const endDate = new Date(end + 'T12:00:00');
+    timeLabel = `– ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  } else if (startTime) {
+    timeLabel = formatTime(startTime);
+  } else {
+    timeLabel = 'All Day';
+  }
+
+  return { month, day, timeLabel };
 }
 
 function getStatusConfig(event: CalendarEvent, themeColors: { success: string; successLight: string; warning: string; warningLight: string; error: string; errorLight: string; info: string; infoLight: string }) {
@@ -86,23 +100,17 @@ function getStatusConfig(event: CalendarEvent, themeColors: { success: string; s
 
 function formatPrice(priceRaw: number, deposit: number | null): string {
   if (priceRaw === 0) {
-    return '💝 Love Donation';
+    return 'Love Donation';
   }
-  
+
   const price = `$${priceRaw}`;
-  
+
   if (deposit && deposit > 0) {
     return `${price} • $${deposit} deposit`;
   }
-  
+
   return price;
 }
-
-// -----------------------------------------------------------------------------
-// Animated Pressable Card
-// -----------------------------------------------------------------------------
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // -----------------------------------------------------------------------------
 // Component
@@ -112,37 +120,17 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
   const { colors: themeColors } = useTheme();
   const status = getStatusConfig(event, themeColors);
   const eventDate = formatEventDate(event.start, event.end, event.start_time);
+  const dateInfo = formatDateChip(event.start, event.end, event.start_time);
   const calendarColor = event.calendar_color || themeColors.primary;
   const location = event.location?.business_name || event.location?.address;
-  
-  // Animation for press feedback
-  const scale = useSharedValue(1);
-  
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-  };
-
-  const handlePress = () => {
-    hapticLight();
-    onPress?.();
-  };
+  const isFree = event.price_raw === 0;
 
   // Compact card for month view
   if (compact) {
     return (
-      <Pressable
+      <AnimatedPressable
         style={[styles.compactCard, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}
-        onPress={handlePress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
+        onPress={onPress}
       >
         <View style={[styles.colorBar, { backgroundColor: calendarColor }]} />
 
@@ -153,7 +141,7 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
               <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
             </View>
           </View>
-          
+
           <Text style={[styles.compactMeta, { color: themeColors.textSecondary }]}>{eventDate}</Text>
 
           {location && (
@@ -162,97 +150,112 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
             </Text>
           )}
         </View>
-        
+
         <Ionicons name="chevron-forward" size={20} color={themeColors.textTertiary} />
-      </Pressable>
+      </AnimatedPressable>
     );
   }
 
-  // Full card for list view
+  // Full card for list view — hero style with gradient overlay
   return (
     <AnimatedPressable
-      style={[styles.card, { backgroundColor: themeColors.surface }, animatedStyle]}
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+      style={[styles.card, { backgroundColor: themeColors.surface }]}
+      onPress={onPress}
     >
-      {/* Hero Image */}
-      <View style={styles.imageContainer}>
+      {/* Hero Section */}
+      <View style={styles.heroContainer}>
+        {/* Background: Image or Gradient Fallback */}
         {event.image ? (
-          <Image source={{ uri: event.image }} style={styles.image} resizeMode="cover" />
+          <Image
+            source={{ uri: event.image }}
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColors.skeleton }]}
+            contentFit="cover"
+            transition={200}
+          />
         ) : (
           <LinearGradient
             colors={[calendarColor, calendarColor + '80']}
-            style={styles.image}
+            style={[StyleSheet.absoluteFillObject, styles.placeholderFallback]}
           >
             <Text style={styles.placeholderEmoji}>📅</Text>
           </LinearGradient>
         )}
-        
-        {/* Status Badge */}
-        <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-          <Text style={[styles.statusBadgeText, { color: status.color }]}>
-            {status.label}
-          </Text>
-        </View>
-        
-        {/* Color accent line */}
-        <View style={[styles.colorAccent, { backgroundColor: calendarColor }]} />
-      </View>
 
-      {/* Content */}
-      <View style={styles.content}>
-        {/* Title */}
-        <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={2}>{event.title}</Text>
+        {/* Gradient Overlay */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.7)']}
+          locations={[0, 0.4, 1]}
+          style={styles.heroGradient}
+        >
+          {/* Top Row: Date Chip + Status Badge */}
+          <View style={styles.heroTopRow}>
+            <View style={[styles.dateChip, { borderLeftColor: calendarColor }]}>
+              <Text style={styles.dateChipMonth}>{dateInfo.month}</Text>
+              <Text style={styles.dateChipDay}>{dateInfo.day}</Text>
+              <Text style={styles.dateChipTime}>{dateInfo.timeLabel}</Text>
+            </View>
 
-        {/* Meta info */}
-        <View style={styles.metaRow}>
-          <Ionicons name="calendar-outline" size={14} color={themeColors.textSecondary} />
-          <Text style={[styles.metaText, { color: themeColors.textSecondary }]}>{eventDate}</Text>
-        </View>
-
-        {location && (
-          <View style={styles.metaRow}>
-            <Ionicons name="location-outline" size={14} color={themeColors.textSecondary} />
-            <Text style={[styles.metaText, { color: themeColors.textSecondary }]} numberOfLines={1}>{location}</Text>
-          </View>
-        )}
-
-        {/* Price + RSVP */}
-        <View style={[styles.footer, { borderTopColor: themeColors.border }]}>
-          <Text style={[styles.price, { color: themeColors.text }]}>
-            {formatPrice(event.price_raw, event.deposit ?? null)}
-          </Text>
-          
-          {event.rsvp?.show_countdown && !event.rsvp.deadline_passed && (
-            <View style={[styles.rsvpBadge, { backgroundColor: themeColors.warningLight }]}>
-              <Text style={[styles.rsvpText, { color: themeColors.warning }]}>
-                RSVP {event.rsvp.days_remaining}d left
+            <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+              <Text style={[styles.statusBadgeText, { color: status.color }]}>
+                {status.label}
               </Text>
             </View>
-          )}
-        </View>
-        
-        {/* Progress bar */}
-        {event.progress && (
-          <View style={styles.progressContainer}>
-            <View style={[styles.progressBar, { backgroundColor: themeColors.backgroundSecondary }]}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: `${Math.min(event.progress.percentage, 100)}%`,
-                    backgroundColor: calendarColor
-                  }
-                ]}
-              />
-            </View>
-            <Text style={[styles.progressText, { color: themeColors.textTertiary }]}>
-              {event.progress.current}/{event.progress.goal} spots filled
-            </Text>
           </View>
-        )}
+
+          {/* Bottom: Title + Info */}
+          <View>
+            <Text style={styles.heroTitle} numberOfLines={2}>{event.title}</Text>
+
+            <View style={styles.heroInfoRow}>
+              {location ? (
+                <View style={styles.heroLocation}>
+                  <Ionicons name="location-outline" size={13} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.heroLocationText} numberOfLines={1}>{location}</Text>
+                </View>
+              ) : (
+                <View style={{ flex: 1 }} />
+              )}
+
+              <View style={styles.heroPriceRow}>
+                {isFree && (
+                  <Ionicons name="heart-outline" size={13} color="#fff" />
+                )}
+                <Text style={styles.heroPrice}>
+                  {formatPrice(event.price_raw, event.deposit ?? null)}
+                </Text>
+              </View>
+            </View>
+
+            {event.rsvp?.show_countdown && !event.rsvp.deadline_passed && (
+              <View style={styles.heroRsvpPill}>
+                <Text style={styles.heroRsvpText}>
+                  RSVP {event.rsvp.days_remaining}d left
+                </Text>
+              </View>
+            )}
+          </View>
+        </LinearGradient>
       </View>
+
+      {/* Progress Bar (only if data exists) */}
+      {event.progress && (
+        <View style={styles.progressSection}>
+          <View style={[styles.progressBar, { backgroundColor: themeColors.backgroundSecondary }]}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${Math.min(event.progress.percentage, 100)}%`,
+                  backgroundColor: calendarColor,
+                },
+              ]}
+            />
+          </View>
+          <Text style={[styles.progressText, { color: themeColors.textTertiary }]}>
+            {event.progress.current}/{event.progress.goal} spots filled
+          </Text>
+        </View>
+      )}
     </AnimatedPressable>
   );
 }
@@ -268,21 +271,17 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    ...shadows.md,
   },
 
-  imageContainer: {
+  // Hero Section
+  heroContainer: {
+    height: 200,
     position: 'relative',
-    height: 150,
+    overflow: 'hidden',
   },
 
-  image: {
-    width: '100%',
-    height: '100%',
+  placeholderFallback: {
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -291,10 +290,51 @@ const styles = StyleSheet.create({
     fontSize: 48,
   },
 
+  heroGradient: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
+    padding: spacing.lg,
+  },
+
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+
+  dateChip: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: sizing.borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    borderLeftWidth: 3,
+  },
+
+  dateChipMonth: {
+    fontSize: typography.size.xs,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: '#fff',
+    opacity: 0.8,
+  },
+
+  dateChipDay: {
+    fontSize: typography.size.xxl,
+    fontWeight: '700',
+    color: '#fff',
+    lineHeight: 28,
+  },
+
+  dateChipTime: {
+    fontSize: typography.size.xs,
+    fontWeight: '600',
+    color: '#fff',
+    opacity: 0.9,
+  },
+
   statusBadge: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: 12,
@@ -305,63 +345,65 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  colorAccent: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 4,
-  },
-
-  content: {
-    padding: spacing.md,
-  },
-
-  title: {
+  heroTitle: {
     fontSize: typography.size.lg,
     fontWeight: '700',
+    color: '#fff',
     marginBottom: spacing.sm,
   },
 
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-
-  metaText: {
-    flex: 1,
-    fontSize: typography.size.sm,
-  },
-
-  footer: {
+  heroInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
   },
 
-  price: {
-    fontSize: typography.size.md,
+  heroLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: spacing.xs,
+    marginRight: spacing.sm,
+  },
+
+  heroLocationText: {
+    fontSize: typography.size.sm,
+    color: 'rgba(255,255,255,0.8)',
+    flex: 1,
+  },
+
+  heroPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flexShrink: 0,
+  },
+
+  heroPrice: {
+    fontSize: typography.size.sm,
     fontWeight: '600',
+    color: '#fff',
   },
 
-  rsvpBadge: {
+  heroRsvpPill: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.full,
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
   },
 
-  rsvpText: {
+  heroRsvpText: {
     fontSize: typography.size.xs,
     fontWeight: '600',
+    color: '#fff',
   },
 
-  progressContainer: {
-    marginTop: spacing.sm,
+  // Progress Section (below hero)
+  progressSection: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
 
   progressBar: {
@@ -380,7 +422,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Compact Card
+  // Compact Card (month view — unchanged)
   compactCard: {
     flexDirection: 'row',
     alignItems: 'center',

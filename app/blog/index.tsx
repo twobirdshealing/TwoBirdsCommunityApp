@@ -13,12 +13,14 @@ import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
-import { LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { EmptyState } from '@/components/common/EmptyState';
 import { spacing } from '@/constants/layout';
 import { WPPost } from '@/types/blog';
 import { blogApi } from '@/services/api/blog';
-import { PageHeader } from '@/components/navigation';
-import { BlogCard } from '@/components/blog';
+import { PageHeader } from '@/components/navigation/PageHeader';
+import { BlogCard } from '@/components/blog/BlogCard';
 
 // -----------------------------------------------------------------------------
 // Component

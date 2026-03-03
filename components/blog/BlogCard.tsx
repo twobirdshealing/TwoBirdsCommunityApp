@@ -21,6 +21,7 @@ import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { WPPost } from '@/types/blog';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 import { formatSmartDate } from '@/utils/formatDate';
 
@@ -61,10 +62,9 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
   const commentCount = embeddedComments.length;
 
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       style={[styles.card, { backgroundColor: themeColors.surface }, shadows.sm]}
       onPress={onPress}
-      activeOpacity={0.7}
     >
       {/* Hero Section */}
       {featuredImageUrl ? (
@@ -182,7 +182,7 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
           </View>
         </View>
       )}
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 

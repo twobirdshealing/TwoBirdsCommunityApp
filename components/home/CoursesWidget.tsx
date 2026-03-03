@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,12 +21,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { coursesApi } from '@/services/api/courses';
 import { Course } from '@/types/course';
-import { ProgressBar } from '@/components/course';
+import { ProgressBar } from '@/components/course/ProgressBar';
 import { useCachedData } from '@/hooks/useCachedData';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -103,13 +103,9 @@ export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
         const progress = course.progress ?? 0;
 
         return (
-          <Pressable
+          <AnimatedPressable
             key={course.id}
-            style={({ pressed }) => [
-              styles.card,
-              { width: CARD_WIDTH, backgroundColor: themeColors.surface },
-              pressed && styles.cardPressed,
-            ]}
+            style={[styles.card, { width: CARD_WIDTH, backgroundColor: themeColors.surface }]}
             onPress={() => router.push({ pathname: '/courses/[slug]', params: { slug: course.slug } })}
           >
             {/* Cover */}
@@ -138,7 +134,7 @@ export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
                 </Text>
               </View>
             </View>
-          </Pressable>
+          </AnimatedPressable>
         );
       })}
     </ScrollView>
@@ -158,16 +154,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-
-  cardPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
+    ...shadows.sm,
   },
 
   cardCover: {

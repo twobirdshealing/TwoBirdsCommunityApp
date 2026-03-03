@@ -1,11 +1,11 @@
 // =============================================================================
-// CREATE POST MODAL - Near-fullscreen post composer
+// CREATE POST MODAL - Near-fullscreen post composer with 10tap rich text editor
 // =============================================================================
-// All state managed directly here (same pattern as CommentSheet) so toolbars
-// can be rendered in a gorhom footer for proper keyboard handling.
+// Uses @10play/tentap-editor (TipTap/ProseMirror) for WYSIWYG editing.
+// On submit, HTML is converted to markdown via turndown for server compatibility.
 // =============================================================================
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -14,16 +14,18 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import MarkdownTextInput from '@expensify/react-native-live-markdown/src/MarkdownTextInput';
-import { parseMarkdown } from '@/utils/markdownParser';
-import { getMarkdownStyle } from '@/constants/markdownStyle';
+import {
+  RichText,
+  useEditorBridge,
+  TenTapStartKit,
+  PlaceholderBridge,
+} from '@10play/tentap-editor';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   BottomSheet,
   BottomSheetFooter,
-  SheetInput,
 } from '@/components/common/BottomSheet';
 import type { BottomSheetFooterProps } from '@/components/common/BottomSheet';
 import { ComposerToolbar } from './ComposerToolbar';
@@ -34,9 +36,8 @@ import { VideoAttachModal } from './VideoAttachModal';
 import { VideoPreview } from './VideoPreview';
 import { MediaItem, mediaApi } from '@/services/api/media';
 import { OembedData } from '@/services/api/feeds';
-import { type FormatResult } from '@/utils/markdown';
 import { Feed } from '@/types/feed';
-import { stripHtmlTags } from '@/utils/htmlToText';
+import { htmlToMarkdown } from '@/utils/htmlToMarkdown';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -94,8 +95,8 @@ export function CreatePostModal({
   // Initial values from edit feed
   // ---------------------------------------------------------------------------
 
-  const initialMessage = editFeed
-    ? (editFeed.message || stripHtmlTags(editFeed.message_rendered))
+  const initialContent = editFeed
+    ? (editFeed.message_rendered || editFeed.message || '')
     : '';
   const initialTitle = editFeed?.title || '';
   const initialAttachments: MediaItem[] = editFeed?.meta?.media_items
@@ -124,22 +125,88 @@ export function CreatePostModal({
   const effectiveSpaceName = isEditing ? editFeed.space?.title : spaceName;
 
   // ---------------------------------------------------------------------------
+  // 10tap Editor Bridge
+  // ---------------------------------------------------------------------------
+
+  const editor = useEditorBridge({
+    initialContent,
+    autofocus: false,
+    avoidIosKeyboard: false, // gorhom bottom sheet handles keyboard
+    bridgeExtensions: [
+      ...TenTapStartKit,
+      PlaceholderBridge.configureExtension({
+        placeholder: "What's happening?",
+      }),
+    ],
+  });
+
+  // Inject theme CSS into the editor WebView
+  useEffect(() => {
+    if (!editor) return;
+    editor.injectCSS(`
+      body {
+        color: ${themeColors.text};
+        background: transparent;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+        padding: 0 ${spacing.md}px;
+        margin: 0;
+      }
+      h2 { font-size: 20px; font-weight: 600; margin: 12px 0; color: ${themeColors.text}; }
+      h3 { font-size: 18px; font-weight: 600; margin: 8px 0; color: ${themeColors.text}; }
+      h4 { font-size: 16px; font-weight: 600; margin: 8px 0; color: ${themeColors.text}; }
+      p { margin: 6px 0; }
+      a { color: ${themeColors.primary}; text-decoration: underline; }
+      blockquote {
+        border-left: 3px solid ${themeColors.primary};
+        padding-left: 12px;
+        margin: 8px 0;
+        color: ${themeColors.textSecondary};
+        font-style: italic;
+      }
+      ul, ol { padding-left: 24px; margin: 6px 0; }
+      li { margin: 2px 0; }
+      code {
+        background: ${themeColors.backgroundSecondary};
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-size: 14px;
+      }
+      pre {
+        background: ${themeColors.backgroundSecondary};
+        padding: 12px;
+        border-radius: 6px;
+        overflow-x: auto;
+      }
+      pre code { background: none; padding: 0; }
+      hr {
+        border: none;
+        border-top: 1px solid ${themeColors.border};
+        margin: 12px 0;
+      }
+      strong { font-weight: 700; }
+      del, s { text-decoration: line-through; }
+      .ProseMirror-focused { outline: none; }
+      .is-editor-empty:first-child::before {
+        color: ${themeColors.textTertiary};
+        font-style: normal;
+      }
+    `, 'theme');
+  }, [editor, themeColors]);
+
+  // ---------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------
 
-  const [message, setMessage] = useState(initialMessage);
   const [title, setTitle] = useState(initialTitle);
   const [attachments, setAttachments] = useState<MediaItem[]>(initialAttachments);
   const [videoAttachment, setVideoAttachment] = useState<OembedData | null>(initialVideo);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
-  const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [selectedSpaceSlug, setSelectedSpaceSlug] = useState<string | null>(effectiveSpaceSlug || null);
   const [selectedSpaceName, setSelectedSpaceName] = useState<string | null>(effectiveSpaceName || null);
-
-  const inputRef = useRef<TextInput>(null);
 
   // ---------------------------------------------------------------------------
   // Derived values
@@ -147,15 +214,7 @@ export function CreatePostModal({
 
   const showSpaceSelector = !effectiveSpaceSlug && !isEditing;
   const actualSubmitLabel = isEditing ? 'Save' : 'Post';
-  const charCount = message.length;
-  const isOverLimit = charCount > maxLength;
-  const showCharCount = charCount > maxLength * 0.8;
-
-  const canSubmit =
-    !isSubmitting &&
-    !isUploading &&
-    !isOverLimit &&
-    (message.trim().length > 0 || attachments.length > 0 || videoAttachment !== null);
+  const canSubmit = !isSubmitting && !isUploading;
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -164,11 +223,6 @@ export function CreatePostModal({
   const handleSpaceSelect = (slug: string, name: string) => {
     setSelectedSpaceSlug(slug);
     setSelectedSpaceName(name);
-  };
-
-  const handleFormat = (result: FormatResult) => {
-    setMessage(result.text);
-    setTimeout(() => setSelection(result.selection), 0);
   };
 
   const handleImagePicker = async () => {
@@ -233,11 +287,20 @@ export function CreatePostModal({
   const handleVideoRemove = () => setVideoAttachment(null);
 
   const handleSubmit = async () => {
-    const trimmedMessage = message.trim();
-    if (!trimmedMessage && attachments.length === 0 && !videoAttachment) return;
+    // Get content from the editor
+    const html = await editor.getHTML();
+    const markdown = htmlToMarkdown(html);
+    const plainText = await editor.getText();
+
+    if (!markdown.trim() && attachments.length === 0 && !videoAttachment) return;
 
     if (!selectedSpaceSlug && !effectiveSpaceSlug) {
       Alert.alert('Select a Space', 'Please select which space to post in.');
+      return;
+    }
+
+    if (plainText.length > maxLength) {
+      Alert.alert('Too Long', `Your post is ${plainText.length} characters. Maximum is ${maxLength}.`);
       return;
     }
 
@@ -246,7 +309,7 @@ export function CreatePostModal({
 
     try {
       const submitData: ComposerSubmitData = {
-        message: trimmedMessage,
+        message: markdown,
         content_type: 'markdown',
         space: effectiveSpaceSlug || selectedSpaceSlug || undefined,
       };
@@ -272,7 +335,7 @@ export function CreatePostModal({
       await onSubmit(submitData);
 
       // Clear form on success
-      setMessage('');
+      editor.setContent('');
       setTitle('');
       setAttachments([]);
       setVideoAttachment(null);
@@ -291,13 +354,9 @@ export function CreatePostModal({
 
   const renderFooter = useCallback(
     (props: BottomSheetFooterProps) => (
-      <BottomSheetFooter {...props} bottomInset={0}>
-        <View style={[styles.footerInner, { backgroundColor: themeColors.surface, paddingBottom: insets.bottom }]}>
-          <MarkdownToolbar
-            text={message}
-            selection={selection}
-            onFormat={handleFormat}
-          />
+      <BottomSheetFooter {...props} bottomInset={insets.bottom}>
+        <View style={[styles.footerInner, { backgroundColor: themeColors.surface }]}>
+          <MarkdownToolbar editor={editor} />
           <ComposerToolbar
             onImagePress={handleImagePicker}
             onVideoPress={handleVideoPress}
@@ -311,7 +370,7 @@ export function CreatePostModal({
         </View>
       </BottomSheetFooter>
     ),
-    [message, selection, canSubmit, isSubmitting, isUploading, videoAttachment,
+    [editor, canSubmit, isSubmitting, isUploading, videoAttachment,
      actualSubmitLabel, themeColors, insets.bottom],
   );
 
@@ -357,35 +416,15 @@ export function CreatePostModal({
             maxLength={200}
           />
 
-          {/* Message Input — SheetInput registers with gorhom keyboard system */}
-          <SheetInput>
-            {(sheetProps) => (
-              <MarkdownTextInput
-                ref={(node: any) => {
-                  inputRef.current = node;
-                  sheetProps.ref.current = node;
-                }}
-                style={[
-                  styles.messageInput,
-                  { color: themeColors.text },
-                  isFocused && styles.messageInputFocused,
-                ]}
-                placeholder="What's happening?"
-                placeholderTextColor={themeColors.textTertiary}
-                value={message}
-                onChangeText={setMessage}
-                onFocus={(e: any) => { sheetProps.onFocus(e); setIsFocused(true); }}
-                onBlur={(e: any) => { sheetProps.onBlur(e); setIsFocused(false); }}
-                multiline
-                autoFocus={false}
-                maxLength={maxLength + 100}
-                selection={selection}
-                onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-                parser={parseMarkdown}
-                markdownStyle={getMarkdownStyle(themeColors)}
-              />
-            )}
-          </SheetInput>
+          {/* Rich Text Editor — 10tap WebView */}
+          <View style={styles.editorContainer}>
+            <RichText
+              editor={editor}
+              style={styles.richText}
+              scrollEnabled={true}
+              nestedScrollEnabled={true}
+            />
+          </View>
 
           {/* Media Preview */}
           {attachments.length > 0 && (
@@ -402,13 +441,6 @@ export function CreatePostModal({
               video={videoAttachment}
               onRemove={handleVideoRemove}
             />
-          )}
-
-          {/* Character Count */}
-          {showCharCount && (
-            <Text style={[styles.charCount, { color: themeColors.textTertiary }, isOverLimit && styles.charCountOver]}>
-              {charCount}/{maxLength}
-            </Text>
           )}
         </View>
       </BottomSheet>
@@ -463,27 +495,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
 
-  messageInput: {
+  editorContainer: {
     flex: 1,
-    fontSize: typography.size.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    textAlignVertical: 'top',
-    minHeight: 120,
+    minHeight: 200,
   },
 
-  messageInputFocused: {
-    // Optional focus styling
-  },
-
-  charCount: {
-    fontSize: typography.size.xs,
-    textAlign: 'right',
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xs,
-  },
-
-  charCountOver: {
+  richText: {
+    flex: 1,
   },
 
   footerInner: {

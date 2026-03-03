@@ -6,11 +6,11 @@ import { useState } from 'react';
 import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { DropdownMenu } from '@/components/common';
+import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, shadows } from '@/constants/layout';
 import { deactivateAccount, deleteAccount } from '@/services/api/account';
 
 interface ProfileMenuProps {
@@ -208,11 +208,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: spacing.xl,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    ...shadows.lg,
   },
   modalTitle: {
     fontSize: typography.size.lg,

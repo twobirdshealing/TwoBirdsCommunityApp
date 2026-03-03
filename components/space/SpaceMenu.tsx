@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
-import { DropdownMenu } from '@/components/common';
+import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { spacesApi } from '@/services/api/spaces';
 

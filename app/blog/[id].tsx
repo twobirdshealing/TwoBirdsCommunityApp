@@ -20,14 +20,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCachedData } from '@/hooks/useCachedData';
 import { HtmlContent } from '@/components/common/HtmlContent';
-import { LoadingSpinner, ErrorMessage } from '@/components/common';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { WPPost } from '@/types/blog';
 import { blogApi } from '@/services/api/blog';
-import { PageHeader } from '@/components/navigation';
+import { PageHeader } from '@/components/navigation/PageHeader';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
-import { BlogCommentSheet } from '@/components/blog';
+import { BlogCommentSheet } from '@/components/blog/BlogCommentSheet';
 import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 import { formatFullDate } from '@/utils/formatDate';
 

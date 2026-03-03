@@ -15,8 +15,8 @@ import { hapticHeavy } from '@/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { TabBarProvider, useTabBar } from '@/contexts/TabBarContext';
-import { TopHeader } from '@/components/navigation';
-import { MiniPlayer } from '@/components/bookclub';
+import { TopHeader } from '@/components/navigation/TopHeader';
+import { MiniPlayer } from '@/components/bookclub/MiniPlayer';
 
 // -----------------------------------------------------------------------------
 // Tab Bar Icon Component

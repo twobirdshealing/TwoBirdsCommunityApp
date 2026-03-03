@@ -13,11 +13,10 @@ import {
   Image,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
-import { hapticLight } from '@/utils/haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -128,13 +127,8 @@ function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps)
     transform: [{ rotate: `${shimmerRotation.value}deg` }],
   }));
   
-  const handlePress = () => {
-    hapticLight();
-    onPress?.();
-  };
-  
   return (
-    <TouchableOpacity style={styles.item} onPress={handlePress} activeOpacity={0.8}>
+    <AnimatedPressable style={styles.item} onPress={onPress}>
       {/* Date - NOW ON TOP */}
       <Text style={[styles.itemDate, { color: themeColors.primary }]}>{formatShortDate(event.start)}</Text>
       
@@ -170,7 +164,7 @@ function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps)
           {shortTitle}
         </Text>
       </View>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 

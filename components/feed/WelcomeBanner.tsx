@@ -17,7 +17,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { WelcomeBanner as WelcomeBannerType, WelcomeBannerButton } from '@/types/feed';
 import { stripHtmlTags } from '@/utils/htmlToText';
@@ -220,12 +220,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
     overflow: 'hidden',
-    // Shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    ...shadows.md,
   },
 
   closeButton: {

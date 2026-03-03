@@ -30,11 +30,15 @@ import { profilesApi, patchProfileMedia } from '@/services/api/profiles';
 import { updateStoredUser } from '@/services/auth';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import { Profile } from '@/types/user';
-import { DropdownMenu, LoadingSpinner, ErrorMessage } from '@/components/common';
+import { DropdownMenu } from '@/components/common/DropdownMenu';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 
-import { AboutTab, ProfileHeader, ProfileMenu } from '@/components/profile';
-import { PageHeader } from '@/components/navigation';
+import { AboutTab } from '@/components/profile/AboutTab';
+import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { ProfileMenu } from '@/components/profile/ProfileMenu';
+import { PageHeader } from '@/components/navigation/PageHeader';
 
 // -----------------------------------------------------------------------------
 // Component

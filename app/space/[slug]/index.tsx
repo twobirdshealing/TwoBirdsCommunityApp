@@ -25,7 +25,7 @@ import { FeedList } from '@/components/feed/FeedList';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import { SpaceMenu } from '@/components/space/SpaceMenu';
 import { SpaceInfoHeader } from '@/components/space/SpaceInfoHeader';
-import { PageHeader } from '@/components/navigation';
+import { PageHeader } from '@/components/navigation/PageHeader';
 import { CreatePostModal } from '@/components/composer/CreatePostModal';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useFeedActions } from '@/hooks/useFeedActions';

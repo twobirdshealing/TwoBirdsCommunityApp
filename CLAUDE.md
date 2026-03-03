@@ -2,7 +2,16 @@ This is a companion for our social media site running off Fluent community and W
 
 do not create new depndacies or utilites without asking. check entire project first we may already have these thigns centrailsed functions ect. dont recreate things duplciate code. 
 
-we DONT want to break things! 
+we DONT want to break things!
+
+## Import Rules — Direct Imports Only
+
+**No barrel files (`index.ts` re-exports).** Always import directly from the source file. Metro bundler doesn't tree-shake — barrel imports force it to load every sibling module even when you only need one. They also cause circular dependency issues and slow cold start on mobile.
+
+- `import { Avatar } from '@/components/common/Avatar'` — correct
+- `import { Avatar } from '@/components/common'` — WRONG (barrel import)
+
+Do NOT create `index.ts` barrel/re-export files in any directory.
 
 ## Companion Plugins & Themes
 

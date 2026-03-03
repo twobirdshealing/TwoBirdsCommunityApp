@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { MediaPreview } from '@/components/composer/MediaPreview';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, shadows } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { MediaItem, mediaApi } from '@/services/api/media';
 import { Ionicons } from '@expo/vector-icons';
@@ -261,17 +261,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+    ...shadows.sm,
   },
 
   attachButton: {

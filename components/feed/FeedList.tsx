@@ -5,7 +5,9 @@
 // =============================================================================
 
 import { Ionicons } from '@expo/vector-icons';
-import { EmptyState, ErrorMessage, LoadingSpinner } from '@/components/common';
+import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAudioPlayerContext } from '@/contexts/AudioPlayerContext';
 import { spacing, sizing } from '@/constants/layout';

@@ -19,6 +19,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { spacing, typography } from '@/constants/layout';
 import { hapticLight, hapticMedium } from '@/utils/haptics';
 
@@ -267,17 +268,16 @@ export function MemberCard({
     </View>
   );
 
-  // Wrap in Pressable if onPress provided
+  // Wrap in AnimatedPressable if onPress provided
   if (onPress) {
     return (
-      <Pressable
+      <AnimatedPressable
         onPress={() => onPress(member)}
-        style={({ pressed }) => pressed && [styles.pressed, { backgroundColor: themeColors.backgroundSecondary }]}
         accessibilityRole="button"
         accessibilityLabel={`View ${displayName}'s profile`}
       >
         {content}
-      </Pressable>
+      </AnimatedPressable>
     );
   }
 
@@ -299,10 +299,6 @@ const styles = StyleSheet.create({
 
   containerCompact: {
     paddingVertical: spacing.sm,
-  },
-
-  pressed: {
-    opacity: 0.7,
   },
 
   // Avatar

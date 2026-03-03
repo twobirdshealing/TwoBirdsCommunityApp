@@ -21,11 +21,13 @@ import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCachedData } from '@/hooks/useCachedData';
-import { LoadingSpinner, ErrorMessage, EmptyState } from '@/components/common';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { EmptyState } from '@/components/common/EmptyState';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { YOUTUBE_CHANNEL_URL } from '@/constants/config';
 import { youtubeApi } from '@/services/api/youtube';
-import { PageHeader } from '@/components/navigation';
+import { PageHeader } from '@/components/navigation/PageHeader';
 import type { YouTubePlaylist } from '@/types/youtube';
 
 // -----------------------------------------------------------------------------
@@ -116,7 +118,6 @@ export default function YouTubeScreen() {
             data={data}
             keyExtractor={(item) => item.id}
             renderItem={renderPlaylistCard}
-            estimatedItemSize={220}
             contentContainerStyle={styles.listContent}
             refreshControl={
               <RefreshControl

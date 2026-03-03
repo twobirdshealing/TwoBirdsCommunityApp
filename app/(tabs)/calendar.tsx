@@ -20,12 +20,10 @@ import { calendarApi } from '@/services/api/calendar';
 import { useCachedData } from '@/hooks/useCachedData';
 import { CalendarEvent, CalendarViewMode } from '@/types/calendar';
 import { useEventWebView } from '@/hooks/useEventWebView';
-import {
-  CalendarHeader,
-  EventCard,
-  EventList,
-  MonthGrid,
-} from '@/components/calendar';
+import { CalendarHeader } from '@/components/calendar/CalendarHeader';
+import { EventCard } from '@/components/calendar/EventCard';
+import { EventList } from '@/components/calendar/EventList';
+import { MonthGrid } from '@/components/calendar/MonthGrid';
 
 // -----------------------------------------------------------------------------
 // Helpers
