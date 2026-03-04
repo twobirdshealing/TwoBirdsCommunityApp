@@ -21,6 +21,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useCachedData } from '@/hooks/useCachedData';
 import { useFeedActions } from '@/hooks/useFeedActions';
+import { cacheEvents } from '@/utils/cacheEvents';
+import { optimisticUpdate } from '@/utils/optimisticUpdate';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -44,6 +46,7 @@ export default function BookmarksScreen() {
     mutate,
   } = useCachedData<Feed[]>({
     cacheKey: 'tbc_bookmarks',
+    invalidateOn: 'bookmarks',
     fetcher: async () => {
       const response = await feedsApi.getBookmarks();
 
@@ -101,17 +104,19 @@ export default function BookmarksScreen() {
   // Custom bookmark toggle — removes feed from list when unbookmarked
   const handleBookmarkToggle = async (feed: Feed, isBookmarked: boolean) => {
     try {
-      await feedsApi.toggleBookmark(feed.id, !isBookmarked);
-      if (!isBookmarked) {
-        setFeeds(prev => prev.filter(f => f.id !== feed.id));
-      } else {
-        setFeeds(prev =>
-          prev.map(f => f.id === feed.id ? { ...f, bookmarked: isBookmarked } : f)
-        );
+      const response = await optimisticUpdate(
+        setFeeds,
+        prev => isBookmarked
+          ? prev.map(f => f.id === feed.id ? { ...f, bookmarked: isBookmarked } : f)
+          : prev.filter(f => f.id !== feed.id),
+        () => feedsApi.toggleBookmark(feed.id, !isBookmarked),
+      );
+      if (response.success) {
+        cacheEvents.emit('feeds');
       }
     } catch (err) {
       if (__DEV__) console.error('Bookmark error:', err);
-      Alert.alert('Error', 'Failed to update bookmark');
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update bookmark');
     }
   };
 

@@ -9,6 +9,7 @@
 // 3. App resumes from background → fetch fresh (via useAppFocus)
 // 4. refresh() called → fetch fresh (imperative pull-to-refresh)
 // 5. mutate() called → update state + persist (optimistic updates)
+// 6. invalidateOn event fires → fetch fresh (cross-screen cache invalidation)
 //
 // Usage (screen):
 //   const { data, isLoading, refresh } = useCachedData({
@@ -28,6 +29,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from '@/utils/logger';
+import { cacheEvents, CacheEvent } from '@/utils/cacheEvents';
 import { useAppFocus } from './useAppFocus';
 
 const log = createLogger('CachedData');
@@ -47,6 +49,8 @@ interface UseCachedDataOptions<T> {
   refreshOnFocus?: boolean;
   /** Gate all fetching. Default: true. */
   enabled?: boolean;
+  /** Auto-refresh when this cache event fires (cross-screen invalidation). */
+  invalidateOn?: CacheEvent;
 }
 
 interface UseCachedDataResult<T> {
@@ -77,6 +81,7 @@ export function useCachedData<T>({
   refreshKey = 0,
   refreshOnFocus = true,
   enabled = true,
+  invalidateOn,
 }: UseCachedDataOptions<T>): UseCachedDataResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,9 +103,10 @@ export function useCachedData<T>({
   );
 
   // -- Core fetch function --
-  const fetchFresh = useCallback(async () => {
+  // silent=true skips the isRefreshing flag (no pull-to-refresh spinner flash)
+  const fetchFresh = useCallback(async (silent = false) => {
     try {
-      setIsRefreshing(true);
+      if (!silent) setIsRefreshing(true);
       const result = await fetcherRef.current();
       if (isMounted.current) {
         setData(result);
@@ -165,6 +171,12 @@ export function useCachedData<T>({
     }, [fetchFresh]),
     enabled && refreshOnFocus,
   );
+
+  // -- Cache event invalidation (cross-screen refresh, silent — no spinner) --
+  useEffect(() => {
+    if (!invalidateOn || !enabled) return;
+    return cacheEvents.subscribe(invalidateOn, () => fetchFresh(true));
+  }, [invalidateOn, enabled, fetchFresh]);
 
   // -- Imperative refresh (for pull-to-refresh) --
   const refresh = useCallback(async () => {

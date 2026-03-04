@@ -7,7 +7,7 @@
 // - Sticky badge for pinned posts
 // =============================================================================
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -42,6 +42,7 @@ import { REACTION_EMOJI, REACTION_COLORS, REACTION_NAMES } from '@/constants/rea
 import { extractYouTubeId } from '@/utils/youtube';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
+import { SurveyCard } from '@/components/feed/SurveyCard';
 
 // -----------------------------------------------------------------------------
 // Media Detection Helper
@@ -141,6 +142,7 @@ export function FeedCard({
   const { reactions, getReaction, display } = useReactionConfig();
   const defaultReactionId = reactions[0]?.id || 'like';
   const [isBookmarked, setIsBookmarked] = useState(feed.bookmarked || false);
+  useEffect(() => { setIsBookmarked(feed.bookmarked || false); }, [feed.bookmarked]);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [showMediaViewer, setShowMediaViewer] = useState(false);
   const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
@@ -171,6 +173,8 @@ export function FeedCard({
   const plainTextLength = stripHtmlTags(rawHtml).length;
   const isLongContent = variant === 'compact' && plainTextLength > 300;
   const [expanded, setExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const MAX_COLLAPSED_HEIGHT = 132;
   const { width: windowWidth } = useWindowDimensions();
   // Card has marginHorizontal: spacing.md (12) + padding: spacing.lg (16) on each side
   const contentWidth = windowWidth - spacing.md * 2 - spacing.lg * 2;
@@ -360,12 +364,21 @@ export function FeedCard({
           styles.contentContainer,
           variant !== 'full' && !expanded ? styles.contentCollapsed : undefined,
         ]}>
-          <HtmlContent html={rawHtml} contentWidth={contentWidth} />
+          <View onLayout={(e) => {
+            if (variant === 'compact' && !expanded) {
+              const height = e.nativeEvent.layout.height;
+              if (height >= MAX_COLLAPSED_HEIGHT) {
+                setIsOverflowing(true);
+              }
+            }
+          }}>
+            <HtmlContent html={rawHtml} contentWidth={contentWidth} />
+          </View>
         </View>
       )}
 
       {/* ===== Show More / Show Less ===== */}
-      {isLongContent && (
+      {(isLongContent || isOverflowing) && (
         <TouchableOpacity onPress={() => setExpanded(!expanded)} activeOpacity={0.7}>
           <Text style={[styles.showMoreText, { color: themeColors.primary }]}>
             {expanded ? 'Show less' : 'Show more'}
@@ -489,6 +502,11 @@ export function FeedCard({
         </View>
       )}
       
+      {/* ===== Survey/Poll ===== */}
+      {feed.content_type === 'survey' && feed.meta?.survey_config && (
+        <SurveyCard config={feed.meta.survey_config} feedId={feed.id} />
+      )}
+
       {/* ===== Footer (matches web layout: left actions + right summary) ===== */}
       <View style={[styles.footer, { borderTopColor: themeColors.borderLight }]}>
         {/* Left side: reaction + comment buttons */}
@@ -719,7 +737,7 @@ const styles = StyleSheet.create({
   },
 
   contentCollapsed: {
-    maxHeight: 132, // ~6 lines at lineHeight 22
+    maxHeight: 132, // Must match MAX_COLLAPSED_HEIGHT in component
     overflow: 'hidden' as const,
   },
 

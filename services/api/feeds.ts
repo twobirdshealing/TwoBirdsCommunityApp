@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS, TBC_MR_URL } from '@/constants/config';
-import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType, WelcomeBannerResponse } from '@/types/feed';
+import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType, SurveyConfig, WelcomeBannerResponse } from '@/types/feed';
 import { del, get, patch, post, request } from './client';
 
 // -----------------------------------------------------------------------------
@@ -124,6 +124,12 @@ export interface CreateFeedData {
     url: string;
   };
   meta?: Record<string, any>;
+  // Survey/poll data
+  survey?: {
+    type: 'single_choice' | 'multi_choice';
+    options: { label: string; slug: string }[];
+    end_date: string;
+  };
 }
 
 export async function createFeed(data: CreateFeedData) {
@@ -164,6 +170,16 @@ export async function createFeed(data: CreateFeedData) {
   // Video embed (oembed) - replaces null media field
   if (data.media) {
     requestData.media = data.media;
+  }
+
+  // Meta (for GIF attachments via media_preview)
+  if (data.meta) {
+    requestData.meta = data.meta;
+  }
+
+  // Survey/poll data
+  if (data.survey) {
+    requestData.survey = data.survey;
   }
 
   if (__DEV__) console.log('[FeedsAPI] Creating feed with:', JSON.stringify(requestData, null, 2));
@@ -341,6 +357,29 @@ export async function getFeedReactions(feedId: number, type?: ReactionType) {
 }
 
 // -----------------------------------------------------------------------------
+// Cast Survey Vote
+// -----------------------------------------------------------------------------
+// POST /feeds/{id}/apps/survey-vote - returns updated survey_config
+
+export interface SurveyVoteResponse {
+  survey_config: SurveyConfig;
+}
+
+export async function castSurveyVote(feedId: number, voteIndexes: string[]) {
+  return post<SurveyVoteResponse>(ENDPOINTS.SURVEY_VOTE(feedId), { vote_indexes: voteIndexes });
+}
+
+// -----------------------------------------------------------------------------
+// Get Survey Voters for an Option
+// -----------------------------------------------------------------------------
+
+export async function getSurveyVoters(feedId: number, optionSlug: string) {
+  return get<{ voters: Array<{ user_id: number; display_name: string; avatar: string }> }>(
+    ENDPOINTS.SURVEY_VOTERS(feedId, optionSlug)
+  );
+}
+
+// -----------------------------------------------------------------------------
 // Export as object
 // -----------------------------------------------------------------------------
 
@@ -360,6 +399,8 @@ export const feedsApi = {
   getBookmarks,
   getFeedReactions,
   getReactionBreakdownUsers,
+  castSurveyVote,
+  getSurveyVoters,
 };
 
 export default feedsApi;

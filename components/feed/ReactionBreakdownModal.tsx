@@ -69,7 +69,8 @@ export function ReactionBreakdownModal({
         setTotal(result.data.total || 0);
       }
     } catch (err) {
-      // silently fail
+      setBreakdown([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }

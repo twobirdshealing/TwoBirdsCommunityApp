@@ -64,13 +64,14 @@ export interface CreateCommentData {
     height: number;
     provider: string;
   }>;
+  meta?: Record<string, any>;
 }
 
 export async function createComment(postId: number, data: CreateCommentData) {
   // Build request matching EXACTLY what web app sends
   const requestData: Record<string, any> = {
     comment: data.comment,  // FIXED: 'comment' not 'message'
-    meta: null,             // Web app sends this
+    meta: data.meta || null, // Pass meta if provided (e.g. GIF attachment), null otherwise
   };
   
   // Optional fields

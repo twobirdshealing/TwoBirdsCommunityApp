@@ -36,6 +36,8 @@ export const ENDPOINTS = {
   POST_COMMENTS: (id: number) => `/feeds/${id}/comments`,
   FEED_REACT: (id: number) => `/feeds/${id}/react`,
   FEED_REACTIONS: (id: number) => `/feeds/${id}/reactions`,
+  SURVEY_VOTE: (id: number) => `/feeds/${id}/apps/survey-vote`,
+  SURVEY_VOTERS: (id: number, slug: string) => `/feeds/${id}/apps/survey-voters/${slug}`,
   WELCOME_BANNER: '/feeds/welcome-banner',
   
   // Spaces

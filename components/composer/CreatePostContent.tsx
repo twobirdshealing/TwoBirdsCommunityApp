@@ -24,9 +24,15 @@ import { SpaceSelector } from './SpaceSelector';
 import { MediaPreview } from './MediaPreview';
 import { VideoAttachModal } from './VideoAttachModal';
 import { VideoPreview } from './VideoPreview';
+import { GifPickerModal } from './GifPickerModal';
+import { GifPreview } from './GifPreview';
+import { PollBuilderSheet } from './PollBuilderSheet';
+import { PollPreview } from './PollPreview';
+import type { PollData } from './PollBuilderSheet';
 import { MediaItem, mediaApi } from '@/services/api/media';
 import { OembedData } from '@/services/api/feeds';
 import { Feed } from '@/types/feed';
+import { GifAttachment } from '@/types/gif';
 import { htmlToMarkdown } from '@/utils/htmlToMarkdown';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -53,6 +59,11 @@ export interface ComposerSubmitData {
   };
   parent_id?: number;
   meta?: Record<string, any>;
+  survey?: {
+    type: 'single_choice' | 'multi_choice';
+    options: { label: string; slug: string }[];
+    end_date: string;
+  };
 }
 
 interface CreatePostContentProps {
@@ -108,6 +119,23 @@ export function CreatePostContent({
         content_type: 'video',
       }
     : null;
+  const initialGif: GifAttachment | null = editFeed?.meta?.media_preview?.provider === 'giphy'
+    ? {
+        image: editFeed.meta.media_preview.image || '',
+        width: editFeed.meta.media_preview.width || 0,
+        height: editFeed.meta.media_preview.height || 0,
+        previewUrl: editFeed.meta.media_preview.image || '',
+      }
+    : null;
+
+  const initialPoll: PollData | null =
+    editFeed?.content_type === 'survey' && editFeed?.meta?.survey_config
+      ? {
+          type: editFeed.meta.survey_config.type,
+          options: editFeed.meta.survey_config.options.map(o => o.label),
+          end_date: editFeed.meta.survey_config.end_date || '',
+        }
+      : null;
 
   const effectiveSpaceSlug = isEditing ? editFeed.space?.slug : spaceSlug;
   const effectiveSpaceName = isEditing ? editFeed.space?.title : spaceName;
@@ -215,6 +243,9 @@ export function CreatePostContent({
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [gifAttachment, setGifAttachment] = useState<GifAttachment | null>(initialGif);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [pollData, setPollData] = useState<PollData | null>(initialPoll);
   const [selectedSpaceSlug, setSelectedSpaceSlug] = useState<string | null>(effectiveSpaceSlug || null);
   const [selectedSpaceName, setSelectedSpaceName] = useState<string | null>(effectiveSpaceName || null);
 
@@ -291,17 +322,51 @@ export function CreatePostContent({
 
   const handleVideoAttach = (data: OembedData) => {
     setVideoAttachment(data);
-    setAttachments([]);
   };
 
   const handleVideoRemove = () => setVideoAttachment(null);
+
+  const handleGifPress = () => setShowGifPicker(true);
+
+  const handleGifSelect = (gif: GifAttachment) => {
+    setGifAttachment(gif);
+  };
+
+  const handleGifRemove = () => setGifAttachment(null);
+
+  const [showPollSheet, setShowPollSheet] = useState(false);
+
+  const handlePollPress = () => {
+    if (pollData) {
+      // Already have a poll — open sheet to edit it
+      setShowPollSheet(true);
+    } else {
+      // No poll yet — open sheet to create one
+      setShowPollSheet(true);
+    }
+  };
+
+  const handlePollDone = (data: PollData) => {
+    setPollData(data);
+  };
+
+  const handlePollRemove = () => setPollData(null);
 
   const handleSubmit = async () => {
     const html = await editor.getHTML();
     const markdown = htmlToMarkdown(html);
     const plainText = await editor.getText();
 
-    if (!markdown.trim() && attachments.length === 0 && !videoAttachment) return;
+    if (!markdown.trim() && attachments.length === 0 && !videoAttachment && !gifAttachment && !pollData) return;
+
+    // Validate poll options if poll is active
+    if (pollData) {
+      const filledOptions = pollData.options.filter(o => o.trim());
+      if (filledOptions.length < 2) {
+        Alert.alert('Poll Error', 'Please add at least 2 poll options.');
+        return;
+      }
+    }
 
     if (!selectedSpaceSlug && !effectiveSpaceSlug) {
       Alert.alert('Select a Space', 'Please select which space to post in.');
@@ -341,16 +406,42 @@ export function CreatePostContent({
         submitData.media = { type: 'oembed', url: videoAttachment.url };
       }
 
+      if (gifAttachment) {
+        submitData.meta = {
+          media_preview: {
+            image: gifAttachment.image,
+            type: 'image',
+            provider: 'inline', // Server converts 'inline' to 'giphy' on save
+            width: gifAttachment.width,
+            height: gifAttachment.height,
+          },
+        };
+      }
+
+      if (pollData) {
+        const filledOptions = pollData.options.filter(o => o.trim());
+        submitData.survey = {
+          type: pollData.type,
+          options: filledOptions.map((label, i) => ({
+            label: label.trim(),
+            slug: `opt_${i + 1}`,
+          })),
+          end_date: pollData.end_date,
+        };
+      }
+
       await onSubmit(submitData);
 
       editor.setContent('');
       setTitle('');
       setAttachments([]);
       setVideoAttachment(null);
+      setGifAttachment(null);
+      setPollData(null);
       onClose();
     } catch (error) {
       if (__DEV__) console.error('Submit error:', error);
-      Alert.alert('Error', 'Failed to post. Please try again.');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to post. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -433,17 +524,38 @@ export function CreatePostContent({
           />
         )}
 
+        {/* GIF Preview */}
+        {gifAttachment && (
+          <GifPreview
+            gif={gifAttachment}
+            onRemove={handleGifRemove}
+          />
+        )}
+
+        {/* Poll Preview */}
+        {pollData && (
+          <PollPreview
+            data={pollData}
+            onEdit={() => setShowPollSheet(true)}
+            onRemove={handlePollRemove}
+          />
+        )}
+
         <View style={[styles.toolbarArea, { borderTopColor: themeColors.border, backgroundColor: themeColors.surface }]}>
           <MarkdownToolbar editor={editor} />
           <ComposerToolbar
             onImagePress={handleImagePicker}
             onVideoPress={handleVideoPress}
+            onGifPress={handleGifPress}
+            onPollPress={handlePollPress}
             onSubmit={handleSubmit}
             submitLabel={actualSubmitLabel}
             canSubmit={canSubmit}
             isSubmitting={isSubmitting}
             isUploading={isUploading}
             hasVideo={videoAttachment !== null}
+            hasGif={gifAttachment !== null}
+            hasPoll={pollData !== null}
           />
         </View>
       </KeyboardAvoidingView>
@@ -453,6 +565,21 @@ export function CreatePostContent({
         visible={showVideoModal}
         onClose={() => setShowVideoModal(false)}
         onAttach={handleVideoAttach}
+      />
+
+      {/* GIF Picker Modal */}
+      <GifPickerModal
+        visible={showGifPicker}
+        onClose={() => setShowGifPicker(false)}
+        onSelect={handleGifSelect}
+      />
+
+      {/* Poll Builder Sheet */}
+      <PollBuilderSheet
+        visible={showPollSheet}
+        onClose={() => setShowPollSheet(false)}
+        onDone={handlePollDone}
+        initialData={pollData}
       />
     </>
   );

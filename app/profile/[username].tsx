@@ -57,6 +57,7 @@ export default function UserProfileScreen() {
   // Fetch Profile (refreshOnFocus replaces useFocusEffect)
   const { data: profile, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh, mutate } = useCachedData<Profile>({
     cacheKey: `tbc_profile_${username}`,
+    invalidateOn: 'profile',
     fetcher: async () => {
       const response = await profilesApi.getProfile(username!);
       if (response.success && response.data.profile) {

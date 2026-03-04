@@ -15,6 +15,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { spacesApi } from '@/services/api/spaces';
+import { cacheEvents } from '@/utils/cacheEvents';
 
 interface SpaceMenuProps {
   slug: string;
@@ -42,6 +43,7 @@ export function SpaceMenu({ slug, role, onLeaveSuccess }: SpaceMenuProps) {
           try {
             setIsLeaving(true);
             await spacesApi.leaveSpace(slug);
+            cacheEvents.emit('spaces');
             router.back();
             onLeaveSuccess?.();
           } catch (error) {

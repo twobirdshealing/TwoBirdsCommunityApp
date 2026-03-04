@@ -6,6 +6,7 @@
 // =============================================================================
 
 import { useCallback } from 'react';
+import { Alert } from 'react-native';
 import { Feed, ReactionType } from '@/types/feed';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { updateBreakdownOptimistically } from '@/utils/reactionHelpers';
@@ -57,6 +58,7 @@ export function useFeedReactions(
     } catch (err) {
       // Revert on error
       setFeeds(prev => prev.map(f => (f.id === feedId ? feed : f)));
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update reaction');
     }
   }, [feeds, setFeeds, getReaction]);
 

@@ -12,6 +12,8 @@ import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feed } from '@/types/feed';
 import { feedsApi } from '@/services/api/feeds';
+import { cacheEvents } from '@/utils/cacheEvents';
+import { optimisticUpdate } from '@/utils/optimisticUpdate';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -98,15 +100,17 @@ export function useFeedActions({
 
   const handleBookmarkToggle = async (feed: Feed, isBookmarked: boolean) => {
     try {
-      await feedsApi.toggleBookmark(feed.id, !isBookmarked);
-      setFeeds(prev =>
-        prev.map(f =>
-          f.id === feed.id ? { ...f, bookmarked: isBookmarked } : f
-        )
+      const response = await optimisticUpdate(
+        setFeeds,
+        prev => prev.map(f => f.id === feed.id ? { ...f, bookmarked: isBookmarked } : f),
+        () => feedsApi.toggleBookmark(feed.id, !isBookmarked),
       );
+      if (response.success) {
+        cacheEvents.emit('bookmarks');
+      }
     } catch (err) {
       if (__DEV__) console.error('Bookmark error:', err);
-      Alert.alert('Error', 'Failed to update bookmark');
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update bookmark');
     }
   };
 

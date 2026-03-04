@@ -27,6 +27,8 @@ import { SpaceInfoHeader } from '@/components/space/SpaceInfoHeader';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useFeedActions } from '@/hooks/useFeedActions';
+import { cacheEvents } from '@/utils/cacheEvents';
+import { optimisticUpdate } from '@/utils/optimisticUpdate';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -146,6 +148,9 @@ export default function SpacePage() {
     fetchSpace();
     fetchFeeds();
   }, [fetchSpace, fetchFeeds]);
+
+  // Cross-screen cache invalidation (e.g. post created from composer)
+  useEffect(() => cacheEvents.subscribe('feeds', () => fetchFeeds(true)), [fetchFeeds]);
   
   // ---------------------------------------------------------------------------
   // Shared Feed Actions
@@ -170,31 +175,22 @@ export default function SpacePage() {
 
   const handlePin = async (feed: Feed) => {
     const newStickyState = !feed.is_sticky;
-    
-    // Optimistic update
-    setFeeds(prevFeeds => {
-      const updated = prevFeeds.map(f =>
-        f.id === feed.id ? { ...f, is_sticky: newStickyState } : f
-      );
-      
-      // Re-sort: sticky first
-      return updated.sort((a, b) => {
-        if (a.is_sticky && !b.is_sticky) return -1;
-        if (!a.is_sticky && b.is_sticky) return 1;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-    });
-    
     try {
-      const response = await feedsApi.toggleSticky(feed.id, newStickyState);
-      
+      const response = await optimisticUpdate(
+        setFeeds,
+        prev => {
+          const updated = prev.map(f =>
+            f.id === feed.id ? { ...f, is_sticky: newStickyState } : f
+          );
+          return updated.sort((a, b) => {
+            if (a.is_sticky && !b.is_sticky) return -1;
+            if (!a.is_sticky && b.is_sticky) return 1;
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          });
+        },
+        () => feedsApi.toggleSticky(feed.id, newStickyState),
+      );
       if (!response.success) {
-        // Revert on error
-        setFeeds(prevFeeds =>
-          prevFeeds.map(f =>
-            f.id === feed.id ? { ...f, is_sticky: !newStickyState } : f
-          )
-        );
         Alert.alert('Error', response.error?.message || 'Failed to update pin');
       }
     } catch (err) {

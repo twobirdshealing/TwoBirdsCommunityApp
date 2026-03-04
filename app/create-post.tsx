@@ -6,6 +6,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Feed } from '@/types/feed';
 import { feedsApi } from '@/services/api/feeds';
+import { cacheEvents } from '@/utils/cacheEvents';
 
 export default function CreatePostScreen() {
   const { spaceSlug, spaceName, editId } = useLocalSearchParams<{
@@ -41,6 +42,8 @@ export default function CreatePostScreen() {
         title: data.title,
         content_type: data.content_type,
         media_images: data.media_images,
+        meta: data.meta,
+        survey: data.survey,
       });
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to update post');
@@ -53,11 +56,14 @@ export default function CreatePostScreen() {
         content_type: data.content_type,
         media_images: data.media_images,
         media: data.media,
+        meta: data.meta,
+        survey: data.survey,
       });
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to create post');
       }
     }
+    cacheEvents.emit('feeds');
   };
 
   if (loading) {

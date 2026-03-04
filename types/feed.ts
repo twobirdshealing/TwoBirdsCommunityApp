@@ -6,6 +6,23 @@ import type { Comment } from './comment';
 import { XProfile } from './user';
 
 // -----------------------------------------------------------------------------
+// Survey / Poll Types
+// -----------------------------------------------------------------------------
+
+export interface SurveyOption {
+  slug: string;         // 'opt_1', 'opt_2', etc.
+  label: string;
+  vote_counts?: number; // Omitted by server when 0
+  voted?: boolean;      // Omitted by server when false
+}
+
+export interface SurveyConfig {
+  type: 'single_choice' | 'multi_choice';
+  options: SurveyOption[];
+  end_date: string;     // ISO date or empty string
+}
+
+// -----------------------------------------------------------------------------
 // Main Feed Type
 // -----------------------------------------------------------------------------
 
@@ -57,6 +74,7 @@ export interface Feed {
       title?: string;
     }[];
 
+    survey_config?: SurveyConfig;
   };
 
   // User reaction state (from API when authenticated)

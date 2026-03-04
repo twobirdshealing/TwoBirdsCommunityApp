@@ -217,7 +217,6 @@ export default function AudiobookPlayerScreen() {
           visible={infoVisible}
           onClose={() => setInfoVisible(false)}
           title="About This Book"
-          heightPercentage={50}
         >
           <BottomSheetScrollView contentContainerStyle={styles.infoContent}>
             <Text style={[styles.infoAuthor, { color: themeColors.textSecondary }]}>
@@ -235,7 +234,6 @@ export default function AudiobookPlayerScreen() {
         visible={chaptersVisible}
         onClose={() => setChaptersVisible(false)}
         title="Chapters"
-        heightPercentage={70}
       >
         <ChapterList onClose={() => setChaptersVisible(false)} />
       </BottomSheet>
@@ -245,7 +243,6 @@ export default function AudiobookPlayerScreen() {
         visible={bookmarksVisible}
         onClose={() => setBookmarksVisible(false)}
         title="Bookmarks"
-        heightPercentage={70}
       >
         <BookmarkList onClose={() => setBookmarksVisible(false)} />
       </BottomSheet>
@@ -255,7 +252,6 @@ export default function AudiobookPlayerScreen() {
         visible={scheduleVisible}
         onClose={() => setScheduleVisible(false)}
         title="Schedule"
-        heightPercentage={60}
       >
         <ScheduleSheet
           schedule={currentBook.schedule_data ?? []}

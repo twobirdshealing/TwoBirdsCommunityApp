@@ -22,6 +22,8 @@ import { hapticLight, hapticMedium } from '@/utils/haptics';
 interface ComposerToolbarProps {
   onImagePress: () => void;
   onVideoPress?: () => void;
+  onGifPress?: () => void;
+  onPollPress?: () => void;
   onEmojiPress?: () => void;
   onSubmit: () => void;
   isUploading: boolean;
@@ -29,6 +31,8 @@ interface ComposerToolbarProps {
   canSubmit: boolean;
   submitLabel: string;
   hasVideo?: boolean;
+  hasGif?: boolean;
+  hasPoll?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -38,6 +42,8 @@ interface ComposerToolbarProps {
 export function ComposerToolbar({
   onImagePress,
   onVideoPress,
+  onGifPress,
+  onPollPress,
   onEmojiPress,
   onSubmit,
   isUploading,
@@ -45,6 +51,8 @@ export function ComposerToolbar({
   canSubmit,
   submitLabel,
   hasVideo,
+  hasGif,
+  hasPoll,
 }: ComposerToolbarProps) {
   const { colors: themeColors } = useTheme();
 
@@ -56,7 +64,7 @@ export function ComposerToolbar({
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => { hapticLight(); onImagePress(); }}
-          disabled={isUploading || hasVideo}
+          disabled={isUploading}
         >
           {isUploading ? (
             <ActivityIndicator size="small" color={themeColors.primary} />
@@ -64,17 +72,44 @@ export function ComposerToolbar({
             <Ionicons
               name="image-outline"
               size={24}
-              color={hasVideo ? themeColors.textTertiary : themeColors.textSecondary}
+              color={themeColors.textSecondary}
             />
           )}
         </TouchableOpacity>
+
+        {/* GIF Picker */}
+        {onGifPress && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => { hapticLight(); onGifPress(); }}
+          >
+            <Text style={[
+              styles.gifBadge,
+              { color: hasGif ? themeColors.primary : themeColors.textSecondary,
+                borderColor: hasGif ? themeColors.primary : themeColors.textSecondary },
+            ]}>GIF</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Poll */}
+        {onPollPress && (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => { hapticLight(); onPollPress(); }}
+          >
+            <Ionicons
+              name={hasPoll ? 'stats-chart' : 'stats-chart-outline'}
+              size={22}
+              color={hasPoll ? themeColors.primary : themeColors.textSecondary}
+            />
+          </TouchableOpacity>
+        )}
 
         {/* Video Picker */}
         {onVideoPress && (
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => { hapticLight(); onVideoPress?.(); }}
-            disabled={hasVideo}
           >
             <Ionicons
               name="videocam-outline"
@@ -156,6 +191,16 @@ const styles = StyleSheet.create({
 
   submitButtonDisabled: {
     opacity: 0.6,
+  },
+
+  gifBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    borderWidth: 1.5,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    overflow: 'hidden',
   },
 
   submitText: {

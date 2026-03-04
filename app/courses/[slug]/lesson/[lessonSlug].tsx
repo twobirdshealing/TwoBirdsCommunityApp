@@ -229,6 +229,12 @@ export default function LessonViewScreen() {
         }, 1400);
       }
     } catch (err) {
+      // Revert optimistic update
+      setTrack((prev) => {
+        if (!prev) return prev;
+        const lessonIdStr = String(lesson.id);
+        return { ...prev, completed_lessons: prev.completed_lessons.filter((id) => String(id) !== lessonIdStr) };
+      });
       Alert.alert('Error', 'Something went wrong');
       setCompleting(false);
     }

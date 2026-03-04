@@ -81,6 +81,7 @@ export default function SpacesScreen() {
     refresh,
   } = useCachedData<SpacesData>({
     cacheKey: 'tbc_spaces_list',
+    invalidateOn: 'spaces',
     fetcher: async () => {
       const [groupsRes, spacesRes] = await Promise.all([
         spacesApi.getSpaceGroups({ options_only: true }),

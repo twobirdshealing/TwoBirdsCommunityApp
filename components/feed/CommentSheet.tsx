@@ -43,7 +43,10 @@ import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context'
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { MarkdownToolbar } from '@/components/composer/MarkdownToolbar';
+import { GifPickerModal } from '@/components/composer/GifPickerModal';
+import { GifAttachment } from '@/types/gif';
 import { ReactionPicker } from './ReactionPicker';
+import { cacheEvents } from '@/utils/cacheEvents';
 import { ReactionBreakdownModal } from './ReactionBreakdownModal';
 import { ReactionIcon } from './ReactionIcon';
 import { formatRelativeTime } from '@/utils/formatDate';
@@ -92,6 +95,8 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
 
   // Comment input state
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [gifAttachment, setGifAttachment] = useState<GifAttachment | null>(null);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -245,8 +250,21 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   // Handle Image Pick
   // ---------------------------------------------------------------------------
 
+  const handleGifPress = () => {
+    hapticLight();
+    setShowGifPicker(true);
+  };
+
+  const handleGifSelect = (gif: GifAttachment) => {
+    setGifAttachment(gif);
+    setAttachedImages([]); // Mutual exclusivity: GIF clears images
+  };
+
+  const handleGifRemove = () => setGifAttachment(null);
+
   const handlePickImage = async () => {
     hapticLight();
+    setGifAttachment(null); // Mutual exclusivity: images clear GIF
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -301,7 +319,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
     // Get HTML from 10tap editor and convert to markdown
     const html = await commentEditor.getHTML();
     const markdown = htmlToMarkdown(html);
-    if (!markdown.trim() && attachedImages.length === 0) return;
+    if (!markdown.trim() && attachedImages.length === 0 && !gifAttachment) return;
 
     setIsSubmitting(true);
 
@@ -342,12 +360,24 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
 
       const parentId = getReplyParentId();
 
+      // GIF attachment via meta.media_preview
+      const meta = gifAttachment ? {
+        media_preview: {
+          image: gifAttachment.image,
+          type: 'image' as const,
+          provider: 'inline', // Server converts to 'giphy'
+          width: gifAttachment.width,
+          height: gifAttachment.height,
+        },
+      } : undefined;
+
       if (__DEV__) console.log('[CommentSheet] Submitting comment:', {
         comment: markdown,
         parent_id: parentId,
         replyingToId: replyingTo?.id,
         replyingToParentId: replyingTo?.parent_id,
         hasImages: !!media_images,
+        hasGif: !!gifAttachment,
       });
 
       const response = await commentsApi.createComment(postId, {
@@ -355,17 +385,18 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         content_type: 'markdown',
         parent_id: parentId,
         media_images,
+        meta,
       });
 
       if (response.success) {
         // Clear input
         commentEditor.setContent('');
         setAttachedImages([]);
+        setGifAttachment(null);
         setReplyingTo(null);
         // Refresh comments
         fetchComments();
-        // Notify parent
-        onCommentAdded?.();
+        cacheEvents.emit('feeds');
       } else {
         throw new Error(response.error?.message || 'Failed to post comment');
       }
@@ -491,6 +522,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
       setComments(prevComments =>
         prevComments.map(c => c.id === comment.id ? comment : c)
       );
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update reaction');
     }
   };
 
@@ -583,7 +615,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
               if (response.success) {
                 // Remove from local state
                 setComments(prev => prev.filter(c => c.id !== comment.id));
-                onCommentAdded?.(); // Refresh parent
+                cacheEvents.emit('feeds');
               } else {
                 Alert.alert('Error', response.error?.message || 'Failed to delete');
               }
@@ -897,6 +929,21 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
               </View>
             )}
 
+            {/* GIF Preview */}
+            {gifAttachment && (
+              <View style={styles.attachedImagesContainer}>
+                <View style={styles.attachedImageWrapper}>
+                  <Image source={{ uri: gifAttachment.previewUrl }} style={styles.attachedImage} />
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={handleGifRemove}
+                  >
+                    <Ionicons name="close-circle" size={20} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             {/* Attached Images Preview */}
             {attachedImages.length > 0 && (
               <View style={styles.attachedImagesContainer}>
@@ -930,18 +977,30 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
             {/* Markdown Formatting Toolbar */}
             <MarkdownToolbar editor={commentEditor} compact />
 
-            {/* Action bar — image picker + send button */}
+            {/* Action bar — image picker + GIF picker + send button */}
             <View style={[styles.inputContainer, { borderTopColor: themeColors.border }]}>
               <TouchableOpacity
                 style={styles.imageButton}
                 onPress={handlePickImage}
-                disabled={isUploading || attachedImages.length >= 4}
+                disabled={isUploading || attachedImages.length >= 4 || !!gifAttachment}
               >
                 <Ionicons
                   name="image-outline"
                   size={24}
-                  color={attachedImages.length >= 4 ? themeColors.textTertiary : themeColors.primary}
+                  color={(attachedImages.length >= 4 || gifAttachment) ? themeColors.textTertiary : themeColors.primary}
                 />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.imageButton}
+                onPress={handleGifPress}
+                disabled={!!gifAttachment}
+              >
+                <Text style={{
+                  fontSize: 13,
+                  fontWeight: '700',
+                  color: gifAttachment ? themeColors.primary : themeColors.textSecondary,
+                }}>GIF</Text>
               </TouchableOpacity>
 
               <View style={{ flex: 1 }} />
@@ -991,6 +1050,13 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         onClose={() => setMenuComment(null)}
         items={getCommentMenuItems()}
         anchor={menuAnchor}
+      />
+
+      {/* GIF Picker Modal */}
+      <GifPickerModal
+        visible={showGifPicker}
+        onClose={() => setShowGifPicker(false)}
+        onSelect={handleGifSelect}
       />
     </>
   );

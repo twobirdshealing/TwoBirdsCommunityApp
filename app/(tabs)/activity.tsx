@@ -16,6 +16,7 @@ import { useTabBar } from '@/contexts/TabBarContext';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useCachedData } from '@/hooks/useCachedData';
 import { useFeedActions } from '@/hooks/useFeedActions';
+import { optimisticUpdate } from '@/utils/optimisticUpdate';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -39,6 +40,7 @@ export default function ActivityScreen() {
     mutate,
   } = useCachedData<Feed[]>({
     cacheKey: 'tbc_activity_feeds',
+    invalidateOn: 'feeds',
     fetcher: async () => {
       const response = await feedsApi.getFeeds({ per_page: 20 });
 
@@ -117,17 +119,13 @@ export default function ActivityScreen() {
       return;
     }
 
+    const newStickyState = !feed.is_sticky;
     try {
-      const newStickyState = !feed.is_sticky;
-
-      setFeeds(prevFeeds =>
-        prevFeeds.map(f =>
-          f.id === feed.id ? { ...f, is_sticky: newStickyState } : f
-        )
+      const response = await optimisticUpdate(
+        setFeeds,
+        prev => prev.map(f => f.id === feed.id ? { ...f, is_sticky: newStickyState } : f),
+        () => feedsApi.toggleSticky(feed.id, newStickyState),
       );
-
-      const response = await feedsApi.toggleSticky(feed.id, newStickyState);
-
       if (response.success) {
         Alert.alert(
           newStickyState ? 'Pinned' : 'Unpinned',
@@ -135,11 +133,6 @@ export default function ActivityScreen() {
         );
         refresh();
       } else {
-        setFeeds(prevFeeds =>
-          prevFeeds.map(f =>
-            f.id === feed.id ? { ...f, is_sticky: !newStickyState } : f
-          )
-        );
         Alert.alert('Error', response.error?.message || 'Failed to update pin status');
       }
     } catch (err) {

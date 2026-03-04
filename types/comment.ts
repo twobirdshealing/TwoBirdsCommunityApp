@@ -62,6 +62,9 @@ export interface CommentMeta {
   media_preview?: {
     image?: string;
     type?: 'image' | 'video' | 'link';
+    provider?: 'youtube' | 'giphy' | 'external' | 'uploader';
+    width?: number;
+    height?: number;
   };
   [key: string]: unknown;
 }

@@ -23,6 +23,8 @@ import { Feed } from '@/types/feed';
 import { feedsApi } from '@/services/api/feeds';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useCachedData } from '@/hooks/useCachedData';
+import { optimisticUpdate } from '@/utils/optimisticUpdate';
+import { cacheEvents } from '@/utils/cacheEvents';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -39,6 +41,7 @@ export default function SinglePostScreen() {
 
   const { data: feed, isLoading: loading, error: fetchError, refresh, mutate } = useCachedData<Feed>({
     cacheKey: `tbc_feed_${id}`,
+    invalidateOn: 'feeds',
     fetcher: async () => {
       const numericId = Number(id);
       const response = isNaN(numericId)
@@ -71,10 +74,17 @@ export default function SinglePostScreen() {
   const handleBookmarkToggle = async (isBookmarked: boolean) => {
     if (!feed) return;
     try {
-      await feedsApi.toggleBookmark(feed.id, !isBookmarked);
-      mutate(prev => prev ? { ...prev, bookmarked: isBookmarked } : prev);
+      const response = await optimisticUpdate(
+        mutate,
+        prev => prev ? { ...prev, bookmarked: isBookmarked } : prev,
+        () => feedsApi.toggleBookmark(feed.id, !isBookmarked),
+      );
+      if (response.success) {
+        cacheEvents.emit('bookmarks');
+      }
     } catch (err) {
       if (__DEV__) console.error('Failed to bookmark:', err);
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update bookmark');
     }
   };
 
