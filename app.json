@@ -7,7 +7,6 @@
     "icon": "./assets/images/app_icon_ios.png",
     "scheme": "fluentcommunityapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.twobirdschurch.community",
       "supportsTablet": true,
@@ -24,7 +23,6 @@
         "foregroundImage": "./assets/images/app_icon_android_adaptive_fg.png",
         "backgroundImage": "./assets/images/app_icon_android_adaptive_bg.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "googleServicesFile": "./google-services.json"
     },

@@ -21,7 +21,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: './assets/images/app_icon_ios.png',
     scheme: 'fluentcommunityapp',
     userInterfaceStyle: 'automatic',
-    newArchEnabled: true,
     ios: {
       bundleIdentifier: 'com.twobirdschurch.community',
       supportsTablet: true,
@@ -38,7 +37,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         foregroundImage: './assets/images/app_icon_android_adaptive_fg.png',
         backgroundImage: './assets/images/app_icon_android_adaptive_bg.png',
       },
-      edgeToEdgeEnabled: true,
       // @ts-expect-error 'adjustNothing' works at runtime but Expo types only allow 'resize' | 'pan'
       softwareKeyboardLayoutMode: 'adjustNothing',
       predictiveBackGestureEnabled: false,
@@ -96,6 +94,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             'Allow Two Birds Community to save images to your photo library.',
         },
       ],
+      'expo-asset',
+      'expo-image',
+      'expo-sharing',
+      'expo-video',
     ],
     experiments: {
       typedRoutes: true,
