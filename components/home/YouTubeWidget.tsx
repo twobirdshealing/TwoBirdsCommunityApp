@@ -7,7 +7,8 @@
 // =============================================================================
 
 import React, { useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -43,6 +44,7 @@ export function YouTubeWidget({ refreshKey }: YouTubeWidgetProps) {
     },
     refreshKey,
     refreshOnFocus: false,
+    staleTime: 120_000,
   });
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -56,7 +58,9 @@ export function YouTubeWidget({ refreshKey }: YouTubeWidgetProps) {
           <Image
             source={{ uri: video.thumbnail }}
             style={[styles.thumbnail, { backgroundColor: themeColors.skeleton }]}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={200}
           />
 
           {/* Play button */}

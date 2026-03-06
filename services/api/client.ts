@@ -14,6 +14,27 @@ import NetInfo from '@react-native-community/netinfo';
 const log = createLogger('API');
 
 // -----------------------------------------------------------------------------
+// Response Header Callback (non-React → React bridge)
+// -----------------------------------------------------------------------------
+// Registered by _layout.tsx to process custom response headers from every
+// authenticated API response. Same pattern as onAuthCleared in auth.ts.
+
+export interface ResponseHeaderData {
+  unreadNotifications?: number;
+  unreadMessages?: number;
+  maintenance?: boolean;
+  minAppVersion?: string;
+}
+
+let responseHeaderCallback: ((data: ResponseHeaderData) => void) | null = null;
+
+export function setOnResponseHeaders(
+  callback: ((data: ResponseHeaderData) => void) | null
+): void {
+  responseHeaderCallback = callback;
+}
+
+// -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
 
@@ -155,6 +176,22 @@ async function request<T>(
       log('Response data (preview):', JSON.stringify(data).substring(0, 500));
     }
 
+    // Extract custom response headers (unread counts, maintenance, min version)
+    if (responseHeaderCallback) {
+      const hNotif = response.headers.get('X-TBC-Unread-Notifications');
+      const hMsg = response.headers.get('X-TBC-Unread-Messages');
+      const hMaint = response.headers.get('X-TBC-Maintenance');
+      const hMinVer = response.headers.get('X-TBC-Min-App-Version');
+      if (hNotif !== null || hMsg !== null || hMaint !== null || hMinVer !== null) {
+        responseHeaderCallback({
+          ...(hNotif !== null && { unreadNotifications: parseInt(hNotif, 10) }),
+          ...(hMsg !== null && { unreadMessages: parseInt(hMsg, 10) }),
+          ...(hMaint !== null && { maintenance: hMaint === '1' }),
+          ...(hMinVer !== null && { minAppVersion: hMinVer }),
+        });
+      }
+    }
+
     if (!response.ok) {
       if (response.status >= 500) {
         console.error('[API Error]', data);
@@ -166,8 +203,9 @@ async function request<T>(
       const isJwtExpired = (
         response.status === 401 ||
         (response.status === 403 &&
-          (data?.code === 'jwt_auth_invalid_token' ||
-           data?.code === 'jwt_auth_expired_token' ||
+          (data?.code === 'tbc_auth_expired_token' ||
+           data?.code === 'tbc_auth_revoked_session' ||
+           data?.code === 'tbc_auth_bad_token' ||
            data?.code === 'rest_forbidden'))
       );
 

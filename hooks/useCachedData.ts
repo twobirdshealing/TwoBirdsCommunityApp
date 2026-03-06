@@ -30,6 +30,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from '@/utils/logger';
 import { cacheEvents, CacheEvent } from '@/utils/cacheEvents';
+import { isBatchFresh } from '@/utils/batchCache';
 import { useAppFocus } from './useAppFocus';
 
 const log = createLogger('CachedData');
@@ -51,6 +52,9 @@ interface UseCachedDataOptions<T> {
   enabled?: boolean;
   /** Auto-refresh when this cache event fires (cross-screen invalidation). */
   invalidateOn?: CacheEvent;
+  /** Skip network fetch if data was fetched within this many ms. Does NOT apply
+      to imperative refresh() or cache event invalidation. Default: 0 (always fetch). */
+  staleTime?: number;
 }
 
 interface UseCachedDataResult<T> {
@@ -82,6 +86,7 @@ export function useCachedData<T>({
   refreshOnFocus = true,
   enabled = true,
   invalidateOn,
+  staleTime = 0,
 }: UseCachedDataOptions<T>): UseCachedDataResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -126,7 +131,7 @@ export function useCachedData<T>({
     }
   }, [cacheKey, persist]);
 
-  // -- Initial mount: cache read → background fetch --
+  // -- Initial mount: cache read → background fetch (skipped if batch-fresh) --
   useEffect(() => {
     if (!enabled) return;
 
@@ -135,18 +140,30 @@ export function useCachedData<T>({
 
     (async () => {
       // 1. Try loading from cache
+      let hasCachedData = false;
       try {
         const cached = await AsyncStorage.getItem(cacheKey);
         if (cached && isMounted.current) {
           setData(JSON.parse(cached));
           setIsLoading(false);
+          hasCachedData = true;
           log(cacheKey, 'loaded from cache');
         }
       } catch {
         // Cache read failed — will wait for network
       }
 
-      // 2. Fetch fresh in background
+      // 2. Skip network fetch if startup batch just wrote this cache key.
+      //    The batch already populated AsyncStorage with fresh data above.
+      //    Subsequent refreshes (focus, pull-to-refresh, refreshKey) still work.
+      if (hasCachedData && isBatchFresh(cacheKey)) {
+        log(cacheKey, 'skipping initial fetch — batch-fresh');
+        lastFetchTime.current = Date.now();
+        initialLoadDone.current = true;
+        return;
+      }
+
+      // 3. Fetch fresh in background
       await fetchFresh();
       initialLoadDone.current = true;
     })();
@@ -156,19 +173,24 @@ export function useCachedData<T>({
     };
   }, [cacheKey, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // -- RefreshKey changes (after initial load) --
+  // -- RefreshKey changes (after initial load, respects staleTime) --
   useEffect(() => {
     if (!initialLoadDone.current || !enabled) return;
+    if (staleTime > 0 && Date.now() - lastFetchTime.current < staleTime) {
+      log(cacheKey, 'skipping refreshKey — still fresh');
+      return;
+    }
     fetchFresh();
   }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // -- App focus refresh --
+  // -- App focus refresh (uses staleTime if set, otherwise FOCUS_COOLDOWN_MS) --
   useAppFocus(
     useCallback(() => {
       if (!initialLoadDone.current) return;
-      if (Date.now() - lastFetchTime.current < FOCUS_COOLDOWN_MS) return;
+      const cooldown = staleTime > 0 ? staleTime : FOCUS_COOLDOWN_MS;
+      if (Date.now() - lastFetchTime.current < cooldown) return;
       fetchFresh();
-    }, [fetchFresh]),
+    }, [fetchFresh, staleTime]),
     enabled && refreshOnFocus,
   );
 

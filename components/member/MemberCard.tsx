@@ -168,7 +168,7 @@ export function MemberCard({
       {/* Left: Avatar */}
       <View style={styles.avatarContainer}>
         {avatar ? (
-          <Image source={{ uri: avatar }} style={styles.avatar} contentFit="cover" transition={200} />
+          <Image source={{ uri: avatar }} style={styles.avatar} contentFit="cover" transition={200} cachePolicy="memory-disk" />
         ) : (
           <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
             <Text style={[styles.avatarText, { color: themeColors.textInverse }]}>

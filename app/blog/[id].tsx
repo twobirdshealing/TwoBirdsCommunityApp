@@ -4,7 +4,6 @@
 
 import React, { useCallback } from 'react';
 import {
-  Image,
   ScrollView,
   Share,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -159,7 +159,9 @@ export default function BlogDetailScreen() {
                 <Image
                   source={{ uri: featuredImageUrl }}
                   style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColors.skeleton }]}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
                 />
                 {/* Gradient overlay */}
                 <LinearGradient

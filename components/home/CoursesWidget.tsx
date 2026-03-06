@@ -10,13 +10,13 @@ import React from 'react';
 import {
   ActivityIndicator,
   Dimensions,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -62,6 +62,7 @@ export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
     },
     refreshKey,
     refreshOnFocus: false,
+    staleTime: 120_000,
   });
 
   // Loading state on first load only (no cache yet)
@@ -110,7 +111,7 @@ export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
           >
             {/* Cover */}
             {hasCover ? (
-              <Image source={{ uri: course.cover_photo! }} style={styles.cardCover} resizeMode="cover" />
+              <Image source={{ uri: course.cover_photo! }} style={styles.cardCover} contentFit="cover" transition={200} cachePolicy="memory-disk" />
             ) : (
               <LinearGradient
                 colors={['#6366f1', '#8b5cf6', '#d946ef']}

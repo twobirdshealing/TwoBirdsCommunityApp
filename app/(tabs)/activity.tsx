@@ -17,6 +17,7 @@ import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useCachedData } from '@/hooks/useCachedData';
 import { useFeedActions } from '@/hooks/useFeedActions';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
+import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -154,25 +155,27 @@ export default function ActivityScreen() {
   // ---------------------------------------------------------------------------
   
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <FeedList
-        feeds={feeds}
-        loading={loading}
-        refreshing={refreshing}
-        error={error}
-        onRefresh={refresh}
-        onReact={handleReact}
-        onAuthorPress={handleAuthorPress}
-        onSpacePress={handleSpacePress}
-        onCommentPress={handleCommentPress}
-        onBookmarkToggle={handleBookmarkToggle}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onPin={handlePin}
-        onScroll={handleScroll}
-        ListHeaderComponent={<FeedHeader />}
-      />
-    </View>
+    <TabActivityWrapper>
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+        <FeedList
+          feeds={feeds}
+          loading={loading}
+          refreshing={refreshing}
+          error={error}
+          onRefresh={refresh}
+          onReact={handleReact}
+          onAuthorPress={handleAuthorPress}
+          onSpacePress={handleSpacePress}
+          onCommentPress={handleCommentPress}
+          onBookmarkToggle={handleBookmarkToggle}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onPin={handlePin}
+          onScroll={handleScroll}
+          ListHeaderComponent={<FeedHeader />}
+        />
+      </View>
+    </TabActivityWrapper>
   );
 }
 

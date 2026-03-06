@@ -20,6 +20,7 @@ import {
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { EmptyState } from '@/components/common/EmptyState';
+import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
 import { SpaceCard } from '@/components/space/SpaceCard';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -223,91 +224,93 @@ export default function SpacesScreen() {
   const getItemType = (item: ListItem) => item._type;
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      {/* Search Bar */}
-      <View style={[styles.searchContainer, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
-        <View style={[styles.searchInputContainer, { backgroundColor: themeColors.backgroundSecondary }]}>
-          <Ionicons name="search-outline" size={20} color={themeColors.textTertiary} style={styles.searchIcon} />
-          <TextInput
-            style={[styles.searchInput, { color: themeColors.text }]}
-            placeholder="Search spaces..."
-            placeholderTextColor={themeColors.textTertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCapitalize="none"
-            autoCorrect={false}
-            clearButtonMode="while-editing"
-          />
+    <TabActivityWrapper>
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+        {/* Search Bar */}
+        <View style={[styles.searchContainer, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
+          <View style={[styles.searchInputContainer, { backgroundColor: themeColors.backgroundSecondary }]}>
+            <Ionicons name="search-outline" size={20} color={themeColors.textTertiary} style={styles.searchIcon} />
+            <TextInput
+              style={[styles.searchInput, { color: themeColors.text }]}
+              placeholder="Search spaces..."
+              placeholderTextColor={themeColors.textTertiary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+            />
+            {searchQuery.length > 0 && (
+              <Text style={[styles.clearButton, { color: themeColors.textTertiary }]} onPress={handleClearSearch}>
+                ✕
+              </Text>
+            )}
+          </View>
+
+          {/* Result count when searching */}
           {searchQuery.length > 0 && (
-            <Text style={[styles.clearButton, { color: themeColors.textTertiary }]} onPress={handleClearSearch}>
-              ✕
+            <Text style={[styles.resultCount, { color: themeColors.textSecondary }]}>
+              {filteredSpaces.length} of {spaces.length} spaces
             </Text>
           )}
         </View>
 
-        {/* Result count when searching */}
-        {searchQuery.length > 0 && (
-          <Text style={[styles.resultCount, { color: themeColors.textSecondary }]}>
-            {filteredSpaces.length} of {spaces.length} spaces
-          </Text>
+        {/* Error State */}
+        {error && !loading && spaces.length === 0 && (
+          <ErrorMessage message={error} onRetry={handleRefresh} />
+        )}
+
+        {/* Loading State */}
+        {loading && spaces.length === 0 && (
+          <LoadingSpinner message="Loading spaces..." />
+        )}
+
+        {/* Grouped Spaces List */}
+        {!loading && listData.length > 0 && (
+          <FlashList
+            data={listData}
+            renderItem={renderItem}
+            getItemType={getItemType}
+            keyExtractor={(item) =>
+              item._type === 'group_header'
+                ? `group-${item.id}`
+                : `space-${item.space.id}`
+            }
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={themeColors.primary}
+                colors={[themeColors.primary]}
+              />
+            }
+            contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
+            ListEmptyComponent={
+              searchQuery.length > 0 ? (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="search-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
+                  <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No spaces match "{searchQuery}"</Text>
+                  <Text style={[styles.clearSearchButton, { color: themeColors.primary }]} onPress={handleClearSearch}>
+                    Clear search
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
+        )}
+
+        {/* Empty State (no spaces at all) */}
+        {!loading && !error && spaces.length === 0 && (
+          <EmptyState
+            icon="people-outline"
+            title="No spaces yet"
+            message="Join a space to see it here"
+          />
         )}
       </View>
-
-      {/* Error State */}
-      {error && !loading && spaces.length === 0 && (
-        <ErrorMessage message={error} onRetry={handleRefresh} />
-      )}
-
-      {/* Loading State */}
-      {loading && spaces.length === 0 && (
-        <LoadingSpinner message="Loading spaces..." />
-      )}
-
-      {/* Grouped Spaces List */}
-      {!loading && listData.length > 0 && (
-        <FlashList
-          data={listData}
-          renderItem={renderItem}
-          getItemType={getItemType}
-          keyExtractor={(item) =>
-            item._type === 'group_header'
-              ? `group-${item.id}`
-              : `space-${item.space.id}`
-          }
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={themeColors.primary}
-              colors={[themeColors.primary]}
-            />
-          }
-          contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
-          ListEmptyComponent={
-            searchQuery.length > 0 ? (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="search-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
-                <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No spaces match "{searchQuery}"</Text>
-                <Text style={[styles.clearSearchButton, { color: themeColors.primary }]} onPress={handleClearSearch}>
-                  Clear search
-                </Text>
-              </View>
-            ) : null
-          }
-        />
-      )}
-
-      {/* Empty State (no spaces at all) */}
-      {!loading && !error && spaces.length === 0 && (
-        <EmptyState
-          icon="people-outline"
-          title="No spaces yet"
-          message="Join a space to see it here"
-        />
-      )}
-    </View>
+    </TabActivityWrapper>
   );
 }
 

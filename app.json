@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "Two Birds Community",
-    "slug": "FluentCommunityApp",
+    "slug": "TwoBirdsCommunity",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app_icon_ios.png",
-    "scheme": "fluentcommunityapp",
+    "scheme": "twobirdscommunity",
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.twobirdschurch.community",
@@ -68,8 +68,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "57d798c2-d48d-42f7-9e51-e88688f940bb"
+        "projectId": "65cb660f-a72f-4737-844b-39db0aef9dd4"
       }
-    }
+    },
+    "owner": "twobirdschurch"
   }
 }

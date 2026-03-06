@@ -129,6 +129,7 @@ function ZoomableImage({ uri }: { uri: string }) {
           style={styles.fullImage}
           contentFit="contain"
           transition={200}
+          cachePolicy="memory-disk"
         />
       </Animated.View>
     </GestureDetector>
@@ -337,6 +338,7 @@ export function MediaViewer({
                     source={{ uri: img.url }}
                     style={styles.thumbnailImage}
                     contentFit="cover"
+                    cachePolicy="memory-disk"
                   />
                 </View>
               ))}

@@ -35,7 +35,8 @@ export interface FieldsResponse {
 
 export interface RegisterResponse {
   success: boolean;
-  token?: string;
+  access_token?: string;
+  refresh_token?: string;
   user?: {
     id: number;
     username: string;

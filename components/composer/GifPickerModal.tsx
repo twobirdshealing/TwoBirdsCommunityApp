@@ -175,6 +175,8 @@ export function GifPickerModal({
           contentFit="cover"
           autoplay={true}
           recyclingKey={item.images.preview_gif.url}
+          transition={200}
+          cachePolicy="memory-disk"
         />
       </TouchableOpacity>
     );

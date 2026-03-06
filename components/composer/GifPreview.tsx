@@ -42,6 +42,8 @@ export function GifPreview({ gif, onRemove }: GifPreviewProps) {
           style={styles.thumbnail}
           contentFit="cover"
           autoplay={true}
+          transition={200}
+          cachePolicy="memory-disk"
         />
       </View>
 

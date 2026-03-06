@@ -80,6 +80,7 @@ export function ProfileHeader({
             style={styles.coverPhoto}
             contentFit="cover"
             transition={200}
+            cachePolicy="memory-disk"
           />
         ) : (
           <View style={[styles.coverPhoto, styles.coverPlaceholder, { backgroundColor: themeColors.primary }]} />

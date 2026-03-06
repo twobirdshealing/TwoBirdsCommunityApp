@@ -27,7 +27,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCachedData } from '@/hooks/useCachedData';
 import { profilesApi, patchProfileMedia } from '@/services/api/profiles';
-import { updateStoredUser } from '@/services/auth';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import { Profile } from '@/types/user';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
@@ -48,7 +47,7 @@ export default function UserProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { username } = useLocalSearchParams<{ username: string }>();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, updateUser } = useAuth();
   const { colors: themeColors } = useTheme();
 
   // Check if viewing own profile
@@ -224,7 +223,7 @@ export default function UserProfileScreen() {
         }
         setAvatarUploading(false);
         mutate(prev => prev ? { ...prev, avatar: remoteUrl } : prev);
-        await updateStoredUser({ avatar: remoteUrl });
+        await updateUser({ avatar: remoteUrl });
       },
       onError: (message) => {
         setAvatarUploading(false);

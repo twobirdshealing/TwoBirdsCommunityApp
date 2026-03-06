@@ -15,17 +15,20 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     name: 'Two Birds Community',
-    slug: 'FluentCommunityApp',
+    slug: 'TwoBirdsCommunity',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/images/app_icon_ios.png',
-    scheme: 'fluentcommunityapp',
+    scheme: 'twobirdscommunity',
     userInterfaceStyle: 'automatic',
     ios: {
       bundleIdentifier: 'com.twobirdschurch.community',
       supportsTablet: true,
       icon: './assets/images/app_icon_ios.png',
       googleServicesFile: './GoogleService-Info.plist',
+      associatedDomains: [
+        `applinks:${new URL(siteUrl).hostname}`,
+      ],
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
@@ -41,6 +44,21 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       softwareKeyboardLayoutMode: 'adjustNothing',
       predictiveBackGestureEnabled: false,
       googleServicesFile: './google-services.json',
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            // Portal is at root — list each known community path prefix
+            { scheme: 'https', host: new URL(siteUrl).hostname, pathPrefix: '/spaces/' },
+            { scheme: 'https', host: new URL(siteUrl).hostname, pathPrefix: '/u/' },
+            { scheme: 'https', host: new URL(siteUrl).hostname, pathPrefix: '/courses/' },
+            { scheme: 'https', host: new URL(siteUrl).hostname, pathPrefix: '/notifications' },
+            { scheme: 'https', host: new URL(siteUrl).hostname, pathPrefix: '/leaderboard' },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
     },
     web: {
       output: 'static' as const,
@@ -107,7 +125,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       siteUrl,
       router: {},
       eas: {
-        projectId: '57d798c2-d48d-42f7-9e51-e88688f940bb',
+        projectId: '65cb660f-a72f-4737-844b-39db0aef9dd4',
       },
     },
   };

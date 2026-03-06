@@ -116,6 +116,8 @@ export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps)
             source={{ uri: posterUrl }}
             style={StyleSheet.absoluteFill}
             contentFit="contain"
+            transition={200}
+            cachePolicy="memory-disk"
           />
         </View>
       )}

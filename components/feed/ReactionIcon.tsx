@@ -43,6 +43,8 @@ export function ReactionIcon({ iconUrl, emoji, size = 20, stroke = 0, borderColo
         style={{ width: size, height: size, borderRadius: size / 2 }}
         contentFit="contain"
         autoplay={true}
+        transition={200}
+        cachePolicy="memory-disk"
       />
     );
   } else {

@@ -10,6 +10,7 @@ import { ChatMessage } from '@/types/message';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { ReactionIcon } from '@/components/feed/ReactionIcon';
 import { messagesApi } from '@/services/api/messages';
+import { optimisticUpdate } from '@/utils/optimisticUpdate';
 import { hapticLight, hapticMedium } from '@/utils/haptics';
 
 // -----------------------------------------------------------------------------
@@ -91,11 +92,11 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
   }, [currentUserId, emojiToConfig, defaultReactionConfig, defaultReactionEmoji]);
 
   // ---------------------------------------------------------------------------
-  // Optimistic Update
+  // Optimistic Updater (returns a pure updater function for optimisticUpdate)
   // ---------------------------------------------------------------------------
 
-  const applyOptimisticReaction = useCallback((messageId: number, emoji: string) => {
-    setMessages(prev => prev.map(m => {
+  const makeReactionUpdater = useCallback((messageId: number, emoji: string) => {
+    return (prev: ChatMessage[]): ChatMessage[] => prev.map(m => {
       if (m.id !== messageId) return m;
       const currentReactions = { ...(m.meta?.reactions || {}) };
       const userIds = currentReactions[emoji] ? [...currentReactions[emoji]] : [];
@@ -128,8 +129,8 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
       }
 
       return { ...m, meta: { ...m.meta, reactions: currentReactions } };
-    }));
-  }, [currentUserId, setMessages]);
+    });
+  }, [currentUserId]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -143,24 +144,30 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
     setReactionPickerVisible(false);
 
     const emoji = typeIdToEmoji(typeId);
-    applyOptimisticReaction(msg.id, emoji);
 
     try {
-      await messagesApi.toggleReaction(msg.id, emoji);
+      await optimisticUpdate(
+        setMessages,
+        makeReactionUpdater(msg.id, emoji),
+        () => messagesApi.toggleReaction(msg.id, emoji),
+      );
     } catch (err) {
       if (__DEV__) console.error('[useChatReactions] Reaction error:', err);
     }
-  }, [typeIdToEmoji, applyOptimisticReaction]);
+  }, [typeIdToEmoji, setMessages, makeReactionUpdater]);
 
   /** User taps an existing reaction pill on a message */
   const handleReactionPillPress = useCallback(async (message: ChatMessage, emoji: string) => {
-    applyOptimisticReaction(message.id, emoji);
     try {
-      await messagesApi.toggleReaction(message.id, emoji);
+      await optimisticUpdate(
+        setMessages,
+        makeReactionUpdater(message.id, emoji),
+        () => messagesApi.toggleReaction(message.id, emoji),
+      );
     } catch (err) {
       if (__DEV__) console.error('[useChatReactions] Reaction toggle error:', err);
     }
-  }, [applyOptimisticReaction]);
+  }, [setMessages, makeReactionUpdater]);
 
   /** Tap the smiley button — toggle default reaction */
   const handleDefaultReact = useCallback(async (message: ChatMessage) => {
@@ -177,13 +184,16 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
       }
     }
 
-    applyOptimisticReaction(message.id, emojiToToggle);
     try {
-      await messagesApi.toggleReaction(message.id, emojiToToggle);
+      await optimisticUpdate(
+        setMessages,
+        makeReactionUpdater(message.id, emojiToToggle),
+        () => messagesApi.toggleReaction(message.id, emojiToToggle),
+      );
     } catch (err) {
       if (__DEV__) console.error('[useChatReactions] Default reaction error:', err);
     }
-  }, [currentUserId, defaultReactionEmoji, applyOptimisticReaction]);
+  }, [currentUserId, defaultReactionEmoji, setMessages, makeReactionUpdater]);
 
   /** Long-press smiley — open picker */
   const handleReactionLongPress = useCallback((message: ChatMessage, anchor: { top: number; left: number }) => {

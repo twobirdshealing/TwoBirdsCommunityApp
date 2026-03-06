@@ -36,6 +36,7 @@ import { EventsWidget } from '@/components/home/EventsWidget';
 import { CoursesWidget } from '@/components/home/CoursesWidget';
 import { BookClubWidget } from '@/components/home/BookClubWidget';
 import { EditModeBar } from '@/components/home/EditModeBar';
+import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
 
 // -----------------------------------------------------------------------------
 // Widget Component Map
@@ -247,41 +248,43 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      {/* Edit Mode Header Bar */}
-      {isEditing && (
-        <EditModeBar onDone={exitEditMode} onReset={resetToDefaults} />
-      )}
+    <TabActivityWrapper>
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+        {/* Edit Mode Header Bar */}
+        {isEditing && (
+          <EditModeBar onDone={exitEditMode} onReset={resetToDefaults} />
+        )}
 
-      {isEditing ? (
-        // Edit mode: DraggableFlatList for drag-to-reorder
-        <DraggableFlatList
-          data={widgetItems}
-          keyExtractor={keyExtractor}
-          renderItem={renderDragItem}
-          onDragEnd={handleDragEnd}
-          onDragBegin={() => hapticMedium()}
-          contentContainerStyle={styles.scrollContent}
-          ListHeaderComponent={ListHeader}
-          ListFooterComponent={ListFooter}
-        />
-      ) : (
-        // Normal mode: FlashList with pull-to-refresh
-        <FlashList
-          data={widgetItems}
-          keyExtractor={keyExtractor}
-          renderItem={renderNormalItem}
-          contentContainerStyle={styles.scrollContent}
-          ListHeaderComponent={ListHeader}
-          ListFooterComponent={ListFooter}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-          }
-        />
-      )}
-    </View>
+        {isEditing ? (
+          // Edit mode: DraggableFlatList for drag-to-reorder
+          <DraggableFlatList
+            data={widgetItems}
+            keyExtractor={keyExtractor}
+            renderItem={renderDragItem}
+            onDragEnd={handleDragEnd}
+            onDragBegin={() => hapticMedium()}
+            contentContainerStyle={styles.scrollContent}
+            ListHeaderComponent={ListHeader}
+            ListFooterComponent={ListFooter}
+          />
+        ) : (
+          // Normal mode: FlashList with pull-to-refresh
+          <FlashList
+            data={widgetItems}
+            keyExtractor={keyExtractor}
+            renderItem={renderNormalItem}
+            contentContainerStyle={styles.scrollContent}
+            ListHeaderComponent={ListHeader}
+            ListFooterComponent={ListFooter}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            }
+          />
+        )}
+      </View>
+    </TabActivityWrapper>
   );
 }
 

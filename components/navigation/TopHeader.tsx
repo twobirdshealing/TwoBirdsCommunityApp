@@ -1,28 +1,27 @@
 // =============================================================================
 // TOP HEADER - Main navigation header with logo, icons, and avatar menu
 // =============================================================================
-// SIMPLIFIED: No cart badge, just icon that opens WebView
-// UPDATED: Fetches unread notification count on focus
+// Reads unread counts from UnreadCountsContext. Counts are kept fresh by:
+// 1. Startup batch (initial load)
+// 2. Response headers on every API call (_layout.tsx interceptor)
+// 3. Pusher (instant message badge bump)
+// 4. Push notifications (instant notification badge bump)
 // =============================================================================
 
 import { SITE_URL } from '@/constants/config';
 import { spacing, shadows } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { messagesApi } from '@/services/api/messages';
-import { notificationsApi } from '@/services/api/notifications';
-import { profilesApi } from '@/services/api/profiles';
-import { Profile } from '@/types/user';
+import { useUnreadCounts } from '@/contexts/UnreadCountsContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useAppFocus } from '@/hooks/useAppFocus';
+import { useAppConfig } from '@/contexts/AppConfigContext';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { useNewMessageListener } from '@/contexts/PusherContext';
-import { syncBadgeCount } from '@/services/push';
 import { HeaderIconButton } from './HeaderIconButton';
 import { UserMenu } from './UserMenu';
 
@@ -44,67 +43,16 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const { colors: themeColors } = useTheme();
+  const { visibility } = useAppConfig();
+  const {
+    unreadMessages,
+    unreadNotifications,
+    setUnreadMessages,
+    setUnreadNotifications,
+  } = useUnreadCounts();
 
   // State
-  const [profile, setProfile] = useState<Profile | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(0);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
-
-  // ---------------------------------------------------------------------------
-  // Fetch Profile
-  // ---------------------------------------------------------------------------
-
-  const fetchProfile = useCallback(async () => {
-    if (!user?.username) return;
-
-    try {
-      const response = await profilesApi.getProfile(user.username);
-      if (response.success && response.data.profile) {
-        setProfile(response.data.profile);
-      }
-    } catch (err) {
-      // Silent fail
-    }
-  }, [user?.username]);
-
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
-
-  // ---------------------------------------------------------------------------
-  // Fetch Unread Counts (Messages + Notifications)
-  // ---------------------------------------------------------------------------
-
-  const fetchUnreadCounts = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      // Fetch in parallel
-      const [messagesCount, notificationsCount] = await Promise.all([
-        messagesApi.getMessageUnreadCount(),
-        notificationsApi.getNotificationUnreadCount(),
-      ]);
-
-      setUnreadMessages(messagesCount);
-      setUnreadNotifications(notificationsCount);
-      syncBadgeCount(notificationsCount); // Also sync app icon badge
-    } catch (err) {
-      // Silent fail - badges just won't update
-    }
-  }, [user]);
-
-  // Fetch on mount
-  useEffect(() => {
-    fetchUnreadCounts();
-  }, [fetchUnreadCounts]);
-
-  // Refresh when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      fetchUnreadCounts();
-    }, [fetchUnreadCounts])
-  );
 
   // ---------------------------------------------------------------------------
   // Real-time: Pusher new_message → bump message badge
@@ -112,9 +60,9 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
 
   useNewMessageListener((data) => {
     if (user?.id && String(data.message.user_id) !== String(user.id)) {
-      setUnreadMessages(prev => prev + 1);
+      setUnreadMessages((prev: number) => prev + 1);
     }
-  }, [user?.id]);
+  });
 
   // ---------------------------------------------------------------------------
   // Real-time: Foreground push notification → bump notification badge
@@ -124,17 +72,11 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     if (!user) return;
 
     const subscription = Notifications.addNotificationReceivedListener(() => {
-      setUnreadNotifications(prev => prev + 1);
+      setUnreadNotifications((prev: number) => prev + 1);
     });
 
     return () => subscription.remove();
-  }, [user]);
-
-  // ---------------------------------------------------------------------------
-  // Background → Foreground: refetch both counts
-  // ---------------------------------------------------------------------------
-
-  useAppFocus(useCallback(() => fetchUnreadCounts(), [fetchUnreadCounts]), !!user);
+  }, [user, setUnreadNotifications]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -149,13 +91,11 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   };
 
   const handleCartPress = () => {
-    // Open cart page in WebView (no right icon - already on cart)
     router.push({
       pathname: '/webview',
       params: {
         url: `${SITE_URL}/cart/`,
         title: 'Cart',
-        // No rightIcon - already viewing cart
       },
     });
   };
@@ -217,10 +157,10 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   // Render
   // ---------------------------------------------------------------------------
 
-  const avatar = profile?.avatar;
-  const displayName = profile?.display_name || user?.username || 'User';
-  const username = profile?.username || user?.username || 'user';
-  const email = profile?.email;
+  const avatar = user?.avatar;
+  const displayName = user?.displayName || user?.username || 'User';
+  const username = user?.username || 'user';
+  const email = user?.email;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
@@ -232,6 +172,8 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
               source={require('@/assets/images/logo.png')}
               style={styles.logo}
               contentFit="contain"
+              transition={200}
+              cachePolicy="memory-disk"
             />
           ) : title ? (
             <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>
@@ -258,12 +200,14 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             accessibilityLabel={unreadNotifications > 0 ? `Notifications, ${unreadNotifications} unread` : 'Notifications'}
           />
 
-          {/* Cart - no badge, just icon */}
-          <HeaderIconButton
-            icon="cart-outline"
-            onPress={handleCartPress}
-            accessibilityLabel="Cart"
-          />
+          {/* Cart - hidden for roles with cart visibility disabled */}
+          {!visibility?.hide_cart && (
+            <HeaderIconButton
+              icon="cart-outline"
+              onPress={handleCartPress}
+              accessibilityLabel="Cart"
+            />
+          )}
 
           {/* Avatar with dropdown arrow */}
           <Pressable
@@ -276,7 +220,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             accessibilityLabel="Open menu"
           >
             {avatar ? (
-              <Image source={{ uri: avatar }} style={[styles.avatar, { backgroundColor: themeColors.skeleton }]} contentFit="cover" transition={200} />
+              <Image source={{ uri: avatar }} style={[styles.avatar, { backgroundColor: themeColors.skeleton }]} contentFit="cover" transition={200} cachePolicy="memory-disk" />
             ) : (
               <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
                 <Text style={[styles.avatarText, { color: themeColors.textInverse }]}>

@@ -130,7 +130,7 @@ export default function MessagesScreen() {
         return prev;
       }
     });
-  }, [refresh]);
+  });
 
 
   // ---------------------------------------------------------------------------

@@ -11,13 +11,13 @@ import {
   Alert,
   Dimensions,
   FlatList,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import {
   RichText,
   useEditorBridge,
@@ -734,7 +734,9 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                   key={idx}
                   source={{ uri: img.url }}
                   style={styles.commentImage}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
                 />
               ))}
             </View>
@@ -933,7 +935,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
             {gifAttachment && (
               <View style={styles.attachedImagesContainer}>
                 <View style={styles.attachedImageWrapper}>
-                  <Image source={{ uri: gifAttachment.previewUrl }} style={styles.attachedImage} />
+                  <Image source={{ uri: gifAttachment.previewUrl }} style={styles.attachedImage} contentFit="cover" />
                   <TouchableOpacity
                     style={styles.removeImageButton}
                     onPress={handleGifRemove}
@@ -949,7 +951,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
               <View style={styles.attachedImagesContainer}>
                 {attachedImages.map((img, idx) => (
                   <View key={idx} style={styles.attachedImageWrapper}>
-                    <Image source={{ uri: img.url }} style={styles.attachedImage} />
+                    <Image source={{ uri: img.url }} style={styles.attachedImage} contentFit="cover" />
                     <TouchableOpacity
                       style={styles.removeImageButton}
                       onPress={() => removeImage(idx)}

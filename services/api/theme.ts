@@ -5,6 +5,7 @@
 // =============================================================================
 
 import { TBC_CA_URL } from '@/constants/config';
+import { getAuthToken } from '@/services/auth';
 import type { SocialProvider } from './socialProviders';
 
 // -----------------------------------------------------------------------------
@@ -50,10 +51,31 @@ export interface ThemeData {
   } | null;
 }
 
+export interface MaintenanceConfig {
+  enabled: boolean;
+  message: string;
+  can_bypass?: boolean; // Only present when authenticated
+}
+
+export interface VisibilityConfig {
+  hide_cart: boolean;
+  hide_menu: string[]; // e.g. ['blog', 'courses']
+}
+
+export interface UpdateConfig {
+  min_version: string;
+  ios_store_url: string;
+  android_store_url: string;
+}
+
 export interface AppConfigResponse {
   success: boolean;
   theme: ThemeData;
   social_providers: SocialProvider[];
+  portal_slug?: string;
+  update?: UpdateConfig | null;
+  maintenance?: MaintenanceConfig;
+  visibility?: VisibilityConfig;
 }
 
 // -----------------------------------------------------------------------------
@@ -75,6 +97,28 @@ export async function getAppConfig(): Promise<AppConfigResponse | null> {
     return data.success ? data : null;
   } catch (error) {
     if (__DEV__) console.error('[App Config API]', error);
+    return null;
+  }
+}
+
+/**
+ * GET /app-config with JWT - Returns maintenance bypass + visibility flags
+ */
+export async function getAppConfigAuthenticated(): Promise<AppConfigResponse | null> {
+  try {
+    const token = await getAuthToken();
+    const headers: Record<string, string> = { 'Accept': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${TBC_CA_URL}/app-config`, { headers });
+    if (!response.ok) return null;
+
+    const data: AppConfigResponse = await response.json();
+    return data.success ? data : null;
+  } catch (error) {
+    if (__DEV__) console.error('[App Config API - Auth]', error);
     return null;
   }
 }

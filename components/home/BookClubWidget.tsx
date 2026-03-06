@@ -63,6 +63,7 @@ export function BookClubWidget({ refreshKey }: BookClubWidgetProps) {
     },
     refreshKey,
     refreshOnFocus: false,
+    staleTime: 120_000,
   });
 
   // Don't render anything (including header) if not a member or no books
@@ -80,7 +81,7 @@ export function BookClubWidget({ refreshKey }: BookClubWidgetProps) {
       >
         {/* Cover */}
         {book.cover_image ? (
-          <Image source={{ uri: book.cover_image }} style={styles.cover} contentFit="cover" />
+          <Image source={{ uri: book.cover_image }} style={styles.cover} contentFit="cover" transition={200} cachePolicy="memory-disk" />
         ) : (
           <View style={[styles.cover, styles.coverPlaceholder, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}>
             <Ionicons name="book-outline" size={24} color={themeColors.primary} />

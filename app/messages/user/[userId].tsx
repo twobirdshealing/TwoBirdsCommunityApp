@@ -255,6 +255,7 @@ export default function UserChatScreen() {
           onLoad={() => {
             listRef.current?.scrollToEnd({ animated: false });
           }}
+          maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 100 }}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
         />

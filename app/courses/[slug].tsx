@@ -14,7 +14,6 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -22,6 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -230,7 +230,7 @@ export default function CourseDetailScreen() {
           {/* Hero Section with stats overlay */}
           {hasCoverPhoto ? (
             <View style={styles.heroContainer}>
-              <Image source={{ uri: course.cover_photo! }} style={styles.heroCover} resizeMode="cover" />
+              <Image source={{ uri: course.cover_photo! }} style={styles.heroCover} contentFit="cover" transition={200} cachePolicy="memory-disk" />
               <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={styles.heroGradient}>
                 <Text style={styles.heroTitle}>{course.title}</Text>
                 <View style={styles.heroStats}>
@@ -279,7 +279,7 @@ export default function CourseDetailScreen() {
               activeOpacity={0.7}
             >
               {course.creator.avatar ? (
-                <Image source={{ uri: course.creator.avatar }} style={styles.instructorAvatar} />
+                <Image source={{ uri: course.creator.avatar }} style={styles.instructorAvatar} contentFit="cover" transition={200} cachePolicy="memory-disk" />
               ) : (
                 <View style={[styles.instructorAvatar, styles.instructorAvatarPlaceholder, { backgroundColor: themeColors.primary }]}>
                   <Text style={{ color: themeColors.textInverse, fontSize: 16, fontWeight: '600' }}>

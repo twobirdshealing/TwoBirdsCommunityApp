@@ -8,7 +8,7 @@ import {
   lightColors,
   mapFluentToAppColors,
 } from '@/constants/colors';
-import { getAppConfig, AppConfigResponse, ThemeData } from '@/services/api/theme';
+import { getAppConfig, AppConfigResponse, MaintenanceConfig, UpdateConfig, ThemeData } from '@/services/api/theme';
 import { setSocialProviders } from '@/services/api/socialProviders';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -24,6 +24,9 @@ interface ThemeContextType {
   isDark: boolean;
   colors: ColorTheme;
   setTheme: (mode: ThemeMode) => void;
+  update: UpdateConfig | null;
+  maintenance: MaintenanceConfig | null;
+  refreshAppConfig: () => Promise<void>;
 }
 
 // -----------------------------------------------------------------------------
@@ -49,6 +52,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     light: Partial<ColorTheme>;
     dark: Partial<ColorTheme>;
   } | null>(null);
+  const [update, setUpdate] = useState<UpdateConfig | null>(null);
+  const [maintenance, setMaintenance] = useState<MaintenanceConfig | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   // Resolve isDark from preference
@@ -131,6 +136,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (data.social_providers?.length) {
       setSocialProviders(data.social_providers);
     }
+    // Apply update config
+    setUpdate(data.update ?? null);
+    // Apply maintenance status
+    if (data.maintenance) {
+      setMaintenance(data.maintenance);
+    }
   };
 
   const applyThemeColors = (theme: ThemeData) => {
@@ -160,13 +171,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ---------------------------------------------------------------------------
+  // Memoize provider value to prevent unnecessary consumer re-renders
+  // ---------------------------------------------------------------------------
+
+  const value = useMemo(() => ({ theme, isDark, colors, setTheme, update, maintenance, refreshAppConfig }), [theme, isDark, colors, setTheme, update, maintenance, refreshAppConfig]);
+
+  // ---------------------------------------------------------------------------
   // Don't render children until preference is loaded (prevents flash)
   // ---------------------------------------------------------------------------
 
   if (!isReady) return null;
 
   return (
-    <ThemeContext.Provider value={{ theme, isDark, colors, setTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

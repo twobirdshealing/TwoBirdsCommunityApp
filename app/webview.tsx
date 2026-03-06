@@ -21,14 +21,14 @@
 //   router.push({ pathname: '/webview', params: { url, title } })
 // =============================================================================
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { WebView, WebViewNavigation } from 'react-native-webview';
+import { WebView, WebViewNavigation, WebViewErrorEvent, WebViewHttpErrorEvent } from 'react-native-webview';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -149,6 +149,16 @@ export default function WebViewScreen() {
   }, [params.url, params.noAuth]);
 
   // ---------------------------------------------------------------------------
+  // Theme Sync - Re-inject when dark mode toggles while webview is open
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (sessionUrl && webViewRef.current) {
+      webViewRef.current.injectJavaScript(themeInjectionScript);
+    }
+  }, [isDark]);
+
+  // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
 
@@ -200,11 +210,27 @@ export default function WebViewScreen() {
 
   const handleNavigationChange = (navState: WebViewNavigation) => {
     setCanGoBack(navState.canGoBack);
-    setPageLoading(navState.loading);
     if (navState.title) {
       setPageTitle(navState.title);
     }
   };
+
+  const handleLoadStart = useCallback(() => setPageLoading(true), []);
+  const handleLoadEnd = useCallback(() => setPageLoading(false), []);
+
+  const handleError = useCallback((event: WebViewErrorEvent) => {
+    const { description } = event.nativeEvent;
+    if (__DEV__) console.log('[WebView] Load error:', description);
+    setError(description || 'Failed to load page');
+  }, []);
+
+  const handleHttpError = useCallback((event: WebViewHttpErrorEvent) => {
+    const { statusCode, description } = event.nativeEvent;
+    if (__DEV__) console.log('[WebView] HTTP error:', statusCode, description);
+    if (statusCode >= 400) {
+      setError(`Page returned error ${statusCode}`);
+    }
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Render: Loading
@@ -276,6 +302,10 @@ export default function WebViewScreen() {
           style={styles.webView}
           userAgent={APP_USER_AGENT}
           onNavigationStateChange={handleNavigationChange}
+          onLoadStart={handleLoadStart}
+          onLoadEnd={handleLoadEnd}
+          onError={handleError}
+          onHttpError={handleHttpError}
           sharedCookiesEnabled={true}
           thirdPartyCookiesEnabled={true}
           javaScriptEnabled={true}

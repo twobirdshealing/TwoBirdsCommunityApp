@@ -2,7 +2,8 @@
 // HTML CONTENT - Shared rich HTML renderer for feed posts, comments, and blogs
 // =============================================================================
 // Wraps react-native-render-html with theme-aware tag styles and link routing.
-// Mentions (links to /portal/u/{username}/) navigate to in-app profiles.
+// Community URLs (profiles, spaces, posts, courses) navigate in-app via the
+// centralized deep link mapper. Non-community URLs open externally.
 // =============================================================================
 
 import React, { useMemo } from 'react';
@@ -10,6 +11,8 @@ import { Linking } from 'react-native';
 import RenderHtml from 'react-native-render-html';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAppConfig } from '@/contexts/AppConfigContext';
+import { mapUrlToRoute } from '@/utils/deepLinkMapper';
 import { spacing, typography, sizing } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -29,9 +32,6 @@ interface HtmlContentProps {
   onLinkNavigate?: () => void;
 }
 
-// Regex to detect Fluent Community profile mention URLs
-const MENTION_URL_REGEX = /\/portal\/u\/([^"'\/]+)\/?/;
-
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
@@ -44,6 +44,7 @@ function HtmlContentInner({
   onLinkNavigate,
 }: HtmlContentProps) {
   const { colors: themeColors } = useTheme();
+  const { portalSlug } = useAppConfig();
   const router = useRouter();
 
   // ---------------------------------------------------------------------------
@@ -136,7 +137,7 @@ function HtmlContentInner({
   );
 
   // ---------------------------------------------------------------------------
-  // Link handler — mentions navigate in-app, others open externally
+  // Link handler — community URLs navigate in-app, others open externally
   // ---------------------------------------------------------------------------
 
   const renderersProps = useMemo(
@@ -145,14 +146,10 @@ function HtmlContentInner({
         onPress: (_event: any, href: string) => {
           if (!href) return;
 
-          const mentionMatch = href.match(MENTION_URL_REGEX);
-          if (mentionMatch) {
-            const username = mentionMatch[1];
+          const route = mapUrlToRoute(href, portalSlug);
+          if (route) {
             onLinkNavigate?.();
-            router.push({
-              pathname: '/profile/[username]' as any,
-              params: { username },
-            });
+            router.push(route as any);
             return;
           }
 
@@ -163,7 +160,7 @@ function HtmlContentInner({
         enableExperimentalPercentWidth: true,
       },
     }),
-    [onLinkNavigate, router]
+    [onLinkNavigate, router, portalSlug]
   );
 
   // ---------------------------------------------------------------------------

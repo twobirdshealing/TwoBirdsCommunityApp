@@ -7,7 +7,8 @@
 // =============================================================================
 
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -46,6 +47,7 @@ export function BlogWidget({ refreshKey }: BlogWidgetProps) {
     },
     refreshKey,
     refreshOnFocus: false,
+    staleTime: 120_000,
   });
 
   if (!post) return null;
@@ -71,7 +73,9 @@ export function BlogWidget({ refreshKey }: BlogWidgetProps) {
           <Image
             source={{ uri: imageUrl }}
             style={[styles.image, { backgroundColor: themeColors.skeleton }]}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={200}
           />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.75)']}

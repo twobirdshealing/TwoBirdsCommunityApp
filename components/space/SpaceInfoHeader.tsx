@@ -6,7 +6,8 @@
 // =============================================================================
 
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
@@ -58,7 +59,9 @@ export function SpaceInfoHeader({ space, membersCount, postsCount, onPostPress }
           <Image
             source={{ uri: space.cover_photo }}
             style={styles.coverImage}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={200}
           />
         ) : (
           <LinearGradient
@@ -80,7 +83,9 @@ export function SpaceInfoHeader({ space, membersCount, postsCount, onPostPress }
               <Image
                 source={{ uri: space.logo }}
                 style={styles.heroLogo}
-                resizeMode="cover"
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={200}
               />
             )}
             <View style={styles.heroTextContainer}>

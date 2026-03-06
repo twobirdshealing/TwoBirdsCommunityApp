@@ -4,7 +4,7 @@
 // Shows avatar + placeholder - taps to open full composer
 // =============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Image,
   StyleSheet,
@@ -15,7 +15,6 @@ import {
 import { shadows, spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { profilesApi } from '@/services/api/profiles';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -36,25 +35,7 @@ export function QuickPostBox({
 }: QuickPostBoxProps) {
   const { colors: themeColors } = useTheme();
   const { user } = useAuth();
-  const [avatar, setAvatar] = useState<string | null>(null);
-
-  // Fetch avatar from profile API
-  useEffect(() => {
-    const fetchAvatar = async () => {
-      if (!user?.username) return;
-      
-      try {
-        const response = await profilesApi.getProfile(user.username);
-        if (response.success && response.data.profile?.avatar) {
-          setAvatar(response.data.profile.avatar);
-        }
-      } catch (err) {
-        // Silent fail - will show fallback
-      }
-    };
-
-    fetchAvatar();
-  }, [user?.username]);
+  const avatar = user?.avatar;
 
   // AuthContext User type uses displayName (camelCase)
   const displayName = user?.displayName || user?.username || 'User';

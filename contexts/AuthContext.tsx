@@ -4,8 +4,13 @@
 
 import * as authService from '@/services/auth';
 import { profilesApi } from '@/services/api/profiles';
+import { clearBadgeCache } from '@/services/api/badges';
+import { clearSocialProvidersCache } from '@/services/api/socialProviders';
+import { clearReactionConfigCache } from '@/hooks/useReactionConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createLogger } from '@/utils/logger';
 import type { AuthUser } from '@/types/user';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -18,7 +23,8 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
-  registerAndLogin: (token: string, userData: AuthUser, credentials: { username: string; password: string }) => Promise<void>;
+  updateUser: (updates: Partial<AuthUser>) => Promise<void>;
+  registerAndLogin: (accessToken: string, refreshToken: string, userData: AuthUser) => Promise<void>;
 }
 
 // -----------------------------------------------------------------------------
@@ -26,6 +32,7 @@ interface AuthContextType {
 // -----------------------------------------------------------------------------
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const log = createLogger('AuthContext');
 
 // -----------------------------------------------------------------------------
 // Provider
@@ -61,22 +68,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Get stored user info
         const storedUser = await authService.getStoredUser();
         if (storedUser) {
-          // If user doesn't have id, fetch it from profile API (for existing logins)
-          if (!storedUser.id && storedUser.username) {
-            try {
-              const profileRes = await profilesApi.getProfile(storedUser.username);
-              if (profileRes.success && profileRes.data.profile) {
-                storedUser.id = profileRes.data.profile.user_id;
-                storedUser.avatar = profileRes.data.profile.avatar || undefined;
-                await authService.updateStoredUser(storedUser);
-                if (__DEV__) console.log('[Auth] Fetched missing user_id:', storedUser.id);
-              }
-            } catch (e) {
-              if (__DEV__) console.error('[Auth] Could not fetch user_id:', e);
-            }
-          }
           setUser(storedUser);
           setIsAuthenticated(true);
+
+          // Background refresh: pick up changes made on web (avatar, name, etc.)
+          if (storedUser.username) {
+            profilesApi.getProfile(storedUser.username).then(res => {
+              if (res.success && res.data.profile) {
+                const p = res.data.profile;
+                const updates: Partial<AuthUser> = {};
+                if (p.user_id && p.user_id !== storedUser.id) updates.id = p.user_id;
+                if (p.avatar !== (storedUser.avatar || null)) updates.avatar = p.avatar || undefined;
+                if (p.display_name && p.display_name !== storedUser.displayName) updates.displayName = p.display_name;
+                if (Object.keys(updates).length > 0) {
+                  authService.updateStoredUser(updates);
+                  setUser(prev => prev ? { ...prev, ...updates } : prev);
+                }
+              }
+            }).catch(() => { /* silent — cached data still works */ });
+          }
         } else {
           // Has auth but no user info - clear it
           await authService.clearAuth();
@@ -113,11 +123,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     try {
       await authService.logout();
+
+      // Clear in-memory caches
+      clearBadgeCache();
+      clearSocialProvidersCache();
+      clearReactionConfigCache();
+
+      // Clear user-specific AsyncStorage caches (keep account-agnostic preferences)
+      try {
+        const allKeys = await AsyncStorage.getAllKeys();
+        const userCacheKeys = allKeys.filter(k =>
+          k.startsWith('tbc_activity_') ||
+          k.startsWith('tbc_bookmarks') ||
+          k.startsWith('tbc_feed_') ||
+          k.startsWith('tbc_widget_events') ||
+          k.startsWith('tbc_calendar_')
+        );
+        if (userCacheKeys.length > 0) {
+          await AsyncStorage.multiRemove(userCacheKeys);
+          log('Cleared', userCacheKeys.length, 'cached keys');
+        }
+      } catch (e) {
+        log('Error clearing app caches:', e);
+      }
+
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {
       if (__DEV__) console.error('[Auth] Logout error:', error);
-      // Clear state anyway
       setUser(null);
       setIsAuthenticated(false);
     }
@@ -127,26 +160,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await checkAuthStatus();
   }, []);
 
+  const updateUser = useCallback(async (updates: Partial<AuthUser>) => {
+    await authService.updateStoredUser(updates);
+    setUser(prev => prev ? { ...prev, ...updates } : prev);
+  }, []);
+
   const registerAndLogin = useCallback(async (
-    token: string,
+    accessToken: string,
+    refreshToken: string,
     userData: AuthUser,
-    credentials: { username: string; password: string }
   ) => {
-    await authService.storeAuthDirect(token, userData, credentials);
+    await authService.storeAuthDirect(accessToken, refreshToken, userData);
     setUser(userData);
     setIsAuthenticated(true);
   }, []);
 
+  const value = useMemo(() => ({
+    isAuthenticated,
+    isLoading,
+    user,
+    login,
+    logout,
+    refreshAuth,
+    updateUser,
+    registerAndLogin,
+  }), [isAuthenticated, isLoading, user, login, logout, refreshAuth, updateUser, registerAndLogin]);
+
   return (
-    <AuthContext.Provider value={{
-      isAuthenticated,
-      isLoading,
-      user,
-      login,
-      logout,
-      refreshAuth,
-      registerAndLogin,
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

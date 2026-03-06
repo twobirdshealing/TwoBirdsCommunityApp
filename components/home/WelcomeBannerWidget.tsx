@@ -14,6 +14,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { feedsApi } from '@/services/api/feeds';
 import { WelcomeBanner as WelcomeBannerType } from '@/types/feed';
 import { WelcomeBanner } from '@/components/feed/WelcomeBanner';
+import { useCachedData } from '@/hooks/useCachedData';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -21,6 +22,7 @@ import { WelcomeBanner } from '@/components/feed/WelcomeBanner';
 
 const DISMISS_KEY = 'tbc_banner_dismissed';
 const DISMISS_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+const BANNER_CACHE_KEY = 'tbc_welcome_banner';
 
 // -----------------------------------------------------------------------------
 // Helpers
@@ -79,52 +81,51 @@ interface WelcomeBannerWidgetProps {
 
 export function WelcomeBannerWidget({ refreshKey }: WelcomeBannerWidgetProps) {
   const { colors: themeColors } = useTheme();
-  const [banner, setBanner] = useState<WelcomeBannerType | null>(null);
-  const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
 
   // ---------------------------------------------------------------------------
-  // Fetch banner + check dismiss state
+  // Fetch banner via useCachedData (instant from cache, background refresh)
   // ---------------------------------------------------------------------------
 
-  const fetchBanner = useCallback(async () => {
-    try {
+  const { data: banner, isLoading: loading } = useCachedData<WelcomeBannerType | null>({
+    cacheKey: BANNER_CACHE_KEY,
+    fetcher: async () => {
       const response = await feedsApi.getWelcomeBanner();
       if (response.success && response.data?.welcome_banner) {
-        const fetchedBanner = response.data.welcome_banner;
-        setBanner(fetchedBanner);
-
-        // Check dismiss state against current banner content
-        if (fetchedBanner.allowClose === 'yes') {
-          const dismissData = await getDismissData();
-          if (dismissData) {
-            const fingerprint = getBannerFingerprint(fetchedBanner);
-            const expired = Date.now() >= dismissData.expiresAt;
-            const contentChanged = dismissData.fingerprint !== fingerprint;
-
-            if (expired || contentChanged) {
-              // Dismiss expired or content changed — clear and show
-              await clearDismissData();
-              setDismissed(false);
-            } else {
-              // Still dismissed
-              setDismissed(true);
-            }
-          }
-        }
-      } else {
-        setBanner(null);
+        return response.data.welcome_banner;
       }
-    } catch {
-      // Silent fail — banner is optional
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return null;
+    },
+    refreshKey,
+    refreshOnFocus: false,
+    staleTime: 120_000,
+  });
+
+  // ---------------------------------------------------------------------------
+  // Check dismiss state when banner data arrives (from cache or network)
+  // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    fetchBanner();
-  }, [fetchBanner, refreshKey]);
+    if (!banner || banner.allowClose !== 'yes') {
+      setDismissed(false);
+      return;
+    }
+
+    getDismissData().then(dismissData => {
+      if (!dismissData) { setDismissed(false); return; }
+
+      const fingerprint = getBannerFingerprint(banner);
+      const expired = Date.now() >= dismissData.expiresAt;
+      const contentChanged = dismissData.fingerprint !== fingerprint;
+
+      if (expired || contentChanged) {
+        clearDismissData();
+        setDismissed(false);
+      } else {
+        setDismissed(true);
+      }
+    });
+  }, [banner]);
 
   // ---------------------------------------------------------------------------
   // Handle close
@@ -140,7 +141,7 @@ export function WelcomeBannerWidget({ refreshKey }: WelcomeBannerWidgetProps) {
   // Render
   // ---------------------------------------------------------------------------
 
-  // Loading state on first load only
+  // Loading state on first load only (no cache yet)
   if (loading && !banner) {
     return (
       <View style={{ padding: spacing.lg, alignItems: 'center' }}>

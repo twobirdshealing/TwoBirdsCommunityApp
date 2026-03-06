@@ -219,6 +219,7 @@ export function MessageBubble({
                     ]}
                     contentFit="cover"
                     transition={200}
+                    cachePolicy="memory-disk"
                   />
                 </Pressable>
               ))}

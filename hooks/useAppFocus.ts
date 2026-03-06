@@ -6,13 +6,12 @@
 // Use `enabled` to gate activation (e.g., only when authenticated).
 // =============================================================================
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useEffectEvent, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 
 export function useAppFocus(onFocus: () => void, enabled: boolean = true): void {
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
-  const onFocusRef = useRef(onFocus);
-  onFocusRef.current = onFocus;
+  const onFocusStable = useEffectEvent(onFocus);
 
   useEffect(() => {
     if (!enabled) return;
@@ -22,7 +21,7 @@ export function useAppFocus(onFocus: () => void, enabled: boolean = true): void 
       appStateRef.current = nextState;
 
       if (wasBackground && nextState === 'active') {
-        onFocusRef.current();
+        onFocusStable();
       }
     });
 

@@ -176,7 +176,7 @@ export default function LoginScreen() {
             </Text>
             <TouchableOpacity
               style={styles.privacyLink}
-              onPress={() => router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy', noAuth: 'true' } })}
+              onPress={() => router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy', noAuth: '1' } })}
               accessibilityRole="link"
               accessibilityLabel="Privacy Policy"
             >

@@ -21,6 +21,8 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useEffectEvent,
+  useMemo,
   useState,
 } from 'react';
 import { useAppFocus } from '@/hooks/useAppFocus';
@@ -99,14 +101,14 @@ export function PusherProvider({ children }: { children: React.ReactNode }) {
   // Render
   // ---------------------------------------------------------------------------
 
+  const value = useMemo(() => ({
+    isConnected,
+    subscribeToMessages,
+    subscribeToReactions,
+  }), [isConnected, subscribeToMessages, subscribeToReactions]);
+
   return (
-    <PusherContext.Provider
-      value={{
-        isConnected,
-        subscribeToMessages,
-        subscribeToReactions,
-      }}
-    >
+    <PusherContext.Provider value={value}>
       {children}
     </PusherContext.Provider>
   );
@@ -131,33 +133,27 @@ export function usePusher() {
 /**
  * Subscribe to new message events
  */
-export function useNewMessageListener(
-  handler: MessageHandler,
-  deps: React.DependencyList = []
-) {
+export function useNewMessageListener(handler: MessageHandler) {
   const { subscribeToMessages } = usePusher();
+  const stableHandler = useEffectEvent(handler);
 
   useEffect(() => {
-    const unsubscribe = subscribeToMessages(handler);
+    const unsubscribe = subscribeToMessages(stableHandler);
     return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subscribeToMessages, ...deps]);
+  }, [subscribeToMessages]);
 }
 
 /**
  * Subscribe to reaction events
  */
-export function useReactionListener(
-  handler: ReactionHandler,
-  deps: React.DependencyList = []
-) {
+export function useReactionListener(handler: ReactionHandler) {
   const { subscribeToReactions } = usePusher();
+  const stableHandler = useEffectEvent(handler);
 
   useEffect(() => {
-    const unsubscribe = subscribeToReactions(handler);
+    const unsubscribe = subscribeToReactions(stableHandler);
     return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subscribeToReactions, ...deps]);
+  }, [subscribeToReactions]);
 }
 
 export default PusherContext;

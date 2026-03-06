@@ -37,7 +37,7 @@ export function CourseCard({ course, onPress }: CourseCardProps) {
       {/* Cover Photo or Gradient Fallback */}
       {hasCoverPhoto ? (
         <View style={styles.coverContainer}>
-          <Image source={{ uri: course.cover_photo! }} style={[styles.cover, { backgroundColor: themeColors.skeleton }]} contentFit="cover" transition={200} />
+          <Image source={{ uri: course.cover_photo! }} style={[styles.cover, { backgroundColor: themeColors.skeleton }]} contentFit="cover" transition={200} cachePolicy="memory-disk" />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.3)']}
             style={styles.coverGradient}

@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useAppConfig } from '@/contexts/AppConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FEATURES, PRIVACY_POLICY_URL } from '@/constants/config';
 import { spacing, typography, shadows } from '@/constants/layout';
@@ -92,6 +93,9 @@ export function UserMenu({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { theme, isDark, setTheme, colors: themeColors } = useTheme();
+  const { visibility } = useAppConfig();
+  const hideMenu = visibility?.hide_menu ?? [];
+  const isHidden = (key: string) => hideMenu.includes(key);
 
   const themeModeLabel = isDark ? 'Dark' : 'Light';
 
@@ -137,7 +141,7 @@ export function UserMenu({
 
   const handlePrivacyPolicyPress = () => {
     onClose();
-    router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy' } });
+    router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy', noAuth: '1' } });
   };
 
   const handleLogout = () => {
@@ -200,33 +204,41 @@ export function UserMenu({
                 label="My Spaces"
                 onPress={handleMySpacesPress}
               />
-              <MenuItem
-                icon="globe-outline"
-                label="Church Directory"
-                onPress={handleDirectoryPress}
-              />
-              <MenuItem
-                icon="bookmark-outline"
-                label="Bookmarks"
-                onPress={handleBookmarksPress}
-              />
-              {FEATURES.COURSES && (
+              {!isHidden('directory') && (
+                <MenuItem
+                  icon="globe-outline"
+                  label="Church Directory"
+                  onPress={handleDirectoryPress}
+                />
+              )}
+              {!isHidden('bookmarks') && (
+                <MenuItem
+                  icon="bookmark-outline"
+                  label="Bookmarks"
+                  onPress={handleBookmarksPress}
+                />
+              )}
+              {FEATURES.COURSES && !isHidden('courses') && (
                 <MenuItem
                   icon="school-outline"
                   label="My Courses"
                   onPress={handleCoursesPress}
                 />
               )}
-              <MenuItem
-                icon="newspaper-outline"
-                label="Blog"
-                onPress={handleBlogPress}
-              />
-              <MenuItem
-                icon="notifications-outline"
-                label="Notification Settings"
-                onPress={handleNotificationSettingsPress}
-              />
+              {!isHidden('blog') && (
+                <MenuItem
+                  icon="newspaper-outline"
+                  label="Blog"
+                  onPress={handleBlogPress}
+                />
+              )}
+              {!isHidden('notification_settings') && (
+                <MenuItem
+                  icon="notifications-outline"
+                  label="Notification Settings"
+                  onPress={handleNotificationSettingsPress}
+                />
+              )}
               <MenuItem
                 icon="shield-checkmark-outline"
                 label="Privacy Policy"

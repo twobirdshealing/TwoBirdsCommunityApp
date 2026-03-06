@@ -5,12 +5,13 @@
 // Manages: thread resolution, messages, Pusher real-time, send, block, delete.
 // =============================================================================
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { ChatMessage, ChatThread, ThreadDetails, IntendedObject } from '@/types/message';
 import type { ChatInputAttachment, ChatInputReplyTo } from '@/components/message/ChatInput';
 import { messagesApi } from '@/services/api/messages';
 import { useNewMessageListener, useReactionListener } from '@/contexts/PusherContext';
+import type { PusherMessage, PusherReaction } from '@/services/pusher';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -162,7 +163,7 @@ export function useChatMessages({
   // Pusher Real-time
   // ---------------------------------------------------------------------------
 
-  useNewMessageListener((data) => {
+  const handleNewMessage = useEffectEvent((data: PusherMessage) => {
     const msgThreadId = data.thread_id || data.message.thread_id;
     if (thread && String(msgThreadId) === String(thread.id)) {
       const newMessage: ChatMessage = data.message;
@@ -176,9 +177,9 @@ export function useChatMessages({
       lastMessageIdRef.current = Math.max(lastMessageIdRef.current, newMessage.id);
       setTimeout(() => { listRef.current?.scrollToEnd({ animated: true }); }, 100);
     }
-  }, [thread, listRef]);
+  });
 
-  useReactionListener((data) => {
+  const handleReaction = useEffectEvent((data: PusherReaction) => {
     if (thread && String(data.thread_id) === String(thread.id)) {
       setMessages(prev => prev.map(m => {
         if (m.id === data.message_id) {
@@ -187,7 +188,11 @@ export function useChatMessages({
         return m;
       }));
     }
-  }, [thread]);
+  });
+
+  useNewMessageListener(handleNewMessage);
+
+  useReactionListener(handleReaction);
 
   // ---------------------------------------------------------------------------
   // Load Older Messages (cursor-based pagination)

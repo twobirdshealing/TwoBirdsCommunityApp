@@ -11,13 +11,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Dimensions,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
@@ -406,7 +406,9 @@ export function FeedCard({
             <Image
               source={{ uri: url }}
               style={styles.gridImage}
-              resizeMode="cover"
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
             />
             {isLast4Plus && extraCount > 0 && (
               <View style={styles.gridOverlay}>
@@ -470,7 +472,9 @@ export function FeedCard({
               <Image
                 source={{ uri: `https://img.youtube.com/vi/${media.youtubeId}/hqdefault.jpg` }}
                 style={styles.mediaImage}
-                resizeMode="cover"
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
               />
               <TouchableOpacity
                 style={styles.playButton}

@@ -28,7 +28,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { profilesApi, patchProfileMedia } from '@/services/api/profiles';
-import { updateStoredUser } from '@/services/auth';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import { cacheEvents } from '@/utils/cacheEvents';
 import { Profile, CustomFieldConfig } from '@/types/user';
@@ -62,7 +61,7 @@ interface FormData {
 export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, updateUser } = useAuth();
   const { colors: themeColors } = useTheme();
   const providers = useSocialProviders();
 
@@ -225,7 +224,7 @@ export default function EditProfileScreen() {
         if (profile) {
           setProfile({ ...profile, avatar: remoteUrl });
         }
-        await updateStoredUser({ avatar: remoteUrl });
+        await updateUser({ avatar: remoteUrl });
         cacheEvents.emit('profile');
       },
       onError: (message) => {
@@ -333,7 +332,7 @@ export default function EditProfileScreen() {
 
       if (response.success) {
         const displayName = [formData.first_name.trim(), formData.last_name.trim()].filter(Boolean).join(' ');
-        await updateStoredUser({ displayName });
+        await updateUser({ displayName });
         setShowOtp(false);
         cacheEvents.emit('profile');
         router.back();

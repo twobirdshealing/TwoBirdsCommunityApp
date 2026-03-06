@@ -7,6 +7,7 @@
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import { profilesApi } from '@/services/api/profiles';
+import { optimisticUpdate } from '@/utils/optimisticUpdate';
 import type { MemberCardData } from '@/components/member/MemberCard';
 
 // -----------------------------------------------------------------------------
@@ -24,26 +25,18 @@ export function useFollowToggle() {
 
     const isCurrentlyFollowing = (followMap[memberId] || 0) > 0;
 
-    // Optimistic update
-    setFollowMap(prev => ({
-      ...prev,
-      [memberId]: isCurrentlyFollowing ? 0 : 1,
-    }));
     setFollowLoadingMap(prev => ({ ...prev, [memberId]: true }));
 
     try {
-      if (isCurrentlyFollowing) {
-        await profilesApi.unfollowUser(username);
-      } else {
-        await profilesApi.followUser(username);
-      }
+      await optimisticUpdate(
+        setFollowMap,
+        prev => ({ ...prev, [memberId]: isCurrentlyFollowing ? 0 : 1 }),
+        () => isCurrentlyFollowing
+          ? profilesApi.unfollowUser(username)
+          : profilesApi.followUser(username),
+      );
     } catch (err) {
       if (__DEV__) console.error('[Follow] Toggle error:', err);
-      // Revert on failure
-      setFollowMap(prev => ({
-        ...prev,
-        [memberId]: isCurrentlyFollowing ? 1 : 0,
-      }));
       Alert.alert('Error', 'Failed to update follow status');
     } finally {
       setFollowLoadingMap(prev => ({ ...prev, [memberId]: false }));

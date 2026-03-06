@@ -14,9 +14,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Dimensions,
-  Image,
+  Image as RNImage,
   Linking,
   ScrollView,
   StyleSheet,
@@ -24,6 +23,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
+import Animated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -79,8 +80,18 @@ export default function LessonViewScreen() {
   const [docsY, setDocsY] = useState(0);
 
   // Completion animation
-  const completeAnim = useRef(new Animated.Value(0)).current;
-  const navAnim = useRef(new Animated.Value(1)).current;
+  const completeAnim = useSharedValue(0);
+  const navAnim = useSharedValue(1);
+
+  const completeAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(completeAnim.value, [0, 0.5, 1], [1, 1.08, 1]) }],
+    opacity: interpolate(completeAnim.value, [0, 1], [0.8, 1]),
+  }));
+
+  const navAnimStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(navAnim.value, [0, 1], [0, 1]),
+    transform: [{ translateY: interpolate(navAnim.value, [0, 1], [12, 0]) }],
+  }));
 
   // ---------------------------------------------------------------------------
   // Fetch Lesson (via course by-slug with intended_lesson_slug)
@@ -203,24 +214,17 @@ export default function LessonViewScreen() {
 
       // Show success state briefly, then animate to nav row
       setJustCompleted(true);
-      completeAnim.setValue(0);
-      Animated.timing(completeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start(() => {
-        // After success shown, transition to nav row
-        setTimeout(() => {
-          setCompleting(false);
-          setJustCompleted(false);
-          navAnim.setValue(0);
-          Animated.spring(navAnim, {
-            toValue: 1,
-            tension: 80,
-            friction: 12,
-            useNativeDriver: true,
-          }).start();
-        }, 800);
+      completeAnim.value = 0;
+      completeAnim.value = withTiming(1, { duration: 400 }, (finished) => {
+        if (finished) {
+          // After success shown, transition to nav row (delay on JS thread)
+          runOnJS(setTimeout)(() => {
+            setCompleting(false);
+            setJustCompleted(false);
+            navAnim.value = 0;
+            navAnim.value = withSpring(1, { damping: 12, stiffness: 80 });
+          }, 800);
+        }
       });
 
       if (response.data.is_completed) {
@@ -290,7 +294,7 @@ export default function LessonViewScreen() {
   // Resolve natural aspect ratio for hero image
   useEffect(() => {
     if (!heroImageUrl) return;
-    Image.getSize(
+    RNImage.getSize(
       heroImageUrl,
       (w, h) => setHeroHeight(Math.round((SCREEN_WIDTH / w) * h)),
       () => setHeroHeight(Math.round(SCREEN_WIDTH * 0.56)), // fallback ~16:9
@@ -393,7 +397,9 @@ export default function LessonViewScreen() {
               <Image
                 source={{ uri: heroImageUrl! }}
                 style={StyleSheet.absoluteFillObject}
-                resizeMode="cover"
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
               />
               <LinearGradient
                 colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.7)']}
@@ -513,15 +519,8 @@ export default function LessonViewScreen() {
             <Animated.View
               style={[
                 styles.completeButton,
-                {
-                  backgroundColor: justCompleted ? themeColors.success : themeColors.primary,
-                  transform: justCompleted
-                    ? [{ scale: completeAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.08, 1] }) }]
-                    : [],
-                  opacity: justCompleted
-                    ? completeAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] })
-                    : 1,
-                },
+                { backgroundColor: justCompleted ? themeColors.success : themeColors.primary },
+                justCompleted ? completeAnimStyle : { opacity: 1 },
               ]}
             >
               {justCompleted ? (
@@ -556,10 +555,7 @@ export default function LessonViewScreen() {
             <Animated.View
               style={[
                 styles.navRow,
-                isCompleted && {
-                  opacity: navAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }),
-                  transform: [{ translateY: navAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
-                },
+                isCompleted && navAnimStyle,
               ]}
             >
               {/* Prev button */}

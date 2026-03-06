@@ -7,7 +7,6 @@
 
 import React from 'react';
 import {
-  Image,
   Linking,
   Pressable,
   RefreshControl,
@@ -15,6 +14,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
@@ -67,7 +67,9 @@ export default function YouTubeScreen() {
       <Image
         source={{ uri: item.thumbnail }}
         style={[styles.thumbnail, { backgroundColor: themeColors.skeleton }]}
-        resizeMode="cover"
+        contentFit="cover"
+        transition={200}
+        cachePolicy="memory-disk"
       />
 
       <LinearGradient

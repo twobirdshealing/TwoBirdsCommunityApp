@@ -24,6 +24,7 @@ import { CalendarHeader } from '@/components/calendar/CalendarHeader';
 import { EventCard } from '@/components/calendar/EventCard';
 import { EventList } from '@/components/calendar/EventList';
 import { MonthGrid } from '@/components/calendar/MonthGrid';
+import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
 
 // -----------------------------------------------------------------------------
 // Helpers
@@ -245,9 +246,11 @@ export default function CalendarScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      {viewMode === 'month' ? renderMonthView() : renderListView()}
-    </View>
+    <TabActivityWrapper>
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+        {viewMode === 'month' ? renderMonthView() : renderListView()}
+      </View>
+    </TabActivityWrapper>
   );
 }
 

@@ -53,7 +53,7 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
     <AnimatedPressable onPress={onPress} style={[styles.card, { backgroundColor: themeColors.surface }]}>
       {/* Cover Photo or Gradient Fallback */}
       {hasCoverPhoto ? (
-        <Image source={{ uri: space.cover_photo ?? undefined }} style={[styles.cover, { backgroundColor: themeColors.skeleton }]} contentFit="cover" transition={200} />
+        <Image source={{ uri: space.cover_photo ?? undefined }} style={[styles.cover, { backgroundColor: themeColors.skeleton }]} contentFit="cover" transition={200} cachePolicy="memory-disk" />
       ) : (
         <LinearGradient
           colors={['#6366f1', '#8b5cf6', '#d946ef']}
@@ -69,7 +69,7 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
 
       {/* Logo Overlay (if exists and has cover photo) */}
       {space.logo && hasCoverPhoto && (
-        <Image source={{ uri: space.logo }} style={[styles.logo, { borderColor: themeColors.surface, backgroundColor: themeColors.surface }]} contentFit="cover" transition={200} />
+        <Image source={{ uri: space.logo }} style={[styles.logo, { borderColor: themeColors.surface, backgroundColor: themeColors.surface }]} contentFit="cover" transition={200} cachePolicy="memory-disk" />
       )}
 
       {/* Emoji Badge (if exists and has cover photo) */}

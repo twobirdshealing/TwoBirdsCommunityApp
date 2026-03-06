@@ -9,19 +9,20 @@
 import React from 'react';
 import {
   Dimensions,
-  Image,
-  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { WelcomeBanner as WelcomeBannerType, WelcomeBannerButton } from '@/types/feed';
 import { stripHtmlTags } from '@/utils/htmlToText';
 import { extractYouTubeId } from '@/utils/youtube';
+import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = SCREEN_WIDTH - (spacing.md * 2);
@@ -46,11 +47,13 @@ interface CTAButtonProps {
 
 function CTAButton({ button }: CTAButtonProps) {
   const { colors: themeColors } = useTheme();
+  const router = useRouter();
 
   const handlePress = () => {
     if (button.link) {
-      Linking.openURL(button.link).catch(err => {
-        if (__DEV__) console.error('Failed to open URL:', err);
+      router.push({
+        pathname: '/webview',
+        params: { url: button.link, title: button.label },
       });
     }
   };
@@ -115,7 +118,7 @@ function CTAButton({ button }: CTAButtonProps) {
 // -----------------------------------------------------------------------------
 
 export function WelcomeBanner({ banner, onClose }: WelcomeBannerProps) {
-  const { colors: themeColors, isDark } = useTheme();
+  const { colors: themeColors } = useTheme();
 
   // Don't render if not enabled
   if (banner.enabled !== 'yes') {
@@ -133,15 +136,6 @@ export function WelcomeBanner({ banner, onClose }: WelcomeBannerProps) {
   const youtubeId = hasYouTube && banner.bannerVideo?.url 
     ? extractYouTubeId(banner.bannerVideo.url) 
     : null;
-
-  // Handle YouTube thumbnail press
-  const handleYouTubePress = () => {
-    if (banner.bannerVideo?.url) {
-      Linking.openURL(banner.bannerVideo.url).catch(err => {
-        if (__DEV__) console.error('Failed to open YouTube URL:', err);
-      });
-    }
-  };
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
@@ -162,27 +156,14 @@ export function WelcomeBanner({ banner, onClose }: WelcomeBannerProps) {
         <Image
           source={{ uri: banner.bannerImage }}
           style={styles.bannerImage}
-          resizeMode="cover"
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
         />
       )}
 
       {hasYouTube && youtubeId && (
-        <TouchableOpacity
-          onPress={handleYouTubePress}
-          activeOpacity={0.9}
-          style={styles.videoContainer}
-        >
-          <Image
-            source={{ uri: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` }}
-            style={styles.bannerImage}
-            resizeMode="cover"
-          />
-          <View style={styles.playOverlay}>
-            <View style={[styles.playButton, { backgroundColor: isDark ? themeColors.backgroundSecondary : 'rgba(255,255,255,0.9)' }]}>
-              <Text style={[styles.playIcon, { color: themeColors.text }]}>▶</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
+        <YouTubeEmbed videoId={youtubeId} />
       )}
 
       {/* Content */}
@@ -240,31 +221,6 @@ const styles = StyleSheet.create({
   bannerImage: {
     width: '100%',
     height: IMAGE_HEIGHT,
-  },
-
-  // Video
-  videoContainer: {
-    position: 'relative',
-  },
-
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-
-  playButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  playIcon: {
-    fontSize: 24,
-    marginLeft: 4, // Visual center for play icon
   },
 
   // Content

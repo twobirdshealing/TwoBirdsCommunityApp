@@ -145,6 +145,8 @@ export default function AudiobookPlayerScreen() {
               source={{ uri: currentBook.cover_image }}
               style={styles.coverImage}
               contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
             />
           ) : (
             <View style={[styles.coverImage, styles.coverPlaceholder, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}>

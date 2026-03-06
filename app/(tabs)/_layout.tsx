@@ -5,9 +5,9 @@
 // Header: Logo + Messages + Notifications + Avatar Menu
 // =============================================================================
 
-import React, { useRef, useCallback } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import ReanimatedAnimated, { useAnimatedStyle } from 'react-native-reanimated';
+import React, { useCallback } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { Tabs } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { hapticHeavy } from '@/utils/haptics';
@@ -55,22 +55,21 @@ interface TabItemButtonProps {
 }
 
 function TabItemButton({ routeKey, label, icon, isFocused, color, accessibilityLabel, onPress, onLongPress }: TabItemButtonProps) {
-  const wobble = useRef(new Animated.Value(0)).current;
+  const wobble = useSharedValue(0);
 
   const handlePress = useCallback(() => {
     hapticHeavy();
-    Animated.sequence([
-      Animated.timing(wobble, { toValue: 1, duration: 40, useNativeDriver: true }),
-      Animated.timing(wobble, { toValue: -1, duration: 80, useNativeDriver: true }),
-      Animated.timing(wobble, { toValue: 0, duration: 40, useNativeDriver: true }),
-    ]).start();
+    wobble.value = withSequence(
+      withTiming(1, { duration: 40 }),
+      withTiming(-1, { duration: 80 }),
+      withTiming(0, { duration: 40 }),
+    );
     onPress();
   }, [onPress, wobble]);
 
-  const rotation = wobble.interpolate({
-    inputRange: [-1, 0, 1],
-    outputRange: ['-8deg', '0deg', '8deg'],
-  });
+  const wobbleStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${interpolate(wobble.value, [-1, 0, 1], [-8, 0, 8])}deg` }],
+  }));
 
   return (
     <Pressable
@@ -82,7 +81,7 @@ function TabItemButton({ routeKey, label, icon, isFocused, color, accessibilityL
       onLongPress={onLongPress}
       style={styles.tabItem}
     >
-      <Animated.View style={{ transform: [{ rotate: rotation }] }}>
+      <Animated.View style={wobbleStyle}>
         {icon}
       </Animated.View>
       <Text style={[styles.tabLabel, { color }]} numberOfLines={1}>
@@ -105,7 +104,7 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
   }));
 
   return (
-    <ReanimatedAnimated.View
+    <Animated.View
       style={[
         styles.tabBarOuter,
         {
@@ -162,7 +161,7 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
           );
         })}
       </View>
-    </ReanimatedAnimated.View>
+    </Animated.View>
   );
 }
 

@@ -41,6 +41,7 @@ export function EventsWidget({ refreshKey }: EventsWidgetProps) {
     },
     refreshKey,
     refreshOnFocus: false,
+    staleTime: 120_000,
   });
 
   // Loading state on first load only (no cache yet)

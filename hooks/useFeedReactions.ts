@@ -11,6 +11,7 @@ import { Feed, ReactionType } from '@/types/feed';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { updateBreakdownOptimistically } from '@/utils/reactionHelpers';
 import { feedsApi } from '@/services/api/feeds';
+import { optimisticUpdate } from '@/utils/optimisticUpdate';
 
 export function useFeedReactions(
   feeds: Feed[],
@@ -28,36 +29,33 @@ export function useFeedReactions(
     const willRemove = isSameType;
     const willSwap = hasUserReact && !isSameType;
 
-    // Optimistic update
-    setFeeds(prev => prev.map(f => {
-      if (f.id !== feedId) return f;
-      const currentCount = typeof f.reactions_count === 'string'
-        ? parseInt(f.reactions_count, 10)
-        : f.reactions_count || 0;
-      const action = willRemove ? 'remove' : willSwap ? 'swap' : 'add';
-      const updatedBreakdown = updateBreakdownOptimistically(
-        f.reaction_breakdown || [], type, action,
-        currentType as ReactionType | null, getReaction,
-      );
-
-      if (willRemove) {
-        return { ...f, has_user_react: false, user_reaction_type: null, user_reaction_icon_url: null, user_reaction_name: null, reactions_count: currentCount - 1, reaction_total: currentCount - 1, reaction_breakdown: updatedBreakdown };
-      } else if (willSwap) {
-        return { ...f, user_reaction_type: type, user_reaction_icon_url: null, user_reaction_name: null, reaction_breakdown: updatedBreakdown };
-      } else {
-        return { ...f, has_user_react: true, user_reaction_type: type, user_reaction_icon_url: null, user_reaction_name: null, reactions_count: currentCount + 1, reaction_total: currentCount + 1, reaction_breakdown: updatedBreakdown };
-      }
-    }));
-
     try {
-      if (willSwap) {
-        await feedsApi.swapReactionType(feedId, 'feed', type);
-      } else {
-        await feedsApi.reactToFeed(feedId, type, willRemove);
-      }
+      await optimisticUpdate(
+        setFeeds,
+        prev => prev.map(f => {
+          if (f.id !== feedId) return f;
+          const currentCount = typeof f.reactions_count === 'string'
+            ? parseInt(f.reactions_count, 10)
+            : f.reactions_count || 0;
+          const action = willRemove ? 'remove' : willSwap ? 'swap' : 'add';
+          const updatedBreakdown = updateBreakdownOptimistically(
+            f.reaction_breakdown || [], type, action,
+            currentType as ReactionType | null, getReaction,
+          );
+
+          if (willRemove) {
+            return { ...f, has_user_react: false, user_reaction_type: null, user_reaction_icon_url: null, user_reaction_name: null, reactions_count: currentCount - 1, reaction_total: currentCount - 1, reaction_breakdown: updatedBreakdown };
+          } else if (willSwap) {
+            return { ...f, user_reaction_type: type, user_reaction_icon_url: null, user_reaction_name: null, reaction_breakdown: updatedBreakdown };
+          } else {
+            return { ...f, has_user_react: true, user_reaction_type: type, user_reaction_icon_url: null, user_reaction_name: null, reactions_count: currentCount + 1, reaction_total: currentCount + 1, reaction_breakdown: updatedBreakdown };
+          }
+        }),
+        () => willSwap
+          ? feedsApi.swapReactionType(feedId, 'feed', type)
+          : feedsApi.reactToFeed(feedId, type, willRemove),
+      );
     } catch (err) {
-      // Revert on error
-      setFeeds(prev => prev.map(f => (f.id === feedId ? feed : f)));
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update reaction');
     }
   }, [feeds, setFeeds, getReaction]);

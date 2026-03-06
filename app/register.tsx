@@ -35,7 +35,6 @@ import { SelectModal } from '@/components/common/SelectModal';
 import { useSocialProviders } from '@/hooks/useSocialProviders';
 import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
-import { updateStoredUser } from '@/services/auth';
 import { updateProfile, patchProfileMedia } from '@/services/api/profiles';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import {
@@ -59,7 +58,7 @@ type Step = 1 | 2 | 3 | 4 | 5 | 6;
 export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { registerAndLogin, isAuthenticated, user: currentUser } = useAuth();
+  const { registerAndLogin, isAuthenticated, user: currentUser, updateUser } = useAuth();
   const { colors: themeColors } = useTheme();
   const socialProviders = useSocialProviders();
 
@@ -88,9 +87,6 @@ export default function RegisterScreen() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [coverUri, setCoverUri] = useState<string | null>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
-
-  // Stored credentials for auto-login
-  const credentialsRef = useRef<{ username: string; password: string } | null>(null);
 
   // Select modal state
   const [selectModalVisible, setSelectModalVisible] = useState(false);
@@ -265,23 +261,17 @@ export default function RegisterScreen() {
         return;
       }
 
-      if (result.success && result.token && result.user) {
-        // Store credentials for silent refresh
-        credentialsRef.current = {
-          username: formData.username || '',
-          password: formData.password || '',
-        };
-
-        // Auto-login
+      if (result.success && result.access_token && result.user) {
+        // Auto-login with token pair
         await registerAndLogin(
-          result.token,
+          result.access_token,
+          result.refresh_token || '',
           {
             id: result.user.id,
             username: result.user.username,
             displayName: result.user.display_name,
             email: result.user.email,
           },
-          credentialsRef.current
         );
 
         // Go to avatar step
@@ -419,7 +409,7 @@ export default function RegisterScreen() {
       onSuccess: async (remoteUrl) => {
         try {
           await patchProfileMedia(username, { avatar: remoteUrl });
-          await updateStoredUser({ avatar: remoteUrl });
+          await updateUser({ avatar: remoteUrl });
         } catch (e) {
           setError('Failed to save avatar. You can add it later from your profile.');
         }
@@ -589,7 +579,7 @@ export default function RegisterScreen() {
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.linkButton}
-        onPress={() => router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy', noAuth: 'true' } })}
+        onPress={() => router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy', noAuth: '1' } })}
         accessibilityRole="link"
         accessibilityLabel="Privacy Policy"
       >

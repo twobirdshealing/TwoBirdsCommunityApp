@@ -171,6 +171,7 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
             style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColors.skeleton }]}
             contentFit="cover"
             transition={200}
+            cachePolicy="memory-disk"
           />
         ) : (
           <LinearGradient

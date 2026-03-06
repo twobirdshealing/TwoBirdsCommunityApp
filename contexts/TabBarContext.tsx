@@ -6,7 +6,7 @@
 // animation runs on the UI thread via Reanimated SharedValue.
 // =============================================================================
 
-import React, { createContext, useCallback, useContext, useRef } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useSharedValue, withTiming, SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -106,8 +106,12 @@ export function TabBarProvider({ children }: { children: React.ReactNode }) {
     [translateY],
   );
 
+  const value = useMemo(() => ({
+    translateY, handleScroll, showTabBar, setLocked,
+  }), [translateY, handleScroll, showTabBar, setLocked]);
+
   return (
-    <TabBarContext.Provider value={{ translateY, handleScroll, showTabBar, setLocked }}>
+    <TabBarContext.Provider value={value}>
       {children}
     </TabBarContext.Provider>
   );

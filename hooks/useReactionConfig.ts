@@ -49,6 +49,11 @@ const DEFAULT_DISPLAY: DisplayConfig = { count: 5, overlap: 8, stroke: 0 };
 let cachedConfig: ConfigResult | null = null;
 let fetchPromise: Promise<ConfigResult> | null = null;
 
+export function clearReactionConfigCache() {
+  cachedConfig = null;
+  fetchPromise = null;
+}
+
 async function fetchReactionConfig(): Promise<ConfigResult> {
   try {
     const result = await request<{ reactions?: ReactionConfig[]; display?: Partial<DisplayConfig> }>('/config', { baseUrl: TBC_MR_URL });

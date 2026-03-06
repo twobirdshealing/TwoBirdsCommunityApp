@@ -87,6 +87,7 @@ export function Avatar({
           style={[styles.image, containerStyle, { backgroundColor: themeColors.skeleton }]}
           contentFit="cover"
           transition={200}
+          cachePolicy="memory-disk"
         />
       ) : (
         <View style={[styles.placeholder, containerStyle, { backgroundColor: themeColors.primary }]}>
