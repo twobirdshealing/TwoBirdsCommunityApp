@@ -7,9 +7,9 @@ import {
   ActivityIndicator,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -61,7 +61,7 @@ export function ComposerToolbar({
       {/* Left: Action Buttons */}
       <View style={styles.actions}>
         {/* Image Picker */}
-        <TouchableOpacity
+        <AnimatedPressable
           style={styles.actionButton}
           onPress={() => { hapticLight(); onImagePress(); }}
           disabled={isUploading}
@@ -75,11 +75,11 @@ export function ComposerToolbar({
               color={themeColors.textSecondary}
             />
           )}
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         {/* GIF Picker */}
         {onGifPress && (
-          <TouchableOpacity
+          <AnimatedPressable
             style={styles.actionButton}
             onPress={() => { hapticLight(); onGifPress(); }}
           >
@@ -88,12 +88,12 @@ export function ComposerToolbar({
               { color: hasGif ? themeColors.primary : themeColors.textSecondary,
                 borderColor: hasGif ? themeColors.primary : themeColors.textSecondary },
             ]}>GIF</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         )}
 
         {/* Poll */}
         {onPollPress && (
-          <TouchableOpacity
+          <AnimatedPressable
             style={styles.actionButton}
             onPress={() => { hapticLight(); onPollPress(); }}
           >
@@ -102,12 +102,12 @@ export function ComposerToolbar({
               size={22}
               color={hasPoll ? themeColors.primary : themeColors.textSecondary}
             />
-          </TouchableOpacity>
+          </AnimatedPressable>
         )}
 
         {/* Video Picker */}
         {onVideoPress && (
-          <TouchableOpacity
+          <AnimatedPressable
             style={styles.actionButton}
             onPress={() => { hapticLight(); onVideoPress?.(); }}
           >
@@ -116,12 +116,12 @@ export function ComposerToolbar({
               size={24}
               color={hasVideo ? themeColors.primary : themeColors.textSecondary}
             />
-          </TouchableOpacity>
+          </AnimatedPressable>
         )}
 
         {/* Emoji Hint */}
         {onEmojiPress && (
-          <TouchableOpacity
+          <AnimatedPressable
             style={styles.actionButton}
             onPress={onEmojiPress}
           >
@@ -130,12 +130,12 @@ export function ComposerToolbar({
               size={24}
               color={themeColors.textSecondary}
             />
-          </TouchableOpacity>
+          </AnimatedPressable>
         )}
       </View>
 
       {/* Right: Submit Button */}
-      <TouchableOpacity
+      <AnimatedPressable
         style={[
           styles.submitButton,
           { backgroundColor: themeColors.primary },
@@ -149,7 +149,7 @@ export function ComposerToolbar({
         ) : (
           <Text style={[styles.submitText, { color: themeColors.textInverse }]}>{submitLabel}</Text>
         )}
-      </TouchableOpacity>
+      </AnimatedPressable>
     </View>
   );
 }

@@ -4,11 +4,11 @@
 
 import React, { useCallback } from 'react';
 import {
+  Pressable,
   ScrollView,
   Share,
   StyleSheet,
   Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -30,6 +30,7 @@ import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 import { formatFullDate } from '@/utils/formatDate';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -189,7 +190,7 @@ export default function BlogDetailScreen() {
 
                   {/* Author + Date + Comments */}
                   <View style={styles.heroBottomRow}>
-                    <TouchableOpacity style={styles.heroAuthorRow} onPress={handleAuthorPress} activeOpacity={0.7}>
+                    <Pressable style={styles.heroAuthorRow} onPress={handleAuthorPress}>
                       <Avatar source={authorAvatar} size="sm" fallback={authorName} />
                       <View style={styles.heroAuthorInfo}>
                         <UserDisplayName
@@ -202,13 +203,13 @@ export default function BlogDetailScreen() {
                         />
                         <Text style={styles.heroDate}>{date}</Text>
                       </View>
-                    </TouchableOpacity>
+                    </Pressable>
 
                     {post.comment_status === 'open' && (
-                      <TouchableOpacity style={styles.heroCommentBadge} onPress={() => openBlogComments()} activeOpacity={0.7}>
+                      <Pressable style={styles.heroCommentBadge} onPress={() => openBlogComments()}>
                         <Ionicons name="chatbubble-outline" size={14} color="#fff" />
                         {commentCount > 0 && <Text style={styles.heroCommentText}>{commentCount}</Text>}
-                      </TouchableOpacity>
+                      </Pressable>
                     )}
                   </View>
                   </View>
@@ -233,7 +234,7 @@ export default function BlogDetailScreen() {
                 )}
                 <Text style={[styles.fallbackTitle, { color: themeColors.text }]}>{title}</Text>
                 <View style={styles.fallbackBottomRow}>
-                  <TouchableOpacity style={styles.fallbackAuthorRow} onPress={handleAuthorPress} activeOpacity={0.7}>
+                  <Pressable style={styles.fallbackAuthorRow} onPress={handleAuthorPress}>
                     <Avatar source={authorAvatar} size="sm" fallback={authorName} />
                     <View style={styles.fallbackAuthorInfo}>
                       <UserDisplayName
@@ -245,13 +246,13 @@ export default function BlogDetailScreen() {
                       />
                       <Text style={[styles.fallbackDate, { color: themeColors.textTertiary }]}>{date}</Text>
                     </View>
-                  </TouchableOpacity>
+                  </Pressable>
 
                   {post.comment_status === 'open' && (
-                    <TouchableOpacity style={styles.fallbackCommentBadge} onPress={() => openBlogComments()} activeOpacity={0.7}>
+                    <Pressable style={styles.fallbackCommentBadge} onPress={() => openBlogComments()}>
                       <Ionicons name="chatbubble-outline" size={14} color={themeColors.textTertiary} />
                       {commentCount > 0 && <Text style={[styles.fallbackCommentText, { color: themeColors.textTertiary }]}>{commentCount}</Text>}
-                    </TouchableOpacity>
+                    </Pressable>
                   )}
                 </View>
               </View>
@@ -267,17 +268,16 @@ export default function BlogDetailScreen() {
 
               {/* Comments Button */}
               {post.comment_status === 'open' && (
-                <TouchableOpacity
+                <AnimatedPressable
                   style={[styles.commentButton, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
                   onPress={() => openBlogComments()}
-                  activeOpacity={0.7}
                 >
                   <Ionicons name="chatbubble-outline" size={20} color={themeColors.textSecondary} />
                   <Text style={[styles.commentButtonText, { color: themeColors.text }]}>
                     Comments{commentCount > 0 ? ` (${commentCount})` : ''}
                   </Text>
                   <Ionicons name="chevron-forward" size={18} color={themeColors.textTertiary} />
-                </TouchableOpacity>
+                </AnimatedPressable>
               )}
             </View>
           </ScrollView>

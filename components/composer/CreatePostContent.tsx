@@ -2,10 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Keyboard,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import {
@@ -459,13 +459,13 @@ export function CreatePostContent({
       <SafeAreaView style={[styles.container, { backgroundColor: themeColors.surface }]} edges={['top']}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
-          <TouchableOpacity
+          <Pressable
             onPress={onClose}
             style={styles.closeButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="close" size={24} color={themeColors.text} />
-          </TouchableOpacity>
+          </Pressable>
           <Text style={[styles.headerTitle, { color: themeColors.text }]}>
             {isEditing ? 'Edit Post' : 'Create Post'}
           </Text>

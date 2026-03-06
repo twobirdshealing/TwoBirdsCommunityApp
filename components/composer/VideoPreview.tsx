@@ -5,9 +5,9 @@
 import React from 'react';
 import {
   Image,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -68,13 +68,13 @@ export function VideoPreview({ video, onRemove }: VideoPreviewProps) {
       </View>
 
       {/* Remove Button */}
-      <TouchableOpacity
+      <Pressable
         style={styles.removeButton}
         onPress={onRemove}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Ionicons name="close-circle" size={24} color={themeColors.error} />
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }

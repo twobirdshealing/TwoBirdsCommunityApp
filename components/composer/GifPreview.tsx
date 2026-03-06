@@ -6,9 +6,9 @@
 
 import React from 'react';
 import {
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -60,13 +60,13 @@ export function GifPreview({ gif, onRemove }: GifPreviewProps) {
       </View>
 
       {/* Remove Button */}
-      <TouchableOpacity
+      <Pressable
         style={styles.removeButton}
         onPress={onRemove}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Ionicons name="close-circle" size={24} color={themeColors.error} />
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }

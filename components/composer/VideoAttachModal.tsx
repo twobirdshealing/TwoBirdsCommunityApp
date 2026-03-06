@@ -13,9 +13,9 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { BottomSheet, SheetInput } from '@/components/common/BottomSheet';
@@ -126,7 +126,7 @@ export function VideoAttachModal({
               />
             )}
           </SheetInput>
-          <TouchableOpacity
+          <AnimatedPressable
             style={[styles.embedButton, { backgroundColor: themeColors.background, borderColor: themeColors.border }, isLoading && styles.embedButtonDisabled]}
             onPress={handleEmbed}
             disabled={isLoading}
@@ -136,7 +136,7 @@ export function VideoAttachModal({
             ) : (
               <Text style={[styles.embedButtonText, { color: themeColors.text }]}>Embed</Text>
             )}
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       </View>
     </BottomSheet>

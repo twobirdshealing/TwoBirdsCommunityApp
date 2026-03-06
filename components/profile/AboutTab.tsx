@@ -3,7 +3,7 @@
 // =============================================================================
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
@@ -71,19 +71,19 @@ export function AboutTab({ profile }: AboutTabProps) {
 
     if (type === 'phone') {
       return (
-        <TouchableOpacity onPress={() => handlePhonePress(value)} activeOpacity={0.7}>
+        <Pressable onPress={() => handlePhonePress(value)}>
           <Text style={[styles.infoText, { color: themeColors.primary }]}>{value}</Text>
-        </TouchableOpacity>
+        </Pressable>
       );
     }
 
     if (type === 'url') {
       return (
-        <TouchableOpacity onPress={() => handleOpenLink(value)} activeOpacity={0.7}>
+        <Pressable onPress={() => handleOpenLink(value)}>
           <Text style={[styles.infoText, { color: themeColors.primary }]} numberOfLines={1}>
             {value.replace(/^https?:\/\//, '')}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       );
     }
 
@@ -169,12 +169,12 @@ export function AboutTab({ profile }: AboutTabProps) {
 
       {/* Website */}
       {website && (
-        <TouchableOpacity style={styles.infoRow} onPress={() => handleOpenLink(website)} activeOpacity={0.7}>
+        <Pressable style={styles.infoRow} onPress={() => handleOpenLink(website)}>
           <Ionicons name="globe-outline" size={16} color={themeColors.textTertiary} style={styles.infoIcon} />
           <Text style={[styles.infoText, { color: themeColors.primary }]} numberOfLines={1}>
             {website.replace(/^https?:\/\//, '')}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
 
     </View>

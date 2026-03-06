@@ -3,13 +3,14 @@
 // =============================================================================
 
 import React from 'react';
-import { Linking, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { BottomSheetScrollView } from '@/components/common/BottomSheet';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { withOpacity } from '@/constants/colors';
 import type { BookModerator, MeetingSchedule } from '@/types/bookclub';
 
@@ -73,10 +74,9 @@ export function ScheduleSheet({ schedule, meetingLink, meetingId, meetingPasscod
 
       {/* Moderator */}
       {moderator && (
-        <TouchableOpacity
+        <AnimatedPressable
           style={[styles.moderatorRow, { backgroundColor: withOpacity(themeColors.primary, 0.06) }]}
           onPress={onModeratorPress}
-          activeOpacity={onModeratorPress ? 0.7 : 1}
           disabled={!onModeratorPress}
         >
           <Avatar source={moderator.avatar} size="sm" fallback={moderator.display_name} />
@@ -92,7 +92,7 @@ export function ScheduleSheet({ schedule, meetingLink, meetingId, meetingPasscod
           {onModeratorPress && (
             <Ionicons name="chevron-forward" size={18} color={themeColors.textTertiary} />
           )}
-        </TouchableOpacity>
+        </AnimatedPressable>
       )}
 
       {/* Schedule Table */}

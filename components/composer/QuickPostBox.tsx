@@ -9,9 +9,9 @@ import {
   Image,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { shadows, spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -42,10 +42,9 @@ export function QuickPostBox({
   const firstName = displayName.split(' ')[0];
 
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       style={[styles.container, { backgroundColor: themeColors.surface, borderColor: themeColors.border, ...shadows.sm }]}
       onPress={onPress}
-      activeOpacity={0.7}
     >
       {/* Avatar */}
       <View style={styles.avatarContainer}>
@@ -64,7 +63,7 @@ export function QuickPostBox({
       <View style={[styles.inputPlaceholder, { backgroundColor: themeColors.backgroundSecondary }]}>
         <Text style={[styles.placeholderText, { color: themeColors.textSecondary }]}>{placeholder}</Text>
       </View>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 

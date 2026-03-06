@@ -14,7 +14,7 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
+  Pressable,
   View,
   ViewToken,
 } from 'react-native';
@@ -281,13 +281,13 @@ export function MediaViewer({
 
           {/* Top Bar - Close + Counter + Share */}
           <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-            <TouchableOpacity
+            <Pressable
               style={styles.topBarButton}
               onPress={onClose}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="close" size={28} color="#fff" />
-            </TouchableOpacity>
+            </Pressable>
 
             {images.length > 1 && (
               <View style={styles.counter}>
@@ -298,7 +298,7 @@ export function MediaViewer({
             )}
 
             <View style={styles.topBarActions}>
-              <TouchableOpacity
+              <Pressable
                 style={styles.topBarButton}
                 onPress={handleSave}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -309,9 +309,9 @@ export function MediaViewer({
                   size={24}
                   color={saving ? 'rgba(255,255,255,0.4)' : '#fff'}
                 />
-              </TouchableOpacity>
+              </Pressable>
 
-              <TouchableOpacity
+              <Pressable
                 style={styles.topBarButton}
                 onPress={handleShare}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -322,7 +322,7 @@ export function MediaViewer({
                   size={24}
                   color={saving ? 'rgba(255,255,255,0.4)' : '#fff'}
                 />
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
 

@@ -15,9 +15,9 @@ import {
   Image,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { sizing, spacing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { createLogger } from '@/utils/logger';
@@ -75,8 +75,8 @@ export function ImageMedia({
     height: displayHeight,
   };
   
-  const Wrapper = onPress ? TouchableOpacity : View;
-  const wrapperProps = onPress ? { onPress, activeOpacity: 0.9 } : {};
+  const Wrapper = onPress ? AnimatedPressable : View;
+  const wrapperProps = onPress ? { onPress } : {};
   
   // Error state - show placeholder
   if (error) {

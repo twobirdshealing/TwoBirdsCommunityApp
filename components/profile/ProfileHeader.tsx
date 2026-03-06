@@ -3,7 +3,8 @@
 // =============================================================================
 
 import React from 'react';
-import { Alert, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { Alert, View, Text, StyleSheet, Pressable, ActivityIndicator, Linking } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { hapticLight } from '@/utils/haptics';
@@ -68,10 +69,9 @@ export function ProfileHeader({
   return (
     <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
       {/* Cover Photo */}
-      <TouchableOpacity
+      <AnimatedPressable
         style={styles.coverContainer}
         onPress={handleCoverPress}
-        activeOpacity={isOwnProfile ? 0.85 : 1}
         disabled={!isOwnProfile}
       >
         {coverPhoto ? (
@@ -91,23 +91,21 @@ export function ProfileHeader({
 
         {/* Settings Button (own profile only) */}
         {isOwnProfile && onSettingsPress && (
-          <TouchableOpacity
+          <Pressable
             style={[styles.settingsButton, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)' }]}
             onPress={onSettingsPress}
-            activeOpacity={0.8}
           >
             <Ionicons name="settings-outline" size={20} color={themeColors.icon} />
-          </TouchableOpacity>
+          </Pressable>
         )}
-      </TouchableOpacity>
+      </AnimatedPressable>
 
       {/* Profile Info */}
       <View style={styles.infoContainer}>
         {/* Avatar with edit overlay */}
-        <TouchableOpacity
+        <AnimatedPressable
           style={[styles.avatarWrapper, { backgroundColor: themeColors.surface, borderColor: themeColors.surface }]}
           onPress={handleAvatarPress}
-          activeOpacity={isOwnProfile ? 0.8 : 1}
           disabled={!isOwnProfile}
         >
           <Avatar
@@ -122,7 +120,7 @@ export function ProfileHeader({
               <ActivityIndicator size="small" color="#fff" />
             </View>
           )}
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         {/* Name & Badges */}
         <UserDisplayName
@@ -139,35 +137,34 @@ export function ProfileHeader({
         {activeSocials.length > 0 && (
           <View style={styles.socialRow}>
             {activeSocials.map(({ key, domain }) => (
-              <TouchableOpacity
+              <Pressable
                 key={key}
                 onPress={() => handleOpenSocial(socialLinks[key]!, domain)}
-                activeOpacity={0.7}
                 style={styles.socialIconButton}
               >
                 <Ionicons name={getProviderIcon(key) as any} size={18} color={themeColors.textSecondary} />
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </View>
         )}
 
         {/* Stats Row */}
         <View style={[styles.statsRow, { backgroundColor: themeColors.backgroundSecondary }]}>
-          <TouchableOpacity style={styles.stat} onPress={onFollowingPress}>
+          <Pressable style={styles.stat} onPress={onFollowingPress}>
             <Text style={[styles.statValue, { color: themeColors.text }]}>
               {formatCompactNumber(profile.followings_count || 0)}
             </Text>
             <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Following</Text>
-          </TouchableOpacity>
+          </Pressable>
 
           <View style={[styles.statDivider, { backgroundColor: themeColors.border }]} />
 
-          <TouchableOpacity style={styles.stat} onPress={onFollowersPress}>
+          <Pressable style={styles.stat} onPress={onFollowersPress}>
             <Text style={[styles.statValue, { color: themeColors.text }]}>
               {formatCompactNumber(profile.followers_count || 0)}
             </Text>
             <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Followers</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </View>

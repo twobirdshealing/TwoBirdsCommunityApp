@@ -8,13 +8,14 @@
 
 import React, { useState } from 'react';
 import {
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
 import { useBridgeState, type EditorBridge } from '@10play/tentap-editor';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -214,19 +215,19 @@ export function MarkdownToolbar({
               />
             )}
           </SheetInput>
-          <TouchableOpacity
+          <AnimatedPressable
             style={[styles.linkButton, { backgroundColor: themeColors.primary }]}
             onPress={handleLinkInsert}
             disabled={!linkUrl.trim()}
           >
             <Ionicons name="checkmark" size={18} color={themeColors.textInverse} />
-          </TouchableOpacity>
-          <TouchableOpacity
+          </AnimatedPressable>
+          <Pressable
             style={styles.linkCancelButton}
             onPress={handleLinkCancel}
           >
             <Ionicons name="close" size={18} color={themeColors.textSecondary} />
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     );
@@ -253,7 +254,7 @@ export function MarkdownToolbar({
             {group.map((btn) => {
               const active = btn.isActive();
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={btn.key}
                   style={[
                     styles.button,
@@ -284,7 +285,7 @@ export function MarkdownToolbar({
                       {btn.label}
                     </Text>
                   )}
-                </TouchableOpacity>
+                </AnimatedPressable>
               );
             })}
           </React.Fragment>

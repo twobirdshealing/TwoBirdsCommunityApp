@@ -12,7 +12,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -142,16 +141,15 @@ export function HomeWidget({
         </View>
 
         {onSeeAll && (
-          <TouchableOpacity
+          <Pressable
             style={styles.seeAllButton}
             onPress={onSeeAll}
-            activeOpacity={0.7}
           >
             <Text style={[styles.seeAllText, { color: themeColors.primary }]}>
               {seeAllLabel}
             </Text>
             <Ionicons name="chevron-forward" size={14} color={themeColors.primary} />
-          </TouchableOpacity>
+          </Pressable>
         )}
       </Pressable>
 

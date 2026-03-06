@@ -12,9 +12,9 @@ import {
   Linking,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { createLogger } from '@/utils/logger';
@@ -110,10 +110,9 @@ export function LinkPreview({
   // Compact style (no thumbnail)
   if (!thumbnail) {
     return (
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.compactContainer, { backgroundColor: themeColors.backgroundSecondary, borderColor: themeColors.border }]}
         onPress={handlePress}
-        activeOpacity={0.8}
       >
         <View style={[styles.iconContainer, { backgroundColor: themeColors.background }]}>
           <Text style={styles.icon}>{icon}</Text>
@@ -129,16 +128,15 @@ export function LinkPreview({
         </View>
 
         <Text style={[styles.externalIcon, { color: themeColors.textSecondary }]}>↗</Text>
-      </TouchableOpacity>
+      </AnimatedPressable>
     );
   }
   
   // Full style (with thumbnail)
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       style={[styles.container, { backgroundColor: themeColors.backgroundSecondary }]}
       onPress={handlePress}
-      activeOpacity={0.9}
     >
       {/* Thumbnail */}
       <Image
@@ -171,7 +169,7 @@ export function LinkPreview({
       <View style={styles.openHint}>
         <Text style={styles.openHintText}>Tap to open ↗</Text>
       </View>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 

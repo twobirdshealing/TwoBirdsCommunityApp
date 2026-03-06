@@ -13,7 +13,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -77,17 +76,16 @@ export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
   // No enrolled courses — show browse CTA
   if (!courses || courses.length === 0) {
     return (
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.ctaCard, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}
         onPress={() => router.push('/courses')}
-        activeOpacity={0.7}
       >
         <Ionicons name="school-outline" size={28} color={themeColors.primary} />
         <Text style={[styles.ctaText, { color: themeColors.primary }]}>Browse Courses</Text>
         <Text style={[styles.ctaSubtext, { color: themeColors.textSecondary }]}>
           Explore available courses and start learning
         </Text>
-      </TouchableOpacity>
+      </AnimatedPressable>
     );
   }
 

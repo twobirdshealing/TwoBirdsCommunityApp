@@ -32,10 +32,10 @@ import React, { useMemo, useState } from 'react';
 import { useCachedData } from '@/hooks/useCachedData';
 import {
   Alert,
+  Pressable,
   RefreshControl,
   StyleSheet,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -269,9 +269,9 @@ export default function MessagesScreen() {
               autoCorrect={false}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Pressable onPress={() => setSearchQuery('')}>
                 <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
         )}

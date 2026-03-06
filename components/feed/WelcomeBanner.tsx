@@ -11,12 +11,13 @@ import {
   Dimensions,
   StyleSheet,
   Text,
-  TouchableOpacity,
+  Pressable,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { WelcomeBanner as WelcomeBannerType, WelcomeBannerButton } from '@/types/feed';
@@ -88,7 +89,7 @@ function CTAButton({ button }: CTAButtonProps) {
   };
 
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       style={[
         styles.button,
         getButtonStyle(),
@@ -96,7 +97,6 @@ function CTAButton({ button }: CTAButtonProps) {
         button.type === 'secondary' && { backgroundColor: themeColors.surface, borderColor: themeColors.primary },
       ]}
       onPress={handlePress}
-      activeOpacity={0.8}
     >
       <Text
         style={[
@@ -109,7 +109,7 @@ function CTAButton({ button }: CTAButtonProps) {
       >
         {button.label}
       </Text>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 
@@ -141,14 +141,13 @@ export function WelcomeBanner({ banner, onClose }: WelcomeBannerProps) {
     <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
       {/* Close button */}
       {banner.allowClose === 'yes' && onClose && (
-        <TouchableOpacity
+        <Pressable
           style={[styles.closeButton, { backgroundColor: themeColors.backgroundSecondary, borderColor: themeColors.border }]}
           onPress={onClose}
-          activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Ionicons name="close" size={16} color={themeColors.text} />
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {/* Media: Image or YouTube Thumbnail */}

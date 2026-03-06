@@ -11,7 +11,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +21,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { FEATURES, PRIVACY_POLICY_URL } from '@/constants/config';
 import { spacing, typography, shadows } from '@/constants/layout';
 import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -60,7 +60,7 @@ interface MenuItemProps {
 function MenuItem({ icon, label, onPress, destructive = false }: MenuItemProps) {
   const { colors: themeColors } = useTheme();
   return (
-    <TouchableOpacity style={styles.menuItem} onPress={() => { destructive ? hapticWarning() : hapticLight(); onPress(); }} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={label}>
+    <AnimatedPressable style={styles.menuItem} onPress={() => { destructive ? hapticWarning() : hapticLight(); onPress(); }} accessibilityRole="button" accessibilityLabel={label}>
       <Ionicons
         name={icon}
         size={22}
@@ -69,7 +69,7 @@ function MenuItem({ icon, label, onPress, destructive = false }: MenuItemProps) 
       <Text style={[styles.menuItemText, { color: destructive ? themeColors.error : themeColors.text, marginLeft: spacing.md }]}>
         {label}
       </Text>
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 
@@ -162,10 +162,9 @@ export function UserMenu({
         <View style={[styles.menuContainer, { top: insets.top + 50, backgroundColor: themeColors.surface }]}>
           <Pressable onPress={(e) => e.stopPropagation()}>
             {/* Profile Preview - Tappable to go to profile */}
-            <TouchableOpacity
+            <AnimatedPressable
               style={styles.profilePreview}
               onPress={handleProfilePress}
-              activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel="View profile"
             >
@@ -187,7 +186,7 @@ export function UserMenu({
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={themeColors.textTertiary} />
-            </TouchableOpacity>
+            </AnimatedPressable>
 
             {/* Divider */}
             <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
@@ -246,7 +245,7 @@ export function UserMenu({
               />
 
               {/* Dark Mode Toggle */}
-              <TouchableOpacity style={styles.menuItem} onPress={handleThemeToggle} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`Toggle dark mode, currently ${themeModeLabel}`}>
+              <AnimatedPressable style={styles.menuItem} onPress={handleThemeToggle} accessibilityRole="button" accessibilityLabel={`Toggle dark mode, currently ${themeModeLabel}`}>
                 <Ionicons
                   name={isDark ? 'sunny-outline' : 'moon-outline'}
                   size={22}
@@ -254,7 +253,7 @@ export function UserMenu({
                 />
                 <Text style={[styles.menuItemText, { color: themeColors.text, marginLeft: spacing.md }]}>Dark Mode</Text>
                 <Text style={[styles.themeLabel, { color: themeColors.textTertiary }]}>{themeModeLabel}</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
 
             {/* Divider */}

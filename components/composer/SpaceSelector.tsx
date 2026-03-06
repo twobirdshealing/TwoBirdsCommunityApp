@@ -10,12 +10,13 @@ import {
   ActivityIndicator,
   FlatList,
   Modal,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -195,7 +196,7 @@ export function SpaceSelector({
 
     const space = item.space;
     return (
-      <TouchableOpacity
+      <AnimatedPressable
         style={[
           styles.spaceItem,
           { borderBottomColor: themeColors.border },
@@ -216,7 +217,7 @@ export function SpaceSelector({
         {space.slug === selectedSpaceSlug && (
           <Ionicons name="checkmark" size={20} color={themeColors.primary} />
         )}
-      </TouchableOpacity>
+      </AnimatedPressable>
     );
   };
 
@@ -227,7 +228,7 @@ export function SpaceSelector({
   return (
     <>
       {/* Trigger Button */}
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.trigger, { backgroundColor: themeColors.background }]}
         onPress={() => setIsOpen(true)}
       >
@@ -236,7 +237,7 @@ export function SpaceSelector({
           {selectedSpaceName || 'Select a space...'}
         </Text>
         <Ionicons name="chevron-down" size={16} color={themeColors.textSecondary} />
-      </TouchableOpacity>
+      </AnimatedPressable>
 
       {/* Modal */}
       <Modal
@@ -249,7 +250,7 @@ export function SpaceSelector({
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
             <Text style={[styles.headerTitle, { color: themeColors.text }]}>Select Space</Text>
-            <TouchableOpacity
+            <Pressable
               style={styles.closeButton}
               onPress={() => {
                 setIsOpen(false);
@@ -257,7 +258,7 @@ export function SpaceSelector({
               }}
             >
               <Ionicons name="close" size={24} color={themeColors.text} />
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           {/* Search */}
@@ -272,9 +273,9 @@ export function SpaceSelector({
               autoCapitalize="none"
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Pressable onPress={() => setSearchQuery('')}>
                 <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
 

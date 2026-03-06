@@ -5,7 +5,8 @@
 // =============================================================================
 
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CourseLesson } from '@/types/course';
@@ -23,11 +24,10 @@ export function LessonRow({ lesson, index, isCompleted, onPress }: LessonRowProp
   const isLocked = lesson.is_locked || !lesson.can_view;
 
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       style={[styles.container, { borderBottomColor: themeColors.borderLight }]}
       onPress={onPress}
       disabled={isLocked}
-      activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel={`${lesson.title}${isCompleted ? ', completed' : ''}${isLocked ? ', locked' : ''}`}
     >
@@ -83,7 +83,7 @@ export function LessonRow({ lesson, index, isCompleted, onPress }: LessonRowProp
       {!isLocked && (
         <Ionicons name="chevron-forward" size={18} color={themeColors.textTertiary} />
       )}
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }
 

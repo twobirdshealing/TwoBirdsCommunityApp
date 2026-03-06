@@ -18,7 +18,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -39,6 +38,7 @@ import { useCachedData } from '@/hooks/useCachedData';
 import { coursesApi } from '@/services/api/courses';
 import { Course, CourseLesson, CourseSection, CourseTrack } from '@/types/course';
 import { hapticMedium } from '@/utils/haptics';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -273,10 +273,9 @@ export default function CourseDetailScreen() {
 
           {/* Instructor */}
           {!hideInstructor && course.creator && (
-            <TouchableOpacity
+            <AnimatedPressable
               style={[styles.instructorRow, { backgroundColor: themeColors.surface }]}
               onPress={() => course.creator?.username && router.push(`/profile/${course.creator.username}`)}
-              activeOpacity={0.7}
             >
               {course.creator.avatar ? (
                 <Image source={{ uri: course.creator.avatar }} style={styles.instructorAvatar} contentFit="cover" transition={200} cachePolicy="memory-disk" />
@@ -294,7 +293,7 @@ export default function CourseDetailScreen() {
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={themeColors.textTertiary} />
-            </TouchableOpacity>
+            </AnimatedPressable>
           )}
 
           {/* Progress + Action Button */}
@@ -307,23 +306,21 @@ export default function CourseDetailScreen() {
                     {isComplete ? 'Course Complete!' : `${Math.round(progress)}% Complete`}
                   </Text>
                 </View>
-                <TouchableOpacity
+                <AnimatedPressable
                   style={[styles.actionButton, { backgroundColor: themeColors.primary }]}
                   onPress={handleContinueLearning}
-                  activeOpacity={0.7}
                 >
                   <Ionicons name={isComplete ? 'refresh-outline' : 'play-outline'} size={20} color={themeColors.textInverse} />
                   <Text style={[styles.actionButtonText, { color: themeColors.textInverse }]}>
                     {isComplete ? 'Review Course' : 'Continue Learning'}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               </>
             ) : (
-              <TouchableOpacity
+              <AnimatedPressable
                 style={[styles.actionButton, { backgroundColor: themeColors.primary }]}
                 onPress={handleEnroll}
                 disabled={enrolling}
-                activeOpacity={0.7}
               >
                 {enrolling ? (
                   <ActivityIndicator size="small" color={themeColors.textInverse} />
@@ -335,7 +332,7 @@ export default function CourseDetailScreen() {
                     </Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </AnimatedPressable>
             )}
           </View>
 

@@ -11,10 +11,10 @@ import {
   ActivityIndicator,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -52,10 +52,9 @@ export function ProfilePhotoPicker({
   return (
     <View style={styles.photoSection}>
       {/* Cover Photo */}
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.coverContainer, { backgroundColor: colors.backgroundSecondary }]}
         onPress={onCoverPress}
-        activeOpacity={0.85}
         disabled={coverUploading}
       >
         {coverSource ? (
@@ -79,13 +78,12 @@ export function ProfilePhotoPicker({
             </>
           )}
         </View>
-      </TouchableOpacity>
+      </AnimatedPressable>
 
       {/* Avatar */}
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.avatarWrapper, { borderColor: colors.background }]}
         onPress={onAvatarPress}
-        activeOpacity={0.85}
         disabled={avatarUploading}
       >
         <Avatar
@@ -103,7 +101,7 @@ export function ProfilePhotoPicker({
             <Text style={styles.avatarText}>Change{'\n'}Avatar</Text>
           </View>
         )}
-      </TouchableOpacity>
+      </AnimatedPressable>
     </View>
   );
 }

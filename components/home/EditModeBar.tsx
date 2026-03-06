@@ -5,7 +5,7 @@
 // =============================================================================
 
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -35,21 +35,21 @@ export function EditModeBar({ onDone, onReset }: EditModeBarProps) {
         },
       ]}
     >
-      <TouchableOpacity onPress={onReset} activeOpacity={0.7}>
+      <Pressable onPress={onReset}>
         <Text style={[styles.resetText, { color: themeColors.textSecondary }]}>
           Reset
         </Text>
-      </TouchableOpacity>
+      </Pressable>
 
       <Text style={[styles.title, { color: themeColors.text }]}>
         Edit Widgets
       </Text>
 
-      <TouchableOpacity onPress={onDone} activeOpacity={0.7}>
+      <Pressable onPress={onDone}>
         <Text style={[styles.doneText, { color: themeColors.primary }]}>
           Done
         </Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }

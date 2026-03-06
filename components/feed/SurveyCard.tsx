@@ -9,11 +9,11 @@ import {
   Alert,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { spacing, sizing, typography } from '@/constants/layout';
 import { SurveyConfig } from '@/types/feed';
 import { feedsApi } from '@/services/api/feeds';
@@ -127,7 +127,7 @@ export function SurveyCard({ config: initialConfig, feedId }: SurveyCardProps) {
         const isVoted = option.voted === true;
 
         return (
-          <TouchableOpacity
+          <AnimatedPressable
             key={option.slug}
             style={[
               styles.optionRow,
@@ -138,7 +138,6 @@ export function SurveyCard({ config: initialConfig, feedId }: SurveyCardProps) {
             ]}
             onPress={() => toggleVote(option.slug)}
             disabled={isExpired || isSyncing}
-            activeOpacity={0.7}
           >
             {/* Progress fill bar */}
             <View
@@ -187,7 +186,7 @@ export function SurveyCard({ config: initialConfig, feedId }: SurveyCardProps) {
                 </Text>
               )}
             </View>
-          </TouchableOpacity>
+          </AnimatedPressable>
         );
       })}
 

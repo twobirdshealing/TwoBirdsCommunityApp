@@ -13,7 +13,7 @@ import {
   Dimensions,
   StyleSheet,
   Text,
-  TouchableOpacity,
+  Pressable,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -40,6 +40,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SITE_URL } from '@/constants/config';
 import { REACTION_EMOJI, REACTION_COLORS, REACTION_NAMES } from '@/constants/reactions';
 import { extractYouTubeId } from '@/utils/youtube';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { SurveyCard } from '@/components/feed/SurveyCard';
@@ -285,10 +286,9 @@ export function FeedCard({
 
       {/* ===== Header ===== */}
       <View style={styles.header}>
-        <TouchableOpacity
+        <AnimatedPressable
           style={styles.authorRow}
           onPress={onAuthorPress}
-          activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel={`View ${authorName}'s profile`}
         >
@@ -311,20 +311,20 @@ export function FeedCard({
               {spaceName && (
                 <>
                   <Text style={[styles.dot, { color: themeColors.textTertiary }]}>•</Text>
-                  <TouchableOpacity onPress={onSpacePress}>
+                  <Pressable onPress={onSpacePress}>
                     <Text style={[styles.spaceName, { color: themeColors.primary }]} numberOfLines={1}>
                       {spaceName}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 </>
               )}
             </View>
           </View>
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         {/* Header Actions: Bookmark + Menu */}
         <View style={styles.headerActions}>
-          <TouchableOpacity
+          <Pressable
             style={styles.headerButton}
             onPress={handleBookmarkPress}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -336,9 +336,9 @@ export function FeedCard({
               size={20}
               color={isBookmarked ? themeColors.primary : themeColors.textSecondary}
             />
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
+          <Pressable
             ref={menuButtonRef}
             style={styles.headerButton}
             onPress={handleMenuPress}
@@ -347,7 +347,7 @@ export function FeedCard({
             accessibilityLabel="Post options"
           >
             <Ionicons name="ellipsis-vertical" size={20} color={themeColors.textSecondary} />
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
 
@@ -379,11 +379,11 @@ export function FeedCard({
 
       {/* ===== Show More / Show Less ===== */}
       {(isLongContent || isOverflowing) && (
-        <TouchableOpacity onPress={() => setExpanded(!expanded)} activeOpacity={0.7}>
+        <Pressable onPress={() => setExpanded(!expanded)}>
           <Text style={[styles.showMoreText, { color: themeColors.primary }]}>
             {expanded ? 'Show less' : 'Show more'}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {/* ===== Image Grid - Tappable to open Media Viewer ===== */}
@@ -394,9 +394,8 @@ export function FeedCard({
         const extraCount = count > 4 ? count - 4 : 0;
 
         const renderGridImage = (url: string, index: number, style: any, isLast4Plus?: boolean) => (
-          <TouchableOpacity
+          <AnimatedPressable
             key={index}
-            activeOpacity={0.9}
             onPress={() => {
               setMediaViewerIndex(index);
               setShowMediaViewer(true);
@@ -415,7 +414,7 @@ export function FeedCard({
                 <Text style={styles.gridOverlayText}>+{extraCount}</Text>
               </View>
             )}
-          </TouchableOpacity>
+          </AnimatedPressable>
         );
 
         if (count === 1) {
@@ -476,15 +475,14 @@ export function FeedCard({
                 transition={200}
                 cachePolicy="memory-disk"
               />
-              <TouchableOpacity
+              <AnimatedPressable
                 style={styles.playButton}
                 onPress={() => setIsVideoPlaying(true)}
-                activeOpacity={0.8}
               >
                 <View style={styles.playButtonInner}>
                   <Ionicons name="play" size={20} color="#fff" />
                 </View>
-              </TouchableOpacity>
+              </AnimatedPressable>
               <View style={styles.youtubeLabel}>
                 <Ionicons name="logo-youtube" size={12} color="#fff" />
               </View>
@@ -516,7 +514,7 @@ export function FeedCard({
         {/* Left side: reaction + comment buttons */}
         <View style={styles.footerLeft}>
           {/* Reaction Button - tap for default like, long-press for picker */}
-          <TouchableOpacity
+          <AnimatedPressable
             ref={reactionButtonRef}
             style={[
               styles.footerButton,
@@ -541,7 +539,6 @@ export function FeedCard({
               });
             }}
             delayLongPress={400}
-            activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel={hasUserReact ? 'Remove reaction' : 'React to post'}
             accessibilityHint="Long press for more reactions"
@@ -549,13 +546,12 @@ export function FeedCard({
             <View style={{ opacity: hasUserReact ? 1 : 0.4 }}>
               <ReactionIcon iconUrl={userReactionIconUrl} emoji={userReactionEmoji} size={35} />
             </View>
-          </TouchableOpacity>
+          </AnimatedPressable>
 
           {/* Comment button */}
-          <TouchableOpacity
+          <AnimatedPressable
             style={styles.footerButton}
             onPress={() => onCommentPress?.()}
-            activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel={commentsCount > 0 ? `${commentsCount} comments` : 'Comment'}
           >
@@ -567,15 +563,14 @@ export function FeedCard({
                 </Text>
               )}
             </View>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
 
         {/* Right side: reaction breakdown summary (tappable) */}
         {reactionBreakdown.length > 0 && reactionsCount > 0 && (
-          <TouchableOpacity
+          <Pressable
             style={styles.footerRight}
             onPress={() => setShowBreakdown(true)}
-            activeOpacity={0.7}
           >
             <View style={styles.reactionEmojiStack}>
               {reactionBreakdown.slice(0, display.count).map((item, i) => (
@@ -599,7 +594,7 @@ export function FeedCard({
             <Text style={[styles.reactionSummaryCount, { color: themeColors.textSecondary }]}>
               {formatCompactNumber(reactionsCount)}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
 

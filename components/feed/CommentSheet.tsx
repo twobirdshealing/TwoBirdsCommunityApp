@@ -13,7 +13,7 @@ import {
   FlatList,
   StyleSheet,
   Text,
-  TouchableOpacity,
+  Pressable,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -37,6 +37,7 @@ import { Comment } from '@/types/comment';
 import { ReactionType } from '@/types/feed';
 import { commentsApi } from '@/services/api/comments';
 import { mediaApi } from '@/services/api/media';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
@@ -705,14 +706,14 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
               style={styles.commentHeaderLeft}
             />
             {/* 3-dot menu */}
-            <TouchableOpacity
+            <Pressable
               ref={(el: any) => { menuButtonRefs.current[item.id] = el; }}
               style={styles.commentMenuButton}
               onPress={() => handleCommentMenu(item)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="ellipsis-vertical" size={16} color={themeColors.textTertiary} />
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           {/* Comment text with timestamp on right */}
@@ -757,7 +758,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                 const reactionColor = rConfig?.color || themeColors.primary;
 
                 return (
-                  <TouchableOpacity
+                  <AnimatedPressable
                     ref={(el: any) => { reactionButtonRefs.current[item.id] = el; }}
                     style={[
                       styles.commentReactionButton,
@@ -785,15 +786,15 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                     <View style={{ opacity: hasReacted ? 1 : 0.4 }}>
                       <ReactionIcon iconUrl={iconUrl} emoji={emoji} size={35} />
                     </View>
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 );
               })()}
-              <TouchableOpacity
+              <Pressable
                 style={styles.commentAction}
                 onPress={() => handleReply(item)}
               >
                 <Text style={[styles.commentActionText, { color: themeColors.textSecondary }]}>Reply</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
             {/* Right side: reaction breakdown summary */}
             {(() => {
@@ -802,10 +803,9 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                 ? parseInt(item.reactions_count, 10) : item.reactions_count || 0;
               if (breakdown.length === 0 || totalReactions === 0) return null;
               return (
-                <TouchableOpacity
+                <Pressable
                   style={styles.commentBreakdown}
                   onPress={() => setBreakdownComment(item)}
-                  activeOpacity={0.7}
                 >
                   <View style={styles.commentEmojiStack}>
                     {breakdown.slice(0, display.count).map((bd, i) => (
@@ -826,7 +826,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                   <Text style={[styles.commentActionText, { color: themeColors.textSecondary }]}>
                     {totalReactions}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               );
             })()}
           </View>
@@ -857,13 +857,13 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
       <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.surface }]} edges={['top']}>
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
-            <TouchableOpacity
+            <Pressable
               onPress={onClose}
               style={styles.closeButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="close" size={24} color={themeColors.text} />
-            </TouchableOpacity>
+            </Pressable>
             <Text style={[styles.headerTitle, { color: themeColors.text }]}>Comments</Text>
             <View style={styles.headerSpacer} />
           </View>
@@ -877,9 +877,9 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
             ) : error ? (
               <View style={styles.centered}>
                 <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-                <TouchableOpacity onPress={fetchComments} style={[styles.retryButton, { backgroundColor: themeColors.primary }]}>
+                <AnimatedPressable onPress={fetchComments} style={[styles.retryButton, { backgroundColor: themeColors.primary }]}>
                   <Text style={[styles.retryText, { color: themeColors.textInverse }]}>Try Again</Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               </View>
             ) : comments.length === 0 && !stickyComment ? (
               <View style={styles.centered}>
@@ -916,9 +916,9 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                 <Text style={[styles.replyText, { color: themeColors.textSecondary }]}>
                   Replying to <Text style={[styles.replyName, { color: themeColors.primary }]}>@{replyingTo.xprofile?.username || replyingTo.xprofile?.display_name}</Text>
                 </Text>
-                <TouchableOpacity onPress={cancelReply}>
+                <Pressable onPress={cancelReply}>
                   <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
-                </TouchableOpacity>
+                </Pressable>
               </View>
             )}
 
@@ -928,9 +928,9 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                 <Text style={[styles.replyText, { color: themeColors.textSecondary }]}>
                   Editing comment
                 </Text>
-                <TouchableOpacity onPress={cancelEdit}>
+                <Pressable onPress={cancelEdit}>
                   <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
-                </TouchableOpacity>
+                </Pressable>
               </View>
             )}
 
@@ -939,12 +939,12 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
               <View style={styles.attachedImagesContainer}>
                 <View style={styles.attachedImageWrapper}>
                   <Image source={{ uri: gifAttachment.previewUrl }} style={styles.attachedImage} contentFit="cover" />
-                  <TouchableOpacity
+                  <Pressable
                     style={styles.removeImageButton}
                     onPress={handleGifRemove}
                   >
                     <Ionicons name="close-circle" size={20} color="#fff" />
-                  </TouchableOpacity>
+                  </Pressable>
                 </View>
               </View>
             )}
@@ -955,12 +955,12 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                 {attachedImages.map((img, idx) => (
                   <View key={idx} style={styles.attachedImageWrapper}>
                     <Image source={{ uri: img.url }} style={styles.attachedImage} contentFit="cover" />
-                    <TouchableOpacity
+                    <Pressable
                       style={styles.removeImageButton}
                       onPress={() => removeImage(idx)}
                     >
                       <Ionicons name="close-circle" size={20} color="#fff" />
-                    </TouchableOpacity>
+                    </Pressable>
                   </View>
                 ))}
                 {isUploading && (
@@ -984,7 +984,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
 
             {/* Action bar — image picker + GIF picker + send button */}
             <View style={[styles.inputContainer, { borderTopColor: themeColors.border }]}>
-              <TouchableOpacity
+              <Pressable
                 style={styles.imageButton}
                 onPress={handlePickImage}
                 disabled={isUploading || attachedImages.length >= 4 || !!gifAttachment}
@@ -994,9 +994,9 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                   size={24}
                   color={(attachedImages.length >= 4 || gifAttachment) ? themeColors.textTertiary : themeColors.primary}
                 />
-              </TouchableOpacity>
+              </Pressable>
 
-              <TouchableOpacity
+              <Pressable
                 style={styles.imageButton}
                 onPress={handleGifPress}
                 disabled={!!gifAttachment}
@@ -1006,11 +1006,11 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                   fontWeight: '700',
                   color: gifAttachment ? themeColors.primary : themeColors.textSecondary,
                 }}>GIF</Text>
-              </TouchableOpacity>
+              </Pressable>
 
               <View style={{ flex: 1 }} />
 
-              <TouchableOpacity
+              <AnimatedPressable
                 style={[styles.sendButton, { backgroundColor: themeColors.primary }, !canSubmit && [styles.sendButtonDisabled, { backgroundColor: themeColors.textTertiary }]]}
                 onPress={handleSubmitComment}
                 disabled={!canSubmit}
@@ -1020,7 +1020,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                 ) : (
                   <Ionicons name={editingComment ? "checkmark" : "send"} size={20} color={themeColors.textInverse} />
                 )}
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
           </View>
 

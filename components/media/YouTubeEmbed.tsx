@@ -15,9 +15,9 @@ import {
   Linking,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -78,17 +78,16 @@ export function YouTubeEmbed({
   // Fallback if youtube-iframe not installed
   if (!YoutubePlayer) {
     return (
-      <TouchableOpacity
+      <AnimatedPressable
         style={styles.fallbackContainer}
         onPress={() => {
           Linking.openURL(`https://www.youtube.com/watch?v=${videoId}`);
         }}
-        activeOpacity={0.9}
       >
         <View style={styles.fallbackContent}>
           <Text style={styles.fallbackText}>Open in YouTube</Text>
         </View>
-      </TouchableOpacity>
+      </AnimatedPressable>
     );
   }
 

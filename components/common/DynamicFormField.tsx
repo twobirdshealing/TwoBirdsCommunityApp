@@ -15,10 +15,10 @@
 
 import React, { useState } from 'react';
 import {
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,10 +82,10 @@ export function DynamicFormField({
   if (field.type === 'inline_checkbox') {
     return (
       <View key={fieldKey} style={styles.inputContainer}>
-        <TouchableOpacity
+        <Pressable
           style={styles.checkboxRow}
           onPress={() => { hapticSelection(); onChange(!currentValue); }}
-          activeOpacity={0.7}
+
         >
           <View style={[
             styles.checkbox,
@@ -98,7 +98,7 @@ export function DynamicFormField({
             {field.inline_label || field.label}
             {field.required && <Text style={{ color: themeColors.error }}> *</Text>}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
         {extraContent}
         {error && <Text style={[styles.fieldError, { color: themeColors.error }]}>{error}</Text>}
       </View>
@@ -118,7 +118,7 @@ export function DynamicFormField({
         {field.instructions ? (
           <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
         ) : null}
-        <TouchableOpacity
+        <Pressable
           style={[
             styles.input,
             styles.selectInput,
@@ -131,7 +131,7 @@ export function DynamicFormField({
             hapticLight();
             onSelectPress?.(fieldKey);
           }}
-          activeOpacity={0.7}
+
         >
           <Text style={[
             styles.selectText,
@@ -140,7 +140,7 @@ export function DynamicFormField({
             {currentValue || field.placeholder || `Select ${field.label}`}
           </Text>
           <Ionicons name="chevron-down" size={16} color={themeColors.textSecondary} />
-        </TouchableOpacity>
+        </Pressable>
         {extraContent}
         {error && <Text style={[styles.fieldError, { color: themeColors.error }]}>{error}</Text>}
       </View>
@@ -218,7 +218,7 @@ export function DynamicFormField({
           {(field.options || []).map((option) => {
             const isSelected = selected.includes(option);
             return (
-              <TouchableOpacity
+              <Pressable
                 key={option}
                 style={[
                   styles.chip,
@@ -228,12 +228,12 @@ export function DynamicFormField({
                   },
                 ]}
                 onPress={() => toggleOption(option)}
-                activeOpacity={0.7}
+      
               >
                 <Text style={[styles.chipText, { color: isSelected ? themeColors.textInverse : themeColors.text }]}>
                   {option}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
@@ -271,12 +271,12 @@ export function DynamicFormField({
             autoComplete="password-new"
             editable={!disabled}
           />
-          <TouchableOpacity
+          <Pressable
             style={styles.showPasswordButton}
             onPress={() => { hapticLight(); setPasswordVisible(!passwordVisible); }}
           >
             <Text style={styles.showPasswordText}>{passwordVisible ? '🙈' : '👁️'}</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
         {extraContent}
         {error && <Text style={[styles.fieldError, { color: themeColors.error }]}>{error}</Text>}

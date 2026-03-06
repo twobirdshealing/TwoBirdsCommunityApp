@@ -13,10 +13,11 @@
 // =============================================================================
 
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -69,9 +70,9 @@ export function EmptyState({
       
       {/* Action Button */}
       {actionLabel && onAction && (
-        <TouchableOpacity style={[styles.actionButton, { backgroundColor: themeColors.primary }]} onPress={onAction}>
+        <AnimatedPressable style={[styles.actionButton, { backgroundColor: themeColors.primary }]} onPress={onAction}>
           <Text style={[styles.actionText, { color: themeColors.textInverse }]}>{actionLabel}</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       )}
     </View>
   );

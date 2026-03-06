@@ -8,9 +8,9 @@
 import React, { Component, ReactNode } from 'react';
 import {
   Appearance,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -76,14 +76,14 @@ function ErrorFallback({ onRetry }: { onRetry: () => void }) {
       <Text style={[styles.message, { color: textSecondary }]}>
         An unexpected error occurred. Please try again.
       </Text>
-      <TouchableOpacity
+      <Pressable
         style={[styles.retryButton, { backgroundColor: buttonBg }]}
         onPress={onRetry}
         accessibilityRole="button"
         accessibilityLabel="Try again"
       >
         <Text style={[styles.retryText, { color: buttonText }]}>Try Again</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }

@@ -7,7 +7,8 @@
 // =============================================================================
 
 import React from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -35,13 +36,12 @@ export function DropdownMenu({ visible, onClose, items, topOffset = 100, anchor 
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity
+      <Pressable
         style={[
           styles.modalOverlay,
           { backgroundColor: themeColors.overlay },
           !anchor && { paddingTop: topOffset, justifyContent: 'flex-start', alignItems: 'flex-end', paddingRight: spacing.lg },
         ]}
-        activeOpacity={1}
         onPress={onClose}
       >
         <View
@@ -57,14 +57,13 @@ export function DropdownMenu({ visible, onClose, items, topOffset = 100, anchor 
               {index > 0 && (
                 <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
               )}
-              <TouchableOpacity
+              <AnimatedPressable
                 style={styles.menuItem}
                 onPress={() => {
                   item.destructive ? hapticWarning() : hapticLight();
                   item.onPress();
                 }}
                 disabled={item.disabled}
-                activeOpacity={0.7}
               >
                 <Ionicons
                   name={item.icon}
@@ -81,11 +80,11 @@ export function DropdownMenu({ visible, onClose, items, topOffset = 100, anchor 
                 >
                   {item.label}
                 </Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </React.Fragment>
           ))}
         </View>
-      </TouchableOpacity>
+      </Pressable>
     </Modal>
   );
 }

@@ -5,7 +5,7 @@
 // =============================================================================
 
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -58,7 +58,7 @@ export function CalendarHeader({
     <View style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
       {/* Month Navigation */}
       <View style={styles.monthNav}>
-        <TouchableOpacity
+        <Pressable
           style={styles.navButton}
           onPress={onPrevMonth}
           disabled={!canGoPrev}
@@ -69,11 +69,11 @@ export function CalendarHeader({
             size={22}
             color={canGoPrev ? themeColors.primary : themeColors.textTertiary}
           />
-        </TouchableOpacity>
+        </Pressable>
 
         <Text style={[styles.monthText, { color: themeColors.text }]}>{monthDisplay}</Text>
 
-        <TouchableOpacity
+        <Pressable
           style={styles.navButton}
           onPress={onNextMonth}
           disabled={!canGoNext}
@@ -84,12 +84,12 @@ export function CalendarHeader({
             size={22}
             color={canGoNext ? themeColors.primary : themeColors.textTertiary}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {/* View Toggle */}
       <View style={[styles.viewToggle, { backgroundColor: themeColors.backgroundSecondary }]}>
-        <TouchableOpacity
+        <Pressable
           style={[
             styles.toggleButton,
             viewMode === 'list' && styles.toggleButtonActive,
@@ -102,9 +102,9 @@ export function CalendarHeader({
             size={18}
             color={viewMode === 'list' ? themeColors.surface : themeColors.textSecondary}
           />
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
+        <Pressable
           style={[
             styles.toggleButton,
             viewMode === 'month' && styles.toggleButtonActive,
@@ -117,7 +117,7 @@ export function CalendarHeader({
             size={18}
             color={viewMode === 'month' ? themeColors.surface : themeColors.textSecondary}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );

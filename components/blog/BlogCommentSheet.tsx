@@ -14,7 +14,7 @@ import {
   FlatList,
   StyleSheet,
   Text,
-  TouchableOpacity,
+  Pressable,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -27,6 +27,7 @@ import { spacing, typography, sizing } from '@/constants/layout';
 import { SITE_URL } from '@/constants/config';
 import { WPComment } from '@/types/blog';
 import { blogApi } from '@/services/api/blog';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import {
@@ -418,16 +419,15 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
         styles.commentItem,
         isReply && [styles.commentReply, { borderLeftColor: themeColors.border }],
       ]}>
-        <TouchableOpacity onPress={() => handleAuthorPress(item)} disabled={item.author === 0}>
+        <Pressable onPress={() => handleAuthorPress(item)} disabled={item.author === 0}>
           <Avatar source={avatarUrl} size="sm" fallback={displayName} />
-        </TouchableOpacity>
+        </Pressable>
         <View style={[styles.commentContent, styles.commentBubble, { backgroundColor: themeColors.surface, borderColor: themeColors.borderLight }]}>
           <View style={styles.commentHeader}>
-            <TouchableOpacity
+            <Pressable
               style={styles.commentHeaderLeft}
               onPress={() => handleAuthorPress(item)}
               disabled={item.author === 0}
-              activeOpacity={0.7}
             >
               <UserDisplayName
                 name={displayName}
@@ -435,15 +435,15 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
                 badgeSlugs={item.fcom_author_badge_slugs}
                 size="sm"
               />
-            </TouchableOpacity>
-            <TouchableOpacity
+            </Pressable>
+            <Pressable
               ref={(el: any) => { menuButtonRefs.current[item.id] = el; }}
               style={styles.commentMenuButton}
               onPress={() => handleCommentMenu(item)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="ellipsis-vertical" size={16} color={themeColors.textTertiary} />
-            </TouchableOpacity>
+            </Pressable>
           </View>
           <View style={styles.commentTextRow}>
             <View style={styles.commentTextContent}>
@@ -457,9 +457,9 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
               {formatRelativeTime(item.date)}
             </Text>
           </View>
-          <TouchableOpacity style={styles.replyAction} onPress={() => handleReply(item)}>
+          <Pressable style={styles.replyAction} onPress={() => handleReply(item)}>
             <Text style={[styles.replyActionText, { color: themeColors.textSecondary }]}>Reply</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     );
@@ -482,13 +482,13 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
       <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.surface }]} edges={['top']}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
-          <TouchableOpacity
+          <Pressable
             onPress={onClose}
             style={styles.closeButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="close" size={24} color={themeColors.text} />
-          </TouchableOpacity>
+          </Pressable>
           <Text style={[styles.headerTitle, { color: themeColors.text }]}>Comments</Text>
           <View style={styles.headerSpacer} />
         </View>
@@ -502,12 +502,12 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
           ) : error ? (
             <View style={styles.centered}>
               <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={fetchComments}
                 style={[styles.retryButton, { backgroundColor: themeColors.primary }]}
               >
                 <Text style={[styles.retryText, { color: themeColors.textInverse }]}>Try Again</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
           ) : comments.length === 0 ? (
             <View style={styles.centered}>
@@ -540,9 +540,9 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
                   {replyingTo.author_name}
                 </Text>
               </Text>
-              <TouchableOpacity onPress={cancelReply}>
+              <Pressable onPress={cancelReply}>
                 <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
-              </TouchableOpacity>
+              </Pressable>
             </View>
           )}
 
@@ -552,9 +552,9 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
               <Text style={[styles.replyIndicatorText, { color: themeColors.textSecondary }]}>
                 Editing comment
               </Text>
-              <TouchableOpacity onPress={cancelEdit}>
+              <Pressable onPress={cancelEdit}>
                 <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
-              </TouchableOpacity>
+              </Pressable>
             </View>
           )}
 
@@ -572,7 +572,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
           {/* Action bar — send button */}
           <View style={[styles.inputContainer, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
             <View style={{ flex: 1 }} />
-            <TouchableOpacity
+            <AnimatedPressable
               style={[
                 styles.sendButton,
                 { backgroundColor: themeColors.primary },
@@ -586,7 +586,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
               ) : (
                 <Ionicons name={editingComment ? "checkmark" : "send"} size={20} color={themeColors.textInverse} />
               )}
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
 

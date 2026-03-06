@@ -8,9 +8,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -93,7 +93,7 @@ export function ReactionBreakdownModal({
     >
       {/* Tabs — "All" pinned, reaction icons scroll */}
       <View style={[styles.tabBar, { borderBottomColor: themeColors.borderLight }]}>
-        <TouchableOpacity
+        <Pressable
           style={[
             styles.tab,
             activeTab === 'all' && [styles.tabActive, { borderBottomColor: themeColors.primary }],
@@ -106,14 +106,14 @@ export function ReactionBreakdownModal({
           ]}>
             All {total}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
         <BottomSheetScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabBarContent}
         >
           {breakdown.map(item => (
-            <TouchableOpacity
+            <Pressable
               key={item.type}
               style={[
                 styles.tab,
@@ -130,7 +130,7 @@ export function ReactionBreakdownModal({
               ]}>
                 {item.count}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </BottomSheetScrollView>
       </View>

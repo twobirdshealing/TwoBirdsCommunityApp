@@ -6,9 +6,9 @@ import React from 'react';
 import {
   ActivityIndicator,
   Image,
+  Pressable,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,12 +49,12 @@ export function MediaPreview({ items, onRemove, isUploading }: MediaPreviewProps
             <Image source={{ uri: item.url }} style={styles.image} />
             
             {/* Remove Button */}
-            <TouchableOpacity
+            <Pressable
               style={styles.removeButton}
               onPress={() => onRemove(index)}
             >
               <Ionicons name="close-circle" size={24} color="#fff" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
         ))}
 

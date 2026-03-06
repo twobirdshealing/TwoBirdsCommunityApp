@@ -9,9 +9,9 @@
 import React from 'react';
 import {
   Image,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -97,12 +97,11 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
               )}
 
               <View style={styles.heroBottomRow}>
-                <TouchableOpacity
+                <Pressable
                   style={styles.heroAuthorRow}
                   onPress={() => {
                     if (onAuthorPress && author?.slug) onAuthorPress(author.slug);
                   }}
-                  activeOpacity={onAuthorPress && author?.slug ? 0.7 : 1}
                   disabled={!onAuthorPress || !author?.slug}
                 >
                   <Avatar source={authorAvatar} size="sm" fallback={authorName} />
@@ -117,7 +116,7 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
                     />
                     <Text style={styles.heroDate}>{date}</Text>
                   </View>
-                </TouchableOpacity>
+                </Pressable>
 
                 {commentCount > 0 && (
                   <View style={styles.heroCommentBadge}>
@@ -150,12 +149,11 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
             {title}
           </Text>
           <View style={styles.fallbackBottomRow}>
-            <TouchableOpacity
+            <Pressable
               style={styles.fallbackAuthorRow}
               onPress={() => {
                 if (onAuthorPress && author?.slug) onAuthorPress(author.slug);
               }}
-              activeOpacity={onAuthorPress && author?.slug ? 0.7 : 1}
               disabled={!onAuthorPress || !author?.slug}
             >
               <Avatar source={authorAvatar} size="sm" fallback={authorName} />
@@ -169,7 +167,7 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
                 />
                 <Text style={[styles.fallbackDate, { color: themeColors.textTertiary }]}>{date}</Text>
               </View>
-            </TouchableOpacity>
+            </Pressable>
 
             {commentCount > 0 && (
               <View style={styles.fallbackCommentBadge}>

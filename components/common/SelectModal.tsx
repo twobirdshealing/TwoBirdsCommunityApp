@@ -12,13 +12,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticSelection } from '@/utils/haptics';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -64,7 +64,7 @@ export function SelectModal({
           </Text>
           <ScrollView style={styles.scroll}>
             {options.map((option) => (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={option}
                 style={[
                   styles.option,
@@ -94,17 +94,17 @@ export function SelectModal({
                 {selectedValue === option && (
                   <Ionicons name="checkmark" size={20} color={themeColors.primary} />
                 )}
-              </TouchableOpacity>
+              </AnimatedPressable>
             ))}
           </ScrollView>
-          <TouchableOpacity
+          <Pressable
             style={[styles.cancelButton, { borderTopColor: themeColors.border }]}
             onPress={onClose}
           >
             <Text style={[styles.cancelText, { color: themeColors.textSecondary }]}>
               Cancel
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </Pressable>
     </Modal>

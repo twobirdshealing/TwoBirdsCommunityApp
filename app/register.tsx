@@ -13,11 +13,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -44,6 +44,7 @@ import {
   type FieldsResponse,
 } from '@/services/api/registration';
 import { hapticMedium } from '@/utils/haptics';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -545,12 +546,12 @@ export default function RegisterScreen() {
             <Text style={[styles.disabledText, { color: themeColors.textSecondary }]}>
               {fieldsConfig?.message || 'Registration is currently closed. Please try again later.'}
             </Text>
-            <TouchableOpacity
+            <AnimatedPressable
               style={[styles.primaryButton, { backgroundColor: themeColors.primary }]}
               onPress={() => router.back()}
             >
               <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Back to Login</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       </ImageBackground>
@@ -564,38 +565,36 @@ export default function RegisterScreen() {
   const renderStep1 = () => (
     <>
       {getFieldsForStep(1).map(([key, field]) => renderField(key, field))}
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
         onPress={handleNextStep}
         disabled={submitting}
-        activeOpacity={0.8}
         accessibilityRole="button"
         accessibilityLabel="Next step"
       >
         <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Next</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.linkButton} onPress={() => router.back()} accessibilityRole="link" accessibilityLabel="Back to login">
+      </AnimatedPressable>
+      <Pressable style={styles.linkButton} onPress={() => router.back()} accessibilityRole="link" accessibilityLabel="Back to login">
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Back to Login</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
+      </Pressable>
+      <Pressable
         style={styles.linkButton}
         onPress={() => router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy', noAuth: '1' } })}
         accessibilityRole="link"
         accessibilityLabel="Privacy Policy"
       >
         <Text style={[styles.privacyText, { color: themeColors.textTertiary }]}>Privacy Policy</Text>
-      </TouchableOpacity>
+      </Pressable>
     </>
   );
 
   const renderStep2 = () => (
     <>
       {getFieldsForStep(2).map(([key, field]) => renderField(key, field))}
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
         onPress={() => handleSubmitRegistration()}
         disabled={submitting}
-        activeOpacity={0.8}
         accessibilityRole="button"
         accessibilityLabel="Create account"
       >
@@ -604,10 +603,10 @@ export default function RegisterScreen() {
         ) : (
           <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Create Account</Text>
         )}
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.linkButton} onPress={() => { setError(null); setStep(1); }} accessibilityRole="button" accessibilityLabel="Go back">
+      </AnimatedPressable>
+      <Pressable style={styles.linkButton} onPress={() => { setError(null); setStep(1); }} accessibilityRole="button" accessibilityLabel="Go back">
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Back</Text>
-      </TouchableOpacity>
+      </Pressable>
     </>
   );
 
@@ -641,11 +640,10 @@ export default function RegisterScreen() {
           autoFocus
         />
       </View>
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
         onPress={handleVerifyEmail}
         disabled={submitting}
-        activeOpacity={0.8}
         accessibilityRole="button"
         accessibilityLabel="Verify email"
       >
@@ -654,9 +652,9 @@ export default function RegisterScreen() {
         ) : (
           <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Verify Email</Text>
         )}
-      </TouchableOpacity>
+      </AnimatedPressable>
       <View style={styles.otpActions}>
-        <TouchableOpacity
+        <Pressable
           onPress={handleResendEmailCode}
           disabled={emailResendTimer > 0}
           style={styles.otpAction}
@@ -667,11 +665,11 @@ export default function RegisterScreen() {
           ]}>
             {emailResendTimer > 0 ? `Resend code (${emailResendTimer}s)` : 'Resend code'}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
-      <TouchableOpacity style={styles.linkButton} onPress={() => { setError(null); setEmailVerifyCode(''); setStep(2); }}>
+      <Pressable style={styles.linkButton} onPress={() => { setError(null); setEmailVerifyCode(''); setStep(2); }}>
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Go Back</Text>
-      </TouchableOpacity>
+      </Pressable>
     </>
   );
 
@@ -712,11 +710,10 @@ export default function RegisterScreen() {
           <Text style={[styles.errorText, { color: themeColors.error }]}>{otp.error}</Text>
         </View>
       ) : null}
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.primaryButton, { backgroundColor: themeColors.primary }, (otp.verifying || submitting) && styles.buttonDisabled]}
         onPress={() => { hapticMedium(); otp.handleVerify(); }}
         disabled={otp.verifying || submitting}
-        activeOpacity={0.8}
         accessibilityRole="button"
         accessibilityLabel="Verify phone number"
       >
@@ -725,9 +722,9 @@ export default function RegisterScreen() {
         ) : (
           <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Verify</Text>
         )}
-      </TouchableOpacity>
+      </AnimatedPressable>
       <View style={styles.otpActions}>
-        <TouchableOpacity
+        <Pressable
           onPress={otp.handleResend}
           disabled={otp.resendTimer > 0}
           style={styles.otpAction}
@@ -738,18 +735,18 @@ export default function RegisterScreen() {
           ]}>
             {otp.resendTimer > 0 ? `Resend code (${otp.resendTimer}s)` : 'Resend code'}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
         {otp.voiceFallback && (
-          <TouchableOpacity onPress={otp.handleVoiceCall} style={styles.otpAction}>
+          <Pressable onPress={otp.handleVoiceCall} style={styles.otpAction}>
             <Text style={[styles.linkText, { color: themeColors.primary }]}>
               Try voice call
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
-      <TouchableOpacity style={styles.linkButton} onPress={() => { setError(null); otp.setCode(''); setStep(hasEmailVerify ? 3 : 2); }}>
+      <Pressable style={styles.linkButton} onPress={() => { setError(null); otp.setCode(''); setStep(hasEmailVerify ? 3 : 2); }}>
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Go Back</Text>
-      </TouchableOpacity>
+      </Pressable>
     </>
   );
 
@@ -770,11 +767,10 @@ export default function RegisterScreen() {
         onChange={(key, value) => setSocialLinks(prev => ({ ...prev, [key]: value }))}
       />
 
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.primaryButton, { backgroundColor: themeColors.primary }, savingSocial && styles.buttonDisabled]}
         onPress={handleSaveSocialLinks}
         disabled={savingSocial}
-        activeOpacity={0.8}
         accessibilityRole="button"
         accessibilityLabel="Save and continue"
       >
@@ -783,17 +779,16 @@ export default function RegisterScreen() {
         ) : (
           <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Save & Continue</Text>
         )}
-      </TouchableOpacity>
-      <TouchableOpacity
+      </AnimatedPressable>
+      <AnimatedPressable
         style={[styles.secondaryButton, { borderColor: themeColors.border }]}
         onPress={() => setStep(6)}
         disabled={savingSocial}
-        activeOpacity={0.8}
         accessibilityRole="button"
         accessibilityLabel="Skip social links"
       >
         <Text style={[styles.secondaryButtonText, { color: themeColors.text }]}>Skip for now</Text>
-      </TouchableOpacity>
+      </AnimatedPressable>
     </>
   );
 
@@ -818,18 +813,17 @@ export default function RegisterScreen() {
         coverUploading={uploadingCover}
       />
 
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.secondaryButton, { borderColor: themeColors.border }]}
         onPress={handleFinish}
         disabled={uploadingAvatar || uploadingCover}
-        activeOpacity={0.8}
         accessibilityRole="button"
         accessibilityLabel={(avatarUri || coverUri) ? 'Done' : 'Skip profile photos'}
       >
         <Text style={[styles.secondaryButtonText, { color: themeColors.text }]}>
           {(avatarUri || coverUri) ? 'Done' : 'Skip for now'}
         </Text>
-      </TouchableOpacity>
+      </AnimatedPressable>
     </>
   );
 

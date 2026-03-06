@@ -5,8 +5,8 @@
 // tappable cards and widgets. Uses Reanimated withSpring for smooth feel.
 // =============================================================================
 
-import React, { useCallback } from 'react';
-import { GestureResponderEvent, Pressable, PressableProps, ViewStyle, StyleProp } from 'react-native';
+import React, { forwardRef, useCallback } from 'react';
+import { GestureResponderEvent, Pressable, PressableProps, View, ViewStyle, StyleProp } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -40,72 +40,79 @@ export interface AnimatedPressableProps extends PressableProps {
 // Component
 // -----------------------------------------------------------------------------
 
-export function AnimatedPressable({
-  animated = true,
-  scaleValue = DEFAULT_SCALE,
-  haptic = true,
-  onPress,
-  onPressIn,
-  onPressOut,
-  style,
-  disabled,
-  ...rest
-}: AnimatedPressableProps) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = useCallback(
-    (e: GestureResponderEvent) => {
-      if (animated && !disabled) {
-        scale.value = withSpring(scaleValue, SPRING_CONFIG);
-      }
-      onPressIn?.(e);
+export const AnimatedPressable = forwardRef<View, AnimatedPressableProps>(
+  function AnimatedPressable(
+    {
+      animated = true,
+      scaleValue = DEFAULT_SCALE,
+      haptic = true,
+      onPress,
+      onPressIn,
+      onPressOut,
+      style,
+      disabled,
+      ...rest
     },
-    [animated, disabled, scaleValue, onPressIn, scale],
-  );
+    ref,
+  ) {
+    const scale = useSharedValue(1);
 
-  const handlePressOut = useCallback(
-    (e: GestureResponderEvent) => {
-      if (animated && !disabled) {
-        scale.value = withSpring(1, SPRING_CONFIG);
-      }
-      onPressOut?.(e);
-    },
-    [animated, disabled, onPressOut, scale],
-  );
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: scale.value }],
+    }));
 
-  const handlePress = useCallback(
-    (e: GestureResponderEvent) => {
-      if (haptic) hapticLight();
-      onPress?.(e);
-    },
-    [haptic, onPress],
-  );
+    const handlePressIn = useCallback(
+      (e: GestureResponderEvent) => {
+        if (animated && !disabled) {
+          scale.value = withSpring(scaleValue, SPRING_CONFIG);
+        }
+        onPressIn?.(e);
+      },
+      [animated, disabled, scaleValue, onPressIn, scale],
+    );
 
-  if (!animated) {
+    const handlePressOut = useCallback(
+      (e: GestureResponderEvent) => {
+        if (animated && !disabled) {
+          scale.value = withSpring(1, SPRING_CONFIG);
+        }
+        onPressOut?.(e);
+      },
+      [animated, disabled, onPressOut, scale],
+    );
+
+    const handlePress = useCallback(
+      (e: GestureResponderEvent) => {
+        if (haptic) hapticLight();
+        onPress?.(e);
+      },
+      [haptic, onPress],
+    );
+
+    if (!animated) {
+      return (
+        <Pressable
+          ref={ref}
+          style={style}
+          onPress={handlePress}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          disabled={disabled}
+          {...rest}
+        />
+      );
+    }
+
     return (
-      <Pressable
-        style={style}
+      <ReanimatedPressable
+        ref={ref}
+        style={[style as StyleProp<ViewStyle>, animatedStyle]}
         onPress={handlePress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         disabled={disabled}
         {...rest}
       />
     );
-  }
-
-  return (
-    <ReanimatedPressable
-      style={[style as StyleProp<ViewStyle>, animatedStyle]}
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      disabled={disabled}
-      {...rest}
-    />
-  );
-}
+  },
+);

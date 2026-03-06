@@ -5,7 +5,8 @@
 // =============================================================================
 
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CourseLesson, CourseSection } from '@/types/course';
@@ -37,10 +38,9 @@ export function SectionList({
   return (
     <View style={[styles.container, { borderColor: themeColors.borderLight }]}>
       {/* Section Header */}
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.header, { backgroundColor: withOpacity(themeColors.background, 0.5) }]}
         onPress={() => setExpanded(!expanded)}
-        activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityLabel={`${section.title}, ${expanded ? 'collapse' : 'expand'}`}
       >
@@ -62,7 +62,7 @@ export function SectionList({
           size={20}
           color={themeColors.textTertiary}
         />
-      </TouchableOpacity>
+      </AnimatedPressable>
 
       {/* Lessons */}
       {expanded && (

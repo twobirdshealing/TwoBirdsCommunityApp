@@ -8,10 +8,10 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -24,6 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { hapticLight, hapticMedium } from '@/utils/haptics';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -129,7 +130,7 @@ export default function LoginScreen() {
                   editable={!isLoading}
                   onSubmitEditing={handleLogin}
                 />
-                <TouchableOpacity
+                <Pressable
                   style={styles.showPasswordButton}
                   onPress={() => { hapticLight(); setShowPassword(!showPassword); }}
                   accessibilityRole="button"
@@ -138,16 +139,15 @@ export default function LoginScreen() {
                   <Text style={styles.showPasswordText}>
                     {showPassword ? '🙈' : '👁️'}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               </View>
             </View>
 
             {/* Login Button */}
-            <TouchableOpacity
+            <AnimatedPressable
               style={[styles.loginButton, { backgroundColor: themeColors.primary }, isLoading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
-              activeOpacity={0.8}
               accessibilityRole="button"
               accessibilityLabel="Sign in"
             >
@@ -156,12 +156,12 @@ export default function LoginScreen() {
               ) : (
                 <Text style={[styles.loginButtonText, { color: themeColors.textInverse }]}>Sign In</Text>
               )}
-            </TouchableOpacity>
+            </AnimatedPressable>
 
             {/* Forgot Password Link */}
-            <TouchableOpacity style={styles.forgotPassword} onPress={() => router.push('/forgot-password')} accessibilityRole="link" accessibilityLabel="Forgot password">
+            <Pressable style={styles.forgotPassword} onPress={() => router.push('/forgot-password')} accessibilityRole="link" accessibilityLabel="Forgot password">
               <Text style={[styles.forgotPasswordText, { color: themeColors.primary }]}>Forgot password?</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           {/* Footer */}
@@ -175,14 +175,14 @@ export default function LoginScreen() {
                 Sign up
               </Text>
             </Text>
-            <TouchableOpacity
+            <Pressable
               style={styles.privacyLink}
               onPress={() => router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy', noAuth: '1' } })}
               accessibilityRole="link"
               accessibilityLabel="Privacy Policy"
             >
               <Text style={[styles.privacyLinkText, { color: themeColors.textTertiary }]}>Privacy Policy</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
       </KeyboardAvoidingView>

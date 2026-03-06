@@ -12,9 +12,9 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -95,10 +95,9 @@ export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps)
   };
 
   return (
-    <TouchableOpacity
+    <Pressable
       style={styles.container}
       onPress={() => setShowControls(!showControls)}
-      activeOpacity={1}
     >
       {/* Video */}
       <VideoView
@@ -131,17 +130,16 @@ export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps)
 
       {/* Play/Pause Overlay */}
       {showControls && isReady && (
-        <TouchableOpacity
+        <Pressable
           style={styles.controlsOverlay}
           onPress={handlePlayPause}
-          activeOpacity={0.9}
         >
           <View style={styles.playButton}>
             <Text style={styles.playIcon}>
               {isPlaying ? '⏸' : '▶'}
             </Text>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {/* Progress Bar */}
@@ -160,7 +158,7 @@ export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps)
       <View style={styles.videoLabel}>
         <Text style={styles.videoLabelText}>Video</Text>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 

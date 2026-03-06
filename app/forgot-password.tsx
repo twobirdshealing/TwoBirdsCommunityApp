@@ -10,11 +10,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -26,6 +26,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { forgotPassword, resetPassword } from '@/services/api/registration';
 import { verifyOtp, resendOtp, requestVoiceCall } from '@/services/api/otp';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -281,22 +282,21 @@ export default function ForgotPasswordScreen() {
         />
       </View>
 
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
         onPress={handleForgot}
         disabled={submitting}
-        activeOpacity={0.8}
       >
         {submitting ? (
           <ActivityIndicator color={themeColors.textInverse} />
         ) : (
           <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Send Code</Text>
         )}
-      </TouchableOpacity>
+      </AnimatedPressable>
 
-      <TouchableOpacity style={styles.linkButton} onPress={() => router.back()}>
+      <Pressable style={styles.linkButton} onPress={() => router.back()}>
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Back to Login</Text>
-      </TouchableOpacity>
+      </Pressable>
     </>
   );
 
@@ -334,21 +334,20 @@ export default function ForgotPasswordScreen() {
         />
       </View>
 
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
         onPress={handleVerifyOtp}
         disabled={submitting}
-        activeOpacity={0.8}
       >
         {submitting ? (
           <ActivityIndicator color={themeColors.textInverse} />
         ) : (
           <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Verify</Text>
         )}
-      </TouchableOpacity>
+      </AnimatedPressable>
 
       <View style={styles.otpActions}>
-        <TouchableOpacity
+        <Pressable
           onPress={handleResendOtp}
           disabled={resendTimer > 0}
           style={styles.otpAction}
@@ -359,22 +358,22 @@ export default function ForgotPasswordScreen() {
           ]}>
             {resendTimer > 0 ? `Resend code (${resendTimer}s)` : 'Resend code'}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
         {voiceFallback && (
-          <TouchableOpacity onPress={handleVoiceCall} style={styles.otpAction}>
+          <Pressable onPress={handleVoiceCall} style={styles.otpAction}>
             <Text style={[styles.linkText, { color: themeColors.primary }]}>
               Try voice call
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
 
-      <TouchableOpacity
+      <Pressable
         style={styles.linkButton}
         onPress={() => { setError(null); setOtpCode(''); setStep(1); }}
       >
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Go Back</Text>
-      </TouchableOpacity>
+      </Pressable>
     </>
   );
 
@@ -409,12 +408,12 @@ export default function ForgotPasswordScreen() {
             autoComplete="password-new"
             editable={!submitting}
           />
-          <TouchableOpacity
+          <Pressable
             style={styles.showPasswordButton}
             onPress={() => setShowPassword(!showPassword)}
           >
             <Text style={styles.showPasswordText}>{showPassword ? '🙈' : '👁️'}</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
 
@@ -439,27 +438,26 @@ export default function ForgotPasswordScreen() {
             editable={!submitting}
             onSubmitEditing={handleResetPassword}
           />
-          <TouchableOpacity
+          <Pressable
             style={styles.showPasswordButton}
             onPress={() => setShowConfirmPassword(!showConfirmPassword)}
           >
             <Text style={styles.showPasswordText}>{showConfirmPassword ? '🙈' : '👁️'}</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
 
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
         onPress={handleResetPassword}
         disabled={submitting}
-        activeOpacity={0.8}
       >
         {submitting ? (
           <ActivityIndicator color={themeColors.textInverse} />
         ) : (
           <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Reset Password</Text>
         )}
-      </TouchableOpacity>
+      </AnimatedPressable>
     </>
   );
 

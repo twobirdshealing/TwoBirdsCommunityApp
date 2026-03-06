@@ -7,9 +7,10 @@
 // =============================================================================
 
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -53,9 +54,9 @@ export function ErrorMessage({
 
       {/* Retry Button */}
       {onRetry && (
-        <TouchableOpacity style={[styles.retryButton, { backgroundColor: themeColors.primary }]} onPress={onRetry}>
+        <AnimatedPressable style={[styles.retryButton, { backgroundColor: themeColors.primary }]} onPress={onRetry}>
           <Text style={[styles.retryText, { color: themeColors.surface }]}>Try Again</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       )}
     </View>
   );

@@ -15,13 +15,13 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { hapticLight } from '@/utils/haptics';
 import { spacing, typography } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -384,7 +384,7 @@ export default function EditProfileScreen() {
       <View style={styles.visibilityRow}>
         <Ionicons name="eye-outline" size={14} color={themeColors.textTertiary} />
         {visibilityOptions.map((vis) => (
-          <TouchableOpacity
+          <Pressable
             key={vis.key}
             style={[
               styles.visibilityChip,
@@ -394,14 +394,13 @@ export default function EditProfileScreen() {
               },
             ]}
             onPress={() => setCustomFieldVisibility(key, vis.key)}
-            activeOpacity={0.7}
           >
             <Text style={[styles.visibilityChipText, {
               color: currentVisibility === vis.key ? themeColors.textInverse : themeColors.textSecondary,
             }]}>
               {vis.label}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </View>
     );
@@ -466,18 +465,17 @@ export default function EditProfileScreen() {
         onLeftPress={() => router.back()}
         title="Edit Profile"
         rightElement={
-          <TouchableOpacity
+          <AnimatedPressable
             style={[styles.saveButton, { backgroundColor: themeColors.primary }]}
             onPress={() => handleSave()}
             disabled={saving}
-            activeOpacity={0.8}
           >
             {saving ? (
               <ActivityIndicator size="small" color={themeColors.textInverse} />
             ) : (
               <Text style={[styles.saveButtonText, { color: themeColors.textInverse }]}>Save</Text>
             )}
-          </TouchableOpacity>
+          </AnimatedPressable>
         }
       />
 
@@ -702,21 +700,20 @@ export default function EditProfileScreen() {
               autoFocus
             />
 
-            <TouchableOpacity
+            <AnimatedPressable
               style={[styles.otpVerifyButton, { backgroundColor: themeColors.primary }, (otp.verifying || saving) && styles.otpButtonDisabled]}
               onPress={otp.handleVerify}
               disabled={otp.verifying || saving}
-              activeOpacity={0.8}
             >
               {otp.verifying || saving ? (
                 <ActivityIndicator color={themeColors.textInverse} />
               ) : (
                 <Text style={[styles.otpVerifyButtonText, { color: themeColors.textInverse }]}>Verify</Text>
               )}
-            </TouchableOpacity>
+            </AnimatedPressable>
 
             <View style={styles.otpActions}>
-              <TouchableOpacity
+              <Pressable
                 onPress={otp.handleResend}
                 disabled={otp.resendTimer > 0}
               >
@@ -726,22 +723,22 @@ export default function EditProfileScreen() {
                 ]}>
                   {otp.resendTimer > 0 ? `Resend code (${otp.resendTimer}s)` : 'Resend code'}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
               {otp.voiceFallback && (
-                <TouchableOpacity onPress={otp.handleVoiceCall}>
+                <Pressable onPress={otp.handleVoiceCall}>
                   <Text style={[styles.otpActionText, { color: themeColors.primary }]}>
                     Try voice call
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               )}
             </View>
 
-            <TouchableOpacity
+            <Pressable
               style={styles.otpCancelButton}
               onPress={() => setShowOtp(false)}
             >
               <Text style={[styles.otpActionText, { color: themeColors.textSecondary }]}>Cancel</Text>
-            </TouchableOpacity>
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>

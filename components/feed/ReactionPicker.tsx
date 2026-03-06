@@ -9,14 +9,15 @@ import React from 'react';
 import {
   Dimensions,
   Modal,
+  Pressable,
   StyleSheet,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { ReactionIcon } from './ReactionIcon';
 import { ReactionType } from '@/types/feed';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { spacing, sizing, shadows } from '@/constants/layout';
 import { hapticLight } from '@/utils/haptics';
 
@@ -89,9 +90,8 @@ export function ReactionPicker({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity
+      <Pressable
         style={styles.backdrop}
-        activeOpacity={1}
         onPress={onClose}
       >
         <View
@@ -109,7 +109,7 @@ export function ReactionPicker({
           {reactions.map((r) => {
             const isActive = currentType === r.id;
             return (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={r.id}
                 style={[
                   styles.emojiButton,
@@ -120,14 +120,14 @@ export function ReactionPicker({
                   onSelect(r.id as ReactionType);
                   onClose();
                 }}
-                activeOpacity={0.7}
+                haptic={false}
               >
                 <ReactionIcon iconUrl={r.icon_url} emoji={r.emoji} size={EMOJI_SIZE} />
-              </TouchableOpacity>
+              </AnimatedPressable>
             );
           })}
         </View>
-      </TouchableOpacity>
+      </Pressable>
     </Modal>
   );
 }

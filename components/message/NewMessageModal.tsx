@@ -19,10 +19,10 @@ import {
   ActivityIndicator,
   FlatList,
   Modal,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -206,9 +206,9 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.surface }]}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+          <Pressable style={styles.closeButton} onPress={handleClose}>
             <Ionicons name="close" size={24} color={themeColors.text} />
-          </TouchableOpacity>
+          </Pressable>
           <Text style={[styles.headerTitle, { color: themeColors.text }]}>New Message</Text>
           <View style={styles.headerRight} />
         </View>
@@ -227,12 +227,12 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
             autoFocus
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => {
+            <Pressable onPress={() => {
               setSearchQuery('');
               setMembers([]);
             }}>
               <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
-            </TouchableOpacity>
+            </Pressable>
           )}
         </View>
 

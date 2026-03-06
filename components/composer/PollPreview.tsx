@@ -6,11 +6,12 @@
 
 import React from 'react';
 import {
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -37,10 +38,9 @@ export function PollPreview({ data, onEdit, onRemove }: PollPreviewProps) {
   const typeLabel = data.type === 'multi_choice' ? 'Multiple choice' : 'Single choice';
 
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       style={[styles.container, { backgroundColor: colors.background, borderColor: colors.border }]}
       onPress={onEdit}
-      activeOpacity={0.7}
     >
       {/* Icon */}
       <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
@@ -58,14 +58,14 @@ export function PollPreview({ data, onEdit, onRemove }: PollPreviewProps) {
       </View>
 
       {/* Remove Button */}
-      <TouchableOpacity
+      <Pressable
         style={styles.removeButton}
         onPress={onRemove}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Ionicons name="close-circle" size={24} color={colors.error} />
-      </TouchableOpacity>
-    </TouchableOpacity>
+      </Pressable>
+    </AnimatedPressable>
   );
 }
 

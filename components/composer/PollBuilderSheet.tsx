@@ -4,13 +4,14 @@
 
 import React, { useEffect, useState } from 'react';
 import {
+  Pressable,
   StyleSheet,
   Switch,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, sizing, typography } from '@/constants/layout';
@@ -103,23 +104,23 @@ export function PollBuilderSheet({ visible, onClose, onDone, initialData }: Poll
               )}
             </SheetInput>
             {options.length > MIN_OPTIONS && (
-              <TouchableOpacity
+              <Pressable
                 onPress={() => removeOption(index)}
                 style={styles.removeOption}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Ionicons name="close" size={18} color={colors.textTertiary} />
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
         ))}
 
         {/* Add Option */}
         {options.length < MAX_OPTIONS && (
-          <TouchableOpacity style={styles.addOption} onPress={addOption}>
+          <AnimatedPressable style={styles.addOption} onPress={addOption}>
             <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
             <Text style={[styles.addOptionText, { color: colors.primary }]}>Add More</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         )}
 
         {/* Settings */}
@@ -135,19 +136,19 @@ export function PollBuilderSheet({ visible, onClose, onDone, initialData }: Poll
 
         {/* Action Buttons */}
         <View style={styles.actions}>
-          <TouchableOpacity
+          <AnimatedPressable
             style={[styles.cancelButton, { borderColor: colors.border }]}
             onPress={handleCancel}
           >
             <Text style={[styles.cancelText, { color: colors.text }]}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </AnimatedPressable>
+          <AnimatedPressable
             style={[styles.doneButton, { backgroundColor: colors.primary }, filledCount < 2 && { opacity: 0.5 }]}
             onPress={handleDone}
             disabled={filledCount < 2}
           >
             <Text style={[styles.doneText, { color: colors.textInverse }]}>Done</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       </View>
     </BottomSheet>

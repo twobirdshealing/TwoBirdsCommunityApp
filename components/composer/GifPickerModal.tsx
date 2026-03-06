@@ -13,9 +13,9 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Image } from 'expo-image';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -167,10 +167,10 @@ export function GifPickerModal({
 
   const renderGif = useCallback(({ item }: { item: GiphyGif }) => {
     return (
-      <TouchableOpacity
+      <AnimatedPressable
         style={[styles.gifCell, { backgroundColor: themeColors.backgroundSecondary }]}
         onPress={() => handleSelect(item)}
-        activeOpacity={0.7}
+        haptic={false}
       >
         <Image
           source={{ uri: item.images.preview_gif.url }}
@@ -181,7 +181,7 @@ export function GifPickerModal({
           transition={200}
           cachePolicy="memory-disk"
         />
-      </TouchableOpacity>
+      </AnimatedPressable>
     );
   }, [themeColors.backgroundSecondary, handleSelect]);
 

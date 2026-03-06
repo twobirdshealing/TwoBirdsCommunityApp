@@ -9,7 +9,7 @@
 // =============================================================================
 
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { hapticLight } from '@/utils/haptics';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -112,13 +112,12 @@ function DayCell({ day, dateKey, isToday, isSelected, isPast, events, onPress }:
   };
 
   return (
-    <TouchableOpacity
+    <Pressable
       style={[
         styles.dayCell,
         isSelected && styles.dayCellSelected,
       ]}
       onPress={handlePress}
-      activeOpacity={0.7}
     >
       <View style={[
         styles.dayNumber,
@@ -151,7 +150,7 @@ function DayCell({ day, dateKey, isToday, isSelected, isPast, events, onPress }:
           ))}
         </View>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 

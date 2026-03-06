@@ -17,10 +17,10 @@ import {
   Dimensions,
   Image as RNImage,
   Linking,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -39,6 +39,7 @@ import { coursesApi } from '@/services/api/courses';
 import { CourseLesson, CourseSection, CourseTrack } from '@/types/course';
 import { extractYouTubeId } from '@/utils/youtube';
 import { hapticMedium, hapticLight } from '@/utils/haptics';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -366,13 +367,12 @@ export default function LessonViewScreen() {
             <Text style={[styles.lockedMessage, { color: themeColors.textSecondary }]}>
               Please enroll in this course to access this lesson
             </Text>
-            <TouchableOpacity
+            <AnimatedPressable
               style={[styles.backToCourseButton, { backgroundColor: themeColors.primary }]}
               onPress={() => router.back()}
-              activeOpacity={0.7}
             >
               <Text style={[styles.backToCourseText, { color: themeColors.textInverse }]}>Back to Course</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       </>
@@ -412,26 +412,24 @@ export default function LessonViewScreen() {
                 {/* Action badges at bottom-right */}
                 <View style={styles.heroBadgeRow}>
                   {commentsEnabled && (
-                    <TouchableOpacity
+                    <Pressable
                       style={styles.heroBadge}
                       onPress={() => router.push({ pathname: '/comments/[postId]', params: { postId: lesson.id.toString() } })}
-                      activeOpacity={0.7}
                     >
                       <Ionicons name="chatbubble-outline" size={14} color="#fff" />
                       {commentsCount > 0 && (
                         <Text style={styles.heroBadgeText}>{commentsCount}</Text>
                       )}
-                    </TouchableOpacity>
+                    </Pressable>
                   )}
                   {documents.length > 0 && (
-                    <TouchableOpacity
+                    <Pressable
                       style={styles.heroBadge}
                       onPress={() => scrollViewRef.current?.scrollTo({ y: docsY, animated: true })}
-                      activeOpacity={0.7}
                     >
                       <Ionicons name="attach-outline" size={14} color="#fff" />
                       <Text style={styles.heroBadgeText}>{documents.length}</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   )}
                 </View>
               </LinearGradient>
@@ -473,11 +471,10 @@ export default function LessonViewScreen() {
                 const title = doc.title || doc.media_key || doc.url.split('/').pop() || 'Document';
                 const iconName = getDocumentIcon(doc.url);
                 return (
-                  <TouchableOpacity
+                  <AnimatedPressable
                     key={doc.id || index}
                     style={[styles.documentRow, { backgroundColor: themeColors.backgroundSecondary }]}
                     onPress={() => Linking.openURL(doc.url)}
-                    activeOpacity={0.7}
                   >
                     <View style={[styles.documentIcon, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}>
                       <Ionicons name={iconName} size={18} color={themeColors.primary} />
@@ -486,7 +483,7 @@ export default function LessonViewScreen() {
                       {title}
                     </Text>
                     <Ionicons name="open-outline" size={16} color={themeColors.textTertiary} />
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 );
               })}
             </View>
@@ -494,17 +491,16 @@ export default function LessonViewScreen() {
 
           {/* Comments Button */}
           {commentsEnabled && (
-            <TouchableOpacity
+            <AnimatedPressable
               style={[styles.commentsButton, { borderTopColor: themeColors.border }]}
               onPress={() => router.push({ pathname: '/comments/[postId]', params: { postId: lesson.id.toString() } })}
-              activeOpacity={0.7}
             >
               <Ionicons name="chatbubble-outline" size={18} color={themeColors.primary} />
               <Text style={[styles.commentsButtonText, { color: themeColors.text }]}>
                 {commentsCount > 0 ? `${commentsCount} Comment${commentsCount === 1 ? '' : 's'}` : 'Comments'}
               </Text>
               <Ionicons name="chevron-forward" size={16} color={themeColors.textTertiary} />
-            </TouchableOpacity>
+            </AnimatedPressable>
           )}
 
           {/* Bottom padding for sticky bar */}
@@ -538,16 +534,15 @@ export default function LessonViewScreen() {
 
           {/* State: Not completed (idle) — show Mark as Complete button */}
           {track?.isEnrolled && !isCompleted && !completing && !justCompleted && (
-            <TouchableOpacity
+            <AnimatedPressable
               style={[styles.completeButton, { backgroundColor: themeColors.primary }]}
               onPress={handleMarkComplete}
-              activeOpacity={0.7}
             >
               <Ionicons name="checkmark-circle-outline" size={20} color={themeColors.textInverse} />
               <Text style={[styles.completeButtonText, { color: themeColors.textInverse }]}>
                 Mark as Complete
               </Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           )}
 
           {/* State: Completed OR not enrolled — show nav row */}
@@ -559,11 +554,10 @@ export default function LessonViewScreen() {
               ]}
             >
               {/* Prev button */}
-              <TouchableOpacity
+              <Pressable
                 style={[styles.navButton, { backgroundColor: themeColors.backgroundSecondary }]}
                 onPress={() => prevLesson && navigateToLesson(prevLesson)}
                 disabled={!prevLesson || prevLesson.is_locked}
-                activeOpacity={0.7}
               >
                 <Ionicons
                   name="chevron-back"
@@ -579,7 +573,7 @@ export default function LessonViewScreen() {
                 >
                   {prevLesson ? prevLesson.title : 'Previous'}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
 
               {/* Completed checkmark (center) */}
               {track?.isEnrolled && isCompleted && (
@@ -589,11 +583,10 @@ export default function LessonViewScreen() {
               )}
 
               {/* Next button */}
-              <TouchableOpacity
+              <Pressable
                 style={[styles.navButton, { backgroundColor: themeColors.backgroundSecondary }]}
                 onPress={() => nextLesson && navigateToLesson(nextLesson)}
                 disabled={!nextLesson || nextLesson.is_locked}
-                activeOpacity={0.7}
               >
                 <Text
                   style={[
@@ -609,7 +602,7 @@ export default function LessonViewScreen() {
                   size={18}
                   color={!nextLesson || nextLesson.is_locked ? themeColors.textTertiary : themeColors.primary}
                 />
-              </TouchableOpacity>
+              </Pressable>
             </Animated.View>
           )}
         </View>
