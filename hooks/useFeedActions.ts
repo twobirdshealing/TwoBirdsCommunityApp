@@ -14,6 +14,9 @@ import { Feed } from '@/types/feed';
 import { feedsApi } from '@/services/api/feeds';
 import { cacheEvents } from '@/utils/cacheEvents';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('FeedActions');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -109,7 +112,7 @@ export function useFeedActions({
         cacheEvents.emit('bookmarks');
       }
     } catch (err) {
-      if (__DEV__) console.error('Bookmark error:', err);
+      log.error('Bookmark error:', err);
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update bookmark');
     }
   };
@@ -137,7 +140,7 @@ export function useFeedActions({
                 Alert.alert('Error', response.error?.message || 'Failed to delete post');
               }
             } catch (err) {
-              if (__DEV__) console.error('Delete error:', err);
+              log.error('Delete error:', err);
               Alert.alert('Error', 'Failed to delete post');
             }
           },

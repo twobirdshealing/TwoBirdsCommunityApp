@@ -13,6 +13,9 @@
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { PageHeader } from '@/components/navigation/PageHeader';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('Notifications');
 import { NotificationCard } from '@/components/notification/NotificationCard';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -140,7 +143,7 @@ export default function NotificationsScreen() {
         setPage(nextPage);
       }
     } catch (err) {
-      if (__DEV__) console.error('[Notifications] Load more error:', err);
+      log.error('Load more error:', err);
     } finally {
       setLoadingMore(false);
     }
@@ -275,9 +278,9 @@ export default function NotificationsScreen() {
         return;
       }
 
-      if (__DEV__) console.log('[Notifications] Could not determine navigation for:', notification.route);
+      log('Could not determine navigation for:', notification.route);
     } catch (err) {
-      if (__DEV__) console.error('[Notifications] Navigation error:', err);
+      log.error('Navigation error:', err);
     }
   };
 

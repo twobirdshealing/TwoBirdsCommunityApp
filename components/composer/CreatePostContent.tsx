@@ -36,6 +36,9 @@ import { GifAttachment } from '@/types/gif';
 import { htmlToMarkdown } from '@/utils/htmlToMarkdown';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('CreatePost');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -307,7 +310,7 @@ export function CreatePostContent({
         }
       }
     } catch (error) {
-      if (__DEV__) console.error('Image picker error:', error);
+      log.error('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image');
     } finally {
       setIsUploading(false);
@@ -440,7 +443,7 @@ export function CreatePostContent({
       setPollData(null);
       onClose();
     } catch (error) {
-      if (__DEV__) console.error('Submit error:', error);
+      log.error('Submit error:', error);
       Alert.alert('Error', error instanceof Error ? error.message : 'Failed to post. Please try again.');
     } finally {
       setIsSubmitting(false);

@@ -20,6 +20,9 @@ import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { BottomSheet, SheetInput } from '@/components/common/BottomSheet';
 import { feedsApi, OembedData } from '@/services/api/feeds';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('VideoAttach');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -67,7 +70,7 @@ export function VideoAttachModal({
         Alert.alert('Invalid URL', 'Could not get video information. Please check the URL.');
       }
     } catch (error: unknown) {
-      if (__DEV__) console.error('[VideoAttachModal] Error fetching oembed:', error);
+      log.error('Error fetching oembed:', error);
       Alert.alert('Error', error instanceof Error ? error.message : 'Could not fetch video information.');
     } finally {
       setIsLoading(false);

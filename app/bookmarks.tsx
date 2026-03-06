@@ -4,6 +4,9 @@
 
 import { FeedList } from '@/components/feed/FeedList';
 import { PageHeader } from '@/components/navigation/PageHeader';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('Bookmarks');
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { feedsApi } from '@/services/api/feeds';
@@ -115,7 +118,7 @@ export default function BookmarksScreen() {
         cacheEvents.emit('feeds');
       }
     } catch (err) {
-      if (__DEV__) console.error('Bookmark error:', err);
+      log.error('Bookmark error:', err);
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update bookmark');
     }
   };

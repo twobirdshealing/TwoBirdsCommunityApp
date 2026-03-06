@@ -8,14 +8,16 @@
 import { useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { hapticMedium } from '@/utils/haptics';
+import { createLogger } from '@/utils/logger';
 import { CalendarEvent } from '@/types/calendar';
+
+const log = createLogger('EventWebView');
 
 export function useEventWebView() {
   const router = useRouter();
 
   const openEvent = useCallback((event: CalendarEvent) => {
-    if (__DEV__) console.log('[useEventWebView] Opening:', event.title);
-    if (__DEV__) console.log('[useEventWebView] URL:', event.url);
+    log('Opening:', event.title, event.url);
 
     hapticMedium();
 
@@ -32,5 +34,3 @@ export function useEventWebView() {
 
   return { openEvent };
 }
-
-export default useEventWebView;

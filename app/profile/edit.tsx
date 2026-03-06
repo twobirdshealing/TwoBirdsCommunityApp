@@ -38,6 +38,9 @@ import { SelectModal } from '@/components/common/SelectModal';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { useSocialProviders } from '@/hooks/useSocialProviders';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('ProfileEdit');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -153,7 +156,7 @@ export default function EditProfileScreen() {
           });
         }
       } catch (err) {
-        if (__DEV__) console.error('Failed to load profile for edit:', err);
+        log.error('Failed to load profile for edit:', err);
         Alert.alert('Error', 'Failed to load profile.');
         router.back();
       } finally {
@@ -353,7 +356,7 @@ export default function EditProfileScreen() {
         }
       }
     } catch (err) {
-      if (__DEV__) console.error('Failed to save profile:', err);
+      log.error('Failed to save profile:', err);
       Alert.alert('Error', 'Failed to save profile.');
     } finally {
       setSaving(false);
@@ -853,7 +856,6 @@ const styles = StyleSheet.create({
   // OTP + Select overlay
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,

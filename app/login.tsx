@@ -7,7 +7,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   ImageBackground,
   StyleSheet,
   Text,
@@ -15,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -79,7 +79,8 @@ export default function LoginScreen() {
             <Image
               source={require('@/assets/images/login_logo.png')}
               style={styles.logo}
-              resizeMode="contain"
+              contentFit="contain"
+              cachePolicy="memory-disk"
             />
             <Text style={[styles.title, { color: themeColors.text }]}>Two Birds</Text>
             <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>Community</Text>

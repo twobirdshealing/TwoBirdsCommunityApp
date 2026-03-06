@@ -7,11 +7,11 @@
 
 import React, { useState } from 'react';
 import {
-  Image,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -56,7 +56,9 @@ export function YouTubeVideoCard({ video, width }: YouTubeVideoCardProps) {
           <Image
             source={{ uri: video.thumbnail }}
             style={[styles.thumbnail, { backgroundColor: themeColors.skeleton }]}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
           />
 
           {/* Play button */}
@@ -167,5 +169,3 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
   },
 });
-
-export default YouTubeVideoCard;

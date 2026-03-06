@@ -7,6 +7,9 @@
 import { TBC_CA_URL } from '@/constants/config';
 import { getAuthToken } from '@/services/auth';
 import type { SocialProvider } from './socialProviders';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('AppConfigAPI');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -83,28 +86,10 @@ export interface AppConfigResponse {
 // -----------------------------------------------------------------------------
 
 /**
- * GET /app-config - Fetch theme colors + social providers (public, no auth)
+ * GET /app-config - Fetch theme, maintenance, visibility & social providers.
+ * Automatically includes JWT when available (returns can_bypass + visibility).
  */
 export async function getAppConfig(): Promise<AppConfigResponse | null> {
-  try {
-    const response = await fetch(`${TBC_CA_URL}/app-config`, {
-      headers: { 'Accept': 'application/json' },
-    });
-
-    if (!response.ok) return null;
-
-    const data: AppConfigResponse = await response.json();
-    return data.success ? data : null;
-  } catch (error) {
-    if (__DEV__) console.error('[App Config API]', error);
-    return null;
-  }
-}
-
-/**
- * GET /app-config with JWT - Returns maintenance bypass + visibility flags
- */
-export async function getAppConfigAuthenticated(): Promise<AppConfigResponse | null> {
   try {
     const token = await getAuthToken();
     const headers: Record<string, string> = { 'Accept': 'application/json' };
@@ -118,7 +103,7 @@ export async function getAppConfigAuthenticated(): Promise<AppConfigResponse | n
     const data: AppConfigResponse = await response.json();
     return data.success ? data : null;
   } catch (error) {
-    if (__DEV__) console.error('[App Config API - Auth]', error);
+    log.error(error);
     return null;
   }
 }

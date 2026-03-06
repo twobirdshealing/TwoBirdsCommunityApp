@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(false);
       }
     } catch (error) {
-      if (__DEV__) console.error('[Auth] Check status error:', error);
+      log.error('Check status error:', error);
       setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: result.error || 'Login failed' };
       }
     } catch (error) {
-      if (__DEV__) console.error('[Auth] Login error:', error);
+      log.error('Login error:', error);
       return { success: false, error: 'An unexpected error occurred' };
     }
   }, []);
@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {
-      if (__DEV__) console.error('[Auth] Logout error:', error);
+      log.error('Logout error:', error);
       setUser(null);
       setIsAuthenticated(false);
     }

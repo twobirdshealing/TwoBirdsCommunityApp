@@ -9,6 +9,9 @@ import { get, post, del, patch } from './client';
 import { ENDPOINTS, DEFAULT_PER_PAGE } from '@/constants/config';
 import { Comment, CommentsResponse, CreateCommentResponse } from '@/types/comment';
 import { ReactResponse, ReactionType } from '@/types/feed';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('CommentsAPI');
 
 // -----------------------------------------------------------------------------
 // Request Options
@@ -88,7 +91,7 @@ export async function createComment(postId: number, data: CreateCommentData) {
     requestData.media_images = data.media_images;
   }
   
-  if (__DEV__) console.log('[CommentsAPI] Creating comment with:', JSON.stringify(requestData, null, 2));
+  log('Creating comment with:', JSON.stringify(requestData, null, 2));
   
   return post<CreateCommentResponse>(ENDPOINTS.POST_COMMENTS(postId), requestData);
 }
@@ -104,7 +107,7 @@ export interface UpdateCommentData {
 }
 
 export async function updateComment(postId: number, commentId: number, data: UpdateCommentData) {
-  if (__DEV__) console.log('[CommentsAPI] Updating comment:', { postId, commentId, data });
+  log('Updating comment:', { postId, commentId, data });
   
   return post<{ message: string; data: Comment }>(
     `${ENDPOINTS.POST_COMMENTS(postId)}/${commentId}`,
@@ -142,7 +145,7 @@ export async function reactToComment(
     'X-TBC-Reaction-Type': reactionType,
   };
 
-  if (__DEV__) console.log('[CommentsAPI] Reacting to comment:', { postId, commentId, payload, reactionType });
+  log('Reacting to comment:', { postId, commentId, payload, reactionType });
 
   return post<ReactResponse>(`${ENDPOINTS.POST_COMMENTS(postId)}/${commentId}/reactions`, payload, undefined, headers);
 }

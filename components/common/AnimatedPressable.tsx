@@ -6,7 +6,7 @@
 // =============================================================================
 
 import React, { useCallback } from 'react';
-import { Pressable, PressableProps, ViewStyle, StyleProp } from 'react-native';
+import { GestureResponderEvent, Pressable, PressableProps, ViewStyle, StyleProp } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -58,7 +58,7 @@ export function AnimatedPressable({
   }));
 
   const handlePressIn = useCallback(
-    (e: any) => {
+    (e: GestureResponderEvent) => {
       if (animated && !disabled) {
         scale.value = withSpring(scaleValue, SPRING_CONFIG);
       }
@@ -68,7 +68,7 @@ export function AnimatedPressable({
   );
 
   const handlePressOut = useCallback(
-    (e: any) => {
+    (e: GestureResponderEvent) => {
       if (animated && !disabled) {
         scale.value = withSpring(1, SPRING_CONFIG);
       }
@@ -78,7 +78,7 @@ export function AnimatedPressable({
   );
 
   const handlePress = useCallback(
-    (e: any) => {
+    (e: GestureResponderEvent) => {
       if (haptic) hapticLight();
       onPress?.(e);
     },

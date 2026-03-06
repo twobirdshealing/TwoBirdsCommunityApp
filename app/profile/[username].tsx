@@ -9,6 +9,7 @@
 // =============================================================================
 
 import React, { useState } from 'react';
+import { createLogger } from '@/utils/logger';
 import {
   ActivityIndicator,
   Alert,
@@ -38,6 +39,8 @@ import { AboutTab } from '@/components/profile/AboutTab';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileMenu } from '@/components/profile/ProfileMenu';
 import { PageHeader } from '@/components/navigation/PageHeader';
+
+const log = createLogger('Profile');
 
 // -----------------------------------------------------------------------------
 // Component
@@ -116,7 +119,7 @@ export default function UserProfileScreen() {
         } : prev);
       }
     } catch (err) {
-      if (__DEV__) console.error('Follow action failed:', err);
+      log.error('Follow action failed:', err);
       Alert.alert('Error', 'Failed to update follow status');
     } finally {
       setFollowLoading(false);
@@ -156,7 +159,7 @@ export default function UserProfileScreen() {
               }
             }
           } catch (err) {
-            if (__DEV__) console.error('Block action failed:', err);
+            log.error('Block action failed:', err);
             Alert.alert('Error', `Failed to ${action.toLowerCase()} user`);
           } finally {
             setBlockLoading(false);

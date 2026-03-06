@@ -13,6 +13,9 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('FeedDetail');
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { FeedCard } from '@/components/feed/FeedCard';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -83,7 +86,7 @@ export default function SinglePostScreen() {
         cacheEvents.emit('bookmarks');
       }
     } catch (err) {
-      if (__DEV__) console.error('Failed to bookmark:', err);
+      log.error('Failed to bookmark:', err);
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update bookmark');
     }
   };

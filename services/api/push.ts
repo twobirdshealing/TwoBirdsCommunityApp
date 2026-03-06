@@ -7,6 +7,9 @@
 // =============================================================================
 
 import { TBC_CA_URL } from '@/constants/config';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('PushAPI');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -57,7 +60,7 @@ async function tbcRequest<T>(
 
     return { success: true, data };
   } catch (error) {
-    if (__DEV__) console.error('[Push API Error]', error);
+    log.error(error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Network request failed',

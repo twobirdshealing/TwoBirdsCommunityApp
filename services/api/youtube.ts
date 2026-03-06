@@ -6,6 +6,9 @@
 // =============================================================================
 
 import { TBC_CA_URL } from '@/constants/config';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('YouTubeAPI');
 import type {
   YouTubeVideo,
   YouTubeLatestResponse,
@@ -34,7 +37,7 @@ export async function getLatestVideos(limit: number = 1): Promise<YouTubeLatestR
     const data: YouTubeLatestResponse = await response.json();
     return data.success ? data : null;
   } catch (error) {
-    if (__DEV__) console.error('[YouTube API]', error);
+    log.error(error);
     return null;
   }
 }
@@ -53,7 +56,7 @@ export async function getPlaylists(): Promise<YouTubePlaylistsResponse | null> {
     const data: YouTubePlaylistsResponse = await response.json();
     return data.success ? data : null;
   } catch (error) {
-    if (__DEV__) console.error('[YouTube API]', error);
+    log.error(error);
     return null;
   }
 }
@@ -80,7 +83,7 @@ export async function getPlaylistVideos(
     const data: YouTubePlaylistVideosResponse = await response.json();
     return data.success ? data : null;
   } catch (error) {
-    if (__DEV__) console.error('[YouTube API]', error);
+    log.error(error);
     return null;
   }
 }

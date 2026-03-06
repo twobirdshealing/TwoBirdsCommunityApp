@@ -16,13 +16,16 @@ import { AudioPlayerProvider } from '@/contexts/AudioPlayerContext';
 import { PusherProvider } from '@/contexts/PusherContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { UnreadCountsProvider, useUnreadCounts } from '@/contexts/UnreadCountsContext';
+import { useAppFocus } from '@/hooks/useAppFocus';
 import { useStartupData } from '@/hooks/useStartupData';
 import { setOnResponseHeaders } from '@/services/api/client';
+import { getAppConfig, AppConfigResponse } from '@/services/api/theme';
 import { syncBadgeCount } from '@/services/push';
 import { mapUrlToRoute } from '@/utils/deepLinkMapper';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
@@ -30,6 +33,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import 'react-native-reanimated';
+
+// Keep the native splash screen visible until we're ready to render
+SplashScreen.preventAutoHideAsync();
 
 // -----------------------------------------------------------------------------
 // Deep link validation
@@ -71,8 +77,8 @@ function sanitizeParam(value: unknown): string {
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading, user, logout, updateUser } = useAuth();
-  const { isDark, colors: themeColors, update, maintenance, refreshAppConfig } = useTheme();
-  const { maintenanceBypass, portalSlug, refreshConfig, setFromBatch } = useAppConfig();
+  const { isDark, colors: themeColors, update, maintenance, setFromBatch: setThemeFromBatch } = useTheme();
+  const { portalSlug, setFromBatch: setAppConfigFromBatch } = useAppConfig();
   const { setUnreadNotifications, setUnreadMessages } = useUnreadCounts();
   const segments = useSegments();
   const router = useRouter();
@@ -81,13 +87,31 @@ function RootLayoutNav() {
   const pendingDeepLink = useRef<{ pathname: string; params?: Record<string, string> } | null>(null);
 
   // ---------------------------------------------------------------------------
+  // Unified config refresh — one fetch, distribute to both contexts
+  // ---------------------------------------------------------------------------
+
+  const distributeConfig = useCallback((data: AppConfigResponse) => {
+    setThemeFromBatch(data);
+    setAppConfigFromBatch(data);
+  }, [setThemeFromBatch, setAppConfigFromBatch]);
+
+  const refreshAllConfig = useCallback(async () => {
+    const data = await getAppConfig();
+    if (!data) return;
+    distributeConfig(data);
+  }, [distributeConfig]);
+
+  // Refresh config on app resume
+  useAppFocus(refreshAllConfig, isAuthenticated);
+
+  // ---------------------------------------------------------------------------
   // Startup Batch — single HTTP call replaces ~11 individual requests
   // ---------------------------------------------------------------------------
 
   useStartupData({
     isAuthenticated,
     username: user?.username,
-    onAppConfig: setFromBatch,
+    onAppConfig: distributeConfig,
     onProfileUpdate: updateUser,
     onUnreadNotifications: setUnreadNotifications,
     onUnreadMessages: setUnreadMessages,
@@ -106,19 +130,13 @@ function RootLayoutNav() {
       if (data.unreadMessages !== undefined) {
         setUnreadMessages(data.unreadMessages);
       }
-      if (data.maintenance) {
-        // Maintenance detected mid-session — trigger config refresh
-        // to get full message and show maintenance screen
-        refreshConfig();
-      }
-      if (data.minAppVersion && isVersionBelow(APP_VERSION, data.minAppVersion)) {
-        // Min version raised mid-session — refresh public config to get
-        // full update object (with store URLs) and trigger force-update gate
-        refreshAppConfig();
+      if (data.maintenance || (data.minAppVersion && isVersionBelow(APP_VERSION, data.minAppVersion))) {
+        // Maintenance or version change detected mid-session — refresh all config
+        refreshAllConfig();
       }
     });
     return () => setOnResponseHeaders(null);
-  }, [setUnreadNotifications, setUnreadMessages, refreshConfig, refreshAppConfig]);
+  }, [setUnreadNotifications, setUnreadMessages, refreshAllConfig]);
 
   // ---------------------------------------------------------------------------
   // Deep Link Listener (Universal Links + App Links)
@@ -164,7 +182,7 @@ function RootLayoutNav() {
     if (isLoading) return;
 
     // Don't redirect during maintenance — maintenance screen handles login
-    if (maintenance?.enabled && !maintenanceBypass) return;
+    if (maintenance?.enabled && !maintenance.can_bypass) return;
 
     const inAuthGroup = segments[0] === 'login' || segments[0] === 'register' || segments[0] === 'forgot-password' || segments[0] === 'webview';
 
@@ -174,14 +192,14 @@ function RootLayoutNav() {
       // Only auto-redirect from login, not register (register needs to finish avatar step)
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, isLoading, segments, maintenance, maintenanceBypass]);
+  }, [isAuthenticated, isLoading, segments, maintenance]);
 
   // Reset login mode when bypass check completes: can't bypass → back to maintenance
   useEffect(() => {
-    if (maintenanceLoginMode && isAuthenticated && maintenanceBypass === false) {
+    if (maintenanceLoginMode && isAuthenticated && maintenance?.can_bypass === false) {
       setMaintenanceLoginMode(false);
     }
-  }, [maintenanceLoginMode, isAuthenticated, maintenanceBypass]);
+  }, [maintenanceLoginMode, isAuthenticated, maintenance]);
 
   // ---------------------------------------------------------------------------
   // Push Notification Tap Handler
@@ -228,14 +246,11 @@ function RootLayoutNav() {
   const handleMaintenanceRetry = useCallback(async () => {
     setIsRetrying(true);
     try {
-      // Re-fetch public config — ThemeContext updates maintenance state
-      await refreshAppConfig();
-      // Also refresh auth-aware config if authenticated
-      await refreshConfig();
+      await refreshAllConfig();
     } finally {
       setIsRetrying(false);
     }
-  }, [refreshAppConfig, refreshConfig]);
+  }, [refreshAllConfig]);
 
   const handleMaintenanceLogin = useCallback(() => {
     setMaintenanceLoginMode(true);
@@ -248,12 +263,15 @@ function RootLayoutNav() {
     ]);
   }, [logout]);
 
+  // Hide splash screen once auth state is resolved
+  useEffect(() => {
+    if (!isLoading) {
+      SplashScreen.hideAsync();
+    }
+  }, [isLoading]);
+
   if (isLoading) {
-    return (
-      <View style={[styles.loading, { backgroundColor: themeColors.background }]}>
-        <ActivityIndicator size="large" color={themeColors.primary} />
-      </View>
-    );
+    return null;
   }
 
   // Force update gate — blocks everything when app version is below minimum
@@ -268,8 +286,8 @@ function RootLayoutNav() {
 
   // Show maintenance screen if enabled and user can't bypass
   if (maintenance?.enabled && !maintenanceLoginMode) {
-    // If authenticated but still checking bypass status, show loading
-    if (isAuthenticated && maintenanceBypass === null) {
+    // If authenticated but bypass status not yet known, show loading
+    if (isAuthenticated && maintenance.can_bypass === undefined) {
       return (
         <View style={[styles.loading, { backgroundColor: themeColors.background }]}>
           <ActivityIndicator size="large" color={themeColors.primary} />
@@ -278,7 +296,7 @@ function RootLayoutNav() {
       );
     }
     // If user can't bypass, show maintenance screen
-    if (!maintenanceBypass) {
+    if (!maintenance.can_bypass) {
       return (
         <View style={[styles.flex, { backgroundColor: themeColors.background }]}>
           <MaintenanceScreen

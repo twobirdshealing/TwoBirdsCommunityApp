@@ -13,6 +13,9 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ConversationCard } from '@/components/message/ConversationCard';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('Messages');
 import { NewMessageModal } from '@/components/message/NewMessageModal';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography } from '@/constants/layout';
@@ -203,7 +206,7 @@ export default function MessagesScreen() {
                 Alert.alert('Error', 'Failed to delete conversation');
               }
             } catch (err) {
-              if (__DEV__) console.error('[Messages] Delete thread error:', err);
+              log.error('Delete thread error:', err);
               Alert.alert('Error', 'Failed to delete conversation');
             }
           },

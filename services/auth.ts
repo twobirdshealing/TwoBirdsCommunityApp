@@ -200,7 +200,7 @@ export async function logout(): Promise<void> {
   // Unregister device from push notifications
   if (FEATURES.PUSH_NOTIFICATIONS && token) {
     await unregisterDeviceToken(token).catch((e) => {
-      if (__DEV__) console.warn('[Auth] Failed to unregister device token:', e);
+      log.warn('Failed to unregister device token:', e);
     });
   }
 
@@ -216,7 +216,7 @@ export async function logout(): Promise<void> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ refresh_token: refreshToken }),
-    }).catch(() => {});
+    }).catch((e) => log.warn('Server logout failed (non-blocking):', e));
   }
 
   await clearAuth();

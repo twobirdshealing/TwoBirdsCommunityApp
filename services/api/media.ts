@@ -7,6 +7,9 @@
 // =============================================================================
 
 import { request } from './client';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('MediaAPI');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -89,7 +92,7 @@ export async function uploadMedia(
   // Add context
   formData.append('object_source', objectSource);
 
-  if (__DEV__) console.log('[Media] Uploading:', fileName, type);
+  log('Uploading:', fileName, type);
 
   const result = await request<MediaUploadApiData>('/feeds/media-upload', {
     method: 'POST',
@@ -107,7 +110,7 @@ export async function uploadMedia(
     };
   }
 
-  if (__DEV__) console.log('[Media] Response:', result.data);
+  log('Response:', result.data);
 
   // API returns { media: { url, width, height, type, media_key } }
   const media = result.data.media || result.data;

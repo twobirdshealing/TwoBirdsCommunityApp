@@ -12,6 +12,9 @@ import { ReactionIcon } from '@/components/feed/ReactionIcon';
 import { messagesApi } from '@/services/api/messages';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
 import { hapticLight, hapticMedium } from '@/utils/haptics';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('ChatReactions');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -152,7 +155,7 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
         () => messagesApi.toggleReaction(msg.id, emoji),
       );
     } catch (err) {
-      if (__DEV__) console.error('[useChatReactions] Reaction error:', err);
+      log.error('Reaction error:', err);
     }
   }, [typeIdToEmoji, setMessages, makeReactionUpdater]);
 
@@ -165,7 +168,7 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
         () => messagesApi.toggleReaction(message.id, emoji),
       );
     } catch (err) {
-      if (__DEV__) console.error('[useChatReactions] Reaction toggle error:', err);
+      log.error('Reaction toggle error:', err);
     }
   }, [setMessages, makeReactionUpdater]);
 
@@ -191,7 +194,7 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
         () => messagesApi.toggleReaction(message.id, emojiToToggle),
       );
     } catch (err) {
-      if (__DEV__) console.error('[useChatReactions] Default reaction error:', err);
+      log.error('Default reaction error:', err);
     }
   }, [currentUserId, defaultReactionEmoji, setMessages, makeReactionUpdater]);
 

@@ -27,9 +27,12 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import { File, Directory, Paths } from 'expo-file-system/next';
+import { File, Directory, Paths } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('MediaViewer');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -200,7 +203,7 @@ export function MediaViewer({
         Alert.alert('Sharing not available', 'Sharing is not supported on this device.');
       }
     } catch (err) {
-      if (__DEV__) console.error('Failed to share image:', err);
+      log.error('Failed to share image:', err);
       Alert.alert('Error', 'Failed to share image. Please try again.');
     } finally {
       setSaving(false);
@@ -234,7 +237,7 @@ export function MediaViewer({
       await MediaLibrary.saveToLibraryAsync(output.uri);
       Alert.alert('Saved', 'Image saved to your gallery.');
     } catch (err) {
-      if (__DEV__) console.error('Failed to save image:', err);
+      log.error('Failed to save image:', err);
       Alert.alert('Error', 'Failed to save image. Please try again.');
     } finally {
       setSaving(false);

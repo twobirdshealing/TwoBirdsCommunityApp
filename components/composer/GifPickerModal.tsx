@@ -26,6 +26,9 @@ import {
 } from '@/components/common/BottomSheet';
 import { giphyApi, GiphyGif } from '@/services/api/giphy';
 import { GifAttachment } from '@/types/gif';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('GifPicker');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -86,7 +89,7 @@ export function GifPickerModal({
         offsetRef.current = offset + newGifs.length;
       }
     } catch (error) {
-      if (__DEV__) console.error('[GifPicker] Error fetching GIFs:', error);
+      log.error('Error fetching GIFs:', error);
     }
   }, []);
 

@@ -26,6 +26,9 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('NewMessage');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -91,7 +94,7 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
         setMembers([]);
       }
     } catch (err) {
-      if (__DEV__) console.error('[NewMessageModal] Search error:', err);
+      log.error('Search error:', err);
       setError('Failed to search members');
       setMembers([]);
     } finally {

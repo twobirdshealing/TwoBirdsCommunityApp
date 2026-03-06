@@ -16,6 +16,9 @@ import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { spacesApi } from '@/services/api/spaces';
 import { cacheEvents } from '@/utils/cacheEvents';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('SpaceMenu');
 
 interface SpaceMenuProps {
   slug: string;
@@ -47,7 +50,7 @@ export function SpaceMenu({ slug, role, onLeaveSuccess }: SpaceMenuProps) {
             router.back();
             onLeaveSuccess?.();
           } catch (error) {
-            if (__DEV__) console.error('Error leaving space:', error);
+            log.error('Error leaving space:', error);
             Alert.alert('Error', 'Failed to leave space. Please try again.');
           } finally {
             setIsLeaving(false);

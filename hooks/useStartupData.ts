@@ -240,7 +240,7 @@ export function useStartupData({
       log('Startup batch complete —', freshKeys.length, 'widget caches populated');
     } catch (err) {
       // Batch failed — widgets will still self-fetch via useCachedData as normal
-      if (__DEV__) console.error('[StartupBatch] Failed:', err);
+      log.error('Failed:', err);
     }
   }, [username, onAppConfig, onProfileUpdate, onUnreadNotifications, onUnreadMessages]);
 

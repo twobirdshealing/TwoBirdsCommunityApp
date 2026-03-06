@@ -9,6 +9,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TBC_CA_URL } from '@/constants/config';
 import type { Badge } from '@/types/user';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('BadgeAPI');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -79,7 +82,7 @@ export async function fetchBadgeDefinitions(): Promise<BadgeDefinitions> {
     }
     return cachedBadges || {};
   } catch (error) {
-    if (__DEV__) console.error('[Badge API]', error);
+    log.error(error);
     return cachedBadges || {};
   }
 }
@@ -105,6 +108,6 @@ export function resolveBadges(slugs: string[]): Badge[] {
 export function clearBadgeCache() {
   cachedBadges = null;
   AsyncStorage.removeItem(BADGE_CACHE_KEY).catch((e) => {
-    if (__DEV__) console.warn('[Badges] Cache clear failed:', e);
+    log.warn('Cache clear failed:', e);
   });
 }

@@ -29,6 +29,9 @@ import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useFeedActions } from '@/hooks/useFeedActions';
 import { cacheEvents } from '@/utils/cacheEvents';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('SpacePage');
 
 // -----------------------------------------------------------------------------
 // Component
@@ -89,7 +92,7 @@ export default function SpacePage() {
       }
       
     } catch (err) {
-      if (__DEV__) console.error('Failed to load space:', err);
+      log.error('Failed to load space:', err);
     }
   }, [slug]);
   
@@ -135,7 +138,7 @@ export default function SpacePage() {
         }
       }
     } catch (err) {
-      if (__DEV__) console.error('Fetch feeds error:', err);
+      log.error('Fetch feeds error:', err);
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
@@ -194,7 +197,7 @@ export default function SpacePage() {
         Alert.alert('Error', response.error?.message || 'Failed to update pin');
       }
     } catch (err) {
-      if (__DEV__) console.error('Pin toggle error:', err);
+      log.error('Pin toggle error:', err);
       Alert.alert('Error', 'Failed to pin post');
     }
   };

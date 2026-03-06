@@ -56,6 +56,9 @@ import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { updateBreakdownOptimistically } from '@/utils/reactionHelpers';
 import { SITE_URL } from '@/constants/config';
 import { REACTION_EMOJI } from '@/constants/reactions';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('Comments');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -297,7 +300,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         }
       }
     } catch (error) {
-      if (__DEV__) console.error('Image picker error:', error);
+      log.error('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image');
     } finally {
       setIsUploading(false);
@@ -371,7 +374,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         },
       } : undefined;
 
-      if (__DEV__) console.log('[CommentSheet] Submitting comment:', {
+      log('Submitting comment:', {
         comment: markdown,
         parent_id: parentId,
         replyingToId: replyingTo?.id,
@@ -401,7 +404,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         throw new Error(response.error?.message || 'Failed to post comment');
       }
     } catch (err) {
-      if (__DEV__) console.error('[CommentSheet] ERROR:', err);
+      log.error('Submit error:', err);
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to post comment');
     } finally {
       setIsSubmitting(false);
@@ -517,7 +520,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         await commentsApi.reactToComment(postId, comment.id, willRemove, reactionType);
       }
     } catch (err) {
-      if (__DEV__) console.error('[CommentSheet] Reaction error:', err);
+      log.error('Reaction error:', err);
       // Revert on error
       setComments(prevComments =>
         prevComments.map(c => c.id === comment.id ? comment : c)
@@ -585,7 +588,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
       Alert.alert('Copied!', 'Link copied to clipboard');
     } catch (err) {
       // If clipboard fails, show URL so user can manually copy
-      if (__DEV__) console.error('Copy failed:', err);
+      log.error('Copy failed:', err);
       Alert.alert('Comment Link', url);
     }
   };
@@ -620,7 +623,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                 Alert.alert('Error', response.error?.message || 'Failed to delete');
               }
             } catch (err) {
-              if (__DEV__) console.error('Delete error:', err);
+              log.error('Delete error:', err);
               Alert.alert('Error', 'Failed to delete comment');
             }
           },
@@ -650,7 +653,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         Alert.alert('Error', response.error?.message || 'Failed to update pin');
       }
     } catch (err) {
-      if (__DEV__) console.error('[CommentSheet] Pin error:', err);
+      log.error('Pin error:', err);
       Alert.alert('Error', 'Failed to update pin');
     }
   };

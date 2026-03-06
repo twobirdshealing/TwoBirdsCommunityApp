@@ -9,7 +9,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   ImageBackground,
   ScrollView,
   StyleSheet,
@@ -18,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -494,7 +494,8 @@ export default function ForgotPasswordScreen() {
               <Image
                 source={require('@/assets/images/login_logo.png')}
                 style={styles.logo}
-                resizeMode="contain"
+                contentFit="contain"
+                cachePolicy="memory-disk"
               />
             </View>
           )}

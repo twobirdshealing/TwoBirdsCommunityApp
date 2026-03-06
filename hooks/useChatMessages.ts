@@ -11,7 +11,10 @@ import { ChatMessage, ChatThread, ThreadDetails, IntendedObject } from '@/types/
 import type { ChatInputAttachment, ChatInputReplyTo } from '@/components/message/ChatInput';
 import { messagesApi } from '@/services/api/messages';
 import { useNewMessageListener, useReactionListener } from '@/contexts/PusherContext';
+import { createLogger } from '@/utils/logger';
 import type { PusherMessage, PusherReaction } from '@/services/pusher';
+
+const log = createLogger('ChatMessages');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -87,10 +90,10 @@ export function useChatMessages({
       }
 
       messagesApi.markThreadsRead([threadId]).catch((e) => {
-        if (__DEV__) console.warn('[useChatMessages] Mark read failed:', e);
+        log.warn('Mark read failed:', e);
       });
     } catch (err) {
-      if (__DEV__) console.error('[useChatMessages] Load error:', err);
+      log.error('Load error:', err);
       setError('Failed to load conversation');
     } finally {
       setLoading(false);
@@ -134,13 +137,13 @@ export function useChatMessages({
         }
 
         messagesApi.markThreadsRead([selectedThread.id]).catch((e) => {
-          if (__DEV__) console.warn('[useChatMessages] Mark read failed:', e);
+          log.warn('Mark read failed:', e);
         });
       } else if (response.data.intended_object) {
         setIntendedUser(response.data.intended_object);
       }
     } catch (err) {
-      if (__DEV__) console.error('[useChatMessages] Resolve error:', err);
+      log.error('Resolve error:', err);
       setError('Failed to load conversation');
     } finally {
       setLoading(false);
@@ -212,7 +215,7 @@ export function useChatMessages({
         setHasMore(response.data.has_more || false);
       }
     } catch (err) {
-      if (__DEV__) console.error('[useChatMessages] Load older error:', err);
+      log.error('Load older error:', err);
     } finally {
       setLoadingOlder(false);
     }
@@ -277,7 +280,7 @@ export function useChatMessages({
               }
             }
           } catch (err) {
-            if (__DEV__) console.error('[useChatMessages] Block error:', err);
+            log.error('Block error:', err);
             Alert.alert('Error', `Failed to ${action.toLowerCase()} user`);
           } finally {
             setBlockLoading(false);
@@ -298,7 +301,7 @@ export function useChatMessages({
         Alert.alert('Error', 'Failed to unblock user');
       }
     } catch (err) {
-      if (__DEV__) console.error('[useChatMessages] Unblock error:', err);
+      log.error('Unblock error:', err);
       Alert.alert('Error', 'Failed to unblock user');
     } finally {
       setBlockLoading(false);
@@ -360,7 +363,7 @@ export function useChatMessages({
         }
       }
     } catch (err) {
-      if (__DEV__) console.error('[useChatMessages] Send error:', err);
+      log.error('Send error:', err);
       Alert.alert('Error', 'Failed to send message');
     } finally {
       setSending(false);

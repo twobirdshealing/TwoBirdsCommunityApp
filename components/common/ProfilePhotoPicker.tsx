@@ -9,12 +9,12 @@
 import React from 'react';
 import {
   ActivityIndicator,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -62,7 +62,9 @@ export function ProfilePhotoPicker({
           <Image
             source={{ uri: coverSource }}
             style={styles.coverImage}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
           />
         ) : (
           <View style={[styles.coverImage, { backgroundColor: colors.primary }]} />

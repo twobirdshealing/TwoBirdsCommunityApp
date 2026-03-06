@@ -10,6 +10,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { MediaItem, mediaApi } from '@/services/api/media';
 import { Ionicons } from '@expo/vector-icons';
 import { hapticLight } from '@/utils/haptics';
+import { createLogger } from '@/utils/logger';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
@@ -22,6 +23,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
+const log = createLogger('ChatInput');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -120,7 +123,7 @@ export function ChatInput({
         }
       }
     } catch (error) {
-      if (__DEV__) console.error('[ChatInput] Image picker error:', error);
+      log.error('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image');
     } finally {
       setIsUploading(false);

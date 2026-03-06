@@ -17,6 +17,9 @@ import {
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('LinkPreview');
 
 // -----------------------------------------------------------------------------
 // Props
@@ -100,7 +103,7 @@ export function LinkPreview({
   // Handle tap - open in browser or native app
   const handlePress = () => {
     Linking.openURL(url).catch(err => {
-      if (__DEV__) console.error('Failed to open URL:', err);
+      log.error('Failed to open URL:', err);
     });
   };
   

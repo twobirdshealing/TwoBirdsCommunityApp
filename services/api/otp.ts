@@ -6,6 +6,9 @@
 // =============================================================================
 
 import { TBC_CA_URL } from '@/constants/config';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('OtpAPI');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -54,7 +57,7 @@ async function otpRequest<T>(
 
     return { success: true, data };
   } catch (error) {
-    if (__DEV__) console.error('[OTP API Error]', error);
+    log.error(error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Network request failed',

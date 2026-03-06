@@ -8,7 +8,10 @@ import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import { profilesApi } from '@/services/api/profiles';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
+import { createLogger } from '@/utils/logger';
 import type { MemberCardData } from '@/components/member/MemberCard';
+
+const log = createLogger('FollowToggle');
 
 // -----------------------------------------------------------------------------
 // Hook
@@ -36,7 +39,7 @@ export function useFollowToggle() {
           : profilesApi.followUser(username),
       );
     } catch (err) {
-      if (__DEV__) console.error('[Follow] Toggle error:', err);
+      log.error('Toggle error:', err);
       Alert.alert('Error', 'Failed to update follow status');
     } finally {
       setFollowLoadingMap(prev => ({ ...prev, [memberId]: false }));

@@ -9,6 +9,9 @@
 import { DEFAULT_PER_PAGE, ENDPOINTS, TBC_MR_URL } from '@/constants/config';
 import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType, SurveyConfig, WelcomeBannerResponse } from '@/types/feed';
 import { del, get, patch, post, request } from './client';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('FeedsAPI');
 
 // -----------------------------------------------------------------------------
 // Request Options
@@ -182,7 +185,7 @@ export async function createFeed(data: CreateFeedData) {
     requestData.survey = data.survey;
   }
 
-  if (__DEV__) console.log('[FeedsAPI] Creating feed with:', JSON.stringify(requestData, null, 2));
+  log('Creating feed with:', JSON.stringify(requestData, null, 2));
 
   return post<{ feed: Feed }>(ENDPOINTS.FEEDS, requestData);
 }
@@ -203,7 +206,7 @@ export async function updateFeed(id: number, data: Partial<CreateFeedData>) {
 // Web app sends: {is_sticky: 1, query_timestamp: ...}
 
 export async function toggleSticky(id: number, isSticky: boolean) {
-  if (__DEV__) console.log('[FeedsAPI] toggleSticky using PATCH:', { id, isSticky: isSticky ? 1 : 0 });
+  log('toggleSticky using PATCH:', { id, isSticky: isSticky ? 1 : 0 });
   
   // Use PATCH for partial update (doesn't require all fields)
   return patch<{ message: string; data: Feed }>(`${ENDPOINTS.FEEDS}/${id}`, {

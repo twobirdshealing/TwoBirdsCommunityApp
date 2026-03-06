@@ -10,7 +10,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { TBC_MR_URL } from '@/constants/config';
 import { request } from '@/services/api/client';
 import { REACTION_EMOJI, REACTION_COLORS, REACTION_NAMES, REACTION_TYPES } from '@/constants/reactions';
+import { createLogger } from '@/utils/logger';
 import { ReactionType } from '@/types/feed';
+
+const log = createLogger('ReactionConfig');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -59,7 +62,7 @@ async function fetchReactionConfig(): Promise<ConfigResult> {
     const result = await request<{ reactions?: ReactionConfig[]; display?: Partial<DisplayConfig> }>('/config', { baseUrl: TBC_MR_URL });
 
     if (!result.success) {
-      if (__DEV__) console.warn('[useReactionConfig] API error:', result.error.message);
+      log.warn('API error:', result.error.message);
       return buildFallbackConfig();
     }
 
@@ -88,7 +91,7 @@ async function fetchReactionConfig(): Promise<ConfigResult> {
 
     return buildFallbackConfig();
   } catch (err) {
-    if (__DEV__) console.warn('[useReactionConfig] Fetch failed:', err);
+    log.warn('Fetch failed:', err);
     return buildFallbackConfig();
   }
 }

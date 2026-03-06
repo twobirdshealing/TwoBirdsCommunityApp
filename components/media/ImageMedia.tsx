@@ -20,6 +20,9 @@ import {
 } from 'react-native';
 import { sizing, spacing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('ImageMedia');
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MAX_IMAGE_WIDTH = SCREEN_WIDTH - 48; // Account for padding
@@ -103,7 +106,7 @@ export function ImageMedia({
         onLoadStart={() => setLoading(true)}
         onLoad={() => setLoading(false)}
         onError={(e) => {
-          if (__DEV__) console.log('Image load error:', url, e.nativeEvent.error);
+          log('Image load error:', url, e.nativeEvent.error);
           setLoading(false);
           setError(true);
         }}

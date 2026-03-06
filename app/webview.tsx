@@ -28,7 +28,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { WebView, WebViewNavigation, WebViewErrorEvent, WebViewHttpErrorEvent } from 'react-native-webview';
+import { WebView } from 'react-native-webview';
+import type { WebViewNavigation, WebViewErrorEvent, WebViewHttpErrorEvent } from 'react-native-webview/lib/WebViewTypes';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +39,9 @@ import { SITE_URL } from '@/constants/config';
 import { appApi } from '@/services/api/app';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { useTheme } from '@/contexts/ThemeContext';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('WebView');
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -109,7 +113,7 @@ export default function WebViewScreen() {
     const initSession = async () => {
       const url = params.url;
 
-      if (__DEV__) console.log('[WebView] Init with URL:', url);
+      log('Init with URL:', url);
 
       if (!url) {
         setError('No URL provided');
@@ -119,17 +123,17 @@ export default function WebViewScreen() {
 
       // Public pages (e.g., privacy policy) don't need authentication
       if (params.noAuth) {
-        if (__DEV__) console.log('[WebView] Loading public URL (noAuth):', url);
+        log('Loading public URL (noAuth):', url);
         setSessionUrl(url);
         setLoading(false);
         return;
       }
 
       try {
-        if (__DEV__) console.log('[WebView] Creating session...');
+        log('Creating session...');
         const response = await appApi.createWebSession(url);
 
-        if (__DEV__) console.log('[WebView] Session created:', response.success);
+        log('Session created:', response.success);
 
         if (response.success && response.url) {
           setSessionUrl(response.url);
@@ -137,7 +141,7 @@ export default function WebViewScreen() {
           throw new Error('Invalid session response');
         }
       } catch (err) {
-        if (__DEV__) console.log('[WebView] Error:', err);
+        log('Error:', err);
         const message = err instanceof Error ? err.message : 'Failed to load';
         setError(message);
       } finally {
@@ -194,17 +198,17 @@ export default function WebViewScreen() {
             setPageTitle('Cart');
           }
         } catch (err) {
-          if (__DEV__) console.log('[WebView] Cart error:', err);
+          log('Cart error:', err);
         }
         break;
 
       case 'share':
         // Future: implement share functionality
-        if (__DEV__) console.log('[WebView] Share action - not implemented yet');
+        log('Share action - not implemented yet');
         break;
 
       default:
-        if (__DEV__) console.log('[WebView] Unknown action:', params.rightAction);
+        log('Unknown action:', params.rightAction);
     }
   };
 
@@ -220,13 +224,13 @@ export default function WebViewScreen() {
 
   const handleError = useCallback((event: WebViewErrorEvent) => {
     const { description } = event.nativeEvent;
-    if (__DEV__) console.log('[WebView] Load error:', description);
+    log('Load error:', description);
     setError(description || 'Failed to load page');
   }, []);
 
   const handleHttpError = useCallback((event: WebViewHttpErrorEvent) => {
     const { statusCode, description } = event.nativeEvent;
-    if (__DEV__) console.log('[WebView] HTTP error:', statusCode, description);
+    log('HTTP error:', statusCode, description);
     if (statusCode >= 400) {
       setError(`Page returned error ${statusCode}`);
     }

@@ -45,6 +45,9 @@ import { formatRelativeTime } from '@/utils/formatDate';
 import { HtmlContent } from '@/components/common/HtmlContent';
 import { hapticLight, hapticWarning } from '@/utils/haptics';
 import { MarkdownToolbar } from '@/components/composer/MarkdownToolbar';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('BlogComments');
 
 // -----------------------------------------------------------------------------
 // Props
@@ -361,7 +364,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
       await Clipboard.setStringAsync(url);
       Alert.alert('Copied!', 'Link copied to clipboard');
     } catch (err) {
-      if (__DEV__) console.error('Copy failed:', err);
+      log.error('Copy failed:', err);
       Alert.alert('Comment Link', url);
     }
   };
@@ -391,7 +394,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
                 Alert.alert('Error', response.error?.message || 'Failed to delete');
               }
             } catch (err) {
-              if (__DEV__) console.error('Delete error:', err);
+              log.error('Delete error:', err);
               Alert.alert('Error', 'Failed to delete comment');
             }
           },

@@ -21,6 +21,9 @@ import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacesApi } from '@/services/api/spaces';
 import { SpaceGroupOption } from '@/types/space';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('SpaceSelector');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -89,11 +92,11 @@ export function SpaceSelector({
       // Process spaces
       if (spacesRes.success) {
         const spacesList = spacesRes.data.spaces || [];
-        if (__DEV__) console.log('[SpaceSelector] Spaces count:', spacesList.length);
+        log('Spaces count:', spacesList.length);
         setSpaces(spacesList);
       }
     } catch (error) {
-      if (__DEV__) console.error('[SpaceSelector] Error fetching spaces:', error);
+      log.error('Error fetching spaces:', error);
     } finally {
       setLoading(false);
     }
@@ -169,7 +172,7 @@ export function SpaceSelector({
   // ---------------------------------------------------------------------------
 
   const handleSelect = (space: Space) => {
-    if (__DEV__) console.log('[SpaceSelector] Selected:', space.slug, space.title);
+    log('Selected:', space.slug, space.title);
     onSelect(space.slug, space.title);
     setIsOpen(false);
     setSearchQuery('');

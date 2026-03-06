@@ -8,6 +8,9 @@
 
 import { TBC_CA_URL } from '@/constants/config';
 import { verifyOtp, resendOtp, requestVoiceCall } from './otp';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('RegistrationAPI');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -103,7 +106,7 @@ async function tbcPublicRequest<T>(
 
     return { success: true, data };
   } catch (error) {
-    if (__DEV__) console.error('[Registration API Error]', error);
+    log.error(error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Network request failed',
@@ -123,7 +126,7 @@ export async function getRegistrationFields(): Promise<FieldsResponse | null> {
   if (result.success) {
     return result.data;
   }
-  if (__DEV__) console.error('[Registration] Failed to get fields:', result.error);
+  log.error('Failed to get fields:', result.error);
   return null;
 }
 

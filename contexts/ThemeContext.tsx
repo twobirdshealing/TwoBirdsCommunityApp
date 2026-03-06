@@ -27,6 +27,8 @@ interface ThemeContextType {
   update: UpdateConfig | null;
   maintenance: MaintenanceConfig | null;
   refreshAppConfig: () => Promise<void>;
+  /** Accept pre-fetched data (from startup batch or _layout orchestrator) */
+  setFromBatch: (data: AppConfigResponse) => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -127,6 +129,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applyAppConfig(data);
   }, []);
 
+  const setFromBatch = useCallback((data: AppConfigResponse) => {
+    applyAppConfig(data);
+    // Also cache so next cold start has latest data
+    AsyncStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(data)).catch(() => {});
+  }, []);
+
   const applyAppConfig = (data: AppConfigResponse) => {
     // Apply theme colors
     if (data.theme) {
@@ -174,7 +182,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Memoize provider value to prevent unnecessary consumer re-renders
   // ---------------------------------------------------------------------------
 
-  const value = useMemo(() => ({ theme, isDark, colors, setTheme, update, maintenance, refreshAppConfig }), [theme, isDark, colors, setTheme, update, maintenance, refreshAppConfig]);
+  const value = useMemo(() => ({ theme, isDark, colors, setTheme, update, maintenance, refreshAppConfig, setFromBatch }), [theme, isDark, colors, setTheme, update, maintenance, refreshAppConfig, setFromBatch]);
 
   // ---------------------------------------------------------------------------
   // Don't render children until preference is loaded (prevents flash)

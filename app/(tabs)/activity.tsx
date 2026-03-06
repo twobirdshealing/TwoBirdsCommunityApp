@@ -13,6 +13,9 @@ import { FeedList } from '@/components/feed/FeedList';
 import { QuickPostBox } from '@/components/composer/QuickPostBox';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTabBar } from '@/contexts/TabBarContext';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('Activity');
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useCachedData } from '@/hooks/useCachedData';
 import { useFeedActions } from '@/hooks/useFeedActions';
@@ -137,7 +140,7 @@ export default function ActivityScreen() {
         Alert.alert('Error', response.error?.message || 'Failed to update pin status');
       }
     } catch (err) {
-      if (__DEV__) console.error('Pin error:', err);
+      log.error('Pin error:', err);
       Alert.alert('Error', 'Failed to update pin status');
     }
   };
