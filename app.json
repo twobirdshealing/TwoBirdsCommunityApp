@@ -2,7 +2,7 @@
   "expo": {
     "name": "Two Birds Community",
     "slug": "TwoBirdsCommunity",
-    "version": "1.0.0",
+    "version": "3.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app_icon_ios.png",
     "scheme": "twobirdscommunity",

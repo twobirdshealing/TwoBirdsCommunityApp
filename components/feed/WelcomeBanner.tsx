@@ -18,10 +18,10 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { HtmlContent } from '@/components/common/HtmlContent';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { WelcomeBanner as WelcomeBannerType, WelcomeBannerButton } from '@/types/feed';
-import { stripHtmlTags } from '@/utils/htmlToText';
 import { extractYouTubeId } from '@/utils/youtube';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 
@@ -125,9 +125,6 @@ export function WelcomeBanner({ banner, onClose }: WelcomeBannerProps) {
     return null;
   }
 
-  // Get clean description text
-  const description = stripHtmlTags(banner.description_rendered);
-
   // Check for YouTube video
   const hasYouTube = banner.mediaType === 'video' && 
     banner.bannerVideo?.type === 'oembed' && 
@@ -173,8 +170,11 @@ export function WelcomeBanner({ banner, onClose }: WelcomeBannerProps) {
         )}
 
         {/* Description */}
-        {description && (
-          <Text style={[styles.description, { color: themeColors.textSecondary }]}>{description}</Text>
+        {banner.description_rendered && (
+          <HtmlContent
+            html={banner.description_rendered}
+            contentWidth={BANNER_WIDTH - (spacing.md * 2)}
+          />
         )}
 
         {/* CTA Buttons */}
@@ -232,13 +232,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xl,
     fontWeight: '700',
     marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-
-  description: {
-    fontSize: typography.size.md,
-    lineHeight: typography.size.md * 1.5,
-    marginBottom: spacing.md,
     textAlign: 'center',
   },
 

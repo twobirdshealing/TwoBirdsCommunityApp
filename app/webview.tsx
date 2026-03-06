@@ -310,8 +310,7 @@ export default function WebViewScreen() {
           onLoadEnd={handleLoadEnd}
           onError={handleError}
           onHttpError={handleHttpError}
-          sharedCookiesEnabled={true}
-          thirdPartyCookiesEnabled={true}
+          incognito={true}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}

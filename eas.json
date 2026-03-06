@@ -17,6 +17,14 @@
         "SITE_URL": "https://staging.twobirdschurch.com"
       }
     },
+    "simulator": {
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "SITE_URL": "https://staging.twobirdschurch.com"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "env": {
