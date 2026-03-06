@@ -35,6 +35,7 @@ import { YouTubeWidget } from '@/components/home/YouTubeWidget';
 import { EventsWidget } from '@/components/home/EventsWidget';
 import { CoursesWidget } from '@/components/home/CoursesWidget';
 import { BookClubWidget } from '@/components/home/BookClubWidget';
+import { CeremonyWidget } from '@/components/home/CeremonyWidget';
 import { EditModeBar } from '@/components/home/EditModeBar';
 import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
 
@@ -46,6 +47,7 @@ const WIDGET_COMPONENTS: Record<
   string,
   React.ComponentType<{ refreshKey: number }>
 > = {
+  'upcoming-booking': CeremonyWidget,
   'featured-events': EventsWidget,
   'my-courses': CoursesWidget,
   'book-club': BookClubWidget,

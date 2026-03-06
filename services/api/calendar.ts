@@ -50,6 +50,17 @@ export async function getFeaturedEvents(limit: number = 3) {
 }
 
 // -----------------------------------------------------------------------------
+// Get User's Booked Events
+// -----------------------------------------------------------------------------
+
+export async function getUserBooked(limit: number = 1) {
+  return request<EventsResponse>('/user/booked', {
+    params: { limit },
+    baseUrl: CALENDAR_API_URL,
+  });
+}
+
+// -----------------------------------------------------------------------------
 // Get User's Waitlist
 // -----------------------------------------------------------------------------
 
@@ -66,6 +77,7 @@ export async function getUserWaitlist() {
 export const calendarApi = {
   getEvents,
   getFeaturedEvents,
+  getUserBooked,
   getUserWaitlist,
 };
 
