@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { MediaPreview } from '@/components/composer/MediaPreview';
-import { spacing, typography, shadows } from '@/constants/layout';
+import { spacing, typography, shadows, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { MediaItem, mediaApi } from '@/services/api/media';
 import { Ionicons } from '@expo/vector-icons';
@@ -268,15 +268,15 @@ const styles = StyleSheet.create({
   },
 
   attachButton: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   inputContainer: {
     flex: 1,
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
     paddingHorizontal: spacing.md,
     paddingVertical: Platform.OS === 'ios' ? spacing.sm : 0,
     marginRight: spacing.sm,
@@ -293,9 +293,9 @@ const styles = StyleSheet.create({
   },
 
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
+    borderRadius: sizing.iconButton / 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     marginHorizontal: spacing.sm,
     marginTop: spacing.sm,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   replyBarContent: {
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
 
   replyBarLabel: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: 2,
   },
 

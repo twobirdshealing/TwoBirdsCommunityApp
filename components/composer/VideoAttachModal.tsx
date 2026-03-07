@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   },
 
   tabTextActive: {
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   content: {
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
 
   subtitle: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
 
   embedButtonText: {
     fontSize: typography.size.sm,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 });
 

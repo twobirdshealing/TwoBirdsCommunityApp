@@ -16,7 +16,7 @@ import {
 import { Image } from 'expo-image';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Avatar } from './Avatar';
 
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   coverContainer: {
     width: '100%',
     height: 120,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -141,12 +141,12 @@ const styles = StyleSheet.create({
   coverText: {
     color: '#fff',
     fontSize: typography.size.sm,
-    fontWeight: '600' as const,
+    fontWeight: typography.weight.semibold,
   },
 
   avatarWrapper: {
     marginTop: -40,
-    borderRadius: 48,
+    borderRadius: sizing.borderRadius.full,
     borderWidth: 4,
     position: 'relative',
   },
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   avatarOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    borderRadius: 44,
+    borderRadius: sizing.borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
     margin: 0,
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   avatarText: {
     color: '#fff',
     fontSize: typography.size.xs,
-    fontWeight: '600' as const,
+    fontWeight: typography.weight.semibold,
     textAlign: 'center' as const,
     marginTop: 2,
   },

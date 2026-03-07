@@ -30,7 +30,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { EmptyState } from '@/components/common/EmptyState';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { PageHeader } from '@/components/navigation/PageHeader';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { membersApi } from '@/services/api/members';
@@ -333,8 +333,8 @@ const styles = StyleSheet.create({
 
   // Gear menu button (in PageHeader rightElement)
   menuButton: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
   searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     gap: spacing.xs,

@@ -55,16 +55,20 @@ export async function unfollowUser(username: string) {
 // Get Followers
 // -----------------------------------------------------------------------------
 
-export async function getFollowers(username: string, page: number = 1) {
-  return get<{ followers: XProfile[] }>(`${ENDPOINTS.PROFILE(username)}/followers`, { page });
+export async function getFollowers(username: string, page: number = 1, perPage: number = 20) {
+  return get<{ followers: { data: { follower: XProfile & { follow?: string | null } }[]; next_page_url: string | null } }>(
+    `${ENDPOINTS.PROFILE(username)}/followers`, { page, per_page: perPage }
+  );
 }
 
 // -----------------------------------------------------------------------------
 // Get Following
 // -----------------------------------------------------------------------------
 
-export async function getFollowing(username: string, page: number = 1) {
-  return get<{ followings: XProfile[] }>(`${ENDPOINTS.PROFILE(username)}/followings`, { page });
+export async function getFollowing(username: string, page: number = 1, perPage: number = 20) {
+  return get<{ followings: { data: { followed: XProfile & { follow?: string | null } }[]; next_page_url: string | null } }>(
+    `${ENDPOINTS.PROFILE(username)}/followings`, { page, per_page: perPage }
+  );
 }
 
 // -----------------------------------------------------------------------------

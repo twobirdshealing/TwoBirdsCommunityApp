@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography, shadows } from '@/constants/layout';
+import { spacing, typography, shadows, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { WidgetConfig } from './widgetRegistry';
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
 
   activeContainer: {
     backgroundColor: 'rgba(0,0,0,0.02)',
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     transform: [{ scale: 1.02 }],
   },
 
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   label: {
     flex: 1,
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 });
 

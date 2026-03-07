@@ -9,7 +9,7 @@
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { PageHeader } from '@/components/navigation/PageHeader';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   ChannelType,
@@ -80,7 +80,7 @@ function ChannelToggleRow({ type, label, enabled, onToggle, disabled = false }: 
           { backgroundColor: themeColors.border },
           enabled && styles.toggleEnabled,
           enabled && { backgroundColor: themeColors.primary },
-          disabled && { backgroundColor: themeColors.skeleton },
+          disabled && { backgroundColor: themeColors.border },
         ]}
       >
         <View
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
 
   headerTitle: {
     fontSize: typography.size.xl,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     marginTop: spacing.md,
   },
 
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     marginBottom: spacing.md,
     padding: spacing.md,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
     borderWidth: 1,
     gap: spacing.sm,
   },
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
 
   bannerAction: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginLeft: spacing.sm,
   },
 
@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
 
   sectionTitle: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: spacing.sm,
@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
 
   // Notification Card
   notificationCard: {
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     marginBottom: spacing.sm,
     overflow: 'hidden',
   },
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
 
   cardTitle: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   cardDescription: {
@@ -653,7 +653,7 @@ const styles = StyleSheet.create({
   toggle: {
     width: 50,
     height: 30,
-    borderRadius: 15,
+    borderRadius: sizing.borderRadius.full,
     justifyContent: 'center',
     paddingHorizontal: 2,
   },
@@ -663,7 +663,7 @@ const styles = StyleSheet.create({
   toggleThumb: {
     width: 26,
     height: 26,
-    borderRadius: 13,
+    borderRadius: sizing.borderRadius.full,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
@@ -701,25 +701,25 @@ const styles = StyleSheet.create({
   frequencyChip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
     borderWidth: 1,
   },
 
   frequencyChipText: {
     fontSize: typography.size.sm,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   // Space Email Settings
   spaceCard: {
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
     paddingBottom: spacing.sm,
   },
 
   spaceGroupTitle: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     paddingHorizontal: spacing.md,
@@ -745,15 +745,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: sizing.borderRadius.lg,
     borderWidth: 1,
-    gap: 4,
+    gap: spacing.xs,
     minWidth: 100,
     justifyContent: 'center',
   },
 
   spaceSelectorText: {
     fontSize: typography.size.xs,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 });

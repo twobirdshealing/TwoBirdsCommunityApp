@@ -8,7 +8,7 @@
 // or emoji) via ReactionIcon when tbc_reaction_type data is available.
 // =============================================================================
 
-import { ColorTheme } from '@/constants/colors';
+import { ColorTheme, withOpacity } from '@/constants/colors';
 import { ReactionIcon } from '@/components/feed/ReactionIcon';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -75,7 +75,7 @@ function getIconConfig(type: NotificationType, tc: ColorTheme): IconConfig {
       normalizedType === 'feed/reacted') {
     return {
       icon: 'heart',
-      color: tc.reactions.love,
+      color: tc.error,
       backgroundColor: tc.errorLight,
     };
   }
@@ -86,7 +86,7 @@ function getIconConfig(type: NotificationType, tc: ColorTheme): IconConfig {
     return {
       icon: 'document-text',
       color: tc.primary,
-      backgroundColor: tc.primaryLight + '30',
+      backgroundColor: withOpacity(tc.primary, 0.19),
     };
   }
 
@@ -119,7 +119,7 @@ function getIconConfig(type: NotificationType, tc: ColorTheme): IconConfig {
     return {
       icon: 'mail',
       color: tc.primary,
-      backgroundColor: tc.primaryLight + '30',
+      backgroundColor: withOpacity(tc.primary, 0.19),
     };
   }
 
@@ -140,7 +140,7 @@ function getIconConfig(type: NotificationType, tc: ColorTheme): IconConfig {
     return {
       icon: 'school',
       color: tc.primary,
-      backgroundColor: tc.primaryLight + '30',
+      backgroundColor: withOpacity(tc.primary, 0.19),
     };
   }
 

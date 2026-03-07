@@ -3,15 +3,13 @@
 // =============================================================================
 // Calls GET /tbc-multi-reactions/v1/config once per app session.
 // All components share the same cached result via module-level variable.
-// Falls back to hardcoded constants if API fails or hasn't loaded yet.
+// Returns empty config if API fails (reactions won't render).
 // =============================================================================
 
 import { useState, useEffect, useCallback } from 'react';
 import { TBC_MR_URL } from '@/constants/config';
 import { request } from '@/services/api/client';
-import { REACTION_EMOJI, REACTION_COLORS, REACTION_NAMES, REACTION_TYPES } from '@/constants/reactions';
 import { createLogger } from '@/utils/logger';
-import { ReactionType } from '@/types/feed';
 
 const log = createLogger('ReactionConfig');
 
@@ -44,6 +42,7 @@ interface ConfigResult {
 // -----------------------------------------------------------------------------
 
 const DEFAULT_DISPLAY: DisplayConfig = { count: 5, overlap: 8, stroke: 0 };
+const EMPTY_CONFIG: ConfigResult = { reactions: [], display: DEFAULT_DISPLAY };
 
 // -----------------------------------------------------------------------------
 // Module-level cache (shared across all hook instances)
@@ -63,12 +62,12 @@ async function fetchReactionConfig(): Promise<ConfigResult> {
 
     if (!result.success) {
       log.warn('API error:', result.error.message);
-      return buildFallbackConfig();
+      return EMPTY_CONFIG;
     }
 
     const data = result.data;
 
-    if (data?.reactions && Array.isArray(data.reactions)) {
+    if (data?.reactions?.length) {
       // Normalize reactions: treat empty string icon_url as null
       const reactions = data.reactions.map((r: any) => ({
         id: r.id,
@@ -89,25 +88,11 @@ async function fetchReactionConfig(): Promise<ConfigResult> {
       return { reactions, display };
     }
 
-    return buildFallbackConfig();
+    return EMPTY_CONFIG;
   } catch (err) {
     log.warn('Fetch failed:', err);
-    return buildFallbackConfig();
+    return EMPTY_CONFIG;
   }
-}
-
-function buildFallbackConfig(): ConfigResult {
-  return {
-    reactions: REACTION_TYPES.map((type, i) => ({
-      id: type,
-      name: REACTION_NAMES[type],
-      emoji: REACTION_EMOJI[type],
-      icon_url: null,
-      color: REACTION_COLORS[type],
-      order: i + 1,
-    })),
-    display: DEFAULT_DISPLAY,
-  };
 }
 
 // -----------------------------------------------------------------------------
@@ -115,12 +100,11 @@ function buildFallbackConfig(): ConfigResult {
 // -----------------------------------------------------------------------------
 
 export function useReactionConfig() {
-  const fallback = buildFallbackConfig();
   const [reactions, setReactions] = useState<ReactionConfig[]>(
-    cachedConfig?.reactions || fallback.reactions
+    cachedConfig?.reactions || []
   );
   const [display, setDisplay] = useState<DisplayConfig>(
-    cachedConfig?.display || fallback.display
+    cachedConfig?.display || DEFAULT_DISPLAY
   );
   const [loading, setLoading] = useState(!cachedConfig);
 

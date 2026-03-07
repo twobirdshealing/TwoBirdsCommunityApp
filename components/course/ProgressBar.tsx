@@ -6,7 +6,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
-import { typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 
 interface ProgressBarProps {
   progress: number; // 0-100
@@ -46,15 +46,15 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   track: {
-    borderRadius: 100,
+    borderRadius: sizing.borderRadius.full,
     overflow: 'hidden',
   },
   fill: {
-    borderRadius: 100,
+    borderRadius: sizing.borderRadius.full,
   },
   label: {
     fontSize: typography.size.xs,
-    fontWeight: '500',
-    marginTop: 4,
+    fontWeight: typography.weight.medium,
+    marginTop: spacing.xs,
   },
 });

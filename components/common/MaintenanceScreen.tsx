@@ -5,7 +5,7 @@
 // and a login button so bypass-eligible users can authenticate.
 // =============================================================================
 
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef } from 'react';
@@ -164,14 +164,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     minWidth: 140,
-    gap: 8,
+    gap: spacing.sm,
   },
 
   retryText: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   autoRetry: {
@@ -190,14 +190,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     borderWidth: 1,
-    gap: 8,
+    gap: spacing.sm,
   },
 
   loginText: {
     fontSize: typography.size.md,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   textButton: {

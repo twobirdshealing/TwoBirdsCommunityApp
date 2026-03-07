@@ -23,6 +23,7 @@ import { HtmlContent } from '@/components/common/HtmlContent';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { withOpacity } from '@/constants/colors';
 import { WPPost } from '@/types/blog';
 import { blogApi } from '@/services/api/blog';
 import { PageHeader } from '@/components/navigation/PageHeader';
@@ -159,7 +160,7 @@ export default function BlogDetailScreen() {
               <View style={[styles.heroContainer, { height: heroHeight }]}>
                 <Image
                   source={{ uri: featuredImageUrl }}
-                  style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColors.skeleton }]}
+                  style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColors.border }]}
                   contentFit="cover"
                   transition={200}
                   cachePolicy="memory-disk"
@@ -223,7 +224,7 @@ export default function BlogDetailScreen() {
                     {categories.map((cat) => (
                       <View
                         key={cat.id}
-                        style={[styles.categoryPill, { backgroundColor: themeColors.primaryLight + '20' }]}
+                        style={[styles.categoryPill, { backgroundColor: withOpacity(themeColors.primary, 0.12) }]}
                       >
                         <Text style={[styles.categoryText, { color: themeColors.primary }]}>
                           {cat.name}
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
   },
 
   scrollContent: {
-    paddingBottom: spacing.xxxl * 2,
+    paddingBottom: spacing.xxl * 2,
   },
 
   // ---------------------------------------------------------------------------
@@ -337,13 +338,13 @@ const styles = StyleSheet.create({
 
   heroCategoryText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     color: '#fff',
   },
 
   heroTitle: {
     fontSize: typography.size.xxl,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     lineHeight: typography.size.xxl * typography.lineHeight.tight,
     color: '#fff',
     textAlign: 'center',
@@ -364,7 +365,7 @@ const styles = StyleSheet.create({
   heroCommentBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     backgroundColor: 'rgba(0,0,0,0.4)',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
@@ -373,7 +374,7 @@ const styles = StyleSheet.create({
 
   heroCommentText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     color: '#fff',
   },
 
@@ -412,12 +413,12 @@ const styles = StyleSheet.create({
 
   categoryText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   fallbackTitle: {
     fontSize: typography.size.xxl,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     lineHeight: typography.size.xxl * typography.lineHeight.tight,
     marginBottom: spacing.md,
   },
@@ -438,7 +439,7 @@ const styles = StyleSheet.create({
   fallbackCommentBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
 
   fallbackCommentText: {
@@ -475,7 +476,7 @@ const styles = StyleSheet.create({
 
   commentButtonText: {
     fontSize: typography.size.md,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
     flex: 1,
   },
 });

@@ -131,12 +131,12 @@ const styles = StyleSheet.create({
 
   label: {
     fontSize: typography.size.xs,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   title: {
     fontSize: typography.size.md,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   time: {

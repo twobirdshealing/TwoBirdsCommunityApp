@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
+import { withOpacity } from '@/constants/colors';
 import { WPPost } from '@/types/blog';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
@@ -71,7 +72,7 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
         <View style={styles.heroContainer}>
           <Image
             source={{ uri: featuredImageUrl }}
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColors.skeleton }]}
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColors.border }]}
             resizeMode="cover"
           />
           <LinearGradient
@@ -136,7 +137,7 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
               {categories.map((cat) => (
                 <View
                   key={cat.id}
-                  style={[styles.categoryPill, { backgroundColor: themeColors.primaryLight + '20' }]}
+                  style={[styles.categoryPill, { backgroundColor: withOpacity(themeColors.primary, 0.12) }]}
                 >
                   <Text style={[styles.categoryText, { color: themeColors.primary }]}>
                     {cat.name}
@@ -201,7 +202,7 @@ const styles = StyleSheet.create({
   // ---------------------------------------------------------------------------
 
   heroContainer: {
-    height: 220,
+    aspectRatio: 16 / 9,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -228,13 +229,13 @@ const styles = StyleSheet.create({
 
   heroCategoryText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     color: '#fff',
   },
 
   heroTitle: {
     fontSize: typography.size.lg,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     lineHeight: typography.size.lg * typography.lineHeight.tight,
     color: '#fff',
     textAlign: 'center',
@@ -255,7 +256,7 @@ const styles = StyleSheet.create({
   heroCommentBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     backgroundColor: 'rgba(0,0,0,0.4)',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
@@ -264,7 +265,7 @@ const styles = StyleSheet.create({
 
   heroCommentText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     color: '#fff',
   },
 
@@ -302,12 +303,12 @@ const styles = StyleSheet.create({
 
   categoryText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   fallbackTitle: {
     fontSize: typography.size.lg,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     lineHeight: typography.size.lg * typography.lineHeight.tight,
     marginBottom: spacing.sm,
   },
@@ -327,7 +328,7 @@ const styles = StyleSheet.create({
   fallbackCommentBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
 
   fallbackCommentText: {

@@ -1,21 +1,25 @@
 // =============================================================================
-// MAIN SPACES SCREEN - Shows spaces organized by group
+// MAIN SPACES SCREEN - Shows spaces organized by group tabs
 // =============================================================================
-// Fetches space groups (options_only) and user's spaces (profile endpoint)
-// to display grouped spaces with member counts and role badges.
+// Uses /spaces/discover endpoint to show all discoverable spaces.
+// Group-based horizontal tabs filter by space group.
 // =============================================================================
 
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
@@ -23,33 +27,16 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
 import { SpaceCard } from '@/components/space/SpaceCard';
 import { spacing, typography, sizing } from '@/constants/layout';
-import { useAuth } from '@/contexts/AuthContext';
 import { useAudioPlayerContext } from '@/contexts/AudioPlayerContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTabBar } from '@/contexts/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { profilesApi } from '@/services/api/profiles';
 import { spacesApi } from '@/services/api/spaces';
 import { useCachedData } from '@/hooks/useCachedData';
 import { Space, SpaceGroupOption } from '@/types/space';
 
-// -----------------------------------------------------------------------------
-// Types for the flat list (spaces + group headers)
-// -----------------------------------------------------------------------------
-
-type GroupHeaderItem = {
-  _type: 'group_header';
-  id: number;
-  title: string;
-  count: number;
-};
-
-type SpaceItem = {
-  _type: 'space';
-  space: Space;
-};
-
-type ListItem = GroupHeaderItem | SpaceItem;
+// Special ID for ungrouped spaces tab
+const OTHER_GROUP_ID = 0;
 
 // -----------------------------------------------------------------------------
 // Component
@@ -62,11 +49,19 @@ export default function SpacesScreen() {
   const { currentBook } = useAudioPlayerContext();
   const bottomPadding = sizing.height.tabBar + insets.bottom + (currentBook ? 59 : 0) + spacing.md;
   const { handleScroll } = useTabBar();
-  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
+  const [showTabFade, setShowTabFade] = useState(true);
+
+  // Clean up old cache key from previous implementation
+  useEffect(() => {
+    AsyncStorage.removeItem('tbc_spaces_list').catch(() => {});
+    AsyncStorage.removeItem('tbc_spaces_discover').catch(() => {});
+    AsyncStorage.removeItem('tbc_spaces_my').catch(() => {});
+  }, []);
 
   // ---------------------------------------------------------------------------
-  // Fetch Groups + Spaces in parallel (cached + auto-refresh on app focus)
+  // Fetch Groups + Spaces in parallel
   // ---------------------------------------------------------------------------
 
   interface SpacesData {
@@ -81,14 +76,12 @@ export default function SpacesScreen() {
     error: fetchError,
     refresh,
   } = useCachedData<SpacesData>({
-    cacheKey: 'tbc_spaces_list',
+    cacheKey: 'tbc_spaces_all',
     invalidateOn: 'spaces',
     fetcher: async () => {
       const [groupsRes, spacesRes] = await Promise.all([
         spacesApi.getSpaceGroups({ options_only: true }),
-        user?.username
-          ? profilesApi.getUserSpaces(user.username)
-          : spacesApi.getSpaces({ status: 'published' }),
+        spacesApi.discoverSpaces({ per_page: 100 }),
       ]);
 
       if (!spacesRes.success) {
@@ -96,7 +89,7 @@ export default function SpacesScreen() {
       }
 
       return {
-        spaces: spacesRes.data.spaces || [],
+        spaces: spacesRes.data.spaces?.data || [],
         groups: groupsRes.success ? (groupsRes.data.groups || []) : [],
       };
     },
@@ -107,121 +100,87 @@ export default function SpacesScreen() {
   const error = fetchError?.message || null;
 
   // ---------------------------------------------------------------------------
-  // Client-side Search Filter
+  // Build group tabs with counts
   // ---------------------------------------------------------------------------
 
-  const filteredSpaces = useMemo(() => {
-    if (!searchQuery.trim()) return spaces;
+  const { tabs, groupedMap } = useMemo(() => {
+    const map = new Map<number, Space[]>();
+    const ungrouped: Space[] = [];
 
-    const query = searchQuery.toLowerCase().trim();
-    return spaces.filter(space =>
-      space.title?.toLowerCase().includes(query) ||
-      space.description?.toLowerCase().includes(query) ||
-      space.slug?.toLowerCase().includes(query)
-    );
-  }, [spaces, searchQuery]);
-
-  // ---------------------------------------------------------------------------
-  // Build grouped flat list data
-  // ---------------------------------------------------------------------------
-
-  const listData = useMemo((): ListItem[] => {
-    const items: ListItem[] = [];
-    const spacesToGroup = filteredSpaces;
-
-    // Build a map of group_id → spaces
-    const groupedSpaces = new Map<string, Space[]>();
-    const ungroupedSpaces: Space[] = [];
-
-    for (const space of spacesToGroup) {
-      const parentId = space.parent_id?.toString();
+    for (const space of spaces) {
+      const parentId = space.parent_id ? Number(space.parent_id) : null;
       if (parentId) {
-        const existing = groupedSpaces.get(parentId) || [];
+        const existing = map.get(parentId) || [];
         existing.push(space);
-        groupedSpaces.set(parentId, existing);
+        map.set(parentId, existing);
       } else {
-        ungroupedSpaces.push(space);
+        ungrouped.push(space);
       }
     }
 
-    // Add groups in API order (preserves admin-configured ordering)
+    // Sort spaces within each group by serial
+    for (const [, groupSpaces] of map) {
+      groupSpaces.sort((a, b) => (Number(a.serial) || 0) - (Number(b.serial) || 0));
+    }
+
+    // Build tab list from groups (API order) + Other
+    const tabList: { id: number; title: string; count: number }[] = [];
     for (const group of groups) {
-      const groupSpaces = groupedSpaces.get(group.id.toString()) || [];
-      if (groupSpaces.length === 0 && searchQuery.trim()) continue; // Hide empty groups when searching
-
-      // Sort spaces within group by serial
-      groupSpaces.sort((a, b) => {
-        const aSerial = Number(a.serial) || 0;
-        const bSerial = Number(b.serial) || 0;
-        return aSerial - bSerial;
-      });
-
-      items.push({
-        _type: 'group_header',
-        id: group.id,
-        title: group.title,
-        count: groupSpaces.length,
-      });
-
-      for (const space of groupSpaces) {
-        items.push({ _type: 'space', space });
-      }
+      const count = map.get(group.id)?.length || 0;
+      tabList.push({ id: group.id, title: group.title, count });
+    }
+    if (ungrouped.length > 0) {
+      map.set(OTHER_GROUP_ID, ungrouped);
+      tabList.push({ id: OTHER_GROUP_ID, title: 'Other Spaces', count: ungrouped.length });
     }
 
-    // Add any ungrouped spaces at the end
-    if (ungroupedSpaces.length > 0) {
-      if (groups.length > 0) {
-        items.push({
-          _type: 'group_header',
-          id: 0,
-          title: 'Other Spaces',
-          count: ungroupedSpaces.length,
-        });
-      }
-      for (const space of ungroupedSpaces) {
-        items.push({ _type: 'space', space });
-      }
+    return { tabs: tabList, groupedMap: map };
+  }, [spaces, groups]);
+
+  // Default to first tab with spaces, or first tab overall
+  useEffect(() => {
+    if (activeGroupId === null && tabs.length > 0) {
+      const firstWithSpaces = tabs.find(t => t.count > 0);
+      setActiveGroupId(firstWithSpaces?.id ?? tabs[0].id);
+    }
+  }, [tabs, activeGroupId]);
+
+  // ---------------------------------------------------------------------------
+  // Filter spaces for active tab + search
+  // ---------------------------------------------------------------------------
+
+  const displayedSpaces = useMemo(() => {
+    if (activeGroupId === null) return [];
+
+    let list = groupedMap.get(activeGroupId) || [];
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      list = list.filter(space =>
+        space.title?.toLowerCase().includes(query) ||
+        space.description?.toLowerCase().includes(query) ||
+        space.slug?.toLowerCase().includes(query)
+      );
     }
 
-    return items;
-  }, [filteredSpaces, groups, searchQuery]);
+    return list;
+  }, [activeGroupId, groupedMap, searchQuery]);
 
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
 
   const handleRefresh = () => { refresh(); };
-
-  const handleSpacePress = (space: Space) => {
-    router.push(`/space/${space.slug}`);
-  };
-
+  const handleSpacePress = (space: Space) => { router.push(`/space/${space.slug}`); };
   const handleClearSearch = () => setSearchQuery('');
 
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
-  const renderItem = ({ item }: { item: ListItem }) => {
-    if (item._type === 'group_header') {
-      return (
-        <View style={[styles.groupHeader, { backgroundColor: themeColors.backgroundSecondary, borderBottomColor: themeColors.border }]}>
-          <Text style={[styles.groupTitle, { color: themeColors.text }]}>{item.title}</Text>
-          <View style={[styles.groupCountBadge, { backgroundColor: themeColors.border }]}>
-            <Text style={[styles.groupCountText, { color: themeColors.textSecondary }]}>
-              {item.count}
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
-    return (
-      <SpaceCard space={item.space} onPress={() => handleSpacePress(item.space)} />
-    );
-  };
-
-  const getItemType = (item: ListItem) => item._type;
+  const renderItem = ({ item }: { item: Space }) => (
+    <SpaceCard space={item} onPress={() => handleSpacePress(item)} />
+  );
 
   return (
     <TabActivityWrapper>
@@ -247,10 +206,73 @@ export default function SpacesScreen() {
             )}
           </View>
 
+          {/* Group Tabs */}
+          {tabs.length > 1 && (
+            <View style={styles.tabsWrapper}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.tabsContent}
+                style={styles.tabsScroll}
+                onScroll={(e) => {
+                  const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                  setShowTabFade(contentOffset.x + layoutMeasurement.width < contentSize.width - 8);
+                }}
+                scrollEventThrottle={16}
+              >
+                {tabs.map(tab => {
+                  const isActive = tab.id === activeGroupId;
+                  return (
+                    <Pressable
+                      key={tab.id}
+                      onPress={() => setActiveGroupId(tab.id)}
+                      style={[
+                        styles.groupTab,
+                        isActive
+                          ? { backgroundColor: themeColors.primary }
+                          : { backgroundColor: themeColors.backgroundSecondary, borderColor: themeColors.border, borderWidth: 1 },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.groupTabText,
+                          { color: isActive ? themeColors.textInverse : themeColors.text },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {tab.title}
+                      </Text>
+                      <View style={[
+                        styles.groupTabCount,
+                        { backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : themeColors.border },
+                      ]}>
+                        <Text style={[
+                          styles.groupTabCountText,
+                          { color: isActive ? themeColors.textInverse : themeColors.textSecondary },
+                        ]}>
+                          {tab.count}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              {showTabFade && (
+                <LinearGradient
+                  colors={['transparent', themeColors.surface]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.tabsFade}
+                  pointerEvents="none"
+                />
+              )}
+            </View>
+          )}
+
           {/* Result count when searching */}
           {searchQuery.length > 0 && (
             <Text style={[styles.resultCount, { color: themeColors.textSecondary }]}>
-              {filteredSpaces.length} of {spaces.length} spaces
+              {displayedSpaces.length} result{displayedSpaces.length !== 1 ? 's' : ''}
             </Text>
           )}
         </View>
@@ -265,17 +287,12 @@ export default function SpacesScreen() {
           <LoadingSpinner message="Loading spaces..." />
         )}
 
-        {/* Grouped Spaces List */}
-        {!loading && listData.length > 0 && (
+        {/* Spaces List */}
+        {!loading && displayedSpaces.length > 0 && (
           <FlashList
-            data={listData}
+            data={displayedSpaces}
             renderItem={renderItem}
-            getItemType={getItemType}
-            keyExtractor={(item) =>
-              item._type === 'group_header'
-                ? `group-${item.id}`
-                : `space-${item.space.id}`
-            }
+            keyExtractor={(item) => `space-${item.id}`}
             onScroll={handleScroll}
             scrollEventThrottle={16}
             refreshControl={
@@ -287,18 +304,18 @@ export default function SpacesScreen() {
               />
             }
             contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
-            ListEmptyComponent={
-              searchQuery.length > 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="search-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
-                  <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No spaces match "{searchQuery}"</Text>
-                  <Text style={[styles.clearSearchButton, { color: themeColors.primary }]} onPress={handleClearSearch}>
-                    Clear search
-                  </Text>
-                </View>
-              ) : null
-            }
           />
+        )}
+
+        {/* Empty search results */}
+        {!loading && displayedSpaces.length === 0 && searchQuery.length > 0 && (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="search-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
+            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No spaces match "{searchQuery}"</Text>
+            <Text style={[styles.clearSearchButton, { color: themeColors.primary }]} onPress={handleClearSearch}>
+              Clear search
+            </Text>
+          </View>
         )}
 
         {/* Empty State (no spaces at all) */}
@@ -306,7 +323,16 @@ export default function SpacesScreen() {
           <EmptyState
             icon="people-outline"
             title="No spaces yet"
-            message="Join a space to see it here"
+            message="No spaces are available right now"
+          />
+        )}
+
+        {/* Empty tab (tab selected but no spaces in it, not searching) */}
+        {!loading && displayedSpaces.length === 0 && searchQuery.length === 0 && spaces.length > 0 && (
+          <EmptyState
+            icon="people-outline"
+            title="No spaces in this group"
+            message="Try selecting a different group"
           />
         )}
       </View>
@@ -329,27 +355,64 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
   },
-
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
     paddingHorizontal: spacing.md,
   },
-
   searchIcon: {
     marginRight: spacing.sm,
   },
-
   searchInput: {
     flex: 1,
     paddingVertical: spacing.sm + 2,
     fontSize: typography.size.md,
   },
-
   clearButton: {
-    fontSize: 16,
+    fontSize: typography.size.md,
     padding: spacing.xs,
+  },
+
+  // Group Tabs
+  tabsWrapper: {
+    position: 'relative',
+    marginTop: spacing.sm,
+  },
+  tabsScroll: {},
+  tabsContent: {
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  tabsFade: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 32,
+  },
+  groupTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: sizing.borderRadius.lg,
+    gap: spacing.xs,
+  },
+  groupTabText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+  groupTabCount: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: sizing.borderRadius.sm,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  groupTabCountText: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
   },
 
   resultCount: {
@@ -358,54 +421,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Group Headers
-  groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md + 4,
-    paddingVertical: spacing.sm + 2,
-    marginTop: spacing.sm,
-    borderBottomWidth: 1,
-  },
-
-  groupTitle: {
-    fontSize: typography.size.md,
-    fontWeight: '700',
-    flex: 1,
-  },
-
-  groupCountBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-
-  groupCountText: {
-    fontSize: typography.size.sm,
-    fontWeight: '600',
-  },
-
   // List
-  listContent: {},
+  listContent: {
+    paddingTop: spacing.xs,
+  },
 
   // States
   emptyContainer: {
     alignItems: 'center',
     padding: spacing.xxl,
   },
-
   emptyIcon: {
     marginBottom: spacing.md,
   },
-
   emptyText: {
     fontSize: typography.size.md,
     textAlign: 'center',
   },
-
   clearSearchButton: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginTop: spacing.md,
   },
 });

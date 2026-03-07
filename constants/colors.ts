@@ -17,9 +17,7 @@
 export interface ColorTheme {
   // Brand
   primary: string;
-  primaryLight: string;
   primaryDark: string;
-  accent: string;
 
   // Backgrounds
   background: string;
@@ -39,8 +37,6 @@ export interface ColorTheme {
   // UI Elements
   border: string;
   borderLight: string;
-  icon: string;
-  iconActive: string;
 
   // Semantic (same in both modes)
   success: string;
@@ -52,16 +48,6 @@ export interface ColorTheme {
   info: string;
   infoLight: string;
 
-  // Reactions
-  reactions: {
-    like: string;
-    love: string;
-    laugh: string;
-    wow: string;
-    sad: string;
-    angry: string;
-  };
-
   // Tab Bar
   tabBar: {
     background: string;
@@ -71,10 +57,6 @@ export interface ColorTheme {
   };
 
   // Special
-  verified: string;
-  online: string;
-  skeleton: string;
-  skeletonHighlight: string;
   overlay: string;
 }
 
@@ -85,9 +67,7 @@ export interface ColorTheme {
 export const lightColors: ColorTheme = {
   // Brand
   primary: '#6366F1',
-  primaryLight: '#818CF8',
   primaryDark: '#4F46E5',
-  accent: '#F59E0B',
 
   // Backgrounds
   background: '#F9FAFB',
@@ -107,8 +87,6 @@ export const lightColors: ColorTheme = {
   // UI Elements
   border: '#E5E7EB',
   borderLight: '#F3F4F6',
-  icon: '#6B7280',
-  iconActive: '#6366F1',
 
   // Semantic (non-themed)
   success: '#10B981',
@@ -120,16 +98,6 @@ export const lightColors: ColorTheme = {
   info: '#3B82F6',
   infoLight: '#DBEAFE',
 
-  // Reactions (aligned with REACTION_COLORS in constants/reactions.ts)
-  reactions: {
-    like: '#1877F2',
-    love: '#F02849',
-    laugh: '#FEEB30',
-    wow: '#FEEB30',
-    sad: '#FEEB30',
-    angry: '#E41E3F',
-  },
-
   // Tab Bar
   tabBar: {
     background: '#FFFFFF',
@@ -139,10 +107,6 @@ export const lightColors: ColorTheme = {
   },
 
   // Special
-  verified: '#3B82F6',
-  online: '#10B981',
-  skeleton: '#E5E7EB',
-  skeletonHighlight: '#F3F4F6',
   overlay: 'rgba(0, 0, 0, 0.5)',
 };
 
@@ -153,9 +117,7 @@ export const lightColors: ColorTheme = {
 export const darkColors: ColorTheme = {
   // Brand
   primary: '#818CF8',
-  primaryLight: '#A5B4FC',
   primaryDark: '#6366F1',
-  accent: '#FBBF24',
 
   // Backgrounds
   background: '#111827',
@@ -175,8 +137,6 @@ export const darkColors: ColorTheme = {
   // UI Elements
   border: '#374151',
   borderLight: '#1F2937',
-  icon: '#9CA3AF',
-  iconActive: '#818CF8',
 
   // Semantic (non-themed — same in both modes)
   success: '#10B981',
@@ -188,16 +148,6 @@ export const darkColors: ColorTheme = {
   info: '#3B82F6',
   infoLight: '#1E3A5F',
 
-  // Reactions (same in both modes)
-  reactions: {
-    like: '#3B82F6',
-    love: '#EF4444',
-    laugh: '#F59E0B',
-    wow: '#F59E0B',
-    sad: '#F59E0B',
-    angry: '#EF4444',
-  },
-
   // Tab Bar
   tabBar: {
     background: '#1F2937',
@@ -207,10 +157,6 @@ export const darkColors: ColorTheme = {
   },
 
   // Special
-  verified: '#60A5FA',
-  online: '#10B981',
-  skeleton: '#374151',
-  skeletonHighlight: '#4B5563',
   overlay: 'rgba(0, 0, 0, 0.7)',
 };
 
@@ -235,7 +181,6 @@ export function mapFluentToAppColors(
   if (fluentBody.text_link) result.primary = fluentBody.text_link;
   if (fluentBody.primary_button) result.primaryDark = fluentBody.primary_button;
   if (fluentBody.primary_button_text) result.textInverse = fluentBody.primary_button_text;
-  if (fluentBody.menu_text) result.icon = fluentBody.menu_text;
   if (fluentBody.active_bg) result.activeBg = fluentBody.active_bg;
   if (fluentBody.light_bg) result.lightBg = fluentBody.light_bg;
   if (fluentBody.deep_bg) result.deepBg = fluentBody.deep_bg;

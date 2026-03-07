@@ -66,7 +66,7 @@ export default function YouTubeScreen() {
     >
       <Image
         source={{ uri: item.thumbnail }}
-        style={[styles.thumbnail, { backgroundColor: themeColors.skeleton }]}
+        style={[styles.thumbnail, { backgroundColor: themeColors.border }]}
         contentFit="cover"
         transition={200}
         cachePolicy="memory-disk"
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
 
   listContent: {
     paddingTop: spacing.md,
-    paddingBottom: spacing.xxxl,
+    paddingBottom: spacing.xxl,
   },
 
   card: {
@@ -180,12 +180,12 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
-    paddingTop: spacing.xxxl,
+    paddingTop: spacing.xxl,
   },
 
   title: {
     fontSize: typography.size.lg,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     color: '#fff',
     marginBottom: 2,
   },

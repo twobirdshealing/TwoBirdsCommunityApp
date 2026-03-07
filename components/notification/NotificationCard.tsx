@@ -11,7 +11,7 @@
 
 import { Avatar } from '@/components/common/Avatar';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { AppNotification } from '@/types/notification';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { Ionicons } from '@expo/vector-icons';
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     left: spacing.sm,
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: sizing.borderRadius.full,
   },
 
   // Avatar
@@ -220,11 +220,11 @@ const styles = StyleSheet.create({
   message: {
     fontSize: typography.size.md,
     lineHeight: 20,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
 
   messageUnread: {
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   timestamp: {
@@ -254,8 +254,8 @@ const styles = StyleSheet.create({
 
   swipeActionText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
-    marginTop: 4,
+    fontWeight: typography.weight.semibold,
+    marginTop: spacing.xs,
   },
 });
 

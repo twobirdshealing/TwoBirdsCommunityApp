@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     height: EMOJI_BUTTON_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: sizing.borderRadius.xs,
+    borderRadius: sizing.borderRadius.sm,
   },
 });
 

@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
 
   zoomBtnText: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   meetingDetail: {
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
 
   moderatorLabel: {
     fontSize: typography.size.xs,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
 
   tableHeaderText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     textTransform: 'uppercase',
   },
 

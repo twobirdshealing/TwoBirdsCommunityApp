@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   },
 
   destructiveText: {
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   divider: {

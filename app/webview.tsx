@@ -34,7 +34,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hapticLight } from '@/utils/haptics';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { SITE_URL } from '@/constants/config';
 import { appApi } from '@/services/api/app';
 import { PageHeader } from '@/components/navigation/PageHeader';
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
   errorIcon: {
     width: 120,
     height: 120,
-    borderRadius: 60,
+    borderRadius: sizing.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
 
   errorTitle: {
     fontSize: typography.size.xl,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: spacing.sm,
   },
 

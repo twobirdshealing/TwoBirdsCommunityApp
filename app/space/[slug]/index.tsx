@@ -11,6 +11,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Alert,
+  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
@@ -18,12 +19,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Feed } from '@/types/feed';
-import { Space } from '@/types/space';
+import { Space, LockScreenConfig } from '@/types/space';
 import { feedsApi } from '@/services/api/feeds';
 import { spacesApi } from '@/services/api/spaces';
 import { FeedList } from '@/components/feed/FeedList';
 import { SpaceMenu } from '@/components/space/SpaceMenu';
 import { SpaceInfoHeader } from '@/components/space/SpaceInfoHeader';
+import { SpaceLockScreen } from '@/components/space/SpaceLockScreen';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useFeedActions } from '@/hooks/useFeedActions';
@@ -48,11 +50,9 @@ export default function SpacePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  
-  // Stats - API doesn't return counts reliably
-  const [membersCount, setMembersCount] = useState<number>(0);
-  const [postsCount, setPostsCount] = useState<number>(0);
+  const [lockscreenConfig, setLockscreenConfig] = useState<LockScreenConfig | null>(null);
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   
   // ---------------------------------------------------------------------------
   // Fetch Space Data
@@ -64,32 +64,28 @@ export default function SpacePage() {
     try {
       const response = await spacesApi.getSpaceBySlug(slug);
 
-      if (response.success) {
-        const spaceData = response.data.space;
-        setSpace(spaceData);
-        
-        // Check if counts are in response (docs say they should be!)
-        if (spaceData.members_count) {
-          setMembersCount(spaceData.members_count);
+      if (!response.success) return;
+
+      const spaceData = response.data.space;
+      setSpace(spaceData);
+
+      // Handle lock screen for non-members of private spaces
+      const lsConfig = spaceData.lockscreen_config;
+      if (spaceData.permissions?.is_non_member && lsConfig) {
+        // Redirect mode — open URL in webview and go back
+        if (lsConfig.redirect_url) {
+          router.replace(`/webview?url=${encodeURIComponent(lsConfig.redirect_url)}&title=${encodeURIComponent(spaceData.title)}`);
+          return;
         }
-        if (spaceData.posts_count) {
-          setPostsCount(spaceData.posts_count);
-        }
+        setLockscreenConfig(lsConfig);
+        if (lsConfig.is_pending) setIsPending(true);
+        setLoading(false);
+        return;
       }
-      
-      // Also fetch members count (since API doesn't return it reliably)
-      try {
-        const membersResponse = await spacesApi.getSpaceMembers(slug, { per_page: 1 });
-        if (membersResponse.success) {
-          const total = membersResponse.data?.members?.total
-            || membersResponse.data?.meta?.total;
-          if (total) {
-            setMembersCount(total);
-          }
-        }
-      } catch (err) {
-        // Members count fetch failed silently
-      }
+
+      // Clear lock screen if user is now a member (e.g. after approval)
+      setLockscreenConfig(null);
+      setIsPending(false);
       
     } catch (err) {
       log.error('Failed to load space:', err);
@@ -131,11 +127,6 @@ export default function SpacePage() {
         });
         
         setFeeds(sortedFeeds);
-        
-        // Update posts count from meta if available
-        if (response.data.feeds?.total) {
-          setPostsCount(response.data.feeds.total);
-        }
       }
     } catch (err) {
       log.error('Fetch feeds error:', err);
@@ -232,6 +223,35 @@ export default function SpacePage() {
   };
 
   // ---------------------------------------------------------------------------
+  // Request Access Handler (for lock screen)
+  // ---------------------------------------------------------------------------
+
+  const handleRequestAccess = async () => {
+    if (!slug) return;
+    setIsRequesting(true);
+    try {
+      const response = await spacesApi.joinSpace(slug);
+      if (response.success) {
+        if (response.data?.data?.status === 'pending') {
+          setIsPending(true);
+        } else {
+          // Auto-approved — refresh space data
+          fetchSpace();
+          fetchFeeds();
+        }
+        cacheEvents.emit('spaces');
+      } else {
+        Alert.alert('Error', response.error?.message || 'Failed to send request');
+      }
+    } catch (err) {
+      log.error('Request access error:', err);
+      Alert.alert('Error', 'Failed to send request');
+    } finally {
+      setIsRequesting(false);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
@@ -255,34 +275,49 @@ export default function SpacePage() {
         }
       />
       
-      {/* Feed List */}
-      <FeedList
-        feeds={feeds}
-        loading={loading}
-        refreshing={refreshing}
-        error={error}
-        onRefresh={handleRefresh}
-        onReact={handleReact}
-        onAuthorPress={handleAuthorPress}
-        onCommentPress={handleCommentPress}
-        onBookmarkToggle={handleBookmarkToggle}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onPin={canPinResult ? handlePin : undefined}
-        canModerate={canPinResult}
-        ListHeaderComponent={
-          space ? (
-            <SpaceInfoHeader
-              space={space}
-              membersCount={membersCount}
-              postsCount={postsCount}
-              onPostPress={openComposer}
-            />
-          ) : undefined
-        }
-        emptyMessage="No posts in this space yet"
-        emptyIcon="document-text-outline"
-      />
+      {/* Lock Screen for non-members of private spaces */}
+      {lockscreenConfig && space ? (
+        <ScrollView style={{ flex: 1 }}>
+          <SpaceInfoHeader
+            space={space}
+            onPostPress={() => {}}
+            hidePostBox
+          />
+          <SpaceLockScreen
+            config={lockscreenConfig}
+            onRequestAccess={handleRequestAccess}
+            isPending={isPending}
+            isRequesting={isRequesting}
+          />
+        </ScrollView>
+      ) : (
+        /* Feed List for members */
+        <FeedList
+          feeds={feeds}
+          loading={loading}
+          refreshing={refreshing}
+          error={error}
+          onRefresh={handleRefresh}
+          onReact={handleReact}
+          onAuthorPress={handleAuthorPress}
+          onCommentPress={handleCommentPress}
+          onBookmarkToggle={handleBookmarkToggle}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onPin={canPinResult ? handlePin : undefined}
+          canModerate={canPinResult}
+          ListHeaderComponent={
+            space ? (
+              <SpaceInfoHeader
+                space={space}
+                onPostPress={openComposer}
+              />
+            ) : undefined
+          }
+          emptyMessage="No posts in this space yet"
+          emptyIcon="document-text-outline"
+        />
+      )}
       
     </View>
   );

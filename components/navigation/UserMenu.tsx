@@ -19,7 +19,7 @@ import { useRouter } from 'expo-router';
 import { useAppConfig } from '@/contexts/AppConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FEATURES, PRIVACY_POLICY_URL } from '@/constants/config';
-import { spacing, typography, shadows } from '@/constants/layout';
+import { spacing, typography, shadows, sizing } from '@/constants/layout';
 import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: spacing.md,
     width: 280,
-    borderRadius: 16,
+    borderRadius: sizing.borderRadius.lg,
     ...shadows.lg,
     overflow: 'hidden',
   },
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: sizing.borderRadius.full,
   },
 
   avatarPlaceholder: {
@@ -312,8 +312,8 @@ const styles = StyleSheet.create({
   },
 
   avatarText: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.semibold,
   },
 
   profileInfo: {
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
 
   displayName: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   email: {

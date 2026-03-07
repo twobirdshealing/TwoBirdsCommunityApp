@@ -18,7 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAudioPlayerContext, formatTime } from '@/contexts/AudioPlayerContext';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { hapticLight } from '@/utils/haptics';
 
@@ -166,7 +166,7 @@ export function AudioControls() {
               style={[styles.progressBarFill, fillStyle]}
             >
               <LinearGradient
-                colors={[themeColors.primaryLight ?? themeColors.primary, themeColors.primary]}
+                colors={[withOpacity(themeColors.primary, 0.7), themeColors.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={StyleSheet.absoluteFill}
@@ -271,19 +271,19 @@ const styles = StyleSheet.create({
   nowPlayingDot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
+    borderRadius: sizing.borderRadius.full,
   },
 
   chapterLabel: {
     fontSize: typography.size.xs,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
 
   chapterTitle: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   progressSection: {
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
 
   progressBarBg: {
     height: 6,
-    borderRadius: 3,
+    borderRadius: sizing.borderRadius.full,
     overflow: 'visible',
     position: 'relative',
     justifyContent: 'center',
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
 
   progressBarFill: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: sizing.borderRadius.full,
     overflow: 'hidden',
   },
 
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     top: -5,
     width: 16,
     height: 16,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
     marginLeft: -8,
   },
 
@@ -354,14 +354,14 @@ const styles = StyleSheet.create({
   },
 
   skipLabel: {
-    fontSize: 12,
+    fontSize: typography.size.xs,
     fontWeight: '800',
   },
 
   playBtn: {
     width: 64,
     height: 64,
-    borderRadius: 32,
+    borderRadius: sizing.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -3,7 +3,7 @@ This is a companion for our social media site running off Fluent community and W
 do not create new depndacies or utilites without asking. check entire project first we may already have these thigns centrailsed functions ect. dont recreate things duplciate code. 
 
 we DONT want to break things!
-
+dont guess or make up apis always check first
 ## Import Rules — Direct Imports Only
 
 **No barrel files (`index.ts` re-exports).** Always import directly from the source file. Metro bundler doesn't tree-shake — barrel imports force it to load every sibling module even when you only need one. They also cause circular dependency issues and slow cold start on mobile.
@@ -27,11 +27,18 @@ The `companion plugins/` folder contains WordPress plugins and themes that work 
 - **tbc-fluent-profiles** — Custom profile fields for Fluent Community
 - **tbc-multi-reactions** — Multi-reaction support for Fluent Community
 - **tbc-otp-verification** — OTP verification for registration (Twilio)
+- **tbc-calednar-fluent** — Calednar plugin sits on top of WooCommerce with custom API works with our app calendar tab
+
 
 ### Our Custom Theme
 - **fluent-starter** — Custom WordPress theme
 
-Current TEST credtials for when YOU give me commands curl -s -u "tas:WZm0 KKI7 g0H0 2CYd rJkx 6Ra1"
+Current TEST credtials for when YOU give me commands 
+ask for fresh token 
+curl -s -X POST "https://staging.twobirdschurch.com/wp-json/tbc-ca/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"bluejay","password":"sapo"}' | python3 -m json.tool
+
+
+then create curl
 
 dont try running commands your self jsut give them to me and wait for response. if unsure always ask for a API response to understand full pciture
 
@@ -64,12 +71,11 @@ The app's colors are synced from Fluent Community's color schemas (light + dark 
 | `secondary_content_bg` | `backgroundSecondary` | Comment/secondary areas |
 | `active_bg` | `activeBg` | Active/selected item bg |
 | `light_bg` | `lightBg` | Light accent background |
-| `deep_bg` | `deepBg` | Deep accent background |
-| `highlight_bg` | `highlightBg` | Highlight/attention bg |
+| `deep_bg` | `deepBg` | Code block / preformatted text bg |
+| `highlight_bg` | `highlightBg` | Notice/alert bg, highlighted comments |
 | `primary_text` | `text` | Main body text |
 | `secondary_text` | `textSecondary` | Meta/subtitle text |
 | `text_off` | `textTertiary` | Disabled/hint text |
-| `menu_text` | `icon` | Icon/menu text color |
 | `text_link` | `primary` | Links & brand accent |
 | `primary_button` | `primaryDark` | Button background |
 | `primary_button_text` | `textInverse` | Button text (inverse) |
@@ -88,12 +94,10 @@ The app's colors are synced from Fluent Community's color schemas (light + dark 
 **Sidebar tokens** — received but not used (mobile has no sidebar).
 
 ### App-Only Tokens (local defaults, not from Fluent)
-- `primaryLight` — Lighter brand variant
-- `accent` — Accent color (amber)
-- `iconActive` — Active icon color
 - **Semantic:** `success`, `successLight`, `error`, `errorLight`, `warning`, `warningLight`, `info`, `infoLight`
-- **Reactions:** `reactions.like/love/laugh/wow/sad/angry`
-- **Special:** `verified`, `online`, `skeleton`, `skeletonHighlight`, `overlay`
+- **Special:** `overlay`
+- Use `withOpacity(color, opacity)` for lighter brand tints — e.g. `withOpacity(colors.primary, 0.12)` for pills/badges
+- `info` doubles as verified badge color, `success` doubles as online indicator color, `border` doubles as skeleton/placeholder bg
 
 ### Usage Rules
 - **Always** use `const { colors } = useTheme()` — never import `lightColors`/`darkColors` directly in components

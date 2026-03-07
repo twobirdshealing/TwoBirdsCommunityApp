@@ -15,10 +15,11 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { PRIVACY_POLICY_URL } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -136,9 +137,7 @@ export default function LoginScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  <Text style={styles.showPasswordText}>
-                    {showPassword ? '🙈' : '👁️'}
-                  </Text>
+                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={themeColors.textSecondary} />
                 </Pressable>
               </View>
             </View>
@@ -225,19 +224,19 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: typography.size.xxl,
+    fontWeight: typography.weight.bold,
     marginBottom: spacing.xs,
   },
 
   subtitle: {
-    fontSize: 20,
-    fontWeight: '500',
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.medium,
   },
 
   // Form Card
   formCard: {
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
     padding: spacing.xl,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -252,13 +251,13 @@ const styles = StyleSheet.create({
 
   label: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: spacing.sm,
   },
 
   input: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: typography.size.md,
@@ -268,7 +267,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
   },
 
   passwordInput: {
@@ -283,13 +282,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
 
-  showPasswordText: {
-    fontSize: 20,
-  },
-
   errorContainer: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
@@ -300,7 +295,7 @@ const styles = StyleSheet.create({
   },
 
   loginButton: {
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     paddingVertical: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -313,7 +308,7 @@ const styles = StyleSheet.create({
 
   loginButtonText: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   forgotPassword: {
@@ -336,7 +331,7 @@ const styles = StyleSheet.create({
   },
 
   footerLink: {
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   privacyLink: {

@@ -10,7 +10,7 @@ import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CourseLesson } from '@/types/course';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 
 interface LessonRowProps {
   lesson: CourseLesson;
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   indicator: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: sizing.borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   },
   indexText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
   info: {
     flex: 1,
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.size.md,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
     lineHeight: 20,
   },
   subtitleRow: {
@@ -144,6 +144,6 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: typography.size.xs,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 });

@@ -303,8 +303,8 @@ export function BottomSheet({
       handleIndicatorStyle={{ backgroundColor: themeColors.borderLight }}
       backgroundStyle={{
         backgroundColor: themeColors.surface,
-        borderTopLeftRadius: sizing.borderRadius.xl,
-        borderTopRightRadius: sizing.borderRadius.xl,
+        borderTopLeftRadius: sizing.borderRadius.lg,
+        borderTopRightRadius: sizing.borderRadius.lg,
       }}
       // Keyboard handling (docs-recommended setup)
       keyboardBehavior="interactive"
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   content: {

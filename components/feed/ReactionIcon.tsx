@@ -8,6 +8,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -30,7 +31,9 @@ interface ReactionIconProps {
 // Component
 // -----------------------------------------------------------------------------
 
-export function ReactionIcon({ iconUrl, emoji, size = 20, stroke = 0, borderColor = '#e1e4e8' }: ReactionIconProps) {
+export function ReactionIcon({ iconUrl, emoji, size = 20, stroke = 0, borderColor }: ReactionIconProps) {
+  const { colors: themeColors } = useTheme();
+  const resolvedBorderColor = borderColor || themeColors.borderLight;
   const hasStroke = stroke > 0;
 
   // Inner content: Image or emoji Text
@@ -65,7 +68,7 @@ export function ReactionIcon({ iconUrl, emoji, size = 20, stroke = 0, borderColo
           height: outerSize,
           borderRadius: outerSize / 2,
           borderWidth: stroke,
-          borderColor,
+          borderColor: resolvedBorderColor,
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',

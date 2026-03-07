@@ -71,7 +71,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         ...base,
         ...overrides,
         // Preserve nested objects — merge tabBar separately
-        reactions: base.reactions,
         tabBar: overrides.tabBar?.background
           ? { ...base.tabBar, ...overrides.tabBar }
           : base.tabBar,

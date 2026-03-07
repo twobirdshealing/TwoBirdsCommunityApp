@@ -22,7 +22,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticLight, hapticSelection } from '@/utils/haptics';
 
@@ -53,6 +53,8 @@ interface DynamicFormFieldProps {
   disabled?: boolean;
   /** Extra content rendered after the input (e.g. visibility selector) */
   extraContent?: React.ReactNode;
+  /** Content rendered between the label and instructions/input (e.g. visibility selector) */
+  labelExtra?: React.ReactNode;
 }
 
 // -----------------------------------------------------------------------------
@@ -68,6 +70,7 @@ export function DynamicFormField({
   onSelectPress,
   disabled,
   extraContent,
+  labelExtra,
 }: DynamicFormFieldProps) {
   const { colors: themeColors } = useTheme();
   const currentValue = value ?? '';
@@ -115,6 +118,7 @@ export function DynamicFormField({
         <Text style={[styles.label, { color: themeColors.text }]}>
           {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
         </Text>
+        {labelExtra}
         {field.instructions ? (
           <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
         ) : null}
@@ -157,6 +161,7 @@ export function DynamicFormField({
         <Text style={[styles.label, { color: themeColors.text }]}>
           {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
         </Text>
+        {labelExtra}
         {field.instructions ? (
           <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
         ) : null}
@@ -211,6 +216,7 @@ export function DynamicFormField({
         <Text style={[styles.label, { color: themeColors.text }]}>
           {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
         </Text>
+        {labelExtra}
         {field.instructions ? (
           <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
         ) : null}
@@ -253,6 +259,7 @@ export function DynamicFormField({
         <Text style={[styles.label, { color: themeColors.text }]}>
           {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
         </Text>
+        {labelExtra}
         <View style={[
           styles.passwordContainer,
           {
@@ -275,7 +282,7 @@ export function DynamicFormField({
             style={styles.showPasswordButton}
             onPress={() => { hapticLight(); setPasswordVisible(!passwordVisible); }}
           >
-            <Text style={styles.showPasswordText}>{passwordVisible ? '🙈' : '👁️'}</Text>
+            <Ionicons name={passwordVisible ? 'eye-off' : 'eye'} size={20} color={themeColors.textSecondary} />
           </Pressable>
         </View>
         {extraContent}
@@ -328,6 +335,7 @@ export function DynamicFormField({
       <Text style={[styles.label, { color: themeColors.text }]}>
         {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
       </Text>
+      {labelExtra}
       {field.instructions ? (
         <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
       ) : null}
@@ -378,7 +386,7 @@ const styles = StyleSheet.create({
 
   input: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: typography.size.md,
@@ -405,7 +413,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
   },
 
   passwordInput: {
@@ -420,10 +428,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
 
-  showPasswordText: {
-    fontSize: 20,
-  },
-
   // Checkbox
   checkboxRow: {
     flexDirection: 'row',
@@ -433,7 +437,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 4,
+    borderRadius: sizing.borderRadius.sm,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
@@ -441,8 +445,8 @@ const styles = StyleSheet.create({
   },
 
   checkmark: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.bold,
   },
 
   checkboxLabel: {
@@ -460,7 +464,7 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
     borderWidth: 1,
   },
 

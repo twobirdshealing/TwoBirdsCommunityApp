@@ -143,15 +143,15 @@ const styles = StyleSheet.create({
 
   input: {
     flex: 1,
-    height: 40,
+    height: sizing.iconButton,
     borderRadius: sizing.borderRadius.sm,
     paddingHorizontal: spacing.md,
     fontSize: typography.size.sm,
   },
 
   addBtn: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     borderRadius: sizing.borderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
 
   itemTitle: {
     fontSize: typography.size.sm,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   itemTime: {

@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   },
   
   providerIcon: {
-    fontSize: 14,
+    fontSize: typography.size.sm,
     marginRight: spacing.xs,
   },
   
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: sizing.borderRadius.xs,
+    borderRadius: sizing.borderRadius.sm,
   },
   
   openHintText: {
@@ -245,8 +245,8 @@ const styles = StyleSheet.create({
   },
   
   iconContainer: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     borderRadius: sizing.borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
   },
   
   icon: {
-    fontSize: 20,
+    fontSize: typography.size.xl,
   },
   
   compactContent: {
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
   },
   
   externalIcon: {
-    fontSize: 18,
+    fontSize: typography.size.lg,
     marginLeft: spacing.sm,
   },
 });

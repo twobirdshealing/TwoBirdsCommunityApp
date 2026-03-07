@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     paddingVertical: spacing.sm,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   tabIcon: {},
   tabText: {
     fontSize: typography.size.sm,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
   loadingContainer: {
     padding: spacing.xl,

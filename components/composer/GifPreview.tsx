@@ -105,20 +105,20 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: typography.size.sm,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
     marginBottom: spacing.xs,
   },
 
   providerBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: sizing.borderRadius.xs,
+    borderRadius: sizing.borderRadius.sm,
     alignSelf: 'flex-start',
   },
 
   providerText: {
     fontSize: typography.size.xs,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   removeButton: {

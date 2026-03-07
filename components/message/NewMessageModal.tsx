@@ -9,7 +9,7 @@
 
 import { MemberCard, MemberCardData } from '@/components/member/MemberCard';
 import { ENDPOINTS } from '@/constants/config';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { get } from '@/services/api/client';
 import { Ionicons } from '@expo/vector-icons';
@@ -296,19 +296,19 @@ const styles = StyleSheet.create({
   },
 
   closeButton: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   headerTitle: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   headerRight: {
-    width: 40,
+    width: sizing.iconButton,
   },
 
   searchContainer: {
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
     gap: spacing.xs,
   },
 
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
   errorContainer: {
     marginHorizontal: spacing.md,
     padding: spacing.sm,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   errorText: {

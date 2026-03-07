@@ -10,7 +10,7 @@ import React, { createContext, useCallback, useContext, useMemo, useRef } from '
 import { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useSharedValue, withTiming, SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { sizing, animation } from '@/constants/layout';
+import { sizing } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -55,7 +55,7 @@ export function TabBarProvider({ children }: { children: React.ReactNode }) {
   const isLocked = useRef(false);
 
   const showTabBar = useCallback(() => {
-    translateY.value = withTiming(0, { duration: animation.normal });
+    translateY.value = withTiming(0, { duration: 250 });
   }, [translateY]);
 
   const handleScroll = useCallback(
@@ -70,7 +70,7 @@ export function TabBarProvider({ children }: { children: React.ReactNode }) {
       if (currentY <= 0) {
         accumulatedDelta.current = 0;
         if (translateY.value !== 0) {
-          translateY.value = withTiming(0, { duration: animation.normal });
+          translateY.value = withTiming(0, { duration: 250 });
         }
         return;
       }
@@ -87,10 +87,10 @@ export function TabBarProvider({ children }: { children: React.ReactNode }) {
       // Only react after threshold is exceeded
       if (accumulatedDelta.current > SCROLL_THRESHOLD) {
         // Scrolling DOWN — hide
-        translateY.value = withTiming(hideDistance, { duration: animation.normal });
+        translateY.value = withTiming(hideDistance, { duration: 250 });
       } else if (accumulatedDelta.current < -SCROLL_THRESHOLD) {
         // Scrolling UP — show
-        translateY.value = withTiming(0, { duration: animation.normal });
+        translateY.value = withTiming(0, { duration: 250 });
       }
     },
     [translateY, hideDistance],
@@ -100,7 +100,7 @@ export function TabBarProvider({ children }: { children: React.ReactNode }) {
     (locked: boolean) => {
       isLocked.current = locked;
       if (locked) {
-        translateY.value = withTiming(0, { duration: animation.normal });
+        translateY.value = withTiming(0, { duration: 250 });
       }
     },
     [translateY],

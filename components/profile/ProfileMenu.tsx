@@ -10,7 +10,7 @@ import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, typography, shadows } from '@/constants/layout';
+import { spacing, typography, shadows, sizing } from '@/constants/layout';
 import { deactivateAccount, deleteAccount } from '@/services/api/account';
 
 interface ProfileMenuProps {
@@ -147,7 +147,7 @@ export function ProfileMenu({ visible, onClose, onEditProfile }: ProfileMenuProp
             <Ionicons name="warning-outline" size={40} color={themeColors.error} />
             <Text style={[styles.modalTitle, { color: themeColors.text }]}>Confirm Deletion</Text>
             <Text style={[styles.modalDescription, { color: themeColors.textSecondary }]}>
-              Type <Text style={{ fontWeight: '700', color: themeColors.error }}>DELETE</Text> to permanently delete your account.
+              Type <Text style={{ fontWeight: typography.weight.bold, color: themeColors.error }}>DELETE</Text> to permanently delete your account.
             </Text>
             <TextInput
               style={[styles.modalInput, {
@@ -205,14 +205,14 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '85%',
     maxWidth: 340,
-    borderRadius: 16,
+    borderRadius: sizing.borderRadius.lg,
     padding: spacing.xl,
     alignItems: 'center',
     ...shadows.lg,
   },
   modalTitle: {
     fontSize: typography.size.lg,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     marginTop: spacing.md,
   },
   modalDescription: {
@@ -224,13 +224,13 @@ const styles = StyleSheet.create({
   modalInput: {
     width: '100%',
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.size.md,
     textAlign: 'center',
     marginTop: spacing.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     letterSpacing: 2,
   },
   modalButtons: {
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   modalButton: {
     flex: 1,
     paddingVertical: spacing.md,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
     alignItems: 'center',
   },
   modalButtonDisabled: {
@@ -250,6 +250,6 @@ const styles = StyleSheet.create({
   },
   modalButtonText: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 });

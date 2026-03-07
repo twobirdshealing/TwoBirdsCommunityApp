@@ -10,7 +10,7 @@
 
 import { Avatar } from '@/components/common/Avatar';
 import { withOpacity } from '@/constants/colors';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ChatMessage, getMessageText, getMessagePreview } from '@/types/message';
 import { Ionicons } from '@expo/vector-icons';
@@ -254,7 +254,7 @@ export function MessageBubble({
           >
             <View style={{ opacity: hasUserReacted ? 1 : 0.4 }}>
               {userReactionRenderer ? userReactionRenderer() : (
-                <Text style={{ fontSize: 18 }}>👍</Text>
+                <Text style={{ fontSize: typography.size.lg }}>👍</Text>
               )}
             </View>
           </Pressable>
@@ -282,7 +282,7 @@ export function MessageBubble({
                 onPress={() => onReactionPress?.(message, emoji)}
               >
                 {reactionRenderer ? reactionRenderer(emoji) : (
-                  <Text style={{ fontSize: 14 }}>{emoji}</Text>
+                  <Text style={{ fontSize: typography.size.sm }}>{emoji}</Text>
                 )}
                 <Text style={[
                   styles.reactionCount,
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
     paddingHorizontal: spacing.md,
   },
 
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
 
   senderName: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: 2,
     marginLeft: spacing.xs,
   },
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
   bubble: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   bubbleWithImage: {
@@ -477,13 +477,13 @@ const styles = StyleSheet.create({
   attachmentImage: {
     width: 120,
     height: 120,
-    borderRadius: 4,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   attachmentImageSingle: {
     width: 200,
     height: 200,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   replyQuote: {
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     paddingLeft: spacing.sm,
     paddingRight: spacing.sm,
     paddingVertical: spacing.sm,
-    borderRadius: 6,
+    borderRadius: sizing.borderRadius.sm,
     marginBottom: spacing.xs,
   },
 
@@ -513,13 +513,13 @@ const styles = StyleSheet.create({
 
   timestamp: {
     fontSize: typography.size.xs,
-    marginTop: 4,
+    marginTop: spacing.xs,
     marginLeft: spacing.sm,
   },
 
   // Group styles
   groupContainer: {
-    marginBottom: 24,
+    marginBottom: spacing.xxl,
   },
 
   // Date separator
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: typography.size.xs,
     marginHorizontal: spacing.md,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   // Reaction row — smiley far-left, pills + menu far-right
@@ -546,8 +546,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'stretch',
-    gap: 4,
-    marginTop: 4,
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
 
   reactionButton: {
@@ -555,22 +555,22 @@ const styles = StyleSheet.create({
     height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
+    borderRadius: sizing.borderRadius.full,
   },
 
   reactionPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     borderWidth: 1,
   },
 
   reactionCount: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   menuButton: {
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
     height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
+    borderRadius: sizing.borderRadius.full,
   },
 
   // Swipe Actions
@@ -597,8 +597,8 @@ const styles = StyleSheet.create({
 
   swipeActionText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
-    marginTop: 4,
+    fontWeight: typography.weight.semibold,
+    marginTop: spacing.xs,
   },
 });
 

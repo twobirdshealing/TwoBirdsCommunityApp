@@ -30,6 +30,7 @@ import Animated, {
 import { File, Directory, Paths } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
+import { sizing, spacing, typography } from '@/constants/layout';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('MediaViewer');
@@ -376,34 +377,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
   },
 
   topBarActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
 
   topBarButton: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   counter: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing.md,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: sizing.borderRadius.lg,
   },
 
   counterText: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
   },
 
   // Image slides
@@ -433,14 +434,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 8,
-    gap: 8,
+    paddingTop: spacing.sm,
+    gap: spacing.sm,
   },
 
   thumbnail: {
     width: 48,
     height: 48,
-    borderRadius: 6,
+    borderRadius: sizing.borderRadius.sm,
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'transparent',

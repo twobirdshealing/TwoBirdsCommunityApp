@@ -3,25 +3,27 @@
 // =============================================================================
 // Used in:
 // - Space Members list
-// - Member Directory (future)
-// - Followers/Following lists (future)
-// - Search results (future)
+// - Member Directory
+// - Followers/Following lists
+// - New Message modal
 //
 // Terminology:
 // - admin → "Admin"
-// - moderator → "Facilitator" (church terminology)
+// - moderator → "Mod"
 // - member → No badge
 // =============================================================================
 
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, sizing, typography } from '@/constants/layout';
 import { hapticLight, hapticMedium } from '@/utils/haptics';
+import { getProviderIcon } from '@/services/api/socialProviders';
+import { useSocialProviders } from '@/hooks/useSocialProviders';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -45,6 +47,7 @@ export interface MemberCardData {
     created_at?: string;
     meta?: {
       badge_slug?: string[];
+      social_links?: Record<string, string> | any[];
     };
   };
   // Alternative direct fields (for flexibility)
@@ -53,6 +56,10 @@ export interface MemberCardData {
   avatar?: string;
   short_description?: string;
   last_activity?: string;
+  meta?: {
+    badge_slug?: string[];
+    social_links?: Record<string, string> | any[];
+  };
 }
 
 interface MemberCardProps {
@@ -74,32 +81,19 @@ interface MemberCardProps {
 // -----------------------------------------------------------------------------
 
 /**
- * Get display label for role (using church terminology)
+ * Get display label for role
  */
 const getRoleLabel = (role: string): string => {
   switch (role?.toLowerCase()) {
     case 'admin':
       return 'Admin';
     case 'moderator':
-      return 'Facilitator';  // Church terminology
+      return 'Mod';
     default:
       return '';
   }
 };
 
-/**
- * Get badge color for role (themed)
- */
-const getRoleBadgeColor = (role: string, tc?: { error: string; info: string; textSecondary: string }): string => {
-  switch (role?.toLowerCase()) {
-    case 'admin':
-      return tc?.error || '#d32f2f';      // Red
-    case 'moderator':
-      return tc?.info || '#1976d2';       // Blue
-    default:
-      return tc?.textSecondary || '#757575';  // Gray (won't show for members)
-  }
-};
 
 /**
  * Format relative time for last activity
@@ -145,6 +139,8 @@ export function MemberCard({
   compact = false,
 }: MemberCardProps) {
   const { colors: themeColors } = useTheme();
+  const providers = useSocialProviders();
+
   // Extract profile data (handle both nested xprofile and direct fields)
   const profile = member.xprofile || {};
   const displayName = profile.display_name || member.display_name || 'Unknown';
@@ -154,10 +150,14 @@ export function MemberCard({
   const isVerified = profile.is_verified;
   const role = member.role;
   const lastActivity = profile.last_activity || member.last_activity;
-  
+
   const roleLabel = getRoleLabel(role || '');
-  const roleBadgeColor = getRoleBadgeColor(role || '', themeColors);
   const lastActiveText = formatLastActive(lastActivity);
+
+  // Social links — check both xprofile.meta and direct meta (API returns [] when empty)
+  const rawSocial = profile.meta?.social_links || member.meta?.social_links;
+  const socialLinks: Record<string, string> = rawSocial && !Array.isArray(rawSocial) ? rawSocial : {};
+  const activeSocials = providers.filter(p => socialLinks[p.key]);
 
   // ---------------------------------------------------------------------------
   // Render
@@ -186,22 +186,22 @@ export function MemberCard({
           <UserDisplayName
             name={displayName}
             verified={!!isVerified}
-            badgeSlugs={profile.meta?.badge_slug}
+            badgeSlugs={profile.meta?.badge_slug || member.meta?.badge_slug}
             numberOfLines={1}
           />
+        </View>
 
-          {/* Role Badge - inline with name */}
+        {/* Username + Role Badge */}
+        <View style={styles.usernameRow}>
+          <Text style={[styles.username, { color: themeColors.textSecondary }]} numberOfLines={1}>
+            @{username}
+          </Text>
           {showRole && roleLabel ? (
-            <View style={[styles.roleBadge, { backgroundColor: roleBadgeColor }]}>
+            <View style={[styles.roleBadge, { backgroundColor: themeColors.primary }]}>
               <Text style={[styles.roleBadgeText, { color: themeColors.textInverse }]}>{roleLabel}</Text>
             </View>
           ) : null}
         </View>
-
-        {/* Username */}
-        <Text style={[styles.username, { color: themeColors.textSecondary }]} numberOfLines={1}>
-          @{username}
-        </Text>
 
         {/* Bio (if available and enabled) */}
         {showBio && bio ? (
@@ -216,23 +216,31 @@ export function MemberCard({
             {lastActiveText}
           </Text>
         ) : null}
+
+        {/* Social Icons */}
+        {!compact && activeSocials.length > 0 && (
+          <View style={styles.socialRow}>
+            {activeSocials.map(({ key, domain }) => (
+              <Pressable
+                key={key}
+                onPress={() => {
+                  const value = socialLinks[key]!;
+                  const url = value.startsWith('http') ? value : `${domain}${value}`;
+                  Linking.openURL(url).catch(() => {});
+                }}
+                style={styles.socialIconButton}
+                hitSlop={4}
+              >
+                <Ionicons name={getProviderIcon(key) as any} size={16} color={themeColors.textSecondary} />
+              </Pressable>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Right: Action Buttons (optional) */}
       {showActions && (
         <View style={styles.actionsContainer}>
-          {/* Message Button */}
-          {onMessagePress && (
-            <Pressable
-              style={[styles.actionButton, { backgroundColor: themeColors.backgroundSecondary }]}
-              onPress={() => { hapticLight(); onMessagePress(member); }}
-              accessibilityRole="button"
-              accessibilityLabel={`Message ${displayName}`}
-            >
-              <Ionicons name="chatbubble-outline" size={16} color={themeColors.text} />
-            </Pressable>
-          )}
-
           {/* Follow Button */}
           {onFollowPress && (
             <Pressable
@@ -263,6 +271,18 @@ export function MemberCard({
               )}
             </Pressable>
           )}
+
+          {/* Message Button */}
+          {onMessagePress && (
+            <Pressable
+              style={[styles.messageButton, { borderColor: themeColors.primary }]}
+              onPress={() => { hapticLight(); onMessagePress(member); }}
+              accessibilityRole="button"
+              accessibilityLabel={`Message ${displayName}`}
+            >
+              <Ionicons name="chatbubble-outline" size={22} color={themeColors.primary} />
+            </Pressable>
+          )}
         </View>
       )}
     </View>
@@ -291,7 +311,7 @@ export function MemberCard({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
@@ -308,9 +328,9 @@ const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: sizing.avatar.lg,
+    height: sizing.avatar.lg,
+    borderRadius: sizing.avatar.lg / 2,
   },
 
   avatarPlaceholder: {
@@ -319,8 +339,8 @@ const styles = StyleSheet.create({
   },
 
   avatarText: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.semibold,
   },
 
   // Info
@@ -336,59 +356,82 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
 
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+    gap: spacing.sm,
+  },
+
   username: {
     fontSize: typography.size.sm,
-    marginBottom: 2,
   },
 
   bio: {
     fontSize: typography.size.sm,
-    marginTop: 4,
-    lineHeight: 18,
+    marginTop: spacing.xs,
+    lineHeight: Math.round(typography.size.sm * typography.lineHeight.normal),
   },
 
   lastActive: {
     fontSize: typography.size.xs,
-    marginTop: 4,
+    marginTop: spacing.xs,
+  },
+
+  socialRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    gap: spacing.md,
+  },
+
+  socialIconButton: {
+    padding: 2,
   },
 
   // Role Badge
   roleBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.full,
   },
 
   roleBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
   },
 
   // Actions
   actionsContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     marginLeft: spacing.sm,
+    gap: spacing.md,
   },
 
   actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: spacing.xs,
   },
 
   memberFollowButton: {
-    width: 'auto',
     paddingHorizontal: spacing.md,
-    minHeight: 36,
+    minHeight: sizing.height.buttonSmall,
+    borderRadius: sizing.height.buttonSmall / 2,
+  },
+
+  messageButton: {
+    width: sizing.touchTarget,
+    height: sizing.touchTarget,
+    borderRadius: sizing.touchTarget / 2,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   followButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
   },
 });
 

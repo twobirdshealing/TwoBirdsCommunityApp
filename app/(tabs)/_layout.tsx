@@ -17,6 +17,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { TabBarProvider, useTabBar } from '@/contexts/TabBarContext';
 import { TopHeader } from '@/components/navigation/TopHeader';
 import { MiniPlayer } from '@/components/bookclub/MiniPlayer';
+import { spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
 // Tab Bar Icon Component
@@ -108,8 +109,8 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
       style={[
         styles.tabBarOuter,
         {
-          backgroundColor: themeColors.surface,
-          borderTopColor: themeColors.border,
+          backgroundColor: themeColors.tabBar.background,
+          borderTopColor: themeColors.tabBar.border,
           paddingBottom: insets.bottom,
           ...Platform.select({
             android: { elevation: 8 },
@@ -129,7 +130,7 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
-          const color = isFocused ? themeColors.primary : themeColors.textTertiary;
+          const color = isFocused ? themeColors.tabBar.active : themeColors.tabBar.inactive;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
 
   tabBarInner: {
     flexDirection: 'row',
-    paddingVertical: 4,
+    paddingVertical: spacing.xs,
   },
 
   tabItem: {
@@ -274,7 +275,7 @@ const styles = StyleSheet.create({
   },
 
   tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.medium,
   },
 });

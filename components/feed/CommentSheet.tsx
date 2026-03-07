@@ -33,6 +33,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { withOpacity } from '@/constants/colors';
 import { Comment } from '@/types/comment';
 import { ReactionType } from '@/types/feed';
 import { commentsApi } from '@/services/api/comments';
@@ -56,7 +57,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { updateBreakdownOptimistically } from '@/utils/reactionHelpers';
 import { SITE_URL } from '@/constants/config';
-import { REACTION_EMOJI } from '@/constants/reactions';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('Comments');
@@ -754,7 +754,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                 const reactionType = item.user_reaction_type || defaultReactionId;
                 const rConfig = getReaction(reactionType);
                 const iconUrl = item.user_reaction_icon_url || rConfig?.icon_url || null;
-                const emoji = rConfig?.emoji || REACTION_EMOJI[reactionType] || '👍';
+                const emoji = rConfig?.emoji || '👍';
                 const reactionColor = rConfig?.color || themeColors.primary;
 
                 return (
@@ -815,7 +815,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                       >
                         <ReactionIcon
                           iconUrl={bd.icon_url}
-                          emoji={bd.emoji || REACTION_EMOJI[bd.type as ReactionType]}
+                          emoji={bd.emoji || '👍'}
                           size={22}
                           stroke={display.stroke}
                           borderColor={themeColors.borderLight}
@@ -912,7 +912,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
           <View style={[styles.editorSection, { borderTopColor: themeColors.border, backgroundColor: themeColors.surface }]}>
             {/* Reply indicator */}
             {replyingTo && !editingComment && (
-              <View style={[styles.replyIndicator, { backgroundColor: themeColors.primaryLight + '20' }]}>
+              <View style={[styles.replyIndicator, { backgroundColor: withOpacity(themeColors.primary, 0.12) }]}>
                 <Text style={[styles.replyText, { color: themeColors.textSecondary }]}>
                   Replying to <Text style={[styles.replyName, { color: themeColors.primary }]}>@{replyingTo.xprofile?.username || replyingTo.xprofile?.display_name}</Text>
                 </Text>
@@ -1002,8 +1002,8 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                 disabled={!!gifAttachment}
               >
                 <Text style={{
-                  fontSize: 13,
-                  fontWeight: '700',
+                  fontSize: typography.size.sm,
+                  fontWeight: typography.weight.bold,
                   color: gifAttachment ? themeColors.primary : themeColors.textSecondary,
                 }}>GIF</Text>
               </Pressable>
@@ -1088,18 +1088,18 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   closeButton: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   headerSpacer: {
-    width: 40,
+    width: sizing.iconButton,
   },
 
   editorSection: {
@@ -1130,7 +1130,7 @@ const styles = StyleSheet.create({
   },
 
   retryText: {
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   emptyIcon: {
@@ -1139,7 +1139,7 @@ const styles = StyleSheet.create({
 
   emptyTitle: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: spacing.xs,
   },
 
@@ -1149,7 +1149,7 @@ const styles = StyleSheet.create({
 
   commentsList: {
     padding: spacing.lg,
-    paddingBottom: 20,
+    paddingBottom: spacing.xl,
   },
 
   pinnedCommentContainer: {
@@ -1161,13 +1161,13 @@ const styles = StyleSheet.create({
   pinnedLabel: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     marginBottom: spacing.sm,
   },
 
   pinnedLabelText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   commentItem: {
@@ -1196,7 +1196,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
 
   commentHeaderLeft: {
@@ -1206,7 +1206,7 @@ const styles = StyleSheet.create({
   },
 
   commentMenuButton: {
-    padding: 4,
+    padding: spacing.xs,
   },
 
   commentTextRow: {
@@ -1234,7 +1234,7 @@ const styles = StyleSheet.create({
   commentImage: {
     width: 80,
     height: 80,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   commentActions: {
@@ -1264,13 +1264,13 @@ const styles = StyleSheet.create({
   },
 
   commentActionActive: {
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   commentBreakdown: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
 
   commentEmojiStack: {
@@ -1291,7 +1291,7 @@ const styles = StyleSheet.create({
   },
 
   replyName: {
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   editIndicator: {
@@ -1311,7 +1311,7 @@ const styles = StyleSheet.create({
   attachedImage: {
     width: 60,
     height: 60,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   removeImageButton: {
@@ -1319,13 +1319,13 @@ const styles = StyleSheet.create({
     top: -6,
     right: -6,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.full,
   },
 
   uploadingIndicator: {
     width: 60,
     height: 60,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -1342,8 +1342,8 @@ const styles = StyleSheet.create({
   },
 
   imageButton: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1354,7 +1354,7 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
     fontSize: typography.size.md,
   },
 
@@ -1367,9 +1367,9 @@ const styles = StyleSheet.create({
   },
 
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
+    borderRadius: sizing.iconButton / 2,
     justifyContent: 'center',
     alignItems: 'center',
   },

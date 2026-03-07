@@ -23,7 +23,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCachedData } from '@/hooks/useCachedData';
@@ -237,11 +237,17 @@ export default function UserProfileScreen() {
   };
 
   const handleFollowersPress = () => {
-    Alert.alert('Coming Soon', 'Followers list will be available soon.');
+    router.push({
+      pathname: '/profile/[username]/connections',
+      params: { username, initialTab: 'followers' },
+    });
   };
 
   const handleFollowingPress = () => {
-    Alert.alert('Coming Soon', 'Following list will be available soon.');
+    router.push({
+      pathname: '/profile/[username]/connections',
+      params: { username, initialTab: 'following' },
+    });
   };
 
   // ---------------------------------------------------------------------------
@@ -448,17 +454,17 @@ const styles = StyleSheet.create({
   },
 
   settingsButton: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
+    borderRadius: sizing.iconButton / 2,
   },
 
   followButton: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm + 2,
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
     minWidth: 120,
     alignItems: 'center',
   },
@@ -469,7 +475,7 @@ const styles = StyleSheet.create({
   },
 
   followButtonText: {
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     fontSize: typography.size.md,
   },
 
@@ -478,7 +484,7 @@ const styles = StyleSheet.create({
   messageButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: sizing.touchTarget / 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -493,7 +499,7 @@ const styles = StyleSheet.create({
 
   restrictedTitle: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   restrictedText: {

@@ -45,6 +45,18 @@ export interface Space {
     status: 'active' | 'pending' | 'banned';
     created_at: string;
   };
+
+  // User's relationship (from discover endpoint)
+  space_pivot?: {
+    id: number;
+    space_id: string;
+    user_id: string;
+    status: 'active' | 'pending' | 'banned';
+    role: 'member' | 'moderator' | 'admin';
+    meta: unknown[];
+    created_at: string;
+    updated_at: string | null;
+  } | null;
   
   // Creator info (from detail endpoint)
   creator?: {
@@ -68,6 +80,9 @@ export interface Space {
   };
   topics?: Record<string, unknown>[];
   header_links?: { title: string; route: { name: string } }[];
+
+  // Lock screen config — returned for non-members of private spaces
+  lockscreen_config?: LockScreenConfig | null;
 }
 
 // -----------------------------------------------------------------------------
@@ -110,6 +125,40 @@ export interface SpaceSettings {
   post_permissions?: string[];
   allow_comments?: boolean;
   allow_reactions?: boolean;
+}
+
+// -----------------------------------------------------------------------------
+// Lock Screen Config — returned for non-members of private spaces
+// -----------------------------------------------------------------------------
+
+export interface LockScreenConfig {
+  showCustom: boolean;
+  showPaywalls: boolean;
+  canSendRequest: boolean;
+  lockScreen: LockScreenBlock[] | null;
+  redirect_url: string;
+  is_pending?: boolean;
+}
+
+export interface LockScreenBlock {
+  hidden: boolean;
+  type: 'image' | 'block' | 'lesson';
+  label: string;
+  name: string;
+  // type: 'image' fields (Banner / Call to Action)
+  heading?: string;
+  heading_color?: string;
+  description?: string;
+  text_color?: string;
+  button_text?: string;
+  button_link?: string;
+  button_color?: string;
+  button_text_color?: string;
+  background_image?: string;
+  overlay_color?: string;
+  new_tab?: 'yes' | 'no';
+  // type: 'block' fields (Description)
+  content?: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -177,6 +226,17 @@ export interface SpaceGroupOption {
 
 export interface SpaceGroupOptionsResponse {
   groups: SpaceGroupOption[];
+}
+
+// Response from GET /spaces/discover (paginated)
+export interface DiscoverSpacesResponse {
+  spaces: {
+    current_page: number;
+    data: Space[];
+    total: number;
+    per_page: number;
+    last_page: number;
+  };
 }
 
 // Response from POST /spaces/{slug}/join

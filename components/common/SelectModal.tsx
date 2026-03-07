@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticSelection } from '@/utils/haptics';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    borderRadius: 16,
+    borderRadius: sizing.borderRadius.lg,
     width: '100%',
     maxHeight: '60%',
     overflow: 'hidden',

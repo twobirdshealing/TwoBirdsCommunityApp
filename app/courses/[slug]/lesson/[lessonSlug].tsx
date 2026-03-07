@@ -640,13 +640,13 @@ const styles = StyleSheet.create({
 
   retryButton: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   // Locked
   lockedTitle: {
     fontSize: typography.size.xl,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginTop: spacing.lg,
   },
 
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
 
   backToCourseText: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   // Hero
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
 
   heroTitle: {
     fontSize: typography.size.xxl,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     color: '#fff',
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.4)',
@@ -701,16 +701,16 @@ const styles = StyleSheet.create({
   heroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     backgroundColor: 'rgba(0,0,0,0.4)',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
   },
 
   heroBadgeText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     color: '#fff',
   },
 
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
 
   lessonTitle: {
     fontSize: typography.size.xl,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     marginBottom: spacing.lg,
   },
 
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
 
   completeButtonText: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   navRow: {
@@ -775,19 +775,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
     borderRadius: sizing.borderRadius.sm,
-    gap: 4,
+    gap: spacing.xs,
   },
 
   navButtonLabel: {
     flex: 1,
     fontSize: typography.size.xs,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   completedBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
+    borderRadius: sizing.iconButton / 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -802,7 +802,7 @@ const styles = StyleSheet.create({
 
   documentsSectionTitle: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: spacing.md,
   },
 
@@ -818,7 +818,7 @@ const styles = StyleSheet.create({
   documentIcon: {
     width: 36,
     height: 36,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -826,7 +826,7 @@ const styles = StyleSheet.create({
   documentTitle: {
     flex: 1,
     fontSize: typography.size.sm,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   // Comments
@@ -842,6 +842,6 @@ const styles = StyleSheet.create({
   commentsButtonText: {
     flex: 1,
     fontSize: typography.size.md,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 });

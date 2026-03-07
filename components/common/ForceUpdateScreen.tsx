@@ -4,7 +4,7 @@
 // Shown before auth/maintenance — user cannot proceed until they update.
 // =============================================================================
 
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { UpdateConfig } from '@/services/api/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: typography.size.xl,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     marginBottom: spacing.sm,
     textAlign: 'center',
   },
@@ -130,14 +130,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     minWidth: 140,
-    gap: 8,
+    gap: spacing.sm,
   },
 
   updateText: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   fallback: {

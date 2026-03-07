@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: typography.size.sm,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
     marginBottom: 2,
   },
 

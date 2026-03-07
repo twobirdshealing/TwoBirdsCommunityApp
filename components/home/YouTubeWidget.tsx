@@ -57,7 +57,7 @@ export function YouTubeWidget({ refreshKey }: YouTubeWidgetProps) {
         <AnimatedPressable onPress={() => setIsPlaying(true)} style={styles.thumbnailContainer}>
           <Image
             source={{ uri: video.thumbnail }}
-            style={[styles.thumbnail, { backgroundColor: themeColors.skeleton }]}
+            style={[styles.thumbnail, { backgroundColor: themeColors.border }]}
             contentFit="cover"
             cachePolicy="memory-disk"
             transition={200}
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
-    borderRadius: sizing.borderRadius.xs,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   gradient: {
@@ -157,12 +157,12 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
-    paddingTop: spacing.xxxl,
+    paddingTop: spacing.xxl,
   },
 
   title: {
     fontSize: typography.size.sm,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     color: '#fff',
     marginBottom: 2,
   },

@@ -39,7 +39,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { hapticLight } from '@/utils/haptics';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, shadows } from '@/constants/layout';
+import { spacing, shadows, sizing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -199,11 +199,11 @@ const styles = StyleSheet.create({
   },
   
   button: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
+    borderRadius: sizing.iconButton / 2,
   },
   
   buttonPressed: {
@@ -211,8 +211,8 @@ const styles = StyleSheet.create({
   },
   
   buttonSpacer: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
   },
   
   center: {
@@ -224,8 +224,8 @@ const styles = StyleSheet.create({
   },
   
   title: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.semibold,
     textAlign: 'center',
   },
   

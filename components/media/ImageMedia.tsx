@@ -18,7 +18,7 @@ import {
   View,
 } from 'react-native';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
-import { sizing, spacing } from '@/constants/layout';
+import { sizing, spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { createLogger } from '@/utils/logger';
 
@@ -89,10 +89,10 @@ export function ImageMedia({
   }
 
   return (
-    <Wrapper style={[styles.container, { backgroundColor: themeColors.skeleton }]} {...wrapperProps}>
+    <Wrapper style={[styles.container, { backgroundColor: themeColors.border }]} {...wrapperProps}>
       {/* Loading Placeholder */}
       {loading && (
-        <View style={[styles.loadingContainer, imageStyle, { backgroundColor: themeColors.skeleton }]}>
+        <View style={[styles.loadingContainer, imageStyle, { backgroundColor: themeColors.border }]}>
           <ActivityIndicator size="small" color={themeColors.primary} />
           <Text style={[styles.loadingText, { color: themeColors.textSecondary }]}>Loading image...</Text>
         </View>
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
 
   loadingText: {
     marginTop: spacing.sm,
-    fontSize: 12,
+    fontSize: typography.size.xs,
   },
 
   image: {
@@ -150,12 +150,12 @@ const styles = StyleSheet.create({
   },
 
   errorIcon: {
-    fontSize: 32,
+    fontSize: typography.size.xxl,
     marginBottom: spacing.xs,
   },
 
   errorText: {
-    fontSize: 12,
+    fontSize: typography.size.xs,
   },
 });
 

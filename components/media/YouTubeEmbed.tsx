@@ -18,7 +18,7 @@ import {
   View,
 } from 'react-native';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
-import { sizing } from '@/constants/layout';
+import { sizing, spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 
 // Try to import YouTube player, fallback if not installed
@@ -146,15 +146,15 @@ const styles = StyleSheet.create({
   },
 
   fallbackContent: {
-    padding: 20,
+    padding: spacing.xl,
     backgroundColor: 'rgba(255,0,0,0.9)',
     borderRadius: sizing.borderRadius.md,
   },
 
   fallbackText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
   },
 
   loadingOverlay: {

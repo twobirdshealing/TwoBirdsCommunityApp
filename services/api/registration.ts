@@ -19,6 +19,7 @@ const log = createLogger('RegistrationAPI');
 export interface RegistrationField {
   label: string;
   placeholder?: string;
+  instructions?: string;
   type: 'text' | 'email' | 'password' | 'phone' | 'date' | 'number' | 'select' | 'radio' | 'gender' | 'textarea' | 'url' | 'inline_checkbox';
   input_type?: string;
   required: boolean;

@@ -14,26 +14,12 @@
 // -----------------------------------------------------------------------------
 
 export const spacing = {
-  // Extra small - tiny gaps, icon padding
-  xs: 4,
-  
-  // Small - between related elements
-  sm: 8,
-  
-  // Medium - default padding, gaps
-  md: 12,
-  
-  // Large - section padding
-  lg: 16,
-  
-  // Extra large - screen padding
-  xl: 20,
-  
-  // 2x Extra large - major sections
-  xxl: 24,
-  
-  // 3x Extra large - screen margins
-  xxxl: 32,
+  xs: 4,     // Tiny gaps, icon padding
+  sm: 8,     // Between related elements
+  md: 12,    // Default padding, gaps
+  lg: 16,    // Section padding
+  xl: 20,    // Screen padding
+  xxl: 24,   // Major sections
 };
 
 // -----------------------------------------------------------------------------
@@ -41,46 +27,41 @@ export const spacing = {
 // -----------------------------------------------------------------------------
 
 export const sizing = {
-  // Avatar sizes
-  avatar: {
-    xs: 24,    // Tiny - in lists
-    sm: 32,    // Small - comments
-    md: 48,    // Medium - feed cards
-    lg: 56,    // Large - profile headers
-    xl: 80,    // Extra large - my profile
-    xxl: 120,  // Huge - profile page hero
-  },
-  
-  // Icon sizes
+  // Large placeholder emojis (cards, error screens)
   icon: {
-    xs: 16,
-    sm: 20,
-    md: 24,
-    lg: 28,
-    xl: 32,
+    xxl: 48,
   },
-  
+
+  // Icon button (header buttons, close buttons, send buttons)
+  iconButton: 40,
+
   // Border radius
   borderRadius: {
-    xs: 4,     // Subtle rounding
     sm: 8,     // Buttons, small cards
     md: 12,    // Cards, inputs
-    lg: 16,    // Large cards
-    xl: 20,    // Modals
+    lg: 16,    // Large cards, modals
     full: 9999, // Circular (avatars, pills)
   },
-  
+
   // Common heights
   height: {
     button: 48,
     buttonSmall: 36,
-    input: 48,
     tabBar: 46,
-    header: 56,
   },
-  
+
   // Touch targets (minimum for accessibility)
   touchTarget: 44,
+
+  // Avatar sizes (circular profile images)
+  avatar: {
+    xs: 24,    // Tiny - in lists
+    sm: 32,    // Small - comments
+    md: 48,    // Medium - feed cards, widgets
+    lg: 56,    // Large - profile headers
+    xl: 80,    // Extra large - my profile
+    xxl: 120,  // Huge - profile page hero
+  },
 };
 
 // -----------------------------------------------------------------------------
@@ -95,20 +76,18 @@ export const typography = {
     md: 15,    // Body text
     lg: 17,    // Emphasized body
     xl: 20,    // Section headers
-    xxl: 24,   // Screen titles
-    xxxl: 32,  // Hero text
+    xxl: 24,   // Screen titles, hero text
   },
-  
+
   // Line heights (as multipliers)
   lineHeight: {
     tight: 1.2,
     normal: 1.5,
     relaxed: 1.75,
   },
-  
+
   // Font weights
   weight: {
-    normal: '400' as const,
     medium: '500' as const,
     semibold: '600' as const,
     bold: '700' as const,
@@ -120,15 +99,6 @@ export const typography = {
 // -----------------------------------------------------------------------------
 
 export const shadows = {
-  // No shadow
-  none: {
-    shadowColor: 'transparent',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
-  },
-  
   // Subtle shadow - cards
   sm: {
     shadowColor: '#000',
@@ -137,7 +107,7 @@ export const shadows = {
     shadowRadius: 2,
     elevation: 1,
   },
-  
+
   // Medium shadow - floating elements
   md: {
     shadowColor: '#000',
@@ -146,7 +116,7 @@ export const shadows = {
     shadowRadius: 4,
     elevation: 3,
   },
-  
+
   // Large shadow - modals, dropdowns
   lg: {
     shadowColor: '#000',
@@ -155,30 +125,4 @@ export const shadows = {
     shadowRadius: 8,
     elevation: 5,
   },
-};
-
-// -----------------------------------------------------------------------------
-// Screen-related constants
-// -----------------------------------------------------------------------------
-
-export const screen = {
-  // Horizontal padding for screen content
-  horizontalPadding: spacing.lg,
-  
-  // Safe area additions (status bar, notch)
-  statusBarHeight: 44,
-  bottomSafeArea: 34,
-  
-  // Maximum content width (for tablets)
-  maxContentWidth: 600,
-};
-
-// -----------------------------------------------------------------------------
-// Animation durations (in milliseconds)
-// -----------------------------------------------------------------------------
-
-export const animation = {
-  fast: 150,
-  normal: 250,
-  slow: 350,
 };

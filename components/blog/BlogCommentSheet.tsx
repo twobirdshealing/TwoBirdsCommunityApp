@@ -24,6 +24,7 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { withOpacity } from '@/constants/colors';
 import { SITE_URL } from '@/constants/config';
 import { WPComment } from '@/types/blog';
 import { blogApi } from '@/services/api/blog';
@@ -533,7 +534,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
         <View style={[styles.editorSection, { borderTopColor: themeColors.border, backgroundColor: themeColors.surface }]}>
           {/* Reply indicator */}
           {replyingTo && !editingComment && (
-            <View style={[styles.replyIndicator, { backgroundColor: themeColors.primaryLight + '20' }]}>
+            <View style={[styles.replyIndicator, { backgroundColor: withOpacity(themeColors.primary, 0.12) }]}>
               <Text style={[styles.replyIndicatorText, { color: themeColors.textSecondary }]}>
                 Replying to{' '}
                 <Text style={[styles.replyName, { color: themeColors.primary }]}>
@@ -626,18 +627,18 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   closeButton: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   headerSpacer: {
-    width: 40,
+    width: sizing.iconButton,
   },
 
   contentArea: {
@@ -664,7 +665,7 @@ const styles = StyleSheet.create({
   },
 
   retryText: {
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   emptyIcon: {
@@ -673,7 +674,7 @@ const styles = StyleSheet.create({
 
   emptyTitle: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: spacing.xs,
   },
 
@@ -683,7 +684,7 @@ const styles = StyleSheet.create({
 
   commentsList: {
     padding: spacing.lg,
-    paddingBottom: 20,
+    paddingBottom: spacing.xl,
   },
 
   commentItem: {
@@ -712,7 +713,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
 
   commentHeaderLeft: {
@@ -722,7 +723,7 @@ const styles = StyleSheet.create({
   },
 
   commentMenuButton: {
-    padding: 4,
+    padding: spacing.xs,
   },
 
   commentTextRow: {
@@ -766,7 +767,7 @@ const styles = StyleSheet.create({
   },
 
   replyName: {
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   inputContainer: {
@@ -787,9 +788,9 @@ const styles = StyleSheet.create({
   },
 
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
+    borderRadius: sizing.iconButton / 2,
     justifyContent: 'center',
     alignItems: 'center',
   },

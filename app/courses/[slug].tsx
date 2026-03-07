@@ -193,7 +193,8 @@ export default function CourseDetailScreen() {
   const progress = track?.progress ?? course.progress ?? 0;
   const completedLessons = track?.completed_lessons ?? [];
   const hideInstructor = course.settings?.hide_instructor_view === 'yes';
-  const hasCoverPhoto = course.cover_photo && course.cover_photo.trim() !== '';
+  const hasCoverPhoto = course.cover_photo && course.cover_photo.trim() !== ''
+    && !course.cover_photo.includes('fluent-community/assets/images/');
   const courseDetails = course.settings?.course_details_rendered;
   const isComplete = progress === 100;
 
@@ -247,28 +248,28 @@ export default function CourseDetailScreen() {
               </LinearGradient>
             </View>
           ) : (
-            <LinearGradient
-              colors={['#6366f1', '#8b5cf6', '#d946ef']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroContainer}
-            >
-              {course.settings?.emoji ? (
-                <Text style={styles.heroEmoji}>{course.settings.emoji}</Text>
-              ) : null}
-              <Text style={styles.heroTitle}>{course.title}</Text>
-              <View style={styles.heroStats}>
-                <View style={styles.heroStatItem}>
-                  <Ionicons name="layers-outline" size={14} color="rgba(255,255,255,0.8)" />
-                  <Text style={styles.heroStatText}>{sectionsCount} {sectionsCount === 1 ? 'Section' : 'Sections'}</Text>
-                </View>
-                <Text style={styles.heroStatDot}>&middot;</Text>
-                <View style={styles.heroStatItem}>
-                  <Ionicons name="document-text-outline" size={14} color="rgba(255,255,255,0.8)" />
-                  <Text style={styles.heroStatText}>{lessonsCount} {lessonsCount === 1 ? 'Lesson' : 'Lessons'}</Text>
-                </View>
+            <View style={styles.heroContainer}>
+              <View style={[styles.heroCover, { backgroundColor: themeColors.lightBg, justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="book-outline" size={48} color={themeColors.textTertiary} />
               </View>
-            </LinearGradient>
+              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={styles.heroGradient}>
+                {course.settings?.emoji ? (
+                  <Text style={styles.heroEmoji}>{course.settings.emoji}</Text>
+                ) : null}
+                <Text style={styles.heroTitle}>{course.title}</Text>
+                <View style={styles.heroStats}>
+                  <View style={styles.heroStatItem}>
+                    <Ionicons name="layers-outline" size={14} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.heroStatText}>{sectionsCount} {sectionsCount === 1 ? 'Section' : 'Sections'}</Text>
+                  </View>
+                  <Text style={styles.heroStatDot}>&middot;</Text>
+                  <View style={styles.heroStatItem}>
+                    <Ionicons name="document-text-outline" size={14} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.heroStatText}>{lessonsCount} {lessonsCount === 1 ? 'Lesson' : 'Lessons'}</Text>
+                  </View>
+                </View>
+              </LinearGradient>
+            </View>
           )}
 
           {/* Instructor */}
@@ -281,7 +282,7 @@ export default function CourseDetailScreen() {
                 <Image source={{ uri: course.creator.avatar }} style={styles.instructorAvatar} contentFit="cover" transition={200} cachePolicy="memory-disk" />
               ) : (
                 <View style={[styles.instructorAvatar, styles.instructorAvatarPlaceholder, { backgroundColor: themeColors.primary }]}>
-                  <Text style={{ color: themeColors.textInverse, fontSize: 16, fontWeight: '600' }}>
+                  <Text style={{ color: themeColors.textInverse, fontSize: typography.size.md, fontWeight: typography.weight.semibold }}>
                     {course.creator.display_name?.charAt(0).toUpperCase()}
                   </Text>
                 </View>
@@ -376,7 +377,7 @@ export default function CourseDetailScreen() {
           </View>
 
           {/* Bottom padding */}
-          <View style={{ height: spacing.xxxl * 2 }} />
+          <View style={{ height: spacing.xxl * 2 }} />
         </ScrollView>
       </View>
     </>
@@ -419,7 +420,7 @@ const styles = StyleSheet.create({
 
   heroTitle: {
     fontSize: typography.size.xxl,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     color: '#fff',
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 1 },
@@ -427,7 +428,7 @@ const styles = StyleSheet.create({
   },
 
   heroEmoji: {
-    fontSize: 48,
+    fontSize: sizing.icon.xxl,
     marginBottom: spacing.sm,
   },
 
@@ -436,18 +437,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     marginTop: spacing.xs,
-    gap: 4,
+    gap: spacing.xs,
   },
 
   heroStatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
 
   heroStatText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     color: 'rgba(255,255,255,0.85)',
   },
 
@@ -468,7 +469,7 @@ const styles = StyleSheet.create({
   instructorAvatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: sizing.touchTarget / 2,
   },
 
   instructorAvatarPlaceholder: {
@@ -483,12 +484,12 @@ const styles = StyleSheet.create({
 
   instructorLabel: {
     fontSize: typography.size.xs,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   instructorName: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginTop: 2,
   },
 
@@ -504,7 +505,7 @@ const styles = StyleSheet.create({
 
   progressText: {
     fontSize: typography.size.sm,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
     marginTop: spacing.xs,
   },
 
@@ -519,7 +520,7 @@ const styles = StyleSheet.create({
 
   actionButtonText: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   // Details
@@ -531,7 +532,7 @@ const styles = StyleSheet.create({
 
   sectionHeading: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: spacing.md,
   },
 
@@ -556,7 +557,7 @@ const styles = StyleSheet.create({
 
   linkText: {
     fontSize: typography.size.md,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   // Sections

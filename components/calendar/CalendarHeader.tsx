@@ -7,7 +7,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CalendarViewMode } from '@/types/calendar';
 
@@ -149,21 +149,21 @@ const styles = StyleSheet.create({
 
   monthText: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     minWidth: 160,
     textAlign: 'center',
   },
 
   viewToggle: {
     flexDirection: 'row',
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
     padding: 2,
   },
 
   toggleButton: {
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
-    borderRadius: 6,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   toggleButtonActive: {

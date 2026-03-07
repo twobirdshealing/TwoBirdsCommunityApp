@@ -13,6 +13,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { sizing, spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
 // Props & State
@@ -97,35 +98,35 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    padding: spacing.xxl,
   },
 
   icon: {
-    fontSize: 48,
-    marginBottom: 16,
+    fontSize: sizing.icon.xxl,
+    marginBottom: spacing.lg,
   },
 
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 8,
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold,
+    marginBottom: spacing.sm,
   },
 
   message: {
-    fontSize: 16,
+    fontSize: typography.size.md,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: spacing.xxl,
   },
 
   retryButton: {
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xxl,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   retryText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
   },
 });
 

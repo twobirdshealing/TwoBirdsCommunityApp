@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   },
 
   icon: {
-    fontSize: 48,
+    fontSize: sizing.icon.xxl,
     marginBottom: spacing.md,
   },
 

@@ -8,11 +8,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
-import { spacing, sizing, shadows } from '@/constants/layout';
+import { spacing, sizing, shadows, typography } from '@/constants/layout';
 import { useCachedData } from '@/hooks/useCachedData';
 import { useEventWebView } from '@/hooks/useEventWebView';
 import calendarApi from '@/services/api/calendar';
@@ -24,25 +25,6 @@ import type { CalendarEvent } from '@/types/calendar';
 
 interface CeremonyWidgetProps {
   refreshKey: number;
-}
-
-// -----------------------------------------------------------------------------
-// Category → Icon mapping
-// -----------------------------------------------------------------------------
-
-const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  ceremony: 'flame-outline',
-  sapo: 'leaf-outline',
-  'sound-healing': 'musical-notes-outline',
-  'sunday-service': 'people-outline',
-  'special-event': 'star-outline',
-};
-
-function getCategoryIcon(categories: string[]): keyof typeof Ionicons.glyphMap {
-  for (const cat of categories) {
-    if (CATEGORY_ICONS[cat]) return CATEGORY_ICONS[cat];
-  }
-  return 'calendar-outline';
 }
 
 // -----------------------------------------------------------------------------
@@ -128,17 +110,36 @@ export function CeremonyWidget({ refreshKey }: CeremonyWidgetProps) {
   // No upcoming bookings — hide widget entirely
   if (!event) return null;
 
-  const icon = getCategoryIcon(event.categories);
   const location = event.location?.business_name;
+  const ringColor = event.calendar_color || themeColors.primary;
 
   return (
     <AnimatedPressable
       style={[styles.card, { backgroundColor: themeColors.surface }]}
       onPress={() => openEvent(event)}
     >
-      {/* Icon */}
-      <View style={[styles.iconCircle, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}>
-        <Ionicons name={icon} size={22} color={themeColors.primary} />
+      {/* Avatar column: image/icon + countdown */}
+      <View style={styles.avatarColumn}>
+        {event.image ? (
+          <View style={[styles.imageRing, { borderColor: ringColor }]}>
+            <Image
+              source={{ uri: event.image }}
+              style={styles.eventImage}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={200}
+            />
+          </View>
+        ) : (
+          <View style={[styles.iconCircle, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}>
+            <Ionicons name="calendar-outline" size={22} color={themeColors.primary} />
+          </View>
+        )}
+        {countdown ? (
+          <Text style={[styles.countdownText, { color: themeColors.primary }]}>
+            {countdown}
+          </Text>
+        ) : null}
       </View>
 
       {/* Info */}
@@ -155,15 +156,6 @@ export function CeremonyWidget({ refreshKey }: CeremonyWidgetProps) {
           </Text>
         ) : null}
       </View>
-
-      {/* Countdown pill */}
-      {countdown ? (
-        <View style={[styles.countdownPill, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}>
-          <Text style={[styles.countdownText, { color: themeColors.primary }]}>
-            {countdown}
-          </Text>
-        </View>
-      ) : null}
     </AnimatedPressable>
   );
 }
@@ -183,10 +175,29 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
 
+  avatarColumn: {
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+
+  imageRing: {
+    width: sizing.avatar.md,
+    height: sizing.avatar.md,
+    borderRadius: sizing.avatar.md / 2,
+    borderWidth: 2,
+    padding: 2,
+  },
+
+  eventImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: sizing.avatar.md / 2,
+  },
+
   iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: sizing.avatar.md,
+    height: sizing.avatar.md,
+    borderRadius: sizing.avatar.md / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -197,27 +208,21 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
   },
 
   date: {
-    fontSize: 13,
+    fontSize: typography.size.sm,
   },
 
   location: {
-    fontSize: 12,
-  },
-
-  countdownPill: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: sizing.borderRadius.full,
+    fontSize: typography.size.xs,
   },
 
   countdownText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.bold,
   },
 });
 

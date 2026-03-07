@@ -9,7 +9,7 @@
 // =============================================================================
 
 import { SITE_URL } from '@/constants/config';
-import { spacing, shadows } from '@/constants/layout';
+import { spacing, shadows, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUnreadCounts } from '@/contexts/UnreadCountsContext';
@@ -220,7 +220,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             accessibilityLabel="Open menu"
           >
             {avatar ? (
-              <Image source={{ uri: avatar }} style={[styles.avatar, { backgroundColor: themeColors.skeleton }]} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+              <Image source={{ uri: avatar }} style={[styles.avatar, { backgroundColor: themeColors.border }]} contentFit="cover" transition={200} cachePolicy="memory-disk" />
             ) : (
               <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
                 <Text style={[styles.avatarText, { color: themeColors.textInverse }]}>
@@ -290,8 +290,8 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: typography.size.lg,
+    fontWeight: typography.weight.semibold,
   },
 
   rightSection: {
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     paddingLeft: spacing.xs,
     paddingRight: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
   },
 
   avatarButtonPressed: {
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: sizing.borderRadius.full,
   },
 
   avatarPlaceholder: {
@@ -325,12 +325,12 @@ const styles = StyleSheet.create({
   },
 
   avatarText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
   },
 
   dropdownArrow: {
-    marginLeft: 4,
+    marginLeft: spacing.xs,
   },
 });
 

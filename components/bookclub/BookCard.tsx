@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     flex: 1,
   },
 
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
 
   currentBadgeText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   author: {

@@ -173,7 +173,7 @@ export function SurveyCard({ config: initialConfig, feedId }: SurveyCardProps) {
                   style={[
                     styles.optionLabel,
                     { color: colors.text },
-                    isVoted && { fontWeight: '600' },
+                    isVoted && { fontWeight: typography.weight.semibold },
                   ]}
                   numberOfLines={2}
                 >
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
 
   percentage: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginLeft: spacing.sm,
   },
 

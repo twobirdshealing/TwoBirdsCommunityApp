@@ -10,7 +10,7 @@
 
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   ChatThread,
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
 
   headerLeft: {
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   unreadDot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: sizing.borderRadius.full,
     marginRight: spacing.xs,
   },
 
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
 
   youPrefix: {
     fontSize: typography.size.sm,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   preview: {
@@ -272,8 +272,8 @@ const styles = StyleSheet.create({
 
   swipeActionText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
-    marginTop: 4,
+    fontWeight: typography.weight.semibold,
+    marginTop: spacing.xs,
   },
 
 });

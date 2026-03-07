@@ -7,6 +7,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { spacing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface VerifiedBadgeProps {
@@ -21,7 +22,7 @@ export function VerifiedBadge({ size = 16 }: VerifiedBadgeProps) {
       <MaterialCommunityIcons
         name="check-decagram"
         size={size}
-        color={themeColors.verified}
+        color={themeColors.info}
       />
     </View>
   );
@@ -29,7 +30,7 @@ export function VerifiedBadge({ size = 16 }: VerifiedBadgeProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginLeft: 4,
+    marginLeft: spacing.xs,
     justifyContent: 'center',
   },
 });

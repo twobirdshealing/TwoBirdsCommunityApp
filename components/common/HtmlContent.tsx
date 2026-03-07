@@ -65,19 +65,19 @@ function HtmlContentInner({
       h1: {
         color: themeColors.text,
         fontSize: typography.size.xxl,
-        fontWeight: '700' as const,
+        fontWeight: typography.weight.bold,
         marginVertical: spacing.md,
       },
       h2: {
         color: themeColors.text,
         fontSize: typography.size.xl,
-        fontWeight: '600' as const,
+        fontWeight: typography.weight.semibold,
         marginVertical: spacing.md,
       },
       h3: {
         color: themeColors.text,
         fontSize: typography.size.lg,
-        fontWeight: '600' as const,
+        fontWeight: typography.weight.semibold,
         marginVertical: spacing.sm,
       },
       a: {
@@ -113,7 +113,7 @@ function HtmlContentInner({
       },
       strong: {
         color: themeColors.text,
-        fontWeight: '700' as const,
+        fontWeight: typography.weight.bold,
       },
       del: {
         textDecorationLine: 'line-through' as const,

@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing } from '@/constants/layout';
+import { spacing, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { MediaItem } from '@/services/api/media';
 
@@ -45,7 +45,7 @@ export function MediaPreview({ items, onRemove, isUploading }: MediaPreviewProps
         contentContainerStyle={styles.scrollContent}
       >
         {items.map((item, index) => (
-          <View key={`${item.media_id}-${index}`} style={[styles.imageContainer, { backgroundColor: themeColors.skeleton }]}>
+          <View key={`${item.media_id}-${index}`} style={[styles.imageContainer, { backgroundColor: themeColors.border }]}>
             <Image source={{ uri: item.url }} style={styles.image} />
             
             {/* Remove Button */}
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     width: 100,
     height: 100,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
     overflow: 'hidden',
   },
 
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     top: 4,
     right: 4,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
   },
 
   uploadingContainer: {

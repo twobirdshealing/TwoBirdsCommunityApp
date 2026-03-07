@@ -16,7 +16,7 @@ import {
 } from '@10play/tentap-editor';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ComposerToolbar } from './ComposerToolbar';
 import { MarkdownToolbar } from './MarkdownToolbar';
@@ -609,18 +609,18 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   closeButton: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   headerSpacer: {
-    width: 40,
+    width: sizing.iconButton,
   },
 
   spaceIndicator: {
@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
   },
 
   spaceName: {
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   spaceRow: {
@@ -648,7 +648,7 @@ const styles = StyleSheet.create({
 
   titleInput: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,

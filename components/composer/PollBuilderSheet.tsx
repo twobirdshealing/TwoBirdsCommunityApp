@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
 
   sectionLabel: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
 
   addOptionText: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   settingRow: {
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
 
   cancelText: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   doneButton: {
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
 
   doneText: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 });
 

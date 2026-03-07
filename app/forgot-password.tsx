@@ -18,10 +18,11 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { forgotPassword, resetPassword } from '@/services/api/registration';
@@ -412,7 +413,7 @@ export default function ForgotPasswordScreen() {
             style={styles.showPasswordButton}
             onPress={() => setShowPassword(!showPassword)}
           >
-            <Text style={styles.showPasswordText}>{showPassword ? '🙈' : '👁️'}</Text>
+            <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={themeColors.textSecondary} />
           </Pressable>
         </View>
       </View>
@@ -442,7 +443,7 @@ export default function ForgotPasswordScreen() {
             style={styles.showPasswordButton}
             onPress={() => setShowConfirmPassword(!showConfirmPassword)}
           >
-            <Text style={styles.showPasswordText}>{showConfirmPassword ? '🙈' : '👁️'}</Text>
+            <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={20} color={themeColors.textSecondary} />
           </Pressable>
         </View>
       </View>
@@ -562,7 +563,7 @@ const styles = StyleSheet.create({
 
   // Form Card
   formCard: {
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
     padding: spacing.xl,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -583,12 +584,12 @@ const styles = StyleSheet.create({
   stepDot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   stepDotActive: {
     width: 24,
-    borderRadius: 4,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   // Step header
@@ -622,15 +623,15 @@ const styles = StyleSheet.create({
 
   input: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: typography.size.md,
   },
 
   otpInput: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: typography.size.xxl,
+    fontWeight: typography.weight.semibold,
     textAlign: 'center',
     letterSpacing: 8,
   },
@@ -639,7 +640,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
   },
 
   passwordInput: {
@@ -654,14 +655,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
 
-  showPasswordText: {
-    fontSize: 20,
-  },
-
   // Messages
   errorContainer: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
@@ -673,7 +670,7 @@ const styles = StyleSheet.create({
 
   successContainer: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
@@ -685,7 +682,7 @@ const styles = StyleSheet.create({
 
   // Buttons
   primaryButton: {
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     paddingVertical: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',

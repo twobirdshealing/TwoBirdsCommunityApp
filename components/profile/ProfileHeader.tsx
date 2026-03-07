@@ -8,7 +8,7 @@ import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { hapticLight } from '@/utils/haptics';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Profile } from '@/types/user';
 import { Avatar } from '@/components/common/Avatar';
@@ -95,7 +95,7 @@ export function ProfileHeader({
             style={[styles.settingsButton, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)' }]}
             onPress={onSettingsPress}
           >
-            <Ionicons name="settings-outline" size={20} color={themeColors.icon} />
+            <Ionicons name="settings-outline" size={20} color={themeColors.textSecondary} />
           </Pressable>
         )}
       </AnimatedPressable>
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     right: spacing.sm,
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: sizing.borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -214,8 +214,8 @@ const styles = StyleSheet.create({
 
   avatarWrapper: {
     marginTop: -60,
-    padding: 4,
-    borderRadius: 64,
+    padding: spacing.xs,
+    borderRadius: sizing.borderRadius.full,
     borderWidth: 4,
     position: 'relative',
   },
@@ -223,10 +223,10 @@ const styles = StyleSheet.create({
   avatarLoadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    borderRadius: 60,
+    borderRadius: sizing.borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
-    margin: 4,
+    margin: spacing.xs,
   },
 
   nameRow: {
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   },
 
   socialIconButton: {
-    padding: 4,
+    padding: spacing.xs,
   },
 
   // Stats
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
   },
 
   stat: {

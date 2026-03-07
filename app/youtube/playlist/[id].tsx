@@ -23,7 +23,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { EmptyState } from '@/components/common/EmptyState';
 import { BottomSheet, BottomSheetScrollView } from '@/components/common/BottomSheet';
 import { stripHtmlPreserveBreaks } from '@/utils/htmlToText';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { youtubeApi } from '@/services/api/youtube';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { YouTubeVideoCard } from '@/components/youtube/YouTubeVideoCard';
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
 
   listContent: {
     paddingTop: spacing.md,
-    paddingBottom: spacing.xxxl,
+    paddingBottom: spacing.xxl,
   },
 
   cardWrapper: {
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
     paddingHorizontal: spacing.md,
   },
 
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   },
 
   clearButton: {
-    fontSize: 16,
+    fontSize: typography.size.md,
     padding: spacing.xs,
   },
 
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
 
   clearSearchButton: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginTop: spacing.lg,
     padding: spacing.sm,
   },

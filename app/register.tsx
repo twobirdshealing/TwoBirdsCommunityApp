@@ -24,7 +24,7 @@ import { Image } from 'expo-image';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { PRIVACY_POLICY_URL } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -945,7 +945,7 @@ const styles = StyleSheet.create({
 
   // Form Card
   formCard: {
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
     padding: spacing.xl,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -973,12 +973,12 @@ const styles = StyleSheet.create({
   stepDot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   stepDotActive: {
     width: 24,
-    borderRadius: 4,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   // Inputs (used for OTP code inputs)
@@ -988,7 +988,7 @@ const styles = StyleSheet.create({
 
   input: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     fontSize: typography.size.md,
@@ -997,7 +997,7 @@ const styles = StyleSheet.create({
   // Errors
   errorContainer: {
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
@@ -1009,7 +1009,7 @@ const styles = StyleSheet.create({
 
   // Buttons
   primaryButton: {
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     paddingVertical: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1022,7 +1022,7 @@ const styles = StyleSheet.create({
   },
 
   secondaryButton: {
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     paddingVertical: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1086,8 +1086,8 @@ const styles = StyleSheet.create({
   },
 
   otpInput: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: typography.size.xxl,
+    fontWeight: typography.weight.semibold,
     textAlign: 'center',
     letterSpacing: 8,
   },

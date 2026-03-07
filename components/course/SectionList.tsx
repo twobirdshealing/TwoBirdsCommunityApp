@@ -10,7 +10,7 @@ import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CourseLesson, CourseSection } from '@/types/course';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { LessonRow } from './LessonRow';
 
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.sm,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
   },
   header: {
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
   sectionMeta: {
     fontSize: typography.size.xs,

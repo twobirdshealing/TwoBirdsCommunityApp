@@ -16,7 +16,7 @@ import { ChatInput } from '@/components/message/ChatInput';
 import { DateSeparator, MessageBubble } from '@/components/message/MessageBubble';
 import { MediaViewer } from '@/components/media/MediaViewer';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ReactionPicker } from '@/components/feed/ReactionPicker';
@@ -138,7 +138,7 @@ export default function UserChatScreen() {
           <Text
             style={[
               styles.headerSubtitle,
-              { color: headerOnline ? themeColors.online : themeColors.textTertiary },
+              { color: headerOnline ? themeColors.success : themeColors.textTertiary },
             ]}
             numberOfLines={1}
           >
@@ -442,11 +442,11 @@ const styles = StyleSheet.create({
   },
 
   headerBackButton: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
+    borderRadius: sizing.iconButton / 2,
   },
 
   headerCenter: {
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
 
   headerTitle: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   headerSubtitle: {
@@ -477,11 +477,11 @@ const styles = StyleSheet.create({
   },
 
   headerGearButton: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
+    borderRadius: sizing.iconButton / 2,
   },
 
   loadingContainer: {
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
 
   emptyName: {
     fontSize: typography.size.xl,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginTop: spacing.sm,
   },
 
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
 
   loadOlderText: {
     fontSize: typography.size.sm,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   // Blocked state
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
 
   blockedTitle: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     textAlign: 'center',
   },
 
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xl,
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
     borderWidth: 1,
     minWidth: 160,
     alignItems: 'center',
@@ -559,6 +559,6 @@ const styles = StyleSheet.create({
 
   unblockButtonText: {
     fontSize: typography.size.md,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 });

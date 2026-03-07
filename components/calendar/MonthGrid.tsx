@@ -11,7 +11,7 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { hapticLight } from '@/utils/haptics';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CalendarEvent, EventsByDate } from '@/types/calendar';
 
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
 
   weekdayText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     textTransform: 'uppercase',
   },
 
@@ -274,11 +274,11 @@ const styles = StyleSheet.create({
     height: CELL_SIZE,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 4,
+    paddingTop: spacing.xs,
   },
 
   dayCellSelected: {
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   dayNumber: {
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
+    borderRadius: sizing.borderRadius.full,
   },
 
   dayNumberToday: {
@@ -301,15 +301,15 @@ const styles = StyleSheet.create({
 
   dayText: {
     fontSize: typography.size.sm,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   dayTextToday: {
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
   },
 
   dayTextSelected: {
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
   },
 
   dayTextPast: {
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   dot: {
     width: 5,
     height: 5,
-    borderRadius: 2.5,
+    borderRadius: sizing.borderRadius.full,
   },
 });
 

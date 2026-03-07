@@ -14,7 +14,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, sizing, shadows } from '@/constants/layout';
+import { spacing, sizing, shadows, typography } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { spacesApi } from '@/services/api/spaces';
 import bookclubApi from '@/services/api/bookclub';
@@ -165,12 +165,12 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
   },
 
   author: {
-    fontSize: 13,
+    fontSize: typography.size.sm,
   },
 
   listenBtn: {
@@ -183,8 +183,8 @@ const styles = StyleSheet.create({
   },
 
   listenText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
   },
 
   // Next meeting row
@@ -206,12 +206,12 @@ const styles = StyleSheet.create({
   },
 
   meetingText: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
   },
 
   meetingChapters: {
-    fontSize: 11,
+    fontSize: typography.size.xs,
   },
 
   joinBtn: {
@@ -225,8 +225,8 @@ const styles = StyleSheet.create({
   },
 
   joinText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
   },
 });
 

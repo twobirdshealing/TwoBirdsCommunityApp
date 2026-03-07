@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   // Date on top - more prominent
   itemDate: {
     fontSize: typography.size.xs,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     textAlign: 'center',
     marginBottom: spacing.xs,
     letterSpacing: 0.5,
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   },
 
   placeholderEmoji: {
-    fontSize: 32,
+    fontSize: typography.size.xxl,
   },
 
   titleContainer: {
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
 
   itemTitle: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     textAlign: 'center',
     lineHeight: TITLE_LINE_HEIGHT,
   },

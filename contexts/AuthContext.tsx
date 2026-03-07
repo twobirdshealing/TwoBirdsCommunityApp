@@ -7,6 +7,8 @@ import { profilesApi } from '@/services/api/profiles';
 import { clearBadgeCache } from '@/services/api/badges';
 import { clearSocialProvidersCache } from '@/services/api/socialProviders';
 import { clearReactionConfigCache } from '@/hooks/useReactionConfig';
+import { registerDeviceToken } from '@/services/push';
+import { FEATURES } from '@/constants/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from '@/utils/logger';
 import type { AuthUser } from '@/types/user';
@@ -70,6 +72,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (storedUser) {
           setUser(storedUser);
           setIsAuthenticated(true);
+
+          // Re-register push token on every app start (token may have changed)
+          if (FEATURES.PUSH_NOTIFICATIONS) {
+            authService.getAuthToken().then(token => {
+              if (token) registerDeviceToken(token).catch(() => {});
+            });
+          }
 
           // Background refresh: pick up changes made on web (avatar, name, etc.)
           if (storedUser.username) {
@@ -173,6 +182,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await authService.storeAuthDirect(accessToken, refreshToken, userData);
     setUser(userData);
     setIsAuthenticated(true);
+
+    // Register push token for new registrations
+    if (FEATURES.PUSH_NOTIFICATIONS) {
+      registerDeviceToken(accessToken).catch(() => {});
+    }
   }, []);
 
   const value = useMemo(() => ({

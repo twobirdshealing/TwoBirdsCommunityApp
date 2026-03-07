@@ -279,26 +279,26 @@ const styles = StyleSheet.create({
 
   segmentedControl: {
     flexDirection: 'row',
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
     padding: 3,
   },
 
   segment: {
     flex: 1,
     paddingVertical: spacing.sm,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
     alignItems: 'center',
   },
 
   segmentText: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   searchInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     gap: spacing.xs,

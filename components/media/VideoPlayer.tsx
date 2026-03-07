@@ -198,15 +198,15 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 32,
+    borderRadius: sizing.borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   playIcon: {
     color: '#000',
-    fontSize: 28,
-    marginLeft: 4, // Optical centering for play icon
+    fontSize: typography.size.xxl,
+    marginLeft: spacing.xs, // Optical centering for play icon
   },
 
   progressContainer: {
@@ -224,13 +224,13 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 4,
     backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 2,
+    borderRadius: sizing.borderRadius.full,
     marginRight: spacing.sm,
   },
 
   progressFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: sizing.borderRadius.full,
   },
 
   timeText: {
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: sizing.borderRadius.xs,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   videoLabelText: {

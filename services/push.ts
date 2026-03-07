@@ -19,6 +19,7 @@ const log = createLogger('Push');
 // -----------------------------------------------------------------------------
 
 let storedPushToken: string | null = null;
+let lastBadgeCount: number | null = null;
 
 // -----------------------------------------------------------------------------
 // Configure Notifications
@@ -217,6 +218,8 @@ export async function getPushPermissionStatus(): Promise<PushPermissionStatus> {
  * Callers are responsible for fetching the count (e.g. via notificationsApi.getUnreadCount()).
  */
 export async function syncBadgeCount(count: number): Promise<void> {
+  if (count === lastBadgeCount) return;
+  lastBadgeCount = count;
   try {
     await Notifications.setBadgeCountAsync(count);
     log('Badge synced to', count);
@@ -229,6 +232,7 @@ export async function syncBadgeCount(count: number): Promise<void> {
  * Clear OS app icon badge. Call on logout.
  */
 export async function clearBadgeCount(): Promise<void> {
+  lastBadgeCount = null;
   try {
     await Notifications.setBadgeCountAsync(0);
     log('Badge cleared');

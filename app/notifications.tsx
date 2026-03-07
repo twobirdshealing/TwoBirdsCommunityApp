@@ -17,7 +17,7 @@ import { createLogger } from '@/utils/logger';
 
 const log = createLogger('Notifications');
 import { NotificationCard } from '@/components/notification/NotificationCard';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { notificationsApi } from '@/services/api/notifications';
 import { syncBadgeCount } from '@/services/push';
@@ -454,20 +454,20 @@ const styles = StyleSheet.create({
   filterButton: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    borderRadius: 16,
+    borderRadius: sizing.borderRadius.lg,
   },
 
   filterButtonActive: {},
 
   filterButtonText: {
     fontSize: typography.size.sm,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   filterButtonTextActive: {},
 
   filterBadge: {
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   // Empty State
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
   emptyIconContainer: {
     width: 120,
     height: 120,
-    borderRadius: 60,
+    borderRadius: sizing.borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,
@@ -490,7 +490,7 @@ const styles = StyleSheet.create({
 
   emptyTitle: {
     fontSize: typography.size.xl,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: spacing.sm,
   },
 
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
 
   showAllButtonText: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   // Footer

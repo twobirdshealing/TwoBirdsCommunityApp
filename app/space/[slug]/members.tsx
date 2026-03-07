@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
 
   sectionHeaderText: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },

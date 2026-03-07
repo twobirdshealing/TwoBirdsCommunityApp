@@ -72,7 +72,7 @@ export function BlogWidget({ refreshKey }: BlogWidgetProps) {
         <>
           <Image
             source={{ uri: imageUrl }}
-            style={[styles.image, { backgroundColor: themeColors.skeleton }]}
+            style={[styles.image, { backgroundColor: themeColors.border }]}
             contentFit="cover"
             cachePolicy="memory-disk"
             transition={200}
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    paddingTop: spacing.xxxl,
+    paddingTop: spacing.xxl,
   },
 
   categoryPill: {
@@ -143,13 +143,13 @@ const styles = StyleSheet.create({
 
   categoryText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     color: '#fff',
   },
 
   titleLight: {
     fontSize: typography.size.md,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     color: '#fff',
     marginBottom: spacing.xs,
   },
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
 
   titleDark: {
     fontSize: typography.size.md,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     textAlign: 'center',
   },
 

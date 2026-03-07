@@ -98,7 +98,8 @@ export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
       contentContainerStyle={styles.scrollContent}
     >
       {courses.map((course) => {
-        const hasCover = course.cover_photo && course.cover_photo.trim() !== '';
+        const hasCover = course.cover_photo && course.cover_photo.trim() !== ''
+          && !course.cover_photo.includes('fluent-community/assets/images/');
         const progress = course.progress ?? 0;
 
         return (
@@ -107,32 +108,32 @@ export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
             style={[styles.card, { width: CARD_WIDTH, backgroundColor: themeColors.surface }]}
             onPress={() => router.push({ pathname: '/courses/[slug]', params: { slug: course.slug } })}
           >
-            {/* Cover */}
+            {/* Hero Cover */}
             {hasCover ? (
               <Image source={{ uri: course.cover_photo! }} style={styles.cardCover} contentFit="cover" transition={200} cachePolicy="memory-disk" />
             ) : (
-              <LinearGradient
-                colors={['#6366f1', '#8b5cf6', '#d946ef']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.cardCover}
-              />
+              <View style={[styles.cardCover, { backgroundColor: themeColors.lightBg, justifyContent: 'center', alignItems: 'center' }]}>
+                <Ionicons name="book-outline" size={32} color={themeColors.textTertiary} />
+              </View>
             )}
 
-            {/* Content */}
-            <View style={styles.cardContent}>
-              <Text style={[styles.cardTitle, { color: themeColors.text }]} numberOfLines={2}>
+            {/* Gradient Overlay with Title + Progress */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.7)']}
+              style={styles.heroOverlay}
+            >
+              <Text style={styles.cardTitle} numberOfLines={1}>
                 {course.title}
               </Text>
               <View style={styles.cardProgress}>
+                <Text style={styles.cardProgressText}>
+                  {progress === 100 ? 'Complete' : `${Math.round(progress)}%`}
+                </Text>
                 <View style={{ flex: 1 }}>
                   <ProgressBar progress={progress} />
                 </View>
-                <Text style={[styles.cardProgressText, { color: themeColors.textTertiary }]}>
-                  {progress === 100 ? 'Complete' : `${Math.round(progress)}%`}
-                </Text>
               </View>
-            </View>
+            </LinearGradient>
           </AnimatedPressable>
         );
       })}
@@ -153,37 +154,49 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
+    aspectRatio: 16 / 9,
+    position: 'relative',
     ...shadows.sm,
   },
 
   cardCover: {
     width: '100%',
-    height: 100,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  cardContent: {
-    flex: 1,
-    padding: spacing.md,
+  heroOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 30,
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.sm,
   },
 
   cardTitle: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
-    marginBottom: spacing.sm,
+    fontWeight: typography.weight.semibold,
+    color: '#fff',
+    marginBottom: spacing.xs,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 
   cardProgress: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: 'auto',
   },
 
   cardProgressText: {
     fontSize: typography.size.xs,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
+    color: 'rgba(255,255,255,0.85)',
     minWidth: 48,
-    textAlign: 'right',
   },
 
   // CTA Card
@@ -197,7 +210,7 @@ const styles = StyleSheet.create({
 
   ctaText: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   ctaSubtext: {

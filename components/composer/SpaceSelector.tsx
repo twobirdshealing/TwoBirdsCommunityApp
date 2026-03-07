@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacesApi } from '@/services/api/spaces';
 import { SpaceGroupOption } from '@/types/space';
@@ -288,7 +288,7 @@ export function SpaceSelector({
           ) : listData.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
-                {searchQuery ? 'No spaces match your search' : 'No spaces available'}
+                {searchQuery ? 'No spaces match your search' : 'Join a space to start posting'}
               </Text>
             </View>
           ) : (
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   trigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     gap: spacing.xs,
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
 
   headerTitle: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   closeButton: {
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
     gap: spacing.xs,
   },
 
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
 
   groupHeaderText: {
     fontSize: typography.size.sm,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   spaceIcon: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: sizing.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
     width: 30,
     height: 30,
-    borderRadius: 15,
+    borderRadius: sizing.borderRadius.full,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: typography.size.xl,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     marginBottom: spacing.xs,
     textAlign: 'center',
   },
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
 
   buttonLabel: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   buttonPrimaryText: {

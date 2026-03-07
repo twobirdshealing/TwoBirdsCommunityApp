@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { hapticLight } from '@/utils/haptics';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
@@ -422,7 +422,7 @@ export default function EditProfileScreen() {
         setSelectModalField(k);
         setSelectModalVisible(true);
       }}
-      extraContent={renderVisibilityRow(key, config)}
+      labelExtra={renderVisibilityRow(key, config)}
     />
   );
 
@@ -773,7 +773,7 @@ const styles = StyleSheet.create({
   saveButton: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs + 2,
-    borderRadius: 8,
+    borderRadius: sizing.borderRadius.sm,
     minWidth: 60,
     alignItems: 'center',
   },
@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
 
   input: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
     fontSize: typography.size.md,
@@ -835,8 +835,8 @@ const styles = StyleSheet.create({
 
   visibilityChip: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: spacing.xs,
+    borderRadius: sizing.borderRadius.md,
     borderWidth: 1,
   },
 
@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
 
   // OTP modal
   otpModalContent: {
-    borderRadius: 16,
+    borderRadius: sizing.borderRadius.lg,
     width: '100%',
     padding: spacing.xl,
   },
@@ -879,15 +879,15 @@ const styles = StyleSheet.create({
   },
 
   otpInput: {
-    fontSize: 24,
-    fontWeight: '600' as const,
+    fontSize: typography.size.xxl,
+    fontWeight: typography.weight.semibold,
     textAlign: 'center' as const,
     letterSpacing: 8,
     marginBottom: spacing.md,
   },
 
   otpVerifyButton: {
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     paddingVertical: spacing.md,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
@@ -922,7 +922,7 @@ const styles = StyleSheet.create({
 
   otpErrorContainer: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
     padding: spacing.sm,
     marginBottom: spacing.md,
   },

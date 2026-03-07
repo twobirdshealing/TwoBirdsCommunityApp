@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
-import { shadows, spacing, typography } from '@/constants/layout';
+import { shadows, spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
     padding: spacing.lg,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
     borderWidth: 1,
   },
 
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: sizing.borderRadius.full,
   },
 
   avatarPlaceholder: {
@@ -99,14 +99,14 @@ const styles = StyleSheet.create({
 
   avatarText: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   inputPlaceholder: {
     flex: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
   },
 
   placeholderText: {

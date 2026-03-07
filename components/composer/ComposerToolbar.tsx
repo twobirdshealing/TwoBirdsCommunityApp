@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticLight, hapticMedium } from '@/utils/haptics';
 
@@ -174,17 +174,17 @@ const styles = StyleSheet.create({
   },
 
   actionButton: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 20,
+    borderRadius: sizing.iconButton / 2,
   },
 
   submitButton: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    borderRadius: 20,
+    borderRadius: sizing.borderRadius.lg,
     minWidth: 80,
     alignItems: 'center',
   },
@@ -194,18 +194,18 @@ const styles = StyleSheet.create({
   },
 
   gifBadge: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.bold,
     borderWidth: 1.5,
-    borderRadius: 4,
-    paddingHorizontal: 4,
+    borderRadius: sizing.borderRadius.sm,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 1,
     overflow: 'hidden',
   },
 
   submitText: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 });
 

@@ -10,6 +10,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '@/contexts/ThemeContext';
+import { spacing, typography, sizing } from '@/constants/layout';
 import type { Badge } from '@/types/user';
 
 interface ProfileBadgeProps {
@@ -69,12 +70,12 @@ const styles = StyleSheet.create({
   logoLarge: {
     width: 18,
     height: 18,
-    borderRadius: 9,
+    borderRadius: sizing.borderRadius.full,
     borderWidth: 1.5,
   },
 
   emojiLarge: {
-    fontSize: 15,
+    fontSize: typography.size.md,
   },
 
   // Pill mode — colored background with icon + label
@@ -83,24 +84,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.full,
     marginLeft: 6,
   },
 
   logo: {
     width: 14,
     height: 14,
-    borderRadius: 7,
+    borderRadius: sizing.borderRadius.full,
     marginRight: 3,
   },
 
   emoji: {
-    fontSize: 11,
+    fontSize: typography.size.xs,
     marginRight: 2,
   },
 
   label: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
   },
 });

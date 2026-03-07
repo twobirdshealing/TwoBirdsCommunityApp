@@ -10,7 +10,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Space } from '@/types/space';
 import { QuickPostBox } from '@/components/composer/QuickPostBox';
@@ -22,9 +22,8 @@ import { stripHtmlPreserveBreaks } from '@/utils/htmlToText';
 
 interface SpaceInfoHeaderProps {
   space: Space;
-  membersCount: number;
-  postsCount: number;
   onPostPress: () => void;
+  hidePostBox?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -44,7 +43,7 @@ const getPrivacyIcon = (privacy: string): keyof typeof Ionicons.glyphMap => {
 // Component
 // -----------------------------------------------------------------------------
 
-export function SpaceInfoHeader({ space, membersCount, postsCount, onPostPress }: SpaceInfoHeaderProps) {
+export function SpaceInfoHeader({ space, onPostPress, hidePostBox }: SpaceInfoHeaderProps) {
   const { colors: themeColors } = useTheme();
 
   const descriptionText = stripHtmlPreserveBreaks(
@@ -55,7 +54,7 @@ export function SpaceInfoHeader({ space, membersCount, postsCount, onPostPress }
     <View style={styles.spaceHeader}>
       {/* Hero Cover Section */}
       <View style={styles.heroContainer}>
-        {space.cover_photo ? (
+        {space.cover_photo && !space.cover_photo.includes('fluent-community/assets/images/') ? (
           <Image
             source={{ uri: space.cover_photo }}
             style={styles.coverImage}
@@ -64,12 +63,9 @@ export function SpaceInfoHeader({ space, membersCount, postsCount, onPostPress }
             transition={200}
           />
         ) : (
-          <LinearGradient
-            colors={['#6366f1', '#8b5cf6', '#d946ef']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.coverImage}
-          />
+          <View style={[styles.coverImage, { backgroundColor: themeColors.lightBg, justifyContent: 'center', alignItems: 'center' }]}>
+            <Ionicons name="people-outline" size={40} color={themeColors.textTertiary} />
+          </View>
         )}
 
         {/* Gradient Overlay */}
@@ -77,7 +73,6 @@ export function SpaceInfoHeader({ space, membersCount, postsCount, onPostPress }
           colors={['transparent', 'rgba(0,0,0,0.7)']}
           style={styles.heroOverlay}
         >
-          {/* Logo + Title + Stats overlaid on cover */}
           <View style={styles.heroContent}>
             {space.logo && (
               <Image
@@ -97,16 +92,6 @@ export function SpaceInfoHeader({ space, membersCount, postsCount, onPostPress }
                     {space.privacy.charAt(0).toUpperCase() + space.privacy.slice(1)}
                   </Text>
                 </View>
-                <View style={styles.heroStatDot} />
-                <View style={styles.heroStatItem}>
-                  <Ionicons name="people-outline" size={14} color="rgba(255,255,255,0.85)" />
-                  <Text style={styles.heroStatText}>{membersCount}</Text>
-                </View>
-                <View style={styles.heroStatDot} />
-                <View style={styles.heroStatItem}>
-                  <Ionicons name="document-text-outline" size={14} color="rgba(255,255,255,0.85)" />
-                  <Text style={styles.heroStatText}>{postsCount}</Text>
-                </View>
               </View>
             </View>
           </View>
@@ -123,10 +108,12 @@ export function SpaceInfoHeader({ space, membersCount, postsCount, onPostPress }
       ) : null}
 
       {/* Quick Post Box */}
-      <QuickPostBox
-        onPress={onPostPress}
-        placeholder={`Post in ${space.title}...`}
-      />
+      {!hidePostBox && (
+        <QuickPostBox
+          onPress={onPostPress}
+          placeholder={`Post in ${space.title}...`}
+        />
+      )}
     </View>
   );
 }
@@ -141,7 +128,7 @@ const styles = StyleSheet.create({
   },
 
   heroContainer: {
-    height: 200,
+    aspectRatio: 16 / 9,
     position: 'relative',
   },
 
@@ -168,7 +155,7 @@ const styles = StyleSheet.create({
   heroLogo: {
     width: 52,
     height: 52,
-    borderRadius: 26,
+    borderRadius: sizing.borderRadius.full,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.9)',
     marginRight: spacing.sm,
@@ -180,9 +167,9 @@ const styles = StyleSheet.create({
 
   heroTitle: {
     fontSize: typography.size.xl,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -196,21 +183,13 @@ const styles = StyleSheet.create({
   heroStatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
 
   heroStatText: {
     fontSize: typography.size.sm,
     color: 'rgba(255,255,255,0.85)',
-    fontWeight: '500',
-  },
-
-  heroStatDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    marginHorizontal: 8,
+    fontWeight: typography.weight.medium,
   },
 
   descriptionContainer: {

@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
 
   headerTitle: {
     fontSize: typography.size.xl,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     marginTop: spacing.md,
   },
 

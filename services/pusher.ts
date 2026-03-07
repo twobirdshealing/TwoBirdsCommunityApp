@@ -41,6 +41,7 @@ export type ReactionHandler = (data: PusherReaction) => void;
 let pusherClient: Pusher | null = null;
 let userChannel: Channel | null = null;
 let currentUserId: number | null = null;
+let connectedAt: number = 0;
 
 // Event handlers registry
 const messageHandlers: Set<MessageHandler> = new Set();
@@ -121,6 +122,7 @@ export async function initializePusher(userId: number): Promise<boolean> {
     // Connection event handlers
     pusherClient.connection.bind('connected', () => {
       log('Connected to Pusher');
+      connectedAt = Date.now();
     });
 
     pusherClient.connection.bind('disconnected', () => {
@@ -183,6 +185,7 @@ export function disconnectPusher(): void {
   }
 
   currentUserId = null;
+  connectedAt = 0;
   messageHandlers.clear();
   reactionHandlers.clear();
 }
@@ -195,6 +198,13 @@ export async function reconnectPusher(): Promise<boolean> {
   if (!currentUserId) {
     log('Cannot reconnect - no current user');
     return false;
+  }
+
+  // Skip reconnect if connection was established recently (e.g. permission dialog caused app state change)
+  const RECONNECT_COOLDOWN = 10_000;
+  if (connectedAt && Date.now() - connectedAt < RECONNECT_COOLDOWN) {
+    log('Skipping reconnect — connection is fresh');
+    return true;
   }
 
   const userId = currentUserId;

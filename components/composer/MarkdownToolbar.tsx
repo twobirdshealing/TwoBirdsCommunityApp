@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   },
 
   boldLabel: {
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
   },
 
   italicLabel: {
@@ -341,11 +341,11 @@ const styles = StyleSheet.create({
   },
 
   headingLabel: {
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
   },
 
   orderedListLabel: {
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   // Link mode

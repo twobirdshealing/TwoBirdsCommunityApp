@@ -31,6 +31,7 @@ import { ReactionIcon } from './ReactionIcon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { shadows, sizing, spacing, typography } from '@/constants/layout';
+import { withOpacity } from '@/constants/colors';
 import { Feed, ReactionType } from '@/types/feed';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { formatCompactNumber } from '@/utils/formatNumber';
@@ -38,7 +39,6 @@ import { stripHtmlTags } from '@/utils/htmlToText';
 import { HtmlContent } from '@/components/common/HtmlContent';
 import { useAuth } from '@/contexts/AuthContext';
 import { SITE_URL } from '@/constants/config';
-import { REACTION_EMOJI, REACTION_COLORS, REACTION_NAMES } from '@/constants/reactions';
 import { extractYouTubeId } from '@/utils/youtube';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
@@ -198,9 +198,9 @@ export function FeedCard({
   const userReactionType = feed.user_reaction_type || null;
   const userReactionConfig = getReaction(userReactionType || defaultReactionId);
   const userReactionIconUrl = feed.user_reaction_icon_url || userReactionConfig?.icon_url || null;
-  const userReactionEmoji = userReactionConfig?.emoji || (userReactionType ? REACTION_EMOJI[userReactionType] : '👍');
-  const userReactionName = feed.user_reaction_name || userReactionConfig?.name || (userReactionType ? REACTION_NAMES[userReactionType] : 'Like');
-  const userReactionColor = userReactionConfig?.color || (userReactionType ? REACTION_COLORS[userReactionType] : undefined);
+  const userReactionEmoji = userReactionConfig?.emoji || '👍';
+  const userReactionName = feed.user_reaction_name || userReactionConfig?.name || 'Like';
+  const userReactionColor = userReactionConfig?.color;
   const reactionBreakdown = feed.reaction_breakdown || [];
 
   // ---------------------------------------------------------------------------
@@ -278,7 +278,7 @@ export function FeedCard({
     <View style={[styles.card, { backgroundColor: themeColors.surface }]}>
       {/* ===== Sticky Indicator ===== */}
       {isSticky && (
-        <View style={[styles.stickyBadge, { backgroundColor: themeColors.primaryLight + '20' }]}>
+        <View style={[styles.stickyBadge, { backgroundColor: withOpacity(themeColors.primary, 0.12) }]}>
           <Ionicons name="pin" size={12} color={themeColors.primary} />
           <Text style={[styles.stickyText, { color: themeColors.primary }]}>Pinned</Text>
         </View>
@@ -555,7 +555,7 @@ export function FeedCard({
             accessibilityRole="button"
             accessibilityLabel={commentsCount > 0 ? `${commentsCount} comments` : 'Comment'}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
               <Ionicons name="chatbubble-outline" size={20} color={themeColors.textSecondary} />
               {commentsCount > 0 && (
                 <Text style={[styles.reactionSummaryCount, { color: themeColors.textSecondary }]}>
@@ -583,7 +583,7 @@ export function FeedCard({
                 >
                   <ReactionIcon
                     iconUrl={item.icon_url}
-                    emoji={item.emoji || REACTION_EMOJI[item.type as ReactionType]}
+                    emoji={item.emoji || '👍'}
                     size={22}
                     stroke={display.stroke}
                     borderColor={themeColors.borderLight}
@@ -668,10 +668,10 @@ const styles = StyleSheet.create({
 
   stickyText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
-    marginLeft: 4,
+    fontWeight: typography.weight.semibold,
+    marginLeft: spacing.xs,
   },
-  
+
   // Header
   header: {
     flexDirection: 'row',
@@ -725,7 +725,7 @@ const styles = StyleSheet.create({
   // Title
   title: {
     fontSize: typography.size.lg,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: spacing.sm,
     lineHeight: 24,
   },
@@ -742,7 +742,7 @@ const styles = StyleSheet.create({
 
   showMoreText: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: spacing.md,
   },
   
@@ -792,8 +792,8 @@ const styles = StyleSheet.create({
 
   gridOverlayText: {
     color: '#fff',
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: typography.size.xxl,
+    fontWeight: typography.weight.bold,
   },
   
   playButton: {
@@ -822,11 +822,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
-    borderRadius: sizing.borderRadius.xs,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   playIcon: {
-    fontSize: 24,
+    fontSize: typography.size.xxl,
   },
 
   inPlacePlayer: {

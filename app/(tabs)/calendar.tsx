@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
 
   selectedDayTitle: {
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     marginBottom: spacing.sm,
   },
 

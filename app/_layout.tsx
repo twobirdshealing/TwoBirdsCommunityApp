@@ -22,6 +22,7 @@ import { setOnResponseHeaders } from '@/services/api/client';
 import { getAppConfig, AppConfigResponse } from '@/services/api/theme';
 import { syncBadgeCount } from '@/services/push';
 import { mapUrlToRoute } from '@/utils/deepLinkMapper';
+import { ThemeProvider as NavThemeProvider, DefaultTheme, type Theme as NavTheme } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as Notifications from 'expo-notifications';
@@ -36,6 +37,13 @@ import 'react-native-reanimated';
 
 // Keep the native splash screen visible until we're ready to render
 SplashScreen.preventAutoHideAsync();
+
+// Transparent nav theme — lets the root View background show through card containers,
+// preventing white flash on first stack navigation.
+const TRANSPARENT_NAV_THEME: NavTheme = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: 'transparent', card: 'transparent' },
+};
 
 // -----------------------------------------------------------------------------
 // Deep link validation
@@ -315,12 +323,14 @@ function RootLayoutNav() {
 
 
   return (
-    <View style={[styles.flex, { backgroundColor: themeColors.background }]}>
-      <Stack
-        screenOptions={{
-          contentStyle: { backgroundColor: themeColors.background },
-        }}
-      >
+    <NavThemeProvider value={TRANSPARENT_NAV_THEME}>
+      <View style={[styles.flex, { backgroundColor: themeColors.background }]}>
+        <Stack
+          screenOptions={{
+            contentStyle: { backgroundColor: themeColors.background },
+          }}
+        >
+
         {/* TABS */}
         <Stack.Screen
           name="(tabs)"
@@ -478,9 +488,10 @@ function RootLayoutNav() {
             animation: 'slide_from_bottom',
           }}
         />
-      </Stack>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-    </View>
+        </Stack>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+      </View>
+    </NavThemeProvider>
   );
 }
 

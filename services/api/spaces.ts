@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
-import { JoinSpaceResponse, MembersListResponse, SpaceDetailResponse, SpaceGroupOptionsResponse, SpaceGroupsResponse, SpacesResponse } from '@/types/space';
+import { DiscoverSpacesResponse, JoinSpaceResponse, MembersListResponse, SpaceDetailResponse, SpaceGroupOptionsResponse, SpaceGroupsResponse, SpacesResponse } from '@/types/space';
 import { get, post } from './client';
 
 // -----------------------------------------------------------------------------
@@ -42,6 +42,22 @@ export async function getSpaces(options: GetSpacesOptions = {}) {
   };
   
   return get<SpacesResponse>(ENDPOINTS.SPACES, params);
+}
+
+// -----------------------------------------------------------------------------
+// Discover Spaces (all discoverable spaces with membership info)
+// -----------------------------------------------------------------------------
+
+export async function discoverSpaces(options: { type?: 'joined'; search?: string; sort_by?: string; page?: number; per_page?: number } = {}) {
+  const params = {
+    ...(options.type && { type: options.type }),
+    ...(options.search && { search: options.search }),
+    ...(options.sort_by && { sort_by: options.sort_by }),
+    ...(options.page && { page: options.page }),
+    ...(options.per_page && { per_page: options.per_page }),
+  };
+
+  return get<DiscoverSpacesResponse>(`${ENDPOINTS.SPACES}/discover`, params);
 }
 
 // -----------------------------------------------------------------------------
@@ -118,6 +134,7 @@ export async function getSpaceMembers(
 
 export const spacesApi = {
   getSpaces,
+  discoverSpaces,
   getSpaceBySlug,
   getSpaceById,
   getSpaceGroups,

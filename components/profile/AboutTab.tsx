@@ -6,7 +6,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { Profile, CustomFieldValue } from '@/types/user';
 import { formatRelativeTime } from '@/utils/formatDate';
 
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     margin: spacing.md,
     marginTop: spacing.sm,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
   },
 
   sectionTitle: {
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   tag: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
   },
 
   tagText: {

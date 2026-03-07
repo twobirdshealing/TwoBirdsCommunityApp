@@ -168,7 +168,7 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
         {event.image ? (
           <Image
             source={{ uri: event.image }}
-            style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColors.skeleton }]}
+            style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColors.border }]}
             contentFit="cover"
             transition={200}
             cachePolicy="memory-disk"
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
 
   // Hero Section
   heroContainer: {
-    height: 200,
+    aspectRatio: 16 / 9,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   },
 
   placeholderEmoji: {
-    fontSize: 48,
+    fontSize: sizing.icon.xxl,
   },
 
   heroGradient: {
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
 
   dateChipMonth: {
     fontSize: typography.size.xs,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     letterSpacing: 1,
     textTransform: 'uppercase',
     color: '#fff',
@@ -323,14 +323,14 @@ const styles = StyleSheet.create({
 
   dateChipDay: {
     fontSize: typography.size.xxl,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     color: '#fff',
     lineHeight: 28,
   },
 
   dateChipTime: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     color: '#fff',
     opacity: 0.9,
   },
@@ -338,17 +338,17 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: 12,
+    borderRadius: sizing.borderRadius.md,
   },
 
   statusBadgeText: {
     fontSize: typography.size.xs,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
   },
 
   heroTitle: {
     fontSize: typography.size.lg,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     color: '#fff',
     marginBottom: spacing.sm,
   },
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
 
   heroPrice: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     color: '#fff',
   },
 
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
 
   heroRsvpText: {
     fontSize: typography.size.xs,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
     color: '#fff',
   },
 
@@ -409,13 +409,13 @@ const styles = StyleSheet.create({
 
   progressBar: {
     height: 4,
-    borderRadius: 2,
+    borderRadius: sizing.borderRadius.full,
     overflow: 'hidden',
   },
 
   progressFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: sizing.borderRadius.full,
   },
 
   progressText: {
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: '100%',
     minHeight: 50,
-    borderRadius: 2,
+    borderRadius: sizing.borderRadius.full,
     marginRight: spacing.sm,
   },
 
@@ -454,18 +454,18 @@ const styles = StyleSheet.create({
   compactTitle: {
     flex: 1,
     fontSize: typography.size.md,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   statusPill: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   statusText: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.bold,
   },
 
   compactMeta: {

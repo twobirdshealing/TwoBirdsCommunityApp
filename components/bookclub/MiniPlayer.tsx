@@ -102,9 +102,9 @@ const styles = StyleSheet.create({
   },
 
   cover: {
-    width: 40,
-    height: 40,
-    borderRadius: sizing.borderRadius.xs,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
+    borderRadius: sizing.borderRadius.sm,
   },
 
   coverPlaceholder: {
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   author: {

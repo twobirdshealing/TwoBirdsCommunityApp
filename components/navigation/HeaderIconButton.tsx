@@ -8,6 +8,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
+import { sizing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -66,11 +67,11 @@ export function HeaderIconButton({
 
 const styles = StyleSheet.create({
   container: {
-    width: 40,
-    height: 40,
+    width: sizing.iconButton,
+    height: sizing.iconButton,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 20,
+    borderRadius: sizing.iconButton / 2,
   },
 
   pressed: {
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
     right: -6,
     minWidth: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 5,
@@ -91,8 +92,8 @@ const styles = StyleSheet.create({
   },
 
   badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.bold,
     lineHeight: 12,
   },
 });

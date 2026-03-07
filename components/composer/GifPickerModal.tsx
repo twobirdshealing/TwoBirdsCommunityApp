@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: spacing.xxxl,
+    paddingVertical: spacing.xxl,
   },
 
   emptyText: {
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
 
   attributionText: {
     fontSize: typography.size.xs,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 });
 

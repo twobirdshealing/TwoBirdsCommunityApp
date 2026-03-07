@@ -18,7 +18,7 @@ import { createLogger } from '@/utils/logger';
 const log = createLogger('Messages');
 import { NewMessageModal } from '@/components/message/NewMessageModal';
 import { PageHeader } from '@/components/navigation/PageHeader';
-import { spacing, typography } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getMessagePreview, getThreadDisplayName, getThreadAvatar, getThreadUserId, getThreadUsername } from '@/types/message';
 import { useAuth } from '@/contexts/AuthContext';
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
-    borderRadius: 10,
+    borderRadius: sizing.borderRadius.sm,
     gap: spacing.xs,
   },
 

@@ -210,7 +210,7 @@ export default function AudiobookPlayerScreen() {
         </View>
 
         {/* Bottom padding */}
-        <View style={{ height: spacing.xxxl * 2 }} />
+        <View style={{ height: spacing.xxl * 2 }} />
       </ScrollView>
 
       {/* Book Info Bottom Sheet */}
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
 
   bookTitle: {
     fontSize: typography.size.xl,
-    fontWeight: '700',
+    fontWeight: typography.weight.bold,
     textAlign: 'center',
     marginTop: spacing.md,
   },
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
   toolbar: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: spacing.xxxl,
+    gap: spacing.xxl,
     paddingBottom: spacing.md,
   },
 
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
 
   toolbarLabel: {
     fontSize: typography.size.xs,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
   },
 
   speedRow: {
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
 
   speedBtnText: {
     fontSize: typography.size.sm,
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   infoContent: {
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
 
   infoAuthor: {
     fontSize: typography.size.md,
-    fontWeight: '500',
+    fontWeight: typography.weight.medium,
     fontStyle: 'italic',
   },
 

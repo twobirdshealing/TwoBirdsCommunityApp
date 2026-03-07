@@ -13,7 +13,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { sizing } from '@/constants/layout';
+import { typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 
 // -----------------------------------------------------------------------------
@@ -35,17 +35,10 @@ interface AvatarProps {
 }
 
 // -----------------------------------------------------------------------------
-// Size Mapping
+// Size Mapping — canonical sizes live in constants/layout.ts → sizing.avatar
 // -----------------------------------------------------------------------------
 
-const sizeMap = {
-  xs: sizing.avatar.xs,   // 24
-  sm: sizing.avatar.sm,   // 32
-  md: sizing.avatar.md,   // 40
-  lg: sizing.avatar.lg,   // 56
-  xl: sizing.avatar.xl,   // 80
-  xxl: sizing.avatar.xxl, // 120
-};
+export const AVATAR_SIZES = sizing.avatar;
 
 // Online indicator size relative to avatar
 const indicatorSizeMap = {
@@ -68,7 +61,7 @@ export function Avatar({
   fallback = '?',
 }: AvatarProps) {
   const { colors: themeColors } = useTheme();
-  const avatarSize = sizeMap[size];
+  const avatarSize = AVATAR_SIZES[size];
   const indicatorSize = indicatorSizeMap[size];
 
   // Dynamic styles based on size
@@ -84,7 +77,7 @@ export function Avatar({
       {source ? (
         <Image
           source={{ uri: source }}
-          style={[styles.image, containerStyle, { backgroundColor: themeColors.skeleton }]}
+          style={[styles.image, containerStyle, { backgroundColor: themeColors.border }]}
           contentFit="cover"
           transition={200}
           cachePolicy="memory-disk"
@@ -108,7 +101,7 @@ export function Avatar({
             right: 0,
             bottom: 0,
             borderColor: themeColors.surface,
-            backgroundColor: themeColors.online,
+            backgroundColor: themeColors.success,
           }
         ]} />
       )}
@@ -134,7 +127,7 @@ const styles = StyleSheet.create({
   },
 
   placeholderText: {
-    fontWeight: '600',
+    fontWeight: typography.weight.semibold,
   },
 
   onlineIndicator: {
