@@ -113,6 +113,12 @@ export const FEATURES = {
 export const TBC_CA_URL = `${SITE_URL}/wp-json/tbc-ca/v1`;
 
 // -----------------------------------------------------------------------------
+// TBC Fluent Profiles Plugin (Registration, OTP, Profile Fields)
+// -----------------------------------------------------------------------------
+
+export const TBC_FP_URL = `${SITE_URL}/wp-json/tbc-fp/v1`;
+
+// -----------------------------------------------------------------------------
 // TBC Multi Reactions Plugin
 // -----------------------------------------------------------------------------
 

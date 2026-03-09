@@ -167,7 +167,7 @@ function getIconConfig(type: NotificationType, tc: ColorTheme): IconConfig {
 // Component
 // -----------------------------------------------------------------------------
 
-export function NotificationTypeIcon({
+export const NotificationTypeIcon = React.memo(function NotificationTypeIcon({
   type,
   reactionType,
   reactionIconUrl,
@@ -226,7 +226,7 @@ export function NotificationTypeIcon({
       <Ionicons name={config.icon} size={size} color={config.color} />
     </View>
   );
-}
+});
 
 // -----------------------------------------------------------------------------
 // Styles

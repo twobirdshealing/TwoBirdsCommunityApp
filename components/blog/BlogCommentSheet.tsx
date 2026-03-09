@@ -6,11 +6,10 @@
 // Rendered as a dedicated stack screen (app/blog-comments/[postId].tsx).
 // =============================================================================
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   FlatList,
   StyleSheet,
   Text,
@@ -31,12 +30,8 @@ import { blogApi } from '@/services/api/blog';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
-import {
-  RichText,
-  useEditorBridge,
-  BridgeExtension,
-  TenTapStartKit,
-} from '@10play/tentap-editor';
+import { ScreenHeader } from '@/components/common/ScreenHeader';
+import { RichText } from '@10play/tentap-editor';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { htmlToMarkdown } from '@/utils/htmlToMarkdown';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -47,6 +42,7 @@ import { formatRelativeTime } from '@/utils/formatDate';
 import { HtmlContent } from '@/components/common/HtmlContent';
 import { hapticLight, hapticWarning } from '@/utils/haptics';
 import { MarkdownToolbar } from '@/components/composer/MarkdownToolbar';
+import { useThemedEditor } from '@/hooks/useThemedEditor';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('BlogComments');
@@ -92,87 +88,9 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
 
   // ---------------------------------------------------------------------------
   // 10tap Editor Bridge for comment input
-  // Theme CSS via BridgeExtension.extendCSS — runs on WebView load, no flash.
   // ---------------------------------------------------------------------------
 
-  const themeCSS = useMemo(() => `
-    body {
-      color: ${themeColors.text};
-      background: ${themeColors.surface};
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      font-size: 15px;
-      line-height: 1.4;
-      padding: 0 12px;
-      margin: 0;
-    }
-    h2 { font-size: 18px; font-weight: 600; margin: 8px 0; }
-    h3 { font-size: 16px; font-weight: 600; margin: 6px 0; }
-    h4 { font-size: 15px; font-weight: 600; margin: 6px 0; }
-    p { margin: 4px 0; }
-    a { color: ${themeColors.primary}; text-decoration: underline; }
-    blockquote {
-      border-left: 3px solid ${themeColors.primary};
-      padding-left: 10px;
-      margin: 6px 0;
-      color: ${themeColors.textSecondary};
-      font-style: italic;
-    }
-    ul, ol { padding-left: 20px; margin: 4px 0; }
-    li { margin: 2px 0; }
-    code {
-      background: ${themeColors.backgroundSecondary};
-      padding: 1px 3px;
-      border-radius: 3px;
-      font-size: 13px;
-    }
-    pre {
-      background: ${themeColors.backgroundSecondary};
-      padding: 8px;
-      border-radius: 4px;
-      overflow-x: auto;
-    }
-    pre code { background: none; padding: 0; }
-    hr { border: none; border-top: 1px solid ${themeColors.border}; margin: 8px 0; }
-    strong { font-weight: 700; }
-    del, s { text-decoration: line-through; }
-    .ProseMirror-focused { outline: none; }
-    .is-editor-empty:first-child::before {
-      color: ${themeColors.textTertiary};
-      font-style: normal;
-    }
-  `, [themeColors]);
-
-  const themeBridge = useMemo(
-    () => new BridgeExtension({ forceName: 'tbcTheme', extendCSS: themeCSS }),
-    [themeCSS],
-  );
-
-  const bridgeExtensions = useMemo(
-    () => [...TenTapStartKit, themeBridge],
-    [themeBridge],
-  );
-
-  const editorTheme = useMemo(() => ({
-    webview: { backgroundColor: themeColors.surface },
-  }), [themeColors.surface]);
-
-  const commentEditor = useEditorBridge({
-    initialContent: '',
-    autofocus: false,
-    avoidIosKeyboard: true,
-    theme: editorTheme,
-    bridgeExtensions,
-  });
-
-  // Set placeholder once editor WebView is ready (avoids "Editor isn't ready yet" warning)
-  useEffect(() => {
-    if (!commentEditor) return;
-    const unsub = (commentEditor as any)._subscribeToEditorStateUpdate(() => {
-      commentEditor.setPlaceholder('Write a comment...');
-      unsub();
-    });
-    return unsub;
-  }, [commentEditor]);
+  const commentEditor = useThemedEditor({ placeholder: 'Write a comment...' });
 
   // ---------------------------------------------------------------------------
   // Fetch Comments
@@ -331,8 +249,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
     const ref = menuButtonRefs.current[comment.id];
     if (ref) {
       (ref as any).measureInWindow?.((x: number, y: number, width: number, height: number) => {
-        const screenWidth = Dimensions.get('window').width;
-        setMenuAnchor({ top: y + height + 4, right: screenWidth - x - width });
+        setMenuAnchor({ top: y + height + 4, right: windowWidth - x - width });
         setMenuComment(comment);
       });
     } else {
@@ -482,17 +399,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
       <KeyboardAvoidingView behavior="padding" style={styles.modalContainer}>
       <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.surface }]} edges={['top']}>
         {/* Header */}
-        <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
-          <Pressable
-            onPress={onClose}
-            style={styles.closeButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="close" size={24} color={themeColors.text} />
-          </Pressable>
-          <Text style={[styles.headerTitle, { color: themeColors.text }]}>Comments</Text>
-          <View style={styles.headerSpacer} />
-        </View>
+        <ScreenHeader title="Comments" onClose={onClose} />
 
         {/* Comments list */}
         <View style={[styles.contentArea, { backgroundColor: themeColors.background }]}>
@@ -549,7 +456,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
 
           {/* Edit indicator */}
           {editingComment && (
-            <View style={[styles.replyIndicator, { backgroundColor: themeColors.warning + '20' }]}>
+            <View style={[styles.replyIndicator, { backgroundColor: withOpacity(themeColors.warning, 0.12) }]}>
               <Text style={[styles.replyIndicatorText, { color: themeColors.textSecondary }]}>
                 Editing comment
               </Text>
@@ -613,32 +520,6 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-  },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-  },
-
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-  },
-
-  closeButton: {
-    width: sizing.iconButton,
-    height: sizing.iconButton,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  headerSpacer: {
-    width: sizing.iconButton,
   },
 
   contentArea: {

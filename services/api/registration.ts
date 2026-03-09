@@ -1,12 +1,11 @@
 // =============================================================================
 // REGISTRATION API SERVICE - Mobile app registration endpoints
 // =============================================================================
-// Endpoints are on the TBC-CA plugin, NOT Fluent Community API.
+// Endpoints are on the TBC Fluent Profiles plugin (tbc-fp/v1).
 // These are PUBLIC endpoints (no auth required).
-// Follows the same pattern as push.ts for TBC-CA API calls.
 // =============================================================================
 
-import { TBC_CA_URL } from '@/constants/config';
+import { TBC_FP_URL, TBC_CA_URL } from '@/constants/config';
 import { verifyOtp, resendOtp, requestVoiceCall } from './otp';
 import { createLogger } from '@/utils/logger';
 
@@ -20,7 +19,7 @@ export interface RegistrationField {
   label: string;
   placeholder?: string;
   instructions?: string;
-  type: 'text' | 'email' | 'password' | 'phone' | 'date' | 'number' | 'select' | 'radio' | 'gender' | 'textarea' | 'url' | 'inline_checkbox';
+  type: 'text' | 'email' | 'password' | 'phone' | 'date' | 'number' | 'select' | 'radio' | 'gender' | 'textarea' | 'url' | 'inline_checkbox' | 'checkbox' | 'multiselect';
   input_type?: string;
   required: boolean;
   options?: string[];
@@ -78,15 +77,16 @@ export interface PasswordResetResponse {
 }
 
 // -----------------------------------------------------------------------------
-// Helper: Make public (unauthenticated) request to TBC-CA endpoints
+// Helper: Make public (unauthenticated) request to TBC-FP endpoints
 // -----------------------------------------------------------------------------
 
 async function tbcPublicRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  baseUrl: string = TBC_FP_URL
 ): Promise<{ success: true; data: T } | { success: false; error: string; data?: Record<string, unknown> }> {
   try {
-    const response = await fetch(`${TBC_CA_URL}${endpoint}`, {
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       ...options,
       headers: {
         'Accept': 'application/json',
@@ -166,7 +166,7 @@ export async function forgotPassword(login: string): Promise<ForgotPasswordRespo
   const result = await tbcPublicRequest<ForgotPasswordResponse>('/password/forgot', {
     method: 'POST',
     body: JSON.stringify({ login }),
-  });
+  }, TBC_CA_URL);
 
   if (result.success) {
     return result.data;
@@ -194,7 +194,7 @@ export async function resetPassword(
   const result = await tbcPublicRequest<PasswordResetResponse>('/password/reset', {
     method: 'POST',
     body: JSON.stringify({ reset_token: resetToken, login, new_password: newPassword }),
-  });
+  }, TBC_CA_URL);
 
   if (result.success) {
     return result.data;

@@ -4,6 +4,9 @@ do not create new depndacies or utilites without asking. check entire project fi
 
 we DONT want to break things!
 dont guess or make up apis always check first
+
+after fixes or completed task ask user if we want to run /simplify
+
 ## Import Rules — Direct Imports Only
 
 **No barrel files (`index.ts` re-exports).** Always import directly from the source file. Metro bundler doesn't tree-shake — barrel imports force it to load every sibling module even when you only need one. They also cause circular dependency issues and slow cold start on mobile.

@@ -22,7 +22,7 @@ interface CourseCardProps {
   onPress: () => void;
 }
 
-export function CourseCard({ course, onPress }: CourseCardProps) {
+export const CourseCard = React.memo(function CourseCard({ course, onPress }: CourseCardProps) {
   const { colors: themeColors } = useTheme();
 
   const hasCoverPhoto = course.cover_photo && course.cover_photo.trim() !== ''
@@ -128,7 +128,7 @@ export function CourseCard({ course, onPress }: CourseCardProps) {
       )}
     </AnimatedPressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

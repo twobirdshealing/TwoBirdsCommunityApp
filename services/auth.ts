@@ -154,8 +154,12 @@ export async function login(username: string, password: string): Promise<LoginRe
       id: loginData.user.id,
       username: loginData.user.username,
       displayName: loginData.user.display_name,
+      firstName: loginData.user.first_name || undefined,
+      lastName: loginData.user.last_name || undefined,
       email: loginData.user.email,
       avatar: loginData.user.avatar || undefined,
+      isVerified: loginData.user.is_verified,
+      status: loginData.user.status,
     };
 
     // Store user info

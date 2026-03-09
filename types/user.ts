@@ -143,6 +143,10 @@ export interface AuthUser {
   id?: number;
   username: string;
   displayName: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   avatar?: string;
+  isVerified?: number;
+  status?: string;
 }

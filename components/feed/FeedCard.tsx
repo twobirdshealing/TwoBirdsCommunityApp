@@ -125,7 +125,7 @@ interface FeedCardProps {
 // Component
 // -----------------------------------------------------------------------------
 
-export function FeedCard({
+export const FeedCard = React.memo(function FeedCard({
   feed,
   onReact,
   onAuthorPress,
@@ -640,7 +640,7 @@ export function FeedCard({
       />
     </View>
   );
-}
+});
 
 // -----------------------------------------------------------------------------
 // Styles

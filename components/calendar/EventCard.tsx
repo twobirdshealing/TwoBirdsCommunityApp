@@ -116,7 +116,7 @@ function formatPrice(priceRaw: number, deposit: number | null): string {
 // Component
 // -----------------------------------------------------------------------------
 
-export function EventCard({ event, onPress, compact = false }: EventCardProps) {
+export const EventCard = React.memo(function EventCard({ event, onPress, compact = false }: EventCardProps) {
   const { colors: themeColors } = useTheme();
   const status = getStatusConfig(event, themeColors);
   const eventDate = formatEventDate(event.start, event.end, event.start_time);
@@ -259,7 +259,7 @@ export function EventCard({ event, onPress, compact = false }: EventCardProps) {
       )}
     </AnimatedPressable>
   );
-}
+});
 
 // -----------------------------------------------------------------------------
 // Styles

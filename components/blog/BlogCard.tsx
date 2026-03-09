@@ -40,7 +40,7 @@ interface BlogCardProps {
 // Component
 // -----------------------------------------------------------------------------
 
-export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
+export const BlogCard = React.memo(function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
   const { colors: themeColors } = useTheme();
 
   // Extract embedded data
@@ -183,7 +183,7 @@ export function BlogCard({ post, onPress, onAuthorPress }: BlogCardProps) {
       )}
     </AnimatedPressable>
   );
-}
+});
 
 // -----------------------------------------------------------------------------
 // Styles

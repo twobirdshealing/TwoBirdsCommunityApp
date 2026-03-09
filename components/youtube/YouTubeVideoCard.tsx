@@ -35,7 +35,7 @@ interface YouTubeVideoCardProps {
 // Component
 // -----------------------------------------------------------------------------
 
-export function YouTubeVideoCard({ video, width }: YouTubeVideoCardProps) {
+export const YouTubeVideoCard = React.memo(function YouTubeVideoCard({ video, width }: YouTubeVideoCardProps) {
   const { colors: themeColors } = useTheme();
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -99,7 +99,7 @@ export function YouTubeVideoCard({ video, width }: YouTubeVideoCardProps) {
       )}
     </View>
   );
-}
+});
 
 // -----------------------------------------------------------------------------
 // Styles

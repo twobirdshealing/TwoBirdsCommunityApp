@@ -31,7 +31,7 @@ interface ReactionIconProps {
 // Component
 // -----------------------------------------------------------------------------
 
-export function ReactionIcon({ iconUrl, emoji, size = 20, stroke = 0, borderColor }: ReactionIconProps) {
+export const ReactionIcon = React.memo(function ReactionIcon({ iconUrl, emoji, size = 20, stroke = 0, borderColor }: ReactionIconProps) {
   const { colors: themeColors } = useTheme();
   const resolvedBorderColor = borderColor || themeColors.borderLight;
   const hasStroke = stroke > 0;
@@ -80,4 +80,4 @@ export function ReactionIcon({ iconUrl, emoji, size = 20, stroke = 0, borderColo
   }
 
   return <>{content}</>;
-}
+});

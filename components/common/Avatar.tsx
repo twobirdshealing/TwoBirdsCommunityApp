@@ -54,7 +54,7 @@ const indicatorSizeMap = {
 // Component
 // -----------------------------------------------------------------------------
 
-export function Avatar({
+export const Avatar = React.memo(function Avatar({
   source,
   size = 'md',
   online = false,
@@ -107,7 +107,7 @@ export function Avatar({
       )}
     </View>
   );
-}
+});
 
 // -----------------------------------------------------------------------------
 // Styles

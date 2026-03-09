@@ -25,7 +25,7 @@ interface BookCardProps {
 // Component
 // -----------------------------------------------------------------------------
 
-export function BookCard({ book, onPress }: BookCardProps) {
+export const BookCard = React.memo(function BookCard({ book, onPress }: BookCardProps) {
   const { colors: themeColors } = useTheme();
 
   return (
@@ -68,7 +68,7 @@ export function BookCard({ book, onPress }: BookCardProps) {
       <Ionicons name="chevron-forward" size={20} color={themeColors.textTertiary} />
     </AnimatedPressable>
   );
-}
+});
 
 // -----------------------------------------------------------------------------
 // Styles

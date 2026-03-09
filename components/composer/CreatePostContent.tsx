@@ -1,23 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   Keyboard,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import {
-  RichText,
-  useEditorBridge,
-  BridgeExtension,
-  TenTapStartKit,
-} from '@10play/tentap-editor';
+import { RichText } from '@10play/tentap-editor';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
+import { ScreenHeader } from '@/components/common/ScreenHeader';
+import { useThemedEditor } from '@/hooks/useThemedEditor';
 import { ComposerToolbar } from './ComposerToolbar';
 import { MarkdownToolbar } from './MarkdownToolbar';
 import { SpaceSelector } from './SpaceSelector';
@@ -145,96 +141,12 @@ export function CreatePostContent({
 
   // ---------------------------------------------------------------------------
   // 10tap Editor Bridge
-  // Theme CSS is provided via a custom BridgeExtension's extendCSS, which gets
-  // baked into the WebView's injectedJavaScript prop and runs immediately when
-  // the page loads — no race condition, no flash of unstyled content.
-  // PlaceholderBridge.configureExtension() crashes the WebView, so we set the
-  // placeholder text at runtime once the editor signals readiness.
   // ---------------------------------------------------------------------------
 
-  const themeCSS = useMemo(() => `
-    body {
-      color: ${themeColors.text};
-      background: ${themeColors.surface};
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      font-size: 16px;
-      line-height: 1.5;
-      padding: 0 ${spacing.md}px;
-      margin: 0;
-    }
-    h2 { font-size: 20px; font-weight: 600; margin: 12px 0; color: ${themeColors.text}; }
-    h3 { font-size: 18px; font-weight: 600; margin: 8px 0; color: ${themeColors.text}; }
-    h4 { font-size: 16px; font-weight: 600; margin: 8px 0; color: ${themeColors.text}; }
-    p { margin: 6px 0; }
-    a { color: ${themeColors.primary}; text-decoration: underline; }
-    blockquote {
-      border-left: 3px solid ${themeColors.primary};
-      padding-left: 12px;
-      margin: 8px 0;
-      color: ${themeColors.textSecondary};
-      font-style: italic;
-    }
-    ul, ol { padding-left: 24px; margin: 6px 0; }
-    li { margin: 2px 0; }
-    code {
-      background: ${themeColors.backgroundSecondary};
-      padding: 2px 4px;
-      border-radius: 3px;
-      font-size: 14px;
-    }
-    pre {
-      background: ${themeColors.backgroundSecondary};
-      padding: 12px;
-      border-radius: 6px;
-      overflow-x: auto;
-    }
-    pre code { background: none; padding: 0; }
-    hr {
-      border: none;
-      border-top: 1px solid ${themeColors.border};
-      margin: 12px 0;
-    }
-    strong { font-weight: 700; }
-    del, s { text-decoration: line-through; }
-    .ProseMirror-focused { outline: none; }
-    .is-editor-empty:first-child::before {
-      color: ${themeColors.textTertiary};
-      font-style: normal;
-    }
-  `, [themeColors]);
-
-  const themeBridge = useMemo(
-    () => new BridgeExtension({ forceName: 'tbcTheme', extendCSS: themeCSS }),
-    [themeCSS],
-  );
-
-  const bridgeExtensions = useMemo(
-    () => [...TenTapStartKit, themeBridge],
-    [themeBridge],
-  );
-
-  const editorTheme = useMemo(() => ({
-    webview: { backgroundColor: themeColors.surface },
-  }), [themeColors.surface]);
-
-  const editor = useEditorBridge({
+  const editor = useThemedEditor({
+    placeholder: "What's happening?",
     initialContent,
-    autofocus: false,
-    avoidIosKeyboard: true,
-    theme: editorTheme,
-    bridgeExtensions,
   });
-
-  // Set placeholder once editor WebView is ready (avoids "Editor isn't ready yet" warning).
-  // _subscribeToEditorStateUpdate fires when the WebView sends its first state update.
-  useEffect(() => {
-    if (!editor) return;
-    const unsub = (editor as any)._subscribeToEditorStateUpdate(() => {
-      editor.setPlaceholder("What's happening?");
-      unsub();
-    });
-    return unsub;
-  }, [editor]);
 
   // ---------------------------------------------------------------------------
   // State
@@ -458,19 +370,7 @@ export function CreatePostContent({
     <>
       <SafeAreaView style={[styles.container, { backgroundColor: themeColors.surface }]} edges={['top']}>
         {/* Header */}
-        <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
-          <Pressable
-            onPress={onClose}
-            style={styles.closeButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="close" size={24} color={themeColors.text} />
-          </Pressable>
-          <Text style={[styles.headerTitle, { color: themeColors.text }]}>
-            {isEditing ? 'Edit Post' : 'Create Post'}
-          </Text>
-          <View style={styles.headerSpacer} />
-        </View>
+        <ScreenHeader title={isEditing ? 'Edit Post' : 'Create Post'} onClose={onClose} />
 
         {/* Space indicator or selector */}
         {effectiveSpaceName ? (
@@ -595,32 +495,6 @@ export function CreatePostContent({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-  },
-
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-  },
-
-  closeButton: {
-    width: sizing.iconButton,
-    height: sizing.iconButton,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  headerSpacer: {
-    width: sizing.iconButton,
   },
 
   spaceIndicator: {

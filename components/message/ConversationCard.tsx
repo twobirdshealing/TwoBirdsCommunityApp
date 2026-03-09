@@ -50,7 +50,7 @@ interface ConversationCardProps {
 // Component
 // -----------------------------------------------------------------------------
 
-export function ConversationCard({
+export const ConversationCard = React.memo(function ConversationCard({
   thread,
   currentUserId,
   isUnread = false,
@@ -185,7 +185,7 @@ export function ConversationCard({
   }
 
   return cardContent;
-}
+});
 
 // -----------------------------------------------------------------------------
 // Styles

@@ -48,10 +48,10 @@ export function SpaceLockScreen({ config, onRequestAccess, isPending, isRequesti
         <View style={[styles.defaultCard, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
           <Ionicons name="time-outline" size={48} color={themeColors.textTertiary} />
           <Text style={[styles.defaultTitle, { color: themeColors.text }]}>
-            Your request is pending
+            You're all set!
           </Text>
           <Text style={[styles.defaultDescription, { color: themeColors.textSecondary }]}>
-            An admin will review your join request.
+            A team member will review and let you in soon.
           </Text>
         </View>
       </View>
@@ -78,7 +78,7 @@ export function SpaceLockScreen({ config, onRequestAccess, isPending, isRequesti
                 <ActivityIndicator size="small" color={themeColors.textInverse} />
               ) : (
                 <Text style={[styles.requestButtonText, { color: themeColors.textInverse }]}>
-                  Request Access
+                  Ask to Join
                 </Text>
               )}
             </Pressable>
@@ -97,7 +97,7 @@ export function SpaceLockScreen({ config, onRequestAccess, isPending, isRequesti
           This is a private space
         </Text>
         <Text style={[styles.defaultDescription, { color: themeColors.textSecondary }]}>
-          Please send a join request and an admin will review your join request.
+          Ask to join and a team member will let you in soon.
         </Text>
         {config.canSendRequest && (
           <Pressable

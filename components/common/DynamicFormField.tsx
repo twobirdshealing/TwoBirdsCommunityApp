@@ -2,7 +2,7 @@
 // DYNAMIC FORM FIELD - Shared field renderer for registration & profile edit
 // =============================================================================
 // Handles the common field types used in both register.tsx and profile/edit.tsx:
-// text, email, phone, number, date, url, textarea, select/radio/gender, password,
+// text, email, phone, number, date, url, textarea, select, gender, radio, password,
 // inline_checkbox, and multiselect/checkbox chips.
 //
 // Unique features per context are supported via optional props:
@@ -15,6 +15,7 @@
 
 import React, { useState } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -22,9 +23,13 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import PhoneInput, { getCountryByPhoneNumber } from 'react-native-international-phone-number';
+import type { ICountry } from 'react-native-international-phone-number';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticLight, hapticSelection } from '@/utils/haptics';
+import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -58,10 +63,21 @@ interface DynamicFormFieldProps {
 }
 
 // -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatDisplayDate(date: Date): string {
+  // Use UTC getters — date-only strings ("YYYY-MM-DD") are parsed as UTC midnight
+  return `${SHORT_MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+}
+
+// -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
-export function DynamicFormField({
+export const DynamicFormField = React.memo(function DynamicFormField({
   fieldKey,
   field,
   value,
@@ -72,11 +88,22 @@ export function DynamicFormField({
   extraContent,
   labelExtra,
 }: DynamicFormFieldProps) {
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, isDark } = useTheme();
   const currentValue = value ?? '';
 
   // Password visibility (local state — each password field manages its own)
   const [passwordVisible, setPasswordVisible] = useState(false);
+
+  // Date picker visibility
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Phone input country
+  const [phoneCountry, setPhoneCountry] = useState<ICountry | null>(() => {
+    if (field.type === 'phone' && currentValue) {
+      return getCountryByPhoneNumber(currentValue) ?? null;
+    }
+    return null;
+  });
 
   // ---------------------------------------------------------------------------
   // Inline Checkbox
@@ -98,7 +125,7 @@ export function DynamicFormField({
             {currentValue && <Text style={[styles.checkmark, { color: themeColors.textInverse }]}>✓</Text>}
           </View>
           <Text style={[styles.checkboxLabel, { color: themeColors.text }]}>
-            {field.inline_label || field.label}
+            {decodeHtmlEntities(stripHtmlTags(field.inline_label || field.label))}
             {field.required && <Text style={{ color: themeColors.error }}> *</Text>}
           </Text>
         </Pressable>
@@ -109,10 +136,162 @@ export function DynamicFormField({
   }
 
   // ---------------------------------------------------------------------------
-  // Select / Radio / Gender
+  // Date (native date picker)
   // ---------------------------------------------------------------------------
 
-  if (field.type === 'select' || field.type === 'radio' || field.type === 'gender') {
+  if (field.type === 'date') {
+    const dateValue = currentValue ? new Date(currentValue) : undefined;
+    const isValidDate = dateValue && !isNaN(dateValue.getTime());
+
+    return (
+      <View key={fieldKey} style={styles.inputContainer}>
+        <Text style={[styles.label, { color: themeColors.text }]}>
+          {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
+        </Text>
+        {labelExtra}
+        {field.instructions ? (
+          <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
+        ) : null}
+        <Pressable
+          style={[
+            styles.input,
+            styles.selectInput,
+            {
+              backgroundColor: themeColors.background,
+              borderColor: error ? themeColors.error : themeColors.border,
+            },
+          ]}
+          onPress={() => { hapticLight(); setShowDatePicker(true); }}
+          disabled={disabled}
+        >
+          <Text style={[
+            styles.selectText,
+            { color: isValidDate ? themeColors.text : themeColors.textTertiary },
+          ]}>
+            {isValidDate ? formatDisplayDate(dateValue!) : (field.placeholder || 'Select date')}
+          </Text>
+          <Ionicons name="calendar-outline" size={18} color={themeColors.textSecondary} />
+        </Pressable>
+        {showDatePicker && (
+          <DateTimePicker
+            value={isValidDate ? dateValue! : new Date()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            themeVariant={isDark ? 'dark' : 'light'}
+            onChange={(_event, selectedDate) => {
+              setShowDatePicker(Platform.OS === 'ios');
+              if (selectedDate) {
+                const yyyy = selectedDate.getFullYear();
+                const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(selectedDate.getDate()).padStart(2, '0');
+                onChange(`${yyyy}-${mm}-${dd}`);
+              }
+            }}
+          />
+        )}
+        {extraContent}
+        {error && <Text style={[styles.fieldError, { color: themeColors.error }]}>{error}</Text>}
+      </View>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phone (international phone input with country picker)
+  // ---------------------------------------------------------------------------
+
+  if (field.type === 'phone') {
+    const phoneStyles = {
+      container: {
+        borderWidth: 1,
+        borderColor: error ? themeColors.error : themeColors.border,
+        borderRadius: sizing.borderRadius.md,
+        backgroundColor: themeColors.background,
+      },
+      input: {
+        fontSize: typography.size.md,
+        color: themeColors.text,
+      },
+      flagContainer: {
+        backgroundColor: themeColors.background,
+        borderTopLeftRadius: sizing.borderRadius.md,
+        borderBottomLeftRadius: sizing.borderRadius.md,
+      },
+    };
+    return (
+      <View key={fieldKey} style={styles.inputContainer}>
+        <Text style={[styles.label, { color: themeColors.text }]}>
+          {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
+        </Text>
+        {labelExtra}
+        {field.instructions ? (
+          <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
+        ) : null}
+        <PhoneInput
+          value={currentValue}
+          onChangePhoneNumber={onChange}
+          selectedCountry={phoneCountry}
+          onChangeSelectedCountry={setPhoneCountry}
+          defaultCountry="US"
+          modalDisabled
+          theme={isDark ? 'dark' : 'light'}
+          placeholder={field.placeholder || 'Phone number'}
+          phoneInputStyles={phoneStyles}
+          phoneInputPlaceholderTextColor={themeColors.textTertiary}
+          disabled={disabled}
+        />
+        {extraContent}
+        {error && <Text style={[styles.fieldError, { color: themeColors.error }]}>{error}</Text>}
+      </View>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Radio (inline single-select options)
+  // ---------------------------------------------------------------------------
+
+  if (field.type === 'radio') {
+    return (
+      <View key={fieldKey} style={styles.inputContainer}>
+        <Text style={[styles.label, { color: themeColors.text }]}>
+          {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
+        </Text>
+        {labelExtra}
+        {field.instructions ? (
+          <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
+        ) : null}
+        <View style={styles.radioGroup}>
+          {(field.options || []).map((option) => {
+            const isSelected = currentValue === option;
+            return (
+              <Pressable
+                key={option}
+                style={styles.radioRow}
+                onPress={() => { hapticSelection(); onChange(option); }}
+              >
+                <View style={[
+                  styles.radioOuter,
+                  { borderColor: isSelected ? themeColors.primary : themeColors.border },
+                ]}>
+                  {isSelected && (
+                    <View style={[styles.radioInner, { backgroundColor: themeColors.primary }]} />
+                  )}
+                </View>
+                <Text style={[styles.radioLabel, { color: themeColors.text }]}>{option}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {extraContent}
+        {error && <Text style={[styles.fieldError, { color: themeColors.error }]}>{error}</Text>}
+      </View>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Select / Gender (dropdown picker)
+  // ---------------------------------------------------------------------------
+
+  if (field.type === 'select' || field.type === 'gender') {
     return (
       <View key={fieldKey} style={styles.inputContainer}>
         <Text style={[styles.label, { color: themeColors.text }]}>
@@ -135,7 +314,6 @@ export function DynamicFormField({
             hapticLight();
             onSelectPress?.(fieldKey);
           }}
-
         >
           <Text style={[
             styles.selectText,
@@ -292,7 +470,7 @@ export function DynamicFormField({
   }
 
   // ---------------------------------------------------------------------------
-  // Default: text, email, phone, number, date, url
+  // Default: text, email, number, url
   // ---------------------------------------------------------------------------
 
   let keyboardType: TextInput['props']['keyboardType'] = 'default';
@@ -306,16 +484,8 @@ export function DynamicFormField({
       autoCapitalize = 'none';
       autoComplete = 'email';
       break;
-    case 'phone':
-      keyboardType = 'phone-pad';
-      autoCapitalize = 'none';
-      break;
     case 'number':
       keyboardType = 'numeric';
-      break;
-    case 'date':
-      placeholder = placeholder || 'YYYY-MM-DD';
-      autoCapitalize = 'none';
       break;
     case 'url':
       keyboardType = 'url';
@@ -362,7 +532,7 @@ export function DynamicFormField({
       {error && <Text style={[styles.fieldError, { color: themeColors.error }]}>{error}</Text>}
     </View>
   );
-}
+});
 
 // -----------------------------------------------------------------------------
 // Styles
@@ -452,6 +622,37 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     fontSize: typography.size.sm,
     flex: 1,
+  },
+
+  // Radio
+  radioGroup: {
+    gap: spacing.sm,
+  },
+
+  radioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+
+  radioLabel: {
+    fontSize: typography.size.md,
   },
 
   // Chip toggles (multiselect/checkbox)

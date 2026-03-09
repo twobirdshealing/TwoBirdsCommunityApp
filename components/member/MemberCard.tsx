@@ -125,7 +125,7 @@ const formatLastActive = (dateString: string | undefined): string => {
 // Component
 // -----------------------------------------------------------------------------
 
-export function MemberCard({
+export const MemberCard = React.memo(function MemberCard({
   member,
   onPress,
   onMessagePress,
@@ -302,7 +302,7 @@ export function MemberCard({
   }
 
   return content;
-}
+});
 
 // -----------------------------------------------------------------------------
 // Styles

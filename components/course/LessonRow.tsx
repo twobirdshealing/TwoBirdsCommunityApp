@@ -19,7 +19,7 @@ interface LessonRowProps {
   onPress: () => void;
 }
 
-export function LessonRow({ lesson, index, isCompleted, onPress }: LessonRowProps) {
+export const LessonRow = React.memo(function LessonRow({ lesson, index, isCompleted, onPress }: LessonRowProps) {
   const { colors: themeColors } = useTheme();
   const isLocked = lesson.is_locked || !lesson.can_view;
 
@@ -85,7 +85,7 @@ export function LessonRow({ lesson, index, isCompleted, onPress }: LessonRowProp
       )}
     </AnimatedPressable>
   );
-}
+});
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);

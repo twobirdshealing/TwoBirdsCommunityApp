@@ -3,10 +3,10 @@
 // =============================================================================
 
 import * as authService from '@/services/auth';
-import { profilesApi } from '@/services/api/profiles';
 import { clearBadgeCache } from '@/services/api/badges';
 import { clearSocialProvidersCache } from '@/services/api/socialProviders';
 import { clearReactionConfigCache } from '@/hooks/useReactionConfig';
+import { clearBatchFresh } from '@/utils/batchCache';
 import { registerDeviceToken } from '@/services/push';
 import { FEATURES } from '@/constants/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -80,22 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
           }
 
-          // Background refresh: pick up changes made on web (avatar, name, etc.)
-          if (storedUser.username) {
-            profilesApi.getProfile(storedUser.username).then(res => {
-              if (res.success && res.data.profile) {
-                const p = res.data.profile;
-                const updates: Partial<AuthUser> = {};
-                if (p.user_id && p.user_id !== storedUser.id) updates.id = p.user_id;
-                if (p.avatar !== (storedUser.avatar || null)) updates.avatar = p.avatar || undefined;
-                if (p.display_name && p.display_name !== storedUser.displayName) updates.displayName = p.display_name;
-                if (Object.keys(updates).length > 0) {
-                  authService.updateStoredUser(updates);
-                  setUser(prev => prev ? { ...prev, ...updates } : prev);
-                }
-              }
-            }).catch(() => { /* silent — cached data still works */ });
-          }
+          // Profile sync is handled by the startup batch (useStartupData)
+          // which fires once after auth and distributes profile updates via onProfileUpdate.
         } else {
           // Has auth but no user info - clear it
           await authService.clearAuth();
@@ -137,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearBadgeCache();
       clearSocialProvidersCache();
       clearReactionConfigCache();
+      clearBatchFresh();
 
       // Clear user-specific AsyncStorage caches (keep account-agnostic preferences)
       try {
@@ -145,7 +132,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           k.startsWith('tbc_activity_') ||
           k.startsWith('tbc_bookmarks') ||
           k.startsWith('tbc_feed_') ||
-          k.startsWith('tbc_widget_events') ||
+          k.startsWith('tbc_widget_') ||
+          k.startsWith('tbc_welcome_') ||
           k.startsWith('tbc_calendar_')
         );
         if (userCacheKeys.length > 0) {

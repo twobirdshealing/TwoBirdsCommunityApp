@@ -4,6 +4,7 @@
 // Cover image with gradient overlay, title + stats on hero, badges below.
 // =============================================================================
 
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,7 +30,7 @@ const getPrivacyIcon = (privacy: string): keyof typeof Ionicons.glyphMap => {
   }
 };
 
-export function SpaceCard({ space, onPress }: SpaceCardProps) {
+export const SpaceCard = React.memo(function SpaceCard({ space, onPress }: SpaceCardProps) {
   const { colors: themeColors } = useTheme();
 
   // Card cover: og_image (card preview) → cover_photo (banner) → placeholder
@@ -121,7 +122,7 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
           )}
           {isPending ? (
             <View style={[styles.heroBadge, styles.heroBadgeGlass]}>
-              <Text style={styles.heroBadgeText}>Pending</Text>
+              <Text style={styles.heroBadgeText}>Awaiting</Text>
             </View>
           ) : isMember ? (
             <View style={[styles.heroBadge, styles.heroBadgeGlass]}>
@@ -130,7 +131,7 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
           ) : (
             <View style={[styles.heroBadge, styles.heroBadgeGlass, styles.heroBadgeOutlined]}>
               <Text style={styles.heroBadgeText}>
-                {space.privacy === 'private' ? 'Request' : 'Join'}
+                Join
               </Text>
             </View>
           )}
@@ -147,7 +148,7 @@ export function SpaceCard({ space, onPress }: SpaceCardProps) {
       )}
     </AnimatedPressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

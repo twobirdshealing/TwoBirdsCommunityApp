@@ -5,7 +5,7 @@
 // Step 2: Custom profile fields + terms
 // Step 3: Email verification (if required)
 // Step 4: Phone OTP verification (if required)
-// Step 5: Social links (post auto-login, optional)
+// Step 5: Bio + website + social links (post auto-login, bio required)
 // Step 6: Avatar upload (post auto-login, optional)
 // =============================================================================
 
@@ -31,6 +31,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { SocialLinksForm } from '@/components/common/SocialLinksForm';
 import { DynamicFormField } from '@/components/common/DynamicFormField';
+import { PasswordStrengthMeter } from '@/components/common/PasswordStrengthMeter';
 import { SelectModal } from '@/components/common/SelectModal';
 import { useSocialProviders } from '@/hooks/useSocialProviders';
 import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
@@ -79,7 +80,9 @@ export default function RegisterScreen() {
   const [emailResendTimer, setEmailResendTimer] = useState(0);
   const [verificationToken, setVerificationToken] = useState('');
 
-  // Social links state (step 5)
+  // Step 5 state (bio + website + social links)
+  const [bio, setBio] = useState('');
+  const [website, setWebsite] = useState('');
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
   const [savingSocial, setSavingSocial] = useState(false);
 
@@ -179,12 +182,6 @@ export default function RegisterScreen() {
           errors[key] = 'Username must be at least 4 characters.';
         } else if (!/^[a-z0-9_]+$/.test(value)) {
           errors[key] = 'Username can only contain lowercase letters, numbers, and underscores.';
-        }
-      }
-
-      if (key === 'password' && value) {
-        if (value.length < 6) {
-          errors[key] = 'Password must be at least 6 characters.';
         }
       }
 
@@ -363,11 +360,12 @@ export default function RegisterScreen() {
   // Social links (Step 5)
   // ---------------------------------------------------------------------------
 
-  const handleSaveSocialLinks = useCallback(async () => {
+  const handleSaveStep5 = useCallback(async () => {
     hapticMedium();
-    const hasAnyLink = Object.values(socialLinks).some(v => v.trim() !== '');
-    if (!hasAnyLink) {
-      setStep(6);
+
+    const bioTrimmed = bio.trim();
+    if (!bioTrimmed) {
+      setError('Please write a short bio before continuing.');
       return;
     }
 
@@ -376,24 +374,50 @@ export default function RegisterScreen() {
 
     try {
       const username = currentUser?.username || formData.username || '';
-      const response = await updateProfile(username, {
+
+      // Use formData from step 1; fall back to currentUser (app restart scenario)
+      // or split displayName as last resort
+      let firstName = formData.first_name || currentUser?.firstName || '';
+      let lastName = formData.last_name || currentUser?.lastName || '';
+      if (!firstName && currentUser?.displayName) {
+        const parts = currentUser.displayName.trim().split(/\s+/);
+        firstName = parts[0] || '';
+        lastName = parts.slice(1).join(' ') || '';
+      }
+
+      const profileData: Record<string, any> = {
+        username,
         user_id: currentUser?.id,
-        first_name: formData.first_name || '',
-        last_name: formData.last_name || '',
-        social_links: socialLinks,
-      });
+        first_name: firstName,
+        last_name: lastName,
+        short_description: bioTrimmed,
+      };
+
+      const websiteTrimmed = website.trim();
+      if (websiteTrimmed) {
+        profileData.website = websiteTrimmed;
+      }
+
+      const trimmedLinks = Object.fromEntries(
+        Object.entries(socialLinks).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim()])
+      );
+      if (Object.keys(trimmedLinks).length > 0) {
+        profileData.social_links = trimmedLinks;
+      }
+
+      const response = await updateProfile(username, profileData);
 
       if (response.success) {
         setStep(6);
       } else {
-        setError('Could not save social links. You can add them later from your profile.');
+        setError('Could not save profile. Please try again.');
       }
     } catch (e) {
-      setError('Could not save social links. You can add them later from your profile.');
+      setError('Could not save profile. Please try again.');
     } finally {
       setSavingSocial(false);
     }
-  }, [socialLinks, currentUser, formData]);
+  }, [bio, website, socialLinks, currentUser, formData]);
 
   // ---------------------------------------------------------------------------
   // Avatar + Cover photo upload (Step 6)
@@ -470,6 +494,7 @@ export default function RegisterScreen() {
           setSelectModalVisible(true);
         }}
         disabled={submitting}
+        extraContent={key === 'password' ? <PasswordStrengthMeter password={formData[key] ?? ''} /> : undefined}
       />
     );
   }, [formData, fieldErrors, submitting, setFieldValue]);
@@ -750,17 +775,67 @@ export default function RegisterScreen() {
     </>
   );
 
-  const renderStep5_SocialLinks = () => (
+  const renderStep5_AboutYou = () => (
     <>
       <View style={styles.avatarHeader}>
         <Text style={[styles.otpTitle, { color: themeColors.text }]}>
-          Connect Your Socials
+          About You
         </Text>
         <Text style={[styles.otpSubtitle, { color: themeColors.textSecondary }]}>
-          Let others find you on social media
+          Tell people a little about yourself
         </Text>
       </View>
 
+      {/* Bio (required) */}
+      <View style={styles.inputContainer}>
+        <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
+          Bio <Text style={{ color: themeColors.error }}>*</Text>
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            styles.bioInput,
+            {
+              backgroundColor: themeColors.background,
+              borderColor: themeColors.border,
+              color: themeColors.text,
+            },
+          ]}
+          value={bio}
+          onChangeText={setBio}
+          placeholder="A few words about yourself..."
+          placeholderTextColor={themeColors.textTertiary}
+          multiline
+          maxLength={500}
+          textAlignVertical="top"
+        />
+      </View>
+
+      {/* Website (optional) */}
+      <View style={styles.inputContainer}>
+        <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
+          Website
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: themeColors.background,
+              borderColor: themeColors.border,
+              color: themeColors.text,
+            },
+          ]}
+          value={website}
+          onChangeText={setWebsite}
+          placeholder="https://yourwebsite.com"
+          placeholderTextColor={themeColors.textTertiary}
+          keyboardType="url"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
+
+      {/* Social links */}
       <SocialLinksForm
         providers={socialProviders}
         values={socialLinks}
@@ -769,7 +844,7 @@ export default function RegisterScreen() {
 
       <AnimatedPressable
         style={[styles.primaryButton, { backgroundColor: themeColors.primary }, savingSocial && styles.buttonDisabled]}
-        onPress={handleSaveSocialLinks}
+        onPress={handleSaveStep5}
         disabled={savingSocial}
         accessibilityRole="button"
         accessibilityLabel="Save and continue"
@@ -779,15 +854,6 @@ export default function RegisterScreen() {
         ) : (
           <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Save & Continue</Text>
         )}
-      </AnimatedPressable>
-      <AnimatedPressable
-        style={[styles.secondaryButton, { borderColor: themeColors.border }]}
-        onPress={() => setStep(6)}
-        disabled={savingSocial}
-        accessibilityRole="button"
-        accessibilityLabel="Skip social links"
-      >
-        <Text style={[styles.secondaryButtonText, { color: themeColors.text }]}>Skip for now</Text>
       </AnimatedPressable>
     </>
   );
@@ -832,7 +898,7 @@ export default function RegisterScreen() {
     2: 'Your Profile',
     3: 'Verify Email',
     4: 'Verify Phone',
-    5: 'Social Links',
+    5: 'About You',
     6: 'Personalize',
   };
 
@@ -882,7 +948,7 @@ export default function RegisterScreen() {
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3_EmailVerify()}
             {step === 4 && renderStep4_PhoneOtp()}
-            {step === 5 && renderStep5_SocialLinks()}
+            {step === 5 && renderStep5_AboutYou()}
             {step === 6 && renderStep6_Avatar()}
           </View>
         </ScrollView>
@@ -1103,7 +1169,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
 
-  // Avatar (Step 5)
+  // Field label (Step 5 bio/website)
+  fieldLabel: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+    marginBottom: spacing.xs,
+  },
+
+  bioInput: {
+    minHeight: 100,
+    paddingTop: spacing.md,
+  },
+
+  // Avatar (Step 6)
   avatarHeader: {
     alignItems: 'center',
     marginBottom: spacing.xl,

@@ -43,7 +43,7 @@ interface NotificationCardProps {
 // Component
 // -----------------------------------------------------------------------------
 
-export function NotificationCard({
+export const NotificationCard = React.memo(function NotificationCard({
   notification,
   onPress,
   onMarkAsRead,
@@ -171,7 +171,7 @@ export function NotificationCard({
       </AnimatedPressable>
     </Swipeable>
   );
-}
+});
 
 // -----------------------------------------------------------------------------
 // Styles

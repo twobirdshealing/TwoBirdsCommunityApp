@@ -64,7 +64,7 @@ function extractImagesFromHtml(html: string): { url: string }[] {
   return images;
 }
 
-export function MessageBubble({
+export const MessageBubble = React.memo(function MessageBubble({
   message,
   isOwn,
   showAvatar = true,
@@ -337,7 +337,7 @@ export function MessageBubble({
   }
 
   return bubbleContent;
-}
+});
 
 // -----------------------------------------------------------------------------
 // Message Group Component

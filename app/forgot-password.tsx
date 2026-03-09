@@ -28,6 +28,7 @@ import { withOpacity } from '@/constants/colors';
 import { forgotPassword, resetPassword } from '@/services/api/registration';
 import { verifyOtp, resendOtp, requestVoiceCall } from '@/services/api/otp';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { PasswordStrengthMeter } from '@/components/common/PasswordStrengthMeter';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -188,11 +189,6 @@ export default function ForgotPasswordScreen() {
 
     if (!newPassword) {
       setError('Please enter a new password.');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters.');
       return;
     }
 
@@ -416,6 +412,7 @@ export default function ForgotPasswordScreen() {
             <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={themeColors.textSecondary} />
           </Pressable>
         </View>
+        <PasswordStrengthMeter password={newPassword} />
       </View>
 
       <View style={styles.inputContainer}>

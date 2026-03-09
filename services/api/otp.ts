@@ -5,7 +5,7 @@
 // All contexts use the same /otp/verify, /otp/resend, /otp/voice endpoints.
 // =============================================================================
 
-import { TBC_CA_URL } from '@/constants/config';
+import { TBC_FP_URL } from '@/constants/config';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('OtpAPI');
@@ -37,7 +37,7 @@ async function otpRequest<T>(
   body: Record<string, any>
 ): Promise<{ success: true; data: T } | { success: false; error: string }> {
   try {
-    const response = await fetch(`${TBC_CA_URL}${endpoint}`, {
+    const response = await fetch(`${TBC_FP_URL}${endpoint}`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
