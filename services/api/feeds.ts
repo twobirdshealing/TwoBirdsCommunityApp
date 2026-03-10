@@ -7,7 +7,7 @@
 // =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS, TBC_MR_URL } from '@/constants/config';
-import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType, SurveyConfig, WelcomeBannerResponse } from '@/types/feed';
+import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionBreakdown, ReactionType, SurveyConfig, WelcomeBannerResponse } from '@/types/feed';
 import { del, get, patch, post, request } from './client';
 import { createLogger } from '@/utils/logger';
 
@@ -402,6 +402,26 @@ export async function getSurveyVoters(feedId: number, optionSlug: string) {
 }
 
 // -----------------------------------------------------------------------------
+// Get Reaction Breakdown (server-accurate counts after mutation)
+// -----------------------------------------------------------------------------
+// Uses tbc-multi-reactions plugin REST endpoint
+
+export interface ReactionBreakdownResponse {
+  breakdown: ReactionBreakdown[];
+  total: number;
+  user_reaction_type?: string | null;
+}
+
+export async function getReactionBreakdown(
+  objectType: 'feed' | 'comment',
+  objectId: number
+) {
+  return request<ReactionBreakdownResponse>(`/breakdown/${objectType}/${objectId}`, {
+    baseUrl: TBC_MR_URL,
+  });
+}
+
+// -----------------------------------------------------------------------------
 // Export as object
 // -----------------------------------------------------------------------------
 
@@ -422,6 +442,7 @@ export const feedsApi = {
   getBookmarks,
   getFeedReactions,
   getReactionBreakdownUsers,
+  getReactionBreakdown,
   castSurveyVote,
   getSurveyVoters,
 };

@@ -22,6 +22,7 @@
 // │ 10. /tbc-ca/v1/books?current=1                 → current book only  │
 // │ 11. /wp/v2/posts?page=1&per_page=1&_embed=    → blog widget        │
 // │ 12. /tbc-ca/v1/youtube/latest?limit=1         → youtube widget     │
+// │ 13. /tbc-ca/v1/cart/count                     → cart badge count   │
 // └─────────────────────────────────────────────────────────────────────┘
 // =============================================================================
 
@@ -82,6 +83,8 @@ interface UseStartupDataOptions {
   onUnreadNotifications: (count: number) => void;
   /** Callback to set unread message count */
   onUnreadMessages: (count: number) => void;
+  /** Callback to set cart item count */
+  onCartCount: (count: number) => void;
 }
 
 export function useStartupData({
@@ -91,6 +94,7 @@ export function useStartupData({
   onProfileUpdate,
   onUnreadNotifications,
   onUnreadMessages,
+  onCartCount,
 }: UseStartupDataOptions) {
   const hasRun = useRef(false);
 
@@ -115,6 +119,7 @@ export function useStartupData({
         { path: '/tbc-ca/v1/books?current=1' },
         { path: '/wp/v2/posts?page=1&per_page=1&_embed=' },
         { path: '/tbc-ca/v1/youtube/latest?limit=1' },
+        { path: '/tbc-ca/v1/cart/count' },
       ]);
 
       log('Batch returned', responses.length, 'responses');
@@ -156,6 +161,13 @@ export function useStartupData({
       );
       const threadKeys = chatData?.unread_threads ? Object.keys(chatData.unread_threads) : [];
       onUnreadMessages(threadKeys.length);
+
+      // 5. Cart item count
+      const cartData = findBatchResponse<{ count?: number }>(
+        responses,
+        '/tbc-ca/v1/cart/count',
+      );
+      onCartCount(cartData?.count ?? 0);
 
       // -- Write widget data to AsyncStorage caches --
 
@@ -258,7 +270,7 @@ export function useStartupData({
       // Batch failed — widgets will still self-fetch via useCachedData as normal
       log.error('Failed:', err);
     }
-  }, [username, onAppConfig, onProfileUpdate, onUnreadNotifications, onUnreadMessages]);
+  }, [username, onAppConfig, onProfileUpdate, onUnreadNotifications, onUnreadMessages, onCartCount]);
 
   // Fire once when authenticated with a username
   useEffect(() => {

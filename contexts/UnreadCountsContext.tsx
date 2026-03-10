@@ -21,9 +21,11 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 interface UnreadCountsContextType {
   unreadNotifications: number;
   unreadMessages: number;
+  cartCount: number;
   setUnreadNotifications: (count: number | ((prev: number) => number)) => void;
   setUnreadMessages: (count: number | ((prev: number) => number)) => void;
-  /** Reset both counts (e.g. on logout) */
+  setCartCount: (count: number | ((prev: number) => number)) => void;
+  /** Reset all counts (e.g. on logout) */
   resetCounts: () => void;
 }
 
@@ -40,19 +42,23 @@ const UnreadCountsContext = createContext<UnreadCountsContextType | undefined>(u
 export function UnreadCountsProvider({ children }: { children: React.ReactNode }) {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
 
   const resetCounts = useCallback(() => {
     setUnreadNotifications(0);
     setUnreadMessages(0);
+    setCartCount(0);
   }, []);
 
   const value = useMemo(() => ({
     unreadNotifications,
     unreadMessages,
+    cartCount,
     setUnreadNotifications,
     setUnreadMessages,
+    setCartCount,
     resetCounts,
-  }), [unreadNotifications, unreadMessages, resetCounts]);
+  }), [unreadNotifications, unreadMessages, cartCount, resetCounts]);
 
   return (
     <UnreadCountsContext.Provider value={value}>

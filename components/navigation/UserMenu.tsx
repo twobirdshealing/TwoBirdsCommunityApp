@@ -6,13 +6,13 @@
 
 import React from 'react';
 import {
-  Image,
   Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -42,6 +42,7 @@ interface UserMenuProps {
   onBookmarksPress: () => void;
   onCoursesPress: () => void;
   onBlogPress: () => void;
+  onDonorDashboardPress: () => void;
   onNotificationSettingsPress: () => void;
   onLogout: () => void;
 }
@@ -87,6 +88,7 @@ export function UserMenu({
   onBookmarksPress,
   onCoursesPress,
   onBlogPress,
+  onDonorDashboardPress,
   onNotificationSettingsPress,
   onLogout,
 }: UserMenuProps) {
@@ -104,49 +106,12 @@ export function UserMenu({
     setTheme(isDark ? 'light' : 'dark');
   };
 
-  const handleProfilePress = () => {
-    onClose();
-    onProfilePress();
-  };
-
-  const handleMySpacesPress = () => {
-    onClose();
-    onMySpacesPress();
-  };
-
-  const handleDirectoryPress = () => {
-    onClose();
-    onDirectoryPress();
-  };
-
-  const handleBookmarksPress = () => {
-    onClose();
-    onBookmarksPress();
-  };
-
-  const handleCoursesPress = () => {
-    onClose();
-    onCoursesPress();
-  };
-
-  const handleBlogPress = () => {
-    onClose();
-    onBlogPress();
-  };
-
-  const handleNotificationSettingsPress = () => {
-    onClose();
-    onNotificationSettingsPress();
-  };
+  // Note: onClose() is NOT called here — the parent (TopHeader) already
+  // calls setMenuVisible(false) inside each callback it passes down.
 
   const handlePrivacyPolicyPress = () => {
     onClose();
     router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy', noAuth: '1' } });
-  };
-
-  const handleLogout = () => {
-    onClose();
-    onLogout();
   };
 
   return (
@@ -164,12 +129,12 @@ export function UserMenu({
             {/* Profile Preview - Tappable to go to profile */}
             <AnimatedPressable
               style={styles.profilePreview}
-              onPress={handleProfilePress}
+              onPress={onProfilePress}
               accessibilityRole="button"
               accessibilityLabel="View profile"
             >
               {user.avatar ? (
-                <Image source={{ uri: user.avatar }} style={styles.avatar} />
+                <Image source={{ uri: user.avatar }} style={styles.avatar} contentFit="cover" cachePolicy="memory-disk" />
               ) : (
                 <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
                   <Text style={[styles.avatarText, { color: themeColors.textInverse }]}>
@@ -196,46 +161,53 @@ export function UserMenu({
               <MenuItem
                 icon="person-outline"
                 label="My Profile"
-                onPress={handleProfilePress}
+                onPress={onProfilePress}
               />
               <MenuItem
                 icon="people-outline"
                 label="My Spaces"
-                onPress={handleMySpacesPress}
+                onPress={onMySpacesPress}
               />
               {!isHidden('directory') && (
                 <MenuItem
                   icon="globe-outline"
                   label="Church Directory"
-                  onPress={handleDirectoryPress}
+                  onPress={onDirectoryPress}
                 />
               )}
               {!isHidden('bookmarks') && (
                 <MenuItem
                   icon="bookmark-outline"
                   label="Bookmarks"
-                  onPress={handleBookmarksPress}
+                  onPress={onBookmarksPress}
                 />
               )}
               {FEATURES.COURSES && !isHidden('courses') && (
                 <MenuItem
                   icon="school-outline"
                   label="My Courses"
-                  onPress={handleCoursesPress}
+                  onPress={onCoursesPress}
                 />
               )}
               {!isHidden('blog') && (
                 <MenuItem
                   icon="newspaper-outline"
                   label="Blog"
-                  onPress={handleBlogPress}
+                  onPress={onBlogPress}
+                />
+              )}
+              {!isHidden('donor_dashboard') && (
+                <MenuItem
+                  icon="heart-outline"
+                  label="Donor Dashboard"
+                  onPress={onDonorDashboardPress}
                 />
               )}
               {!isHidden('notification_settings') && (
                 <MenuItem
                   icon="notifications-outline"
                   label="Notification Settings"
-                  onPress={handleNotificationSettingsPress}
+                  onPress={onNotificationSettingsPress}
                 />
               )}
               <MenuItem
@@ -264,7 +236,7 @@ export function UserMenu({
               <MenuItem 
                 icon="log-out-outline" 
                 label="Logout" 
-                onPress={handleLogout}
+                onPress={onLogout}
                 destructive
               />
             </View>

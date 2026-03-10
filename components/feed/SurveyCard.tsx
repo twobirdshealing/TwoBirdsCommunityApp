@@ -4,7 +4,7 @@
 // and results are always shown inline. Users can change/undo votes freely.
 // =============================================================================
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   StyleSheet,
@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { spacing, sizing, typography } from '@/constants/layout';
+import { withOpacity } from '@/constants/colors';
 import { SurveyConfig } from '@/types/feed';
 import { feedsApi } from '@/services/api/feeds';
 import { hapticLight } from '@/utils/haptics';
@@ -37,6 +38,16 @@ export function SurveyCard({ config: initialConfig, feedId }: SurveyCardProps) {
   const { colors } = useTheme();
   const [config, setConfig] = useState(initialConfig);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Sync local state when parent provides updated config (e.g. pull-to-refresh)
+  const configJson = JSON.stringify(initialConfig);
+  const prevConfigJson = useRef(configJson);
+  useEffect(() => {
+    if (configJson !== prevConfigJson.current) {
+      prevConfigJson.current = configJson;
+      setConfig(initialConfig);
+    }
+  }, [configJson, initialConfig]);
 
   const isMultiChoice = config.type === 'multi_choice';
   const isExpired = config.end_date ? new Date(config.end_date) < new Date() : false;
@@ -145,7 +156,7 @@ export function SurveyCard({ config: initialConfig, feedId }: SurveyCardProps) {
                 styles.progressFill,
                 {
                   width: `${pct}%`,
-                  backgroundColor: isVoted ? colors.primary + '25' : colors.lightBg,
+                  backgroundColor: isVoted ? withOpacity(colors.primary, 0.15) : colors.lightBg,
                 },
               ]}
             />

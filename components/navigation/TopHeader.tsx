@@ -47,6 +47,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   const {
     unreadMessages,
     unreadNotifications,
+    cartCount,
     setUnreadMessages,
     setUnreadNotifications,
   } = useUnreadCounts();
@@ -132,6 +133,11 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     router.push('/blog');
   };
 
+  const handleDonorDashboardPress = () => {
+    setMenuVisible(false);
+    router.push({ pathname: '/webview', params: { url: `${SITE_URL}/donor-dashboard/`, title: 'Donor Dashboard' } });
+  };
+
   const handleNotificationSettingsPress = () => {
     setMenuVisible(false);
     router.push('/notification-settings');
@@ -205,7 +211,8 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             <HeaderIconButton
               icon="cart-outline"
               onPress={handleCartPress}
-              accessibilityLabel="Cart"
+              badgeCount={cartCount}
+              accessibilityLabel={cartCount > 0 ? `Cart, ${cartCount} items` : 'Cart'}
             />
           )}
 
@@ -254,6 +261,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
         onBookmarksPress={handleBookmarksPress}
         onCoursesPress={handleCoursesPress}
         onBlogPress={handleBlogPress}
+        onDonorDashboardPress={handleDonorDashboardPress}
         onNotificationSettingsPress={handleNotificationSettingsPress}
         onLogout={handleLogout}
       />

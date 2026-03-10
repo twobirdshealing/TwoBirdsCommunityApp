@@ -28,9 +28,7 @@ export async function getThreads() {
 // Returns selected_thread if a thread exists, intended_object if not.
 
 export async function getThreadsForUser(userId: number) {
-  return get<ThreadsResponse>(
-    `${ENDPOINTS.CHAT_THREADS}?user_id=${userId}`
-  );
+  return get<ThreadsResponse>(ENDPOINTS.CHAT_THREADS, { user_id: userId });
 }
 
 // -----------------------------------------------------------------------------

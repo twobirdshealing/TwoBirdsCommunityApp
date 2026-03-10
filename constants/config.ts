@@ -10,6 +10,7 @@ import Constants from 'expo-constants';
 
 export const APP_NAME = 'Two Birds';
 export const APP_VERSION = Constants.expoConfig?.version || '1.0.0';
+export const APP_USER_AGENT = 'TBCCommunityApp/1.0';
 
 // -----------------------------------------------------------------------------
 // API Configuration

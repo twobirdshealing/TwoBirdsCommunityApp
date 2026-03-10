@@ -39,6 +39,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { hapticLight } from '@/utils/haptics';
 import { useTheme } from '@/contexts/ThemeContext';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { spacing, shadows, sizing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -57,6 +58,7 @@ export interface PageHeaderProps {
   // Right side - use ONE of these
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightPress?: () => void;
+  rightBadgeCount?: number;
   rightElement?: ReactNode;
   
   // Optional: include safe area padding (default: false, container handles it)
@@ -74,6 +76,7 @@ export function PageHeader({
   showLoader = false,
   rightIcon,
   onRightPress,
+  rightBadgeCount,
   rightElement,
   includeSafeArea = false,
 }: PageHeaderProps) {
@@ -159,18 +162,12 @@ export function PageHeader({
             {rightElement}
           </View>
         ) : rightIcon ? (
-          <Pressable
+          <HeaderIconButton
+            icon={rightIcon}
             onPress={handleRightPress}
-            style={({ pressed }) => [
-              styles.button,
-              pressed && [styles.buttonPressed, { backgroundColor: themeColors.backgroundSecondary }],
-            ]}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
+            badgeCount={rightBadgeCount}
             accessibilityLabel="Action"
-          >
-            <Ionicons name={rightIcon} size={24} color={themeColors.text} />
-          </Pressable>
+          />
         ) : (
           <View style={styles.buttonSpacer} />
         )}

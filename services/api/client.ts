@@ -22,6 +22,7 @@ const log = createLogger('API');
 export interface ResponseHeaderData {
   unreadNotifications?: number;
   unreadMessages?: number;
+  cartCount?: number;
   maintenance?: boolean;
   minAppVersion?: string;
 }
@@ -106,6 +107,56 @@ function buildUrl(endpoint: string, params?: Record<string, any>, baseUrl?: stri
 }
 
 // -----------------------------------------------------------------------------
+// Normalize API Error Responses
+// -----------------------------------------------------------------------------
+// WordPress / Fluent Community returns errors in several shapes:
+//   1. { message: "string" }                          — sendError()
+//   2. { message: ["string", ...] }                   — ValidationException
+//   3. { code: "x", message: "y", data: { status } } — WP_Error / REST
+//   4. "plain string" / null                          — rare edge cases
+
+function normalizeApiError(data: unknown, statusCode: number): ApiError {
+  if (data == null || typeof data !== 'object') {
+    return {
+      code: 'error',
+      message: typeof data === 'string' ? data : 'An unknown error occurred',
+      data: { status: statusCode },
+    };
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  // Extract message — handle string, array, or missing
+  let message: string;
+  const raw = obj.message;
+
+  if (typeof raw === 'string') {
+    message = raw;
+  } else if (Array.isArray(raw)) {
+    message = raw.filter(m => typeof m === 'string').join('. ') || 'Validation failed';
+  } else if (raw && typeof raw === 'object') {
+    // Nested validation errors: { field: ["error1", "error2"] }
+    const flat = Object.values(raw as Record<string, unknown>).flatMap(v =>
+      Array.isArray(v) ? v : [v]
+    );
+    message = flat.filter(m => typeof m === 'string').join('. ') || 'An error occurred';
+  } else {
+    message = typeof obj.error === 'string' ? obj.error : 'An error occurred';
+  }
+
+  return {
+    code: typeof obj.code === 'string' ? obj.code : 'error',
+    message,
+    data: {
+      status:
+        obj.data && typeof obj.data === 'object' && typeof (obj.data as any).status === 'number'
+          ? (obj.data as any).status
+          : statusCode,
+    },
+  };
+}
+
+// -----------------------------------------------------------------------------
 // Main Request Function
 // -----------------------------------------------------------------------------
 
@@ -176,16 +227,21 @@ async function request<T>(
       log('Response data (preview):', JSON.stringify(data).substring(0, 500));
     }
 
-    // Extract custom response headers (unread counts, maintenance, min version)
+    // Extract custom response headers (unread counts, cart count, maintenance, min version)
     if (responseHeaderCallback) {
       const hNotif = response.headers.get('X-TBC-Unread-Notifications');
       const hMsg = response.headers.get('X-TBC-Unread-Messages');
+      const hCart = response.headers.get('X-TBC-Cart-Count');
       const hMaint = response.headers.get('X-TBC-Maintenance');
       const hMinVer = response.headers.get('X-TBC-Min-App-Version');
-      if (hNotif !== null || hMsg !== null || hMaint !== null || hMinVer !== null) {
+      if (hNotif !== null || hMsg !== null || hCart !== null || hMaint !== null || hMinVer !== null) {
+        const nNotif = hNotif !== null ? parseInt(hNotif, 10) : NaN;
+        const nMsg = hMsg !== null ? parseInt(hMsg, 10) : NaN;
+        const nCart = hCart !== null ? parseInt(hCart, 10) : NaN;
         responseHeaderCallback({
-          ...(hNotif !== null && { unreadNotifications: parseInt(hNotif, 10) }),
-          ...(hMsg !== null && { unreadMessages: parseInt(hMsg, 10) }),
+          ...(!isNaN(nNotif) && nNotif >= 0 && { unreadNotifications: nNotif }),
+          ...(!isNaN(nMsg) && nMsg >= 0 && { unreadMessages: nMsg }),
+          ...(!isNaN(nCart) && nCart >= 0 && { cartCount: nCart }),
           ...(hMaint !== null && { maintenance: hMaint === '1' }),
           ...(hMinVer !== null && { minAppVersion: hMinVer }),
         });
@@ -227,7 +283,7 @@ async function request<T>(
 
       return {
         success: false,
-        error: data as ApiError,
+        error: normalizeApiError(data, response.status),
       };
     }
 

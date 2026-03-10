@@ -8,12 +8,12 @@
 
 import React from 'react';
 import {
-  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -73,7 +73,8 @@ export const BlogCard = React.memo(function BlogCard({ post, onPress, onAuthorPr
           <Image
             source={{ uri: featuredImageUrl }}
             style={[StyleSheet.absoluteFillObject, { backgroundColor: themeColors.border }]}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="memory-disk"
           />
           <LinearGradient
             colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.7)']}

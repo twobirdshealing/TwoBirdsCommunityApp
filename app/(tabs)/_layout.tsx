@@ -1,22 +1,24 @@
 // =============================================================================
-// TAB LAYOUT - Bottom tab navigation (4 tabs) + Top Header
+// TAB LAYOUT - Bottom tab navigation + Top Header
 // =============================================================================
-// Tabs: Home, Activity, Spaces, Calendar
+// Tabs: Home, Activity, Spaces, Calendar, Donate (hideable)
 // Header: Logo + Messages + Notifications + Avatar Menu
 // =============================================================================
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
-import { Tabs } from 'expo-router';
+import Animated, { cancelAnimation, interpolate, useAnimatedStyle, useSharedValue, withSequence, withTiming, withRepeat, withDelay, Easing } from 'react-native-reanimated';
+import { Tabs, useRouter } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { hapticHeavy } from '@/utils/haptics';
+import { SITE_URL } from '@/constants/config';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { TabBarProvider, useTabBar } from '@/contexts/TabBarContext';
 import { TopHeader } from '@/components/navigation/TopHeader';
 import { MiniPlayer } from '@/components/bookclub/MiniPlayer';
+import { useAppConfig } from '@/contexts/AppConfigContext';
 import { spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -37,6 +39,46 @@ function TabIcon({ name, nameOutline, focused, color }: TabIconProps) {
       size={24}
       color={color}
     />
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Donate Tab Icon - Red heart with gentle pulse
+// -----------------------------------------------------------------------------
+
+function DonateTabIcon({ focused, color }: { focused: boolean; color: string }) {
+  const pulse = useSharedValue(1);
+
+  useEffect(() => {
+    if (!focused) {
+      // Gentle heartbeat: scale up then back, repeat with pause
+      pulse.value = withRepeat(
+        withSequence(
+          withDelay(2000, withTiming(1.18, { duration: 200, easing: Easing.out(Easing.ease) })),
+          withTiming(1, { duration: 150, easing: Easing.in(Easing.ease) }),
+          withTiming(1.12, { duration: 160, easing: Easing.out(Easing.ease) }),
+          withTiming(1, { duration: 200, easing: Easing.in(Easing.ease) }),
+        ),
+        -1, // infinite
+      );
+    } else {
+      pulse.value = withTiming(1, { duration: 150 });
+    }
+    return () => cancelAnimation(pulse);
+  }, [focused, pulse]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Ionicons
+        name={focused ? 'heart' : 'heart-outline'}
+        size={24}
+        color={color}
+      />
+    </Animated.View>
   );
 }
 
@@ -130,7 +172,8 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
-          const color = isFocused ? themeColors.tabBar.active : themeColors.tabBar.inactive;
+          const isDonate = route.name === 'donate';
+          const color = isDonate ? themeColors.error : (isFocused ? themeColors.tabBar.active : themeColors.tabBar.inactive);
 
           const onPress = () => {
             const event = navigation.emit({
@@ -170,9 +213,15 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
 // Component
 // -----------------------------------------------------------------------------
 
+const DONATE_URL = `${SITE_URL}/calendar/donate/`;
+
 function TabLayoutInner() {
   const { colors: themeColors } = useTheme();
   const { showTabBar } = useTabBar();
+  const { visibility } = useAppConfig();
+  const router = useRouter();
+  const hideMenu = visibility?.hide_menu ?? [];
+  const isDonateHidden = hideMenu.includes('donate');
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
@@ -186,7 +235,7 @@ function TabLayoutInner() {
         screenListeners={{ tabPress: () => showTabBar() }}
       >
         {/* ============================================= */}
-        {/* 4 TABS: Home, Activity, Spaces, Calendar     */}
+        {/* TABS: Home, Activity, Spaces, Calendar (+Donate) */}
         {/* ============================================= */}
 
         {/* Home Tab - Welcome page */}
@@ -230,6 +279,32 @@ function TabLayoutInner() {
             tabBarIcon: ({ focused, color }) => (
               <TabIcon name="calendar" nameOutline="calendar-outline" focused={focused} color={color} />
             ),
+          }}
+        />
+
+        {/* Donate Tab - hidden from tab bar when 'donate' is in hide_menu */}
+        <Tabs.Screen
+          name="donate"
+          options={{
+            title: 'Donate',
+            href: isDonateHidden ? null : undefined,
+            tabBarIcon: ({ focused, color }) => (
+              <DonateTabIcon focused={focused} color={color} />
+            ),
+          }}
+          listeners={{
+            tabPress: (e) => {
+              e.preventDefault();
+              router.push({
+                pathname: '/webview',
+                params: {
+                  url: DONATE_URL,
+                  title: 'Donate',
+                  rightIcon: 'cart-outline',
+                  rightAction: 'cart',
+                },
+              });
+            },
           }}
         />
       </Tabs>

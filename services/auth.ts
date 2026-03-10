@@ -46,8 +46,12 @@ interface LoginResponse {
     id: number;
     username: string;
     display_name: string;
+    first_name?: string;
+    last_name?: string;
     email: string;
     avatar: string;
+    is_verified?: number;
+    status?: string;
   };
 }
 

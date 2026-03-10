@@ -21,7 +21,7 @@
 //   router.push({ pathname: '/webview', params: { url, title } })
 // =============================================================================
 
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -35,20 +35,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { hapticLight } from '@/utils/haptics';
 import { spacing, typography, sizing } from '@/constants/layout';
-import { SITE_URL } from '@/constants/config';
+import { SITE_URL, APP_USER_AGENT } from '@/constants/config';
 import { appApi } from '@/services/api/app';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { useTheme } from '@/contexts/ThemeContext';
+import { getThemeInjectionScript } from '@/utils/webviewTheme';
+import { useUnreadCounts } from '@/contexts/UnreadCountsContext';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('WebView');
-
-// -----------------------------------------------------------------------------
-// Constants
-// -----------------------------------------------------------------------------
-
-// Custom User-Agent for WordPress to detect app WebView
-const APP_USER_AGENT = 'TBCCommunityApp/1.0';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -58,6 +53,7 @@ export default function WebViewScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isDark, colors } = useTheme();
+  const { cartCount } = useUnreadCounts();
   const params = useLocalSearchParams<{
     url?: string;
     title?: string;
@@ -71,32 +67,8 @@ export default function WebViewScreen() {
 
   const webViewRef = useRef<WebView>(null);
 
-  // ---------------------------------------------------------------------------
-  // Theme Sync - Inject JS to set Fluent Community dark mode in WebView
-  // ---------------------------------------------------------------------------
+  const themeInjectionScript = useMemo(() => getThemeInjectionScript(isDark), [isDark]);
 
-  const themeInjectionScript = `(function() {
-    try {
-      var mode = '${isDark ? 'dark' : 'light'}';
-      // Set Fluent Community color mode in localStorage
-      var storage = {};
-      try { storage = JSON.parse(localStorage.getItem('fcom_global_storage') || '{}'); } catch(e) {}
-      storage.fcom_color_mode = mode;
-      localStorage.setItem('fcom_global_storage', JSON.stringify(storage));
-      // Set cookie for server-side detection
-      document.cookie = 'fcom_color_mode=' + mode + ';path=/;max-age=31536000';
-      // Toggle dark class on html element
-      if (mode === 'dark') {
-        document.documentElement.classList.add('dark');
-        document.documentElement.setAttribute('data-color-mode', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.setAttribute('data-color-mode', 'light');
-      }
-    } catch(e) {}
-    true;
-  })();`;
-  
   // State
   const [sessionUrl, setSessionUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -193,7 +165,7 @@ export default function WebViewScreen() {
 
           if (response.success && response.url && webViewRef.current) {
             webViewRef.current.injectJavaScript(
-              `window.location.href = '${response.url}'; true;`
+              `window.location.assign('${response.url}'); true;`
             );
             setPageTitle('Cart');
           }
@@ -296,6 +268,7 @@ export default function WebViewScreen() {
         showLoader={pageLoading}
         rightIcon={rightIcon}
         onRightPress={rightIcon ? handleRightPress : undefined}
+        rightBadgeCount={params.rightAction === 'cart' ? cartCount : undefined}
       />
 
       {/* WebView with custom User-Agent + theme sync */}

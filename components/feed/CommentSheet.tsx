@@ -43,6 +43,7 @@ import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { MarkdownToolbar } from '@/components/composer/MarkdownToolbar';
 import { GifPickerModal } from '@/components/composer/GifPickerModal';
 import { GifAttachment } from '@/types/gif';
+import { MediaViewer } from '@/components/media/MediaViewer';
 import { ReactionPicker } from './ReactionPicker';
 import { cacheEvents } from '@/utils/cacheEvents';
 import { ReactionBreakdownModal } from './ReactionBreakdownModal';
@@ -51,7 +52,8 @@ import { formatRelativeTime } from '@/utils/formatDate';
 import { HtmlContent } from '@/components/common/HtmlContent';
 import { useAuth } from '@/contexts/AuthContext';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
-import { updateBreakdownOptimistically } from '@/utils/reactionHelpers';
+import { updateBreakdownOptimistically, reconcileReactionBreakdown } from '@/utils/reactionHelpers';
+import { swapReactionType } from '@/services/api/feeds';
 import { SITE_URL } from '@/constants/config';
 import { createLogger } from '@/utils/logger';
 
@@ -109,6 +111,8 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   const reactionButtonRefs = useRef<Record<number, View | null>>({});
   // Breakdown modal state
   const [breakdownComment, setBreakdownComment] = useState<Comment | null>(null);
+  // Comment image viewer state (null = hidden)
+  const [commentMedia, setCommentMedia] = useState<{ images: Array<{ url: string }>; index: number } | null>(null);
   // Menu state
   const [menuComment, setMenuComment] = useState<Comment | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | undefined>();
@@ -433,11 +437,13 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
 
     try {
       if (willSwap) {
-        const { swapReactionType } = await import('@/services/api/feeds');
         await swapReactionType(comment.id, 'comment', reactionType);
       } else {
         await commentsApi.reactToComment(postId, comment.id, willRemove, reactionType);
       }
+
+      // Reconcile with server-accurate breakdown (non-blocking)
+      reconcileReactionBreakdown('comment', comment.id, setComments);
     } catch (err) {
       log.error('Reaction error:', err);
       // Revert on error
@@ -651,14 +657,20 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
           {commentImages.length > 0 && (
             <View style={styles.commentImages}>
               {commentImages.map((img: any, idx: number) => (
-                <Image
+                <AnimatedPressable
                   key={idx}
-                  source={{ uri: img.url }}
-                  style={styles.commentImage}
-                  contentFit="cover"
-                  transition={200}
-                  cachePolicy="memory-disk"
-                />
+                  onPress={() => {
+                    setCommentMedia({ images: commentImages, index: idx });
+                  }}
+                >
+                  <Image
+                    source={{ uri: img.url }}
+                    style={styles.commentImage}
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="memory-disk"
+                  />
+                </AnimatedPressable>
               ))}
             </View>
           )}
@@ -969,6 +981,14 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         visible={showGifPicker}
         onClose={() => setShowGifPicker(false)}
         onSelect={handleGifSelect}
+      />
+
+      {/* Comment Image Viewer */}
+      <MediaViewer
+        visible={!!commentMedia}
+        images={commentMedia?.images ?? []}
+        initialIndex={commentMedia?.index ?? 0}
+        onClose={() => setCommentMedia(null)}
       />
     </>
   );
