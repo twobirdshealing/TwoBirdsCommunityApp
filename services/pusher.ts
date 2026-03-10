@@ -11,10 +11,16 @@
 import { PUSHER_CONFIG } from '@/constants/config';
 import { getAuthToken } from '@/services/auth';
 import type { ChatMessage } from '@/types/message';
-import Pusher, { Channel } from 'pusher-js';
+import Pusher from 'pusher-js/react-native';
+import type { Channel } from 'pusher-js';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('Pusher');
+
+// Enable verbose Pusher logging in dev to see raw WebSocket traffic
+if (__DEV__) {
+  Pusher.logToConsole = true;
+}
 
 // -----------------------------------------------------------------------------
 // Types
@@ -121,7 +127,7 @@ export async function initializePusher(userId: number): Promise<boolean> {
 
     // Connection event handlers
     pusherClient.connection.bind('connected', () => {
-      log('Connected to Pusher');
+      log('Connected to Pusher, socket_id:', pusherClient?.connection.socket_id);
       connectedAt = Date.now();
     });
 
@@ -147,14 +153,23 @@ export async function initializePusher(userId: number): Promise<boolean> {
       log('Subscription error:', error);
     });
 
+    // Dev-only: catch ALL events on this channel for diagnostics
+    if (__DEV__) {
+      userChannel.bind_global((eventName: string, data: any) => {
+        if (eventName !== 'message' && eventName !== 'reaction') {
+          log('Channel event:', eventName, '| data:', JSON.stringify(data).slice(0, 200));
+        }
+      });
+    }
+
     // Bind to server-fired events
     userChannel.bind('message', (data: PusherMessage) => {
-      log('Received message:', data);
+      log('Received message, handlers:', messageHandlers.size);
       messageHandlers.forEach(handler => handler(data));
     });
 
     userChannel.bind('reaction', (data: PusherReaction) => {
-      log('Received reaction:', data);
+      log('Received reaction, handlers:', reactionHandlers.size);
       reactionHandlers.forEach(handler => handler(data));
     });
 
@@ -186,8 +201,17 @@ export function disconnectPusher(): void {
 
   currentUserId = null;
   connectedAt = 0;
+  // Don't clear handlers here — they're managed by React component lifecycle.
+  // Only clearHandlers() on logout (called from PusherContext).
+}
+
+/**
+ * Clear all event handlers. Call only on logout.
+ */
+export function clearHandlers(): void {
   messageHandlers.clear();
   reactionHandlers.clear();
+  log('Cleared all handlers');
 }
 
 // -----------------------------------------------------------------------------
@@ -269,6 +293,7 @@ export const pusherService = {
   initialize: initializePusher,
   disconnect: disconnectPusher,
   reconnect: reconnectPusher,
+  clearHandlers,
   onNewMessage,
   onReaction,
   isConnected,

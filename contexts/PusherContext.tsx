@@ -8,6 +8,7 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import {
+  clearHandlers,
   disconnectPusher,
   initializePusher,
   reconnectPusher,
@@ -26,6 +27,7 @@ import React, {
   useState,
 } from 'react';
 import { useAppFocus } from '@/hooks/useAppFocus';
+import { useTickerPolling } from '@/hooks/useTickerPolling';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -62,16 +64,26 @@ export function PusherProvider({ children }: { children: React.ReactNode }) {
         setIsConnected(success);
       });
     } else {
-      // Disconnect when logged out
+      // Disconnect and clear handlers on logout
       disconnectPusher();
+      clearHandlers();
       setIsConnected(false);
     }
 
     return () => {
-      // Cleanup on unmount
+      // Cleanup on unmount — disconnect but keep handlers
+      // (they're managed by component lifecycle, not connection lifecycle)
       disconnectPusher();
     };
   }, [isAuthenticated, user?.id]);
+
+  // ---------------------------------------------------------------------------
+  // Ticker polling — keeps xprofile.last_activity fresh so the server
+  // actually broadcasts Pusher events (it skips users inactive >5 min).
+  // Same endpoint the web SPA polls every ~60s.
+  // ---------------------------------------------------------------------------
+
+  useTickerPolling(isAuthenticated && !!user?.id);
 
   // ---------------------------------------------------------------------------
   // Reconnect on app foreground

@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -33,7 +34,11 @@ import { useTabBar } from '@/contexts/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacesApi } from '@/services/api/spaces';
 import { useCachedData } from '@/hooks/useCachedData';
+import { cacheEvents } from '@/utils/cacheEvents';
 import { Space, SpaceGroupOption } from '@/types/space';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('SpacesScreen');
 
 // Special ID for ungrouped spaces tab
 const OTHER_GROUP_ID = 0;
@@ -170,16 +175,42 @@ export default function SpacesScreen() {
   // Handlers
   // ---------------------------------------------------------------------------
 
+  const [joiningSlug, setJoiningSlug] = useState<string | null>(null);
+
   const handleRefresh = () => { refresh(); };
   const handleSpacePress = (space: Space) => { router.push(`/space/${space.slug}`); };
   const handleClearSearch = () => setSearchQuery('');
+
+  const handleJoinSpace = async (space: Space) => {
+    if (joiningSlug) return;
+    setJoiningSlug(space.slug);
+    try {
+      const response = await spacesApi.joinSpace(space.slug);
+      if (response.success) {
+        cacheEvents.emit('spaces');
+        refresh();
+      } else {
+        Alert.alert('Error', response.error?.message || 'Failed to join space');
+      }
+    } catch (err) {
+      log.error('Join space error:', err);
+      Alert.alert('Error', 'Failed to join space');
+    } finally {
+      setJoiningSlug(null);
+    }
+  };
 
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
   const renderItem = ({ item }: { item: Space }) => (
-    <SpaceCard space={item} onPress={() => handleSpacePress(item)} />
+    <SpaceCard
+      space={item}
+      onPress={() => handleSpacePress(item)}
+      onJoin={() => handleJoinSpace(item)}
+      isJoining={joiningSlug === item.slug}
+    />
   );
 
   return (

@@ -223,29 +223,50 @@ export default function SpacePage() {
   };
 
   // ---------------------------------------------------------------------------
-  // Request Access Handler (for lock screen)
+  // Non-member state (for public spaces with no lock screen)
   // ---------------------------------------------------------------------------
 
-  const handleRequestAccess = async () => {
+  const isNonMember = !!(space?.permissions?.is_non_member && !lockscreenConfig);
+
+  // ---------------------------------------------------------------------------
+  // Join / Request Access Handler
+  // ---------------------------------------------------------------------------
+
+  const handleJoinSpace = async () => {
     if (!slug) return;
     setIsRequesting(true);
+
+    // Optimistic: for public spaces, immediately show the post box
+    const isPublic = space?.privacy === 'public';
+    if (isPublic && space) {
+      setSpace(prev => prev ? {
+        ...prev,
+        permissions: { ...prev.permissions, is_non_member: false },
+      } : prev);
+    }
+
     try {
       const response = await spacesApi.joinSpace(slug);
       if (response.success) {
         if (response.data?.data?.status === 'pending') {
           setIsPending(true);
+          // Revert optimistic update — not auto-approved
+          if (isPublic) fetchSpace();
         } else {
-          // Auto-approved — refresh space data
+          // Auto-approved — refresh to get full member data
           fetchSpace();
           fetchFeeds();
         }
         cacheEvents.emit('spaces');
       } else {
-        Alert.alert('Error', response.error?.message || 'Failed to send request');
+        // Revert optimistic update on error
+        if (isPublic) fetchSpace();
+        Alert.alert('Error', response.error?.message || 'Failed to join space');
       }
     } catch (err) {
-      log.error('Request access error:', err);
-      Alert.alert('Error', 'Failed to send request');
+      if (isPublic) fetchSpace();
+      log.error('Join space error:', err);
+      Alert.alert('Error', 'Failed to join space');
     } finally {
       setIsRequesting(false);
     }
@@ -285,7 +306,7 @@ export default function SpacePage() {
           />
           <SpaceLockScreen
             config={lockscreenConfig}
-            onRequestAccess={handleRequestAccess}
+            onRequestAccess={handleJoinSpace}
             isPending={isPending}
             isRequesting={isRequesting}
           />
@@ -311,6 +332,9 @@ export default function SpacePage() {
               <SpaceInfoHeader
                 space={space}
                 onPostPress={openComposer}
+                isNonMember={isNonMember}
+                onJoinPress={handleJoinSpace}
+                isJoining={isRequesting}
               />
             ) : undefined
           }

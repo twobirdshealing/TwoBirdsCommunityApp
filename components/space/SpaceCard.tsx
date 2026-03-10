@@ -5,7 +5,7 @@
 // =============================================================================
 
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,9 +19,11 @@ import { stripHtmlTags } from '@/utils/htmlToText';
 interface SpaceCardProps {
   space: Space;
   onPress: () => void;
+  onJoin?: () => void;
+  isJoining?: boolean;
 }
 
-const getPrivacyIcon = (privacy: string): keyof typeof Ionicons.glyphMap => {
+export const getPrivacyIcon = (privacy: string): keyof typeof Ionicons.glyphMap => {
   switch (privacy) {
     case 'public': return 'globe-outline';
     case 'private': return 'lock-closed-outline';
@@ -30,7 +32,7 @@ const getPrivacyIcon = (privacy: string): keyof typeof Ionicons.glyphMap => {
   }
 };
 
-export const SpaceCard = React.memo(function SpaceCard({ space, onPress }: SpaceCardProps) {
+export const SpaceCard = React.memo(function SpaceCard({ space, onPress, onJoin, isJoining }: SpaceCardProps) {
   const { colors: themeColors } = useTheme();
 
   // Card cover: og_image (card preview) → cover_photo (banner) → placeholder
@@ -47,6 +49,7 @@ export const SpaceCard = React.memo(function SpaceCard({ space, onPress }: Space
   const isMember = pivot != null && !isPending;
   const role = pivot?.role;
   const isRoleBadge = isMember && (role === 'admin' || role === 'moderator');
+  const isPrivate = space.privacy === 'private' || space.privacy === 'secret';
   const hideMemberCount = space.settings?.hide_members_count === 'yes';
 
   return (
@@ -129,11 +132,21 @@ export const SpaceCard = React.memo(function SpaceCard({ space, onPress }: Space
               <Text style={styles.heroBadgeText}>Joined</Text>
             </View>
           ) : (
-            <View style={[styles.heroBadge, styles.heroBadgeGlass, styles.heroBadgeOutlined]}>
-              <Text style={styles.heroBadgeText}>
-                Join
-              </Text>
-            </View>
+            <Pressable
+              onPress={() => onJoin?.()}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={[styles.heroBadge, styles.heroBadgeJoin]}
+              disabled={isJoining}
+            >
+              {isJoining ? (
+                <ActivityIndicator size="small" color="#fff" style={styles.joinSpinner} />
+              ) : (
+                <>
+                  <Ionicons name={isPrivate ? 'lock-open-outline' : 'add'} size={14} color="#fff" />
+                  <Text style={styles.heroBadgeText}>{isPrivate ? 'Request' : 'Join'}</Text>
+                </>
+              )}
+            </Pressable>
           )}
         </View>
       </View>
@@ -255,9 +268,21 @@ const styles = StyleSheet.create({
   heroBadgeGlass: {
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  heroBadgeOutlined: {
+heroBadgeJoin: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.5)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    minHeight: sizing.touchTarget,
+    minWidth: sizing.touchTarget,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  joinSpinner: {
+    width: 14,
+    height: 14,
   },
   heroBadgeText: {
     fontSize: typography.size.xs,

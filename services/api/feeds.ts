@@ -64,6 +64,25 @@ export async function getFeedBySlug(slug: string) {
 }
 
 // -----------------------------------------------------------------------------
+// Ticker (keeps last_activity fresh for Pusher)
+// -----------------------------------------------------------------------------
+// GET /feeds/ticker - fires fluent_community/track_activity server-side,
+// updating xprofile.last_activity. Without this, the server silently skips
+// Pusher message broadcasts to users inactive for >5 minutes.
+// This is the same endpoint the web SPA polls every 45-75s.
+
+export interface TickerResponse {
+  has_changes: boolean;
+  timestamp: string;
+  feeds?: Array<{ id: number; updated_at: string }>;
+}
+
+export async function getTicker(since?: string) {
+  const params = since ? { since } : {};
+  return get<TickerResponse>(`${ENDPOINTS.FEEDS}/ticker`, params);
+}
+
+// -----------------------------------------------------------------------------
 // Get Welcome Banner
 // -----------------------------------------------------------------------------
 // GET /feeds/welcome-banner - returns welcome banner configuration
@@ -390,6 +409,7 @@ export const feedsApi = {
   getFeeds,
   getFeedById,
   getFeedBySlug,
+  getTicker,
   getWelcomeBanner,
   getOembed,
   createFeed,

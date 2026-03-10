@@ -6,7 +6,7 @@
 // =============================================================================
 
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,7 @@ import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Space } from '@/types/space';
 import { QuickPostBox } from '@/components/composer/QuickPostBox';
+import { getPrivacyIcon } from '@/components/space/SpaceCard';
 import { stripHtmlPreserveBreaks } from '@/utils/htmlToText';
 
 // -----------------------------------------------------------------------------
@@ -24,26 +25,16 @@ interface SpaceInfoHeaderProps {
   space: Space;
   onPostPress: () => void;
   hidePostBox?: boolean;
+  isNonMember?: boolean;
+  onJoinPress?: () => void;
+  isJoining?: boolean;
 }
-
-// -----------------------------------------------------------------------------
-// Helpers
-// -----------------------------------------------------------------------------
-
-const getPrivacyIcon = (privacy: string): keyof typeof Ionicons.glyphMap => {
-  switch (privacy) {
-    case 'public': return 'globe-outline';
-    case 'private': return 'lock-closed-outline';
-    case 'secret': return 'eye-off-outline';
-    default: return 'globe-outline';
-  }
-};
 
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
-export function SpaceInfoHeader({ space, onPostPress, hidePostBox }: SpaceInfoHeaderProps) {
+export function SpaceInfoHeader({ space, onPostPress, hidePostBox, isNonMember, onJoinPress, isJoining }: SpaceInfoHeaderProps) {
   const { colors: themeColors } = useTheme();
 
   const descriptionText = stripHtmlPreserveBreaks(
@@ -107,12 +98,31 @@ export function SpaceInfoHeader({ space, onPostPress, hidePostBox }: SpaceInfoHe
         </View>
       ) : null}
 
-      {/* Quick Post Box */}
+      {/* Quick Post Box or Join CTA */}
       {!hidePostBox && (
-        <QuickPostBox
-          onPress={onPostPress}
-          placeholder={`Post in ${space.title}...`}
-        />
+        isNonMember ? (
+          <Pressable
+            onPress={onJoinPress}
+            disabled={isJoining}
+            style={[styles.joinBar, { backgroundColor: themeColors.primaryDark }]}
+          >
+            {isJoining ? (
+              <ActivityIndicator size="small" color={themeColors.textInverse} />
+            ) : (
+              <>
+                <Ionicons name="add-circle-outline" size={20} color={themeColors.textInverse} />
+                <Text style={[styles.joinBarText, { color: themeColors.textInverse }]}>
+                  Join Space to Post
+                </Text>
+              </>
+            )}
+          </Pressable>
+        ) : (
+          <QuickPostBox
+            onPress={onPostPress}
+            placeholder={`Post in ${space.title}...`}
+          />
+        )
       )}
     </View>
   );
@@ -201,5 +211,21 @@ const styles = StyleSheet.create({
     fontSize: typography.size.md,
     lineHeight: typography.size.md * 1.4,
     marginBottom: spacing.sm,
+  },
+
+  joinBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    paddingVertical: spacing.md,
+    borderRadius: sizing.borderRadius.sm,
+    minHeight: sizing.height.button,
+  },
+  joinBarText: {
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
   },
 });

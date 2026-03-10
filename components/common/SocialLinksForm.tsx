@@ -24,7 +24,7 @@ export function SocialLinksForm({ providers, values, onChange }: SocialLinksForm
 
   return (
     <>
-      {providers.map(({ key, title, domain }) => (
+      {providers.map(({ key, title, placeholder, domain }) => (
         <View key={key} style={styles.container}>
           <View style={styles.labelRow}>
             <Ionicons name={getProviderIcon(key) as any} size={18} color={colors.textSecondary} />
@@ -39,7 +39,7 @@ export function SocialLinksForm({ providers, values, onChange }: SocialLinksForm
               style={[styles.input, { color: colors.text }]}
               value={values[key] || ''}
               onChangeText={(text) => onChange(key, text)}
-              placeholder="username"
+              placeholder={placeholder}
               placeholderTextColor={colors.textTertiary}
               autoCapitalize="none"
               autoCorrect={false}
