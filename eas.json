@@ -28,7 +28,7 @@
     "production": {
       "autoIncrement": false,
       "env": {
-        "SITE_URL": "https://staging.twobirdschurch.com"
+        "SITE_URL": "https://community.twobirdschurch.com"
       }
     }
   },
