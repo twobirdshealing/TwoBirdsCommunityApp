@@ -152,10 +152,10 @@ html.dark .woocommerce ul.products li.product .price {
 }
 
 .woocommerce-info {
-    background: var(--fcom-highlight-bg, #fffce3);
-    border-top: 3px solid var(--fcom-text-link, #2271b1);
-    border-left: 4px solid var(--fcom-text-link, #2271b1);
-    color: var(--fcom-primary-text, #19283a);
+    background: var(--fcom-highlight-bg, #fffce3) !important;
+    border-top: 3px solid var(--fcom-text-link, #2271b1) !important;
+    border-left: 4px solid var(--fcom-text-link, #2271b1) !important;
+    color: var(--fcom-primary-text, #19283a) !important;
 }
 
 .woocommerce-error {
@@ -182,8 +182,10 @@ html.dark .woocommerce-message {
 }
 
 html.dark .woocommerce-info {
-    background: var(--fcom-highlight-bg, #2c2c1a);
-    color: var(--fcom-primary-text, #F0F3F5);
+    background: var(--fcom-highlight-bg, #2c2c1a) !important;
+    border-top-color: var(--fcom-text-link, #60a5fa) !important;
+    border-left-color: var(--fcom-text-link, #60a5fa) !important;
+    color: var(--fcom-primary-text, #F0F3F5) !important;
 }
 
 html.dark .woocommerce-error {
@@ -1530,59 +1532,53 @@ html.dark .woocommerce-checkout .checkout_coupon {
 
 /* ==========================================================================
    GamiPress Partial Payments Integration
+
+   HTML structure (no plugin CSS — relies on WooCommerce classes):
+   #gamipress-wc-partial-payments
+     .gamipress-wc-partial-payments-form-toggle
+       .woocommerce-info  ← toggle banner (themed by .woocommerce-info rules above)
+     form.gamipress-wc-partial-payments-form
+       p.gamipress-wc-partial-payments-points-field.form-row.form-row-first
+         label, input[type=number], small.gamipress-wc-partial-payments-points-balance
+       p.gamipress-wc-partial-payments-points-type-field.form-row.form-row-last
+         label, span (or select)
+       p.gamipress-wc-partial-payments-preview.form-row.form-row-first
+       p.gamipress-wc-partial-payments-button-wrapper.form-row.form-row-last
+         button.button
+     .gamipress-wc-partial-payments-notices
    ========================================================================== */
 
-/* Toggle banner ("Use rose quartz for a discount?") */
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form-toggle {
-    background: var(--fcom-highlight-bg, #fffce3);
-    border: 1px solid var(--fcom-primary-border, #e3e8ee);
-    border-radius: 8px;
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+/* Main container */
+#gamipress-wc-partial-payments {
+    margin-bottom: 24px;
 }
 
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form-toggle label {
-    color: var(--fcom-primary-text, #19283a);
-    font-size: 0.875rem;
-    cursor: pointer;
+/* Toggle banner inherits .woocommerce-info styles — just ensure spacing */
+.gamipress-wc-partial-payments-form-toggle {
+    margin-bottom: 16px;
 }
 
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form-toggle a {
-    color: var(--fcom-text-link, #2271b1);
-}
-
-html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-form-toggle {
-    background: var(--fcom-highlight-bg, #2c2c1a);
-    border-color: var(--fcom-primary-border, #42464D);
-}
-
-html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-form-toggle label {
-    color: var(--fcom-primary-text, #F0F3F5);
-}
-
-html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-form-toggle a {
-    color: var(--fcom-text-link, #60a5fa);
-}
-
-/* Points form container */
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form {
+/* Form container */
+.gamipress-wc-partial-payments-form {
     background: var(--fcom-secondary-bg, #f8fafc);
     border: 1px solid var(--fcom-primary-border, #e3e8ee);
     border-radius: 10px;
     padding: 20px;
-    margin-bottom: 24px;
+    overflow: hidden;
 }
 
-html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-form {
+html.dark .gamipress-wc-partial-payments-form {
     background: var(--fcom-secondary-bg, #191B1F);
     border-color: var(--fcom-primary-border, #42464D);
 }
 
-/* Form labels */
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form label {
+/* Form rows — WooCommerce uses float-based columns */
+.gamipress-wc-partial-payments-form .form-row {
+    margin-bottom: 12px;
+}
+
+/* Labels */
+.gamipress-wc-partial-payments-form label {
     color: var(--fcom-primary-text, #19283a);
     font-weight: 600;
     font-size: 0.875rem;
@@ -1590,12 +1586,13 @@ html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-form {
     margin-bottom: 6px;
 }
 
-html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-form label {
+html.dark .gamipress-wc-partial-payments-form label {
     color: var(--fcom-primary-text, #F0F3F5);
 }
 
-/* Amount input */
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form input[type="number"] {
+/* Amount input (number or range) */
+.gamipress-wc-partial-payments-form input[type="number"],
+.gamipress-wc-partial-payments-form input[type="range"] {
     background: var(--fcom-primary-bg, #fff);
     border: 1px solid var(--fcom-primary-border, #e3e8ee);
     border-radius: 6px;
@@ -1605,48 +1602,65 @@ html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-form lab
     max-width: 120px;
 }
 
-html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-form input[type="number"] {
+html.dark .gamipress-wc-partial-payments-form input[type="number"],
+html.dark .gamipress-wc-partial-payments-form input[type="range"] {
     background: var(--fcom-secondary-content-bg, #42464D);
     border-color: var(--fcom-primary-border, #42464D);
     color: var(--fcom-primary-text, #F0F3F5);
 }
 
-/* Balance text and preview text */
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-points-balance,
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-preview {
-    color: var(--fcom-secondary-text, #525866);
-    font-size: 0.875rem;
-    margin-top: 6px;
-}
-
-html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-points-balance,
-html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-preview {
-    color: var(--fcom-secondary-text, #99A0AE);
-}
-
-/* Small balance text under input */
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form small {
-    color: var(--fcom-text-off, #959595);
-    font-size: 0.8125rem;
-}
-
-html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-form small {
-    color: var(--fcom-text-off, #A5A9AD);
-}
-
-/* Type display */
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form span {
+/* Points type select dropdown (when multiple types) */
+.gamipress-wc-partial-payments-form select {
+    background: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 6px;
+    padding: 8px 12px;
     color: var(--fcom-primary-text, #19283a);
+    font-size: 0.9375rem;
 }
 
-html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-form span {
+html.dark .gamipress-wc-partial-payments-form select {
+    background: var(--fcom-secondary-content-bg, #42464D);
+    border-color: var(--fcom-primary-border, #42464D);
     color: var(--fcom-primary-text, #F0F3F5);
 }
 
-/* Apply discount button */
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form button,
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form input[type="submit"],
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form .button {
+/* Balance text (small under input) */
+.gamipress-wc-partial-payments-points-balance {
+    color: var(--fcom-text-off, #959595);
+    font-size: 0.8125rem;
+    display: block;
+    margin-top: 4px;
+}
+
+html.dark .gamipress-wc-partial-payments-points-balance {
+    color: var(--fcom-text-off, #A5A9AD);
+}
+
+/* Type display span (single type mode) */
+.gamipress-wc-partial-payments-points-type-field span {
+    color: var(--fcom-primary-text, #19283a);
+    font-size: 0.9375rem;
+}
+
+html.dark .gamipress-wc-partial-payments-points-type-field span {
+    color: var(--fcom-primary-text, #F0F3F5);
+}
+
+/* Preview text ("You will use X for a $Y discount") */
+.gamipress-wc-partial-payments-preview {
+    color: var(--fcom-secondary-text, #525866);
+    font-size: 0.875rem;
+}
+
+html.dark .gamipress-wc-partial-payments-preview {
+    color: var(--fcom-secondary-text, #99A0AE);
+}
+
+/* Apply discount button — uses .button class, themed by WooCommerce button rules above */
+/* Extra specificity to ensure GamiPress green doesn't override */
+#gamipress-wc-partial-payments .gamipress-wc-partial-payments-form button.button,
+#gamipress-wc-partial-payments button[name="apply_partial_payment"] {
     background: var(--fcom-primary-button, #2B2E33) !important;
     color: var(--fcom-primary-button-text, #ffffff) !important;
     border: none;
@@ -1658,14 +1672,13 @@ html.dark .gamipress-wc-partial-payments .gamipress-wc-partial-payments-form spa
     transition: filter 0.2s;
 }
 
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form button:hover,
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form input[type="submit"]:hover,
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-form .button:hover {
+#gamipress-wc-partial-payments .gamipress-wc-partial-payments-form button.button:hover,
+#gamipress-wc-partial-payments button[name="apply_partial_payment"]:hover {
     filter: brightness(1.1);
 }
 
-/* GamiPress notices */
-.gamipress-wc-partial-payments .gamipress-wc-partial-payments-notices-wrapper {
+/* Notices */
+.gamipress-wc-partial-payments-notices {
     margin-bottom: 12px;
 }
 

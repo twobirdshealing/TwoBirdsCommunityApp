@@ -2,6 +2,13 @@
 
 All notable changes to the Fluent Starter theme.
 
+## 1.0.48
+
+- Rewrote GamiPress partial payments CSS based on actual plugin HTML structure (plugin has no CSS of its own)
+- Toggle banner relies on `.woocommerce-info` rules (no duplicate styling needed)
+- Form container, labels, inputs, balance text, type display, preview text all properly themed
+- "Apply discount" button forced to `--fcom-primary-button` with high specificity to override WooCommerce defaults
+
 ## 1.0.47
 
 - Fixed WooCommerce notice `border-top-color` — now uses `--fcom-text-link` instead of WooCommerce default `#1e85be`
