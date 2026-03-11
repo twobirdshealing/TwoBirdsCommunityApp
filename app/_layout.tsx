@@ -197,8 +197,8 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return;
 
-    // Don't redirect during maintenance — maintenance screen handles login
-    if (maintenance?.enabled && !maintenance.can_bypass) return;
+    // Don't redirect during maintenance — unless user initiated login from maintenance screen
+    if (maintenance?.enabled && !maintenance.can_bypass && !maintenanceLoginMode) return;
 
     const currentSegment = segments[0] as string;
     const inAuthGroup = currentSegment === 'login' || currentSegment === 'register' || currentSegment === 'forgot-password' || currentSegment === 'webview' || currentSegment === 'profile-complete';
@@ -211,7 +211,7 @@ function RootLayoutNav() {
     } else if (isAuthenticated && !needsProfileCompletion && segments[0] === 'login') {
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, isLoading, segments, maintenance, needsProfileCompletion]);
+  }, [isAuthenticated, isLoading, segments, maintenance, needsProfileCompletion, maintenanceLoginMode]);
 
   // Reset login mode when bypass check completes: can't bypass → back to maintenance
   useEffect(() => {
@@ -303,9 +303,9 @@ function RootLayoutNav() {
     );
   }
 
-  // Show maintenance screen if enabled and user can't bypass
-  if (maintenance?.enabled && !maintenanceLoginMode) {
-    // If authenticated but bypass status not yet known, show loading
+  // Maintenance gate
+  if (maintenance?.enabled) {
+    // Authenticated but bypass status not yet known — show loading
     if (isAuthenticated && maintenance.can_bypass === undefined) {
       return (
         <View style={[styles.loading, { backgroundColor: themeColors.background }]}>
@@ -314,8 +314,8 @@ function RootLayoutNav() {
         </View>
       );
     }
-    // If user can't bypass, show maintenance screen
-    if (!maintenance.can_bypass) {
+    // User can't bypass and hasn't initiated login — show maintenance screen
+    if (!maintenance.can_bypass && !maintenanceLoginMode) {
       return (
         <View style={[styles.flex, { backgroundColor: themeColors.background }]}>
           <MaintenanceScreen
