@@ -112,4 +112,15 @@ The app's colors are synced from Fluent Community's color schemas (light + dark 
 - `shadowColor: '#000'` is fine (iOS standard)
 - Calendar status gradients, YouTube brand red, video player black backgrounds are intentionally static
 
-When working on companion plugins after updates fixes changes make sure you update the version number on the plugin or theme and update changelog. If change log missing add one.always update version to bust chacne even small udpates 
+When working on companion plugins after updates fixes changes make sure you update the version number on the plugin or theme and update changelog. If change log missing add one.always update version to bust chacne even small udpates
+
+## App Version Bumping
+
+After completing a task, ask the user if we should bump the app version. If yes, update all 4 places:
+
+1. `package.json` → `version`
+2. `app.json` → `expo.version`
+3. `app.json` → `ios.buildNumber` (string, matches version e.g. `"3.0.1"`)
+4. `app.json` → `android.versionCode` (integer, pattern: `major*100 + minor*10 + patch` e.g. `301`)
+
+EAS is set to `appVersionSource: "local"` — all versioning comes from these files, not remote.
