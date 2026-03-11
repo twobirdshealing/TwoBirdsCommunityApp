@@ -1,0 +1,229 @@
+/**
+ * TBC Community App - Admin Styles
+ */
+
+.tbc-ca-admin {
+    max-width: 900px;
+}
+
+/* Tab navigation */
+.tbc-ca-tabs {
+    margin-bottom: 0;
+}
+
+.tbc-ca-tabs .nav-tab {
+    position: relative;
+}
+
+.tbc-ca-tab-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+.tbc-ca-tab-dot--warning {
+    background: #d63638;
+}
+
+/* Tab panels */
+.tbc-ca-tab-panel {
+    display: none;
+}
+
+.tbc-ca-tab-panel--active {
+    display: block;
+}
+
+.tbc-ca-section {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 4px;
+}
+
+.tbc-ca-section h2 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.tbc-ca-section h3 {
+    margin: 20px 0 10px;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    color: #666;
+}
+
+.tbc-ca-section h3:first-of-type {
+    margin-top: 0;
+}
+
+/* Firebase settings */
+.tbc-ca-section .form-table th {
+    width: 150px;
+}
+
+.tbc-ca-section .form-table input.large-text {
+    width: 400px;
+}
+
+#tbc-ca-test-result {
+    margin-left: 10px;
+    font-weight: 500;
+}
+
+#tbc-ca-test-result.success {
+    color: #00a32a;
+}
+
+#tbc-ca-test-result.error {
+    color: #d63638;
+}
+
+/* Notification types table */
+.tbc-ca-types-table {
+    margin-top: 10px;
+}
+
+.tbc-ca-types-table th {
+    background: #f6f7f7;
+}
+
+.tbc-ca-types-table th.check-column {
+    width: 40px;
+    text-align: center;
+}
+
+.tbc-ca-types-table td.check-column {
+    text-align: center;
+    vertical-align: top;
+    padding-top: 15px;
+}
+
+.tbc-ca-types-table td {
+    vertical-align: middle;
+}
+
+.tbc-ca-types-table td strong {
+    display: block;
+    margin-bottom: 3px;
+}
+
+.tbc-ca-types-table td p.description {
+    margin: 0;
+    color: #666;
+    font-size: 12px;
+}
+
+.tbc-ca-types-table select {
+    width: 80px;
+}
+
+.tbc-ca-category {
+    margin-bottom: 25px;
+}
+
+.tbc-ca-category:last-child {
+    margin-bottom: 0;
+}
+
+/* PRO badge */
+.tbc-ca-pro-badge {
+    display: inline-block;
+    background: #635bff;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 5px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
+/* Feature disabled state */
+.tbc-ca-feature-disabled {
+    opacity: 0.55;
+}
+
+.tbc-ca-feature-disabled td {
+    background: #f9f9f9;
+}
+
+.tbc-ca-feature-badge {
+    display: inline-block;
+    background: #d63638;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 5px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
+/* Maintenance mode active state */
+.tbc-ca-maintenance-active {
+    border-left: 4px solid #d63638;
+}
+
+/* Visibility table */
+.tbc-ca-visibility-table {
+    margin-top: 15px;
+}
+
+.tbc-ca-visibility-table th,
+.tbc-ca-visibility-table td {
+    vertical-align: middle;
+}
+
+.tbc-ca-vis-col {
+    text-align: center;
+    width: 100px;
+}
+
+.tbc-ca-visibility-table thead th {
+    background: #f6f7f7;
+    font-size: 12px;
+}
+
+/* Stats section */
+.tbc-ca-stats table {
+    background: #f6f7f7;
+}
+
+.tbc-ca-stats td {
+    padding: 12px 15px;
+}
+
+.tbc-ca-stats td:first-child {
+    color: #666;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .tbc-ca-section .form-table input.large-text {
+        width: 100%;
+    }
+
+    .tbc-ca-section .form-table th {
+        width: auto;
+    }
+
+    #tbc-ca-toggle-key,
+    #tbc-ca-test-firebase {
+        margin-top: 10px;
+        display: block;
+    }
+
+    #tbc-ca-test-result {
+        display: block;
+        margin: 10px 0 0;
+    }
+}

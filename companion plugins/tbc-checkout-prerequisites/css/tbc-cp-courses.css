@@ -1,0 +1,355 @@
+/* TBC Checkout Prerequisites - Course Styles
+   Uses Fluent Community --fcom-* CSS variables for light/dark mode support */
+
+.tbc-cp-course-wrap {
+    background: var(--fcom-primary-bg, #ffffff);
+    border-radius: 8px;
+    padding: 5px;
+}
+
+.tbc-cp-course-header {
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--fcom-primary-border, #e3e8ee);
+    padding-bottom: 20px;
+}
+
+/* Progress Bar */
+.tbc-cp-course-progress {
+    margin-top: 25px;
+    position: relative;
+}
+
+.tbc-cp-progress-text {
+    display: block;
+    text-align: right;
+    margin-bottom: 8px;
+    color: var(--fcom-secondary-text, #525866);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.tbc-cp-progress-bar {
+    position: relative;
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    border-radius: 8px;
+    height: 24px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.tbc-cp-progress-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background: linear-gradient(to right, #43A047, #4CAF50);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transition: width 0.3s ease;
+}
+
+.tbc-cp-progress-pct {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    text-align: center;
+    z-index: 2;
+    color: var(--fcom-primary-text, #19283a);
+    font-weight: bold;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+/* Section Headers */
+.tbc-cp-section-header {
+    padding: 8px 0;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--fcom-primary-border, #e3e8ee);
+    font-weight: 600;
+    color: var(--fcom-secondary-text, #525866);
+    margin-top: 20px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tbc-cp-section-header:first-child {
+    margin-top: 0;
+}
+
+/* Lesson List */
+.tbc-cp-lesson-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tbc-cp-lesson-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    user-select: none;
+    background: var(--fcom-primary-bg, #ffffff);
+}
+
+.tbc-cp-lesson-item:hover {
+    background: var(--fcom-active-bg, #f0f3f5);
+    border-color: var(--fcom-secondary-border, #9CA3AF);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.tbc-cp-lesson-item.completed {
+    border-color: #4CAF50;
+    background: rgba(76, 175, 80, 0.08);
+}
+
+.tbc-cp-lesson-item.completed:hover {
+    background: rgba(76, 175, 80, 0.12);
+}
+
+/* Titles */
+.tbc-cp-lesson-title {
+    flex: 1;
+}
+
+.tbc-cp-lesson-text {
+    color: var(--fcom-primary-text, #19283a);
+    text-decoration: none;
+    font-weight: 500;
+    pointer-events: none;
+}
+
+.tbc-cp-lesson-item:hover .tbc-cp-lesson-text {
+    color: var(--fcom-text-link, #2271b1);
+}
+
+/* Status Icons */
+.tbc-cp-lesson-status {
+    margin-left: 15px;
+    pointer-events: none;
+}
+
+.tbc-cp-status-done {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    background: #4CAF50;
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 24px;
+    font-size: 14px;
+}
+
+.tbc-cp-status-done::before {
+    content: "\2713";
+}
+
+.tbc-cp-status-pending {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    color: var(--fcom-text-off, #959595);
+    text-align: center;
+    line-height: 24px;
+    font-size: 14px;
+}
+
+.tbc-cp-status-pending::before {
+    content: "\2192";
+}
+
+/* Lesson Content */
+.tbc-cp-lesson-header {
+    margin-bottom: 30px;
+}
+
+.tbc-cp-lesson-header h2 {
+    margin: 0 0 20px 0;
+    font-size: 24px;
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.tbc-cp-lesson-image {
+    margin-bottom: 20px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.tbc-cp-lesson-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.tbc-cp-lesson-body {
+    margin-bottom: 40px;
+    line-height: 1.6;
+    color: var(--fcom-primary-text, #19283a);
+}
+
+/* Completion Actions */
+.tbc-cp-completion {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 2px solid var(--fcom-primary-border, #e3e8ee);
+    text-align: center;
+}
+
+.tbc-cp-checkout .tbc-cp-mark-complete,
+.tbc-cp-checkout .tbc-cp-return-course {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border: 1px solid var(--fcom-primary-button, #2B2E33);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    text-decoration: none;
+    background: var(--fcom-primary-button, #2B2E33);
+    color: var(--fcom-primary-button-text, #ffffff);
+}
+
+.tbc-cp-checkout .tbc-cp-mark-complete:hover,
+.tbc-cp-checkout .tbc-cp-return-course:hover {
+    opacity: 0.85;
+}
+
+.tbc-cp-checkout .tbc-cp-mark-complete:disabled {
+    background: var(--fcom-light-bg, #E1E4EA);
+    border-color: var(--fcom-primary-border, #e3e8ee);
+    color: var(--fcom-text-off, #959595);
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.tbc-cp-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    font-size: 14px;
+}
+
+/* Mark complete button icon */
+.tbc-cp-mark-complete .tbc-cp-btn-icon::before {
+    content: "\2713";
+}
+
+/* Return to course button icon */
+.tbc-cp-return-course .tbc-cp-btn-icon::before {
+    content: "\2713";
+}
+
+/* Loading icon */
+.tbc-cp-icon-loading::before {
+    content: "" !important;
+}
+
+.tbc-cp-icon-loading::after {
+    content: "";
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: tbc-cp-spin 0.6s linear infinite;
+}
+
+/* Check icon class for JS */
+.tbc-cp-icon-check::before {
+    content: "\2713";
+}
+
+/* Button loading state */
+.tbc-cp-mark-complete.tbc-cp-loading {
+    opacity: 0.6;
+}
+
+/* Loading overlay */
+body .tbc-cp-body.tbc-cp-loading::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 99998;
+}
+
+body .tbc-cp-body.tbc-cp-loading::after {
+    content: "";
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 80px;
+    height: 80px;
+    margin: -40px 0 0 -40px;
+    border: 6px solid var(--fcom-primary-border, #e3e8ee);
+    border-top: 6px solid var(--fcom-text-link, #2271b1);
+    border-radius: 50%;
+    z-index: 99999;
+    animation: tbc-cp-spin 0.8s linear infinite;
+    background: transparent;
+}
+
+@keyframes tbc-cp-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Mobile */
+@media (max-width: 782px) {
+    .tbc-cp-lesson-body {
+        margin-bottom: 30px;
+    }
+
+    .tbc-cp-completion {
+        margin-top: 30px;
+        padding-top: 20px;
+    }
+
+    .tbc-cp-mark-complete,
+    .tbc-cp-return-course {
+        width: 100%;
+        padding: 14px 24px;
+        font-size: 15px;
+        gap: 10px;
+    }
+
+    .tbc-cp-section-header {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+
+    .tbc-cp-lesson-item {
+        padding: 12px;
+    }
+
+    .tbc-cp-lesson-text {
+        font-size: 14px;
+    }
+
+    .tbc-cp-lesson-header h2 {
+        font-size: 20px;
+    }
+
+    body .tbc-cp-body.tbc-cp-loading::after {
+        width: 60px;
+        height: 60px;
+        margin: -30px 0 0 -30px;
+        border-width: 4px;
+    }
+}

@@ -45,8 +45,8 @@ app-example
 /ios
 /android
 
-# companion plugins (reference only)
-companion plugins/
+# fluent-community reference (not our code)
+companion plugins/fluent-community (Refrence ONLY)/
 
 # Firebase config files (client-side by design, but API keys MUST be restricted in Google Cloud Console)
 

@@ -1,0 +1,1468 @@
+/**
+ * Fluent Starter - Modern Blog Styles
+ *
+ * Instagram/Meta/Apple/Material Design inspired
+ * Clean, modern, no bloat
+ *
+ * @package Fluent_Starter
+ */
+
+/* ==========================================================================
+   Blog Archive Page
+   ========================================================================== */
+
+.fs-blog-archive {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--fs-spacing-lg);
+}
+
+/* ==========================================================================
+   Hero Featured Post
+   ========================================================================== */
+
+.fs-hero-post {
+    position: relative;
+    display: block;
+    margin-bottom: var(--fs-spacing-2xl);
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--fs-color-bg-secondary);
+    text-decoration: none;
+    color: #ffffff;
+}
+
+.fs-hero-post:hover {
+    text-decoration: none;
+    color: #ffffff;
+}
+
+.fs-hero-image {
+    position: relative;
+    aspect-ratio: 21/9;
+    overflow: hidden;
+}
+
+@media (max-width: 768px) {
+    .fs-hero-image {
+        aspect-ratio: 16/9;
+    }
+}
+
+.fs-hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fs-hero-post:hover .fs-hero-img {
+    transform: scale(1.03);
+}
+
+.fs-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.5) 0%,
+        transparent 40%,
+        rgba(0, 0, 0, 0.7) 100%
+    );
+}
+
+.fs-hero-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: var(--fs-spacing-xl);
+    color: #ffffff;
+}
+
+@media (min-width: 768px) {
+    .fs-hero-content {
+        padding: var(--fs-spacing-2xl);
+    }
+}
+
+.fs-hero-title {
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    color: #ffffff;
+}
+
+.fs-hero-bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--fs-spacing-md);
+}
+
+.fs-hero-author {
+    display: flex;
+    align-items: center;
+    gap: var(--fs-spacing-sm);
+}
+
+.fs-hero-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.fs-hero-author-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.fs-hero-author-name {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #ffffff;
+}
+
+.fs-hero-date {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    color: #ffffff;
+}
+
+.fs-hero-meta-right {
+    display: flex;
+    align-items: center;
+    gap: var(--fs-spacing-sm);
+}
+
+.fs-hero-category {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    padding: 0.375rem 0.875rem;
+    border-radius: 100px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+    color: #ffffff;
+}
+
+.fs-hero-comments {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 0.375rem 0.75rem;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.fs-hero-comments svg {
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Post Card Grid
+   ========================================================================== */
+
+.fs-posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--fs-spacing-lg);
+}
+
+@media (min-width: 1024px) {
+    .fs-posts-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.fs-post-card {
+    position: relative;
+    display: block;
+    border-radius: 16px;
+    overflow: hidden;
+    text-decoration: none;
+    color: #ffffff;
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.05),
+        0 4px 12px rgba(0, 0, 0, 0.05);
+    transition:
+        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.3s ease;
+}
+
+.fs-post-card:hover {
+    transform: translateY(-4px);
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.08),
+        0 12px 32px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+    color: #ffffff;
+}
+
+html.dark .fs-post-card {
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.2),
+        0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+html.dark .fs-post-card:hover {
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.25),
+        0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.fs-card-image {
+    position: relative;
+    aspect-ratio: 16/10;
+    overflow: hidden;
+    background: var(--fs-color-bg-secondary);
+}
+
+.fs-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fs-post-card:hover .fs-card-img {
+    transform: scale(1.05);
+}
+
+.fs-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.5) 0%,
+        transparent 40%,
+        rgba(0, 0, 0, 0.7) 100%
+    );
+}
+
+.fs-card-image-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--fs-color-text-secondary);
+    opacity: 0.5;
+}
+
+.fs-card-overlay-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: var(--fs-spacing-lg);
+    color: #ffffff;
+}
+
+.fs-card-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+    color: #ffffff;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.fs-card-bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--fs-spacing-sm);
+}
+
+.fs-card-author {
+    display: flex;
+    align-items: center;
+    gap: var(--fs-spacing-sm);
+}
+
+.fs-card-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.fs-card-author-name {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+.fs-card-comments {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 0.25rem 0.625rem;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.fs-card-comments svg {
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Pagination
+   ========================================================================== */
+
+.fs-pagination {
+    margin-top: var(--fs-spacing-2xl);
+}
+
+.fs-pagination .nav-links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--fs-spacing-xs);
+}
+
+.fs-pagination .page-numbers {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    height: 44px;
+    padding: 0 var(--fs-spacing-sm);
+    border-radius: 12px;
+    font-weight: 500;
+    color: var(--fs-color-text);
+    background: var(--fs-color-bg);
+    border: 1px solid var(--fs-color-border);
+    transition: all 0.2s ease;
+}
+
+.fs-pagination .page-numbers:hover {
+    background: var(--fs-color-bg-secondary);
+    text-decoration: none;
+}
+
+.fs-pagination .page-numbers.current {
+    background: var(--fs-color-text);
+    color: var(--fs-color-bg);
+    border-color: var(--fs-color-text);
+}
+
+/* No posts */
+.fs-no-posts {
+    text-align: center;
+    padding: var(--fs-spacing-2xl);
+}
+
+/* ==========================================================================
+   Single Post - Hero
+   ========================================================================== */
+
+.fs-single-post {
+    max-width: 100%;
+}
+
+.fs-single-hero {
+    position: relative;
+    margin-bottom: var(--fs-spacing-2xl);
+}
+
+.fs-single-hero-image {
+    position: relative;
+    width: 100%;
+    max-height: 70vh;
+    min-height: 400px;
+    overflow: hidden;
+}
+
+.fs-single-hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.fs-single-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to top,
+        rgba(0, 0, 0, 0.85) 0%,
+        rgba(0, 0, 0, 0.5) 40%,
+        rgba(0, 0, 0, 0.2) 70%,
+        transparent 100%
+    );
+}
+
+.fs-single-hero-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: var(--fs-spacing-xl);
+    color: #ffffff;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+    .fs-single-hero-content {
+        padding: var(--fs-spacing-2xl);
+    }
+}
+
+.fs-single-meta-top {
+    margin-bottom: var(--fs-spacing-md);
+}
+
+.fs-single-category {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    padding: 0.5rem 1rem;
+    border-radius: 100px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #ffffff;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.fs-single-category:hover {
+    background: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.fs-single-title {
+    font-size: clamp(1.75rem, 5vw, 3rem);
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: var(--fs-spacing-lg);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.fs-single-meta {
+    display: flex;
+    align-items: center;
+}
+
+.fs-single-author {
+    display: flex;
+    align-items: center;
+    gap: var(--fs-spacing-md);
+}
+
+.fs-single-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.fs-single-author-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.fs-single-author-name {
+    font-weight: 600;
+    font-size: 0.9375rem;
+}
+
+.fs-single-date-read {
+    font-size: 0.875rem;
+    opacity: 0.85;
+}
+
+.fs-separator {
+    margin: 0 0.375rem;
+}
+
+/* Single post without image */
+.fs-single-header-simple {
+    padding: var(--fs-spacing-2xl) var(--fs-spacing-lg);
+    background: var(--fs-color-bg-secondary);
+    margin-bottom: var(--fs-spacing-xl);
+}
+
+.fs-single-header-inner {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.fs-single-title-simple {
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: var(--fs-spacing-lg);
+    color: var(--fs-color-text);
+}
+
+.fs-single-meta-simple {
+    display: flex;
+    align-items: center;
+}
+
+.fs-single-meta-simple .fs-single-avatar {
+    border-color: var(--fs-color-border);
+}
+
+.fs-single-meta-simple .fs-single-author-name {
+    color: var(--fs-color-text);
+}
+
+.fs-single-meta-simple .fs-single-date-read {
+    color: var(--fs-color-text-secondary);
+}
+
+/* ==========================================================================
+   Single Post - Content
+   ========================================================================== */
+
+.fs-single-content {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 var(--fs-spacing-lg);
+}
+
+.fs-single-content-inner {
+    font-size: 1.125rem;
+    line-height: 1.8;
+    color: var(--fs-color-text);
+}
+
+.fs-single-content-inner p {
+    margin-bottom: 1.75em;
+}
+
+.fs-single-content-inner h2 {
+    font-size: 1.75rem;
+    margin-top: 2em;
+    margin-bottom: 0.75em;
+}
+
+.fs-single-content-inner h3 {
+    font-size: 1.375rem;
+    margin-top: 1.75em;
+    margin-bottom: 0.5em;
+}
+
+.fs-single-content-inner img {
+    border-radius: 12px;
+}
+
+.fs-single-content-inner blockquote {
+    font-size: 1.25rem;
+    font-style: italic;
+    border-left: 4px solid var(--fs-color-link);
+    padding: var(--fs-spacing-md) var(--fs-spacing-lg);
+    margin: var(--fs-spacing-xl) 0;
+    background: var(--fs-color-bg-secondary);
+    border-radius: 0 12px 12px 0;
+}
+
+.fs-single-content-inner blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+/* Wide and full alignments */
+.fs-single-content-inner .alignwide {
+    max-width: calc(100% + 100px);
+    margin-left: -50px;
+    margin-right: -50px;
+    width: calc(100% + 100px);
+}
+
+.fs-single-content-inner .alignfull {
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    width: 100vw;
+}
+
+@media (max-width: 768px) {
+    .fs-single-content-inner .alignwide {
+        max-width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+    }
+}
+
+/* ==========================================================================
+   Single Post - Tags
+   ========================================================================== */
+
+.fs-single-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--fs-spacing-sm);
+    margin-top: var(--fs-spacing-xl);
+    padding-top: var(--fs-spacing-xl);
+    border-top: 1px solid var(--fs-color-border-light);
+}
+
+.fs-tag {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: var(--fs-color-bg-secondary);
+    border-radius: 100px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--fs-color-text-secondary);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.fs-tag:hover {
+    background: var(--fs-color-link);
+    color: #ffffff;
+    text-decoration: none;
+}
+
+/* ==========================================================================
+   Single Post - Share
+   ========================================================================== */
+
+.fs-single-share {
+    display: flex;
+    align-items: center;
+    gap: var(--fs-spacing-lg);
+    margin-top: var(--fs-spacing-xl);
+    padding: var(--fs-spacing-lg);
+    background: var(--fs-color-bg-secondary);
+    border-radius: 16px;
+}
+
+.fs-share-label {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--fs-color-text-secondary);
+}
+
+.fs-share-buttons {
+    display: flex;
+    gap: var(--fs-spacing-sm);
+}
+
+.fs-share-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--fs-color-bg);
+    color: var(--fs-color-text-secondary);
+    border: 1px solid var(--fs-color-border);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fs-share-btn:hover {
+    background: var(--fs-color-text);
+    color: var(--fs-color-bg);
+    border-color: var(--fs-color-text);
+}
+
+.fs-share-copy.copied {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+}
+
+@media (max-width: 480px) {
+    .fs-single-share {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* ==========================================================================
+   Single Post - Author Bio
+   ========================================================================== */
+
+.fs-author-bio {
+    display: flex;
+    gap: var(--fs-spacing-lg);
+    margin-top: var(--fs-spacing-2xl);
+    padding: var(--fs-spacing-xl);
+    background: var(--fs-color-bg-secondary);
+    border-radius: 16px;
+}
+
+.fs-author-bio-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.fs-author-bio-content {
+    flex: 1;
+}
+
+.fs-author-bio-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--fs-color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.fs-author-bio-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0.25rem 0 0.5rem;
+}
+
+.fs-author-bio-desc {
+    font-size: 0.9375rem;
+    color: var(--fs-color-text-secondary);
+    line-height: 1.6;
+    margin: 0;
+}
+
+@media (max-width: 480px) {
+    .fs-author-bio {
+        flex-direction: column;
+        text-align: center;
+        align-items: center;
+    }
+}
+
+/* ==========================================================================
+   Single Post - Navigation
+   ========================================================================== */
+
+.fs-post-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--fs-spacing-md);
+    margin-top: var(--fs-spacing-2xl);
+    padding-top: var(--fs-spacing-xl);
+    border-top: 1px solid var(--fs-color-border);
+}
+
+@media (max-width: 640px) {
+    .fs-post-nav {
+        grid-template-columns: 1fr;
+    }
+}
+
+.fs-post-nav-link {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: var(--fs-spacing-lg);
+    background: var(--fs-color-bg-secondary);
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.fs-post-nav-link:hover {
+    background: var(--fs-color-bg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+}
+
+.fs-post-nav-empty {
+    background: transparent;
+}
+
+.fs-post-nav-next {
+    text-align: right;
+    align-items: flex-end;
+}
+
+.fs-post-nav-label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--fs-color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.fs-post-nav-next .fs-post-nav-label {
+    flex-direction: row-reverse;
+}
+
+.fs-post-nav-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--fs-color-text);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   Comments Section (matching Fluent Community native style)
+   ========================================================================== */
+
+.fs-comments-section {
+    max-width: 720px;
+    margin: var(--fs-spacing-xl) auto 0;
+    padding: var(--fs-spacing-lg) 0;
+    border-top: 1px solid var(--fs-color-border, var(--fcom-primary-border, #e3e8ee));
+}
+
+.fs-comments-section .comments-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: var(--fs-spacing-md);
+    color: var(--fs-color-text, var(--fcom-primary-text, #19283a));
+}
+
+.fs-comments-section .comment-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--fs-spacing-lg) 0;
+}
+
+/* Individual comment - matching FC native layout with dual-layer background */
+.fs-comments-section .each_comment {
+    background: var(--fcom-secondary-content-bg, var(--fcom-active-bg, #f0f2f5));
+    padding: 10px 12px;
+    margin: 10px 0;
+    border-radius: 10px;
+}
+
+html.dark .fs-comments-section .each_comment {
+    background: var(--fcom-secondary-content-bg, #42464D);
+}
+
+.fs-comments-section .comment_wrap {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.fs-comments-section .person_avatar {
+    flex-shrink: 0;
+}
+
+.fs-comments-section .person_avatar img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.fs-comments-section .comment_text {
+    flex: 1;
+    min-width: 0;
+}
+
+.fs-comments-section .comment_text_head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+    flex-wrap: wrap;
+}
+
+.fs-comments-section .comment_text_head_name {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--fs-color-text, var(--fcom-primary-text, #19283a));
+}
+
+.fs-comments-section .comment_text_head_time {
+    font-size: 0.8125rem;
+    color: var(--fs-color-text-secondary, var(--fcom-secondary-text, #64748b));
+}
+
+.fs-comments-section .comment_text_head_time time {
+    color: inherit;
+}
+
+.fs-comments-section .comment_text_body {
+    color: var(--fs-color-text, var(--fcom-primary-text, #19283a));
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    margin-bottom: 4px;
+}
+
+.fs-comments-section .comment_text_body p {
+    margin: 0;
+}
+
+.fs-comments-section .comment_actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.fs-comments-section .reply_btn a,
+.fs-comments-section .comment-reply-link {
+    font-size: 0.8125rem;
+    color: var(--fs-color-link, var(--fcom-text-link, #2563eb));
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.fs-comments-section .edit-link a {
+    font-size: 0.8125rem;
+    color: var(--fs-color-text-secondary, var(--fcom-secondary-text, #64748b));
+    text-decoration: none;
+}
+
+.fs-comments-section .reply_btn a:hover,
+.fs-comments-section .comment-reply-link:hover,
+.fs-comments-section .edit-link a:hover {
+    text-decoration: underline;
+}
+
+/* Nested/threaded comments */
+.fs-comments-section .children {
+    list-style: none;
+    padding-left: 48px;
+    margin-top: var(--fs-spacing-sm);
+}
+
+/* Comment form wrapper - use secondary-bg for card effect with border for definition */
+.fs-comments-section .comment-respond {
+    margin-top: var(--fs-spacing-md);
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 12px;
+    padding: 12px 16px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+html.dark .fs-comments-section .comment-respond {
+    background: var(--fcom-secondary-bg, #191B1F);
+    border-color: var(--fcom-primary-border, #42464D);
+}
+
+.fs-comments-section .comment-reply-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--fs-color-text-secondary, var(--fcom-secondary-text, #64748b));
+}
+
+.fs-comments-section .comment-reply-title small {
+    font-size: 0.8125rem;
+    font-weight: normal;
+    margin-left: 8px;
+}
+
+.fs-comments-section .comment-reply-title small a {
+    color: var(--fs-color-link, var(--fcom-text-link, #2563eb));
+}
+
+/* Hide title for cleaner FC-like look */
+.fs-comments-section .comment-reply-title {
+    display: none;
+}
+
+/* Logged in notice - cleaner styling */
+.fs-comments-section .logged-in-as {
+    font-size: 0.8125rem;
+    color: var(--fs-color-text-secondary, var(--fcom-secondary-text, #64748b));
+    margin: 0 0 8px 0;
+}
+
+.fs-comments-section .logged-in-as a {
+    color: var(--fs-color-link, var(--fcom-text-link, #2563eb));
+    text-decoration: none;
+}
+
+.fs-comments-section .comment-form p {
+    margin-bottom: 8px;
+}
+
+.fs-comments-section .comment-form p:last-of-type {
+    margin-bottom: 0;
+}
+
+/* Hide labels for cleaner look (use placeholders) */
+.fs-comments-section .comment-form label:not(.screen-reader-text) {
+    display: none;
+}
+
+.fs-comments-section .comment-form .required {
+    color: #ef4444;
+}
+
+/* Compact form layout like FC */
+.fs-comments-section .comment-form-comment {
+    margin-bottom: 8px !important;
+}
+
+.fs-comments-section .form-submit {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 !important;
+}
+
+/* Input fields use secondary-content-bg for contrast against secondary-bg wrapper */
+.fs-comments-section .fcom_input {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    background: var(--fcom-secondary-content-bg, var(--fcom-primary-bg, #ffffff));
+    color: var(--fs-color-text, var(--fcom-primary-text, #19283a));
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+html.dark .fs-comments-section .fcom_input {
+    background: var(--fcom-secondary-content-bg, #42464D);
+    border-color: var(--fcom-primary-border, #42464D);
+}
+
+.fs-comments-section .fcom_input:focus {
+    outline: none;
+    border-color: var(--fs-color-link, var(--fcom-text-link, #2563eb));
+}
+
+.fs-comments-section .fcom_input::placeholder {
+    color: var(--fs-color-text-secondary, var(--fcom-secondary-text, #64748b));
+}
+
+.fs-comments-section textarea.fcom_input {
+    resize: none;
+    min-height: 44px;
+    max-height: 200px;
+}
+
+.fs-comments-section .fcom_primary_button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 1.25rem;
+    background: var(--fs-color-link, var(--fcom-primary-button, #2563eb));
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.fs-comments-section .fcom_primary_button:hover {
+    background: var(--fcom-primary-button-hover, #1d4ed8);
+}
+
+.fs-comments-section .fcom_primary_button:active {
+    transform: scale(0.98);
+}
+
+/* Awaiting moderation notice */
+.fs-comments-section .comment-awaiting-moderation {
+    font-size: 0.8125rem;
+    color: #f59e0b;
+    font-style: italic;
+    margin-bottom: var(--fs-spacing-sm);
+}
+
+/* No comments message */
+.fs-comments-section .no-comments {
+    color: var(--fs-color-text-secondary, var(--fcom-secondary-text, #64748b));
+    font-style: italic;
+}
+
+/* Comment navigation */
+.fs-comments-section .comment-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--fs-spacing-lg);
+    padding-top: var(--fs-spacing-md);
+    border-top: 1px solid var(--fs-color-border, var(--fcom-primary-border, #e3e8ee));
+}
+
+.fs-comments-section .comment-navigation a {
+    color: var(--fs-color-link, var(--fcom-text-link, #2563eb));
+    text-decoration: none;
+}
+
+.fs-comments-section .comment-navigation a:hover {
+    text-decoration: underline;
+}
+
+/* Dark mode adjustments - removed duplicate, handled above */
+
+/* Screen reader text */
+.fs-comments-section .screen-reader-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ==========================================================================
+   WordPress Comment Form - Robust Selectors (FC-style compact form)
+   Target default WP elements by ID and type (not just custom classes)
+   ========================================================================== */
+
+/* Textarea styling - use secondary-content-bg for contrast against wrapper */
+.fs-comments-section #commentform textarea,
+.fs-comments-section .comment-form textarea,
+.fs-comments-section textarea#comment {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    background: var(--fcom-secondary-content-bg, var(--fcom-primary-bg, #ffffff));
+    color: var(--fs-color-text, var(--fcom-primary-text, #19283a));
+    transition: border-color 0.2s ease;
+    resize: none;
+    min-height: 44px;
+    max-height: 200px;
+}
+
+.fs-comments-section #commentform textarea:focus,
+.fs-comments-section textarea#comment:focus {
+    outline: none;
+    border-color: var(--fs-color-link, var(--fcom-text-link, #2563eb));
+}
+
+.fs-comments-section #commentform textarea::placeholder,
+.fs-comments-section textarea#comment::placeholder {
+    color: var(--fs-color-text-secondary, var(--fcom-secondary-text, #64748b));
+}
+
+/* Text input fields styling - use secondary-content-bg for contrast */
+.fs-comments-section #commentform input[type="text"],
+.fs-comments-section #commentform input[type="email"],
+.fs-comments-section #commentform input[type="url"],
+.fs-comments-section .comment-form input[type="text"],
+.fs-comments-section .comment-form input[type="email"],
+.fs-comments-section .comment-form input[type="url"] {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    background: var(--fcom-secondary-content-bg, var(--fcom-primary-bg, #ffffff));
+    color: var(--fs-color-text, var(--fcom-primary-text, #19283a));
+    transition: border-color 0.2s ease;
+}
+
+.fs-comments-section #commentform input[type="text"]:focus,
+.fs-comments-section #commentform input[type="email"]:focus,
+.fs-comments-section #commentform input[type="url"]:focus {
+    outline: none;
+    border-color: var(--fs-color-link, var(--fcom-text-link, #2563eb));
+}
+
+/* Submit button styling - FC style */
+.fs-comments-section #commentform input[type="submit"],
+.fs-comments-section .comment-form input[type="submit"],
+.fs-comments-section .form-submit input[type="submit"],
+.fs-comments-section #submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    background: var(--fs-color-link, var(--fcom-primary-button, #2563eb));
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.fs-comments-section #commentform input[type="submit"]:hover,
+.fs-comments-section #submit:hover {
+    background: var(--fcom-primary-button-hover, #1d4ed8);
+}
+
+.fs-comments-section #commentform input[type="submit"]:active,
+.fs-comments-section #submit:active {
+    transform: scale(0.98);
+}
+
+/* Logged-in user notice styling */
+.fs-comments-section .logged-in-as {
+    font-size: 0.875rem;
+    color: var(--fs-color-text-secondary, var(--fcom-secondary-text, #64748b));
+    margin-bottom: var(--fs-spacing-md);
+}
+
+.fs-comments-section .logged-in-as a {
+    color: var(--fs-color-link, var(--fcom-text-link, #2563eb));
+    text-decoration: none;
+}
+
+.fs-comments-section .logged-in-as a:hover {
+    text-decoration: underline;
+}
+
+/* Dark mode for robust selectors - use secondary-content-bg for contrast */
+html.dark .fs-comments-section #commentform textarea,
+html.dark .fs-comments-section #commentform input[type="text"],
+html.dark .fs-comments-section #commentform input[type="email"],
+html.dark .fs-comments-section #commentform input[type="url"],
+html.dark .fs-comments-section textarea#comment {
+    background: var(--fcom-secondary-content-bg, #42464D);
+    border-color: var(--fcom-primary-border, #42464D);
+}
+
+/* ==========================================================================
+   Hero Without Image Fallback
+   ========================================================================== */
+
+.fs-hero-no-image {
+    background: linear-gradient(135deg,
+        var(--fs-color-link, #2563eb) 0%,
+        #6366f1 50%,
+        #8b5cf6 100%
+    );
+}
+
+/* ==========================================================================
+   Within Fluent Community Frame - CONSTRAINED WIDTH (default)
+   Applies when fcom_theme_full class is NOT present
+   ========================================================================== */
+
+.feeds_main:not(.fcom_theme_full) .fs-blog-archive {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.feeds_main:not(.fcom_theme_full) .fs-single-content {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.feeds_main:not(.fcom_theme_full) .fs-hero-post {
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+}
+
+.feeds_main:not(.fcom_theme_full) .fs-hero-image {
+    aspect-ratio: 16/9;
+}
+
+.feeds_main:not(.fcom_theme_full) .fs-hero-content {
+    padding: 1.25rem;
+}
+
+.feeds_main:not(.fcom_theme_full) .fs-hero-title {
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.feeds_main:not(.fcom_theme_full) .fs-posts-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.feeds_main:not(.fcom_theme_full) .fs-post-card {
+    border-radius: 12px;
+}
+
+.feeds_main:not(.fcom_theme_full) .fs-card-title {
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+@media (min-width: 640px) {
+    .feeds_main:not(.fcom_theme_full) .fs-posts-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1100px) {
+    .feeds_main:not(.fcom_theme_full) .fs-posts-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* ==========================================================================
+   Within Fluent Community Frame - FULL WIDTH
+   Applies when fcom_theme_full class IS present
+   ========================================================================== */
+
+.feeds_main.fcom_theme_full .fs-blog-archive {
+    max-width: 100%;
+    padding: 0;
+}
+
+.feeds_main.fcom_theme_full .fs-single-content {
+    max-width: 100%;
+    padding: 0;
+}
+
+.feeds_main.fcom_theme_full .fs-hero-post {
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+}
+
+.feeds_main.fcom_theme_full .fs-hero-image {
+    aspect-ratio: 16/9;
+}
+
+.feeds_main.fcom_theme_full .fs-hero-content {
+    padding: 1.25rem;
+}
+
+.feeds_main.fcom_theme_full .fs-hero-title {
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.feeds_main.fcom_theme_full .fs-posts-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.feeds_main.fcom_theme_full .fs-post-card {
+    border-radius: 12px;
+}
+
+.feeds_main.fcom_theme_full .fs-card-title {
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+@media (min-width: 640px) {
+    .feeds_main.fcom_theme_full .fs-posts-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1100px) {
+    .feeds_main.fcom_theme_full .fs-posts-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 1400px) {
+    .feeds_main.fcom_theme_full .fs-posts-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* ==========================================================================
+   Verified Checkmark
+   ========================================================================== */
+
+.fs-verified {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    margin-left: 4px;
+    color: #2563eb;
+}
+
+.fs-verified svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Verified on hero/dark backgrounds */
+.fs-single-hero .fs-verified,
+.fs-hero-content .fs-verified {
+    color: #fff;
+}
+
+/* ==========================================================================
+   Profile Badges (Fluent Community)
+   ========================================================================== */
+
+/* Pill mode (default) — colored background + icon + label */
+.fs-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-size: 11px;
+    line-height: 1.4;
+    vertical-align: middle;
+    margin-left: 4px;
+    background: var(--fs-color-bg-secondary, #f0f2f5);
+}
+
+.fs-badge-logo {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.fs-badge-emoji {
+    font-size: 11px;
+    line-height: 1;
+}
+
+.fs-badge-label {
+    font-weight: 600;
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+/* Icon-only mode — no pill bg, no label, larger icon */
+.fs-badge--icon-only {
+    background: none !important;
+    padding: 0;
+}
+
+.fs-badge--icon-only .fs-badge-logo {
+    width: 18px;
+    height: 18px;
+}
+
+.fs-badge--icon-only .fs-badge-emoji {
+    font-size: 15px;
+}
+
+/* Badges on dark/hero backgrounds */
+.fs-single-hero .fs-badge:not(.fs-badge--icon-only),
+.fs-hero-content .fs-badge:not(.fs-badge--icon-only) {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.fs-single-hero .fs-badge-label,
+.fs-hero-content .fs-badge-label {
+    color: #fff !important;
+}

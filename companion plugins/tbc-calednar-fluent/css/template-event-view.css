@@ -1,0 +1,109 @@
+/**
+ * TBC WooCommerce Calendar - Event Detail View Styles
+ */
+
+/* WooCommerce default price styling */
+.price {
+    background-color: var(--fcom-secondary-bg, #f0f2f5);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 5px;
+    padding: 10px;
+    margin-top: 0px!important;
+    margin-bottom: 10px!important;
+    font-size: 16px!important;
+    line-height: 1.5;
+    display: block;
+    font-weight: bold;
+    color: var(--fcom-primary-text, #19283a)!important;
+}
+
+/* Base Event Detail Styles */
+.tbc-wc-event-details-location,
+.tbc-wc-event-details-price,
+.tbc-wc-event-details-time,
+.tbc-wc-event-details-rsvp {
+    background-color: var(--fcom-secondary-bg, #f0f2f5);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 5px;
+    padding: 10px;
+    color: var(--fcom-primary-text, #19283a);
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+/* Flex layout for sections that use text wrappers (not price) */
+.tbc-wc-event-details-location .tbc-wc-location-text,
+.tbc-wc-event-details-time .tbc-wc-time-text,
+.tbc-wc-event-details-rsvp .tbc-wc-rsvp-text {
+    display: flex;
+    align-items: flex-start;
+}
+
+/* Icon spacing for flex sections */
+.tbc-wc-event-details-location .tbc-wc-icon,
+.tbc-wc-event-details-time .tbc-wc-icon,
+.tbc-wc-event-details-rsvp .tbc-wc-icon {
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+/* Price section uses different layout - no flex wrapper */
+.tbc-wc-event-details-price .tbc-wc-icon {
+    margin-right: 8px;
+}
+
+/* RSVP specific styles */
+.tbc-wc-rsvp-countdown {
+    color: var(--fcom-text-link, #2271b1);
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.tbc-wc-rsvp-closed {
+    color: #cc0000;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.tbc-wc-rsvp-message {
+    margin-top: 8px;
+    font-size: 0.9em;
+    color: var(--fcom-secondary-text, #525866);
+}
+
+.tbc-wc-rsvp-closed-message {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+/* Event time specific styles */
+.tbc-wc-event-details-page .tbc-wc-event-time {
+    display: block;
+    font-weight: 500;
+    color: var(--fcom-primary-text, #19283a);
+}
+
+/* For recurring events */
+.tbc-wc-event-details-page .tbc-wc-event-time:contains("Next Event:") {
+    color: var(--fcom-text-link, #2271b1);
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+    .tbc-wc-event-details-location,
+    .tbc-wc-event-details-price,
+    .tbc-wc-event-details-time,
+    .tbc-wc-event-details-rsvp {
+        padding: 8px;
+        font-size: 14px;
+    }
+    
+    .tbc-wc-event-details-location .tbc-wc-icon,
+    .tbc-wc-event-details-time .tbc-wc-icon,
+    .tbc-wc-event-details-price .tbc-wc-icon,
+    .tbc-wc-event-details-rsvp .tbc-wc-icon {
+        font-size: 14px;
+    }
+}

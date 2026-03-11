@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Read(//c/Users/Frogb/Desktop/Vibez/Plugins/TBC - Calendar/**)",
+      "Bash(^d \")",
+      "Bash(cat:*)"
+    ]
+  }
+}

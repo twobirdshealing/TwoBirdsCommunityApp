@@ -1,0 +1,6 @@
+.tbc-mc-call-center-container {
+    display: flex;
+    flex-direction: column; /* stack children vertically */
+    align-items: center; /* center children horizontally */
+    justify-content: center; /* center children vertically */
+}

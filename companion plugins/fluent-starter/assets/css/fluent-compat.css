@@ -1,0 +1,224 @@
+/**
+ * Fluent Starter - Fluent Community Compatibility
+ *
+ * CSS variable bridge between Fluent Community and theme
+ * Only loaded when Fluent Community is active
+ *
+ * Target: ~1KB
+ *
+ * @package Fluent_Starter
+ */
+
+/* ==========================================================================
+   Map Fluent Community CSS Variables to Theme Variables
+   ========================================================================== */
+
+:root {
+    /* Background colors */
+    --fs-color-bg: var(--fcom-primary-bg, #ffffff);
+    --fs-color-bg-secondary: var(--fcom-secondary-bg, #f0f2f5);
+    --fs-color-bg-light: var(--fcom-light-bg, #E1E4EA);
+    --fs-color-bg-active: var(--fcom-active-bg, #f0f3f5);
+    --fs-color-bg-highlight: var(--fcom-highlight-bg, #fffce3);
+    --fs-color-bg-deep: var(--fcom-deep-bg, #222530);
+
+    /* Text colors */
+    --fs-color-text: var(--fcom-primary-text, #19283a);
+    --fs-color-text-secondary: var(--fcom-secondary-text, #525866);
+    --fs-color-text-off: var(--fcom-text-off, #959595);
+
+    /* Link colors */
+    --fs-color-link: var(--fcom-text-link, #2271b1);
+    --fs-color-link-hover: var(--fcom-text-link, #2271b1);
+
+    /* Border colors */
+    --fs-color-border: var(--fcom-primary-border, #e3e8ee);
+    --fs-color-border-light: var(--fcom-secondary-border, #9CA3AF);
+
+    /* Button colors from Fluent Community */
+    --fs-button-bg: var(--fcom-primary-button, #2B2E33);
+    --fs-button-text: var(--fcom-primary-button-text, #ffffff);
+}
+
+/* Dark mode - inherit from Fluent Community */
+html.dark {
+    --fs-color-bg: var(--fcom-primary-bg, #2B2E33);
+    --fs-color-bg-secondary: var(--fcom-secondary-bg, #191B1F);
+    --fs-color-bg-light: var(--fcom-light-bg, #2B303B);
+    --fs-color-bg-active: var(--fcom-active-bg, #42464D);
+    --fs-color-bg-highlight: var(--fcom-highlight-bg, #2c2c1a);
+    --fs-color-bg-deep: var(--fcom-deep-bg, #E1E4EA);
+    --fs-color-text: var(--fcom-primary-text, #F0F3F5);
+    --fs-color-text-secondary: var(--fcom-secondary-text, #99A0AE);
+    --fs-color-text-off: var(--fcom-text-off, #A5A9AD);
+    --fs-color-border: var(--fcom-primary-border, #42464D);
+    --fs-color-border-light: var(--fcom-secondary-border, #A5A9AD);
+    --fs-color-link: var(--fcom-text-link, #60a5fa);
+}
+
+/* ==========================================================================
+   Override Primary Button to Match Fluent Community
+   ========================================================================== */
+
+.button-primary,
+.button.is-primary,
+input[type="submit"] {
+    background-color: var(--fs-button-bg);
+    border-color: var(--fs-button-bg);
+    color: var(--fs-button-text);
+}
+
+.button-primary:hover,
+.button.is-primary:hover,
+input[type="submit"]:hover {
+    opacity: 0.9;
+    background-color: var(--fs-button-bg);
+    border-color: var(--fs-button-bg);
+}
+
+/* ==========================================================================
+   Auth Page - Login/Signup Banner Theme Sync
+
+   Fluent Community's auth banner (left side) uses static inline colors.
+   Override with FC CSS variables so it follows light/dark mode automatically.
+   ========================================================================== */
+
+.fcom_layout_side {
+    background-color: var(--fcom-secondary-bg) !important;
+    background-blend-mode: normal !important;
+}
+
+.fcom_layout_side .fcom_title {
+    color: var(--fcom-primary-text) !important;
+}
+
+.fcom_layout_side .fcom_sub_title {
+    color: var(--fcom-secondary-text) !important;
+}
+
+/* ==========================================================================
+   Non-Interference Rules
+
+   CRITICAL: Never style Fluent Community selectors
+   These rules ensure theme CSS doesn't interfere with the portal
+   ========================================================================== */
+
+/* Reset any accidental cascade to Fluent Community containers */
+.fcom_wrap,
+.fluent_com,
+.fhr_wrap,
+.fhr_content,
+.fhr_home,
+.feed_layout,
+.spaces,
+.feeds_main,
+#fluent_com_portal,
+[class^="fcom_"],
+[class*=" fcom_"],
+[class^="fhr_"],
+[class*=" fhr_"] {
+    /* Allow Fluent Community to control its own styles */
+    font-family: inherit;
+}
+
+/* Ensure Fluent Community forms keep their styling */
+.fluent_com input,
+.fluent_com select,
+.fluent_com textarea,
+.fluent_com button,
+.fcom_wrap input,
+.fcom_wrap select,
+.fcom_wrap textarea,
+.fcom_wrap button {
+    /* Don't override Fluent Community form styles */
+    all: revert;
+}
+
+/* ==========================================================================
+   Fluent Forms Integration
+
+   Style Fluent Forms to match the theme when embedded on regular pages
+   ========================================================================== */
+
+.fluentform {
+    /* Fluent Forms should use theme colors */
+}
+
+.fluentform .ff-el-input--label label {
+    color: var(--fs-color-text);
+    font-weight: var(--fs-font-weight-medium);
+}
+
+.fluentform input[type="text"],
+.fluentform input[type="email"],
+.fluentform input[type="url"],
+.fluentform input[type="password"],
+.fluentform input[type="number"],
+.fluentform input[type="tel"],
+.fluentform textarea,
+.fluentform select {
+    background-color: var(--fs-color-bg);
+    border-color: var(--fs-color-border);
+    color: var(--fs-color-text);
+}
+
+.fluentform input:focus,
+.fluentform textarea:focus,
+.fluentform select:focus {
+    border-color: var(--fs-color-link);
+}
+
+.fluentform .ff-btn-submit {
+    background-color: var(--fs-button-bg);
+    color: var(--fs-button-text);
+}
+
+/* ==========================================================================
+   FluentCommunity Frame Template Styles
+
+   When using the "FluentCommunity Frame" page template
+   ========================================================================== */
+
+body.fluent_com_wp_pages {
+    /* Pages using Fluent Community frame template */
+}
+
+.fluent_com_wp_pages .fcom_wp_content {
+    /* Content area within the frame */
+}
+
+.fluent_com_wp_pages .fcom_wp_content_title h1 {
+    font-size: 1.75rem;
+    margin-bottom: var(--fs-spacing-lg);
+}
+
+.fluent_com_wp_pages .fcom_wp_content_body {
+    /* Standard content styling applies */
+}
+
+/* Wide alignment support in Fluent Community frame */
+.fluent_com_wp_pages .fcom_wp_content .alignwide {
+    max-width: calc(100% + 100px);
+    margin-left: -50px;
+    margin-right: -50px;
+    width: calc(100% + 100px);
+}
+
+.fluent_com_wp_pages .fcom_wp_content .alignfull {
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    width: 100vw;
+}
+
+/* ==========================================================================
+   Smooth Color Mode Transition
+   ========================================================================== */
+
+html {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+body {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}

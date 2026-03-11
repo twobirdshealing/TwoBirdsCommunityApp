@@ -1,0 +1,387 @@
+.bp-feedback {
+    position: relative;
+}
+
+.bp-feedback-close {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--fcom-secondary-text);
+    line-height: 1;
+}
+
+.bp-feedback-close:hover {
+    color: var(--fcom-primary-text);
+}
+
+/* ===== SMS Form Template Styles ===== */
+
+/* Utility Classes */
+.no-margin-top { margin-top: 0 !important; }
+.no-margin-bottom { margin-bottom: 5px !important; }
+.tooltip {
+    color: red;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+/* Form Containers */
+.tbc-mc-sms-form-container {
+    width: 100%;
+}
+
+.tbc-mc-template-dropdown-container,
+.tbc-mc-media-section,
+.tbc-mc-contact-section {
+    border: 1px solid var(--fcom-primary-border);
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+}
+
+.tbc-mc-template-dropdown-container {
+    padding: 10px;
+    margin-top: 10px;
+}
+
+/* Message Textarea */
+textarea[name="sms_message"] {
+    border: 2px solid var(--fcom-primary-text);
+    box-sizing: border-box;
+    height: 200px;
+    padding: 10px;
+    resize: none;
+    width: 100%;
+}
+
+/* Message Tips Container */
+.tbc-mc-messagetips-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    position: relative;
+}
+
+.tbc-mc-button-group {
+    display: flex;
+    gap: 8px;
+}
+
+.tbc-mc-emoji-button, .tbc-mc-insert-name, .tbc-mc-media-upload-button {
+    background-color: var(--fcom-light-bg) !important;
+    border: 1px solid var(--fcom-primary-border) !important;
+    border-radius: 4px !important;
+    padding: 6px 10px !important;
+    font-size: 16px !important;
+    cursor: pointer !important;
+    transition: background-color 0.3s !important;
+    font-family: Arial, sans-serif !important;
+    color: var(--fcom-primary-text) !important;
+}
+
+.tbc-mc-emoji-button:hover, .tbc-mc-insert-name:hover, .tbc-mc-media-upload-button:hover {
+    background-color: var(--fcom-light-bg) !important;
+    border-color: var(--fcom-secondary-border) !important;
+    color: var(--fcom-primary-text) !important;
+}
+
+/* Emoji Picker Styles */
+.tbc-mc-emoji-picker-container {
+    position: absolute;
+    top: 35px;
+    left: 0;
+    z-index: 1000;
+    background: var(--fcom-primary-bg);
+    border: 1px solid var(--fcom-primary-border);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 350px;
+    max-height: 400px;
+    overflow: hidden;
+}
+
+/* EmojiMart library overrides for mobile */
+.tbc-mc-emoji-picker-container em-emoji-picker {
+    width: 100% !important;
+    height: 350px !important;
+    max-width: 320px !important;
+}
+
+.tbc-mc-count-container {
+    text-align: right;
+    font-size: 14px;
+}
+
+/* Media Upload */
+.tbc-mc-media-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.tbc-mc-media-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px;
+    background-color: var(--fcom-secondary-bg);
+    border: 1px solid var(--fcom-primary-border);
+    border-radius: 4px;
+}
+
+.tbc-mc-media-item {
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.tbc-mc-media-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 2px solid var(--fcom-secondary-border);
+}
+
+.tbc-mc-remove-media {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    cursor: pointer;
+    background: #d63638;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    line-height: 1;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+}
+
+.tbc-mc-remove-media:hover {
+    background: #a00;
+    transform: scale(1.1);
+}
+
+/* WordPress Media Uploader Tab Fix - Prevents white text on white background */
+.media-modal .media-router .media-menu-item {
+    color: var(--fcom-text-link) !important;
+}
+
+.media-modal .media-router .media-menu-item:hover {
+    color: var(--fcom-text-link) !important;
+}
+
+.media-modal .media-router .media-menu-item.active {
+    color: var(--fcom-primary-text) !important;
+}
+
+/* Toggle Switches */
+.tbc-mc-toggle-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tbc-mc-toggle-wrapper input[type="checkbox"],
+.tbc-mc-toggle-input {
+    position: absolute !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    visibility: hidden !important;
+}
+
+.tbc-mc-toggle-container {
+    position: relative;
+    width: 50px;
+    height: 26px;
+    background: var(--fcom-secondary-border);
+    border-radius: 13px;
+    cursor: pointer;
+    transition: background 0.3s;
+    display: inline-block;
+}
+
+.tbc-mc-toggle-container::after {
+    content: '\00d7';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: var(--fcom-primary-bg);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: transform 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--fcom-text-off);
+}
+
+.tbc-mc-toggle-input:checked + .tbc-mc-toggle-container {
+    background: var(--fcom-text-link);
+}
+
+.tbc-mc-toggle-input:checked + .tbc-mc-toggle-container::after {
+    content: '\2713';
+    transform: translateX(24px);
+    color: var(--fcom-text-link);
+}
+
+.tbc-mc-toggle-container:hover {
+    opacity: 0.8;
+}
+
+/* Toggle Containers */
+.tbc-mc-mms-toggle-container,
+.tbc-mc-opt-out-container,
+.tbc-mc-log-toggle-container {
+    margin: 16px 0;
+}
+
+.tbc-mc-mms-toggle-header, 
+.tbc-mc-log-toggle-header, 
+.tbc-mc-opt-out-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tbc-mc-opt-out-container {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+/* Opt-out Message */
+textarea[name="opt_out_message"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--fcom-primary-border);
+    border-radius: 8px;
+    resize: none;
+    height: 80px;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+/* Lock/Unlock Icon Styling */
+.tbc-mc-opt-out-message-container {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.tbc-mc-lock-toggle {
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
+    font-size: 20px;
+    padding: 8px !important;
+    margin-top: 5px;
+    transition: color 0.3s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+}
+
+.tbc-mc-lock-toggle.tbc-mc-locked {
+    color: #d63638; /* Red when locked */
+}
+
+.tbc-mc-lock-toggle.tbc-mc-unlocked {
+    color: #28a745; /* Green when unlocked */
+}
+
+.tbc-mc-lock-toggle:hover {
+    opacity: 0.7;
+}
+
+.tbc-mc-lock-toggle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed !important;
+}
+
+/* Textarea adjustments */
+.tbc-mc-opt-out-message {
+    flex: 1;
+    transition: background-color 0.3s;
+}
+
+.tbc-mc-opt-out-message[readonly] {
+    background-color: var(--fcom-light-bg);
+    cursor: not-allowed;
+}
+
+.tbc-mc-opt-out-message:not([readonly]) {
+    background-color: var(--fcom-primary-bg);
+}
+
+/* Submit Button Container */
+.tbc-mc-sms-center-button-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.tbc-mc-sms-button {
+    background-color: var(--fcom-primary-button);
+    color: var(--fcom-primary-button-text);
+    border: none;
+    padding: 10px 20px !important;
+    font-size: 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: Arial, sans-serif !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tbc-mc-sms-button:hover {
+    background-color: var(--fcom-primary-button);
+    filter: brightness(0.85);
+}
+
+.tbc-mc-sms-button .bb-icon-bell-plus,
+.tbc-mc-media-upload-button .bb-icon-file-plus {
+    font-size: 20px;
+}
+
+/* Mobile Responsive - Emoji Picker */
+@media (max-width: 768px) {
+    .tbc-mc-emoji-picker-container {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        z-index: 9999 !important;
+        max-width: 90vw !important;
+        max-height: 70vh !important;
+        width: 320px !important;
+        height: 400px !important;
+    }
+
+    .tbc-mc-emoji-picker-container em-emoji-picker {
+        width: 300px !important;
+        height: 350px !important;
+        max-width: none !important;
+    }
+}

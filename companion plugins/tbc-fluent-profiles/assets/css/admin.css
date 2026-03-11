@@ -1,0 +1,424 @@
+/**
+ * TBC Fluent Profiles - Admin Styles
+ */
+
+/* ---- Layout ---- */
+.tbc-fp-admin {
+    max-width: 900px;
+}
+
+/* ---- Tabs ---- */
+.tbc-fp-tabs {
+    margin-bottom: 0;
+}
+
+.tbc-fp-tab-panel {
+    display: none;
+    padding-top: 20px;
+}
+
+.tbc-fp-tab-panel--active {
+    display: block;
+}
+
+.tbc-fp-subtitle {
+    color: #646970;
+    margin-top: -8px;
+}
+
+/* ---- Toggle Switch ---- */
+.tbc-fp-toggle {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    gap: 10px;
+}
+
+.tbc-fp-toggle input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.tbc-fp-toggle-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: #ccc;
+    border-radius: 10px;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.tbc-fp-toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.tbc-fp-toggle input:checked + .tbc-fp-toggle-switch {
+    background: #2271b1;
+}
+
+.tbc-fp-toggle input:checked + .tbc-fp-toggle-switch::after {
+    transform: translateX(16px);
+}
+
+.tbc-fp-toggle-label {
+    font-size: 13px;
+    color: #1d2327;
+}
+
+.tbc-fp-toggle-group {
+    margin-bottom: 14px;
+}
+
+/* ---- Fields Grid ---- */
+.tbc-fp-fields-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+}
+
+.tbc-fp-card {
+    position: relative;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px 14px 14px;
+    text-align: center;
+    cursor: grab;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.tbc-fp-card:hover {
+    border-color: #2271b1;
+    box-shadow: 0 1px 6px rgba(34, 113, 177, 0.15);
+}
+
+/* Sortable states */
+.tbc-fp-card.ui-sortable-helper {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    cursor: grabbing;
+}
+
+.tbc-fp-fields-grid .ui-sortable-placeholder {
+    border: 2px dashed #c3c4c7;
+    background: transparent;
+    border-radius: 8px;
+    visibility: visible !important;
+    min-height: 140px;
+}
+
+/* Card edit button */
+.tbc-fp-card-edit {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+}
+
+.tbc-fp-card:hover .tbc-fp-card-edit {
+    opacity: 1;
+}
+
+.tbc-fp-card-edit:hover {
+    color: #2271b1;
+    background: #f0f6fc;
+}
+
+/* Card badges */
+.tbc-fp-card-badges {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: flex;
+    gap: 4px;
+}
+
+.tbc-fp-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.tbc-fp-badge-required {
+    background: #d63638;
+}
+
+.tbc-fp-badge-signup {
+    background: #2271b1;
+}
+
+/* Card icon */
+.tbc-fp-card-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+    color: #2271b1;
+    background: #f0f6fc;
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+
+/* Card text */
+.tbc-fp-card-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d2327;
+    margin-bottom: 2px;
+    word-break: break-word;
+}
+
+.tbc-fp-card-type {
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 4px;
+}
+
+/* Visibility dot */
+.tbc-fp-card-visibility {
+    font-size: 11px;
+    color: #646970;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tbc-fp-vis-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.tbc-fp-vis-public {
+    background: #00a32a;
+}
+
+.tbc-fp-vis-members {
+    background: #2271b1;
+}
+
+.tbc-fp-vis-friends {
+    background: #dba617;
+}
+
+.tbc-fp-vis-admins {
+    background: #d63638;
+}
+
+/* Add New card */
+.tbc-fp-card-add {
+    border-style: dashed;
+    border-color: #c3c4c7;
+    cursor: pointer;
+    color: #999;
+    background: #fafafa;
+}
+
+.tbc-fp-card-add:hover {
+    border-color: #2271b1;
+    color: #2271b1;
+    background: #f0f6fc;
+}
+
+.tbc-fp-card-add-icon {
+    font-size: 32px;
+    font-weight: 300;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.tbc-fp-card-add-label {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* ---- Modal ---- */
+.tbc-fp-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tbc-fp-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.tbc-fp-modal-panel {
+    position: relative;
+    background: #fff;
+    border-radius: 12px;
+    width: 640px;
+    max-width: 90vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.tbc-fp-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.tbc-fp-modal-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.tbc-fp-modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    color: #999;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.tbc-fp-modal-close:hover {
+    color: #1d2327;
+    background: #f0f0f0;
+}
+
+.tbc-fp-modal-body {
+    display: flex;
+    gap: 24px;
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.tbc-fp-modal-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.tbc-fp-modal-right {
+    width: 200px;
+    flex-shrink: 0;
+}
+
+.tbc-fp-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 12px 24px;
+    border-top: 1px solid #e0e0e0;
+}
+
+/* ---- Form Groups ---- */
+.tbc-fp-form-group {
+    margin-bottom: 16px;
+}
+
+.tbc-fp-form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1d2327;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.tbc-fp-form-group input[type="text"],
+.tbc-fp-form-group select,
+.tbc-fp-form-group textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.tbc-fp-form-group textarea {
+    resize: vertical;
+}
+
+.tbc-fp-char-count {
+    display: block;
+    text-align: right;
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+}
+
+.tbc-fp-form-group .description {
+    font-size: 11px;
+    color: #999;
+    margin-top: 4px;
+}
+
+/* Delete button */
+.tbc-fp-delete-btn {
+    color: #d63638 !important;
+    border-color: #d63638 !important;
+    width: 100%;
+    text-align: center;
+}
+
+.tbc-fp-delete-btn:hover {
+    background: #d63638 !important;
+    color: #fff !important;
+}
+
+.tbc-fp-modal-right hr {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 16px 0;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 600px) {
+    .tbc-fp-modal-body {
+        flex-direction: column;
+    }
+
+    .tbc-fp-modal-right {
+        width: 100%;
+    }
+
+    .tbc-fp-fields-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+}

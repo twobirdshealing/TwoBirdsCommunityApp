@@ -1,0 +1,28 @@
+/*
+Theme Name: Fluent Starter
+Theme URI: https://fluentcommunity.co/
+Author: Vibez
+Author URI: https://fluentcommunity.co/
+Description: A lightweight, blank-canvas WordPress theme optimized for Fluent Community. Provides minimal styling for non-portal pages while seamlessly integrating with Fluent Community's Vue.js SPA.
+Version: 1.0.47
+Tested up to: 6.7
+Requires at least: 6.0
+Requires PHP: 7.4
+License: GNU General Public License v2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: fluent-starter
+Tags: full-site-editing, block-styles, wide-blocks, custom-colors, editor-style
+
+Fluent Starter is a blank-canvas theme designed specifically for sites using
+Fluent Community. It gets out of the way on community portal pages while
+providing clean, minimal styling for regular WordPress pages.
+
+Features:
+- Zero interference with Fluent Community's SPA
+- Dark/light mode sync with Fluent Community
+- Blank canvas approach (no header/footer chrome)
+- Lightweight styling for non-portal pages (blog, WooCommerce)
+- CSS variable bridge for seamless Fluent Community theming
+*/
+
+/* Base styles are loaded from assets/css/base.css */

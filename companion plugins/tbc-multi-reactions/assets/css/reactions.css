@@ -1,0 +1,374 @@
+/* TBC Multi Reactions - Frontend Styles */
+
+/* --- Feed Reaction Picker --- */
+.tbc-mr-wrapper {
+    display: inline-flex;
+    align-items: center;
+}
+
+.tbc-mr-single {
+    display: inline-flex;
+    align-items: center;
+    transition: opacity 0.2s, filter 0.2s, background-color 0.2s;
+    padding: 3px 5px;
+    border-radius: 4px;
+}
+
+.tbc-mr-single img {
+    max-width: 35px;
+    max-height: 35px;
+}
+
+.tbc-mr-dropdown {
+    display: none;
+}
+
+/* --- Active / Inactive states (animation-friendly) --- */
+.tbc-mr-inactive {
+    opacity: 0.5;
+    filter: grayscale(100%);
+}
+
+.tbc-mr-inactive img {
+    animation-play-state: paused;
+}
+
+.tbc-mr-active {
+    opacity: 1;
+    filter: none;
+}
+
+.tbc-mr-active img {
+    animation-play-state: running;
+}
+
+/* Crisp rendering for small icons */
+.tbc-mr-icon {
+    image-rendering: crisp-edges;
+}
+
+.tbc-mr-emoji:hover {
+    will-change: transform;
+}
+
+/* --- Summary icons --- */
+.tbc-mr-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    cursor: pointer;
+}
+
+.tbc-mr-summary:hover {
+    text-decoration: underline;
+}
+
+.tbc-mr-summary-icon {
+    width: 22px !important;
+    height: 22px !important;
+    border-radius: 50% !important;
+    border: var(--tbc-stroke, 2px) solid var(--fcom-primary-border, #e1e4e8) !important;
+    box-sizing: border-box !important;
+    position: relative;
+    object-fit: contain;
+    padding: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.tbc-mr-summary-icon.emoji {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 22px;
+    background: var(--fcom-primary-bg, #fff);
+}
+
+.tbc-mr-count {
+    font-size: 13px;
+    color: var(--fcom-secondary-text, #65676B);
+    white-space: nowrap;
+}
+
+/* --- Breakdown Modal --- */
+.tbc-mr-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    max-width: 90vw;
+    max-height: 80vh;
+    border-radius: 12px;
+    z-index: 100000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.tbc-mr-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--fcom-primary-border, #e1e4e8);
+}
+
+.tbc-mr-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.tbc-mr-modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--fcom-secondary-text, #65676B);
+}
+
+.tbc-mr-modal-body {
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.tbc-mr-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100px;
+}
+
+.tbc-mr-spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--fcom-primary-border, #e1e4e8);
+    border-top-color: var(--fcom-primary-color, #1877F2);
+    border-radius: 50%;
+    animation: tbc-mr-spin 0.8s linear infinite;
+}
+
+@keyframes tbc-mr-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Tabs */
+.tbc-mr-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--fcom-primary-border, #e1e4e8);
+    overflow-x: auto;
+    flex-shrink: 0;
+}
+
+.tbc-mr-tab {
+    background: none;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--fcom-secondary-text, #65676B);
+}
+
+.tbc-mr-tab.active {
+    background: var(--fcom-secondary-bg, #F0F2F5);
+    font-weight: 600;
+    color: var(--fcom-primary-text, #1C1E21);
+}
+
+.tbc-mr-tab img,
+.tbc-mr-tab .emoji {
+    width: 22px;
+    height: 22px;
+    vertical-align: middle;
+}
+
+.tbc-mr-tab .emoji {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    line-height: 22px;
+}
+
+/* Panels */
+.tbc-mr-panels {
+    padding: 8px 0;
+}
+
+.tbc-mr-panel {
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.tbc-mr-panel.active {
+    display: block;
+}
+
+/* User list */
+.tbc-mr-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s;
+}
+
+.tbc-mr-user:hover {
+    background: var(--fcom-secondary-bg, #F0F2F5);
+}
+
+.tbc-mr-user-avatar {
+    position: relative;
+    width: 35px;
+    height: 35px;
+    flex-shrink: 0;
+}
+
+.tbc-mr-user-avatar img {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.tbc-mr-user-reaction {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 22px;
+    height: 22px;
+    background: var(--fcom-primary-bg, #fff);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.tbc-mr-user-reaction img,
+.tbc-mr-user-reaction .emoji {
+    width: 16px;
+    height: 16px;
+    border-radius: 0;
+}
+
+.tbc-mr-user-reaction .emoji {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.tbc-mr-user-name {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.tbc-mr-empty,
+.tbc-mr-error,
+.tbc-mr-more {
+    text-align: center;
+    padding: 16px;
+    color: var(--fcom-secondary-text, #65676B);
+    font-size: 13px;
+}
+
+/* --- Comment Reaction Summary --- */
+.tbc-mr-comment-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    cursor: pointer;
+}
+
+.tbc-mr-comment-summary:hover {
+    text-decoration: underline;
+}
+
+.tbc-mr-comment-summary-icon {
+    width: 22px !important;
+    height: 22px !important;
+    border-radius: 50% !important;
+    border: var(--tbc-stroke, 2px) solid var(--fcom-primary-border, #e1e4e8) !important;
+    box-sizing: border-box !important;
+    position: relative;
+    object-fit: contain;
+    padding: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.tbc-mr-comment-summary-icon.emoji {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 22px;
+    background: var(--fcom-primary-bg, #fff);
+}
+
+.tbc-mr-comment-count {
+    font-size: 12px;
+    color: var(--fcom-secondary-text, #65676B);
+    white-space: nowrap;
+}
+
+/* --- Comment Picker --- */
+.reply_box:has(.fcom_comments_react[data-tbc-mr-comment-processed]) {
+    padding: 8px 12px;
+}
+
+.fcom_comments_react[data-tbc-mr-comment-processed] {
+    padding: 4px 6px;
+}
+
+.tbc-mr-comment-wrapper {
+    display: inline-flex;
+    align-items: center;
+}
+
+.tbc-mr-comment-single {
+    transition: opacity 0.2s, filter 0.2s, background-color 0.2s;
+    padding: 3px 5px;
+    border-radius: 4px;
+}
+
+.tbc-mr-comment-single img {
+    max-width: 35px;
+    max-height: 35px;
+}
+
+/* Hide FC's original SVG when processed */
+.fcom_comments_react[data-tbc-mr-comment-processed] i.el-icon > svg {
+    display: none !important;
+}
+
+[data-tbc-mr-processed] i.el-icon > svg {
+    display: none !important;
+}
+
+/* Post reaction icon sizing */
+i.el-icon .tbc-mr-icon {
+    max-width: 35px;
+    max-height: 35px;
+}

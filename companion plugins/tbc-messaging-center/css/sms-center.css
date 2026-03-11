@@ -1,0 +1,279 @@
+/* ===== SMS Center Component Styles ===== */
+
+/* Contact Type Selector */
+.tbc-mc-contact-type-selector {
+    margin-bottom: 20px;
+}
+
+/* Category Filter Container */
+.tbc-mc-category-filter-container {
+    margin-top: 15px;
+    padding: 15px;
+    border: 1px solid var(--fcom-primary-border);
+    border-radius: 5px;
+    background: var(--fcom-secondary-bg);
+}
+
+.tbc-mc-category-filter-container label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--fcom-primary-text);
+    font-size: 14px;
+}
+
+.tbc-mc-category-help-text {
+    font-size: 11px;
+    color: var(--fcom-secondary-text);
+    margin: 5px 0 0 0;
+    font-style: italic;
+}
+
+#tbc-mc-category-multiselect {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--fcom-primary-border);
+    border-radius: 4px;
+    font-size: 14px;
+    background: var(--fcom-primary-bg);
+}
+
+#tbc-mc-category-multiselect:focus {
+    outline: 2px solid var(--fcom-text-link);
+    outline-offset: 2px;
+    border-color: var(--fcom-text-link);
+}
+
+/* Date Range Note */
+.tbc-mc-date-range-note {
+    font-size: 12px;
+    color: var(--fcom-secondary-text);
+    margin: 0 0 15px 0;
+    padding: 8px 12px;
+    background: var(--fcom-highlight-bg);
+    border-left: 3px solid var(--fcom-text-link);
+    border-radius: 0 4px 4px 0;
+}
+
+/* User/Role Lists */
+.tbc-mc-user-list,
+.tbc-mc-customer-list {
+    display: none;
+}
+
+.tbc-mc-user-list ul,
+.tbc-mc-customer-list ul,
+.tbc-mc-role-list ul,
+.tbc-mc-product-list ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+/* Check All Container */
+.tbc-mc-check-all-container {
+    margin-left: 20px;
+    background-color: lightblue;
+    background-image: linear-gradient(to bottom, #add8e6, #87ceeb);
+    padding: 0px 8px;
+    border-radius: 50px;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    border: 1px solid #87cefa;
+    cursor: pointer;
+}
+
+.tbc-mc-check-all-container label {
+    font-weight: bold;
+    color: #ffffff;
+    vertical-align: middle;
+    text-shadow: -1px -1px 0 #5a5a5a, 1px -1px 0 #5a5a5a, -1px 1px 0 #5a5a5a, 1px 1px 0 #5a5a5a;
+}
+
+/* Expandable Containers */
+.tbc-mc-role-container,
+.tbc-mc-product-container {
+    border: 1px solid var(--fcom-primary-border);
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.tbc-mc-role-container:hover,
+.tbc-mc-product-container:hover {
+    background-color: var(--fcom-secondary-bg);
+}
+
+/* Role Description */
+.tbc-mc-role-description {
+    display: block;
+    font-size: 12px;
+    color: var(--fcom-secondary-text);
+    margin-left: 38px;
+    margin-top: 2px;
+}
+
+/* Date Count Badge */
+.tbc-mc-date-count {
+    font-size: 12px;
+    color: var(--fcom-secondary-text);
+    font-weight: normal;
+}
+
+/* Expand/Collapse Icons */
+.tbc-mc-expand-role,
+.tbc-mc-expand-product,
+.tbc-mc-expand-product-simple,
+.tbc-mc-expand-date {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.tbc-mc-expand-role i,
+.tbc-mc-expand-product i,
+.tbc-mc-expand-product-simple i,
+.tbc-mc-expand-date i {
+    margin-right: 8px;
+    font-size: 30px;
+    color: var(--fcom-text-link);
+}
+
+.tbc-mc-expand-role i:hover,
+.tbc-mc-expand-product i:hover,
+.tbc-mc-expand-product-simple i:hover,
+.tbc-mc-expand-date i:hover {
+    color: var(--fcom-text-link);
+}
+
+/* Processing State */
+.tbc-mc-processing {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    opacity: 0.5;
+    animation: tbc-mc-spin 1s linear infinite;
+    transform-origin: center;
+}
+
+@keyframes tbc-mc-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Manual Numbers */
+.tbc-mc-manual-numbers-container {
+    margin-top: 20px;
+}
+
+#tbc-mc-manual-numbers {
+    width: 100%;
+    height: 100px;
+    padding: 10px;
+    border: 1px solid var(--fcom-secondary-border);
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.tbc-mc-parsed-numbers-list {
+    margin: 20px 0;
+}
+
+.tbc-mc-invalid-numbers {
+    color: #d9534f;
+    margin-top: 15px;
+}
+
+#tbc-mc-parse-numbers {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+#tbc-mc-parse-numbers:hover {
+    background-color: #45a049;
+}
+
+/* Date List - Second Level */
+.tbc-mc-date-list {
+    margin-left: 20px;
+    margin-top: 10px;
+    padding-left: 15px;
+    border-left: 2px solid var(--fcom-primary-border);
+}
+
+.tbc-mc-date-container {
+    margin: 8px 0;
+    padding: 8px 12px;
+    background: var(--fcom-light-bg);
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.tbc-mc-date-container:hover {
+    background: var(--fcom-light-bg);
+}
+
+/* Date expand icon - slightly smaller than product */
+.tbc-mc-expand-date i {
+    font-size: 24px;
+}
+
+/* Customer List - Third Level */
+.tbc-mc-date-container .tbc-mc-customer-list {
+    margin-top: 10px;
+    margin-left: 10px;
+    padding-left: 15px;
+    border-left: 2px solid var(--fcom-primary-border);
+}
+
+.tbc-mc-date-container .tbc-mc-customer-list ul {
+    padding: 5px 0;
+}
+
+.tbc-mc-date-container .tbc-mc-customer-list li {
+    padding: 4px 0;
+}
+
+/* No results messages */
+.tbc-mc-no-dates,
+.tbc-mc-no-customers {
+    font-size: 13px;
+    color: var(--fcom-text-off);
+    font-style: italic;
+    padding: 8px 0;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .tbc-mc-category-filter-container {
+        padding: 12px;
+    }
+    
+    .tbc-mc-category-help-text {
+        font-size: 10px;
+    }
+    
+    #tbc-mc-category-multiselect {
+        font-size: 16px;
+        padding: 10px;
+    }
+    
+    .tbc-mc-date-list {
+        margin-left: 10px;
+        padding-left: 10px;
+    }
+    
+    .tbc-mc-date-container {
+        padding: 6px 10px;
+    }
+    
+    .tbc-mc-expand-date i {
+        font-size: 20px;
+    }
+}

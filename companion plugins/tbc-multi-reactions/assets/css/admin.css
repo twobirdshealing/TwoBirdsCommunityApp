@@ -1,0 +1,615 @@
+/* TBC Multi Reactions - Admin Styles */
+
+/* === Sections === */
+.tbc-mr-admin {
+    max-width: 960px;
+}
+
+.tbc-mr-admin h1 {
+    margin-bottom: 24px;
+    font-size: 23px;
+    font-weight: 400;
+}
+
+.tbc-mr-section {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+.tbc-mr-section h2 {
+    margin: 0 0 16px;
+    padding: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.tbc-mr-section .description {
+    color: #646970;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+/* === Toggle Switch === */
+.tbc-mr-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.tbc-mr-toggle {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+.tbc-mr-toggle-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: #ccc;
+    border-radius: 10px;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.tbc-mr-toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.tbc-mr-toggle:checked + .tbc-mr-toggle-switch {
+    background: #2271b1;
+}
+
+.tbc-mr-toggle:checked + .tbc-mr-toggle-switch::after {
+    transform: translateX(16px);
+}
+
+/* === Settings Grid === */
+.tbc-mr-settings-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.tbc-mr-inline-settings {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.tbc-mr-inline-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tbc-mr-inline-field label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #646970;
+}
+
+.tbc-mr-input-suffix {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tbc-mr-input-suffix span {
+    color: #646970;
+    font-size: 13px;
+}
+
+/* === Live Preview === */
+.tbc-mr-live-preview {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    border-radius: 8px;
+    padding: 20px 24px;
+}
+
+.tbc-mr-preview-post {
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.tbc-mr-preview-reactions-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tbc-mr-preview-icons {
+    display: flex;
+    align-items: center;
+}
+
+.tbc-mr-preview-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--fcom-active-bg, var(--fcom-secondary-content-bg, #e8eaed));
+    object-fit: contain;
+    box-sizing: content-box;
+    padding: 0;
+}
+
+.tbc-mr-preview-count {
+    color: var(--fcom-secondary-text, #65676B);
+    font-size: 14px;
+    margin-left: 4px;
+}
+
+/* Dark mode override for preview toggle */
+.tbc-mr-preview-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #646970;
+}
+
+.tbc-mr-preview-toggle button {
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #646970;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.tbc-mr-preview-toggle button.active {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+}
+
+/* === Reactions Grid (Cards) === */
+.tbc-mr-reactions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.tbc-mr-card {
+    position: relative;
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px 12px 12px;
+    text-align: center;
+    cursor: grab;
+    transition: box-shadow 0.15s, border-color 0.15s;
+    user-select: none;
+}
+
+.tbc-mr-card:hover {
+    border-color: #2271b1;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.tbc-mr-card.ui-sortable-helper {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    z-index: 100;
+}
+
+.tbc-mr-card.ui-sortable-placeholder {
+    border: 2px dashed #ccc;
+    background: transparent;
+    visibility: visible !important;
+}
+
+.tbc-mr-card-disabled {
+    opacity: 0.5;
+}
+
+/* Card badge (enabled dot) */
+.tbc-mr-card-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.tbc-mr-badge-on {
+    background: #00a32a;
+}
+
+.tbc-mr-badge-off {
+    background: #ccc;
+}
+
+/* Card edit button */
+.tbc-mr-card-edit {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+}
+
+.tbc-mr-card-edit:hover {
+    color: #2271b1;
+    background: rgba(34,113,177,0.08);
+}
+
+/* Card icon */
+.tbc-mr-card-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tbc-mr-card-icon img {
+    max-width: 48px;
+    max-height: 48px;
+    object-fit: contain;
+}
+
+.tbc-mr-card-emoji {
+    font-size: 36px;
+    line-height: 1;
+}
+
+.tbc-mr-card-empty {
+    font-size: 24px;
+    color: #ccc;
+}
+
+.tbc-mr-card-plus {
+    font-size: 32px;
+    color: #999;
+    font-weight: 300;
+}
+
+.tbc-mr-card-name {
+    font-size: 12px;
+    color: #50575e;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* Add New card */
+.tbc-mr-card-add {
+    border-style: dashed;
+    cursor: pointer;
+    background: transparent;
+}
+
+.tbc-mr-card-add:hover {
+    background: #f0f6fc;
+    border-color: #2271b1;
+}
+
+/* === Modal === */
+.tbc-mr-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tbc-mr-modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+}
+
+.tbc-mr-modal-panel {
+    position: relative;
+    background: #fff;
+    border-radius: 8px;
+    width: 720px;
+    max-width: 90vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.tbc-mr-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.tbc-mr-modal-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.tbc-mr-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.tbc-mr-modal-close:hover {
+    color: #d63638;
+}
+
+.tbc-mr-modal-body {
+    display: flex;
+    padding: 24px;
+    gap: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.tbc-mr-modal-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.tbc-mr-modal-right {
+    width: 240px;
+    flex-shrink: 0;
+}
+
+/* Tabs */
+.tbc-mr-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.tbc-mr-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 16px;
+    font-size: 14px;
+    color: #646970;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.tbc-mr-tab:hover {
+    color: #2271b1;
+}
+
+.tbc-mr-tab-active {
+    color: #2271b1;
+    border-bottom-color: #2271b1;
+    font-weight: 500;
+}
+
+.tbc-mr-tab-content {
+    display: none;
+}
+
+.tbc-mr-tab-visible {
+    display: block;
+}
+
+/* Emoji tab */
+.tbc-mr-modal-emoji-input {
+    font-size: 32px;
+    text-align: center;
+    width: 100%;
+    padding: 16px;
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    background: #f9f9f9;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.tbc-mr-modal-emoji-input:focus {
+    border-color: #2271b1;
+    background: #fff;
+}
+
+/* Custom tab - upload area */
+.tbc-mr-upload-area {
+    text-align: center;
+}
+
+.tbc-mr-upload-preview {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 12px;
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f9f9f9;
+    overflow: hidden;
+}
+
+.tbc-mr-upload-preview img {
+    max-width: 96px;
+    max-height: 96px;
+    object-fit: contain;
+}
+
+.tbc-mr-upload-placeholder {
+    color: #999;
+    font-size: 13px;
+}
+
+.tbc-mr-upload-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+/* Modal right - Preview box */
+.tbc-mr-modal-preview-box {
+    background: #f0f0f0;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.tbc-mr-modal-preview-icon {
+    font-size: 48px;
+    line-height: 1;
+    margin-bottom: 8px;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tbc-mr-modal-preview-icon img {
+    max-width: 56px;
+    max-height: 56px;
+    object-fit: contain;
+}
+
+.tbc-mr-modal-preview-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1d2327;
+    min-height: 20px;
+}
+
+/* Modal settings */
+.tbc-mr-modal-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.tbc-mr-modal-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1d2327;
+    margin-bottom: 4px;
+}
+
+.tbc-mr-modal-field .tbc-mr-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0;
+}
+
+.tbc-mr-modal-field input[type="text"] {
+    width: 100%;
+}
+
+.tbc-mr-char-count {
+    float: right;
+    font-weight: 400;
+    color: #999;
+    font-size: 12px;
+}
+
+/* Color picker inside modal */
+.tbc-mr-modal-field .wp-picker-container {
+    display: block;
+}
+
+.tbc-mr-modal-field .wp-picker-container .wp-color-result {
+    margin: 0;
+}
+
+/* Modal footer actions (delete) */
+.tbc-mr-modal-footer-actions {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.tbc-mr-modal-footer-actions .button-link-delete {
+    color: #d63638;
+    text-decoration: none;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    font-size: 13px;
+}
+
+.tbc-mr-modal-footer-actions .button-link-delete:hover {
+    color: #a00;
+}
+
+/* Modal footer */
+.tbc-mr-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #e0e0e0;
+    text-align: right;
+}
+
+/* === Actions bar === */
+.tbc-mr-actions {
+    margin-top: 20px;
+}
+
+.tbc-mr-reset-form {
+    margin-top: 12px;
+}
+
+/* === Responsive === */
+@media (max-width: 600px) {
+    .tbc-mr-modal-body {
+        flex-direction: column;
+    }
+
+    .tbc-mr-modal-right {
+        width: 100%;
+    }
+
+    .tbc-mr-reactions-grid {
+        grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    }
+
+    .tbc-mr-inline-settings {
+        flex-direction: column;
+        gap: 12px;
+    }
+}

@@ -1,0 +1,199 @@
+/**
+ * Post Management CSS
+ * 
+ * @package TBC_Participant_Frontend
+ * @since 3.0.0
+ */
+
+.tbc-pf-post-management-content {
+    width: 100%;
+}
+
+.tbc-pf-no-posts-message {
+    color: #6c757d;
+    font-style: italic;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.tbc-pf-no-posts-container {
+    text-align: center;
+    padding: 20px;
+}
+
+.tbc-pf-schedule-posts-btn {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.tbc-pf-schedule-posts-btn:hover {
+    background-color: #218838;
+}
+
+.tbc-pf-schedule-posts-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.tbc-pf-posts-table-container {
+    max-height: 350px;
+    overflow-y: auto;
+    overflow-x: auto;
+    margin-bottom: 15px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.tbc-pf-posts-table {
+    width: 100%;
+    font-size: 13px;
+    border-collapse: collapse;
+}
+
+.tbc-pf-posts-table th,
+.tbc-pf-posts-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+    background-color: #fff;
+}
+
+.tbc-pf-posts-table th {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 10;
+    color: #333;
+    font-weight: bold;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.tbc-pf-posts-table tr:hover td {
+    background-color: #e9ecef !important;
+}
+
+.tbc-pf-status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.tbc-pf-status-badge.tbc-pf-status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.tbc-pf-status-badge.tbc-pf-status-complete {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.tbc-pf-status-badge.tbc-pf-status-failed {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.tbc-pf-status-badge.tbc-pf-status-canceled {
+    background-color: #e2e3e5;
+    color: #383d41;
+}
+
+.tbc-pf-status-badge.tbc-pf-status-missing {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px dashed #ffc107;
+}
+
+.tbc-pf-actions-cell {
+    white-space: nowrap;
+}
+
+.tbc-pf-immediate-alert {
+    display: inline-block;
+    margin-left: 5px;
+    font-size: 14px;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.tbc-pf-run-post-btn,
+.tbc-pf-delete-post-btn,
+.tbc-pf-reschedule-post-btn,
+.tbc-pf-unavailable-post-btn {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    margin-right: 5px;
+    transition: background-color 0.3s;
+}
+
+.tbc-pf-run-post-btn {
+    background-color: #007bff;
+    color: white;
+}
+
+.tbc-pf-run-post-btn:hover {
+    background-color: #0069d9;
+}
+
+.tbc-pf-run-post-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.tbc-pf-delete-post-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+.tbc-pf-delete-post-btn:hover {
+    background-color: #c82333;
+}
+
+.tbc-pf-delete-post-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.tbc-pf-reschedule-post-btn {
+    background-color: #28a745;
+    color: white;
+}
+
+.tbc-pf-reschedule-post-btn:hover {
+    background-color: #218838;
+}
+
+.tbc-pf-reschedule-post-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.tbc-pf-unavailable-post-btn {
+    background-color: #6c757d;
+    color: white;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.tbc-pf-no-actions {
+    color: #6c757d;
+}
+
+@media screen and (max-width: 768px) {
+    .tbc-pf-posts-table-container {
+        max-height: 300px;
+    }
+}

@@ -1,0 +1,171 @@
+/* Progress Section */
+.tbc-bc-progress-section {
+    display: grid;
+    grid-template-areas: 
+        "current . remaining"
+        "progress progress progress";
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+}
+
+.tbc-bc-progress-bar {
+    position: relative;
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 3px;
+    cursor: pointer;
+    grid-area: progress;
+}
+
+.tbc-bc-progress-seek {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    cursor: pointer;
+    margin: 0;
+    z-index: 2;
+}
+
+.tbc-bc-progress-loaded {
+    position: absolute;
+    height: 100%;
+    background: #bdbdbd;
+    border-radius: 3px;
+}
+
+.tbc-bc-progress-played {
+    position: absolute;
+    height: 100%;
+    background: #1a73e8;
+    border-radius: 3px;
+}
+
+.tbc-bc-time {
+    font-family: monospace;
+    font-size: 14px;
+    color: #666;
+}
+
+.tbc-bc-current-time {
+    grid-area: current;
+    justify-self: start;
+}
+
+.tbc-bc-time-remaining {
+    grid-area: remaining;
+    justify-self: end;
+}
+
+/* Main Controls */
+.tbc-bc-main-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin: 32px 0 0 0;
+}
+
+.tbc-bc-control-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border: none;
+    cursor: pointer;
+    border-radius: 50%;
+    background: #f8f9fa;
+    color: #424242;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.tbc-bc-control-button:focus {
+    background: #f8f9fa;
+    color: #424242;
+    outline: none;
+}
+
+.tbc-bc-control-button:active {
+    background: #f8f9fa;
+    color: #424242;
+    transform: translateY(1px);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tbc-bc-control-button:hover {
+    background: #e8f0fe;
+    color: #1a73e8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.tbc-bc-play-icon,
+.tbc-bc-pause-icon {
+    min-width: 64px;
+    min-height: 64px;
+    color: currentColor;
+}
+
+.tbc-bc-skip-icon {
+    min-width: 50px;
+    min-height: 50px;
+    color: currentColor;
+    transition: transform 0.3s ease;
+}
+
+.tbc-bc-chapter-skip-icon {
+    min-width: 50px;
+    min-height: 50px;
+    color: currentColor;
+}
+
+@keyframes tbc-bc-rotateClockwise {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes tbc-bc-rotateCounterClockwise {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+}
+
+.tbc-bc-forward-30 .tbc-bc-skip-icon.tbc-bc-rotating {
+    animation: tbc-bc-rotateClockwise 0.5s ease;
+}
+
+.tbc-bc-rewind-30 .tbc-bc-skip-icon.tbc-bc-rotating {
+    animation: tbc-bc-rotateCounterClockwise 0.5s ease;
+}
+
+/* Mobile */
+@media screen and (max-width: 768px) {
+    .tbc-bc-main-controls {
+        gap: 12px;
+    }
+
+    .tbc-bc-chapter-skip-icon {
+        width: 38px;
+        height: 38px;
+    }
+
+    .tbc-bc-skip-icon {
+        width: 38px;
+        height: 38px;
+    }
+
+    .tbc-bc-play-icon,
+    .tbc-bc-pause-icon {
+        width: 56px;
+        height: 56px;
+    }
+
+    .tbc-bc-time {
+        font-size: 12px;
+    }
+}

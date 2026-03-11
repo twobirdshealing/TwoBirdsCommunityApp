@@ -1,0 +1,676 @@
+/* TBC Checkout Prerequisites - Navigation Styles
+   Uses Fluent Community --fcom-* CSS variables for light/dark mode support */
+
+:root {
+    --tbc-cp-connection-progress: 0%;
+    --tbc-cp-success: #4CAF50;
+    --tbc-cp-warning: #ffc107;
+    --tbc-cp-error: #dc3545;
+}
+
+/* Main Container */
+.tbc-cp-checkout {
+    max-width: 1200px;
+    margin: 30px auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Header */
+.tbc-cp-header {
+    background: var(--fcom-primary-bg, #ffffff);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    margin-bottom: 20px;
+}
+
+.tbc-cp-header-static {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.tbc-cp-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.tbc-cp-stats {
+    display: flex;
+    align-items: center;
+}
+
+.tbc-cp-step-count {
+    color: var(--fcom-secondary-text, #525866);
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Step Header */
+.tbc-cp-step-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.tbc-cp-step-title {
+    margin: 0 0 8px 0;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--fcom-primary-text, #19283a);
+    line-height: 1.3;
+}
+
+.tbc-cp-step-desc {
+    margin: 0;
+    color: var(--fcom-secondary-text, #525866);
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+/* Progress Steps */
+.tbc-cp-progress {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    padding: 0 30px;
+}
+
+.tbc-cp-progress::before {
+    content: "";
+    position: absolute;
+    top: 30px;
+    left: calc(30px + 30px);
+    right: calc(30px + 30px);
+    height: 3px;
+    background: var(--fcom-primary-border, #e3e8ee);
+    z-index: 1;
+    border-radius: 2px;
+}
+
+.tbc-cp-progress::after {
+    content: "";
+    position: absolute;
+    top: 30px;
+    left: calc(30px + 30px);
+    height: 3px;
+    background: linear-gradient(90deg, var(--tbc-cp-success) 0%, #66BB6A 100%);
+    z-index: 2;
+    border-radius: 2px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    width: var(--tbc-cp-connection-progress);
+    max-width: calc(100% - 60px - 60px);
+}
+
+/* Step Indicators */
+.tbc-cp-indicator {
+    position: relative;
+    z-index: 3;
+    text-decoration: none;
+    flex: 1;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 8px;
+    border-radius: 12px;
+}
+
+.tbc-cp-indicator:hover {
+    transform: translateY(-2px);
+}
+
+.tbc-cp-indicator::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 123, 255, 0.05);
+    border-radius: 12px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tbc-cp-indicator:hover::before {
+    opacity: 1;
+}
+
+/* Step Number */
+.tbc-cp-indicator-num {
+    width: 60px;
+    height: 60px;
+    background: var(--fcom-primary-bg, #ffffff);
+    border: 3px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--fcom-text-off, #959595);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.tbc-cp-checkout-step .tbc-cp-indicator-num::before {
+    content: "\1F6D2";
+    position: absolute;
+    font-size: 24px;
+}
+
+/* Step Info */
+.tbc-cp-indicator-info {
+    padding: 0 12px;
+}
+
+.tbc-cp-indicator-title {
+    font-weight: 600;
+    color: var(--fcom-primary-text, #19283a);
+    font-size: 14px;
+    margin-bottom: 4px;
+    line-height: 1.3;
+    min-height: 2.6em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tbc-cp-indicator-status {
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Completed Steps */
+.tbc-cp-indicator.completed .tbc-cp-indicator-num {
+    background: linear-gradient(135deg, var(--tbc-cp-success) 0%, #66BB6A 100%);
+    border-color: var(--tbc-cp-success);
+    color: var(--fcom-text-off, #959595);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.tbc-cp-indicator.completed .tbc-cp-indicator-title {
+    color: var(--tbc-cp-success);
+}
+
+.tbc-cp-indicator.completed.tbc-cp-checkout-step .tbc-cp-indicator-num::before {
+    color: white;
+}
+
+/* Current Step */
+.tbc-cp-indicator.current .tbc-cp-indicator-num {
+    border-color: var(--fcom-text-link, #2271b1);
+    background: linear-gradient(135deg, var(--fcom-text-link, #2271b1) 0%, #0096dc 100%);
+    color: white;
+    transform: scale(1.1);
+    animation: tbc-cp-pulse 2s infinite;
+}
+
+@keyframes tbc-cp-pulse {
+    0% { box-shadow: 0 0 0 4px rgba(0, 124, 186, 0.3); }
+    50% { box-shadow: 0 0 0 12px rgba(0, 124, 186, 0.1); }
+    100% { box-shadow: 0 0 0 4px rgba(0, 124, 186, 0.3); }
+}
+
+.tbc-cp-indicator.current .tbc-cp-indicator-title {
+    color: var(--fcom-text-link, #2271b1);
+    font-weight: 700;
+}
+
+.tbc-cp-indicator.current.tbc-cp-checkout-step .tbc-cp-indicator-num::before {
+    color: white;
+}
+
+.tbc-cp-indicator.current.completed .tbc-cp-indicator-num {
+    background: linear-gradient(135deg, var(--tbc-cp-success) 0%, #66BB6A 100%);
+    border-color: var(--fcom-text-link, #2271b1);
+}
+
+/* Future Checkout Step */
+.tbc-cp-indicator:not(.completed):not(.current).tbc-cp-checkout-step .tbc-cp-indicator-num {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    border-color: var(--fcom-primary-border, #e3e8ee);
+    color: var(--fcom-text-off, #959595);
+}
+
+.tbc-cp-indicator:not(.completed):not(.current).tbc-cp-checkout-step .tbc-cp-indicator-num::before {
+    color: var(--fcom-text-off, #959595);
+}
+
+.tbc-cp-indicator:not(.completed):not(.current).tbc-cp-checkout-step:hover .tbc-cp-indicator-num {
+    border-color: var(--fcom-text-link, #2271b1);
+}
+
+.tbc-cp-indicator:not(.completed):not(.current).tbc-cp-checkout-step:hover .tbc-cp-indicator-num::before {
+    color: var(--fcom-text-link, #2271b1);
+}
+
+.tbc-cp-indicator:not(.completed):not(.current).tbc-cp-checkout-step .tbc-cp-indicator-title {
+    color: var(--fcom-text-off, #959595);
+}
+
+/* Status Badges */
+.tbc-cp-status-complete {
+    color: var(--tbc-cp-success);
+    font-weight: 600;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: rgba(40, 167, 69, 0.1);
+    border: 1px solid rgba(40, 167, 69, 0.2);
+}
+
+.tbc-cp-status-complete::before {
+    content: "\2713";
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.tbc-cp-status-incomplete {
+    color: var(--fcom-text-off, #959595);
+    font-weight: 500;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: rgba(108, 117, 125, 0.1);
+    border: 1px solid rgba(108, 117, 125, 0.2);
+}
+
+.tbc-cp-status-phone-screening,
+.tbc-cp-status-spirit-pharmacist,
+.tbc-cp-indicator-status .tbc-cp-status-pending {
+    color: var(--fcom-text-off, #959595);
+    font-weight: 500;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: rgba(108, 117, 125, 0.1);
+    border: 1px solid rgba(108, 117, 125, 0.2);
+}
+
+.tbc-cp-status-phone-screening::before {
+    content: "\260E";
+    font-size: 10px;
+}
+
+.tbc-cp-status-spirit-pharmacist::before {
+    content: "\2695";
+    font-size: 10px;
+}
+
+.tbc-cp-indicator-status .tbc-cp-status-pending::before {
+    content: "\23F3";
+    font-size: 10px;
+}
+
+/* Navigation */
+.tbc-cp-nav {
+    margin: 32px 20px;
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.tbc-cp-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid transparent;
+    min-width: 140px;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: var(--fcom-primary-button, #2B2E33);
+    color: var(--fcom-primary-button-text, #ffffff);
+    border-color: var(--fcom-primary-button, #2B2E33);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.tbc-cp-nav-btn::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.tbc-cp-nav-btn:hover::before {
+    left: 100%;
+}
+
+.tbc-cp-nav-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    color: var(--fcom-primary-button-text, #ffffff);
+}
+
+/* Nav loading state */
+.tbc-cp-nav-loading {
+    pointer-events: none;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.tbc-cp-nav-loading .tbc-cp-nav-spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: tbc-cp-spin 0.6s linear infinite;
+}
+
+@keyframes tbc-cp-spin {
+    to { transform: rotate(360deg); }
+}
+
+.tbc-cp-nav-donate {
+    background: linear-gradient(135deg, var(--tbc-cp-success) 0%, #34ce57 100%);
+    border-color: var(--tbc-cp-success);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.tbc-cp-nav-donate:hover {
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
+/* Notifications */
+.tbc-cp-notice {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 400px;
+    min-width: 300px;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    animation: tbc-cp-slide-in 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tbc-cp-notice__content {
+    padding: 16px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.tbc-cp-notice__message {
+    flex: 1;
+    line-height: 1.5;
+    font-weight: 500;
+    white-space: pre-line;
+}
+
+.tbc-cp-notice__close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+}
+
+.tbc-cp-notice__close::before {
+    content: "\00D7";
+}
+
+.tbc-cp-notice__close:hover {
+    opacity: 1;
+}
+
+.tbc-cp-notice--error {
+    background: linear-gradient(135deg, var(--tbc-cp-error) 0%, #c82333 100%);
+    color: white;
+    border-left: 4px solid #a71e2a;
+}
+
+.tbc-cp-notice--warning {
+    background: linear-gradient(135deg, var(--tbc-cp-warning) 0%, #e0a800 100%);
+    color: #212529;
+    border-left: 4px solid #d39e00;
+}
+
+.tbc-cp-notice--success {
+    background: linear-gradient(135deg, var(--tbc-cp-success) 0%, #1e7e34 100%);
+    color: white;
+    border-left: 4px solid #1c7430;
+}
+
+.tbc-cp-notice--info {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+    border-left: 4px solid #117a8b;
+}
+
+@keyframes tbc-cp-slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Loading States */
+body.tbc-cp-navigating {
+    cursor: progress;
+}
+
+body.tbc-cp-navigating * {
+    pointer-events: none;
+}
+
+.tbc-cp-indicator.tbc-cp-just-completed {
+    animation: tbc-cp-celebrate 0.6s ease-in-out;
+}
+
+@keyframes tbc-cp-celebrate {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Focus States */
+.tbc-cp-indicator:focus,
+.tbc-cp-nav-btn:focus {
+    outline: 2px solid var(--fcom-text-link, #2271b1);
+    outline-offset: 2px;
+}
+
+/* Mobile */
+@media (max-width: 782px) {
+    .tbc-cp-checkout {
+        margin: 15px;
+    }
+
+    .tbc-cp-header {
+        padding: 20px 16px;
+    }
+
+    .tbc-cp-header-static {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .tbc-cp-title {
+        font-size: 20px;
+    }
+
+    .tbc-cp-step-header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+    }
+
+    .tbc-cp-step-title {
+        font-size: 22px;
+    }
+
+    .tbc-cp-step-desc {
+        font-size: 14px;
+    }
+
+    .tbc-cp-progress {
+        flex-direction: column;
+        gap: 16px;
+        padding: 0;
+    }
+
+    .tbc-cp-progress::before,
+    .tbc-cp-progress::after {
+        display: none;
+    }
+
+    .tbc-cp-indicator {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        background: var(--fcom-secondary-bg, #f0f2f5);
+        border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    }
+
+    .tbc-cp-indicator.completed {
+        background: rgba(76, 175, 80, 0.05);
+        border-color: rgba(76, 175, 80, 0.2);
+    }
+
+    .tbc-cp-indicator.current {
+        background: rgba(0, 124, 186, 0.05);
+        border-color: rgba(0, 124, 186, 0.3);
+    }
+
+    .tbc-cp-indicator-num {
+        margin: 0;
+        width: 50px;
+        height: 50px;
+        font-size: 16px;
+    }
+
+    .tbc-cp-indicator.current .tbc-cp-indicator-num {
+        transform: none;
+    }
+
+    .tbc-cp-checkout-step .tbc-cp-indicator-num::before {
+        font-size: 20px;
+    }
+
+    .tbc-cp-indicator-info {
+        text-align: left;
+        flex: 1;
+        padding: 0;
+    }
+
+    .tbc-cp-indicator-title {
+        font-size: 16px;
+        margin-bottom: 4px;
+    }
+
+    .tbc-cp-nav {
+        flex-direction: column;
+        gap: 12px;
+        margin: 24px 16px;
+    }
+
+    .tbc-cp-nav-btn {
+        width: 100%;
+        padding: 16px 24px;
+        font-size: 16px;
+        min-width: auto;
+    }
+
+    .tbc-cp-notice {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+        min-width: auto;
+    }
+
+    .tbc-cp-notice__content {
+        padding: 14px 16px;
+    }
+
+    .tbc-cp-notice__message {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .tbc-cp-title {
+        font-size: 18px;
+    }
+
+    .tbc-cp-step-title {
+        font-size: 20px;
+    }
+
+    .tbc-cp-indicator-num {
+        width: 45px;
+        height: 45px;
+        font-size: 14px;
+    }
+
+    .tbc-cp-checkout-step .tbc-cp-indicator-num::before {
+        font-size: 18px;
+    }
+
+    .tbc-cp-indicator-title {
+        font-size: 15px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find \"c:\\\\Users\\\\Frogb\\\\Desktop\\\\Vibez\\\\Apps\\\\TwoBirdsCommunityApp\\\\TwoBirdsCommunityApp\\\\companion plugins\\\\fluent-community \\(Refrence ONLY\\)\" -type f -name \"Utility.php\" -o -name \"*Utility*\")",
+      "Bash(find 'c:\\\\Users\\\\Frogb\\\\Desktop\\\\Vibez\\\\Apps\\\\TwoBirdsCommunityApp\\\\TwoBirdsCommunityApp\\\\companion plugins\\\\fluent-community \\(Refrence ONLY\\)' -type f -name *.json -o -name *color* -o -name *styling*)"
+    ]
+  }
+}
