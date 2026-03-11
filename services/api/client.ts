@@ -24,6 +24,7 @@ export interface ResponseHeaderData {
   unreadMessages?: number;
   cartCount?: number;
   maintenance?: boolean;
+  profileIncomplete?: boolean;
   minAppVersion?: string;
 }
 
@@ -233,8 +234,9 @@ async function request<T>(
       const hMsg = response.headers.get('X-TBC-Unread-Messages');
       const hCart = response.headers.get('X-TBC-Cart-Count');
       const hMaint = response.headers.get('X-TBC-Maintenance');
+      const hProfile = response.headers.get('X-TBC-Profile-Incomplete');
       const hMinVer = response.headers.get('X-TBC-Min-App-Version');
-      if (hNotif !== null || hMsg !== null || hCart !== null || hMaint !== null || hMinVer !== null) {
+      if (hNotif !== null || hMsg !== null || hCart !== null || hMaint !== null || hProfile !== null || hMinVer !== null) {
         const nNotif = hNotif !== null ? parseInt(hNotif, 10) : NaN;
         const nMsg = hMsg !== null ? parseInt(hMsg, 10) : NaN;
         const nCart = hCart !== null ? parseInt(hCart, 10) : NaN;
@@ -243,6 +245,7 @@ async function request<T>(
           ...(!isNaN(nMsg) && nMsg >= 0 && { unreadMessages: nMsg }),
           ...(!isNaN(nCart) && nCart >= 0 && { cartCount: nCart }),
           ...(hMaint !== null && { maintenance: hMaint === '1' }),
+          ...(hProfile !== null && { profileIncomplete: hProfile === '1' }),
           ...(hMinVer !== null && { minAppVersion: hMinVer }),
         });
       }

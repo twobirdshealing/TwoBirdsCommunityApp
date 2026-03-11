@@ -22,11 +22,14 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: AuthUser | null;
+  needsProfileCompletion: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   updateUser: (updates: Partial<AuthUser>) => Promise<void>;
   registerAndLogin: (accessToken: string, refreshToken: string, userData: AuthUser) => Promise<void>;
+  markProfileComplete: () => void;
+  markProfileIncomplete: () => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -44,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [needsProfileCompletion, setNeedsProfileCompletion] = useState(false);
 
   // Check auth status on mount
   useEffect(() => {
@@ -80,8 +84,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
           }
 
-          // Profile sync is handled by the startup batch (useStartupData)
-          // which fires once after auth and distributes profile updates via onProfileUpdate.
+          // Profile completion is checked via X-TBC-Profile-Incomplete response headers
+          // on every authenticated API call (startup batch, etc). No separate call needed here.
         } else {
           // Has auth but no user info - clear it
           await authService.clearAuth();
@@ -105,6 +109,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (result.success && result.user) {
         setUser(result.user);
         setIsAuthenticated(true);
+
+        // Profile completion is detected via X-TBC-Profile-Incomplete response headers
+        // on the first authenticated API call (startup batch). No separate call needed.
+
         return { success: true };
       } else {
         return { success: false, error: result.error || 'Login failed' };
@@ -146,10 +154,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(null);
       setIsAuthenticated(false);
+      setNeedsProfileCompletion(false);
     } catch (error) {
       log.error('Logout error:', error);
       setUser(null);
       setIsAuthenticated(false);
+      setNeedsProfileCompletion(false);
     }
   }, []);
 
@@ -160,6 +170,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateUser = useCallback(async (updates: Partial<AuthUser>) => {
     await authService.updateStoredUser(updates);
     setUser(prev => prev ? { ...prev, ...updates } : prev);
+  }, []);
+
+  const markProfileComplete = useCallback(() => {
+    setNeedsProfileCompletion(false);
+  }, []);
+
+  const markProfileIncomplete = useCallback(() => {
+    setNeedsProfileCompletion(true);
   }, []);
 
   const registerAndLogin = useCallback(async (
@@ -181,12 +199,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated,
     isLoading,
     user,
+    needsProfileCompletion,
     login,
     logout,
     refreshAuth,
     updateUser,
     registerAndLogin,
-  }), [isAuthenticated, isLoading, user, login, logout, refreshAuth, updateUser, registerAndLogin]);
+    markProfileComplete,
+    markProfileIncomplete,
+  }), [isAuthenticated, isLoading, user, needsProfileCompletion, login, logout, refreshAuth, updateUser, registerAndLogin, markProfileComplete, markProfileIncomplete]);
 
   return (
     <AuthContext.Provider value={value}>

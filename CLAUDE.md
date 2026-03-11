@@ -112,4 +112,4 @@ The app's colors are synced from Fluent Community's color schemas (light + dark 
 - `shadowColor: '#000'` is fine (iOS standard)
 - Calendar status gradients, YouTube brand red, video player black backgrounds are intentionally static
 
-When working on companion plugins after updates fixes changes make sure you update the version number on the plugin or theme and update changelog. If change log missing add one.
+When working on companion plugins after updates fixes changes make sure you update the version number on the plugin or theme and update changelog. If change log missing add one.always update version to bust chacne even small udpates 

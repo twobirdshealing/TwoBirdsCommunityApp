@@ -84,7 +84,7 @@ function sanitizeParam(value: unknown): string {
 // -----------------------------------------------------------------------------
 
 function RootLayoutNav() {
-  const { isAuthenticated, isLoading, user, logout, updateUser } = useAuth();
+  const { isAuthenticated, isLoading, user, logout, updateUser, needsProfileCompletion, markProfileComplete, markProfileIncomplete } = useAuth();
   const { isDark, colors: themeColors, update, maintenance, setFromBatch: setThemeFromBatch } = useTheme();
   const { portalSlug, setFromBatch: setAppConfigFromBatch } = useAppConfig();
   const { setUnreadNotifications, setUnreadMessages, setCartCount } = useUnreadCounts();
@@ -142,13 +142,17 @@ function RootLayoutNav() {
       if (data.cartCount !== undefined) {
         setCartCount(data.cartCount);
       }
+      if (data.profileIncomplete !== undefined) {
+        // Idempotent — safe to call on every response without a guard
+        data.profileIncomplete ? markProfileIncomplete() : markProfileComplete();
+      }
       if (data.maintenance || (data.minAppVersion && isVersionBelow(APP_VERSION, data.minAppVersion))) {
         // Maintenance or version change detected mid-session — refresh all config
         refreshAllConfig();
       }
     });
     return () => setOnResponseHeaders(null);
-  }, [setUnreadNotifications, setUnreadMessages, setCartCount, refreshAllConfig]);
+  }, [setUnreadNotifications, setUnreadMessages, setCartCount, refreshAllConfig, markProfileIncomplete, markProfileComplete]);
 
   // ---------------------------------------------------------------------------
   // Deep Link Listener (Universal Links + App Links)
@@ -196,15 +200,18 @@ function RootLayoutNav() {
     // Don't redirect during maintenance — maintenance screen handles login
     if (maintenance?.enabled && !maintenance.can_bypass) return;
 
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register' || segments[0] === 'forgot-password' || segments[0] === 'webview';
+    const currentSegment = segments[0] as string;
+    const inAuthGroup = currentSegment === 'login' || currentSegment === 'register' || currentSegment === 'forgot-password' || currentSegment === 'webview' || currentSegment === 'profile-complete';
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/login');
-    } else if (isAuthenticated && segments[0] === 'login') {
-      // Only auto-redirect from login, not register (register needs to finish avatar step)
+    } else if (isAuthenticated && needsProfileCompletion && currentSegment !== 'profile-complete' && currentSegment !== 'register') {
+      // Redirect to profile completion if profile is incomplete
+      router.replace('/profile-complete' as any);
+    } else if (isAuthenticated && !needsProfileCompletion && segments[0] === 'login') {
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, isLoading, segments, maintenance]);
+  }, [isAuthenticated, isLoading, segments, maintenance, needsProfileCompletion]);
 
   // Reset login mode when bypass check completes: can't bypass → back to maintenance
   useEffect(() => {
@@ -352,6 +359,10 @@ function RootLayoutNav() {
         />
         <Stack.Screen
           name="forgot-password"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="profile-complete"
           options={{ headerShown: false }}
         />
 

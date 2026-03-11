@@ -7,6 +7,7 @@
 
 import { TBC_FP_URL, TBC_CA_URL } from '@/constants/config';
 import { verifyOtp, resendOtp, requestVoiceCall } from './otp';
+import { request, type ApiResponse } from './client';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('RegistrationAPI');
@@ -207,6 +208,60 @@ export async function resetPassword(
 }
 
 // -----------------------------------------------------------------------------
+// Profile Completion API Functions (authenticated, uses JWT client)
+// -----------------------------------------------------------------------------
+
+export interface ProfileExistingData {
+  bio: string;
+  website: string;
+  social_links: Record<string, string>;
+  avatar: string;
+  cover_photo: string;
+}
+
+export interface ProfileStatusResponse {
+  profile_complete: boolean;
+  missing: string[];
+  existing?: ProfileExistingData;
+}
+
+/**
+ * GET /register/status - Check if the user's profile is complete.
+ * Used on login to decide whether to show the profile completion gate.
+ */
+export async function checkProfileComplete(): Promise<ProfileStatusResponse> {
+  const result = await request<ProfileStatusResponse>('/register/status', {
+    method: 'GET',
+    baseUrl: TBC_FP_URL,
+  });
+
+  if (result.success) {
+    return result.data;
+  }
+
+  // Default to complete on error so we don't block users
+  log.error('checkProfileComplete failed:', result.error);
+  return { profile_complete: true, missing: [] };
+}
+
+/**
+ * POST /register/complete - Mark the user's profile as complete.
+ */
+export async function completeRegistration(): Promise<boolean> {
+  const result = await request<{ success: boolean }>('/register/complete', {
+    method: 'POST',
+    baseUrl: TBC_FP_URL,
+  });
+
+  if (result.success) {
+    return result.data.success;
+  }
+
+  log.error('completeRegistration failed:', result.error);
+  return false;
+}
+
+// -----------------------------------------------------------------------------
 // Export as object for consistency with other API services
 // -----------------------------------------------------------------------------
 
@@ -221,6 +276,8 @@ export const registrationApi = {
   resendPasswordOtp,
   requestPasswordVoiceCall,
   resetPassword,
+  checkProfileComplete,
+  completeRegistration,
 };
 
 export default registrationApi;

@@ -5,8 +5,7 @@
 // Step 2: Custom profile fields + terms
 // Step 3: Email verification (if required)
 // Step 4: Phone OTP verification (if required)
-// Step 5: Bio + website + social links (post auto-login, bio required)
-// Step 6: Avatar upload (post auto-login, optional)
+// Step 5: Profile completion (bio + avatar via shared component)
 // =============================================================================
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,15 +28,11 @@ import { PRIVACY_POLICY_URL } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
-import { SocialLinksForm } from '@/components/common/SocialLinksForm';
 import { DynamicFormField } from '@/components/common/DynamicFormField';
 import { PasswordStrengthMeter } from '@/components/common/PasswordStrengthMeter';
 import { SelectModal } from '@/components/common/SelectModal';
-import { useSocialProviders } from '@/hooks/useSocialProviders';
-import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
+import { ProfileCompletionSteps } from '@/components/profile/ProfileCompletionSteps';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
-import { updateProfile, patchProfileMedia } from '@/services/api/profiles';
-import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import {
   getRegistrationFields,
   submitRegistration,
@@ -51,7 +46,7 @@ import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 // Types
 // -----------------------------------------------------------------------------
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Step = 1 | 2 | 3 | 4 | 5;
 
 // -----------------------------------------------------------------------------
 // Component
@@ -62,7 +57,6 @@ export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const { registerAndLogin, isAuthenticated, user: currentUser, updateUser } = useAuth();
   const { colors: themeColors } = useTheme();
-  const socialProviders = useSocialProviders();
 
   // State
   const [step, setStep] = useState<Step>(1);
@@ -79,18 +73,6 @@ export default function RegisterScreen() {
   const [emailVerifyCode, setEmailVerifyCode] = useState('');
   const [emailResendTimer, setEmailResendTimer] = useState(0);
   const [verificationToken, setVerificationToken] = useState('');
-
-  // Step 5 state (bio + website + social links)
-  const [bio, setBio] = useState('');
-  const [website, setWebsite] = useState('');
-  const [socialLinks, setSocialLinks] = useState<Record<string, string>>({});
-  const [savingSocial, setSavingSocial] = useState(false);
-
-  // Avatar + cover photo state (step 6)
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [coverUri, setCoverUri] = useState<string | null>(null);
-  const [uploadingCover, setUploadingCover] = useState(false);
 
   // Select modal state
   const [selectModalVisible, setSelectModalVisible] = useState(false);
@@ -356,125 +338,7 @@ export default function RegisterScreen() {
     }
   }, [formData, emailResendTimer]);
 
-  // ---------------------------------------------------------------------------
-  // Social links (Step 5)
-  // ---------------------------------------------------------------------------
-
-  const handleSaveStep5 = useCallback(async () => {
-    hapticMedium();
-
-    const bioTrimmed = bio.trim();
-    if (!bioTrimmed) {
-      setError('Please write a short bio before continuing.');
-      return;
-    }
-
-    setSavingSocial(true);
-    setError(null);
-
-    try {
-      const username = currentUser?.username || formData.username || '';
-
-      // Use formData from step 1; fall back to currentUser (app restart scenario)
-      // or split displayName as last resort
-      let firstName = formData.first_name || currentUser?.firstName || '';
-      let lastName = formData.last_name || currentUser?.lastName || '';
-      if (!firstName && currentUser?.displayName) {
-        const parts = currentUser.displayName.trim().split(/\s+/);
-        firstName = parts[0] || '';
-        lastName = parts.slice(1).join(' ') || '';
-      }
-
-      const profileData: Record<string, any> = {
-        username,
-        user_id: currentUser?.id,
-        first_name: firstName,
-        last_name: lastName,
-        short_description: bioTrimmed,
-      };
-
-      const websiteTrimmed = website.trim();
-      if (websiteTrimmed) {
-        profileData.website = websiteTrimmed;
-      }
-
-      const trimmedLinks = Object.fromEntries(
-        Object.entries(socialLinks).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim()])
-      );
-      if (Object.keys(trimmedLinks).length > 0) {
-        profileData.social_links = trimmedLinks;
-      }
-
-      const response = await updateProfile(username, profileData);
-
-      if (response.success) {
-        setStep(6);
-      } else {
-        setError('Could not save profile. Please try again.');
-      }
-    } catch (e) {
-      setError('Could not save profile. Please try again.');
-    } finally {
-      setSavingSocial(false);
-    }
-  }, [bio, website, socialLinks, currentUser, formData]);
-
-  // ---------------------------------------------------------------------------
-  // Avatar + Cover photo upload (Step 6)
-  // ---------------------------------------------------------------------------
-
-  const handlePickAvatar = useCallback(() => {
-    const username = currentUser?.username || formData.username || '';
-    showAvatarPicker({
-      onUploadStart: (localUri) => {
-        setAvatarUri(localUri);
-        setUploadingAvatar(true);
-        setError(null);
-      },
-      onSuccess: async (remoteUrl) => {
-        try {
-          await patchProfileMedia(username, { avatar: remoteUrl });
-          await updateUser({ avatar: remoteUrl });
-        } catch (e) {
-          setError('Failed to save avatar. You can add it later from your profile.');
-        }
-        setUploadingAvatar(false);
-      },
-      onError: (msg) => {
-        setError(msg + ' You can add it later from your profile.');
-        setUploadingAvatar(false);
-      },
-    });
-  }, [currentUser, formData.username]);
-
-  const handlePickCover = useCallback(() => {
-    const username = currentUser?.username || formData.username || '';
-    showCoverPicker({
-      onUploadStart: (localUri) => {
-        setCoverUri(localUri);
-        setUploadingCover(true);
-        setError(null);
-      },
-      onSuccess: async (remoteUrl) => {
-        try {
-          await patchProfileMedia(username, { cover_photo: remoteUrl });
-          setCoverUri(remoteUrl);
-        } catch (e) {
-          setError('Failed to save cover photo. You can add it later from your profile.');
-        }
-        setUploadingCover(false);
-      },
-      onError: (msg) => {
-        setError(msg + ' You can add it later from your profile.');
-        setUploadingCover(false);
-      },
-    });
-  }, [currentUser, formData.username]);
-
-  const handleFinish = useCallback(() => {
-    hapticMedium();
-    router.replace('/(tabs)');
-  }, [router]);
+  // (Steps 5-6 are now handled by ProfileCompletionSteps component)
 
   // ---------------------------------------------------------------------------
   // Dynamic field renderer
@@ -508,7 +372,7 @@ export default function RegisterScreen() {
 
   const hasEmailVerify = fieldsConfig?.email_verification_required || false;
   const hasPhoneOtp = fieldsConfig?.otp_required || false;
-  const totalSteps = 2 + (hasEmailVerify ? 1 : 0) + (hasPhoneOtp ? 1 : 0) + 2; // base 2 + optional email + optional OTP + social links + avatar
+  const totalSteps = 2 + (hasEmailVerify ? 1 : 0) + (hasPhoneOtp ? 1 : 0); // base 2 + optional email + optional OTP (profile completion has its own steps)
 
   // Map actual step number to visual position (accounting for skipped steps)
   const getVisualStep = useCallback((actualStep: number): number => {
@@ -775,131 +639,12 @@ export default function RegisterScreen() {
     </>
   );
 
-  const renderStep5_AboutYou = () => (
-    <>
-      <View style={styles.avatarHeader}>
-        <Text style={[styles.otpTitle, { color: themeColors.text }]}>
-          About You
-        </Text>
-        <Text style={[styles.otpSubtitle, { color: themeColors.textSecondary }]}>
-          Tell people a little about yourself
-        </Text>
-      </View>
-
-      {/* Bio (required) */}
-      <View style={styles.inputContainer}>
-        <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
-          Bio <Text style={{ color: themeColors.error }}>*</Text>
-        </Text>
-        <TextInput
-          style={[
-            styles.input,
-            styles.bioInput,
-            {
-              backgroundColor: themeColors.background,
-              borderColor: themeColors.border,
-              color: themeColors.text,
-            },
-          ]}
-          value={bio}
-          onChangeText={setBio}
-          placeholder="A few words about yourself..."
-          placeholderTextColor={themeColors.textTertiary}
-          multiline
-          maxLength={500}
-          textAlignVertical="top"
-        />
-      </View>
-
-      {/* Website (optional) */}
-      <View style={styles.inputContainer}>
-        <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
-          Website
-        </Text>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: themeColors.background,
-              borderColor: themeColors.border,
-              color: themeColors.text,
-            },
-          ]}
-          value={website}
-          onChangeText={setWebsite}
-          placeholder="https://yourwebsite.com"
-          placeholderTextColor={themeColors.textTertiary}
-          keyboardType="url"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-      </View>
-
-      {/* Social links */}
-      <SocialLinksForm
-        providers={socialProviders}
-        values={socialLinks}
-        onChange={(key, value) => setSocialLinks(prev => ({ ...prev, [key]: value }))}
-      />
-
-      <AnimatedPressable
-        style={[styles.primaryButton, { backgroundColor: themeColors.primary }, savingSocial && styles.buttonDisabled]}
-        onPress={handleSaveStep5}
-        disabled={savingSocial}
-        accessibilityRole="button"
-        accessibilityLabel="Save and continue"
-      >
-        {savingSocial ? (
-          <ActivityIndicator color={themeColors.textInverse} />
-        ) : (
-          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Save & Continue</Text>
-        )}
-      </AnimatedPressable>
-    </>
-  );
-
-  const renderStep6_Avatar = () => (
-    <>
-      <View style={styles.avatarHeader}>
-        <Text style={[styles.otpTitle, { color: themeColors.text }]}>
-          Personalize Your Profile
-        </Text>
-        <Text style={[styles.otpSubtitle, { color: themeColors.textSecondary }]}>
-          Add a cover photo and avatar
-        </Text>
-      </View>
-
-      <ProfilePhotoPicker
-        avatarSource={avatarUri}
-        coverSource={coverUri}
-        fallbackName={formData.full_name || formData.username || 'U'}
-        onAvatarPress={handlePickAvatar}
-        onCoverPress={handlePickCover}
-        avatarUploading={uploadingAvatar}
-        coverUploading={uploadingCover}
-      />
-
-      <AnimatedPressable
-        style={[styles.secondaryButton, { borderColor: themeColors.border }]}
-        onPress={handleFinish}
-        disabled={uploadingAvatar || uploadingCover}
-        accessibilityRole="button"
-        accessibilityLabel={(avatarUri || coverUri) ? 'Done' : 'Skip profile photos'}
-      >
-        <Text style={[styles.secondaryButtonText, { color: themeColors.text }]}>
-          {(avatarUri || coverUri) ? 'Done' : 'Skip for now'}
-        </Text>
-      </AnimatedPressable>
-    </>
-  );
-
   const stepTitles: Record<Step, string> = {
     1: 'Create Account',
     2: 'Your Profile',
     3: 'Verify Email',
     4: 'Verify Phone',
-    5: 'About You',
-    6: 'Personalize',
+    5: '', // Handled by ProfileCompletionSteps
   };
 
   return (
@@ -931,14 +676,16 @@ export default function RegisterScreen() {
 
           {/* Form Card */}
           <View style={[styles.formCard, { backgroundColor: withOpacity(themeColors.surface, 0.95) }]}>
-            {renderStepIndicator()}
+            {step < 5 && renderStepIndicator()}
 
-            <Text style={[styles.formTitle, { color: themeColors.text }]}>
-              {stepTitles[step]}
-            </Text>
+            {step < 5 && stepTitles[step] ? (
+              <Text style={[styles.formTitle, { color: themeColors.text }]}>
+                {stepTitles[step]}
+              </Text>
+            ) : null}
 
             {/* Error Message */}
-            {error && (
+            {error && step < 5 && (
               <View style={[styles.errorContainer, { backgroundColor: themeColors.errorLight, borderColor: withOpacity(themeColors.error, 0.3) }]}>
                 <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
               </View>
@@ -948,8 +695,13 @@ export default function RegisterScreen() {
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3_EmailVerify()}
             {step === 4 && renderStep4_PhoneOtp()}
-            {step === 5 && renderStep5_AboutYou()}
-            {step === 6 && renderStep6_Avatar()}
+            {step === 5 && (
+              <ProfileCompletionSteps
+                username={currentUser?.username || formData.username || ''}
+                displayName={currentUser?.displayName || formData.full_name || ''}
+                onComplete={() => router.replace('/(tabs)')}
+              />
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -1087,20 +839,6 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.semibold,
   },
 
-  secondaryButton: {
-    borderRadius: sizing.borderRadius.md,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.md,
-    borderWidth: 1,
-  },
-
-  secondaryButtonText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.medium,
-  },
-
   buttonDisabled: {
     opacity: 0.7,
   },
@@ -1169,22 +907,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
 
-  // Field label (Step 5 bio/website)
-  fieldLabel: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    marginBottom: spacing.xs,
-  },
-
-  bioInput: {
-    minHeight: 100,
-    paddingTop: spacing.md,
-  },
-
-  // Avatar (Step 6)
-  avatarHeader: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
 
 });
