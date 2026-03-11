@@ -25,6 +25,7 @@
         "foregroundImage": "./assets/images/app_icon_android_adaptive_fg.png",
         "backgroundImage": "./assets/images/app_icon_android_adaptive_bg.png"
       },
+      "softwareKeyboardLayoutMode": "adjustNothing",
       "predictiveBackGestureEnabled": false,
       "googleServicesFile": "./google-services.json"
     },
@@ -58,11 +59,29 @@
       ],
       "expo-font",
       [
+        "expo-audio",
+        {
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-image-picker",
         {
-          "cameraPermission": "Allow Two Birds Community to access your camera to take a profile photo."
+          "cameraPermission": "Allow Two Birds Community to access your camera to take a profile photo.",
+          "photosPermission": "Allow Two Birds Community to access your photos to share images and set your profile picture."
         }
-      ]
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Two Birds Community to save images to your photo library.",
+          "savePhotosPermission": "Allow Two Birds Community to save images to your photo library."
+        }
+      ],
+      "expo-asset",
+      "expo-image",
+      "expo-sharing",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,
