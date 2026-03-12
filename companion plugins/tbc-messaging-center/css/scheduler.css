@@ -278,48 +278,48 @@
 }
 
 .tbc-mc-schedule-type-badge.immediate {
-    background: #28a745;
-    color: white;
+    background: var(--tbc-success-bg, rgba(40, 167, 69, 0.15));
+    color: var(--tbc-success, #28a745);
 }
 
 .tbc-mc-schedule-type-badge.scheduled {
-    background: #007bff;
-    color: white;
+    background: var(--tbc-info-bg, rgba(23, 162, 184, 0.15));
+    color: var(--tbc-info, #17a2b8);
 }
 
 .tbc-mc-schedule-type-badge.recurring {
-    background: #6f42c1;
-    color: white;
+    background: var(--tbc-purple-bg, rgba(111, 66, 193, 0.15));
+    color: var(--tbc-purple, #6f42c1);
 }
 
 .tbc-mc-recipients-badge {
-    background: #6c757d;
-    color: white;
+    background: var(--tbc-neutral-bg, rgba(108, 117, 125, 0.15));
+    color: var(--fcom-secondary-text, #6c757d);
 }
 
 .tbc-mc-batch-status-pending {
-    background: #ffc107;
-    color: #212529;
+    background: var(--tbc-warning-bg, rgba(212, 136, 15, 0.15));
+    color: var(--tbc-warning, #d4880f);
 }
 
 .tbc-mc-batch-status-processing {
-    background: #17a2b8;
-    color: white;
+    background: var(--tbc-info-bg, rgba(23, 162, 184, 0.15));
+    color: var(--tbc-info, #17a2b8);
 }
 
 .tbc-mc-batch-status-completed {
-    background: #28a745;
-    color: white;
+    background: var(--tbc-success-bg, rgba(40, 167, 69, 0.15));
+    color: var(--tbc-success, #28a745);
 }
 
 .tbc-mc-batch-status-failed {
-    background: #dc3545;
-    color: white;
+    background: var(--tbc-danger-bg, rgba(220, 53, 69, 0.15));
+    color: var(--tbc-danger, #dc3545);
 }
 
 .tbc-mc-batch-status-cancelled {
-    background: #6c757d;
-    color: white;
+    background: var(--tbc-neutral-bg, rgba(108, 117, 125, 0.15));
+    color: var(--fcom-secondary-text, #6c757d);
 }
 
 /* Cancel/Delete Buttons */
@@ -339,30 +339,30 @@
 }
 
 .tbc-mc-cancel-all-btn {
-    background: #dc3545;
-    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+    background: var(--tbc-danger, #dc3545);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .tbc-mc-cancel-all-btn:hover {
-    background: #c82333;
+    filter: brightness(0.85);
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .tbc-mc-delete-all-btn {
-    background: #6c757d;
-    box-shadow: 0 2px 4px rgba(108, 117, 125, 0.2);
+    background: var(--tbc-neutral, #6c757d);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .tbc-mc-delete-all-btn:hover {
-    background: #5a6268;
+    filter: brightness(0.85);
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .tbc-mc-cancel-all-btn:disabled,
 .tbc-mc-delete-all-btn:disabled {
-    background: #6c757d;
+    background: var(--tbc-neutral, #6c757d);
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
@@ -441,12 +441,12 @@
 }
 
 .tbc-mc-message-meta-grid .meta-item span.yes {
-    color: #28a745;
+    color: var(--tbc-success, #28a745);
     font-weight: bold;
 }
 
 .tbc-mc-message-meta-grid .meta-item span.no {
-    color: #dc3545;
+    color: var(--tbc-danger, #dc3545);
     font-weight: bold;
 }
 
@@ -502,7 +502,7 @@
 
 .tbc-mc-cancel-all-btn:focus,
 .tbc-mc-delete-all-btn:focus {
-    outline: 2px solid #ffffff;
+    outline: 2px solid var(--fcom-text-link);
     outline-offset: 2px;
 }
 

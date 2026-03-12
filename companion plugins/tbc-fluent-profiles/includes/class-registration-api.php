@@ -61,10 +61,27 @@ class RegistrationApi {
     }
 
     /**
-     * Mark registration as complete (steps 5-6 finished or skipped).
+     * Mark registration as complete (steps 5-6 finished).
+     * Validates that all required profile fields are present before marking complete.
      */
     public function handle_complete(\WP_REST_Request $request) {
-        update_user_meta(get_current_user_id(), TBC_FP_META_REGISTRATION_COMPLETE, '1');
+        $user_id = get_current_user_id();
+
+        if (class_exists('\FluentCommunity\App\Models\XProfile')) {
+            $xprofile = \FluentCommunity\App\Models\XProfile::where('user_id', $user_id)->first();
+            if ($xprofile) {
+                $missing = RegistrationPage::get_missing_fields($xprofile);
+                if (!empty($missing)) {
+                    return new \WP_REST_Response([
+                        'success' => false,
+                        'message' => 'Profile incomplete.',
+                        'missing' => $missing,
+                    ], 422);
+                }
+            }
+        }
+
+        update_user_meta($user_id, TBC_FP_META_REGISTRATION_COMPLETE, '1');
         return new \WP_REST_Response(['success' => true], 200);
     }
 
@@ -89,7 +106,8 @@ class RegistrationApi {
                 $missing = RegistrationPage::get_missing_fields($xprofile);
 
                 $existing['bio']    = $xprofile->short_description ?? '';
-                $existing['avatar'] = $xprofile->avatar ?? '';
+                $raw_avatar = $xprofile->avatar ?? '';
+                $existing['avatar'] = RegistrationPage::is_placeholder_avatar($raw_avatar) ? '' : $raw_avatar;
 
                 // cover_photo, social_links, website are in the serialized `meta` column
                 $meta = $xprofile->meta ?? [];

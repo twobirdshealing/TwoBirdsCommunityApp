@@ -86,22 +86,8 @@ function tbc_pf_ps_render_template_modal() {
                 </div>
                 
                 <div class="tbc-pf-form-group">
-                    <label for="tbc-pf-template-content">Post Content:</label>
-                    <?php
-                    wp_editor('', 'tbc-pf-template-content', [
-                        'textarea_name' => 'content',
-                        'textarea_rows' => 15,
-                        'teeny'         => false,
-                        'media_buttons' => false,
-                        'tinymce'       => [
-                            'toolbar1' => 'formatselect,bold,italic,underline,bullist,numlist,link,unlink,removeformat',
-                            'toolbar2' => '',
-                            'content_css' => false,
-                            'content_style' => 'body#tinymce { font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.6; color: #333; background: #fff; } body#tinymce p, body#tinymce li, body#tinymce div, body#tinymce strong, body#tinymce a { color: #333; } img.emoji { height: 1em; width: 1em; margin: 0 0.05em 0 0.1em; vertical-align: -0.1em; display: inline-block; }'
-                        ],
-                        'quicktags' => ['buttons' => 'strong,em,link,ul,ol,li']
-                    ]);
-                    ?>
+                    <label for="tbc-pf-template-content">Post Content: <small>(Markdown)</small></label>
+                    <textarea id="tbc-pf-template-content" name="content" rows="15"></textarea>
                 </div>
                 
                 <div class="tbc-pf-form-group">

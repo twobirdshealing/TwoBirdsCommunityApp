@@ -29,15 +29,15 @@
 .tbc-pf-team-selector-column h4 {
     margin: 0 0 10px 0;
     font-size: 16px;
-    color: #333;
+    color: var(--fcom-primary-text, #333);
 }
 
 .tbc-pf-team-dropdown {
     width: 100%;
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--fcom-primary-border, #ddd);
     border-radius: 4px;
-    background-color: #fff;
+    background-color: var(--fcom-primary-bg, #fff);
     margin-bottom: 10px;
     font-size: 14px;
     min-height: 150px;
@@ -56,7 +56,7 @@
 .tbc-pf-team-selector-column .select2-container--default .select2-selection--single,
 .tbc-pf-team-selector-column .select2-container--default .select2-selection--multiple {
     min-height: 100px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--fcom-primary-border, #ddd);
     border-radius: 4px;
     padding: 5px;
 }
@@ -77,15 +77,15 @@
 }
 
 .tbc-pf-team-selector-column .select2-container--default .select2-selection--multiple .select2-selection__choice {
-    background-color: #007bff;
-    border-color: #0069d9;
-    color: white;
+    background-color: var(--fcom-primary-button, #007bff);
+    border-color: var(--fcom-text-link, #0069d9);
+    color: var(--fcom-primary-button-text, #ffffff);
     padding: 3px 8px;
     margin: 3px;
 }
 
 .tbc-pf-team-selector-column .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
-    color: white;
+    color: var(--fcom-primary-button-text, #ffffff);
     margin-right: 5px;
 }
 
@@ -107,13 +107,13 @@
 .select2-dropdown {
     min-width: 350px !important;
     max-width: none !important;
-    border: 1px solid #ddd;
+    border: 1px solid var(--fcom-primary-border, #ddd);
     border-radius: 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .select2-container--default .select2-results__option--highlighted[aria-selected] {
-    background-color: #007bff;
+    background-color: var(--fcom-text-link, #007bff);
 }
 
 .tbc-pf-auto-generate-group-container {
@@ -156,7 +156,7 @@
     overflow-y: auto;
     overflow-x: auto;
     margin-bottom: 15px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--fcom-primary-border, #dee2e6);
     border-radius: 4px;
 }
 
@@ -170,8 +170,8 @@
 .tbc-pf-orders-table td {
     padding: 6px;
     text-align: left;
-    border-bottom: 1px solid #dee2e6;
-    background-color: #fff;
+    border-bottom: 1px solid var(--fcom-primary-border, #dee2e6);
+    background-color: var(--fcom-primary-bg, #fff);
     white-space: nowrap;
 }
 
@@ -185,16 +185,16 @@
 .tbc-pf-orders-table th {
     position: sticky;
     top: 0;
-    background-color: #f8f9fa;
+    background-color: var(--fcom-secondary-bg, #f8f9fa);
     z-index: 10;
-    color: #333;
+    color: var(--fcom-primary-text, #333);
     font-weight: bold;
-    border-bottom: 2px solid #dee2e6;
+    border-bottom: 2px solid var(--fcom-primary-border, #dee2e6);
     padding: 8px 6px;
 }
 
 .tbc-pf-orders-table tr:hover td {
-    background-color: #e9ecef !important;
+    background-color: var(--fcom-active-bg, #e9ecef) !important;
 }
 
 .tbc-pf-select-column {
@@ -228,8 +228,8 @@
 }
 
 .tbc-pf-update-team-btn {
-    background-color: #007bff;
-    color: white;
+    background-color: var(--fcom-primary-button, #007bff);
+    color: var(--fcom-primary-button-text, #ffffff);
     border: none;
     padding: 10px 20px;
     border-radius: 4px;
@@ -240,7 +240,7 @@
 }
 
 .tbc-pf-update-team-btn:hover {
-    background-color: #0069d9;
+    background-color: var(--fcom-text-link, #0069d9);
 }
 
 .tbc-pf-save-feedback-container {

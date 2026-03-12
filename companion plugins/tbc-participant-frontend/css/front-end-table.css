@@ -22,7 +22,7 @@
     width: 100%;
     max-width: 100%;
     border-collapse: collapse;
-    background-color: #fff;
+    background-color: var(--fcom-primary-bg, #fff);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     border-radius: 4px;
     font-size: 14px;
@@ -30,12 +30,12 @@
 
 .tbc-pf-centered h2 {
     margin-bottom: 20px;
-    color: #333;
+    color: var(--fcom-primary-text, #333);
 }
 
 .tbc-pf-table th {
-    background-color: #007bff;
-    color: white;
+    background-color: var(--fcom-primary-button, #007bff);
+    color: var(--fcom-primary-button-text, #ffffff);
     padding: 12px 10px;
     text-align: center;
     font-weight: bold;
@@ -46,22 +46,22 @@
     padding: 12px 10px;
     text-align: center;
     vertical-align: middle;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--fcom-primary-border, #ddd);
 }
 
 .tbc-pf-table tr:nth-child(even) {
-    background-color: #f9f9f9;
+    background-color: var(--fcom-secondary-bg, #f9f9f9);
 }
 
 .tbc-pf-table tr:hover {
-    background-color: #f1f1f1;
+    background-color: var(--fcom-active-bg, #f1f1f1);
 }
 
 .tbc-pf-order-section-header {
-    background-color: #e9ecef !important;
+    background-color: var(--fcom-active-bg, #e9ecef) !important;
     font-weight: bold;
     text-align: center;
-    color: #495057;
+    color: var(--fcom-primary-text, #495057);
     text-transform: uppercase;
     font-size: 13px;
     letter-spacing: 0.5px;
@@ -226,10 +226,10 @@
 
 .tbc-pf-modal-content {
     position: relative;
-    background-color: #fefefe;
+    background-color: var(--fcom-primary-bg, #fefefe);
     margin: 10% auto;
     padding: 20px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--fcom-primary-border, #ddd);
     width: 60%;
     border-radius: 4px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -237,22 +237,22 @@
 
 .tbc-pf-modal-content h3 {
     margin-top: 0;
-    color: #333;
+    color: var(--fcom-primary-text, #333);
     padding-right: 30px;
 }
 
 .tbc-pf-modal-content h4 {
     margin: 15px 0 10px 0;
-    color: #333;
+    color: var(--fcom-primary-text, #333);
     font-size: 16px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--fcom-primary-border, #ddd);
     padding-bottom: 5px;
 }
 
 .tbc-pf-modal-content textarea {
     width: 100%;
     height: 250px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--fcom-primary-border, #ccc);
     border-radius: 4px;
     padding: 8px;
     margin-bottom: 15px;
@@ -265,8 +265,8 @@
     top: 10px;
     right: 10px;
     border: none;
-    background-color: #007bff;
-    color: white;
+    background-color: var(--fcom-primary-button, #007bff);
+    color: var(--fcom-primary-button-text, #ffffff);
     font-size: 16px;
     cursor: pointer;
     border-radius: 50%;
@@ -278,7 +278,7 @@
 }
 
 .tbc-pf-close-modal-top:hover {
-    background-color: #0069d9;
+    background-color: var(--fcom-text-link, #0069d9);
 }
 
 .tbc-pf-close-modal,
@@ -315,7 +315,7 @@
 .tbc-pf-followup-management {
     margin-top: 20px;
     padding-top: 15px;
-    border-top: 1px solid #ddd;
+    border-top: 1px solid var(--fcom-primary-border, #ddd);
 }
 
 .tbc-pf-followup-section-title {
@@ -325,7 +325,7 @@
 }
 
 .tbc-pf-add-followup-section {
-    background-color: #f8f9fa;
+    background-color: var(--fcom-secondary-bg, #f8f9fa);
     border-radius: 4px;
     margin-bottom: 15px;
 }
@@ -364,7 +364,7 @@
 .tbc-pf-followup-date-picker {
     width: 150px;
     padding: 5px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--fcom-primary-border, #ccc);
     border-radius: 4px;
     margin-right: 10px;
 }
@@ -373,7 +373,7 @@
     width: 100%;
     height: 45px;
     padding: 5px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--fcom-primary-border, #ccc);
     border-radius: 4px;
     margin: 8px 0;
     font-family: inherit;
@@ -408,7 +408,7 @@
     height: 100px;
     object-fit: cover;
     border-radius: 4px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--fcom-primary-border, #ddd);
     display: block;
     margin-bottom: 5px;
 }
@@ -425,7 +425,7 @@
 }
 
 .tbc-pf-group-name a {
-    color: #007bff;
+    color: var(--fcom-text-link, #007bff);
     text-decoration: none;
 }
 
@@ -434,8 +434,8 @@
 }
 
 .tbc-pf-add-followup-btn {
-    background-color: #007bff;
-    color: white;
+    background-color: var(--fcom-primary-button, #007bff);
+    color: var(--fcom-primary-button-text, #ffffff);
     border: none;
     border-radius: 4px;
     padding: 6px 12px;
@@ -445,7 +445,7 @@
 }
 
 .tbc-pf-add-followup-btn:hover {
-    background-color: #0069d9;
+    background-color: var(--fcom-text-link, #0069d9);
 }
 
 .tbc-pf-followup-history {
@@ -456,8 +456,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #fff;
-    border: 1px solid #ddd;
+    background-color: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #ddd);
     border-radius: 4px;
     padding: 10px;
     margin-bottom: 8px;
@@ -482,12 +482,12 @@
 }
 
 .tbc-pf-followup-info strong {
-    color: #333;
+    color: var(--fcom-primary-text, #333);
     font-size: 14px;
 }
 
 .tbc-pf-followup-note {
-    color: #666;
+    color: var(--fcom-secondary-text, #666);
     font-style: italic;
     font-size: 12px;
     display: block;
@@ -539,29 +539,29 @@
 }
 
 #tbc-pf-participant-list-tabs button.tbc-pf-tab-link {
-    background-color: #f1f1f1;
-    border: 1px solid #ccc;
+    background-color: var(--fcom-secondary-bg, #f1f1f1);
+    border: 1px solid var(--fcom-primary-border, #ccc);
     outline: none;
     cursor: pointer;
     padding: 10px 15px;
     transition: all 0.3s ease;
     font-size: 15px;
     font-weight: 600;
-    color: #555;
+    color: var(--fcom-secondary-text, #555);
     border-radius: 5px 5px 0 0;
     margin-right: 2px;
 }
 
 #tbc-pf-participant-list-tabs button.tbc-pf-tab-link.active {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
+    background-color: var(--fcom-primary-button, #007bff);
+    color: var(--fcom-primary-button-text, #ffffff);
+    border-color: var(--fcom-primary-button, #007bff);
 }
 
 #tbc-pf-participant-list-tabs button.tbc-pf-tab-link:hover:not(.active) {
-    background-color: #e0e0e0;
-    color: #333;
-    border-color: #aaa;
+    background-color: var(--fcom-active-bg, #e0e0e0);
+    color: var(--fcom-primary-text, #333);
+    border-color: var(--fcom-secondary-border, #aaa);
 }
 
 .tbc-pf-back-button-container {
@@ -589,7 +589,7 @@
 }
 
 .tbc-pf-previous-notes-section {
-    background-color: #f8f9fa;
+    background-color: var(--fcom-secondary-bg, #f8f9fa);
     padding: 15px;
     border-radius: 4px;
     margin-bottom: 15px;
@@ -598,21 +598,21 @@
 .tbc-pf-previous-notes-section h4 {
     margin-top: 0;
     margin-bottom: 10px;
-    color: #495057;
+    color: var(--fcom-primary-text, #495057);
     font-size: 14px;
 }
 
 .tbc-pf-notes-history-container {
     max-height: 200px;
     overflow-y: auto;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--fcom-primary-border, #dee2e6);
     border-radius: 4px;
     padding: 10px;
-    background-color: white;
+    background-color: var(--fcom-primary-bg, white);
 }
 
 .tbc-pf-history-entry {
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--fcom-primary-border, #eee);
     padding-bottom: 8px;
     margin-bottom: 8px;
 }
@@ -623,7 +623,7 @@
 }
 
 .tbc-pf-history-entry strong {
-    color: #495057;
+    color: var(--fcom-primary-text, #495057);
     font-size: 13px;
     display: block;
     margin-bottom: 4px;
@@ -632,7 +632,7 @@
 .tbc-pf-history-entry p {
     margin: 0;
     font-size: 12px;
-    color: #6c757d;
+    color: var(--fcom-secondary-text, #6c757d);
     line-height: 1.4;
 }
 
@@ -642,7 +642,7 @@
 
 .tbc-pf-order-status-dropdown {
     padding: 4px 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--fcom-primary-border, #ccc);
     border-radius: 4px;
     font-size: 13px;
 }
@@ -679,7 +679,7 @@
 
 .tbc-pf-sms-opted-out {
     text-decoration: line-through;
-    color: #999;
+    color: var(--fcom-text-off, #999);
 }
 
 .tbc-pf-sms-opted-out .tbc-pf-opted-out-checkbox {
@@ -688,7 +688,7 @@
 
 .tbc-pf-sms-opted-out.tbc-pf-override-active {
     text-decoration: none;
-    color: #333;
+    color: var(--fcom-primary-text, #333);
     background-color: #fff8e1;
     padding: 2px 4px;
     border-radius: 3px;

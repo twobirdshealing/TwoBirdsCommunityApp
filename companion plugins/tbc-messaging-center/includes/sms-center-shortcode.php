@@ -348,7 +348,7 @@ function tbc_mc_fetch_customers() {
         $customer_user_id = $order->get_customer_id();
         
         if ($customer_user_id) {
-            // Registered user - phone from BuddyBoss profile
+            // Registered user - phone from profile
             $first_name = get_user_meta($customer_user_id, 'first_name', true);
             $last_name = get_user_meta($customer_user_id, 'last_name', true);
             $phone = tbc_mc_get_phone_from_profile($customer_user_id);

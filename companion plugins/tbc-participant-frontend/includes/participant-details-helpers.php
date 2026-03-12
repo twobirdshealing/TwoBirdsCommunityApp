@@ -177,7 +177,7 @@ function tbc_pf_get_name_column_data($user_id, $fallback_name) {
     $gender_class = '';
     $profile_url = null;
     $display_name = $fallback_name;
-    
+
     if (!$user_id) {
         return [
             'display_name' => $display_name,
@@ -185,20 +185,26 @@ function tbc_pf_get_name_column_data($user_id, $fallback_name) {
             'profile_url' => $profile_url
         ];
     }
-    
+
     $display_name = get_the_author_meta('display_name', $user_id);
-    $profile_url = bp_core_get_user_domain($user_id);
-    
-    // Get gender from BuddyBoss profile field ID 5
-    $gender_meta = xprofile_get_field_data(5, $user_id, 'comma');
-    if (strpos($gender_meta, 'his_Male') !== false) {
+
+    // Get profile URL from Fluent Community XProfile
+    if (tbc_pf_is_fluent_active() && class_exists('FluentCommunity\App\Models\XProfile')) {
+        $xprofile = \FluentCommunity\App\Models\XProfile::where('user_id', $user_id)->first();
+        $profile_url = $xprofile ? $xprofile->getPermalink() : '';
+    }
+
+    // Get gender from tbc-fluent-profiles user meta (_tbc_fp_gender)
+    // Values: 'Male', 'Female', 'Non-Binary', 'Other', 'Prefer not to say'
+    $gender = get_user_meta($user_id, '_tbc_fp_gender', true);
+    if ($gender === 'Male') {
         $gender_class = 'tbc-pf-gender-male';
-    } elseif (strpos($gender_meta, 'her_Female') !== false) {
+    } elseif ($gender === 'Female') {
         $gender_class = 'tbc-pf-gender-female';
-    } elseif (!empty($gender_meta)) {
+    } elseif (!empty($gender)) {
         $gender_class = 'tbc-pf-gender-other';
     }
-    
+
     return [
         'display_name' => $display_name,
         'gender_class' => $gender_class,
@@ -240,7 +246,9 @@ function tbc_pf_get_chat_column_data($order, $user_id, $product_id = 0, $event_d
     }
     
     $group_id = intval($group_id);
-    $is_member = groups_is_user_member($user_id, $group_id);
+    $is_member = tbc_pf_is_fluent_active()
+        ? \FluentCommunity\App\Services\Helper::isUserInSpace($user_id, $group_id)
+        : false;
     
     return [
         'has_group' => true,
@@ -335,25 +343,23 @@ function tbc_pf_get_order_status_column_data($current_status) {
 }
 
 /**
- * COLUMN 8: Pre Course % - LearnDash enrollment and progress (conditional)
+ * COLUMN 8: Pre Course % - Fluent Community course enrollment and progress (conditional)
  */
 function tbc_pf_get_precourse_column_data($user_id, $product_id) {
-    $course_id = has_term('sapo', 'product_cat', $product_id) ? 25942 : 27352;
+    $course_id = has_term('sapo', 'product_cat', $product_id)
+        ? TBC_PF_COURSE_SAPO_PRE
+        : TBC_PF_COURSE_CEREMONY_PRE;
+
     $is_enrolled = false;
     $progress_percent = 0;
-    
-    // Check if LearnDash is active
-    if (function_exists('sfwd_lms_has_access')) {
-        $is_enrolled = sfwd_lms_has_access($course_id, $user_id);
-        
-        if ($is_enrolled && function_exists('learndash_user_get_course_progress')) {
-            $progress = learndash_user_get_course_progress($user_id, $course_id);
-            if (!empty($progress['total']) && $progress['total'] > 0 && !empty($progress['completed'])) {
-                $progress_percent = intval(($progress['completed'] / $progress['total']) * 100);
-            }
+
+    if (tbc_pf_is_fluent_active() && class_exists('FluentCommunity\Modules\Course\Services\CourseHelper') && $course_id) {
+        $is_enrolled = \FluentCommunity\Modules\Course\Services\CourseHelper::isEnrolled($course_id, $user_id);
+        if ($is_enrolled) {
+            $progress_percent = (int) \FluentCommunity\Modules\Course\Services\CourseHelper::getCourseProgress($course_id, $user_id);
         }
     }
-    
+
     return [
         'is_enrolled' => $is_enrolled,
         'progress_percent' => $progress_percent,
@@ -587,25 +593,20 @@ function tbc_pf_user_has_event_notes($user_id) {
 }
 
 /**
- * COLUMN 13: Post Course % - LearnDash enrollment and progress (conditional)
+ * COLUMN 13: Post Course % - Fluent Community course enrollment and progress (conditional)
  */
 function tbc_pf_get_postcourse_column_data($user_id) {
-    $course_id = 32047;
+    $course_id = TBC_PF_COURSE_CEREMONY_POST;
     $is_enrolled = false;
     $progress_percent = 0;
-    
-    // Check if LearnDash is active
-    if (function_exists('sfwd_lms_has_access')) {
-        $is_enrolled = sfwd_lms_has_access($course_id, $user_id);
-        
-        if ($is_enrolled && function_exists('learndash_user_get_course_progress')) {
-            $progress = learndash_user_get_course_progress($user_id, $course_id);
-            if (!empty($progress['total']) && $progress['total'] > 0 && !empty($progress['completed'])) {
-                $progress_percent = intval(($progress['completed'] / $progress['total']) * 100);
-            }
+
+    if (tbc_pf_is_fluent_active() && class_exists('FluentCommunity\Modules\Course\Services\CourseHelper') && $course_id) {
+        $is_enrolled = \FluentCommunity\Modules\Course\Services\CourseHelper::isEnrolled($course_id, $user_id);
+        if ($is_enrolled) {
+            $progress_percent = (int) \FluentCommunity\Modules\Course\Services\CourseHelper::getCourseProgress($course_id, $user_id);
         }
     }
-    
+
     return [
         'is_enrolled' => $is_enrolled,
         'progress_percent' => $progress_percent,
@@ -724,50 +725,54 @@ function tbc_pf_get_previous_participant_orders($user_id, $product_id, $current_
 }
 
 /**
- * Get user's BuddyBoss groups (excluding specified IDs)
+ * Get user's Fluent Community spaces
  */
-function tbc_pf_get_previous_participant_groups($user_id, $exclude_groups = [54, 59]) {
-    if (!$user_id || !function_exists('groups_get_user_groups')) {
+function tbc_pf_get_previous_participant_groups($user_id, $exclude_groups = []) {
+    if (!$user_id || !tbc_pf_is_fluent_active()) {
         return [];
     }
-    
-    $groups_data = groups_get_user_groups($user_id);
-    if (empty($groups_data['groups'])) {
+
+    if (!class_exists('FluentCommunity\App\Models\SpaceUserPivot')) {
         return [];
     }
-    
+
+    $pivots = \FluentCommunity\App\Models\SpaceUserPivot::where('user_id', $user_id)
+        ->where('status', 'active')
+        ->get();
+
+    // Collect space IDs (excluding filtered ones) and batch-load in one query
+    $space_ids = [];
+    foreach ($pivots as $pivot) {
+        if (!empty($exclude_groups) && in_array($pivot->space_id, $exclude_groups)) {
+            continue;
+        }
+        $space_ids[] = $pivot->space_id;
+    }
+
+    if (empty($space_ids)) {
+        return [];
+    }
+
+    $spaces = \FluentCommunity\App\Models\BaseSpace::withoutGlobalScopes()
+        ->whereIn('id', $space_ids)
+        ->get()
+        ->keyBy('id');
+
     $user_groups = [];
-    
-    foreach ($groups_data['groups'] as $group_id) {
-        if (in_array($group_id, $exclude_groups)) {
+    foreach ($space_ids as $space_id) {
+        $space = $spaces->get($space_id);
+        if (!$space) {
             continue;
         }
-        
-        if (!function_exists('groups_get_group')) {
-            continue;
-        }
-        
-        $group = groups_get_group(['group_id' => $group_id]);
-        if (!$group) {
-            continue;
-        }
-        
-        $cover_image_url = '';
-        if (function_exists('bp_attachments_get_attachment')) {
-            $cover_image_url = bp_attachments_get_attachment('url', [
-                'object_dir' => 'groups',
-                'item_id' => $group_id
-            ]);
-        }
-        
+
         $user_groups[] = [
-            'group_id' => $group_id,
-            'group_name' => $group->name,
-            'group_url' => function_exists('bp_get_group_permalink') ? bp_get_group_permalink($group) : '',
-            'cover_image' => $cover_image_url
+            'group_id'    => $space->id,
+            'group_name'  => $space->title,
+            'group_url'   => $space->getPermalink(),
+            'cover_image' => $space->cover_photo ?? '',
         ];
     }
-    
+
     return $user_groups;
 }
 
@@ -798,7 +803,7 @@ function tbc_pf_ajax_save_event_notes() {
     $order->update_meta_data('_tbc_pf_event_notes', $notes);
     $order->save();
 
-    // Send BuddyBoss notification if available
+    // Send email notification if available
     if (class_exists('TBC_PF_Event_Notes_Notification')) {
         TBC_PF_Event_Notes_Notification::instance()->send_event_note_notification(
             $order_id, 
@@ -932,7 +937,7 @@ function tbc_pf_ajax_save_medical_consult() {
 add_action('wp_ajax_tbc_pf_save_medical_consult', 'tbc_pf_ajax_save_medical_consult');
 
 /**
- * AJAX: Enroll user in LearnDash course
+ * AJAX: Enroll user in Fluent Community course
  */
 function tbc_pf_ajax_enroll_user_to_course() {
     $user_id = intval($_POST['user_id'] ?? 0);
@@ -941,19 +946,23 @@ function tbc_pf_ajax_enroll_user_to_course() {
     if (!$user_id || !$course_id) {
         wp_send_json_error(['error' => 'Invalid parameters']);
     }
-    
-    // Check if LearnDash is active
-    if (!function_exists('learndash_user_get_enrolled_courses') || !function_exists('learndash_user_set_enrolled_courses')) {
-        wp_send_json_error(['error' => 'LearnDash not available']);
+
+    if (!tbc_pf_is_fluent_active() || !class_exists('FluentCommunity\Modules\Course\Services\CourseHelper')) {
+        wp_send_json_error(['error' => 'Fluent Community Courses not available']);
     }
-    
-    $current_courses = learndash_user_get_enrolled_courses($user_id);
-    if (in_array($course_id, $current_courses)) {
+
+    $courseHelper = 'FluentCommunity\Modules\Course\Services\CourseHelper';
+
+    if ($courseHelper::isEnrolled($course_id, $user_id)) {
         wp_send_json_error(['error' => 'Already enrolled']);
     }
-    
-    $current_courses[] = $course_id;
-    learndash_user_set_enrolled_courses($user_id, $current_courses);
+
+    $course = \FluentCommunity\Modules\Course\Model\Course::find($course_id);
+    if (!$course) {
+        wp_send_json_error(['error' => 'Course not found']);
+    }
+
+    $courseHelper::enrollCourse($course, $user_id, 'admin');
     wp_send_json_success(['message' => 'Enrollment successful']);
 }
 add_action('wp_ajax_tbc_pf_enroll_user_to_course', 'tbc_pf_ajax_enroll_user_to_course');

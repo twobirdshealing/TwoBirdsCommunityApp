@@ -24,6 +24,9 @@ class Core {
     private $profile_api;
     private $frontend;
 
+    // SMS role management
+    private $sms_roles;
+
     // OTP verification
     private $twilio;
     private $password_recovery;
@@ -58,6 +61,9 @@ class Core {
         require_once TBC_FP_DIR . 'includes/class-profile-api.php';
         require_once TBC_FP_DIR . 'includes/class-frontend.php';
 
+        // SMS role management
+        require_once TBC_FP_DIR . 'includes/class-sms-roles.php';
+
         // OTP verification (Twilio)
         require_once TBC_FP_DIR . 'includes/class-helpers.php';
         require_once TBC_FP_DIR . 'includes/class-twilio.php';
@@ -79,6 +85,9 @@ class Core {
         $this->admin = new Admin($this->fields);
         $this->profile_api = new ProfileApi($this->fields, $this->visibility);
         $this->frontend = new Frontend($this->fields);
+
+        // SMS role management
+        $this->sms_roles = new SmsRoles();
 
         // OTP
         $this->twilio = new Twilio();
@@ -123,6 +132,14 @@ class Core {
         add_action('wp_ajax_tbc_fp_save_fields', [$this->profile_otp, 'intercept_profile_save'], 1);
         add_filter('fluent_community/update_profile_data', [$this->profile_otp, 'filter_profile_update'], 5, 3);
 
+        // ── SMS Role Management ──────────────────────────────────────
+        // FC filter path: priority 20 (after ProfileApi saves at 10)
+        add_filter('fluent_community/update_profile_data', [$this->sms_roles, 'on_profile_update'], 20, 3);
+        // AJAX path: fires inside ajax_save_fields before wp_send_json dies
+        add_action('tbc_fp_after_ajax_save', [$this->sms_roles, 'on_ajax_save'], 10, 2);
+        // Registration path
+        add_filter('tbc_fp_registration_response', [$this->sms_roles, 'on_registration'], 5, 3);
+
         // ── Optionally disable FC email 2FA when phone OTP is active ──
         add_filter('fluent_auth/verify_signup_email', [$this, 'maybe_disable_email_verification']);
 
@@ -145,11 +162,12 @@ class Core {
         add_action('template_redirect', [$this->registration_page, 'maybe_redirect_incomplete_registration']);
 
         // ── Disable FC native onboarding widget when our gate is active ──
+        // Priority 999 ensures this runs after FC Pro or other plugins that may re-enable it.
         if (Helpers::get_option('disable_fc_onboarding', true)) {
             add_filter('fluent_community/portal_vars', function ($vars) {
                 $vars['features']['is_onboarding_enabled'] = false;
                 return $vars;
-            });
+            }, 999);
         }
 
         // ── Re-evaluate profile completion on profile save ──────────

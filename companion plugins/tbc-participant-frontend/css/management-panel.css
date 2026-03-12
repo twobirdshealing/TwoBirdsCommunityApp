@@ -6,7 +6,7 @@
  */
 
 .tbc-pf-management-panel-container {
-    background-color: #f8f9fa;
+    background-color: var(--fcom-secondary-bg, #f8f9fa);
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     overflow: hidden;
@@ -14,8 +14,8 @@
 }
 
 .tbc-pf-management-panel-header {
-    background-color: #007bff;
-    color: #ffffff;
+    background-color: var(--fcom-primary-button, #007bff);
+    color: var(--fcom-primary-button-text, #ffffff);
     font-weight: bold;
     text-transform: uppercase;
     padding: 15px;
@@ -48,13 +48,13 @@
 }
 
 .tbc-pf-management-panel-content {
-    background-color: #ffffff;
+    background-color: var(--fcom-primary-bg, #ffffff);
 }
 
 .tbc-pf-management-tabs {
     display: flex;
-    border-bottom: 2px solid #dee2e6;
-    background-color: #f8f9fa;
+    border-bottom: 2px solid var(--fcom-primary-border, #dee2e6);
+    background-color: var(--fcom-secondary-bg, #f8f9fa);
 }
 
 .tbc-pf-tab-btn {
@@ -63,7 +63,7 @@
     background-color: transparent;
     border: none;
     border-bottom: 3px solid transparent;
-    color: #6c757d;
+    color: var(--fcom-secondary-text, #6c757d);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -72,14 +72,14 @@
 }
 
 .tbc-pf-tab-btn:hover {
-    background-color: #e9ecef;
-    color: #495057;
+    background-color: var(--fcom-active-bg, #e9ecef);
+    color: var(--fcom-primary-text, #495057);
 }
 
 .tbc-pf-tab-btn.active {
-    color: #007bff;
-    border-bottom-color: #007bff;
-    background-color: #ffffff;
+    color: var(--fcom-text-link, #007bff);
+    border-bottom-color: var(--fcom-text-link, #007bff);
+    background-color: var(--fcom-primary-bg, #ffffff);
 }
 
 .tbc-pf-tab-content-wrapper {
@@ -100,13 +100,13 @@
     }
     
     .tbc-pf-tab-btn {
-        border-bottom: 1px solid #dee2e6;
+        border-bottom: 1px solid var(--fcom-primary-border, #dee2e6);
         border-left: 3px solid transparent;
     }
     
     .tbc-pf-tab-btn.active {
-        border-bottom-color: #dee2e6;
-        border-left-color: #007bff;
+        border-bottom-color: var(--fcom-primary-border, #dee2e6);
+        border-left-color: var(--fcom-text-link, #007bff);
     }
     
     .tbc-pf-tab-content-wrapper {

@@ -6,6 +6,21 @@
     box-sizing: border-box;
 }
 
+.tbc-mc-container {
+    --tbc-success: #28a745;
+    --tbc-success-bg: rgba(40, 167, 69, 0.15);
+    --tbc-danger: #dc3545;
+    --tbc-danger-bg: rgba(220, 53, 69, 0.15);
+    --tbc-warning: #d4880f;
+    --tbc-warning-bg: rgba(212, 136, 15, 0.15);
+    --tbc-info: #17a2b8;
+    --tbc-info-bg: rgba(23, 162, 184, 0.15);
+    --tbc-purple: #6f42c1;
+    --tbc-purple-bg: rgba(111, 66, 193, 0.15);
+    --tbc-neutral: #6c757d;
+    --tbc-neutral-bg: rgba(108, 117, 125, 0.15);
+}
+
 .tbc-mc-container button {
     font-family: inherit !important;
     text-transform: none !important;
@@ -37,7 +52,7 @@
 
 .tbc-mc-tab:hover {
     color: var(--fcom-primary-text);
-    background: rgba(0, 122, 255, 0.05);
+    background: var(--fcom-light-bg);
 }
 
 .tbc-mc-tab.active {
@@ -68,44 +83,44 @@
 
 .tbc-mc-badge-pending,
 .tbc-mc-batch-status-pending {
-    background: #fff3cd;
-    color: #856404;
+    background: var(--tbc-warning-bg);
+    color: var(--tbc-warning);
 }
 
 .tbc-mc-badge-processing,
 .tbc-mc-batch-status-processing {
-    background: #cce5ff;
-    color: #004085;
+    background: var(--tbc-info-bg);
+    color: var(--tbc-info);
 }
 
 .tbc-mc-badge-completed,
 .tbc-mc-batch-status-completed {
-    background: #d4edda;
-    color: #155724;
+    background: var(--tbc-success-bg);
+    color: var(--tbc-success);
 }
 
 .tbc-mc-badge-cancelled,
 .tbc-mc-batch-status-cancelled {
-    background: #f8d7da;
-    color: #721c24;
+    background: var(--tbc-danger-bg);
+    color: var(--tbc-danger);
 }
 
 .tbc-mc-badge-immediate,
 .tbc-mc-schedule-type-badge.immediate {
-    background: #e2e3e5;
-    color: #383d41;
+    background: var(--tbc-neutral-bg);
+    color: var(--fcom-secondary-text);
 }
 
 .tbc-mc-badge-scheduled,
 .tbc-mc-schedule-type-badge.scheduled {
-    background: #d1ecf1;
-    color: #0c5460;
+    background: var(--tbc-info-bg);
+    color: var(--tbc-info);
 }
 
 .tbc-mc-badge-recurring,
 .tbc-mc-schedule-type-badge.recurring {
-    background: #e2d5f1;
-    color: #4a235a;
+    background: var(--tbc-purple-bg);
+    color: var(--tbc-purple);
 }
 
 /* ===== SHARED CARD STYLES ===== */
@@ -178,25 +193,25 @@
 }
 
 .tbc-mc-btn-primary:hover {
-    background: #0056b3;
+    filter: brightness(0.85);
 }
 
 .tbc-mc-btn-danger {
-    background: #dc3545;
+    background: var(--tbc-danger);
     color: white;
 }
 
 .tbc-mc-btn-danger:hover {
-    background: #c82333;
+    filter: brightness(0.85);
 }
 
 .tbc-mc-btn-secondary {
-    background: #6c757d;
+    background: var(--tbc-neutral);
     color: white;
 }
 
 .tbc-mc-btn-secondary:hover {
-    background: #545b62;
+    filter: brightness(0.85);
 }
 
 .tbc-mc-btn-outline {
@@ -413,36 +428,35 @@
 }
 
 .tbc-mc-container .tbc-mc-mark-all-read {
-    background: #28a745 !important;
+    background: var(--tbc-success) !important;
     color: white !important;
-    border-color: #28a745 !important;
+    border-color: var(--tbc-success) !important;
 }
 
 .tbc-mc-container .tbc-mc-mark-all-read:hover:not(:disabled) {
-    background: #218838 !important;
-    border-color: #1e7e34 !important;
+    filter: brightness(0.85) !important;
 }
 
 .tbc-mc-container .tbc-mc-bulk-delete {
     background: var(--fcom-primary-bg) !important;
-    color: #dc3545 !important;
-    border-color: #dc3545 !important;
+    color: var(--tbc-danger) !important;
+    border-color: var(--tbc-danger) !important;
 }
 
 .tbc-mc-container .tbc-mc-bulk-delete:hover:not(:disabled) {
-    background: #dc3545 !important;
+    background: var(--tbc-danger) !important;
     color: #fff !important;
 }
 
 .tbc-mc-container .tbc-mc-bulk-star {
     background: var(--fcom-primary-bg) !important;
-    color: #856404 !important;
-    border-color: #ffc107 !important;
+    color: var(--tbc-warning) !important;
+    border-color: var(--tbc-warning) !important;
 }
 
 .tbc-mc-container .tbc-mc-bulk-star:hover:not(:disabled) {
-    background: #ffc107 !important;
-    color: #212529 !important;
+    background: var(--tbc-warning) !important;
+    color: var(--fcom-primary-bg) !important;
 }
 
 /* Ensure button text is visible */
@@ -923,7 +937,7 @@
     font-style: italic;
     padding: 6px 10px;
     margin-top: 4px;
-    background: rgba(0,0,0,0.04);
+    background: var(--fcom-light-bg);
     border-radius: 8px;
     border-left: 3px solid #ffc107;
 }
@@ -1015,14 +1029,14 @@
 }
 
 .tbc-mc-container .tbc-mc-reply-btn:hover {
-    background: #0056cc !important;
+    filter: brightness(0.85);
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .tbc-mc-container .tbc-mc-call-btn {
     padding: 12px 24px !important;
-    background: #28a745 !important;
+    background: var(--tbc-success) !important;
     color: white !important;
     border: none !important;
     border-radius: 8px !important;
@@ -1034,9 +1048,9 @@
 }
 
 .tbc-mc-container .tbc-mc-call-btn:hover {
-    background: #218838 !important;
+    filter: brightness(0.85) !important;
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* ===== SLIDE-OVER REPLY PANEL ===== */
@@ -1089,6 +1103,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 20px;
+    background: var(--fcom-primary-bg);
 }
 
 /* Overlay when reply panel is open */
@@ -1098,7 +1113,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.5);
     z-index: 999;
     opacity: 0;
     visibility: hidden;
@@ -1369,9 +1384,9 @@
 }
 
 .tbc-mc-scheduled-bulk-delete:hover:not(:disabled) {
-    background: #f8d7da;
-    border-color: #dc3545;
-    color: #dc3545;
+    background: var(--tbc-danger-bg);
+    border-color: var(--tbc-danger);
+    color: var(--tbc-danger);
 }
 
 .tbc-mc-scheduled-bulk-delete:disabled {
@@ -1432,11 +1447,11 @@
 }
 
 .tbc-mc-scheduled-item.is-pending {
-    border-left: 3px solid #ffc107;
+    border-left: 3px solid var(--tbc-warning);
 }
 
 .tbc-mc-scheduled-item.is-completed {
-    border-left: 3px solid #28a745;
+    border-left: 3px solid var(--tbc-success);
 }
 
 .tbc-mc-scheduled-item-icon {
@@ -1452,20 +1467,20 @@
 }
 
 .tbc-mc-status-dot.tbc-mc-status-pending {
-    background: #ffc107;
+    background: var(--tbc-warning);
 }
 
 .tbc-mc-status-dot.tbc-mc-status-processing {
-    background: #17a2b8;
+    background: var(--tbc-info);
     animation: pulse 1.5s infinite;
 }
 
 .tbc-mc-status-dot.tbc-mc-status-completed {
-    background: #28a745;
+    background: var(--tbc-success);
 }
 
 .tbc-mc-status-dot.tbc-mc-status-cancelled {
-    background: #dc3545;
+    background: var(--tbc-danger);
 }
 
 @keyframes pulse {
@@ -2063,7 +2078,7 @@
 }
 
 .tbc-mc-view-users-btn:hover {
-    background: #0056b3;
+    filter: brightness(0.85);
 }
 
 /* Mobile: Stack role card content */
@@ -2230,8 +2245,8 @@
 
 .tbc-mc-opted-out-badge {
     font-size: 11px;
-    background: #fee2e2;
-    color: #dc2626;
+    background: var(--tbc-danger-bg);
+    color: var(--tbc-danger);
     padding: 2px 8px;
     border-radius: 10px;
     flex-shrink: 0;
@@ -2263,7 +2278,7 @@
 }
 
 .tbc-mc-users-done-btn:hover {
-    background: #0056b3;
+    filter: brightness(0.85);
 }
 
 /* Users panel overlay */
@@ -2273,7 +2288,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.5);
     z-index: 1000;
     opacity: 0;
     visibility: hidden;
@@ -2448,7 +2463,7 @@
 }
 
 .tbc-mc-opted-out {
-    color: #dc3545;
+    color: var(--tbc-danger);
     font-size: 11px;
 }
 
@@ -2578,8 +2593,8 @@
 }
 
 .tbc-mc-valid-number-chip {
-    background: #d4edda;
-    color: #155724;
+    background: var(--tbc-success-bg);
+    color: var(--tbc-success);
     padding: 6px 12px;
     border-radius: 16px;
     font-size: 13px;
@@ -2588,19 +2603,19 @@
 .tbc-mc-invalid-numbers-alert {
     margin-top: 16px;
     padding: 12px;
-    background: #fff3cd;
+    background: var(--tbc-warning-bg);
     border-radius: 8px;
 }
 
 .tbc-mc-invalid-numbers-alert h4 {
     margin: 0 0 8px;
     font-size: 13px;
-    color: #856404;
+    color: var(--tbc-warning);
 }
 
 .tbc-mc-invalid-numbers-list {
     font-size: 13px;
-    color: #856404;
+    color: var(--tbc-warning);
 }
 
 /* Action bar */
@@ -2685,6 +2700,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 20px;
+    background: var(--fcom-primary-bg);
 }
 
 .tbc-mc-compose-overlay {
@@ -2693,7 +2709,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.5);
     z-index: 999;
     opacity: 0;
     visibility: hidden;
@@ -2901,7 +2917,8 @@
 }
 
 .tbc-mc-btn-call:disabled {
-    background: #ccc;
+    background: var(--fcom-secondary-border);
+    color: var(--fcom-text-off);
     cursor: not-allowed;
 }
 
@@ -2913,7 +2930,7 @@
     margin-top: 16px;
 }
 
-#call-center-feedback .bp-feedback {
+#call-center-feedback .tbc-mc-feedback {
     margin: 0;
     border-radius: 8px;
 }
@@ -3026,7 +3043,7 @@
 }
 
 .tbc-mc-btn-primary:hover {
-    background: #0066d6;
+    filter: brightness(0.85);
 }
 
 .tbc-mc-btn-primary:disabled {
@@ -3037,5 +3054,33 @@
 #tbc-mc-settings-feedback {
     font-size: 13px;
     font-weight: 500;
+}
+
+/* ===== FEEDBACK MESSAGES ===== */
+.tbc-mc-feedback {
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.tbc-mc-feedback p {
+    margin: 0;
+}
+
+.tbc-mc-feedback.success {
+    background: var(--fcom-light-bg, #d4edda);
+    color: var(--fcom-primary-text, #155724);
+}
+
+.tbc-mc-feedback.error {
+    background: var(--fcom-highlight-bg, #f8d7da);
+    color: var(--fcom-primary-text, #721c24);
+}
+
+.tbc-mc-feedback.notice,
+.tbc-mc-feedback.alert {
+    background: var(--fcom-light-bg, #fff3cd);
+    color: var(--fcom-primary-text, #856404);
 }
 

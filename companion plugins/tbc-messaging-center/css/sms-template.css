@@ -1,8 +1,8 @@
-.bp-feedback {
+.tbc-mc-feedback {
     position: relative;
 }
 
-.bp-feedback-close {
+.tbc-mc-feedback-close {
     position: absolute;
     top: 8px;
     right: 12px;
@@ -13,7 +13,7 @@
     line-height: 1;
 }
 
-.bp-feedback-close:hover {
+.tbc-mc-feedback-close:hover {
     color: var(--fcom-primary-text);
 }
 
@@ -23,7 +23,7 @@
 .no-margin-top { margin-top: 0 !important; }
 .no-margin-bottom { margin-bottom: 5px !important; }
 .tooltip {
-    color: red;
+    color: var(--tbc-danger, #dc3545);
     font-size: 12px;
     margin-top: 5px;
 }
@@ -36,6 +36,7 @@
 .tbc-mc-template-dropdown-container,
 .tbc-mc-media-section,
 .tbc-mc-contact-section {
+    background-color: var(--fcom-primary-bg);
     border: 1px solid var(--fcom-primary-border);
     padding: 20px;
     margin-bottom: 20px;
@@ -50,7 +51,9 @@
 
 /* Message Textarea */
 textarea[name="sms_message"] {
-    border: 2px solid var(--fcom-primary-text);
+    border: 2px solid var(--fcom-primary-border);
+    background-color: var(--fcom-primary-bg);
+    color: var(--fcom-primary-text);
     box-sizing: border-box;
     height: 200px;
     padding: 10px;
@@ -154,7 +157,7 @@ textarea[name="sms_message"] {
     top: -8px;
     right: -8px;
     cursor: pointer;
-    background: #d63638;
+    background: var(--tbc-danger, #dc3545);
     color: white;
     width: 24px;
     height: 24px;
@@ -170,7 +173,7 @@ textarea[name="sms_message"] {
 }
 
 .tbc-mc-remove-media:hover {
-    background: #a00;
+    filter: brightness(0.8);
     transform: scale(1.1);
 }
 
@@ -302,11 +305,11 @@ textarea[name="opt_out_message"] {
 }
 
 .tbc-mc-lock-toggle.tbc-mc-locked {
-    color: #d63638; /* Red when locked */
+    color: var(--tbc-danger, #dc3545); /* Red when locked */
 }
 
 .tbc-mc-lock-toggle.tbc-mc-unlocked {
-    color: #28a745; /* Green when unlocked */
+    color: var(--tbc-success, #28a745); /* Green when unlocked */
 }
 
 .tbc-mc-lock-toggle:hover {

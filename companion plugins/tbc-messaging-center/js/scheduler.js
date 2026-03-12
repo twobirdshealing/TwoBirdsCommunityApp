@@ -145,7 +145,7 @@ jQuery(document).ready(function($) {
                 $('#scheduler-feedback').html(response.data.html);
                 
                 // Remove the message group if successful
-                if (response.data.html.includes('bp-feedback success')) {
+                if (response.data.html.includes('tbc-mc-feedback success')) {
                     messageGroup.fadeOut(300, function() {
                         $(this).remove();
                         
@@ -191,7 +191,7 @@ jQuery(document).ready(function($) {
                 // Show feedback
                 $('#scheduler-feedback').html(response.data.html);
                 // Remove the message group if successful
-                if (response.data.html.includes('bp-feedback success')) {
+                if (response.data.html.includes('tbc-mc-feedback success')) {
                     messageGroup.fadeOut(300, function() {
                         $(this).remove();
                         
@@ -317,7 +317,7 @@ jQuery(document).ready(function($) {
         .done(function(response) {
             try {
                 if (response && response.success && response.data && response.data.html) {
-                    var isSuccess = response.data.html.includes('bp-feedback success');
+                    var isSuccess = response.data.html.includes('tbc-mc-feedback success');
 
                     // Extract plain text from server HTML for toast
                     var temp = $('<div>').html(response.data.html);

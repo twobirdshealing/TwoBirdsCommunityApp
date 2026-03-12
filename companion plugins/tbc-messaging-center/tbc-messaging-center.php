@@ -2,8 +2,8 @@
 /**
  * Plugin Name: TBC - Messaging Center
  * Plugin URI: https://twobirdschurch.com/
- * Description: Unified messaging system for SMS, calls, voicemail, and scheduling with BuddyBoss integration
- * Version: 3.1.1
+ * Description: Unified messaging system for SMS, calls, voicemail, and scheduling with Fluent Community integration
+ * Version: 3.3.2
  * Author: Two Birds Church
  * Author URI: https://community.twobirdschurch.com/
  */
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 define('TBC_MC_URL', plugin_dir_url(__FILE__));
-define('TBC_MC_VERSION', '3.1.1');
+define('TBC_MC_VERSION', '3.3.2');
 define('TBC_MC_PATH', plugin_dir_path(__FILE__));
 
 // Load Twilio SDK
@@ -25,14 +25,12 @@ require_once(TBC_MC_PATH . 'src/Twilio/autoload.php');
 require TBC_MC_PATH . 'includes/helper-message-center-database.php';
 require TBC_MC_PATH . 'includes/helper-sms.php';
 require TBC_MC_PATH . 'includes/helper-incoming-messages.php';
-require TBC_MC_PATH . 'includes/buddyboss-group-settings.php';
+require TBC_MC_PATH . 'includes/notification.php';
 
 // Feature includes
-require TBC_MC_PATH . 'includes/call-group-tabs.php';
 require TBC_MC_PATH . 'includes/call-twilio-functions.php';
 require TBC_MC_PATH . 'includes/call-center.php';
 require TBC_MC_PATH . 'includes/message-center-shortcode.php';
-require TBC_MC_PATH . 'includes/sms-group-tabs.php';
 require TBC_MC_PATH . 'includes/sms-twilio-functions.php';
 require TBC_MC_PATH . 'includes/sms-send-template.php';
 require TBC_MC_PATH . 'includes/sms-center-shortcode.php';
@@ -43,14 +41,6 @@ require TBC_MC_PATH . 'includes/scheduler-shortcode.php';
 
 // Public API
 require TBC_MC_PATH . 'includes/sms-api.php';
-
-/**
- * Load BuddyBoss notification extension
- */
-function tbc_mc_load_notification() {
-    require TBC_MC_PATH . 'includes/buddyboss-message-notification.php';
-}
-add_action('bp_loaded', 'tbc_mc_load_notification');
 
 /**
  * Add AJAX URL to frontend
@@ -81,11 +71,7 @@ function tbc_mc_enqueue_assets() {
     $is_shortcode_in_post = is_a($post, 'WP_Post') &&
         has_shortcode($post->post_content, 'tbc_mc_message_center');
 
-    // Check if on BuddyBoss group messaging tabs
-    $is_messaging_tab = function_exists('bp_is_group') && bp_is_group() && 
-                       (bp_is_current_action('send-sms') || bp_is_current_action('initiate-call'));
-
-    if ($is_shortcode_in_post || $is_messaging_tab) {
+    if ($is_shortcode_in_post) {
 
         // Load feedback helpers FIRST - localize tbcMC here so all dependent scripts have access
         wp_enqueue_script('tbc-mc-helpers', TBC_MC_URL . 'js/sms-helpers.js', array('jquery'), TBC_MC_VERSION, true);
@@ -127,6 +113,14 @@ function tbc_mc_enqueue_assets() {
         // Message center
         wp_enqueue_script('tbc-mc-message-center', TBC_MC_URL . 'js/message-center.js', array('jquery', 'tbc-mc-helpers'), TBC_MC_VERSION, true);
         wp_enqueue_style('tbc-mc-message-center', TBC_MC_URL . 'css/message-center.css', array(), TBC_MC_VERSION);
+
+        // Inject Fluent Community CSS variables so --fcom-* tokens resolve outside Fluent pages
+        if (class_exists('FluentCommunity\\App\\Functions\\Utility')) {
+            $fcom_css = \FluentCommunity\App\Functions\Utility::getColorCssVariables();
+            if ($fcom_css) {
+                wp_add_inline_style('tbc-mc-message-center', $fcom_css);
+            }
+        }
 
         // Media uploader and utilities
         wp_enqueue_media();        

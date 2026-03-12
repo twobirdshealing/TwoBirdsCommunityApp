@@ -1,67 +1,62 @@
 <?php
 /**
- * BuddyBoss Group Management
- * 
- * Group is stored on LINE ITEMS (not orders) to support multiple events per order.
- * 
+ * Fluent Community Space Management
+ *
+ * Space is stored on LINE ITEMS (not orders) to support multiple events per order.
+ * Migrated from BuddyBoss Groups in v4.0.0.
+ *
  * @package TBC_Participant_Frontend
- * @since 3.0.0
+ * @since 4.0.0
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
+use FluentCommunity\App\Models\Space;
+use FluentCommunity\App\Models\BaseSpace;
+use FluentCommunity\App\Services\Helper as FCHelper;
+
 /**
- * Check if BuddyBoss groups is available
+ * Check if Fluent Community Spaces is available
  */
 function tbc_pf_is_groups_active() {
-    return function_exists('groups_get_groups') 
-        && function_exists('bp_is_active') 
-        && bp_is_active('groups');
+    return tbc_pf_is_fluent_active()
+        && class_exists('FluentCommunity\App\Models\Space');
 }
 
 /**
- * Get available BuddyBoss groups for dropdown
+ * Get available Fluent Community spaces for dropdown
  */
 function tbc_pf_get_available_groups() {
     if (!tbc_pf_is_groups_active()) {
         return [];
     }
 
-    $groups = groups_get_groups([
-        'per_page' => -1,
-        'orderby' => 'name',
-        'order' => 'ASC',
-        'show_hidden' => true,
-        'update_meta_cache' => false,
-        'fields' => 'all'
-    ]);
+    $spaces = Space::orderBy('title', 'ASC')->get();
 
     $options = [];
-    if (!empty($groups['groups'])) {
-        foreach ($groups['groups'] as $group) {
-            $suffix = $group->status === 'hidden' ? ' (Hidden)' : '';
-            $options[$group->id] = $group->name . $suffix;
-        }
+    foreach ($spaces as $space) {
+        $suffix = $space->privacy === 'secret' ? ' (Secret)' : ($space->privacy === 'private' ? ' (Private)' : '');
+        $options[$space->id] = $space->title . $suffix;
     }
-    
+
     return $options;
 }
 
 /**
- * Display group selector for each line item in admin
+ * Display space selector for each line item in admin
  */
 function tbc_pf_display_line_item_group($item_id, $item, $product) {
     if (!tbc_pf_is_groups_active()) {
         return;
     }
-    
+
     // Only show for line items (products), not shipping/fees
     if (!$item instanceof WC_Order_Item_Product) {
         return;
     }
-    
+
     // Only show for event products (those with event date)
     $event_date = $item->get_meta('_tbc_wc_event_start_date', true);
     if (empty($event_date)) {
@@ -73,23 +68,23 @@ function tbc_pf_display_line_item_group($item_id, $item, $product) {
     $field_name = 'tbc_pf_event_group_' . $item_id;
 
     echo '<div class="tbc-pf-line-item-group" style="margin-top: 10px;">';
-    echo '<p><strong>' . esc_html__('Event Chat Group', 'tbc-participant-frontend') . ':</strong></p>';
+    echo '<p><strong>' . esc_html__('Event Chat Space', 'tbc-participant-frontend') . ':</strong></p>';
     echo '<select name="' . esc_attr($field_name) . '" class="wc-enhanced-select" style="width:100%;">';
-    echo '<option value="">' . esc_html__('Select a group...', 'tbc-participant-frontend') . '</option>';
-    
+    echo '<option value="">' . esc_html__('Select a space...', 'tbc-participant-frontend') . '</option>';
+
     foreach ($groups as $id => $name) {
         $selected = ($event_group == $id) ? ' selected' : '';
         echo '<option value="' . esc_attr($id) . '"' . $selected . '>' . esc_html($name) . '</option>';
     }
-    
+
     echo '</select>';
     echo '</div>';
 }
 add_action('woocommerce_after_order_itemmeta', 'tbc_pf_display_line_item_group', 10, 3);
 
 /**
- * Save group selection to line item meta
- * 
+ * Save space selection to line item meta
+ *
  * @param int $order_id Order ID
  * @param array $items Items array (passed by woocommerce_saved_order_items)
  */
@@ -98,29 +93,29 @@ function tbc_pf_save_line_item_group($order_id, $items = []) {
     if (!$order) {
         return;
     }
-    
+
     foreach ($order->get_items() as $item_id => $item) {
         $field_name = 'tbc_pf_event_group_' . $item_id;
-        
+
         if (!isset($_POST[$field_name])) {
             continue;
         }
-        
+
         $group_id = intval($_POST[$field_name]);
-        
+
         if ($group_id > 0) {
             $item->update_meta_data('_tbc_pf_event_group', $group_id);
         } else {
             $item->delete_meta_data('_tbc_pf_event_group');
         }
-        
+
         $item->save();
     }
 }
 add_action('woocommerce_saved_order_items', 'tbc_pf_save_line_item_group', 10, 2);
 
 /**
- * AJAX: Join or leave a BuddyBoss group
+ * AJAX: Join or leave a Fluent Community space
  */
 function tbc_pf_ajax_join_or_leave_group() {
     if (!isset($_POST['user_id'], $_POST['group_id'], $_POST['action'])) {
@@ -128,20 +123,20 @@ function tbc_pf_ajax_join_or_leave_group() {
     }
 
     $user_id = intval($_POST['user_id']);
-    $group_id = intval($_POST['group_id']);
+    $space_id = intval($_POST['group_id']);
     $action = $_POST['action'];
 
     if ($action === 'tbc_pf_join_group') {
-        if (groups_join_group($group_id, $user_id)) {
-            wp_send_json_success('User joined the group');
+        if (FCHelper::addToSpace($space_id, $user_id, 'member', 'by_admin')) {
+            wp_send_json_success('User joined the space');
         } else {
-            wp_send_json_error('Failed to join the group');
+            wp_send_json_error('Failed to join the space');
         }
     } elseif ($action === 'tbc_pf_leave_group') {
-        if (groups_remove_member($user_id, $group_id)) {
-            wp_send_json_success('User removed from the group');
+        if (FCHelper::removeFromSpace($space_id, $user_id, 'by_admin')) {
+            wp_send_json_success('User removed from the space');
         } else {
-            wp_send_json_error('Failed to remove user from the group');
+            wp_send_json_error('Failed to remove user from the space');
         }
     } else {
         wp_send_json_error('Invalid action');
@@ -151,11 +146,11 @@ add_action('wp_ajax_tbc_pf_join_group', 'tbc_pf_ajax_join_or_leave_group');
 add_action('wp_ajax_tbc_pf_leave_group', 'tbc_pf_ajax_join_or_leave_group');
 
 /**
- * AJAX: Auto-generate a new chat group for an event
+ * AJAX: Auto-generate a new chat space for an event
  */
 function tbc_pf_ajax_auto_generate_chat_group() {
-    if (!function_exists('groups_create_group')) {
-        wp_send_json_error(['message' => 'BuddyBoss Groups not available']);
+    if (!tbc_pf_is_groups_active()) {
+        wp_send_json_error(['message' => 'Fluent Community Spaces not available']);
     }
 
     if (!isset($_POST['product_id'], $_POST['event_date'])) {
@@ -172,35 +167,58 @@ function tbc_pf_ajax_auto_generate_chat_group() {
 
     $product_name = $product->get_name();
     $formatted_date = date('F jS Y', strtotime($event_date));
-    $group_name = $product_name . ' | ' . $formatted_date;
-    $group_description = 'Chat group for participants of our ' . $product_name . ' | ' . $formatted_date;
+    $space_name = sanitize_text_field($product_name . ' | ' . $formatted_date);
+    $space_description = sanitize_textarea_field('Chat space for participants of our ' . $product_name . ' | ' . $formatted_date);
+    $image_id = $product->get_image_id();
+    $featured_url = $image_id ? wp_get_attachment_url($image_id) : false;
 
-    $group_id = groups_create_group([
-        'creator_id'    => get_current_user_id(),
-        'name'          => $group_name,
-        'description'   => $group_description,
-        'slug'          => sanitize_title($group_name),
-        'status'        => 'hidden',
-        'enable_forum'  => false,
-        'date_created'  => bp_core_current_time()
-    ]);
+    $fill_data = [
+        'created_by'  => get_current_user_id(),
+        'title'       => $space_name,
+        'slug'        => sanitize_title(preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $space_name)),
+        'description' => $space_description,
+        'privacy'     => 'secret',
+        'status'      => 'published',
+        'type'        => 'community',
+        'parent_id'   => TBC_PF_CEREMONY_SPACE_PARENT,
+        'settings'    => serialize(['ceremony_chat' => true]),
+    ];
 
-    if (!$group_id) {
-        wp_send_json_error(['message' => 'Failed to create chat group']);
+    if ($featured_url) {
+        $fill_data['logo'] = $featured_url;
+        $fill_data['cover_photo'] = $featured_url;
     }
 
-    groups_update_groupmeta($group_id, 'invite_status', 'admins');
-    bp_groups_set_group_type($group_id, 'ceremony-chat');
-    
+    $space = new Space();
+    $space->fill($fill_data);
+    $space->save();
+
+    if (!$space->id) {
+        wp_send_json_error(['message' => 'Failed to create chat space']);
+    }
+
+    // Add creator as admin (matches native Fluent behavior)
+    FCHelper::addToSpace($space->id, get_current_user_id(), 'admin', 'by_admin');
+
+    // Fire creation hook so other plugins are notified
+    do_action('fluent_community/space/created', $space, $fill_data);
+
+    // Add default moderators
     $default_moderators = [168, 2606];
-    foreach ($default_moderators as $user_id) {
-        groups_join_group($group_id, $user_id);
-        groups_promote_member($user_id, $group_id, 'mod');
+    foreach ($default_moderators as $mod_user_id) {
+        FCHelper::addToSpace($space, $mod_user_id, 'moderator', 'by_admin');
     }
-    
-    groups_update_groupmeta($group_id, 'sms_permission', 'organizers');
-    groups_update_groupmeta($group_id, 'call_permission', 'off');
 
+    // Auto-assign space to all line items for this event
+    $metrics = tbc_pf_calculate_income_and_donors($product_id, $event_date);
+    foreach ($metrics['order_ids'] as $order_id) {
+        $order = wc_get_order($order_id);
+        if ($order) {
+            tbc_pf_tm_set_line_item_meta($order, $product_id, $event_date, '_tbc_pf_event_group', $space->id);
+        }
+    }
+
+    // Schedule event posts
     $event_end_date = $event_date;
     if (function_exists('tbc_wc_get_events')) {
         $events = tbc_wc_get_events($product_id, [
@@ -212,13 +230,13 @@ function tbc_pf_ajax_auto_generate_chat_group() {
             $event_end_date = $events[0]['end'] ?? $event_date;
         }
     }
-    
-    tbc_pf_schedule_event_posts_dynamic($group_id, $product_id, $event_date, $event_end_date);
+
+    tbc_pf_schedule_event_posts_dynamic($space->id, $product_id, $event_date, $event_end_date);
 
     wp_send_json_success([
-        'message' => 'Chat group created successfully',
-        'group_id' => $group_id,
-        'group_name' => $group_name
+        'message' => 'Chat space created successfully',
+        'group_id' => $space->id,
+        'group_name' => $space_name
     ]);
 }
 add_action('wp_ajax_tbc_pf_auto_generate_chat_group', 'tbc_pf_ajax_auto_generate_chat_group');

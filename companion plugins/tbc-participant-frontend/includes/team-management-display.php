@@ -92,7 +92,7 @@ function tbc_pf_display_team_management($product_id, $event_date = '') {
             echo '</div>';
         }
     } else {
-        echo '<p>BuddyBoss Groups is not active</p>';
+        echo '<p>Fluent Community Spaces not available</p>';
     }
     
     echo '</div>';

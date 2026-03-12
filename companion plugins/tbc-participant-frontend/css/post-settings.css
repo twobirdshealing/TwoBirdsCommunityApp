@@ -31,7 +31,7 @@
 }
 
 .tbc-pf-no-templates-message {
-    color: #6c757d;
+    color: var(--fcom-secondary-text, #6c757d);
     font-style: italic;
     text-align: center;
     padding: 40px;
@@ -43,7 +43,7 @@
     overflow-y: auto;
     overflow-x: auto;
     margin-bottom: 15px;
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--fcom-primary-border, #dee2e6);
     border-radius: 4px;
 }
 
@@ -57,22 +57,22 @@
 .tbc-pf-templates-table td {
     padding: 12px;
     text-align: left;
-    border-bottom: 1px solid #dee2e6;
-    background-color: #fff;
+    border-bottom: 1px solid var(--fcom-primary-border, #dee2e6);
+    background-color: var(--fcom-primary-bg, #fff);
 }
 
 .tbc-pf-templates-table th {
     position: sticky;
     top: 0;
-    background-color: #f8f9fa;
+    background-color: var(--fcom-secondary-bg, #f8f9fa);
     z-index: 10;
-    color: #333;
+    color: var(--fcom-primary-text, #333);
     font-weight: bold;
-    border-bottom: 2px solid #dee2e6;
+    border-bottom: 2px solid var(--fcom-primary-border, #dee2e6);
 }
 
 .tbc-pf-templates-table tr:hover td {
-    background-color: #e9ecef !important;
+    background-color: var(--fcom-active-bg, #e9ecef) !important;
 }
 
 .tbc-pf-edit-template-btn,
@@ -89,7 +89,7 @@
 
 .tbc-pf-edit-template-btn {
     background-color: #ffc107;
-    color: #333;
+    color: var(--fcom-primary-text, #333);
 }
 
 .tbc-pf-edit-template-btn:hover {
@@ -125,7 +125,7 @@
 .tbc-pf-template-modal select {
     width: 100%;
     padding: 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--fcom-primary-border, #ccc);
     border-radius: 4px;
     font-family: inherit;
     font-size: 14px;
@@ -137,8 +137,8 @@
 }
 
 .tbc-pf-add-media-btn {
-    background-color: #007bff;
-    color: white;
+    background-color: var(--fcom-primary-button, #007bff);
+    color: var(--fcom-primary-button-text, #ffffff);
     border: none;
     border-radius: 4px;
     padding: 6px 12px;
@@ -149,7 +149,7 @@
 }
 
 .tbc-pf-add-media-btn:hover {
-    background-color: #0069d9;
+    background-color: var(--fcom-text-link, #0069d9);
 }
 
 .tbc-pf-media-previews {
@@ -163,7 +163,7 @@
     position: relative;
     width: 100px;
     height: 100px;
-    border: 2px solid #ddd;
+    border: 2px solid var(--fcom-primary-border, #ddd);
     border-radius: 4px;
     overflow: hidden;
 }
@@ -214,6 +214,57 @@
 
 .tbc-pf-save-template:hover {
     background-color: #218838;
+}
+
+/* EasyMDE Fluent theme integration */
+.tbc-pf-template-modal .EasyMDEContainer .CodeMirror {
+    background: var(--fcom-primary-bg, #fff);
+    color: var(--fcom-primary-text, #1a1a2e);
+    border-color: var(--fcom-primary-border, #e0e0e0);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.tbc-pf-template-modal .EasyMDEContainer .editor-toolbar {
+    border-color: var(--fcom-primary-border, #e0e0e0);
+    background: var(--fcom-secondary-bg, #f8f9fa);
+}
+
+.tbc-pf-template-modal .EasyMDEContainer .editor-toolbar button {
+    color: var(--fcom-primary-text, #333) !important;
+}
+
+.tbc-pf-template-modal .EasyMDEContainer .editor-toolbar button.active,
+.tbc-pf-template-modal .EasyMDEContainer .editor-toolbar button:hover {
+    background: var(--fcom-active-bg, #e9ecef);
+}
+
+.tbc-pf-template-modal .EasyMDEContainer .editor-preview {
+    background: var(--fcom-primary-bg, #fff);
+    color: var(--fcom-primary-text, #1a1a2e);
+}
+
+.tbc-pf-template-modal .EasyMDEContainer .editor-preview-side {
+    background: var(--fcom-secondary-bg, #f8f9fa);
+    color: var(--fcom-primary-text, #1a1a2e);
+    border-color: var(--fcom-primary-border, #e0e0e0);
+}
+
+.tbc-pf-template-modal .EasyMDEContainer .CodeMirror-cursor {
+    border-color: var(--fcom-primary-text, #1a1a2e);
+}
+
+.tbc-pf-template-modal .EasyMDEContainer .cm-header {
+    color: var(--fcom-primary-text, #1a1a2e);
+}
+
+.tbc-pf-template-modal .EasyMDEContainer .cm-link {
+    color: var(--fcom-text-link, #007bff);
+}
+
+.tbc-pf-template-modal .EasyMDEContainer .cm-url {
+    color: var(--fcom-secondary-text, #6c757d);
 }
 
 @media screen and (max-width: 768px) {

@@ -61,6 +61,7 @@ class Admin {
             'enable_profile_verification', 'enable_voice_fallback',
             'enable_email_verification', 'disable_rate_limit',
             'restrict_duplicates', 'blocked_numbers', 'phone_meta_key', 'phone_meta_key_custom',
+            'sms_optin_field', 'sms_optin_value',
         ];
 
         foreach ($otp_options as $key) {

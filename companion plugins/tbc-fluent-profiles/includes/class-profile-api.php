@@ -177,6 +177,14 @@ class ProfileApi {
             }
         }
 
+        /**
+         * Fires after custom profile fields have been saved via AJAX.
+         *
+         * @param int   $targetUserId The user whose fields were saved.
+         * @param array $saved        The saved field values (key => sanitized value).
+         */
+        do_action('tbc_fp_after_ajax_save', $targetUserId, $saved);
+
         wp_send_json_success(['saved' => $saved]);
     }
 }

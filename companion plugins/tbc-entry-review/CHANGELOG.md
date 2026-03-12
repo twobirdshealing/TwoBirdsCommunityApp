@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.0
+- Added "Last Updated" column showing when entry was last modified
+- Sortable column headers: click "Submitted" or "Last Updated" to sort ascending/descending
+- Default sort is now "Last Updated" descending (most recently touched entries first)
+- Entries sorted correctly across all forms (previously appended unsorted per-form)
+
 ## 1.7.6
 - Added consult notes support for Kambo Readiness Form (form 16, field 119)
 - Consult notes now use a form-to-field map instead of hardcoded form ID 1 / field 18

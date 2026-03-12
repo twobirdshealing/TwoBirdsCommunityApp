@@ -19,7 +19,7 @@ export const APP_USER_AGENT = 'TBCCommunityApp/1.0';
 // Read SITE_URL from app.config.ts → extra.siteUrl (set per EAS build profile).
 // Falls back to staging if not set (e.g. local dev with `npx expo start`).
 export const SITE_URL: string =
-  Constants.expoConfig?.extra?.siteUrl || 'https://staging.twobirdschurch.com';
+  Constants.expoConfig?.extra?.siteUrl || 'https://community.twobirdschurch.com';
 export const API_URL = `${SITE_URL}/wp-json/fluent-community/v2`;
 
 // Default pagination

@@ -4,7 +4,7 @@
  * Standalone IIFE for logged-in users with incomplete profiles.
  * Two steps:
  *   1. Bio + website + social links (bio required)
- *   2. Avatar + cover photo (optional, can skip)
+ *   2. Avatar + cover photo (avatar required by default, cover optional)
  *
  * Reuses the same CSS classes as registration.js for consistent styling.
  *
@@ -79,7 +79,7 @@
 
         if (existing.bio) bioValue = existing.bio;
         if (existing.website) websiteValue = existing.website;
-        if (existing.avatar) avatarUrl = existing.avatar;
+        if (existing.avatar && !isPlaceholderAvatar(existing.avatar)) avatarUrl = existing.avatar;
         if (existing.coverPhoto) coverUrl = existing.coverPhoto;
 
         if (existing.socialLinks && typeof existing.socialLinks === 'object') {
@@ -198,7 +198,21 @@
     }
 
     async function finish() {
-        try { await apiPost('register/complete', {}); } catch (e) { /* non-critical */ }
+        // Avatar required — validate before completing
+        if (config.requireAvatar && !avatarUrl) {
+            globalError = 'Please add a profile photo before continuing.';
+            render();
+            return;
+        }
+
+        try {
+            const res = await apiPost('register/complete', {});
+            if (res && res.success === false && res.missing) {
+                globalError = 'Please complete all required fields before continuing.';
+                render();
+                return;
+            }
+        } catch (e) { /* non-critical */ }
         window.location.href = config.communityUrl;
     }
 
@@ -323,7 +337,13 @@
 
         html += '</div>'; // end profile-header
 
-        html += '<button type="button" class="tbc-reg__btn tbc-reg__btn--primary" data-action="finish"' + dis() + '>' + (hasPhotos ? 'Done' : 'Skip for now') + '</button>';
+        let finishLabel = 'Skip for now';
+        if (avatarUrl) {
+            finishLabel = 'Done';
+        } else if (config.requireAvatar) {
+            finishLabel = 'Add a photo to continue';
+        }
+        html += '<button type="button" class="tbc-reg__btn tbc-reg__btn--primary" data-action="finish"' + dis() + '>' + finishLabel + '</button>';
         return html;
     }
 
@@ -389,6 +409,10 @@
     }
 
     // ─── Utilities ───────────────────────────────────────────────────
+
+    function isPlaceholderAvatar(url) {
+        return !url || url.indexOf('fluent-community/assets/images/placeholder') !== -1;
+    }
 
     function esc(str) {
         if (str == null) return '';

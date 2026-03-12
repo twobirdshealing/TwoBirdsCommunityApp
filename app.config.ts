@@ -11,11 +11,13 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 export default ({ config }: ConfigContext): ExpoConfig => {
   // Read from EAS env or fall back to staging
   const siteUrl =
-    process.env.SITE_URL || 'https://staging.twobirdschurch.com';
+    process.env.SITE_URL || 'https://community.twobirdschurch.com';
   const hostname = new URL(siteUrl).hostname;
 
   return {
     ...config,
+    name: config.name ?? 'Two Birds',
+    slug: config.slug ?? 'twobirdscommunityapp',
     ios: {
       ...config.ios,
       associatedDomains: [`applinks:${hostname}`],

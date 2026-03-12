@@ -2,6 +2,20 @@
 
 All notable changes to the TBC Fluent Profiles plugin.
 
+## v2.5.1
+- **Fix: Profile completion gate now validates required fields** — `POST /register/complete` checks `get_missing_fields()` before marking complete; returns 422 with missing fields if avatar/bio not uploaded (previously blindly set flag to '1')
+- **Fix: Avatar required in registration flow** — mobile app avatar step now validates avatar is uploaded before allowing completion (client-side + server-side guard)
+- **Fix: FC onboarding disable filter priority** — bumped `fluent_community/portal_vars` filter to priority 999 so it runs after FC Pro and other plugins that may re-enable the onboarding widget
+- **Fix: Avatar placeholder detection** — FC stores a placeholder image URL for users without a custom avatar; `get_missing_fields()` now detects this as "no avatar" instead of treating it as a valid upload. Placeholder also stripped from `existing.avatar` in REST API + shortcode config
+- **Fix: Web profile completion validates avatar** — `profile-completion.js` now checks avatar is uploaded when required (matches mobile); respects `requireAvatar` config from server
+
+## v2.5.0
+- **SMS Role Management** — automatic `sms_in` / `sms_out` role assignment based on a configurable profile field (replaces Uncanny Automator dependency)
+  - On registration: assigns role based on SMS opt-in field value
+  - On profile edit: updates role when the opt-in field changes (both FC portal and AJAX save paths)
+  - New admin settings under OTP/Twilio tab: SMS Opt-In Field dropdown + Opt-In Value text input
+  - Registers `sms_in` and `sms_out` roles on activation (with safety net for existing installs)
+
 ## v2.4.9
 - Moved admin menu under TBC Community App as a submenu (matches Multi Reactions, Book Club, etc.) with fallback to top-level if TBC Community App is not active
 

@@ -38,7 +38,8 @@ The `companion plugins/` folder contains WordPress plugins and themes that work 
 
 Current TEST credtials for when YOU give me commands 
 ask for fresh token 
-curl -s -X POST "https://staging.twobirdschurch.com/wp-json/tbc-ca/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"bluejay","password":"sapo"}' | python3 -m json.tool
+curl -s -X POST "https://community.twobirdschurch.com/wp-json/tbc-ca/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"bluejay","password":"sapo"}' | python3 -m json.tool
+
 
 
 then create curl

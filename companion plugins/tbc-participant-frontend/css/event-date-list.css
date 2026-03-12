@@ -9,30 +9,30 @@
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
-    background-color: #fff;
+    background-color: var(--fcom-primary-bg, #fff);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     border-radius: 4px;
     font-size: 14px;
 }
 
 .tbc-pf-event-date-list thead th {
-    background-color: #007bff;
-    color: white;
+    background-color: var(--fcom-primary-button, #007bff);
+    color: var(--fcom-primary-button-text, #ffffff);
     padding: 12px 10px;
     text-align: center;
     font-weight: bold;
 }
 
 .tbc-pf-event-date-list tbody tr {
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--fcom-primary-border, #ddd);
 }
 
 .tbc-pf-event-date-list tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
+    background-color: var(--fcom-secondary-bg, #f9f9f9);
 }
 
 .tbc-pf-event-date-list tbody tr:hover {
-    background-color: #f1f1f1;
+    background-color: var(--fcom-active-bg, #f1f1f1);
 }
 
 .tbc-pf-event-date-list td {
@@ -71,7 +71,7 @@
 }
 
 .tbc-pf-year-filters {
-    background-color: #e9ecef;
+    background-color: var(--fcom-active-bg, #e9ecef);
 }
 
 .tbc-pf-year-filters td {
@@ -79,37 +79,37 @@
 }
 
 .tbc-pf-year-filter {
-    color: #007bff;
+    color: var(--fcom-text-link, #007bff);
     text-decoration: none;
     padding: 3px 8px;
     border-radius: 3px;
 }
 
 .tbc-pf-year-filter:hover {
-    background-color: #e2e6ea;
+    background-color: var(--fcom-active-bg, #e2e6ea);
     text-decoration: none;
 }
 
 .tbc-pf-year-filter.active {
-    background-color: #007bff;
-    color: white;
+    background-color: var(--fcom-primary-button, #007bff);
+    color: var(--fcom-primary-button-text, #ffffff);
 }
 
 .tbc-pf-event-date-display {
     font-size: 16px;
     font-weight: bold;
     margin-bottom: 10px;
-    color: #343a40;
+    color: var(--fcom-primary-text, #343a40);
     text-align: center;
     padding: 8px;
-    background-color: #f8f9fa;
+    background-color: var(--fcom-secondary-bg, #f8f9fa);
     border-radius: 4px;
 }
 
 .tbc-pf-loading {
     text-align: center;
     padding: 20px;
-    color: #666;
+    color: var(--fcom-secondary-text, #666);
 }
 
 .tbc-pf-action-cell {
@@ -162,13 +162,13 @@
     }
 
     .tbc-pf-event-date-list tr {
-        border: 1px solid #ccc;
+        border: 1px solid var(--fcom-primary-border, #ccc);
         margin-bottom: 10px;
     }
 
     .tbc-pf-event-date-list td {
         border: none;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid var(--fcom-primary-border, #eee);
         position: relative;
         padding-left: 35%;
         padding-top: 8px;

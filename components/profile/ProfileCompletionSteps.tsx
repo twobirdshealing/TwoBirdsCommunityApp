@@ -4,7 +4,7 @@
 // Used by register.tsx (after account creation) and profile-complete.tsx (login gate).
 // Two internal steps:
 //   Step 1: Bio + website + social links (bio required)
-//   Step 2: Avatar + cover photo (optional, can skip)
+//   Step 2: Avatar + cover photo (avatar required by default, cover optional)
 // =============================================================================
 
 import React, { useCallback, useState } from 'react';
@@ -37,6 +37,8 @@ interface ProfileCompletionStepsProps {
   displayName: string;
   onComplete: () => void;
   existing?: ProfileExistingData;
+  /** Whether avatar upload is required before completing. Default true. */
+  avatarRequired?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -48,6 +50,7 @@ export function ProfileCompletionSteps({
   displayName,
   onComplete,
   existing,
+  avatarRequired = true,
 }: ProfileCompletionStepsProps) {
   const { user: currentUser, updateUser } = useAuth();
   const { colors: themeColors } = useTheme();
@@ -184,9 +187,20 @@ export function ProfileCompletionSteps({
 
   const handleFinish = useCallback(async () => {
     hapticMedium();
-    await completeRegistration();
+
+    if (avatarRequired && !avatarUri) {
+      setError('Please add a profile photo before continuing.');
+      return;
+    }
+
+    const success = await completeRegistration();
+    if (!success) {
+      setError('Please complete all required fields before continuing.');
+      return;
+    }
+
     onComplete();
-  }, [onComplete]);
+  }, [onComplete, avatarRequired, avatarUri]);
 
   // ---------------------------------------------------------------------------
   // Step indicator
@@ -317,14 +331,23 @@ export function ProfileCompletionSteps({
           />
 
           <AnimatedPressable
-            style={[styles.secondaryButton, { borderColor: themeColors.border }]}
+            style={[
+              avatarUri
+                ? [styles.primaryButton, { backgroundColor: themeColors.primary }]
+                : [styles.secondaryButton, { borderColor: themeColors.border }],
+              (uploadingAvatar || uploadingCover) && styles.buttonDisabled,
+            ]}
             onPress={handleFinish}
             disabled={uploadingAvatar || uploadingCover}
             accessibilityRole="button"
-            accessibilityLabel={(avatarUri || coverUri) ? 'Done' : 'Skip profile photos'}
+            accessibilityLabel={avatarUri ? 'Done' : (avatarRequired ? 'Add a profile photo' : 'Skip profile photos')}
           >
-            <Text style={[styles.secondaryButtonText, { color: themeColors.text }]}>
-              {(avatarUri || coverUri) ? 'Done' : 'Skip for now'}
+            <Text style={[
+              avatarUri
+                ? [styles.primaryButtonText, { color: themeColors.textInverse }]
+                : [styles.secondaryButtonText, { color: themeColors.text }],
+            ]}>
+              {avatarUri ? 'Done' : (avatarRequired ? 'Add a profile photo' : 'Skip for now')}
             </Text>
           </AnimatedPressable>
         </>

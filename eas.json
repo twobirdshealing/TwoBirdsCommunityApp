@@ -8,13 +8,13 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "SITE_URL": "https://staging.twobirdschurch.com"
+        "SITE_URL": "https://community.twobirdschurch.com"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "SITE_URL": "https://staging.twobirdschurch.com"
+        "SITE_URL": "https://community.twobirdschurch.com"
       }
     },
     "simulator": {
@@ -22,7 +22,7 @@
         "simulator": true
       },
       "env": {
-        "SITE_URL": "https://staging.twobirdschurch.com"
+        "SITE_URL": "https://community.twobirdschurch.com"
       }
     },
     "production": {

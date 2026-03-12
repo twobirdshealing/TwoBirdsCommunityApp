@@ -2,6 +2,10 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.30.0
+- Added YouTube API Key field to Settings → General tab — manage the key from the admin UI instead of wp-config.php
+- Removed `TBC_YOUTUBE_API_KEY` constant support — key is now managed entirely from settings
+
 ## v3.29.1
 - `X-TBC-Profile-Incomplete` header now uses `TBC_FP_META_REGISTRATION_COMPLETE` constant (with string literal fallback when tbc-fluent-profiles is inactive)
 

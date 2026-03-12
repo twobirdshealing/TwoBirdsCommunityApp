@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Entry Review
  * Plugin URI: https://twobirdschurch.com
  * Description: Admin page for reviewing Gravity Forms entries, managing phone screening status, consultation notes, and approval
- * Version: 1.7.6
+ * Version: 1.8.0
  * Author: Two Birds Church
  * Author URI: https://twobirdschurch.com
  * Text Domain: tbc-entry-review
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('TBC_ER_VERSION', '1.7.6');
+define('TBC_ER_VERSION', '1.8.0');
 define('TBC_ER_DIR', plugin_dir_path(__FILE__));
 define('TBC_ER_URL', plugin_dir_url(__FILE__));
 

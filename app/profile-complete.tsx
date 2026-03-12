@@ -5,7 +5,7 @@
 // Uses the same ProfileCompletionSteps component as the registration flow.
 // =============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ImageBackground, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
@@ -24,12 +24,21 @@ export default function ProfileCompleteScreen() {
   const { user, markProfileComplete } = useAuth();
   const { colors: themeColors } = useTheme();
   const [existing, setExisting] = useState<ProfileExistingData | undefined>();
+  const [missingFields, setMissingFields] = useState<string[] | undefined>();
   const [loading, setLoading] = useState(true);
+
+  const avatarRequired = useMemo(
+    () => missingFields?.includes('avatar') ?? true,
+    [missingFields]
+  );
 
   // Fetch existing profile data on mount so the form pre-populates
   useEffect(() => {
     checkProfileComplete()
-      .then(status => setExisting(status.existing))
+      .then(status => {
+        setExisting(status.existing);
+        setMissingFields(status.missing);
+      })
       .catch(() => {}) // On error, form opens with empty fields — non-blocking
       .finally(() => setLoading(false));
   }, []);
@@ -67,6 +76,7 @@ export default function ProfileCompleteScreen() {
                 displayName={user?.displayName || ''}
                 onComplete={() => { markProfileComplete(); router.replace('/(tabs)'); }}
                 existing={existing}
+                avatarRequired={avatarRequired}
               />
             )}
           </View>

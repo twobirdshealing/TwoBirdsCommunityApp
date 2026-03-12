@@ -56,9 +56,11 @@ export interface Feed {
     media_preview?: {
       image?: string;
       url?: string;
-      provider?: 'youtube' | 'giphy' | 'external' | 'uploader';
-      type?: 'image' | 'video';
+      provider?: 'youtube' | 'giphy' | 'external' | 'uploader' | 'upload';
+      type?: 'image' | 'video' | 'oembed';
       content_type?: string;
+      player?: string;
+      media_id?: number;
       width?: number;
       height?: number;
       title?: string;

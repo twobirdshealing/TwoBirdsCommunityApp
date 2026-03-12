@@ -10,19 +10,19 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Generate BuddyBoss feedback HTML
- * 
+ * Generate feedback HTML
+ *
  * @param string $type Feedback type: 'success', 'error', 'notice', 'alert'
  * @param string $message Message to display
- * @return string HTML feedback div with BuddyBoss styling
+ * @return string HTML feedback div
  */
 function tbc_mc_feedback_html($type, $message) {
-    return '<div class="bp-feedback ' . esc_attr($type) . '"><span class="bp-icon" aria-hidden="true"></span><p>' . esc_html($message) . '</p></div>';
+    return '<div class="tbc-mc-feedback ' . esc_attr($type) . '"><p>' . esc_html($message) . '</p></div>';
 }
 
 /**
- * Send AJAX feedback response with BuddyBoss styling
- * 
+ * Send AJAX feedback response
+ *
  * @param string $type Feedback type: 'success', 'error', 'notice', 'alert'
  * @param string $message Message to display
  * @param mixed $data Optional additional data to return
@@ -35,59 +35,54 @@ function tbc_mc_ajax_feedback($type, $message, $data = null) {
 }
 
 /**
- * Get and clean phone number from BuddyBoss profile
- * 
+ * Get and clean phone number from user profile
+ * Uses tbc-fluent-profiles phone meta key
+ *
  * @param int $user_id User ID
  * @return string Formatted phone number in E.164 format (+15551234567)
  */
 function tbc_mc_get_phone_from_profile($user_id) {
-    if (!function_exists('bp_get_profile_field_data')) {
-        return '';
+    if (class_exists('TBCFluentProfiles\Helpers')) {
+        $meta_key = \TBCFluentProfiles\Helpers::get_phone_meta_key();
+        $phone_raw = get_user_meta($user_id, $meta_key, true);
+        return tbc_mc_format_phone($phone_raw, true);
     }
-    
-    // Get phone from BuddyBoss profile field (field ID 4)
-    $phone_raw = bp_get_profile_field_data(array(
-        'field' => 4,
-        'user_id' => $user_id
-    ));
-    
-    // Format with HTML cleaning enabled for profile data
-    return tbc_mc_format_phone($phone_raw, true);
+    return '';
 }
 
 /**
  * Find user ID by phone number (reverse lookup)
- * 
+ * Queries wp_usermeta using tbc-fluent-profiles phone meta key
+ *
  * @param string $phone_number Phone number to search for
  * @return int|null User ID if found, null otherwise
  */
 function tbc_mc_get_user_by_phone($phone_number) {
     global $wpdb;
-    
+
     $formatted_search_number = tbc_mc_format_phone($phone_number);
-    
+
     if (empty($formatted_search_number)) {
         return null;
     }
-    
-    // Query BuddyBoss profile data for Phone field
-    $user_query = "
-        SELECT b.user_id, b.value as phone_value
-        FROM {$wpdb->prefix}bp_xprofile_fields AS a
-        JOIN {$wpdb->prefix}bp_xprofile_data AS b ON a.id = b.field_id
-        WHERE a.name = 'Phone'
-    ";
-    
-    $users_with_phones = $wpdb->get_results($user_query);
-    
-    // Compare formatted phone numbers to find match
-    foreach ($users_with_phones as $user_phone) {
-        $db_phone_formatted = tbc_mc_format_phone($user_phone->phone_value, true);
+
+    $meta_key = '_tbc_fp_phone';
+    if (class_exists('TBCFluentProfiles\Helpers')) {
+        $meta_key = \TBCFluentProfiles\Helpers::get_phone_meta_key();
+    }
+
+    $users_with_phones = $wpdb->get_results($wpdb->prepare(
+        "SELECT user_id, meta_value FROM {$wpdb->usermeta} WHERE meta_key = %s AND meta_value != ''",
+        $meta_key
+    ));
+
+    foreach ($users_with_phones as $row) {
+        $db_phone_formatted = tbc_mc_format_phone($row->meta_value, true);
         if ($db_phone_formatted === $formatted_search_number) {
-            return (int) $user_phone->user_id;
+            return (int) $row->user_id;
         }
     }
-    
+
     return null;
 }
 
@@ -111,7 +106,7 @@ function tbc_mc_format_phone($phone_number, $clean_html = false) {
         $phone = strip_tags($phone);
         $phone = urldecode($phone);
         
-        // Extract phone number from formatted text (handles BuddyBoss profile data)
+        // Extract phone number from formatted text
         preg_match('/\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})/', $phone, $matches);
         if (isset($matches[0])) {
             $phone = $matches[0];

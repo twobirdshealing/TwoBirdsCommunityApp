@@ -72,21 +72,19 @@
 /* Check All Container */
 .tbc-mc-check-all-container {
     margin-left: 20px;
-    background-color: lightblue;
-    background-image: linear-gradient(to bottom, #add8e6, #87ceeb);
+    background-color: var(--fcom-primary-button);
     padding: 0px 8px;
     border-radius: 50px;
     display: inline-block;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    border: 1px solid #87cefa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--fcom-primary-border);
     cursor: pointer;
 }
 
 .tbc-mc-check-all-container label {
     font-weight: bold;
-    color: #ffffff;
+    color: var(--fcom-primary-button-text);
     vertical-align: middle;
-    text-shadow: -1px -1px 0 #5a5a5a, 1px -1px 0 #5a5a5a, -1px 1px 0 #5a5a5a, 1px 1px 0 #5a5a5a;
 }
 
 /* Expandable Containers */
@@ -181,12 +179,12 @@
 }
 
 .tbc-mc-invalid-numbers {
-    color: #d9534f;
+    color: var(--tbc-danger, #dc3545);
     margin-top: 15px;
 }
 
 #tbc-mc-parse-numbers {
-    background-color: #4CAF50;
+    background-color: var(--tbc-success, #28a745);
     color: white;
     padding: 10px 15px;
     border: none;
@@ -196,7 +194,7 @@
 }
 
 #tbc-mc-parse-numbers:hover {
-    background-color: #45a049;
+    filter: brightness(0.9);
 }
 
 /* Date List - Second Level */

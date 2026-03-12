@@ -3,7 +3,7 @@
  * Plugin Name: TBC Fluent Profiles
  * Plugin URI:  https://www.twobirdschurch.com
  * Description: Custom profile fields, OTP verification (Twilio), and multi-step registration for Fluent Community. Unified profiles, verification, and registration in one plugin.
- * Version:     2.4.9
+ * Version:     2.5.1
  * Author:      Two Birds Community
  * Text Domain: tbc-fluent-profiles
  * Domain Path: /languages
@@ -19,7 +19,7 @@
 defined('ABSPATH') or die('No direct script access allowed');
 
 // Core plugin constants
-define('TBC_FP_VERSION', '2.4.9');
+define('TBC_FP_VERSION', '2.5.1');
 define('TBC_FP_FILE', __FILE__);
 define('TBC_FP_DIR', plugin_dir_path(__FILE__));
 define('TBC_FP_URL', plugin_dir_url(__FILE__));
@@ -73,6 +73,14 @@ add_action('plugins_loaded', function () {
         update_option('tbc_fp_prefix_migrated', '1');
     }
 
+    // Ensure SMS roles exist (safety net for existing installs that skip activation hook)
+    if (!wp_roles()->is_role('sms_in')) {
+        add_role('sms_in', 'SMS Opted In');
+    }
+    if (!wp_roles()->is_role('sms_out')) {
+        add_role('sms_out', 'SMS Opted Out');
+    }
+
     require_once TBC_FP_DIR . 'includes/class-core.php';
     TBCFluentProfiles\Core::instance();
 }, 20);
@@ -84,6 +92,10 @@ register_activation_hook(__FILE__, function () {
     require_once TBC_FP_DIR . 'includes/class-fields.php';
     require_once TBC_FP_DIR . 'includes/class-admin.php';
     TBCFluentProfiles\Admin::initialize_default_settings();
+
+    // Ensure SMS roles exist
+    add_role('sms_in', 'SMS Opted In');
+    add_role('sms_out', 'SMS Opted Out');
 
     // OTP / verification default options
     $otp_defaults = [
@@ -101,6 +113,19 @@ register_activation_hook(__FILE__, function () {
     ];
 
     foreach ($otp_defaults as $key => $value) {
+        $option_name = 'tbc_fp_' . $key;
+        if (false === get_option($option_name)) {
+            add_option($option_name, $value);
+        }
+    }
+
+    // SMS role management default options
+    $sms_defaults = [
+        'sms_optin_field' => '',
+        'sms_optin_value' => 'Yes',
+    ];
+
+    foreach ($sms_defaults as $key => $value) {
         $option_name = 'tbc_fp_' . $key;
         if (false === get_option($option_name)) {
             add_option($option_name, $value);

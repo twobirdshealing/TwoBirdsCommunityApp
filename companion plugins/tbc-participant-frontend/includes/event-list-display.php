@@ -19,8 +19,18 @@ class TBC_PF_Event_List_Display {
     }
 
     public function display_participant_list() {
+        // Sub-page: participant details view (product_slug in URL)
+        $product_slug = isset($_GET['product_slug']) ? sanitize_text_field($_GET['product_slug']) : '';
+        $event_date = isset($_GET['event_date']) ? sanitize_text_field($_GET['event_date']) : '';
+
+        if ($product_slug) {
+            ob_start();
+            tbc_pf_display_participant_details_page($product_slug, $event_date);
+            return ob_get_clean();
+        }
+
         $current_page_url = get_permalink();
-        
+
         $output = '<div id="tbc-pf-participant-list-tabs">
                     <button class="tbc-pf-tab-link active" data-status="current">Current Events</button>
                     <button class="tbc-pf-tab-link" data-status="past">Past Events</button>

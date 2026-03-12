@@ -16,6 +16,12 @@
  * @return array Contains 'html', 'initials', 'class'
  */
 function tbc_mc_get_avatar_data($user_id, $size = 48) {
+    static $cache = [];
+    $cache_key = $user_id . '_' . $size;
+    if (isset($cache[$cache_key])) {
+        return $cache[$cache_key];
+    }
+
     $avatar_html = '';
     $initials = '?';
     $avatar_class = 'tbc-mc-guest';
@@ -26,26 +32,31 @@ function tbc_mc_get_avatar_data($user_id, $size = 48) {
         $initials = strtoupper(substr($first_name, 0, 1) . substr($last_name, 0, 1)) ?: '?';
         $avatar_class = '';
 
-        if (function_exists('bp_core_fetch_avatar')) {
-            $avatar_html = bp_core_fetch_avatar([
-                'item_id' => $user_id,
-                'type'    => 'thumb',
-                'width'   => $size,
-                'height'  => $size,
-                'html'    => true,
-                'no_grav' => true
-            ]);
-            if (strpos($avatar_html, 'mystery-man') !== false || empty($avatar_html)) {
-                $avatar_html = '';
+        if (class_exists('FluentCommunity\App\Models\XProfile')) {
+            try {
+                $xp = \FluentCommunity\App\Models\XProfile::find($user_id);
+                if ($xp && !empty($xp->avatar)) {
+                    $avatar_html = '<img src="' . esc_url($xp->avatar) . '" class="avatar" width="' . $size . '" height="' . $size . '" />';
+                }
+            } catch (\Exception $e) {
+                // fallback below
+            }
+        }
+        if (empty($avatar_html)) {
+            $avatar_url = get_avatar_url($user_id, ['size' => $size]);
+            if ($avatar_url) {
+                $avatar_html = '<img src="' . esc_url($avatar_url) . '" class="avatar" width="' . $size . '" height="' . $size . '" />';
             }
         }
     }
 
-    return [
+    $result = [
         'html' => $avatar_html,
         'initials' => $initials,
         'class' => $avatar_class
     ];
+    $cache[$cache_key] = $result;
+    return $result;
 }
 
 // ============================================================================
@@ -232,7 +243,7 @@ function tbc_mc_render_conversation_item($conversation) {
 
     $html .= "<input type='checkbox' class='tbc-mc-select' />";
 
-    // Avatar with BuddyBoss image or initials fallback
+    // Avatar with Fluent Community image or initials fallback
     $html .= "<div class='tbc-mc-avatar {$avatar_class}'>";
     if (!empty($avatar_html)) {
         $html .= $avatar_html;
@@ -365,8 +376,15 @@ function tbc_mc_render_thread_panel($phone, $messages) {
         $last_name = get_user_meta($sender_id, 'last_name', true);
         $sender_name = trim("$first_name $last_name") ?: 'Unknown';
 
-        if (function_exists('bp_core_get_user_domain')) {
-            $profile_url = bp_core_get_user_domain($sender_id);
+        if (class_exists('FluentCommunity\App\Models\XProfile')) {
+            try {
+                $xp = \FluentCommunity\App\Models\XProfile::find($sender_id);
+                if ($xp) {
+                    $profile_url = $xp->permalink;
+                }
+            } catch (\Exception $e) {
+                // keep default '#'
+            }
         }
     }
 

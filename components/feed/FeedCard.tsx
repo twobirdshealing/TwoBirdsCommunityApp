@@ -7,7 +7,7 @@
 // - Sticky badge for pinned posts
 // =============================================================================
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -24,6 +24,8 @@ import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
+import { VideoPlayer } from '@/components/media/VideoPlayer';
+import { PlayButtonOverlay } from '@/components/media/PlayButtonOverlay';
 import { MediaViewer } from '@/components/media/MediaViewer';
 import { ReactionPicker } from './ReactionPicker';
 import { ReactionBreakdownModal } from './ReactionBreakdownModal';
@@ -50,10 +52,11 @@ import { SurveyCard } from '@/components/feed/SurveyCard';
 // -----------------------------------------------------------------------------
 
 interface MediaInfo {
-  type: 'image' | 'images' | 'youtube' | 'none';
+  type: 'image' | 'images' | 'youtube' | 'video' | 'none';
   imageUrl?: string;
   imageUrls?: string[];
   youtubeId?: string;
+  videoUrl?: string;
 }
 
 function detectMedia(feed: Feed): MediaInfo {
@@ -61,8 +64,14 @@ function detectMedia(feed: Feed): MediaInfo {
   const messageRendered = feed.message_rendered || '';
   const meta = feed.meta || {};
 
-  // 1. Check for multiple images in meta.media_items
+  // 1. Check for multiple images in meta.media_items (also detect video items)
   if (meta.media_items && Array.isArray(meta.media_items) && meta.media_items.length > 0) {
+    // Check for video items first
+    const videoItem = meta.media_items.find((item: any) => item.type === 'video' && item.url);
+    if (videoItem) {
+      return { type: 'video', videoUrl: videoItem.url };
+    }
+
     const imageUrls = meta.media_items
       .filter((item: any) => item.type === 'image' && item.url)
       .map((item: any) => item.url);
@@ -82,6 +91,11 @@ function detectMedia(feed: Feed): MediaInfo {
     if (videoId) {
       return { type: 'youtube', youtubeId: videoId };
     }
+  }
+
+  // 2b. Check for direct video in meta.media_preview (FluentPlayer uploads, etc.)
+  if (meta.media_preview?.content_type === 'video' && meta.media_preview.url) {
+    return { type: 'video', videoUrl: meta.media_preview.url };
   }
 
   // 3. Check for single image in meta.media_preview (skip if youtube provider)
@@ -171,7 +185,7 @@ export const FeedCard = React.memo(function FeedCard({
   
   // Content processing
   const rawHtml = feed.message_rendered || feed.message || '';
-  const plainTextLength = stripHtmlTags(rawHtml).length;
+  const plainTextLength = useMemo(() => stripHtmlTags(rawHtml).length, [rawHtml]);
   const isLongContent = variant === 'compact' && plainTextLength > 300;
   const [expanded, setExpanded] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
@@ -181,9 +195,10 @@ export const FeedCard = React.memo(function FeedCard({
   const contentWidth = windowWidth - spacing.md * 2 - spacing.lg * 2;
   
   // Media detection
-  const media = detectMedia(feed);
+  const media = useMemo(() => detectMedia(feed), [feed]);
   const hasImage = media.type === 'image' || media.type === 'images';
   const hasYouTube = media.type === 'youtube';
+  const hasVideo = media.type === 'video';
   
   // Stats
   const reactionsCount = feed.reaction_total
@@ -479,13 +494,8 @@ export const FeedCard = React.memo(function FeedCard({
                 style={styles.playButton}
                 onPress={() => setIsVideoPlaying(true)}
               >
-                <View style={styles.playButtonInner}>
-                  <Ionicons name="play" size={20} color="#fff" />
-                </View>
+                <PlayButtonOverlay variant="youtube" />
               </AnimatedPressable>
-              <View style={styles.youtubeLabel}>
-                <Ionicons name="logo-youtube" size={12} color="#fff" />
-              </View>
             </>
           ) : (
             // Show in-place player
@@ -504,6 +514,30 @@ export const FeedCard = React.memo(function FeedCard({
         </View>
       )}
       
+      {/* ===== Direct Video (FluentPlayer uploads, etc.) ===== */}
+      {hasVideo && media.videoUrl && (
+        <View style={styles.mediaContainer}>
+          {!isVideoPlaying ? (
+            // Show thumbnail with play button
+            <>
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }]} />
+              <AnimatedPressable
+                style={styles.playButton}
+                onPress={() => setIsVideoPlaying(true)}
+              >
+                <PlayButtonOverlay variant="video" />
+              </AnimatedPressable>
+            </>
+          ) : (
+            // Mount player only when user taps play
+            <VideoPlayer
+              url={media.videoUrl}
+              onEnd={() => setIsVideoPlaying(false)}
+            />
+          )}
+        </View>
+      )}
+
       {/* ===== Survey/Poll ===== */}
       {feed.content_type === 'survey' && feed.meta?.survey_config && (
         <SurveyCard config={feed.meta.survey_config} feedId={feed.id} />
@@ -748,13 +782,10 @@ const styles = StyleSheet.create({
   
   // Media Grid
   mediaContainer: {
-    marginHorizontal: -spacing.lg,
     marginBottom: spacing.md,
     height: 200,
     overflow: 'hidden',
     borderRadius: sizing.borderRadius.md,
-    marginLeft: 0,
-    marginRight: 0,
   },
 
   mediaImage: {
@@ -804,25 +835,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-
-  playButtonInner: {
-    width: 48,
-    height: 34,
-    borderRadius: sizing.borderRadius.sm,
-    backgroundColor: 'rgba(255, 0, 0, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  youtubeLabel: {
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: sizing.borderRadius.sm,
   },
 
   playIcon: {

@@ -700,6 +700,7 @@ export default function RegisterScreen() {
                 username={currentUser?.username || formData.username || ''}
                 displayName={currentUser?.displayName || formData.full_name || ''}
                 onComplete={() => router.replace('/(tabs)')}
+                avatarRequired
               />
             )}
           </View>

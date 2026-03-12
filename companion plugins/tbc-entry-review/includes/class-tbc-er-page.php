@@ -53,6 +53,14 @@ class TBC_ER_Page {
         $filter_screening = sanitize_text_field($_GET['screening'] ?? '');
         $filter_spirit = sanitize_text_field($_GET['spirit'] ?? '');
         $paged = max(1, absint($_GET['paged'] ?? 1));
+        $sort_by = sanitize_text_field($_GET['sort'] ?? 'updated');
+        $sort_order = sanitize_text_field($_GET['order'] ?? 'desc');
+        if (!in_array($sort_by, ['submitted', 'updated'], true)) {
+            $sort_by = 'updated';
+        }
+        if (!in_array($sort_order, ['asc', 'desc'], true)) {
+            $sort_order = 'desc';
+        }
 
         $filters = [
             'search' => $search,
@@ -64,7 +72,7 @@ class TBC_ER_Page {
         ];
 
         $form_steps = $this->get_form_steps();
-        $all_entries = $this->get_entries_for_review($form_steps, $filter, $filters);
+        $all_entries = $this->get_entries_for_review($form_steps, $filter, $filters, $sort_by, $sort_order);
 
         // Pagination
         $total = count($all_entries);
@@ -83,6 +91,8 @@ class TBC_ER_Page {
             'approval' => $filter_approval,
             'screening' => $filter_screening,
             'spirit' => $filter_spirit,
+            'sort' => $sort_by !== 'updated' ? $sort_by : '',
+            'order' => $sort_order !== 'desc' ? $sort_order : '',
         ]);
         $clear_url = admin_url('admin.php?' . http_build_query(['page' => 'tbc-entry-review', 'filter' => $filter]));
         $has_filters = $search || $filter_meds || $filter_blocked || $filter_approval || $filter_screening || $filter_spirit;
@@ -176,12 +186,37 @@ class TBC_ER_Page {
 
             <?php $this->render_pagination($total, $paged, $total_pages, $base_args); ?>
 
+            <?php
+            // Build sortable column URLs
+            $sort_base = array_filter([
+                'page' => 'tbc-entry-review',
+                'filter' => $filter,
+                'search' => $search,
+                'meds' => $filter_meds,
+                'blocked' => $filter_blocked,
+                'approval' => $filter_approval,
+                'screening' => $filter_screening,
+                'spirit' => $filter_spirit,
+            ]);
+            $submitted_order = ($sort_by === 'submitted' && $sort_order === 'desc') ? 'asc' : 'desc';
+            $updated_order = ($sort_by === 'updated' && $sort_order === 'desc') ? 'asc' : 'desc';
+            $submitted_url = admin_url('admin.php?' . http_build_query(array_merge($sort_base, ['sort' => 'submitted', 'order' => $submitted_order])));
+            $updated_url = admin_url('admin.php?' . http_build_query(array_merge($sort_base, ['sort' => 'updated', 'order' => $updated_order])));
+            $arrow_submitted = $sort_by === 'submitted' ? ($sort_order === 'asc' ? ' &#9650;' : ' &#9660;') : '';
+            $arrow_updated = $sort_by === 'updated' ? ($sort_order === 'asc' ? ' &#9650;' : ' &#9660;') : '';
+            ?>
+
             <table class="wp-list-table widefat striped tbc-er-table">
                 <thead>
                     <tr>
                         <th><?php esc_html_e('User', 'tbc-entry-review'); ?></th>
                         <th><?php esc_html_e('Form', 'tbc-entry-review'); ?></th>
-                        <th><?php esc_html_e('Submitted', 'tbc-entry-review'); ?></th>
+                        <th class="tbc-er-sortable <?php echo $sort_by === 'submitted' ? 'tbc-er-sorted' : ''; ?>">
+                            <a href="<?php echo esc_url($submitted_url); ?>"><?php esc_html_e('Submitted', 'tbc-entry-review'); ?><?php echo $arrow_submitted; ?></a>
+                        </th>
+                        <th class="tbc-er-sortable <?php echo $sort_by === 'updated' ? 'tbc-er-sorted' : ''; ?>">
+                            <a href="<?php echo esc_url($updated_url); ?>"><?php esc_html_e('Last Updated', 'tbc-entry-review'); ?><?php echo $arrow_updated; ?></a>
+                        </th>
                         <th><?php esc_html_e('Medications', 'tbc-entry-review'); ?></th>
                         <th><?php esc_html_e('Blocked', 'tbc-entry-review'); ?></th>
                         <th><?php esc_html_e('Spirit Pharmacist', 'tbc-entry-review'); ?></th>
@@ -194,7 +229,7 @@ class TBC_ER_Page {
                 <tbody>
                     <?php if (empty($entries)) : ?>
                         <tr>
-                            <td colspan="10">
+                            <td colspan="11">
                                 <p style="text-align:center; padding: 20px;">
                                     <?php esc_html_e('No entries found for this filter.', 'tbc-entry-review'); ?>
                                 </p>
@@ -300,7 +335,7 @@ class TBC_ER_Page {
         return $counts;
     }
 
-    private function get_entries_for_review(array $form_steps, string $filter, array $filters = []): array {
+    private function get_entries_for_review(array $form_steps, string $filter, array $filters = [], string $sort_by = 'updated', string $sort_order = 'desc'): array {
         $all_entries = [];
         $search = $filters['search'] ?? '';
         $filter_meds = $filters['meds'] ?? '';
@@ -426,6 +461,7 @@ class TBC_ER_Page {
                     'consult_notes' => $consult_notes_enabled && isset($entry[$consult_notes_field_id]) ? stripslashes($entry[$consult_notes_field_id]) : '',
                     'consult_notes_field_id' => $consult_notes_field_id,
                     'submitted' => $entry['date_created'],
+                    'updated' => $entry['date_updated'] ?: $entry['date_created'],
                     'is_blocked' => $is_blocked,
                     'medications' => $medications,
                 ];
@@ -433,10 +469,22 @@ class TBC_ER_Page {
         }
 
         // Sort upcoming calls by date ascending (overdue first, then soonest)
+        // All other tabs: sort by chosen column and direction
         if ($filter === 'upcoming_calls') {
-            usort($all_entries, function ($a, $b) {
-                return strtotime($a['phone_screening_date']) - strtotime($b['phone_screening_date']);
-            });
+            // Pre-compute timestamps to avoid repeated strtotime in comparisons
+            foreach ($all_entries as &$e) {
+                $e['_sort_ts'] = strtotime($e['phone_screening_date']);
+            }
+            unset($e);
+            usort($all_entries, fn($a, $b) => $a['_sort_ts'] - $b['_sort_ts']);
+        } else {
+            $key = $sort_by === 'submitted' ? 'submitted' : 'updated';
+            $desc = $sort_order === 'desc';
+            foreach ($all_entries as &$e) {
+                $e['_sort_ts'] = strtotime($e[$key]);
+            }
+            unset($e);
+            usort($all_entries, fn($a, $b) => $desc ? $b['_sort_ts'] - $a['_sort_ts'] : $a['_sort_ts'] - $b['_sort_ts']);
         }
 
         return $all_entries;
@@ -478,6 +526,7 @@ class TBC_ER_Page {
             </td>
             <td><?php echo esc_html($data['form_title']); ?></td>
             <td><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($data['submitted']))); ?></td>
+            <td><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($data['updated']))); ?></td>
             <td>
                 <?php
                 $meds = $data['medications'];

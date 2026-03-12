@@ -70,8 +70,8 @@ function tbc_mc_handle_incoming_sms(WP_REST_Request $request) {
     if ($inserted) {
         $sms_id = $wpdb->insert_id;
         
-        if (class_exists('BP_Message_Notification')) {
-            BP_Message_Notification::instance()->sendMessageNotification($sms_id, [1, 168]);
+        if (class_exists('TBC_MC_Notification')) {
+            TBC_MC_Notification::instance()->sendMessageNotification($sms_id, [1, 168]);
         }
         
         return new WP_REST_Response(['success' => true, 'id' => $sms_id], 200);
@@ -105,8 +105,8 @@ function tbc_mc_store_transcription(WP_REST_Request $request) {
     if ($inserted) {
         $voicemail_id = $wpdb->insert_id;
         
-        if (class_exists('BP_Message_Notification')) {
-            BP_Message_Notification::instance()->sendMessageNotification($voicemail_id, [1, 168]);
+        if (class_exists('TBC_MC_Notification')) {
+            TBC_MC_Notification::instance()->sendMessageNotification($voicemail_id, [1, 168]);
         }
         
         return new WP_REST_Response(['success' => true, 'id' => $voicemail_id], 200);
@@ -119,18 +119,42 @@ function tbc_mc_store_transcription(WP_REST_Request $request) {
 // Handle NOTXT opt-out keyword
 function tbc_mc_handle_optout($phone_number) {
     $user_id = tbc_mc_get_user_by_phone($phone_number);
-    
+
     if (!$user_id) {
         return false;
     }
 
-    $user = new WP_User($user_id);
-    $user->add_role('sms_out');
-    $user->remove_role('sms_in');
+    // Update the profile meta field and sync role via tbc-fluent-profiles
+    if (class_exists('TBCFluentProfiles\\Helpers') && class_exists('TBCFluentProfiles\\Fields') && class_exists('TBCFluentProfiles\\SmsRoles')) {
+        $field_key = \TBCFluentProfiles\Helpers::get_option('sms_optin_field', '');
+        if ($field_key) {
+            $optin_value = \TBCFluentProfiles\Helpers::get_option('sms_optin_value', 'Yes');
+            $fields_obj  = new \TBCFluentProfiles\Fields();
+            $field       = $fields_obj->get_field($field_key);
+            $options     = $field ? \TBCFluentProfiles\Fields::get_field_options($field) : [];
 
-    if (function_exists('xprofile_set_field_data')) {
-        xprofile_set_field_data(66, $user_id, 'No, TXT');
+            // Find the first option that is NOT the opt-in value
+            $optout_value = '';
+            foreach ($options as $opt) {
+                if (strcasecmp(trim($opt), trim($optin_value)) !== 0) {
+                    $optout_value = $opt;
+                    break;
+                }
+            }
+
+            if ($optout_value) {
+                update_user_meta($user_id, TBC_FP_META_PREFIX . $field_key, $optout_value);
+            }
+        }
+
+        // Let SmsRoles handle role assignment from meta (single source of truth)
+        (new \TBCFluentProfiles\SmsRoles())->sync_sms_role($user_id, 'sms_optout');
+    } else {
+        // Fallback: no tbc-fluent-profiles, just swap roles directly
+        $user = new WP_User($user_id);
+        $user->add_role('sms_out');
+        $user->remove_role('sms_in');
     }
-    
+
     return true;
 }

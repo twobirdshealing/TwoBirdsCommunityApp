@@ -34,6 +34,23 @@
     vertical-align: middle;
 }
 
+/* Sortable Column Headers */
+.tbc-er-sortable a {
+    color: #2271b1;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.tbc-er-sortable a:hover {
+    color: #135e96;
+}
+
+.tbc-er-sorted a {
+    font-weight: 600;
+}
+
 /* Blocked Toggle */
 .tbc-er-block-toggle[data-blocked="0"] {
     background: rgba(40, 167, 69, 0.1);

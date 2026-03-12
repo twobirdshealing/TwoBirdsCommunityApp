@@ -7,9 +7,8 @@
  *   GET /youtube/playlists            — All channel playlists
  *   GET /youtube/playlists/{id}/videos — Videos in a specific playlist
  *
- * Requires a YouTube Data API v3 key defined as:
- *   define('TBC_YOUTUBE_API_KEY', 'your-key');  (in wp-config.php)
- *   — or — wp_options: tbc_ca_youtube_api_key
+ * Requires a YouTube Data API v3 key configured via:
+ *   TBC Community App Settings → General → YouTube API Key
  *
  * Caches results via WordPress transients (6 hours).
  */
@@ -263,12 +262,9 @@ class TBC_CA_YouTube_API {
     // =========================================================================
 
     /**
-     * Get YouTube Data API v3 key from constant or option
+     * Get YouTube Data API v3 key from plugin settings
      */
     private function get_api_key() {
-        if (defined('TBC_YOUTUBE_API_KEY') && TBC_YOUTUBE_API_KEY) {
-            return TBC_YOUTUBE_API_KEY;
-        }
         return get_option('tbc_ca_youtube_api_key', '');
     }
 

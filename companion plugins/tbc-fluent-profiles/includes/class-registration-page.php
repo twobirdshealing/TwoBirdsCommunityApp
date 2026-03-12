@@ -118,7 +118,8 @@ class RegistrationPage {
             $xprofile = $this->get_cached_xprofile($user->ID);
             if ($xprofile) {
                 $existing['bio']    = $xprofile->short_description ?? '';
-                $existing['avatar'] = $xprofile->avatar ?? '';
+                $raw_avatar = $xprofile->avatar ?? '';
+                $existing['avatar'] = self::is_placeholder_avatar($raw_avatar) ? '' : $raw_avatar;
 
                 // cover_photo, social_links, website are in the serialized `meta` column
                 $meta = $xprofile->meta ?? [];
@@ -163,6 +164,7 @@ class RegistrationPage {
             'siteLogoUrl'     => $this->get_site_logo_url(),
             'existing'        => $existing,
             'socialProviders' => !empty($social_providers) ? $social_providers : null,
+            'requireAvatar'   => (bool) Helpers::get_option('profile_completion_require_avatar', true),
         ];
 
         $output = '';
@@ -333,11 +335,28 @@ class RegistrationPage {
             $missing[] = 'bio';
         }
 
-        if (Helpers::get_option('profile_completion_require_avatar', true) && empty($avatar)) {
+        if (Helpers::get_option('profile_completion_require_avatar', true) && self::is_placeholder_avatar($avatar)) {
             $missing[] = 'avatar';
         }
 
         return $missing;
+    }
+
+    /**
+     * Check if an avatar URL is empty or Fluent Community's default placeholder.
+     * FC stores a placeholder image URL even when the user has never uploaded an avatar.
+     */
+    public static function is_placeholder_avatar(string $avatar): bool {
+        if (empty($avatar)) {
+            return true;
+        }
+
+        // FC default placeholder: .../fluent-community/assets/images/placeholder.png
+        if (str_contains($avatar, 'fluent-community/assets/images/placeholder')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

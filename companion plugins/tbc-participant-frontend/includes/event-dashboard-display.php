@@ -25,7 +25,7 @@ function tbc_pf_display_event_dashboard($product_id, $product_name, $event_date 
     $current_group_id = tbc_pf_tm_get_common_group_id($order_ids, $product_id, $event_date);
     $current_facilitators = (array)(TBC_PF_Event_Team_Members::get_instance()->get_common_facilitators($order_ids, $product_id, $event_date) ?? []);
     
-    $groups = tbc_pf_tm_is_groups_active() ? tbc_pf_tm_get_available_groups() : [];
+    $groups = tbc_pf_is_groups_active() ? tbc_pf_get_available_groups() : [];
     
     $event_end_date = $event_date;
 
@@ -92,10 +92,10 @@ function tbc_pf_display_event_dashboard($product_id, $product_name, $event_date 
     } else {
         $group_name = $groups[$current_group_id] ?? 'Group ID: ' . $current_group_id;
         
-        if (function_exists('groups_get_group') && function_exists('bp_get_group_permalink')) {
-            $group_object = groups_get_group($current_group_id);
-            if ($group_object) {
-                $group_url = bp_get_group_permalink($group_object);
+        if (tbc_pf_is_fluent_active() && class_exists('FluentCommunity\App\Models\BaseSpace')) {
+            $space = \FluentCommunity\App\Models\BaseSpace::withoutGlobalScopes()->find($current_group_id);
+            if ($space) {
+                $group_url = $space->getPermalink();
                 $group_display = '<a href="' . esc_url($group_url) . '" target="_blank">' . esc_html($group_name) . '</a>';
             } else {
                 $group_display = esc_html($group_name);

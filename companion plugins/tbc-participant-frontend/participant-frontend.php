@@ -2,7 +2,7 @@
 /**
  * Plugin Name: TBC - Participant Frontend
  * Description: Display WooCommerce event products and attendee management.
- * Version: 3.0.75
+ * Version: 4.2.0
  * Author: Two Birds Church
  * 
  * @package TBC_Participant_Frontend
@@ -12,7 +12,20 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('TBC_PF_VERSION', '3.0.75');
+define('TBC_PF_VERSION', '4.2.0');
+
+// Fluent Community course IDs (configurable via wp_options, with known defaults)
+define('TBC_PF_COURSE_SAPO_PRE', intval(get_option('tbc_pf_course_sapo_pre', 116)));
+define('TBC_PF_COURSE_CEREMONY_PRE', intval(get_option('tbc_pf_course_ceremony_pre', 114)));
+define('TBC_PF_COURSE_CEREMONY_POST', intval(get_option('tbc_pf_course_ceremony_post', 115)));
+define('TBC_PF_CEREMONY_SPACE_PARENT', intval(get_option('tbc_pf_ceremony_space_parent', 112)));
+
+/**
+ * Check if Fluent Community is active
+ */
+function tbc_pf_is_fluent_active() {
+    return defined('FLUENT_COMMUNITY_PLUGIN_VERSION');
+}
 
 class TBC_PF_Plugin {
 
@@ -33,7 +46,13 @@ class TBC_PF_Plugin {
         add_action('wp', [$this, 'check_for_shortcode']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_select2']);
-        add_action('bp_loaded', [$this, 'load_buddyboss_notification']);
+
+        // Load notification class when Fluent Community is active
+        add_action('init', function() {
+            if (tbc_pf_is_fluent_active()) {
+                require_once __DIR__ . '/includes/event-notes-notification.php';
+            }
+        });
     }
 
     private function include_files() {
@@ -63,35 +82,11 @@ class TBC_PF_Plugin {
 
     public function init() {
         new TBC_PF_Event_List_Display();
-        add_action('template_redirect', [$this, 'handle_template_redirect']);
-    }
-
-    public function handle_template_redirect() {
-        if (!is_page('participant-list')) {
-            return;
-        }
-
-        $product_slug = isset($_GET['product_slug']) ? sanitize_text_field($_GET['product_slug']) : '';
-        $event_date = isset($_GET['event_date']) ? sanitize_text_field($_GET['event_date']) : '';
-
-        if (!$product_slug) {
-            return;
-        }
-
-        get_header();
-        tbc_pf_display_participant_details_page($product_slug, $event_date);
-        get_footer();
-        exit;
     }
 
     public function check_for_shortcode() {
         global $post;
-        
-        if (is_page('participant-list') && isset($_GET['product_slug'])) {
-            $this->shortcode_present = true;
-            return;
-        }
-        
+
         if (is_a($post, 'WP_Post') && (
             has_shortcode($post->post_content, 'tbc_pf_participant_list') ||
             is_page('participant-list')
@@ -122,7 +117,21 @@ class TBC_PF_Plugin {
         foreach ($styles as $handle => $path) {
             wp_enqueue_style($handle, $plugin_url . $path, [], TBC_PF_VERSION);
         }
+
+        // Inject Fluent Community CSS variables so --fcom-* tokens resolve in dark mode
+        if (tbc_pf_is_fluent_active() && class_exists('FluentCommunity\\App\\Functions\\Utility')) {
+            $fcom_css = \FluentCommunity\App\Functions\Utility::getColorCssVariables();
+            if ($fcom_css) {
+                wp_add_inline_style('tbc-pf-table', $fcom_css);
+            }
+        }
         
+        // EasyMDE markdown editor (CDN) — only for admins who can access post settings
+        if (current_user_can('manage_options')) {
+            wp_enqueue_style('easymde', 'https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.css', [], '2.18.0');
+            wp_enqueue_script('easymde', 'https://cdn.jsdelivr.net/npm/easymde@2.18.0/dist/easymde.min.js', [], '2.18.0', true);
+        }
+
         $scripts = [
             'tbc-pf-event-list' => 'js/event-list.js',
             'tbc-pf-participant-details' => 'js/participant-details.js',
@@ -133,7 +142,11 @@ class TBC_PF_Plugin {
         ];
 
         foreach ($scripts as $handle => $path) {
-            wp_enqueue_script($handle, $plugin_url . $path, ['jquery'], TBC_PF_VERSION, true);
+            $deps = ['jquery'];
+            if ($handle === 'tbc-pf-post-settings') {
+                $deps[] = 'easymde';
+            }
+            wp_enqueue_script($handle, $plugin_url . $path, $deps, TBC_PF_VERSION, true);
             wp_localize_script($handle, 'tbcPFAjax', [
                 'ajaxurl' => admin_url('admin-ajax.php')
             ]);
@@ -173,9 +186,6 @@ class TBC_PF_Plugin {
         wp_enqueue_style('select2');
     }
 
-    public function load_buddyboss_notification() {
-        require __DIR__ . '/includes/buddyboss-event-notes-notification.php';
-    }
 }
 
 function tbc_pf_init() {

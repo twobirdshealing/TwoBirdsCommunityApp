@@ -260,6 +260,27 @@ class TBC_CA_Admin_Settings {
                     </table>
                 </div>
 
+                <!-- YouTube API -->
+                <div class="tbc-ca-section">
+                    <h2><?php _e('YouTube Integration', 'tbc-ca'); ?></h2>
+                    <p class="description"><?php _e('YouTube Data API v3 key used to fetch channel videos and playlists for the app.', 'tbc-ca'); ?></p>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><?php _e('YouTube API Key', 'tbc-ca'); ?></th>
+                            <td>
+                                <input type="password"
+                                       name="tbc_ca_youtube_api_key"
+                                       autocomplete="off"
+                                       value="<?php echo esc_attr(get_option('tbc_ca_youtube_api_key', '')); ?>"
+                                       class="large-text"
+                                       placeholder="<?php esc_attr_e('AIzaSy...', 'tbc-ca'); ?>" />
+                                <p class="description"><?php _e('Get a key from the <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a> with YouTube Data API v3 enabled.', 'tbc-ca'); ?></p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
                 <!-- Deep Linking -->
                 <div class="tbc-ca-section">
                     <h2><?php _e('Deep Linking', 'tbc-ca'); ?></h2>
@@ -468,6 +489,11 @@ class TBC_CA_Admin_Settings {
 
         $settings = $this->sanitize_settings(wp_unslash($_POST['tbc_ca_settings']));
         TBC_CA_Core::update_settings($settings);
+
+        // YouTube API key (stored as separate option)
+        if (isset($_POST['tbc_ca_youtube_api_key'])) {
+            update_option('tbc_ca_youtube_api_key', sanitize_text_field(wp_unslash($_POST['tbc_ca_youtube_api_key'])));
+        }
 
         add_settings_error(
             'tbc_ca_settings',

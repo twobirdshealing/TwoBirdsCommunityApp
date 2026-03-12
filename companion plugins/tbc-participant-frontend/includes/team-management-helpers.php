@@ -13,40 +13,19 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Check if BuddyBoss groups is available
+ * Check if Fluent Community Spaces is available
+ * Delegates to centralized check in add-group.php
  */
 function tbc_pf_tm_is_groups_active() {
-    return function_exists('groups_get_groups') 
-        && function_exists('bp_is_active') 
-        && bp_is_active('groups');
+    return tbc_pf_is_groups_active();
 }
 
 /**
- * Get all available BuddyBoss groups
+ * Get all available Fluent Community spaces
+ * Delegates to centralized function in add-group.php
  */
 function tbc_pf_tm_get_available_groups() {
-    if (!tbc_pf_tm_is_groups_active()) {
-        return [];
-    }
-
-    $groups = groups_get_groups([
-        'per_page' => -1,
-        'orderby' => 'name',
-        'order' => 'ASC',
-        'show_hidden' => true,
-        'update_meta_cache' => false,
-        'fields' => 'all'
-    ]);
-
-    $options = [];
-    if (!empty($groups['groups'])) {
-        foreach ($groups['groups'] as $group) {
-            $suffix = $group->status === 'hidden' ? ' (Hidden)' : '';
-            $options[$group->id] = $group->name . $suffix;
-        }
-    }
-    
-    return $options;
+    return tbc_pf_get_available_groups();
 }
 
 /**

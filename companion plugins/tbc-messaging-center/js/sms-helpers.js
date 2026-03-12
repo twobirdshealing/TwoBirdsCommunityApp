@@ -51,26 +51,22 @@ window.showToast = function(type, message) {
 };
 
 /**
- * Show feedback message to user (inline BuddyBoss style)
+ * Show feedback message to user (inline style)
  * Used across all SMS forms for consistent messaging
  * NOTE: For toast overlays, use showToast() or showFeedback() instead
  */
 window.smsFeedback = function(selector, type, message) {
-    const feedbackHtml = '<div class="bp-feedback ' + type + '">' +
-        '<span class="bp-icon" aria-hidden="true"></span>' +
+    const feedbackHtml = '<div class="tbc-mc-feedback ' + type + '">' +
         '<p>' + jQuery('<div>').text(message).html() + '</p>' +
-        '<span class="bp-feedback-close">&times;</span>' +
+        '<span class="tbc-mc-feedback-close">&times;</span>' +
         '</div>';
-    
+
     jQuery(selector).append(feedbackHtml);
-    
-    // Auto-scroll disabled to avoid disrupting workflow
-    //jQuery(selector)[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
 };
 
 // Close button for feedback messages
-jQuery(document).on('click', '.bp-feedback-close', function() {
-    jQuery(this).closest('.bp-feedback').fadeOut(300, function() {
+jQuery(document).on('click', '.tbc-mc-feedback-close', function() {
+    jQuery(this).closest('.tbc-mc-feedback').fadeOut(300, function() {
         jQuery(this).remove();
     });
 });

@@ -250,6 +250,49 @@ uasort($fields, function ($a, $b) {
             </tr>
         </table>
 
+        <h3><?php esc_html_e('SMS Role Management', 'tbc-fluent-profiles'); ?></h3>
+        <p class="description"><?php esc_html_e('Automatically assign sms_in / sms_out WordPress roles based on a profile field. Used by the Messaging Center to control SMS eligibility.', 'tbc-fluent-profiles'); ?></p>
+
+        <table class="form-table">
+            <?php
+            $sms_field_setting = (string) TBCFluentProfiles\Helpers::get_option('sms_optin_field', '');
+            $sms_optin_value   = (string) TBCFluentProfiles\Helpers::get_option('sms_optin_value', 'Yes');
+            $all_fields        = (new TBCFluentProfiles\Fields())->get_fields();
+            $option_fields     = [];
+            foreach ($all_fields as $fkey => $fdef) {
+                $ftype = $fdef['type'] ?? '';
+                if (in_array($ftype, ['radio', 'select', 'checkbox'], true)) {
+                    $option_fields[$fkey] = $fdef;
+                }
+            }
+            ?>
+            <tr>
+                <th scope="row"><label for="tbc_fp_sms_optin_field"><?php esc_html_e('SMS Opt-In Field', 'tbc-fluent-profiles'); ?></label></th>
+                <td>
+                    <?php if (empty($option_fields)) : ?>
+                        <p class="description" style="color:#d63638;"><?php esc_html_e('No radio, select, or checkbox fields found. Create one in Profile Fields first.', 'tbc-fluent-profiles'); ?></p>
+                    <?php endif; ?>
+
+                    <select id="tbc_fp_sms_optin_field" name="tbc_fp_sms_optin_field" class="regular-text">
+                        <option value=""><?php esc_html_e('— Disabled —', 'tbc-fluent-profiles'); ?></option>
+                        <?php foreach ($option_fields as $fkey => $fdef) : ?>
+                            <option value="<?php echo esc_attr($fkey); ?>" <?php selected($sms_field_setting, $fkey); ?>>
+                                <?php echo esc_html($fdef['label'] ?? $fkey); ?> (<?php echo esc_html($fdef['type'] ?? ''); ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <p class="description"><?php esc_html_e('Which profile field controls SMS opt-in/out. Leave disabled to skip automatic role assignment.', 'tbc-fluent-profiles'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="tbc_fp_sms_optin_value"><?php esc_html_e('Opt-In Value', 'tbc-fluent-profiles'); ?></label></th>
+                <td>
+                    <input type="text" id="tbc_fp_sms_optin_value" name="tbc_fp_sms_optin_value" value="<?php echo esc_attr($sms_optin_value); ?>" class="regular-text" placeholder="Yes" />
+                    <p class="description"><?php esc_html_e('The field value that means the user is opted IN to SMS (e.g. "Yes"). Any other value = opted out.', 'tbc-fluent-profiles'); ?></p>
+                </td>
+            </tr>
+        </table>
+
         <h3><?php esc_html_e('Developer / Testing', 'tbc-fluent-profiles'); ?></h3>
         <table class="form-table">
             <tr>

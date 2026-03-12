@@ -9,10 +9,10 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
+import { PlayButtonOverlay } from '@/components/media/PlayButtonOverlay';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { youtubeApi } from '@/services/api/youtube';
 import { useCachedData } from '@/hooks/useCachedData';
@@ -63,17 +63,7 @@ export function YouTubeWidget({ refreshKey }: YouTubeWidgetProps) {
             transition={200}
           />
 
-          {/* Play button */}
-          <View style={styles.playOverlay}>
-            <View style={styles.playButton}>
-              <Ionicons name="play" size={20} color="#fff" />
-            </View>
-          </View>
-
-          {/* YouTube badge */}
-          <View style={styles.youtubeBadge}>
-            <Ionicons name="logo-youtube" size={12} color="#fff" />
-          </View>
+          <PlayButtonOverlay variant="youtube" />
 
           {/* Title + date gradient */}
           <LinearGradient
@@ -123,31 +113,6 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: '100%',
     height: '100%',
-  },
-
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  playButton: {
-    width: 48,
-    height: 34,
-    borderRadius: sizing.borderRadius.sm,
-    backgroundColor: 'rgba(255, 0, 0, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  youtubeBadge: {
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: sizing.borderRadius.sm,
   },
 
   gradient: {

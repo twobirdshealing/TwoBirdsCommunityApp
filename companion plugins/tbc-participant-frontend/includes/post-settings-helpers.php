@@ -94,7 +94,7 @@ function tbc_pf_ps_create_post_type($data) {
     $insert_data = [
         'title' => sanitize_text_field($data['title']),
         'post_title' => sanitize_text_field($data['post_title']),
-        'content' => wp_kses_post($data['content']),
+        'content' => $data['content'],
         'author_user_id' => intval($data['author_user_id']),
         'schedule_timing' => sanitize_text_field($data['schedule_timing']),
         'media_images' => !empty($data['media_images']) ? wp_json_encode($data['media_images']) : '',
@@ -116,7 +116,7 @@ function tbc_pf_ps_update_post_type($id, $data) {
     $update_data = [
         'title' => sanitize_text_field($data['title']),
         'post_title' => sanitize_text_field($data['post_title']),
-        'content' => wp_kses_post($data['content']),
+        'content' => $data['content'],
         'author_user_id' => intval($data['author_user_id']),
         'schedule_timing' => sanitize_text_field($data['schedule_timing']),
         'media_images' => !empty($data['media_images']) ? wp_json_encode($data['media_images']) : '',
@@ -182,15 +182,15 @@ function tbc_pf_ajax_create_post_type() {
     }
     
     $data = [
-        'title' => $_POST['title'],
-        'post_title' => $_POST['post_title'],
-        'content' => $_POST['content'],
+        'title' => wp_unslash($_POST['title']),
+        'post_title' => wp_unslash($_POST['post_title']),
+        'content' => wp_unslash($_POST['content']),
         'author_user_id' => isset($_POST['author_user_id']) ? intval($_POST['author_user_id']) : 1,
         'schedule_timing' => isset($_POST['schedule_timing']) ? $_POST['schedule_timing'] : 'immediate',
         'media_images' => isset($_POST['media_images']) ? json_decode(stripslashes($_POST['media_images']), true) : [],
         'media_videos' => isset($_POST['media_videos']) ? json_decode(stripslashes($_POST['media_videos']), true) : []
     ];
-    
+
     $id = tbc_pf_ps_create_post_type($data);
     
     if ($id) {
@@ -211,15 +211,15 @@ function tbc_pf_ajax_update_post_type() {
     
     $id = intval($_POST['id']);
     $data = [
-        'title' => $_POST['title'],
-        'post_title' => $_POST['post_title'],
-        'content' => $_POST['content'],
+        'title' => wp_unslash($_POST['title']),
+        'post_title' => wp_unslash($_POST['post_title']),
+        'content' => wp_unslash($_POST['content']),
         'author_user_id' => isset($_POST['author_user_id']) ? intval($_POST['author_user_id']) : 1,
         'schedule_timing' => isset($_POST['schedule_timing']) ? $_POST['schedule_timing'] : 'immediate',
         'media_images' => isset($_POST['media_images']) ? json_decode(stripslashes($_POST['media_images']), true) : [],
         'media_videos' => isset($_POST['media_videos']) ? json_decode(stripslashes($_POST['media_videos']), true) : []
     ];
-    
+
     $success = tbc_pf_ps_update_post_type($id, $data);
     
     if ($success) {

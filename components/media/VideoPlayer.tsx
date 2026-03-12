@@ -11,21 +11,14 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
-  Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEvent, useEventListener } from 'expo';
 import { Image } from 'expo-image';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PLAYER_WIDTH = SCREEN_WIDTH - 48;
-const PLAYER_HEIGHT = (PLAYER_WIDTH * 9) / 16; // 16:9 aspect ratio
 
 // -----------------------------------------------------------------------------
 // Props
@@ -44,26 +37,14 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps) {
   const { colors: themeColors } = useTheme();
-  const [showControls, setShowControls] = useState(true);
   const [showPoster, setShowPoster] = useState(!!posterUrl);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
 
   // Create player instance
   const player = useVideoPlayer(url, (p) => {
     p.loop = false;
-    p.timeUpdateEventInterval = 0.25;
   });
 
-  // Reactive state from player events
-  const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   const { status } = useEvent(player, 'statusChange', { status: player.status });
-
-  // Track time updates for progress bar
-  useEventListener(player, 'timeUpdate', ({ currentTime: ct }) => {
-    setCurrentTime(ct);
-    if (player.duration > 0) setDuration(player.duration);
-  });
 
   // Handle play-to-end
   useEventListener(player, 'playToEnd', () => {
@@ -71,40 +52,22 @@ export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps)
     player.currentTime = 0;
   });
 
-  // Derived state
+  // Notify parent when playback starts
+  useEventListener(player, 'playingChange', ({ isPlaying: playing }) => {
+    if (playing) onPlay?.();
+  });
+
   const isLoading = status === 'loading' || status === 'idle';
-  const isReady = status === 'readyToPlay';
-  const progress = duration > 0 ? currentTime / duration : 0;
-
-  // Handle play/pause toggle
-  const handlePlayPause = () => {
-    if (isPlaying) {
-      player.pause();
-    } else {
-      player.play();
-      onPlay?.();
-    }
-  };
-
-  // Format time (seconds to MM:SS)
-  const formatTime = (secs: number): string => {
-    const totalSeconds = Math.floor(secs);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
 
   return (
-    <Pressable
-      style={styles.container}
-      onPress={() => setShowControls(!showControls)}
-    >
-      {/* Video */}
+    <View style={styles.container}>
+      {/* Video with native controls */}
       <VideoView
         player={player}
         style={styles.video}
         contentFit="contain"
-        nativeControls={false}
+        nativeControls
+        allowsFullscreen
         onFirstFrameRender={() => setShowPoster(false)}
       />
 
@@ -127,38 +90,7 @@ export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps)
           <ActivityIndicator size="large" color={themeColors.textInverse} />
         </View>
       )}
-
-      {/* Play/Pause Overlay */}
-      {showControls && isReady && (
-        <Pressable
-          style={styles.controlsOverlay}
-          onPress={handlePlayPause}
-        >
-          <View style={styles.playButton}>
-            <Text style={styles.playIcon}>
-              {isPlaying ? '⏸' : '▶'}
-            </Text>
-          </View>
-        </Pressable>
-      )}
-
-      {/* Progress Bar */}
-      {isReady && (
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: themeColors.primary }]} />
-          </View>
-          <Text style={styles.timeText}>
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </Text>
-        </View>
-      )}
-
-      {/* Video Label */}
-      <View style={styles.videoLabel}>
-        <Text style={styles.videoLabelText}>Video</Text>
-      </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -168,8 +100,8 @@ export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps)
 
 const styles = StyleSheet.create({
   container: {
-    width: PLAYER_WIDTH,
-    height: PLAYER_HEIGHT,
+    width: '100%',
+    aspectRatio: 16 / 9,
     borderRadius: sizing.borderRadius.md,
     overflow: 'hidden',
     backgroundColor: '#000',
@@ -185,74 +117,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-
-  controlsOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-
-  playButton: {
-    width: 64,
-    height: 64,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: sizing.borderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  playIcon: {
-    color: '#000',
-    fontSize: typography.size.xxl,
-    marginLeft: spacing.xs, // Optical centering for play icon
-  },
-
-  progressContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: sizing.borderRadius.full,
-    marginRight: spacing.sm,
-  },
-
-  progressFill: {
-    height: '100%',
-    borderRadius: sizing.borderRadius.full,
-  },
-
-  timeText: {
-    color: '#fff',
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
-  },
-
-  videoLabel: {
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: sizing.borderRadius.sm,
-  },
-
-  videoLabelText: {
-    color: '#fff',
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
   },
 });
 
