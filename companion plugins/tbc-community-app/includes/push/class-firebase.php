@@ -192,9 +192,10 @@ class TBC_CA_Push_Firebase {
      * Each queue item: ['user_id' => int, 'type' => string, 'title' => string, 'body' => string, 'route' => string|null]
      *
      * @param array $queue Array of queued notification items
+     * @param bool  $force If true, skip user preference check (for manual sends)
      * @return array Results
      */
-    public function send_queued_notifications($queue) {
+    public function send_queued_notifications($queue, $force = false) {
         if (empty($queue)) {
             return [];
         }
@@ -217,8 +218,8 @@ class TBC_CA_Push_Firebase {
                 continue;
             }
 
-            // Check preference
-            if (!$preferences->is_enabled_for_user($user_id, $type)) {
+            // Check preference (skip for forced/manual sends)
+            if (!$force && !$preferences->is_enabled_for_user($user_id, $type)) {
                 continue;
             }
 

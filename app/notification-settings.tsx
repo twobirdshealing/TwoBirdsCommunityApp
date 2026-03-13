@@ -464,10 +464,12 @@ export default function NotificationSettingsScreen() {
                 label="Message Emails"
                 description="How often to receive email notifications for direct messages"
                 value={settings.emailPrefs.user_globals.message_email_frequency}
-                options={FREQUENCY_OPTIONS}
+                options={settings.hasAdminDefault
+                  ? [{ value: 'default', label: `Default (${settings.adminDefaultLabel})` }, ...FREQUENCY_OPTIONS]
+                  : FREQUENCY_OPTIONS
+                }
                 onChange={settings.handleFrequencyChange}
                 disabled={settings.savingIds.has('email-message_email_frequency')}
-                note={settings.defaultFreqLabel ? `Community default: ${settings.defaultFreqLabel}` : undefined}
               />
             </View>
           )}

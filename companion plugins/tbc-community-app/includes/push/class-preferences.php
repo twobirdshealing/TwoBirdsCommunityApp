@@ -86,14 +86,25 @@ class TBC_CA_Push_Preferences {
         $result = [];
 
         foreach ($enabled_types as $id => $type) {
+            // Skip types that are not user-configurable (e.g. manual_notification)
+            if (!$registry->is_user_configurable($id)) {
+                continue;
+            }
+
             $result[$id] = [
-                'id' => $id,
-                'label' => $type['label'],
-                'description' => $type['description'],
-                'category' => $type['category'],
-                'enabled' => isset($user_prefs[$id])
+                'id'                => $id,
+                'label'             => $type['label'],
+                'description'       => $type['description'],
+                'category'          => $type['category'],
+                'enabled'           => isset($user_prefs[$id])
                     ? (bool) $user_prefs[$id]
                     : $registry->get_default($id),
+                'email_key'         => $type['email_key'],
+                'group'             => $type['group'],
+                'group_label'       => $type['group_label'],
+                'group_description' => $type['group_description'],
+                'push_label'        => $type['push_label'],
+                'note'              => $type['note'],
             ];
         }
 

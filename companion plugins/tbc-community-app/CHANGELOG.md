@@ -2,6 +2,29 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.33.0
+- **User Visible column in admin**: New "User Visible" checkbox per notification type in Settings → Notifications. Controls whether the type appears in the app's user notification settings. Unchecked types still fire notifications but users can't toggle them off.
+- `new_direct_message` and `manual_notification` default to hidden (unchecked). Admin can override any type's visibility without code changes.
+- Admin settings override takes priority over code defaults for `user_configurable`.
+
+## v3.32.0
+- **Server-driven notification settings**: Push type registry now includes UI metadata (`email_key`, `group`, `group_label`, `group_description`, `push_label`, `note`) — the app renders notification settings directly from the API response instead of a hardcoded list.
+- New push types registered by plugins automatically appear in the app's notification settings screen without any app-side code changes.
+- External plugins can use grouping and email linkage by passing the new fields to `tbc_register_push_notification()`.
+
+## v3.31.1
+- Moved Push Notification Log to its own **Push Log** tab for better organization.
+- Fixed log source tracking — `source` field is now passed explicitly instead of being derived from the `force` flag, preventing external plugin force-sends from being incorrectly logged as 'manual'.
+- Used `role__in` for single-query role resolution in manual push audience targeting.
+- Fixed `$GLOBALS['wpdb']` → `global $wpdb` for consistency.
+
+## v3.31.0
+- **Push Notification Log**: New `wp_tbc_ca_push_log` table tracks all push sends (type, recipients, sent/failed counts, timestamp). Visible in Settings → Statistics tab with 30-day summary stats.
+- **Manual Push Notifications**: Admins can send one-time push notifications from Settings → Notifications tab. Supports audience targeting: all users, specific space, role(s), or individual user. Users cannot opt out of manual sends.
+- **New notification type**: `space_join_request` — notifies space moderators when someone requests to join a private space (hooks into `fluent_community/space/join_requested`).
+- **Extensibility**: Added `tbc_send_push_to_users()` global helper for external plugins to send push notifications via the async Action Scheduler queue. Added `user_configurable` field to notification type registry — types with `user_configurable: false` are hidden from user preferences.
+- **Cleanup**: Fixed `on_invitation()` to remove dead `$invitation->email` fallback (FC Invitation model uses `message` field for email). Added daily cron for auto-pruning push logs older than 90 days.
+
 ## v3.30.0
 - Added YouTube API Key field to Settings → General tab — manage the key from the admin UI instead of wp-config.php
 - Removed `TBC_YOUTUBE_API_KEY` constant support — key is now managed entirely from settings

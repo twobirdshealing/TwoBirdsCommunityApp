@@ -71,7 +71,8 @@ class TBC_CA_Admin {
                     $(".tbc-ca-tab-panel").removeClass("tbc-ca-tab-panel--active");
                     $(".tbc-ca-tab-panel[data-panel=\"" + tab + "\"]").addClass("tbc-ca-tab-panel--active");
                     $("#tbc-ca-active-tab").val(tab);
-                    $(".tbc-ca-admin .submit").toggle(tab !== "statistics");
+                    var formTabs = ["general", "visibility", "notifications"];
+                    $(".tbc-ca-admin .submit").toggle(formTabs.indexOf(tab) !== -1);
                 }
                 $(".tbc-ca-tabs .nav-tab").on("click", function(e) {
                     e.preventDefault();

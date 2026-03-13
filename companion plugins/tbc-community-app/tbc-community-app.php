@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Community App
  * Plugin URI: https://twobirdschurch.com
  * Description: Support plugin for the Two Birds Community mobile app. Provides web sessions for WebView, app-specific styling, and push notifications.
- * Version: 3.30.0
+ * Version: 3.33.0
  * Author: Two Birds Church
  * Author URI: https://twobirdschurch.com
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('TBC_CA_VERSION', '3.30.0');
+define('TBC_CA_VERSION', '3.33.0');
 define('TBC_CA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TBC_CA_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TBC_CA_PLUGIN_FILE', __FILE__);
@@ -64,6 +64,8 @@ spl_autoload_register(function ($class) {
         'push-firebase' => 'push/class-firebase.php',
         'push-api' => 'push/class-api.php',
         'push-hooks' => 'push/class-hooks.php',
+        'push-log' => 'push/class-log.php',
+        'push-manual' => 'push/class-manual.php',
         'account-api' => 'class-account-api.php',
         'app-config' => 'class-app-config.php',
         'rest-fields' => 'class-rest-fields.php',
@@ -120,11 +122,21 @@ function tbc_ca_activate() {
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
     dbDelta($sql);
 
+    // Create push log table
+    require_once TBC_CA_PLUGIN_DIR . 'includes/push/class-log.php';
+    TBC_CA_Push_Log::create_table();
+
+    // Schedule daily cleanup cron
+    if (!wp_next_scheduled('tbc_ca_daily_cleanup')) {
+        wp_schedule_event(time(), 'daily', 'tbc_ca_daily_cleanup');
+    }
+
     update_option('tbc_ca_version', TBC_CA_VERSION);
     flush_rewrite_rules();
 }
 
 function tbc_ca_deactivate() {
+    wp_clear_scheduled_hook('tbc_ca_daily_cleanup');
     flush_rewrite_rules();
 }
 
@@ -142,11 +154,28 @@ function tbc_register_push_notification($args) {
 }
 
 /**
- * Send a push notification to a user
+ * Send a push notification to a single user (synchronous — use tbc_send_push_to_users for async)
  */
 function tbc_send_push_notification($user_id, $type, $data) {
     if (class_exists('TBC_CA_Push_Firebase')) {
         return TBC_CA_Push_Firebase::get_instance()->send($user_id, $type, $data);
     }
     return false;
+}
+
+/**
+ * Send push notifications to multiple users via async Action Scheduler queue.
+ * This is the recommended way for external plugins to send push notifications.
+ *
+ * @param array       $user_ids   Array of user IDs to notify
+ * @param string      $type       Notification type ID (must be registered via tbc_ca_register_push_types)
+ * @param string      $title      Notification title
+ * @param string      $body       Notification body text
+ * @param string|null $route      App route to navigate to on tap (optional)
+ * @param int|null    $exclude_id User ID to exclude from recipients (optional)
+ */
+function tbc_send_push_to_users($user_ids, $type, $title, $body, $route = null, $exclude_id = null) {
+    if (class_exists('TBC_CA_Push_Hooks')) {
+        TBC_CA_Push_Hooks::get_instance()->send_to_users_external($user_ids, $type, $title, $body, $route, $exclude_id);
+    }
 }

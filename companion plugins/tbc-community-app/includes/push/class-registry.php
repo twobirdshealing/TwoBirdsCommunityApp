@@ -27,6 +27,16 @@ class TBC_CA_Push_Registry {
      * Register default notification types
      */
     public function register_default_types() {
+        // Admin (not user-configurable — always fires)
+        $this->register([
+            'id' => 'manual_notification',
+            'label' => __('Manual notification', 'tbc-ca'),
+            'description' => __('Admin-sent push notifications', 'tbc-ca'),
+            'category' => 'admin',
+            'default' => true,
+            'user_configurable' => false,
+        ]);
+
         // Community (Fluent Community Base) - 10 types
         $this->register([
             'id' => 'comment_on_post',
@@ -35,6 +45,7 @@ class TBC_CA_Push_Registry {
             'category' => 'community',
             'default' => true,
             'hook' => 'fluent_community/notification/comment/notifed_to_author',
+            'email_key' => 'com_my_post_mail',
         ]);
 
         $this->register([
@@ -44,6 +55,12 @@ class TBC_CA_Push_Registry {
             'category' => 'community',
             'default' => true,
             'hook' => 'fluent_community/notification/comment/notifed_to_mentions',
+            'email_key' => 'mention_mail',
+            'group' => 'mentions',
+            'group_label' => __('Mentions', 'tbc-ca'),
+            'group_description' => __('When someone mentions you in a post or comment', 'tbc-ca'),
+            'push_label' => __('In comments', 'tbc-ca'),
+            'note' => __('Email setting also controls announcement emails', 'tbc-ca'),
         ]);
 
         $this->register([
@@ -53,6 +70,7 @@ class TBC_CA_Push_Registry {
             'category' => 'community',
             'default' => true,
             'hook' => 'fluent_community/notification/comment/notifed_to_thread_commetenter',
+            'email_key' => 'reply_my_com_mail',
         ]);
 
         $this->register([
@@ -80,6 +98,10 @@ class TBC_CA_Push_Registry {
             'category' => 'community',
             'default' => true,
             'hook' => 'fluent_community/feed/react_added',
+            'group' => 'reactions',
+            'group_label' => __('Reactions', 'tbc-ca'),
+            'group_description' => __('When someone reacts to your posts or comments', 'tbc-ca'),
+            'push_label' => __('On your posts', 'tbc-ca'),
         ]);
 
         $this->register([
@@ -89,6 +111,8 @@ class TBC_CA_Push_Registry {
             'category' => 'community',
             'default' => true,
             'hook' => 'fluent_community/comment/react_added',
+            'group' => 'reactions',
+            'push_label' => __('On your comments', 'tbc-ca'),
         ]);
 
         $this->register([
@@ -98,6 +122,8 @@ class TBC_CA_Push_Registry {
             'category' => 'community',
             'default' => true,
             'hook' => 'fluent_community/feed_mentioned',
+            'group' => 'mentions',
+            'push_label' => __('In posts', 'tbc-ca'),
         ]);
 
         $this->register([
@@ -135,6 +161,7 @@ class TBC_CA_Push_Registry {
             'category' => 'messaging',
             'default' => true,
             'hook' => 'fluent_messaging/after_add_message',
+            'user_configurable' => false,
         ]);
 
         // Pro (Fluent Community Pro) - feature-gated types
@@ -204,6 +231,16 @@ class TBC_CA_Push_Registry {
             'feature_flag' => 'course_module',
         ]);
 
+        // Space join request (private spaces)
+        $this->register([
+            'id' => 'space_join_request',
+            'label' => __('Space join request', 'tbc-ca'),
+            'description' => __('When someone requests to join a space you moderate', 'tbc-ca'),
+            'category' => 'community',
+            'default' => true,
+            'hook' => 'fluent_community/space/join_requested',
+        ]);
+
         // Allow other plugins to register types
         do_action('tbc_ca_register_push_types', $this);
     }
@@ -221,6 +258,14 @@ class TBC_CA_Push_Registry {
             'hook' => '',
             'requires_pro' => false,
             'feature_flag' => '',
+            'user_configurable' => true,
+            // UI metadata — drives the app's notification settings screen
+            'email_key'         => '',
+            'group'             => '',
+            'group_label'       => '',
+            'group_description' => '',
+            'push_label'        => '',
+            'note'              => '',
         ];
 
         $type = wp_parse_args($args, $defaults);
@@ -340,6 +385,30 @@ class TBC_CA_Push_Registry {
 
         $features = \FluentCommunity\App\Functions\Utility::getFeaturesConfig();
         return isset($features[$flag_key]) && $features[$flag_key] === 'yes';
+    }
+
+    /**
+     * Check if a notification type is user-configurable (shows in user settings)
+     *
+     * Admin settings override takes priority, then falls back to code default.
+     *
+     * @param string $type_id Notification type ID
+     * @return bool
+     */
+    public function is_user_configurable($type_id) {
+        $type = $this->get($type_id);
+        if (!$type) {
+            return false;
+        }
+
+        // Admin settings override takes priority
+        $settings = TBC_CA_Core::get_settings();
+        if (isset($settings['notification_types'][$type_id]['user_configurable'])) {
+            return (bool) $settings['notification_types'][$type_id]['user_configurable'];
+        }
+
+        // Fall back to code default
+        return $type['user_configurable'] !== false;
     }
 
     /**

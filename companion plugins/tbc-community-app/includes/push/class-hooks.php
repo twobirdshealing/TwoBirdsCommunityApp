@@ -49,6 +49,8 @@ class TBC_CA_Push_Hooks {
         // Space notifications
         // space/joined: passes ($space, $userId, $by) - 3 args
         add_action('fluent_community/space/joined', [$this, 'on_space_join'], 10, 3);
+        // space/join_requested: passes ($space, $userId, $by) - 3 args (private spaces)
+        add_action('fluent_community/space/join_requested', [$this, 'on_space_join_request'], 10, 3);
         // member/role_updated: passes ($space, $pivot) - 2 args
         add_action('fluent_community/space/member/role_updated', [$this, 'on_role_change'], 10, 2);
 
@@ -103,7 +105,7 @@ class TBC_CA_Push_Hooks {
      * @param string|null $route      App route to navigate to on tap
      * @param int|null    $exclude_id User ID to exclude (e.g. the author)
      */
-    private function send_to_users($user_ids, $type, $title, $body, $route = null, $exclude_id = null) {
+    private function send_to_users($user_ids, $type, $title, $body, $route = null, $exclude_id = null, $force = false, $source = 'hook') {
         $filtered_ids = [];
         foreach ($user_ids as $user_id) {
             if ($exclude_id && $user_id == $exclude_id) {
@@ -121,6 +123,8 @@ class TBC_CA_Push_Hooks {
             'title' => $title,
             'body'  => $body,
             'route' => $route,
+            'force'  => $force,
+            'source' => $source,
         ];
 
         // ~1500 IDs fit under AS's 8000 char JSON arg limit
@@ -132,6 +136,21 @@ class TBC_CA_Push_Hooks {
             $action_id = as_enqueue_async_action('tbc_ca_process_push_batch', [$chunk, $notification_data], 'tbc-community-app');
             error_log("[TBC Push] AS action created: id=" . var_export($action_id, true) . ", chunk=" . ($i + 1) . "/" . count($chunks) . ", items=" . count($chunk));
         }
+    }
+
+    /**
+     * Public wrapper for send_to_users() — used by external plugins via tbc_send_push_to_users().
+     *
+     * @param array       $user_ids   Array of user IDs to notify
+     * @param string      $type       Notification type ID (from registry)
+     * @param string      $title      Notification title
+     * @param string      $body       Notification body text
+     * @param string|null $route      App route to navigate to on tap
+     * @param int|null    $exclude_id User ID to exclude (e.g. the author)
+     * @param bool        $force      If true, skip user preference check (for manual sends)
+     */
+    public function send_to_users_external($user_ids, $type, $title, $body, $route = null, $exclude_id = null, $force = false, $source = 'hook') {
+        $this->send_to_users($user_ids, $type, $title, $body, $route, $exclude_id, $force, $source);
     }
 
     /**
@@ -160,10 +179,29 @@ class TBC_CA_Push_Hooks {
         $start = microtime(true);
 
         $firebase = TBC_CA_Push_Firebase::get_instance();
-        $results = $firebase->send_queued_notifications($queue);
+        $force = !empty($notification_data['force']);
+        $results = $firebase->send_queued_notifications($queue, $force);
 
         $elapsed = round((microtime(true) - $start) * 1000);
         error_log("[TBC Push Batch] Complete in {$elapsed}ms: " . json_encode($results));
+
+        // Log the batch result
+        $total_sent = 0;
+        $total_failed = 0;
+        foreach ($results as $batch_result) {
+            $total_sent += $batch_result['sent'] ?? 0;
+            $total_failed += $batch_result['errors'] ?? 0;
+        }
+        $source = $notification_data['source'] ?? 'hook';
+        TBC_CA_Push_Log::get_instance()->log(
+            $notification_data['type'],
+            $notification_data['title'] ?? '',
+            $notification_data['body'] ?? '',
+            count($user_ids),
+            $total_sent,
+            $total_failed,
+            $source
+        );
     }
 
     /**
@@ -460,6 +498,27 @@ class TBC_CA_Push_Hooks {
     }
 
     /**
+     * Space join request (private spaces)
+     * Hook passes: ($space, $userId, $by)
+     */
+    public function on_space_join_request($space, $user_id, $by = 'self') {
+        $user_name = $this->get_display_name($user_id);
+        $space_name = $space->title ?? 'a space';
+
+        // Notify space moderators
+        $moderators = $this->get_space_moderators($space->id ?? 0);
+
+        $this->send_to_users(
+            $moderators,
+            'space_join_request',
+            'Join Request',
+            "{$user_name} requested to join {$space_name}",
+            "/space/{$space->slug}",
+            $user_id
+        );
+    }
+
+    /**
      * Role changed in space
      * Hook passes: ($space, $pivot) where $pivot has user_id and role
      */
@@ -485,9 +544,10 @@ class TBC_CA_Push_Hooks {
      * Invitation received
      * FC passes 1 arg: $invitation (Invitation model)
      * Inviter ID is $invitation->user_id, invitee email is $invitation->message
+     * (FC stores email in the 'message' column — see InvitationService::createNewInvitation)
      */
     public function on_invitation($invitation) {
-        $email = $invitation->message ?? $invitation->email ?? null;
+        $email = $invitation->message ?? null;
 
         if (!$email) {
             return;

@@ -21,6 +21,13 @@ export interface PushPreference {
   description: string;
   category: string;
   enabled: boolean;
+  // Server-driven UI metadata
+  email_key?: string;
+  group?: string;
+  group_label?: string;
+  group_description?: string;
+  push_label?: string;
+  note?: string;
 }
 
 export interface PushSettingsResponse {

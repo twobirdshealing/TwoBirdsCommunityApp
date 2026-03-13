@@ -18,6 +18,7 @@ export interface EmailUserGlobals {
   mention_mail: 'yes' | 'no';
   digest_mail: 'yes' | 'no';
   message_email_frequency: 'default' | 'disabled' | 'hourly' | 'daily' | 'weekly';
+  [key: string]: string; // Allow dynamic key lookup from server-driven email_key
 }
 
 export interface EmailSpaceItem {

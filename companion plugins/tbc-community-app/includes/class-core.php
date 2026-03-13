@@ -10,6 +10,7 @@ if (!defined('ABSPATH')) {
 class TBC_CA_Core {
 
     private static $instance = null;
+    private static $settings_cache = null;
 
     public static function get_instance() {
         if (null === self::$instance) {
@@ -38,6 +39,8 @@ class TBC_CA_Core {
         require_once TBC_CA_PLUGIN_DIR . 'includes/push/class-firebase.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/push/class-api.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/push/class-hooks.php';
+        require_once TBC_CA_PLUGIN_DIR . 'includes/push/class-log.php';
+        require_once TBC_CA_PLUGIN_DIR . 'includes/push/class-manual.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-account-api.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-app-config.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-badge-definitions.php';
@@ -83,6 +86,8 @@ class TBC_CA_Core {
         TBC_CA_Push_Firebase::get_instance();
         TBC_CA_Push_API::get_instance();
         TBC_CA_Push_Hooks::get_instance();
+        TBC_CA_Push_Log::get_instance();
+        TBC_CA_Push_Manual::get_instance();
 
         // Initialize Account Management (deactivation + deletion)
         TBC_CA_Account_API::get_instance();
@@ -163,9 +168,13 @@ class TBC_CA_Core {
     }
 
     /**
-     * Get plugin settings
+     * Get plugin settings (cached per request)
      */
     public static function get_settings() {
+        if (self::$settings_cache !== null) {
+            return self::$settings_cache;
+        }
+
         $defaults = [
             'notification_types'       => [],
             'maintenance_mode'         => [
@@ -186,13 +195,15 @@ class TBC_CA_Core {
         ];
 
         $settings = get_option('tbc_ca_settings', []);
-        return wp_parse_args($settings, $defaults);
+        self::$settings_cache = wp_parse_args($settings, $defaults);
+        return self::$settings_cache;
     }
 
     /**
      * Update plugin settings
      */
     public static function update_settings($settings) {
+        self::$settings_cache = null;
         return update_option('tbc_ca_settings', $settings);
     }
 }

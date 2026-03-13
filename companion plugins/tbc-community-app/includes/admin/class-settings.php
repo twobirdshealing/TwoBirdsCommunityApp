@@ -44,6 +44,7 @@ class TBC_CA_Admin_Settings {
                 $sanitized['notification_types'][sanitize_key($type_id)] = [
                     'enabled' => !empty($type_settings['enabled']),
                     'default' => !empty($type_settings['default']),
+                    'user_configurable' => !empty($type_settings['user_configurable']),
                 ];
             }
         }
@@ -106,6 +107,9 @@ class TBC_CA_Admin_Settings {
             $this->handle_save();
         }
 
+        // Handle manual push submission
+        TBC_CA_Push_Manual::get_instance()->handle_submit();
+
         // Handle tool actions
         $this->handle_tools();
 
@@ -149,6 +153,9 @@ class TBC_CA_Admin_Settings {
                 </a>
                 <a href="#notifications" class="nav-tab<?php echo $current_tab === 'notifications' ? ' nav-tab-active' : ''; ?>" data-tab="notifications">
                     <?php _e('Notifications', 'tbc-ca'); ?>
+                </a>
+                <a href="#push-log" class="nav-tab<?php echo $current_tab === 'push-log' ? ' nav-tab-active' : ''; ?>" data-tab="push-log">
+                    <?php _e('Push Log', 'tbc-ca'); ?>
                 </a>
                 <a href="#statistics" class="nav-tab<?php echo $current_tab === 'statistics' ? ' nav-tab-active' : ''; ?>" data-tab="statistics">
                     <?php _e('Statistics', 'tbc-ca'); ?>
@@ -396,6 +403,7 @@ class TBC_CA_Admin_Settings {
                                         <th class="check-column"><?php _e('Enabled', 'tbc-ca'); ?></th>
                                         <th><?php _e('Notification Type', 'tbc-ca'); ?></th>
                                         <th><?php _e('Default', 'tbc-ca'); ?></th>
+                                        <th class="check-column"><?php _e('User Visible', 'tbc-ca'); ?></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -403,6 +411,9 @@ class TBC_CA_Admin_Settings {
                                         $type_settings = $settings['notification_types'][$type_id] ?? [];
                                         $is_enabled = isset($type_settings['enabled']) ? $type_settings['enabled'] : true;
                                         $is_default = isset($type_settings['default']) ? $type_settings['default'] : $type['default'];
+                                        $is_user_configurable = isset($type_settings['user_configurable'])
+                                            ? $type_settings['user_configurable']
+                                            : $type['user_configurable'];
                                         $feature_active = $registry->is_feature_active($type_id);
                                     ?>
                                     <tr<?php if (!$feature_active) echo ' class="tbc-ca-feature-disabled"'; ?>>
@@ -447,6 +458,12 @@ class TBC_CA_Admin_Settings {
                                                 <input type="hidden" name="tbc_ca_settings[notification_types][<?php echo esc_attr($type_id); ?>][default]" value="<?php echo $is_default ? '1' : '0'; ?>" />
                                             <?php endif; ?>
                                         </td>
+                                        <td class="check-column">
+                                            <input type="checkbox"
+                                                   name="tbc_ca_settings[notification_types][<?php echo esc_attr($type_id); ?>][user_configurable]"
+                                                   value="1"
+                                                   <?php checked($is_user_configurable); ?> />
+                                        </td>
                                     </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -459,6 +476,14 @@ class TBC_CA_Admin_Settings {
 
                 <?php submit_button(__('Save Settings', 'tbc-ca')); ?>
             </form>
+
+            <!-- Tab: Push Log (outside form — read-only) -->
+            <div class="tbc-ca-tab-panel<?php echo $current_tab === 'push-log' ? ' tbc-ca-tab-panel--active' : ''; ?>" data-panel="push-log">
+                <div class="tbc-ca-section">
+                    <h2><?php _e('Push Notification Log', 'tbc-ca'); ?></h2>
+                    <?php $this->render_push_log(); ?>
+                </div>
+            </div><!-- /.tbc-ca-tab-panel push-log -->
 
             <!-- Tab: Statistics (outside form — read-only) -->
             <div class="tbc-ca-tab-panel<?php echo $current_tab === 'statistics' ? ' tbc-ca-tab-panel--active' : ''; ?>" data-panel="statistics">
@@ -473,6 +498,9 @@ class TBC_CA_Admin_Settings {
                 <div class="tbc-ca-section">
                     <h2><?php _e('Session Management', 'tbc-ca'); ?></h2>
                     <?php $this->render_tools(); ?>
+                </div>
+                <div class="tbc-ca-section">
+                    <?php TBC_CA_Push_Manual::get_instance()->render_form(); ?>
                 </div>
             </div><!-- /.tbc-ca-tab-panel tools -->
         </div>
@@ -597,6 +625,100 @@ class TBC_CA_Admin_Settings {
             </tbody>
         </table>
         <p class="description"><?php _e('Sessions are cleaned up automatically when tokens are refreshed or on next login. Max 3 sessions per user.', 'tbc-ca'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render push notification log table in Statistics tab
+     */
+    private function render_push_log() {
+        global $wpdb;
+        $log = TBC_CA_Push_Log::get_instance();
+        $log_table = $wpdb->prefix . 'tbc_ca_push_log';
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$log_table}'") === $log_table;
+
+        if (!$table_exists) {
+            echo '<p>' . esc_html__('Push log table not created. Please deactivate and reactivate the plugin.', 'tbc-ca') . '</p>';
+            return;
+        }
+
+        // 30-day summary
+        echo '<h3>' . esc_html__('Last 30 Days', 'tbc-ca') . '</h3>';
+        $stats = $log->get_stats(30);
+        $totals = $stats['totals'];
+        ?>
+        <table class="widefat" style="max-width: 400px; margin-bottom: 15px;">
+            <tbody>
+                <tr>
+                    <td><?php _e('Batches Sent (30 days)', 'tbc-ca'); ?></td>
+                    <td><strong><?php echo intval($totals->total_batches); ?></strong></td>
+                </tr>
+                <tr>
+                    <td><?php _e('Total Recipients', 'tbc-ca'); ?></td>
+                    <td><?php echo intval($totals->total_recipients); ?></td>
+                </tr>
+                <tr>
+                    <td><?php _e('Delivered', 'tbc-ca'); ?></td>
+                    <td><?php echo intval($totals->total_sent); ?></td>
+                </tr>
+                <tr>
+                    <td><?php _e('Failed', 'tbc-ca'); ?></td>
+                    <td><?php echo intval($totals->total_failed); ?></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3><?php _e('Recent Activity', 'tbc-ca'); ?></h3>
+        <?php
+        $entries = $log->get_recent(50);
+
+        if (empty($entries)) {
+            echo '<p>' . esc_html__('No push notifications logged yet.', 'tbc-ca') . '</p>';
+            return;
+        }
+
+        $registry = TBC_CA_Push_Registry::get_instance();
+        ?>
+        <table class="widefat">
+            <thead>
+                <tr>
+                    <th><?php _e('Type', 'tbc-ca'); ?></th>
+                    <th><?php _e('Title', 'tbc-ca'); ?></th>
+                    <th><?php _e('Recipients', 'tbc-ca'); ?></th>
+                    <th><?php _e('Sent', 'tbc-ca'); ?></th>
+                    <th><?php _e('Failed', 'tbc-ca'); ?></th>
+                    <th><?php _e('Source', 'tbc-ca'); ?></th>
+                    <th><?php _e('Date', 'tbc-ca'); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($entries as $entry):
+                    $type_info = $registry->get($entry->type);
+                    $type_label = $type_info ? $type_info['label'] : $entry->type;
+                ?>
+                <tr>
+                    <td><?php echo esc_html($type_label); ?></td>
+                    <td>
+                        <strong><?php echo esc_html($entry->title); ?></strong>
+                        <?php if (!empty($entry->body)): ?>
+                            <br><small><?php echo esc_html(wp_trim_words($entry->body, 10)); ?></small>
+                        <?php endif; ?>
+                    </td>
+                    <td><?php echo intval($entry->recipients); ?></td>
+                    <td><?php echo intval($entry->sent); ?></td>
+                    <td><?php echo intval($entry->failed) > 0 ? '<span style="color: #b32d2e;">' . intval($entry->failed) . '</span>' : '0'; ?></td>
+                    <td>
+                        <?php if ($entry->source === 'manual'): ?>
+                            <span class="tbc-ca-pro-badge" style="background: #2271b1;"><?php _e('Manual', 'tbc-ca'); ?></span>
+                        <?php else: ?>
+                            <?php _e('Auto', 'tbc-ca'); ?>
+                        <?php endif; ?>
+                    </td>
+                    <td><?php echo esc_html($entry->created_at); ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
         <?php
     }
 

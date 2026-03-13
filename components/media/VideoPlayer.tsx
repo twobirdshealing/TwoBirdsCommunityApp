@@ -67,7 +67,6 @@ export function VideoPlayer({ url, posterUrl, onPlay, onEnd }: VideoPlayerProps)
         style={styles.video}
         contentFit="contain"
         nativeControls
-        allowsFullscreen
         onFirstFrameRender={() => setShowPoster(false)}
       />
 

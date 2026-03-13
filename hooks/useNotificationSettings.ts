@@ -11,9 +11,8 @@ import {
   CategoryPreferences,
   ChannelInfo,
   ChannelType,
-  NOTIFICATION_MAP,
-  CATEGORY_CONFIG,
   SpacePrefValue,
+  UnifiedItem,
   UnifiedSection,
 } from '@/constants/notificationMap';
 import { getPushSettings, updatePushSettings, PushPreference } from '@/services/api/push';
@@ -45,7 +44,9 @@ export function useNotificationSettings() {
 
   const [pushPrefs, setPushPrefs] = useState<CategoryPreferences>({});
   const [emailPrefs, setEmailPrefs] = useState<EmailPrefsResponse | null>(null);
-  const emailPrefsRef = useRef<EmailPrefsResponse | null>(null);
+  // Ref tracks latest email prefs across concurrent async handlers (avoids stale closures)
+  const emailPrefsRef = useRef(emailPrefs);
+  emailPrefsRef.current = emailPrefs;
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -96,7 +97,6 @@ export function useNotificationSettings() {
 
       if (emailResult.success && emailResult.data) {
         setEmailPrefs(emailResult.data);
-        emailPrefsRef.current = emailResult.data;
       } else if (!emailResult.success) {
         newError.email = typeof emailResult.error === 'object'
           ? emailResult.error.message
@@ -125,324 +125,285 @@ export function useNotificationSettings() {
   // Build Unified Model
   // ---------------------------------------------------------------------------
 
-  const pushLookup = useMemo(() => {
-    const lookup: Record<string, PushPreference> = {};
-    for (const prefs of Object.values(pushPrefs)) {
-      for (const pref of prefs) {
-        lookup[pref.id] = pref;
-      }
-    }
-    return lookup;
-  }, [pushPrefs]);
-
   const unifiedSections = useMemo(() => {
-    const sections: UnifiedSection[] = [];
-    const categoryMap: Record<string, { key: string; label: string; description: string; channels: ChannelInfo[]; note?: string }[]> = {};
+    // Flatten all push prefs into a single array
+    const allPrefs: PushPreference[] = Object.values(pushPrefs).flat();
 
-    for (const mapping of NOTIFICATION_MAP) {
-      const channels: ChannelInfo[] = [];
+    // Split into grouped (share a group slug) vs solo (standalone)
+    const groups = new Map<string, PushPreference[]>();
+    const soloPrefs: PushPreference[] = [];
 
-      if (mapping.pushIds) {
-        for (let i = 0; i < mapping.pushIds.length; i++) {
-          const pushId = mapping.pushIds[i];
-          const pushPref = pushLookup[pushId];
-          if (pushPref) {
-            channels.push({
-              type: 'push',
-              id: pushId,
-              label: mapping.pushLabels?.[i]
-                ? `Push: ${mapping.pushLabels[i]}`
-                : 'Push notification',
-              enabled: pushPref.enabled,
-            });
-          }
-        }
+    for (const pref of allPrefs) {
+      if (pref.group) {
+        const existing = groups.get(pref.group) || [];
+        existing.push(pref);
+        groups.set(pref.group, existing);
+      } else {
+        soloPrefs.push(pref);
       }
-
-      if (mapping.emailKey && emailPrefs?.user_globals) {
-        const emailValue = emailPrefs.user_globals[mapping.emailKey];
-        if (mapping.emailKey !== 'message_email_frequency') {
-          channels.push({
-            type: 'email',
-            id: mapping.emailKey,
-            label: 'Email notification',
-            enabled: emailValue === 'yes',
-          });
-        }
-      }
-
-      const hasVisibleChannel = channels.some(
-        ch => ch.type === 'email' || (ch.type === 'push' && showPush)
-      );
-      if (!hasVisibleChannel) continue;
-
-      if (!categoryMap[mapping.category]) {
-        categoryMap[mapping.category] = [];
-      }
-
-      categoryMap[mapping.category].push({
-        key: mapping.key,
-        label: mapping.label,
-        description: mapping.description,
-        channels,
-        note: mapping.note,
-      });
     }
 
-    for (const [catKey, catTitle] of Object.entries(CATEGORY_CONFIG)) {
-      const items = categoryMap[catKey];
-      if (items && items.length > 0) {
-        sections.push({ category: catKey, title: catTitle, items });
+    const categoryMap: Record<string, UnifiedItem[]> = {};
+    const addItem = (cat: string, item: UnifiedItem) => {
+      if (!categoryMap[cat]) categoryMap[cat] = [];
+      categoryMap[cat].push(item);
+    };
+
+    // Helper: build email channel from email_key
+    const buildEmailChannel = (emailKey: string | undefined): ChannelInfo | null => {
+      if (!emailKey || !emailPrefs?.user_globals) return null;
+      const val = emailPrefs.user_globals[emailKey];
+      if (val === undefined) return null;
+      return { type: 'email', id: emailKey, label: 'Email notification', enabled: val === 'yes' };
+    };
+
+    // Helper: build a unified item from one or more push members
+    const buildItem = (
+      key: string, label: string, description: string,
+      members: PushPreference[], note?: string,
+    ) => {
+      const channels: ChannelInfo[] = members.map(m => ({
+        type: 'push' as const,
+        id: m.id,
+        label: m.push_label ? `Push: ${m.push_label}` : 'Push notification',
+        enabled: m.enabled,
+      }));
+
+      const emailCh = buildEmailChannel(members.find(m => m.email_key)?.email_key);
+      if (emailCh) channels.push(emailCh);
+
+      const hasVisible = channels.some(
+        ch => ch.type === 'email' || (ch.type === 'push' && showPush),
+      );
+      if (!hasVisible) return;
+
+      addItem(members[0].category, { key, label, description, channels, note });
+    };
+
+    // Process grouped items (e.g. mentions, reactions)
+    for (const [groupSlug, members] of groups) {
+      const meta = members.find(m => m.group_label) || members[0];
+      buildItem(
+        groupSlug,
+        meta.group_label || meta.label,
+        meta.group_description || meta.description,
+        members,
+        members.find(m => m.note)?.note,
+      );
+    }
+
+    // Process solo (ungrouped) items
+    for (const pref of soloPrefs) {
+      buildItem(pref.id, pref.label, pref.description, [pref], pref.note);
+    }
+
+    // Build sections in API response order (server controls display order)
+    const sections: UnifiedSection[] = [];
+    for (const catKey of Object.keys(pushPrefs)) {
+      if (categoryMap[catKey]?.length) {
+        sections.push({
+          category: catKey,
+          title: catKey.charAt(0).toUpperCase() + catKey.slice(1),
+          items: categoryMap[catKey],
+        });
       }
     }
 
     return sections;
-  }, [pushLookup, emailPrefs, showPush]);
-
-  // ---------------------------------------------------------------------------
-  // Saving State Helpers
-  // ---------------------------------------------------------------------------
-
-  const addSaving = (key: string) => {
-    setSavingIds(prev => new Set(prev).add(key));
-  };
-
-  const removeSaving = (key: string) => {
-    setSavingIds(prev => {
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
-  };
+  }, [pushPrefs, emailPrefs, showPush]);
 
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
 
-  const buildSpacePrefsPayload = (): Record<string, SpacePrefValue> => {
-    const prefs: Record<string, SpacePrefValue> = {};
-    if (!emailPrefsRef.current) return prefs;
-    for (const group of emailPrefsRef.current.spaceGroups) {
+  const buildSpacePrefsPayload = (prefs: EmailPrefsResponse): Record<string, SpacePrefValue> => {
+    const result: Record<string, SpacePrefValue> = {};
+    for (const group of prefs.spaceGroups) {
       for (const space of group.spaces) {
-        prefs[String(space.id)] = space.pref;
+        result[String(space.id)] = space.pref;
       }
     }
-    return prefs;
+    return result;
   };
 
   const hasSpaces = emailPrefs?.spaceGroups?.some(g => g.spaces.length > 0) ?? false;
 
-  const defaultFreqLabel = emailPrefs?.default_messaging_email_frequency
-    ? emailPrefs.default_messaging_email_frequency.charAt(0).toUpperCase() +
-      emailPrefs.default_messaging_email_frequency.slice(1)
+  // When admin sets a specific frequency (not "Per User Choice" / "disabled"),
+  // expose it so the UI can show a "Default (Daily)" option — matching the web.
+  const adminDefaultFreq = emailPrefs?.default_messaging_email_frequency;
+  const hasAdminDefault = !!adminDefaultFreq && adminDefaultFreq !== 'disabled';
+  const adminDefaultLabel = hasAdminDefault
+    ? adminDefaultFreq.charAt(0).toUpperCase() + adminDefaultFreq.slice(1)
     : '';
+
+  // ---------------------------------------------------------------------------
+  // Optimistic Save Helper
+  // ---------------------------------------------------------------------------
+
+  /** Wraps optimistic update → API call → rollback on failure pattern.
+   *  Optional stateRef keeps a mutable ref in sync so concurrent handlers
+   *  always read the latest optimistic state (prevents stale closures). */
+  const optimisticSave = async <S>(
+    savingKey: string,
+    setter: React.Dispatch<React.SetStateAction<S>>,
+    applyUpdate: (prev: S) => S,
+    applyRollback: (prev: S) => S,
+    apiCall: () => Promise<{ success: boolean }>,
+    stateRef?: React.MutableRefObject<S>,
+  ) => {
+    setSavingIds(prev => new Set(prev).add(savingKey));
+    setter(applyUpdate);
+    if (stateRef) stateRef.current = applyUpdate(stateRef.current);
+    try {
+      const result = await apiCall();
+      if (!result.success) throw new Error('Save failed');
+    } catch {
+      setter(applyRollback);
+      if (stateRef) stateRef.current = applyRollback(stateRef.current);
+    } finally {
+      setSavingIds(prev => {
+        const next = new Set(prev);
+        next.delete(savingKey);
+        return next;
+      });
+    }
+  };
 
   // ---------------------------------------------------------------------------
   // Toggle Handlers
   // ---------------------------------------------------------------------------
 
-  const handlePushToggle = async (prefId: string, currentEnabled: boolean) => {
-    const savingKey = `push-${prefId}`;
-    addSaving(savingKey);
-
-    setPushPrefs(prev => {
+  const handlePushToggle = (prefId: string, currentEnabled: boolean) => {
+    const mapPrefs = (enabled: boolean) => (prev: CategoryPreferences) => {
       const updated = { ...prev };
       for (const category of Object.keys(updated)) {
         updated[category] = updated[category].map(pref =>
-          pref.id === prefId ? { ...pref, enabled: !currentEnabled } : pref
+          pref.id === prefId ? { ...pref, enabled } : pref
         );
       }
       return updated;
-    });
+    };
 
-    try {
-      const authToken = await getAuthToken();
-      if (!authToken) throw new Error('Not authenticated');
-      const response = await updatePushSettings(authToken, { [prefId]: !currentEnabled });
-      if (!response.success) throw new Error('Save failed');
-    } catch {
-      setPushPrefs(prev => {
-        const updated = { ...prev };
-        for (const category of Object.keys(updated)) {
-          updated[category] = updated[category].map(pref =>
-            pref.id === prefId ? { ...pref, enabled: currentEnabled } : pref
-          );
-        }
-        return updated;
-      });
-    } finally {
-      removeSaving(savingKey);
-    }
+    optimisticSave(
+      `push-${prefId}`,
+      setPushPrefs,
+      mapPrefs(!currentEnabled),
+      mapPrefs(currentEnabled),
+      async () => {
+        const authToken = await getAuthToken();
+        if (!authToken) throw new Error('Not authenticated');
+        return updatePushSettings(authToken, { [prefId]: !currentEnabled });
+      },
+    );
   };
 
-  const handleEmailToggle = async (emailKey: string, currentEnabled: boolean) => {
-    if (!emailPrefsRef.current || !user?.username) return;
-
-    const savingKey = `email-${emailKey}`;
-    addSaving(savingKey);
+  const handleEmailToggle = (emailKey: string, currentEnabled: boolean) => {
+    if (!emailPrefs || !user?.username) return;
 
     const newValue = currentEnabled ? 'no' : 'yes';
     const oldValue = currentEnabled ? 'yes' : 'no';
+    const username = user.username;
 
-    setEmailPrefs(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        user_globals: { ...prev.user_globals, [emailKey]: newValue },
-      };
-    });
-
-    const prevGlobals = { ...emailPrefsRef.current.user_globals };
-    emailPrefsRef.current = {
-      ...emailPrefsRef.current,
-      user_globals: { ...emailPrefsRef.current.user_globals, [emailKey]: newValue } as EmailUserGlobals,
-    };
-
-    try {
-      const result = await updateEmailPrefs(user.username, {
-        user_globals: emailPrefsRef.current.user_globals,
-        space_prefs: buildSpacePrefsPayload(),
-      });
-      if (!result.success) throw new Error('Save failed');
-    } catch {
-      setEmailPrefs(prev => {
+    optimisticSave(
+      `email-${emailKey}`,
+      setEmailPrefs,
+      (prev: EmailPrefsResponse | null) => {
         if (!prev) return prev;
-        return {
-          ...prev,
-          user_globals: { ...prev.user_globals, [emailKey]: oldValue },
-        };
-      });
-      emailPrefsRef.current = {
-        ...emailPrefsRef.current,
-        user_globals: prevGlobals as EmailUserGlobals,
-      };
-    } finally {
-      removeSaving(savingKey);
-    }
+        return { ...prev, user_globals: { ...prev.user_globals, [emailKey]: newValue } };
+      },
+      (prev: EmailPrefsResponse | null) => {
+        if (!prev) return prev;
+        return { ...prev, user_globals: { ...prev.user_globals, [emailKey]: oldValue } };
+      },
+      async () => {
+        // Read from ref to get latest state (handles concurrent toggles)
+        const current = emailPrefsRef.current!;
+        return updateEmailPrefs(username, {
+          user_globals: { ...current.user_globals, [emailKey]: newValue },
+          space_prefs: buildSpacePrefsPayload(current),
+        });
+      },
+      emailPrefsRef,
+    );
   };
 
-  const handleFrequencyChange = async (newValue: string) => {
-    if (!emailPrefsRef.current || !user?.username) return;
+  const handleFrequencyChange = (newValue: string) => {
+    if (!emailPrefs || !user?.username) return;
 
-    const savingKey = 'email-message_email_frequency';
-    addSaving(savingKey);
+    const oldValue = emailPrefs.user_globals.message_email_frequency;
+    const username = user.username;
 
-    const oldValue = emailPrefsRef.current.user_globals.message_email_frequency;
-
-    setEmailPrefs(prev => {
+    const applyFreq = (freq: string) => (prev: EmailPrefsResponse | null) => {
       if (!prev) return prev;
       return {
         ...prev,
         user_globals: {
           ...prev.user_globals,
-          message_email_frequency: newValue as EmailUserGlobals['message_email_frequency'],
+          message_email_frequency: freq as EmailUserGlobals['message_email_frequency'],
         },
       };
-    });
-
-    emailPrefsRef.current = {
-      ...emailPrefsRef.current,
-      user_globals: {
-        ...emailPrefsRef.current.user_globals,
-        message_email_frequency: newValue as EmailUserGlobals['message_email_frequency'],
-      },
     };
 
-    try {
-      const result = await updateEmailPrefs(user.username, {
-        user_globals: emailPrefsRef.current.user_globals,
-        space_prefs: buildSpacePrefsPayload(),
-      });
-      if (!result.success) throw new Error('Save failed');
-    } catch {
-      setEmailPrefs(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
+    optimisticSave(
+      'email-message_email_frequency',
+      setEmailPrefs,
+      applyFreq(newValue),
+      applyFreq(oldValue),
+      async () => {
+        const current = emailPrefsRef.current!;
+        return updateEmailPrefs(username, {
           user_globals: {
-            ...prev.user_globals,
-            message_email_frequency: oldValue,
+            ...current.user_globals,
+            message_email_frequency: newValue as EmailUserGlobals['message_email_frequency'],
           },
-        };
-      });
-      emailPrefsRef.current = {
-        ...emailPrefsRef.current,
-        user_globals: {
-          ...emailPrefsRef.current.user_globals,
-          message_email_frequency: oldValue,
-        },
-      };
-    } finally {
-      removeSaving(savingKey);
-    }
+          space_prefs: buildSpacePrefsPayload(current),
+        });
+      },
+      emailPrefsRef,
+    );
   };
 
-  const handleSpacePrefChange = async (spaceId: number, newValue: SpacePrefValue) => {
-    if (!emailPrefsRef.current || !user?.username) return;
-
-    const savingKey = `space-${spaceId}`;
-    addSaving(savingKey);
+  const handleSpacePrefChange = (spaceId: number, newValue: SpacePrefValue) => {
+    if (!emailPrefs || !user?.username) return;
 
     // Find old value
     let oldValue: SpacePrefValue = '';
-    if (emailPrefs) {
-      for (const group of emailPrefs.spaceGroups) {
-        for (const space of group.spaces) {
-          if (space.id === spaceId) { oldValue = space.pref; break; }
-        }
+    for (const group of emailPrefs.spaceGroups) {
+      for (const space of group.spaces) {
+        if (space.id === spaceId) { oldValue = space.pref; break; }
       }
     }
 
-    setEmailPrefs(prev => {
+    const username = user.username;
+
+    const applySpacePref = (pref: SpacePrefValue) => (prev: EmailPrefsResponse | null) => {
       if (!prev) return prev;
       return {
         ...prev,
         spaceGroups: prev.spaceGroups.map(group => ({
           ...group,
           spaces: group.spaces.map(space =>
-            space.id === spaceId ? { ...space, pref: newValue } : space
+            space.id === spaceId ? { ...space, pref } : space
           ),
         })),
       };
-    });
-
-    const prevSpaceGroups = emailPrefsRef.current.spaceGroups;
-    emailPrefsRef.current = {
-      ...emailPrefsRef.current,
-      spaceGroups: emailPrefsRef.current.spaceGroups.map(group => ({
-        ...group,
-        spaces: group.spaces.map(space =>
-          space.id === spaceId ? { ...space, pref: newValue } : space
-        ),
-      })),
     };
 
-    try {
-      const result = await updateEmailPrefs(user.username, {
-        user_globals: emailPrefsRef.current.user_globals,
-        space_prefs: buildSpacePrefsPayload(),
-      });
-      if (!result.success) throw new Error('Save failed');
-    } catch {
-      setEmailPrefs(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          spaceGroups: prev.spaceGroups.map(group => ({
-            ...group,
-            spaces: group.spaces.map(space =>
-              space.id === spaceId ? { ...space, pref: oldValue } : space
-            ),
-          })),
-        };
-      });
-      emailPrefsRef.current = {
-        ...emailPrefsRef.current,
-        spaceGroups: prevSpaceGroups,
-      };
-    } finally {
-      removeSaving(savingKey);
-    }
+    optimisticSave(
+      `space-${spaceId}`,
+      setEmailPrefs,
+      applySpacePref(newValue),
+      applySpacePref(oldValue),
+      async () => {
+        // Ref already has this space pref applied by optimisticSave
+        const current = emailPrefsRef.current!;
+        return updateEmailPrefs(username, {
+          user_globals: current.user_globals,
+          space_prefs: buildSpacePrefsPayload(current),
+        });
+      },
+      emailPrefsRef,
+    );
   };
 
   /** Unified toggle dispatcher */
@@ -484,7 +445,8 @@ export function useNotificationSettings() {
     // Computed
     unifiedSections,
     hasSpaces,
-    defaultFreqLabel,
+    hasAdminDefault,
+    adminDefaultLabel,
     // Handlers
     fetchSettings,
     handleToggle,
