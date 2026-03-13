@@ -289,7 +289,7 @@ export default function SpacePage() {
           slug ? (
             <SpaceMenu
               slug={slug}
-              role={space?.role}
+              role={space?.membership?.pivot?.role || space?.role}
               onLeaveSuccess={handleLeaveSuccess}
             />
           ) : undefined

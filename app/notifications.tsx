@@ -265,10 +265,14 @@ export default function NotificationsScreen() {
             }
             break;
 
-          // Course routes - not yet implemented in app
-          // case 'course':
-          // case 'course_detail':
-          //   break;
+          case 'course':
+          case 'course_detail':
+            const courseSlug = params.slug || params.course;
+            if (courseSlug) {
+              router.push(`/courses/${courseSlug}`);
+              return;
+            }
+            break;
         }
       }
 

@@ -6,7 +6,7 @@
 // - List view: Full-width event cards
 // - Month view: Grid with event dots + selected day events
 // - Pull to refresh
-// - WebView integration for event booking (Phase 2)
+// - WebView integration for event booking
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
