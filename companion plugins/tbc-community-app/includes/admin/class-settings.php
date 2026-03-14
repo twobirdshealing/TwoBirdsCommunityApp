@@ -70,9 +70,26 @@ class TBC_CA_Admin_Settings {
             'android' => esc_url_raw($input['store_urls']['android'] ?? ''),
         ];
 
+        // Custom visibility elements (sanitize before ui_visibility so keys are available)
+        $sanitized['custom_visibility_elements'] = [];
+        if (isset($input['custom_visibility_elements']) && is_array($input['custom_visibility_elements'])) {
+            foreach ($input['custom_visibility_elements'] as $el) {
+                $key   = sanitize_key($el['key'] ?? '');
+                $label = sanitize_text_field($el['label'] ?? '');
+                if ($key && $label) {
+                    $sanitized['custom_visibility_elements'][] = [
+                        'key'   => $key,
+                        'label' => $label,
+                    ];
+                }
+            }
+        }
+
         // UI visibility: role => array of hidden element keys
         $sanitized['ui_visibility'] = [];
-        $allowed_elements = ['cart', 'blog', 'courses', 'bookmarks', 'directory', 'donate', 'donor_dashboard', 'notification_settings'];
+        $core_elements = ['cart', 'blog', 'courses', 'bookmarks', 'directory', 'notification_settings'];
+        $custom_keys = array_column($sanitized['custom_visibility_elements'], 'key');
+        $allowed_elements = array_merge($core_elements, $custom_keys);
         if (isset($input['ui_visibility']) && is_array($input['ui_visibility'])) {
             foreach ($input['ui_visibility'] as $role => $elements) {
                 $role = sanitize_key($role);
@@ -125,17 +142,25 @@ class TBC_CA_Admin_Settings {
         $min_app_version = $settings['min_app_version'] ?? '';
         $store_urls = $settings['store_urls'] ?? [];
 
-        // Elements that can be hidden per role
+        // Core elements (hardcoded in app UI, not from modules)
         $hideable_elements = [
             'cart'                  => __('Cart Icon (header)', 'tbc-ca'),
             'blog'                  => __('Blog (menu)', 'tbc-ca'),
             'courses'               => __('Courses (menu)', 'tbc-ca'),
             'bookmarks'             => __('Bookmarks (menu)', 'tbc-ca'),
             'directory'             => __('Church Directory (menu)', 'tbc-ca'),
-            'donate'                => __('Donate (tab)', 'tbc-ca'),
-            'donor_dashboard'       => __('Donor Dashboard (menu)', 'tbc-ca'),
             'notification_settings' => __('Notification Settings (menu)', 'tbc-ca'),
         ];
+
+        // Merge custom elements added by admin
+        $custom_elements = $settings['custom_visibility_elements'] ?? [];
+        foreach ($custom_elements as $el) {
+            $key   = $el['key'] ?? '';
+            $label = $el['label'] ?? '';
+            if ($key && $label && !isset($hideable_elements[$key])) {
+                $hideable_elements[$key] = esc_html($label);
+            }
+        }
         $current_tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'general';
         ?>
         <div class="wrap tbc-ca-admin">
@@ -379,6 +404,51 @@ class TBC_CA_Admin_Settings {
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Custom Visibility Elements -->
+                <div class="tbc-ca-section">
+                    <h2><?php _e('Custom Visibility Elements', 'tbc-ca'); ?></h2>
+                    <p class="description"><?php _e('Add custom elements for app modules. The key must match the <code>hideMenuKey</code> in the module manifest. The label is shown as a column header above.', 'tbc-ca'); ?></p>
+
+                    <table class="widefat" style="max-width: 600px;" id="tbc-ca-custom-elements">
+                        <thead>
+                            <tr>
+                                <th><?php _e('Key', 'tbc-ca'); ?></th>
+                                <th><?php _e('Label', 'tbc-ca'); ?></th>
+                                <th style="width: 60px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $idx = 0;
+                            foreach ($custom_elements as $el):
+                                $key   = $el['key'] ?? '';
+                                $label = $el['label'] ?? '';
+                            ?>
+                            <tr>
+                                <td><input type="text" name="tbc_ca_settings[custom_visibility_elements][<?php echo $idx; ?>][key]" value="<?php echo esc_attr($key); ?>" class="regular-text" placeholder="my_module" /></td>
+                                <td><input type="text" name="tbc_ca_settings[custom_visibility_elements][<?php echo $idx; ?>][label]" value="<?php echo esc_attr($label); ?>" class="regular-text" placeholder="My Module (tab)" /></td>
+                                <td><button type="button" class="button button-small tbc-ca-remove-element" onclick="this.closest('tr').remove();">&times;</button></td>
+                            </tr>
+                            <?php $idx++; endforeach; ?>
+                        </tbody>
+                    </table>
+                    <p style="margin-top: 8px;">
+                        <button type="button" class="button button-secondary" onclick="tbcCaAddElement();"><?php _e('+ Add Element', 'tbc-ca'); ?></button>
+                    </p>
+                    <script>
+                    function tbcCaAddElement() {
+                        var tbody = document.querySelector('#tbc-ca-custom-elements tbody');
+                        var idx = tbody.querySelectorAll('tr').length;
+                        var tr = document.createElement('tr');
+                        tr.innerHTML =
+                            '<td><input type="text" name="tbc_ca_settings[custom_visibility_elements][' + idx + '][key]" class="regular-text" placeholder="my_module" /></td>' +
+                            '<td><input type="text" name="tbc_ca_settings[custom_visibility_elements][' + idx + '][label]" class="regular-text" placeholder="My Module (tab)" /></td>' +
+                            '<td><button type="button" class="button button-small" onclick="this.closest(\'tr\').remove();">&times;</button></td>';
+                        tbody.appendChild(tr);
+                    }
+                    </script>
                 </div>
 
                 </div><!-- /.tbc-ca-tab-panel visibility -->

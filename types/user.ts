@@ -134,6 +134,38 @@ export interface Badge {
 }
 
 // -----------------------------------------------------------------------------
+// Profile Comment - What you get from /profile/{username}/comments
+// -----------------------------------------------------------------------------
+
+export interface ProfileComment {
+  id: number;
+  user_id: string | number;
+  post_id: string | number;
+  parent_id: number | null;
+  reactions_count: string | number;
+  message: string;
+  message_rendered: string;
+  meta: Record<string, any>;
+  type: string;
+  content_type: string;
+  status: string;
+  is_sticky: number;
+  created_at: string;
+  updated_at: string;
+  post: {
+    id: number;
+    title: string | null;
+    message: string;
+    type: string;
+    space_id: string | number;
+    slug: string;
+    created_at: string;
+    permalink: string;
+    space?: { id: number; title: string; slug: string; type: string };
+  };
+}
+
+// -----------------------------------------------------------------------------
 // Auth User - Shared between auth service and AuthContext
 // -----------------------------------------------------------------------------
 // id is optional because JWT login doesn't return it — it's fetched

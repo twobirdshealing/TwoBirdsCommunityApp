@@ -1,9 +1,8 @@
 // =============================================================================
-// APP CONFIG - Dynamic Expo configuration
+// APP CONFIG - Expo requires this file name (do not rename)
 // =============================================================================
-// Extends app.json with environment-based URLs for deep linking.
-// All static config (version, icons, plugins) lives in app.json.
-// When production domain is ready, change one line in eas.json.
+// Reads SITE_URL from eas.json and wires up deep links automatically.
+// SETUP: Add a pathPrefix line below for any module that needs deep linking.
 // =============================================================================
 
 import { ExpoConfig, ConfigContext } from 'expo/config';
@@ -29,13 +28,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           action: 'VIEW',
           autoVerify: true,
           data: [
+            // Core deep links
             { scheme: 'https', host: hostname, pathPrefix: '/spaces/' },
             { scheme: 'https', host: hostname, pathPrefix: '/u/' },
             { scheme: 'https', host: hostname, pathPrefix: '/courses/' },
             { scheme: 'https', host: hostname, pathPrefix: '/notifications' },
             { scheme: 'https', host: hostname, pathPrefix: '/leaderboard' },
-            { scheme: 'https', host: hostname, pathPrefix: '/blog/' },
             { scheme: 'https', host: hostname, pathPrefix: '/chat/' },
+            // Module deep links — SETUP: add one line per module that needs deep linking
+            { scheme: 'https', host: hostname, pathPrefix: '/blog/' },
             { scheme: 'https', host: hostname, pathPrefix: '/bookclub/' },
           ],
           category: ['BROWSABLE', 'DEFAULT'],

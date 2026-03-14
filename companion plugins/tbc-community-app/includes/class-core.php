@@ -46,7 +46,6 @@ class TBC_CA_Core {
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-badge-definitions.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-rest-fields.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-youtube-api.php';
-        require_once TBC_CA_PLUGIN_DIR . 'includes/class-book-club-api.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-auth.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-auth-api.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-batch-api.php';
@@ -103,9 +102,6 @@ class TBC_CA_Core {
 
         // Initialize YouTube API (latest videos from channel RSS)
         TBC_CA_YouTube_API::get_instance();
-
-        // Initialize Book Club API (audiobook player for mobile app)
-        TBC_CA_Book_Club_API::get_instance();
 
         // Initialize Batch API (combine multiple REST requests into one call)
         TBC_CA_Batch_API::get_instance();

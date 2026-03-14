@@ -142,11 +142,14 @@ class TBC_CA_App_Config {
         }
         $hidden = array_unique($hidden);
 
+        // Remove 'cart' (returned separately as hide_cart boolean) — pass everything else
+        $menu_hidden = array_values(array_filter($hidden, function ($key) {
+            return $key !== 'cart';
+        }));
+
         return [
             'hide_cart' => in_array('cart', $hidden, true),
-            'hide_menu' => array_values(array_intersect($hidden, [
-                'blog', 'courses', 'bookmarks', 'directory', 'notification_settings',
-            ])),
+            'hide_menu' => $menu_hidden,
         ];
     }
 

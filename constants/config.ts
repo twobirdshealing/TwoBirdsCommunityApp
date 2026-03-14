@@ -1,25 +1,30 @@
 // =============================================================================
 // CONFIG - App configuration and API settings
 // =============================================================================
+// SETUP: Values marked with "// SETUP" are buyer-editable.
+// Everything else is derived automatically — don't change it.
+// For modules (calendar, blog, etc.), edit modules/_registry.ts
+// =============================================================================
 
 import Constants from 'expo-constants';
 
 // -----------------------------------------------------------------------------
-// App Info
+// SETUP: App Info
 // -----------------------------------------------------------------------------
 
-export const APP_NAME = 'Two Birds';
+export const APP_NAME = 'Two Birds';                   // SETUP: Your app name
+export const APP_USER_AGENT = 'TBCCommunityApp/1.0';   // SETUP: User agent for API requests
 export const APP_VERSION = Constants.expoConfig?.version || '1.0.0';
-export const APP_USER_AGENT = 'TBCCommunityApp/1.0';
 
 // -----------------------------------------------------------------------------
-// API Configuration
+// SETUP: Site URL
 // -----------------------------------------------------------------------------
 
-// Read SITE_URL from app.config.ts → extra.siteUrl (set per EAS build profile).
-// Falls back to staging if not set (e.g. local dev with `npx expo start`).
+// EAS build profiles override this via SITE_URL env var (see eas.json).
+// This fallback is used for local dev with `npx expo start`.
 export const SITE_URL: string =
-  Constants.expoConfig?.extra?.siteUrl || 'https://community.twobirdschurch.com';
+  Constants.expoConfig?.extra?.siteUrl || 'https://community.twobirdschurch.com'; // SETUP: Your WordPress site URL
+
 export const API_URL = `${SITE_URL}/wp-json/fluent-community/v2`;
 
 // Default pagination
@@ -40,14 +45,13 @@ export const ENDPOINTS = {
   SURVEY_VOTE: (id: number) => `/feeds/${id}/apps/survey-vote`,
   SURVEY_VOTERS: (id: number, slug: string) => `/feeds/${id}/apps/survey-voters/${slug}`,
   WELCOME_BANNER: '/feeds/welcome-banner',
-  
+
   // Spaces
   SPACES: '/spaces',
   SPACE_BY_ID: (id: number) => `/spaces/${id}/by-id`,
   SPACE_BY_SLUG: (slug: string) => `/spaces/${slug}/by-slug`,
 
-  // Profile - Use username, NOT "me"
-  // Sub-paths (/follow, /spaces, etc.) are built inline by services/api/profiles.ts
+  // Profile (sub-paths built in services/api/profiles.ts)
   PROFILE: (username: string) => `/profile/${username}`,
 
   // Notifications
@@ -59,23 +63,21 @@ export const ENDPOINTS = {
   // Members
   MEMBERS: '/members',
 
-  // Chat/Messaging
+  // Chat/Messaging (requires Fluent Messaging add-on)
   CHAT_THREADS: '/chat/threads',
+  CHAT_THREAD_BY_ID: (threadId: number) => `/chat/threads/${threadId}`,
   CHAT_MESSAGES: (threadId: number) => `/chat/messages/${threadId}`,
   CHAT_MESSAGES_NEW: (threadId: number, lastId: number) => `/chat/messages/${threadId}/new?last_id=${lastId}`,
   CHAT_UNREAD_THREADS: '/chat/unread_threads',
   CHAT_MARK_READ: '/chat/read-threads',
   CHAT_USERS: '/chat/users',
   CHAT_MESSAGE_DELETE: (messageId: number) => `/chat/messages/delete/${messageId}`,
+  CHAT_MESSAGE_REACT: (messageId: number) => `/chat/messages/${messageId}/react`,
+  CHAT_THREAD_DELETE: (threadId: number) => `/chat/threads/delete/${threadId}`,
   CHAT_THREAD_BLOCK: (threadId: number) => `/chat/threads/block/${threadId}`,
   CHAT_THREAD_UNBLOCK: (threadId: number) => `/chat/threads/unblock/${threadId}`,
 
-  // v2.2.0 new endpoints
-  CHAT_MESSAGE_REACT: (messageId: number) => `/chat/messages/${messageId}/react`,
-  CHAT_THREAD_DELETE: (threadId: number) => `/chat/threads/delete/${threadId}`,
-  CHAT_THREAD_BY_ID: (threadId: number) => `/chat/threads/${threadId}`,
-
-  // Courses (Fluent LMS)
+  // Courses (requires Fluent LMS add-on)
   COURSES: '/courses',
   COURSE_BY_SLUG: (slug: string) => `/courses/${slug}/by-slug`,
   COURSE_ENROLL: (courseId: number) => `/courses/${courseId}/enroll`,
@@ -86,49 +88,40 @@ export const ENDPOINTS = {
 };
 
 // -----------------------------------------------------------------------------
-// Pusher Configuration (Real-time messaging)
+// SETUP: Pusher Configuration (Real-time messaging)
 // -----------------------------------------------------------------------------
 
 export const PUSHER_CONFIG = {
-  APP_KEY: '2ee0dcc0255ee7f9a996',
-  CLUSTER: 'us3',
+  APP_KEY: '2ee0dcc0255ee7f9a996',                     // SETUP: Your Pusher app key
+  CLUSTER: 'us3',                                       // SETUP: Your Pusher cluster
   AUTH_ENDPOINT: `${API_URL}/chat/broadcast/auth`,
 };
 
 // -----------------------------------------------------------------------------
-// Feature Flags
+// SETUP: Feature Flags
 // -----------------------------------------------------------------------------
 
 export const FEATURES = {
-  DARK_MODE: true,         // Synced with Fluent Community theme
-  PUSH_NOTIFICATIONS: true, // TBC-CA plugin push notifications
-  MESSAGING: true,         // Fluent Messaging enabled
-  COURSES: true,           // Fluent LMS courses
-  BOOK_CLUB: true,         // TBC Book Club audiobook player
+  DARK_MODE: true,          // SETUP: Dark mode synced from Fluent Community theme
+  PUSH_NOTIFICATIONS: true, // SETUP: Push notifications via TBC-CA plugin
+  MESSAGING: true,          // SETUP: Fluent Messaging (direct chat)
+  COURSES: true,            // SETUP: Fluent LMS courses
+  CART: true,               // SETUP: WooCommerce cart icon in header (disable if no WooCommerce)
+  YOUTUBE: true,            // SETUP: YouTube integration (channel videos & playlists via TBC-CA plugin)
+  PROFILE_TABS: {           // SETUP: Which tabs appear on user profiles (About is always on)
+    POSTS: true,            // User's posts feed
+    SPACES: true,           // User's joined spaces
+    COMMENTS: true,         // User's comments
+  },
 };
 
 // -----------------------------------------------------------------------------
-// TBC Community App Plugin (Push Notifications)
+// Plugin API URLs (derived from SITE_URL)
 // -----------------------------------------------------------------------------
 
 export const TBC_CA_URL = `${SITE_URL}/wp-json/tbc-ca/v1`;
-
-// -----------------------------------------------------------------------------
-// TBC Fluent Profiles Plugin (Registration, OTP, Profile Fields)
-// -----------------------------------------------------------------------------
-
 export const TBC_FP_URL = `${SITE_URL}/wp-json/tbc-fp/v1`;
-
-// -----------------------------------------------------------------------------
-// TBC Multi Reactions Plugin
-// -----------------------------------------------------------------------------
-
 export const TBC_MR_URL = `${SITE_URL}/wp-json/tbc-multi-reactions/v1`;
-
-// -----------------------------------------------------------------------------
-// WordPress REST API (Blog Posts)
-// -----------------------------------------------------------------------------
-
 export const WP_REST_URL = `${SITE_URL}/wp-json/wp/v2`;
 
 export const WP_ENDPOINTS = {
@@ -138,13 +131,8 @@ export const WP_ENDPOINTS = {
 };
 
 // -----------------------------------------------------------------------------
-// Legal / Policy URLs
+// SETUP: Links
 // -----------------------------------------------------------------------------
 
-export const PRIVACY_POLICY_URL = `${SITE_URL}/privacy-policy/`;
-
-// -----------------------------------------------------------------------------
-// YouTube Channel
-// -----------------------------------------------------------------------------
-
-export const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/c/twobirdschurch?sub_confirmation=1';
+export const PRIVACY_POLICY_URL = `${SITE_URL}/privacy-policy/`;                           // SETUP: Privacy policy URL
+export const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/c/twobirdschurch?sub_confirmation=1'; // SETUP: YouTube channel "Subscribe" button URL (youtube/index.tsx header)

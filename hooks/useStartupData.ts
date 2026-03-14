@@ -6,24 +6,20 @@
 // and widget AsyncStorage caches.
 //
 // ┌─────────────────────────────────────────────────────────────────────┐
-// │ BATCH REQUEST PATHS                                                │
-// │                                                                    │
-// │ If you add or remove a home screen widget, update this list too!   │
+// │ BATCH REQUEST PATHS (core only — modules self-fetch via widgets)   │
 // │                                                                    │
 // │  1. /tbc-ca/v1/app-config              → config + visibility       │
 // │  2. /fluent-community/v2/profile/{user} → profile refresh          │
 // │  3. /fluent-community/v2/notifications/unread → notification count │
 // │  4. /fluent-community/v2/chat/unread_threads  → message count      │
 // │  5. /fluent-community/v2/feeds/welcome-banner → welcome widget     │
-// │  6. /tbc-wc/v1/events/featured?limit=6        → events widget      │
-// │  7. /tbc-wc/v1/user/booked?limit=1            → ceremony widget    │
-// │  8. /fluent-community/v2/courses?type=enrolled&per_page=5 → courses│
-// │  9. /fluent-community/v2/spaces/book-club/by-slug → book club check│
-// │ 10. /tbc-ca/v1/books?current=1                 → current book only  │
-// │ 11. /wp/v2/posts?page=1&per_page=1&_embed=    → blog widget        │
-// │ 12. /tbc-ca/v1/youtube/latest?limit=1         → youtube widget     │
-// │ 13. /tbc-ca/v1/cart/count                     → cart badge count   │
+// │  6. /fluent-community/v2/courses?type=enrolled&per_page=5 → courses│
+// │  7. /wp/v2/posts?page=1&per_page=1&_embed=    → blog widget        │
+// │  8. /tbc-ca/v1/youtube/latest?limit=1         → youtube widget     │
+// │  9. /tbc-ca/v1/cart/count                     → cart badge count   │
 // └─────────────────────────────────────────────────────────────────────┘
+// Module widgets (calendar, bookclub, etc.) use useCachedData to
+// self-fetch on mount. No batch registration needed.
 // =============================================================================
 
 import { useCallback, useEffect, useRef } from 'react';
@@ -60,12 +56,9 @@ interface ProfileData {
 
 const WIDGET_CACHE_KEYS = {
   welcomeBanner: 'tbc_welcome_banner',
-  events: 'tbc_widget_featured_events',
   courses: 'tbc_widget_enrolled_courses',
-  bookClub: 'tbc_widget_book_club',
   blog: 'tbc_widget_latest_blog',
   youtube: 'tbc_widget_latest_youtube',
-  ceremony: 'tbc_widget_ceremony',
 };
 
 // -----------------------------------------------------------------------------
@@ -104,23 +97,21 @@ export function useStartupData({
     log('Firing startup batch...');
 
     try {
-      const responses = await batchRequest([
+      const batchPaths = [
         // Core data
         { path: '/tbc-ca/v1/app-config' },
         { path: `/fluent-community/v2/profile/${username}` },
         { path: '/fluent-community/v2/notifications/unread' },
         { path: '/fluent-community/v2/chat/unread_threads' },
-        // Widget data
+        // Core widget data (module widgets self-fetch via useCachedData)
         { path: '/fluent-community/v2/feeds/welcome-banner' },
-        { path: '/tbc-wc/v1/events/featured?limit=6' },
-        { path: '/tbc-wc/v1/user/booked?limit=1' },
         { path: '/fluent-community/v2/courses?type=enrolled&per_page=5' },
-        { path: '/fluent-community/v2/spaces/book-club/by-slug' },
-        { path: '/tbc-ca/v1/books?current=1' },
         { path: '/wp/v2/posts?page=1&per_page=1&_embed=' },
         { path: '/tbc-ca/v1/youtube/latest?limit=1' },
         { path: '/tbc-ca/v1/cart/count' },
-      ]);
+      ];
+
+      const responses = await batchRequest(batchPaths);
 
       log('Batch returned', responses.length, 'responses');
 
@@ -184,30 +175,6 @@ export function useStartupData({
         cacheWrites.push(AsyncStorage.setItem(WIDGET_CACHE_KEYS.welcomeBanner, JSON.stringify(bannerData.welcome_banner)));
       }
 
-      // Events — widget caches the events array (not full response)
-      const eventsData = findBatchResponse<{ success?: boolean; events?: unknown[] }>(
-        responses,
-        '/tbc-wc/v1/events/featured',
-      );
-      if (eventsData) {
-        const events = eventsData.events ?? [];
-        freshKeys.push(WIDGET_CACHE_KEYS.events);
-        cacheWrites.push(AsyncStorage.setItem(WIDGET_CACHE_KEYS.events, JSON.stringify(events)));
-      }
-
-      // Ceremony (upcoming booked event) — widget caches single event or null
-      const bookedData = findBatchResponse<{ events?: unknown[] }>(
-        responses,
-        '/tbc-wc/v1/user/booked',
-      );
-      if (bookedData) {
-        const nextBooked = bookedData.events?.[0] ?? null;
-        freshKeys.push(WIDGET_CACHE_KEYS.ceremony);
-        cacheWrites.push(
-          AsyncStorage.setItem(WIDGET_CACHE_KEYS.ceremony, JSON.stringify(nextBooked)),
-        );
-      }
-
       // Courses — widget caches courses.data array (paginated response)
       const coursesData = findBatchResponse<{ courses?: { data?: unknown[] } }>(
         responses,
@@ -218,26 +185,6 @@ export function useStartupData({
         freshKeys.push(WIDGET_CACHE_KEYS.courses);
         cacheWrites.push(AsyncStorage.setItem(WIDGET_CACHE_KEYS.courses, JSON.stringify(courses)));
       }
-
-      // Book Club (combined space check + books into the widget's cache shape)
-      const spaceData = findBatchResponse<{ space?: { permissions?: { is_member?: boolean } } }>(
-        responses,
-        '/fluent-community/v2/spaces/book-club',
-      );
-      const booksData = findBatchResponse<{ books?: Array<{ id: number; is_current?: boolean }> }>(
-        responses,
-        '/tbc-ca/v1/books',
-      );
-      const isMember = spaceData?.space?.permissions?.is_member ?? false;
-      const books = booksData?.books ?? [];
-      const currentBook = books.find((b) => b.is_current) ?? books[0] ?? null;
-      freshKeys.push(WIDGET_CACHE_KEYS.bookClub);
-      cacheWrites.push(
-        AsyncStorage.setItem(
-          WIDGET_CACHE_KEYS.bookClub,
-          JSON.stringify({ isMember, book: currentBook }),
-        ),
-      );
 
       // Blog
       const blogData = findBatchResponse<unknown[]>(

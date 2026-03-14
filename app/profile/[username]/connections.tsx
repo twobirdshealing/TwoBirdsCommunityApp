@@ -12,13 +12,14 @@
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { EmptyState } from '@/components/common/EmptyState';
+import { TabBar } from '@/components/common/TabBar';
 import { MemberCard, type MemberCardData } from '@/components/member/MemberCard';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { spacing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { profilesApi } from '@/services/api/profiles';
@@ -39,6 +40,11 @@ interface TabState {
   error: string | null;
   loaded: boolean;
 }
+
+const TABS: { key: TabKey; title: string }[] = [
+  { key: 'following', title: 'Following' },
+  { key: 'followers', title: 'Followers' },
+];
 
 const INITIAL_TAB_STATE: TabState = {
   data: [],
@@ -246,33 +252,11 @@ export default function ConnectionsScreen() {
 
       <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         {/* Tab Bar */}
-        <View style={[styles.tabBar, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
-          {(['following', 'followers'] as TabKey[]).map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <Pressable
-                key={tab}
-                style={styles.tab}
-                onPress={() => setActiveTab(tab)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isActive }}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    { color: isActive ? themeColors.primary : themeColors.textSecondary },
-                    isActive && styles.tabTextActive,
-                  ]}
-                >
-                  {tab === 'following' ? 'Following' : 'Followers'}
-                </Text>
-                {isActive && (
-                  <View style={[styles.tabIndicator, { backgroundColor: themeColors.primary }]} />
-                )}
-              </Pressable>
-            );
-          })}
-        </View>
+        <TabBar
+          tabs={TABS}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
         {/* Loading State */}
         {currentState.loading && currentState.data.length === 0 && !currentState.error && (
@@ -311,7 +295,7 @@ export default function ConnectionsScreen() {
                 />
               );
             }}
-            keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+            keyExtractor={(item, index) => item.id?.toString() || `item-${index}`}
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.5}
             refreshControl={
@@ -351,36 +335,6 @@ export default function ConnectionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-
-  // Tab Bar
-  tabBar: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-  },
-
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    position: 'relative',
-  },
-
-  tabText: {
-    fontSize: typography.size.md,
-  },
-
-  tabTextActive: {
-    fontWeight: typography.weight.semibold,
-  },
-
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: spacing.lg,
-    right: spacing.lg,
-    height: 2,
-    borderRadius: sizing.borderRadius.full,
   },
 
   // Footer

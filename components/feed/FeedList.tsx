@@ -9,9 +9,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useAudioPlayerContext } from '@/contexts/AudioPlayerContext';
-import { spacing, sizing } from '@/constants/layout';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabContentPadding } from '@/contexts/BottomOffsetContext';
+import { spacing } from '@/constants/layout';
 import { Feed, ReactionType } from '@/types/feed';
 import React from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, RefreshControl, StyleSheet, View } from 'react-native';
@@ -70,9 +69,7 @@ export function FeedList({
   ListHeaderComponent,
 }: FeedListProps) {
   const { colors: themeColors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const { currentBook } = useAudioPlayerContext();
-  const bottomPadding = sizing.height.tabBar + insets.bottom + (currentBook ? 59 : 0) + spacing.md;
+  const bottomPadding = useTabContentPadding();
 
   // Initial loading state
   if (loading && feeds.length === 0) {

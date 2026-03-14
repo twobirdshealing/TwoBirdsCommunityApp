@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Community App
  * Plugin URI: https://twobirdschurch.com
  * Description: Support plugin for the Two Birds Community mobile app. Provides web sessions for WebView, app-specific styling, and push notifications.
- * Version: 3.33.0
+ * Version: 3.35.0
  * Author: Two Birds Church
  * Author URI: https://twobirdschurch.com
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('TBC_CA_VERSION', '3.33.0');
+define('TBC_CA_VERSION', '3.35.0');
 define('TBC_CA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TBC_CA_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TBC_CA_PLUGIN_FILE', __FILE__);
@@ -70,7 +70,6 @@ spl_autoload_register(function ($class) {
         'app-config' => 'class-app-config.php',
         'rest-fields' => 'class-rest-fields.php',
         'youtube-api' => 'class-youtube-api.php',
-        'book-club-api' => 'class-book-club-api.php',
         'auth' => 'class-auth.php',
         'auth-api' => 'class-auth-api.php',
         'batch-api' => 'class-batch-api.php',

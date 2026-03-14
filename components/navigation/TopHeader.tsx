@@ -8,14 +8,14 @@
 // 4. Push notifications (instant notification badge bump)
 // =============================================================================
 
-import { SITE_URL } from '@/constants/config';
+import { FEATURES, SITE_URL } from '@/constants/config';
 import { spacing, shadows, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUnreadCounts } from '@/contexts/UnreadCountsContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppConfig } from '@/contexts/AppConfigContext';
 import { Image } from 'expo-image';
@@ -24,6 +24,7 @@ import * as Notifications from 'expo-notifications';
 import { useNewMessageListener } from '@/contexts/PusherContext';
 import { HeaderIconButton } from './HeaderIconButton';
 import { UserMenu } from './UserMenu';
+import { getModuleHeaderIcons } from '@/modules/_registry';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -51,6 +52,15 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     setUnreadMessages,
     setUnreadNotifications,
   } = useUnreadCounts();
+
+  const hideMenu = visibility?.hide_menu ?? [];
+  // Modules are static — only refilter when visibility changes
+  const moduleHeaderIcons = useMemo(
+    () => getModuleHeaderIcons().filter(
+      (icon) => !icon.hideMenuKey || !hideMenu.includes(icon.hideMenuKey)
+    ),
+    [hideMenu]
+  );
 
   // State
   const [menuVisible, setMenuVisible] = useState(false);
@@ -133,11 +143,6 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     router.push('/blog');
   };
 
-  const handleDonorDashboardPress = () => {
-    setMenuVisible(false);
-    router.push({ pathname: '/webview', params: { url: `${SITE_URL}/donor-dashboard/`, title: 'Donor Dashboard' } });
-  };
-
   const handleNotificationSettingsPress = () => {
     setMenuVisible(false);
     router.push('/notification-settings');
@@ -206,8 +211,8 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             accessibilityLabel={unreadNotifications > 0 ? `Notifications, ${unreadNotifications} unread` : 'Notifications'}
           />
 
-          {/* Cart - hidden for roles with cart visibility disabled */}
-          {!visibility?.hide_cart && (
+          {/* Cart - requires FEATURES.CART + not hidden per role */}
+          {FEATURES.CART && !visibility?.hide_cart && (
             <HeaderIconButton
               icon="cart-outline"
               onPress={handleCartPress}
@@ -215,6 +220,16 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
               accessibilityLabel={cartCount > 0 ? `Cart, ${cartCount} items` : 'Cart'}
             />
           )}
+
+          {/* Module header icons */}
+          {moduleHeaderIcons.map((icon) => (
+            <HeaderIconButton
+              key={icon.id}
+              icon={icon.icon}
+              onPress={() => router.push(icon.route as any)}
+              accessibilityLabel={icon.accessibilityLabel || icon.id}
+            />
+          ))}
 
           {/* Avatar with dropdown arrow */}
           <Pressable
@@ -261,7 +276,6 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
         onBookmarksPress={handleBookmarksPress}
         onCoursesPress={handleCoursesPress}
         onBlogPress={handleBlogPress}
-        onDonorDashboardPress={handleDonorDashboardPress}
         onNotificationSettingsPress={handleNotificationSettingsPress}
         onLogout={handleLogout}
       />

@@ -1,14 +1,12 @@
 // =============================================================================
-// USER PROFILE SCREEN - Unified profile view
+// USER PROFILE SCREEN - Unified profile view with tabs
 // =============================================================================
 // Route: /profile/[username]
 // Works for viewing your OWN profile and OTHER users' profiles
-// Shows different actions based on isOwnProfile:
-//   - Own: Edit Profile, change avatar
-//   - Other: Follow, Message
+// Tabs: About (always), Posts, Spaces, Comments (configurable via FEATURES)
 // =============================================================================
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createLogger } from '@/utils/logger';
 import {
   ActivityIndicator,
@@ -20,27 +18,65 @@ import {
   Text,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { FEATURES } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCachedData } from '@/hooks/useCachedData';
+import { useFeedActions } from '@/hooks/useFeedActions';
+import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { profilesApi, patchProfileMedia } from '@/services/api/profiles';
+import { commentsApi } from '@/services/api/comments';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
-import { Profile } from '@/types/user';
+import { Profile, ProfileComment } from '@/types/user';
+import { Feed } from '@/types/feed';
+import { Space } from '@/types/space';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { EmptyState } from '@/components/common/EmptyState';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 
+import { FeedList } from '@/components/feed/FeedList';
+import { SpaceCard } from '@/components/space/SpaceCard';
 import { AboutTab } from '@/components/profile/AboutTab';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileMenu } from '@/components/profile/ProfileMenu';
+import { TabBar } from '@/components/common/TabBar';
+import { CommentCard } from '@/components/profile/CommentCard';
 import { PageHeader } from '@/components/navigation/PageHeader';
 
 const log = createLogger('Profile');
+
+// -----------------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------------
+
+type ProfileTabKey = 'about' | 'posts' | 'spaces' | 'comments';
+
+interface TabState<T> {
+  data: T[];
+  page: number;
+  hasMore: boolean;
+  loading: boolean;
+  refreshing: boolean;
+  error: string | null;
+  loaded: boolean;
+}
+
+const INITIAL_TAB_STATE = <T,>(): TabState<T> => ({
+  data: [],
+  page: 1,
+  hasMore: true,
+  loading: false,
+  refreshing: false,
+  error: null,
+  loaded: false,
+});
 
 // -----------------------------------------------------------------------------
 // Component
@@ -55,6 +91,9 @@ export default function UserProfileScreen() {
 
   // Check if viewing own profile
   const isOwnProfile = currentUser?.username === username;
+
+  // Active tab
+  const [activeTab, setActiveTab] = useState<ProfileTabKey>('about');
 
   // Fetch Profile (refreshOnFocus replaces useFocusEffect)
   const { data: profile, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh, mutate } = useCachedData<Profile>({
@@ -75,7 +114,179 @@ export default function UserProfileScreen() {
   const isFollowing = (profile?.follow || 0) > 0;
   const isBlocked = profile?.is_blocked_by_you === true;
 
+  // ---------------------------------------------------------------------------
+  // Tab visibility — intersection of FEATURES config + server profile_navs
+  // ---------------------------------------------------------------------------
+
+  const visibleTabs = useMemo(() => {
+    const tabs: { key: ProfileTabKey; title: string }[] = [
+      { key: 'about', title: 'About' },
+    ];
+
+    // If profile is restricted, only show About
+    if (profile?.is_restricted) return tabs;
+
+    const serverSlugs = profile?.profile_navs?.map(n => n.slug) || [];
+    const hasServerNavs = serverSlugs.length > 0;
+
+    if (FEATURES.PROFILE_TABS.POSTS && (!hasServerNavs || serverSlugs.includes('user_profile_feeds'))) {
+      tabs.push({ key: 'posts', title: 'Posts' });
+    }
+    if (FEATURES.PROFILE_TABS.SPACES && (!hasServerNavs || serverSlugs.includes('user_spaces'))) {
+      tabs.push({ key: 'spaces', title: 'Spaces' });
+    }
+    if (FEATURES.PROFILE_TABS.COMMENTS && (!hasServerNavs || serverSlugs.includes('user_comments'))) {
+      tabs.push({ key: 'comments', title: 'Comments' });
+    }
+
+    return tabs;
+  }, [profile?.profile_navs, profile?.is_restricted]);
+
+  // ---------------------------------------------------------------------------
+  // Per-tab state (Posts, Spaces, Comments)
+  // ---------------------------------------------------------------------------
+
+  const [postsState, setPostsState] = useState<TabState<Feed>>(INITIAL_TAB_STATE<Feed>);
+  const [spacesState, setSpacesState] = useState<TabState<Space>>(INITIAL_TAB_STATE<Space>);
+  const [commentsState, setCommentsState] = useState<TabState<ProfileComment>>(INITIAL_TAB_STATE<ProfileComment>);
+
+  // Reset tab data when viewing a different profile
+  useEffect(() => {
+    setPostsState(INITIAL_TAB_STATE<Feed>);
+    setSpacesState(INITIAL_TAB_STATE<Space>);
+    setCommentsState(INITIAL_TAB_STATE<ProfileComment>);
+    setActiveTab('about');
+  }, [username]);
+
+  // ---------------------------------------------------------------------------
+  // Tab data fetching
+  // ---------------------------------------------------------------------------
+
+  const fetchPosts = useCallback(async (page: number = 1, append: boolean = false) => {
+    if (!profile?.user_id) return;
+    setPostsState(prev => ({ ...prev, loading: true, error: null, ...(page === 1 && !append && prev.loaded ? { refreshing: true } : {}) }));
+    try {
+      const response = await profilesApi.getUserFeeds(profile.user_id, page, 20);
+      if (!response.success) throw new Error('Failed to load posts');
+      const feeds = response.data.feeds?.data || [];
+      const hasMore = response.data.feeds?.has_more ?? false;
+      setPostsState(prev => ({
+        ...prev,
+        data: append ? [...prev.data, ...feeds] : feeds,
+        page,
+        hasMore,
+        loading: false,
+        refreshing: false,
+        loaded: true,
+        error: null,
+      }));
+    } catch (err) {
+      setPostsState(prev => ({
+        ...prev,
+        loading: false,
+        refreshing: false,
+        error: err instanceof Error ? err.message : 'Failed to load posts',
+      }));
+    }
+  }, [profile?.user_id]);
+
+  const fetchSpaces = useCallback(async () => {
+    if (!username) return;
+    setSpacesState(prev => ({ ...prev, loading: true, error: null, ...(prev.loaded ? { refreshing: true } : {}) }));
+    try {
+      const response = await profilesApi.getUserSpaces(username);
+      if (!response.success) throw new Error('Failed to load spaces');
+      const spaces = response.data.spaces || [];
+      setSpacesState({
+        data: spaces,
+        page: 1,
+        hasMore: false,
+        loading: false,
+        refreshing: false,
+        loaded: true,
+        error: null,
+      });
+    } catch (err) {
+      setSpacesState(prev => ({
+        ...prev,
+        loading: false,
+        refreshing: false,
+        error: err instanceof Error ? err.message : 'Failed to load spaces',
+      }));
+    }
+  }, [username]);
+
+  const fetchComments = useCallback(async (page: number = 1, append: boolean = false) => {
+    if (!username) return;
+    setCommentsState(prev => ({ ...prev, loading: true, error: null, ...(page === 1 && !append && prev.loaded ? { refreshing: true } : {}) }));
+    try {
+      const response = await profilesApi.getUserComments(username, page, 10);
+      if (!response.success) throw new Error('Failed to load comments');
+      const comments = response.data.comments?.data || [];
+      const currentPage = response.data.comments?.current_page ?? 1;
+      const lastPage = response.data.comments?.last_page ?? 1;
+      setCommentsState(prev => ({
+        ...prev,
+        data: append ? [...prev.data, ...comments] : comments,
+        page: currentPage,
+        hasMore: currentPage < lastPage,
+        loading: false,
+        refreshing: false,
+        loaded: true,
+        error: null,
+      }));
+    } catch (err) {
+      setCommentsState(prev => ({
+        ...prev,
+        loading: false,
+        refreshing: false,
+        error: err instanceof Error ? err.message : 'Failed to load comments',
+      }));
+    }
+  }, [username]);
+
+  // Lazy-load tab data on first visit
+  useEffect(() => {
+    if (!profile || !username) return;
+    if (activeTab === 'posts' && !postsState.loaded && !postsState.loading) {
+      fetchPosts(1);
+    } else if (activeTab === 'spaces' && !spacesState.loaded && !spacesState.loading) {
+      fetchSpaces();
+    } else if (activeTab === 'comments' && !commentsState.loaded && !commentsState.loading) {
+      fetchComments(1);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps — fetch functions are stable (useCallback), omitted to prevent re-runs on state changes
+  }, [activeTab, profile, username, postsState.loaded, postsState.loading, spacesState.loaded, spacesState.loading, commentsState.loaded, commentsState.loading]);
+
+  // ---------------------------------------------------------------------------
+  // Posts tab: feed actions + reactions (same pattern as activity.tsx)
+  // ---------------------------------------------------------------------------
+
+  const setPostsData: React.Dispatch<React.SetStateAction<Feed[]>> = useCallback(
+    (action) => {
+      setPostsState(prev => ({
+        ...prev,
+        data: typeof action === 'function' ? action(prev.data) : action,
+      }));
+    },
+    [],
+  );
+
+  const {
+    handleCommentPress,
+    handleEdit,
+    handleBookmarkToggle,
+    handleDelete,
+    handleAuthorPress,
+    handleSpacePress,
+  } = useFeedActions({ setFeeds: setPostsData, refresh: () => fetchPosts(1) });
+
+  const handleReact = useFeedReactions(postsState.data, setPostsData);
+
+  // ---------------------------------------------------------------------------
   // Avatar/cover upload state
+  // ---------------------------------------------------------------------------
+
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
 
@@ -95,6 +306,10 @@ export default function UserProfileScreen() {
 
   const handleRefresh = () => {
     refresh();
+    // Also refresh current tab data
+    if (activeTab === 'posts' && postsState.loaded) fetchPosts(1);
+    else if (activeTab === 'spaces' && spacesState.loaded) fetchSpaces();
+    else if (activeTab === 'comments' && commentsState.loaded) fetchComments(1);
   };
 
   const handleFollowPress = async () => {
@@ -250,6 +465,126 @@ export default function UserProfileScreen() {
     });
   };
 
+  const handleCommentPostPress = (postId: number, postSlug: string) => {
+    router.push({
+      pathname: '/comments/[postId]',
+      params: { postId: String(postId), feedSlug: postSlug },
+    });
+  };
+
+  const handleDeleteComment = (comment: ProfileComment) => {
+    Alert.alert('Delete Comment', 'Are you sure you want to delete this comment?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const postId = typeof comment.post_id === 'string' ? parseInt(comment.post_id, 10) : comment.post_id;
+            const response = await commentsApi.deleteComment(postId, comment.id);
+            if (response.success) {
+              setCommentsState(prev => ({
+                ...prev,
+                data: prev.data.filter(c => c.id !== comment.id),
+              }));
+            } else {
+              Alert.alert('Error', 'Failed to delete comment');
+            }
+          } catch (err) {
+            log.error('Delete comment failed:', err);
+            Alert.alert('Error', 'Failed to delete comment');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleSpaceCardPress = (slug: string) => {
+    router.push({
+      pathname: '/space/[slug]',
+      params: { slug },
+    });
+  };
+
+  // ---------------------------------------------------------------------------
+  // Header block (shared across all tabs as ListHeaderComponent)
+  // ---------------------------------------------------------------------------
+
+  const headerBlock = useMemo(() => (
+    <>
+      <ProfileHeader
+        profile={profile!}
+        isOwnProfile={isOwnProfile}
+        isUploading={avatarUploading}
+        onCoverPhotoPress={handleCoverPhotoPress}
+        onAvatarPress={handleAvatarPress}
+        onFollowersPress={handleFollowersPress}
+        onFollowingPress={handleFollowingPress}
+      />
+
+      {/* Action Buttons (other profiles only) */}
+      {!isOwnProfile && (
+        <View style={[styles.actionButtons, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
+          {isBlocked ? (
+            <Pressable
+              style={[styles.followButton, { backgroundColor: themeColors.error }]}
+              onPress={handleBlockPress}
+              disabled={blockLoading}
+            >
+              {blockLoading ? (
+                <ActivityIndicator size="small" color={themeColors.textInverse} />
+              ) : (
+                <Text style={[styles.followButtonText, { color: themeColors.textInverse }]}>
+                  Blocked
+                </Text>
+              )}
+            </Pressable>
+          ) : (
+            <>
+              <Pressable
+                style={[
+                  styles.followButton,
+                  { backgroundColor: themeColors.primary },
+                  isFollowing && [styles.followingButton, { borderColor: themeColors.primary }],
+                ]}
+                onPress={handleFollowPress}
+                disabled={followLoading}
+              >
+                {followLoading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={isFollowing ? themeColors.primary : themeColors.textInverse}
+                  />
+                ) : (
+                  <Text
+                    style={[
+                      styles.followButtonText,
+                      { color: themeColors.textInverse },
+                      isFollowing && [styles.followingButtonText, { color: themeColors.primary }],
+                    ]}
+                  >
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </Text>
+                )}
+              </Pressable>
+
+              <Pressable style={[styles.messageButton, { backgroundColor: themeColors.backgroundSecondary }]} onPress={handleMessagePress}>
+                <Ionicons name="chatbubble-outline" size={20} color={themeColors.text} />
+              </Pressable>
+            </>
+          )}
+        </View>
+      )}
+
+      {/* Tab Bar */}
+      <TabBar
+        tabs={visibleTabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+    </>
+  ), [profile, isOwnProfile, avatarUploading, isBlocked, isFollowing, followLoading, blockLoading, visibleTabs, activeTab, themeColors]);
+
   // ---------------------------------------------------------------------------
   // Render: Loading
   // ---------------------------------------------------------------------------
@@ -287,6 +622,181 @@ export default function UserProfileScreen() {
   }
 
   // ---------------------------------------------------------------------------
+  // Render: Tab Content
+  // ---------------------------------------------------------------------------
+
+  const renderTabContent = () => {
+    // About tab — ScrollView (static content)
+    if (activeTab === 'about') {
+      return (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={{ paddingBottom: insets.bottom }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={themeColors.primary}
+              colors={[themeColors.primary]}
+            />
+          }
+        >
+          {headerBlock}
+          {profile?.is_restricted ? (
+            <View style={[styles.restrictedContainer, { backgroundColor: themeColors.surface }]}>
+              <Ionicons name="lock-closed-outline" size={32} color={themeColors.textTertiary} />
+              <Text style={[styles.restrictedTitle, { color: themeColors.text }]}>Profile is Private</Text>
+              <Text style={[styles.restrictedText, { color: themeColors.textSecondary }]}>
+                This user's profile details are not visible.
+              </Text>
+            </View>
+          ) : (
+            <AboutTab profile={profile!} />
+          )}
+        </ScrollView>
+      );
+    }
+
+    // Posts tab — reuse FeedList (never pass loading=true to avoid full-screen
+    // spinner that hides the header; handle initial load inline instead)
+    if (activeTab === 'posts') {
+      if (postsState.loading && !postsState.loaded) {
+        return (
+          <ScrollView
+            contentContainerStyle={{ paddingBottom: insets.bottom }}
+            refreshControl={
+              <RefreshControl refreshing={false} onRefresh={handleRefresh} tintColor={themeColors.primary} colors={[themeColors.primary]} />
+            }
+          >
+            {headerBlock}
+            <LoadingSpinner fullScreen={false} message="Loading posts..." />
+          </ScrollView>
+        );
+      }
+      return (
+        <FeedList
+          feeds={postsState.data}
+          loading={false}
+          refreshing={postsState.refreshing}
+          error={postsState.loaded ? null : postsState.error}
+          onRefresh={handleRefresh}
+          onLoadMore={postsState.hasMore && !postsState.loading ? () => fetchPosts(postsState.page + 1, true) : undefined}
+          onReact={handleReact}
+          onAuthorPress={handleAuthorPress}
+          onSpacePress={handleSpacePress}
+          onCommentPress={handleCommentPress}
+          onBookmarkToggle={handleBookmarkToggle}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          emptyMessage="No posts yet"
+          emptyIcon="document-text-outline"
+          ListHeaderComponent={headerBlock}
+        />
+      );
+    }
+
+    // Spaces tab — FlashList with SpaceCard
+    if (activeTab === 'spaces') {
+      if (spacesState.loading && !spacesState.loaded) {
+        return (
+          <ScrollView
+            contentContainerStyle={{ paddingBottom: insets.bottom }}
+            refreshControl={
+              <RefreshControl refreshing={false} onRefresh={handleRefresh} tintColor={themeColors.primary} colors={[themeColors.primary]} />
+            }
+          >
+            {headerBlock}
+            <LoadingSpinner fullScreen={false} message="Loading spaces..." />
+          </ScrollView>
+        );
+      }
+      return (
+        <FlashList
+          data={spacesState.data}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <SpaceCard
+              space={item}
+              onPress={() => handleSpaceCardPress(item.slug)}
+            />
+          )}
+          contentContainerStyle={{ paddingBottom: insets.bottom + spacing.md }}
+          ListHeaderComponent={headerBlock}
+          ListEmptyComponent={
+            spacesState.error ? (
+              <ErrorMessage message={spacesState.error} onRetry={fetchSpaces} />
+            ) : spacesState.loaded ? (
+              <EmptyState icon="planet-outline" message="No spaces joined" />
+            ) : null
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={spacesState.refreshing}
+              onRefresh={handleRefresh}
+              tintColor={themeColors.primary}
+              colors={[themeColors.primary]}
+            />
+          }
+        />
+      );
+    }
+
+    // Comments tab — FlashList with CommentCard
+    if (activeTab === 'comments') {
+      if (commentsState.loading && !commentsState.loaded) {
+        return (
+          <ScrollView
+            contentContainerStyle={{ paddingBottom: insets.bottom }}
+            refreshControl={
+              <RefreshControl refreshing={false} onRefresh={handleRefresh} tintColor={themeColors.primary} colors={[themeColors.primary]} />
+            }
+          >
+            {headerBlock}
+            <LoadingSpinner fullScreen={false} message="Loading comments..." />
+          </ScrollView>
+        );
+      }
+      return (
+        <FlashList
+          data={commentsState.data}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item, index }) => (
+            <CommentCard
+              comment={item}
+              onPostPress={handleCommentPostPress}
+              onDelete={handleDeleteComment}
+              isOwnComment={isOwnProfile}
+              isFirst={index === 0}
+              isLast={index === commentsState.data.length - 1}
+            />
+          )}
+          contentContainerStyle={{ paddingBottom: insets.bottom + spacing.md }}
+          ListHeaderComponent={headerBlock}
+          ListEmptyComponent={
+            commentsState.error ? (
+              <ErrorMessage message={commentsState.error} onRetry={() => fetchComments(1)} />
+            ) : commentsState.loaded ? (
+              <EmptyState icon="chatbubbles-outline" message="No comments yet" />
+            ) : null
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={commentsState.refreshing}
+              onRefresh={handleRefresh}
+              tintColor={themeColors.primary}
+              colors={[themeColors.primary]}
+            />
+          }
+          onEndReached={commentsState.hasMore && !commentsState.loading ? () => fetchComments(commentsState.page + 1, true) : undefined}
+          onEndReachedThreshold={0.5}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  // ---------------------------------------------------------------------------
   // Render: Profile
   // ---------------------------------------------------------------------------
 
@@ -310,96 +820,8 @@ export default function UserProfileScreen() {
           </Pressable>
         }
       />
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={{ paddingBottom: insets.bottom }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={themeColors.primary}
-              colors={[themeColors.primary]}
-            />
-          }
-        >
-          {/* Profile Header */}
-          <ProfileHeader
-            profile={profile!}
-            isOwnProfile={isOwnProfile}
-            isUploading={avatarUploading}
-            onCoverPhotoPress={handleCoverPhotoPress}
-            onAvatarPress={handleAvatarPress}
-            onFollowersPress={handleFollowersPress}
-            onFollowingPress={handleFollowingPress}
-          />
 
-          {/* Action Buttons (other profiles only) */}
-          {!isOwnProfile && (
-            <View style={[styles.actionButtons, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
-              {isBlocked ? (
-                <Pressable
-                  style={[styles.followButton, { backgroundColor: themeColors.error }]}
-                  onPress={handleBlockPress}
-                  disabled={blockLoading}
-                >
-                  {blockLoading ? (
-                    <ActivityIndicator size="small" color={themeColors.textInverse} />
-                  ) : (
-                    <Text style={[styles.followButtonText, { color: themeColors.textInverse }]}>
-                      Blocked
-                    </Text>
-                  )}
-                </Pressable>
-              ) : (
-                <>
-                  <Pressable
-                    style={[
-                      styles.followButton,
-                      { backgroundColor: themeColors.primary },
-                      isFollowing && [styles.followingButton, { borderColor: themeColors.primary }],
-                    ]}
-                    onPress={handleFollowPress}
-                    disabled={followLoading}
-                  >
-                    {followLoading ? (
-                      <ActivityIndicator
-                        size="small"
-                        color={isFollowing ? themeColors.primary : themeColors.textInverse}
-                      />
-                    ) : (
-                      <Text
-                        style={[
-                          styles.followButtonText,
-                          { color: themeColors.textInverse },
-                          isFollowing && [styles.followingButtonText, { color: themeColors.primary }],
-                        ]}
-                      >
-                        {isFollowing ? 'Following' : 'Follow'}
-                      </Text>
-                    )}
-                  </Pressable>
-
-                  <Pressable style={[styles.messageButton, { backgroundColor: themeColors.backgroundSecondary }]} onPress={handleMessagePress}>
-                    <Ionicons name="chatbubble-outline" size={20} color={themeColors.text} />
-                  </Pressable>
-                </>
-              )}
-            </View>
-          )}
-
-          {/* About Content — hidden when profile is restricted (FC 2.2.01+ privacy) */}
-          {profile?.is_restricted ? (
-            <View style={[styles.restrictedContainer, { backgroundColor: themeColors.surface }]}>
-              <Ionicons name="lock-closed-outline" size={32} color={themeColors.textTertiary} />
-              <Text style={[styles.restrictedTitle, { color: themeColors.text }]}>Profile is Private</Text>
-              <Text style={[styles.restrictedText, { color: themeColors.textSecondary }]}>
-                This user's profile details are not visible.
-              </Text>
-            </View>
-          ) : (
-            <AboutTab profile={profile!} />
-          )}
-        </ScrollView>
+      {renderTabContent()}
 
       {/* Profile Settings Dropdown (own profile) */}
       {isOwnProfile && (

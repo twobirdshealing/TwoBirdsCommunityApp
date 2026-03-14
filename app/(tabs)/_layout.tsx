@@ -1,25 +1,26 @@
 // =============================================================================
 // TAB LAYOUT - Bottom tab navigation + Top Header
 // =============================================================================
-// Tabs: Home, Activity, Spaces, Calendar, Donate (hideable)
+// Core tabs: Home, Activity, Spaces (always present)
+// Module tabs: Registered via modules/_registry.ts (Calendar, Donate, etc.)
 // Header: Logo + Messages + Notifications + Avatar Menu
 // =============================================================================
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { cancelAnimation, interpolate, useAnimatedStyle, useSharedValue, withSequence, withTiming, withRepeat, withDelay, Easing } from 'react-native-reanimated';
+import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { Tabs, useRouter } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { hapticHeavy } from '@/utils/haptics';
-import { SITE_URL } from '@/constants/config';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { TabBarProvider, useTabBar } from '@/contexts/TabBarContext';
 import { TopHeader } from '@/components/navigation/TopHeader';
-import { MiniPlayer } from '@/components/bookclub/MiniPlayer';
+import { BottomOffsetProvider, useSetAddonHeight } from '@/contexts/BottomOffsetContext';
 import { useAppConfig } from '@/contexts/AppConfigContext';
 import { spacing, typography } from '@/constants/layout';
+import { getModuleTabs, getTabBarAddons } from '@/modules/_registry';
 
 // -----------------------------------------------------------------------------
 // Tab Bar Icon Component
@@ -39,46 +40,6 @@ function TabIcon({ name, nameOutline, focused, color }: TabIconProps) {
       size={24}
       color={color}
     />
-  );
-}
-
-// -----------------------------------------------------------------------------
-// Donate Tab Icon - Red heart with gentle pulse
-// -----------------------------------------------------------------------------
-
-function DonateTabIcon({ focused, color }: { focused: boolean; color: string }) {
-  const pulse = useSharedValue(1);
-
-  useEffect(() => {
-    if (!focused) {
-      // Gentle heartbeat: scale up then back, repeat with pause
-      pulse.value = withRepeat(
-        withSequence(
-          withDelay(2000, withTiming(1.18, { duration: 200, easing: Easing.out(Easing.ease) })),
-          withTiming(1, { duration: 150, easing: Easing.in(Easing.ease) }),
-          withTiming(1.12, { duration: 160, easing: Easing.out(Easing.ease) }),
-          withTiming(1, { duration: 200, easing: Easing.in(Easing.ease) }),
-        ),
-        -1, // infinite
-      );
-    } else {
-      pulse.value = withTiming(1, { duration: 150 });
-    }
-    return () => cancelAnimation(pulse);
-  }, [focused, pulse]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulse.value }],
-  }));
-
-  return (
-    <Animated.View style={animatedStyle}>
-      <Ionicons
-        name={focused ? 'heart' : 'heart-outline'}
-        size={24}
-        color={color}
-      />
-    </Animated.View>
   );
 }
 
@@ -138,9 +99,19 @@ function TabItemButton({ routeKey, label, icon, isFocused, color, accessibilityL
 // Custom Tab Bar
 // -----------------------------------------------------------------------------
 
+// Module registrations (static — resolved once at load time)
+const tabBarAddons = getTabBarAddons();
+const moduleTabMeta: Record<string, { color?: string; hideKey?: string }> = {};
+for (const tab of getModuleTabs()) {
+  moduleTabMeta[tab.name] = { color: tab.tabColor, hideKey: tab.hideMenuKey };
+}
+
 function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarProps) {
   const { colors: themeColors } = useTheme();
   const { translateY } = useTabBar();
+  const setAddonHeight = useSetAddonHeight();
+  const { visibility } = useAppConfig();
+  const hideMenu = visibility?.hide_menu ?? [];
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -167,13 +138,23 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
         animatedStyle,
       ]}
     >
-      <MiniPlayer />
+      {/* Module tab bar addons (e.g., mini player, cart bar) — stacked vertically */}
+      {tabBarAddons.length > 0 && (
+        <View onLayout={(e) => setAddonHeight(e.nativeEvent.layout.height)}>
+          {tabBarAddons.map((Addon, i) => <Addon key={i} />)}
+        </View>
+      )}
       <View style={styles.tabBarInner}>
-        {state.routes.map((route, index) => {
+        {state.routes.filter((route) => {
+          const meta = moduleTabMeta[route.name];
+          return !meta?.hideKey || !hideMenu.includes(meta.hideKey);
+        }).map((route) => {
           const { options } = descriptors[route.key];
-          const isFocused = state.index === index;
-          const isDonate = route.name === 'donate';
-          const color = isDonate ? themeColors.error : (isFocused ? themeColors.tabBar.active : themeColors.tabBar.inactive);
+          const isFocused = state.routes[state.index]?.key === route.key;
+          const colorToken = moduleTabMeta[route.name]?.color;
+          const color = colorToken
+            ? (themeColors as any)[colorToken] ?? themeColors.tabBar.active
+            : (isFocused ? themeColors.tabBar.active : themeColors.tabBar.inactive);
 
           const onPress = () => {
             const event = navigation.emit({
@@ -213,15 +194,15 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
 // Component
 // -----------------------------------------------------------------------------
 
-const DONATE_URL = `${SITE_URL}/calendar/donate/`;
-
 function TabLayoutInner() {
   const { colors: themeColors } = useTheme();
   const { showTabBar } = useTabBar();
   const { visibility } = useAppConfig();
   const router = useRouter();
   const hideMenu = visibility?.hide_menu ?? [];
-  const isDonateHidden = hideMenu.includes('donate');
+
+  // Module registrations (static — safe to memoize with empty deps)
+  const moduleTabs = useMemo(() => getModuleTabs(), []);
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
@@ -235,7 +216,7 @@ function TabLayoutInner() {
         screenListeners={{ tabPress: () => showTabBar() }}
       >
         {/* ============================================= */}
-        {/* TABS: Home, Activity, Spaces, Calendar (+Donate) */}
+        {/* CORE TABS: Home, Activity, Spaces             */}
         {/* ============================================= */}
 
         {/* Home Tab - Welcome page */}
@@ -271,42 +252,35 @@ function TabLayoutInner() {
           }}
         />
 
-        {/* Calendar Tab */}
-        <Tabs.Screen
-          name="calendar"
-          options={{
-            title: 'Calendar',
-            tabBarIcon: ({ focused, color }) => (
-              <TabIcon name="calendar" nameOutline="calendar-outline" focused={focused} color={color} />
-            ),
-          }}
-        />
+        {/* ============================================= */}
+        {/* MODULE TABS: Registered via modules/_registry  */}
+        {/* ============================================= */}
 
-        {/* Donate Tab - hidden from tab bar when 'donate' is in hide_menu */}
-        <Tabs.Screen
-          name="donate"
-          options={{
-            title: 'Donate',
-            href: isDonateHidden ? null : undefined,
-            tabBarIcon: ({ focused, color }) => (
-              <DonateTabIcon focused={focused} color={color} />
-            ),
-          }}
-          listeners={{
-            tabPress: (e) => {
-              e.preventDefault();
-              router.push({
-                pathname: '/webview',
-                params: {
-                  url: DONATE_URL,
-                  title: 'Donate',
-                  rightIcon: 'cart-outline',
-                  rightAction: 'cart',
+        {moduleTabs.map((tab) => {
+          const isHidden = tab.hideMenuKey && hideMenu.includes(tab.hideMenuKey);
+          return (
+            <Tabs.Screen
+              key={tab.name}
+              name={tab.name}
+              options={{
+                title: tab.title,
+                href: isHidden ? null : undefined,
+                tabBarIcon: tab.tabBarIcon
+                  ? tab.tabBarIcon
+                  : ({ focused, color }) => (
+                      <TabIcon name={tab.icon} nameOutline={tab.iconOutline} focused={focused} color={color} />
+                    ),
+              }}
+              listeners={tab.interceptPress ? {
+                tabPress: (e) => {
+                  e.preventDefault();
+                  tab.interceptPress!(router);
                 },
-              });
-            },
-          }}
-        />
+              } : undefined}
+            />
+          );
+        })}
+
       </Tabs>
     </View>
   );
@@ -314,9 +288,11 @@ function TabLayoutInner() {
 
 export default function TabLayout() {
   return (
-    <TabBarProvider>
-      <TabLayoutInner />
-    </TabBarProvider>
+    <BottomOffsetProvider>
+      <TabBarProvider>
+        <TabLayoutInner />
+      </TabBarProvider>
+    </BottomOffsetProvider>
   );
 }
 

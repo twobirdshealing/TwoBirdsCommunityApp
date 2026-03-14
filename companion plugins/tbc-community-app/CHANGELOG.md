@@ -2,6 +2,13 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.35.0
+- **UI Visibility: pass all keys to app**: Removed whitelist filter in `get_visibility_flags()` — all hidden element keys (including `donate`, `donor_dashboard`, and custom keys) now flow through `hide_menu[]` to the app. Previously only 5 core keys were returned.
+- **Custom visibility elements**: Admins can add custom key/label pairs in Settings → UI Visibility. These appear as columns in the role-based visibility grid. Use this when adding app modules with `hideMenuKey` — no PHP code changes needed.
+
+## v3.34.0
+- **Book Club API removed**: Moved `TBC_CA_Book_Club_API` to tbc-book-club plugin (`tbc-bc/v1` namespace). Old `tbc-ca/v1/books` endpoints no longer registered.
+
 ## v3.33.0
 - **User Visible column in admin**: New "User Visible" checkbox per notification type in Settings → Notifications. Controls whether the type appears in the app's user notification settings. Unchecked types still fire notifications but users can't toggle them off.
 - `new_direct_message` and `manual_notification` default to hidden (unchecked). Admin can override any type's visibility without code changes.

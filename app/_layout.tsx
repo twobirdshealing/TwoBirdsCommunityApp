@@ -12,7 +12,6 @@ import { APP_VERSION, FEATURES } from '@/constants/config';
 import { isVersionBelow } from '@/utils/version';
 import { AppConfigProvider, useAppConfig } from '@/contexts/AppConfigContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { AudioPlayerProvider } from '@/contexts/AudioPlayerContext';
 import { PusherProvider } from '@/contexts/PusherContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { UnreadCountsProvider, useUnreadCounts } from '@/contexts/UnreadCountsContext';
@@ -33,6 +32,7 @@ import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { getModuleProviders, getModuleRoutePrefixes } from '@/modules/_registry';
 import 'react-native-reanimated';
 
 // Keep the native splash screen visible until we're ready to render
@@ -46,27 +46,35 @@ const TRANSPARENT_NAV_THEME: NavTheme = {
 };
 
 // -----------------------------------------------------------------------------
-// Deep link validation
+// Deep link / push notification route validation
 // -----------------------------------------------------------------------------
 
-const VALID_ROUTE_PREFIXES = [
+/** Core route prefixes — always present regardless of modules */
+const CORE_ROUTE_PREFIXES = [
   '/(tabs)',
   '/feed/',
   '/profile/',
   '/space/',
   '/messages',
   '/notifications',
-  '/blog/',
   '/courses',
   '/directory',
   '/bookmarks',
   '/notification-settings',
   '/webview',
-  '/bookclub',
-  '/youtube',
   '/create-post',
   '/comments/',
+  // TODO: move to blog/youtube modules once modularized
+  '/blog/',
   '/blog-comments/',
+  '/youtube',
+];
+
+/** Core + module-registered prefixes (resolved once at load time).
+ *  Safe because MODULES is a static import-time array — not lazily registered. */
+const VALID_ROUTE_PREFIXES = [
+  ...CORE_ROUTE_PREFIXES,
+  ...getModuleRoutePrefixes(),
 ];
 
 /** Validate that a push notification route matches a known app route */
@@ -338,41 +346,15 @@ function RootLayoutNav() {
       <View style={[styles.flex, { backgroundColor: themeColors.background }]}>
         <Stack
           screenOptions={{
+            headerShown: false,
             contentStyle: { backgroundColor: themeColors.background },
           }}
         >
 
         {/* TABS */}
-        <Stack.Screen
-          name="(tabs)"
-          options={{ headerShown: false }}
-        />
+        <Stack.Screen name="(tabs)" />
 
-        {/* AUTH */}
-        <Stack.Screen
-          name="login"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="register"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="forgot-password"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="profile-complete"
-          options={{ headerShown: false }}
-        />
-
-        {/* SPACE ROUTES - nested layout handles screen options */}
-        <Stack.Screen
-          name="space/[slug]"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-
-        {/* SINGLE POST VIEW (notifications, deep links) */}
+        {/* SINGLE POST VIEW — only screen with a visible header */}
         <Stack.Screen
           name="feed/[id]"
           options={{
@@ -384,130 +366,37 @@ function RootLayoutNav() {
           }}
         />
 
-        {/* PROFILE */}
-        <Stack.Screen
-          name="profile/[username]"
-          options={{ presentation: 'card', headerShown: false }}
-        />
+        {/* FULL SCREEN MODALS — slide up from bottom */}
+        <Stack.Screen name="create-post" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="comments/[postId]" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="blog-comments/[postId]" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="webview" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
 
-        {/* MESSAGES - folder with _layout.tsx */}
-        <Stack.Screen
-          name="messages"
-          options={{ presentation: 'card', headerShown: false }}
-        />
+        {/* All other routes auto-discover from file stubs with defaults:
+            presentation: 'card', headerShown: false
+            Module routes (e.g. bookclub/index, bookclub/[id]) just need
+            a file stub in app/ — no entry here required. */}
 
-        {/* NOTIFICATIONS */}
-        <Stack.Screen
-          name="notifications"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-
-        {/* CHURCH DIRECTORY */}
-        <Stack.Screen
-          name="directory"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-
-        {/* BOOKMARKS */}
-        <Stack.Screen
-          name="bookmarks"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-
-        {/* BLOG */}
-        <Stack.Screen
-          name="blog/index"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-        <Stack.Screen
-          name="blog/[id]"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-
-        {/* COURSES */}
-        <Stack.Screen
-          name="courses/index"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-        <Stack.Screen
-          name="courses/[slug]"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-        <Stack.Screen
-          name="courses/[slug]/lesson/[lessonSlug]"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-
-        {/* NOTIFICATION SETTINGS */}
-        <Stack.Screen
-          name="notification-settings"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-
-        {/* YOUTUBE */}
-        <Stack.Screen
-          name="youtube/index"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-        <Stack.Screen
-          name="youtube/playlist/[id]"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-
-        {/* BOOK CLUB */}
-        <Stack.Screen
-          name="bookclub/index"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-        <Stack.Screen
-          name="bookclub/[id]"
-          options={{ presentation: 'card', headerShown: false }}
-        />
-
-        {/* CREATE POST */}
-        <Stack.Screen
-          name="create-post"
-          options={{
-            presentation: 'fullScreenModal',
-            headerShown: false,
-            animation: 'slide_from_bottom',
-          }}
-        />
-
-        {/* COMMENTS */}
-        <Stack.Screen
-          name="comments/[postId]"
-          options={{
-            presentation: 'fullScreenModal',
-            headerShown: false,
-            animation: 'slide_from_bottom',
-          }}
-        />
-
-        {/* BLOG COMMENTS */}
-        <Stack.Screen
-          name="blog-comments/[postId]"
-          options={{
-            presentation: 'fullScreenModal',
-            headerShown: false,
-            animation: 'slide_from_bottom',
-          }}
-        />
-
-        {/* WEBVIEW - for events, cart, etc */}
-        <Stack.Screen
-          name="webview"
-          options={{
-            presentation: 'fullScreenModal',
-            headerShown: false,
-            animation: 'slide_from_bottom',
-          }}
-        />
         </Stack>
         <StatusBar style={isDark ? 'light' : 'dark'} />
       </View>
     </NavThemeProvider>
   );
+}
+
+// -----------------------------------------------------------------------------
+// Module Providers — wraps providers registered by modules
+// -----------------------------------------------------------------------------
+
+function ModuleProviders({ children }: { children: React.ReactNode }) {
+  const providers = getModuleProviders();
+  if (providers.length === 0) return <>{children}</>;
+
+  // Nest providers from outside-in based on order
+  return providers.reduceRight<React.ReactNode>(
+    (acc, { component: Provider }) => <Provider>{acc}</Provider>,
+    children,
+  ) as React.ReactElement;
 }
 
 // -----------------------------------------------------------------------------
@@ -522,15 +411,15 @@ export default function RootLayout() {
           <AuthProvider>
             <AppConfigProvider>
               <UnreadCountsProvider>
-                <AudioPlayerProvider>
-                  <PusherProvider>
+                <PusherProvider>
+                  <ModuleProviders>
                     <KeyboardProvider>
                       <BottomSheetModalProvider>
                         <RootLayoutNav />
                       </BottomSheetModalProvider>
                     </KeyboardProvider>
-                  </PusherProvider>
-                </AudioPlayerProvider>
+                  </ModuleProviders>
+                </PusherProvider>
               </UnreadCountsProvider>
             </AppConfigProvider>
           </AuthProvider>

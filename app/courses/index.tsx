@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabContentPadding } from '@/contexts/BottomOffsetContext';
 
 import { CourseCard } from '@/components/course/CourseCard';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -47,6 +48,7 @@ export default function CoursesListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
+  const tabContentPadding = useTabContentPadding();
 
   // Data state
   const [courses, setCourses] = useState<Course[]>([]);
@@ -252,7 +254,7 @@ export default function CoursesListScreen() {
                 </View>
               ) : null
             }
-            contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: sizing.height.tabBar + insets.bottom + spacing.md }}
+            contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: tabContentPadding }}
           />
         )}
       </View>

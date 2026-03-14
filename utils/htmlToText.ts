@@ -74,7 +74,8 @@ export function decodeHtmlEntities(text: string): string {
     .replace(/&#8211;/g, '\u2013')  // en dash
     .replace(/&#8212;/g, '\u2014')  // em dash
     .replace(/&#8230;/g, '\u2026')  // ellipsis
-    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(Number(num)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, num) => String.fromCodePoint(Number(num)))
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')

@@ -4,7 +4,7 @@
 // Displays: Profile preview, My Profile, My Spaces, Bookmarks, Logout
 // =============================================================================
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal,
   Pressable,
@@ -22,6 +22,7 @@ import { FEATURES, PRIVACY_POLICY_URL } from '@/constants/config';
 import { spacing, typography, shadows, sizing } from '@/constants/layout';
 import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { getModuleMenuItems } from '@/modules/_registry';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -42,7 +43,6 @@ interface UserMenuProps {
   onBookmarksPress: () => void;
   onCoursesPress: () => void;
   onBlogPress: () => void;
-  onDonorDashboardPress: () => void;
   onNotificationSettingsPress: () => void;
   onLogout: () => void;
 }
@@ -56,16 +56,20 @@ interface MenuItemProps {
   label: string;
   onPress: () => void;
   destructive?: boolean;
+  iconColor?: string;
 }
 
-function MenuItem({ icon, label, onPress, destructive = false }: MenuItemProps) {
+function MenuItem({ icon, label, onPress, destructive = false, iconColor }: MenuItemProps) {
   const { colors: themeColors } = useTheme();
+  const resolvedIconColor = iconColor
+    ? (themeColors as any)[iconColor] ?? themeColors.textSecondary
+    : (destructive ? themeColors.error : themeColors.textSecondary);
   return (
     <AnimatedPressable style={styles.menuItem} onPress={() => { destructive ? hapticWarning() : hapticLight(); onPress(); }} accessibilityRole="button" accessibilityLabel={label}>
       <Ionicons
         name={icon}
         size={22}
-        color={destructive ? themeColors.error : themeColors.textSecondary}
+        color={resolvedIconColor}
       />
       <Text style={[styles.menuItemText, { color: destructive ? themeColors.error : themeColors.text, marginLeft: spacing.md }]}>
         {label}
@@ -88,7 +92,6 @@ export function UserMenu({
   onBookmarksPress,
   onCoursesPress,
   onBlogPress,
-  onDonorDashboardPress,
   onNotificationSettingsPress,
   onLogout,
 }: UserMenuProps) {
@@ -100,6 +103,9 @@ export function UserMenu({
   const isHidden = (key: string) => hideMenu.includes(key);
 
   const themeModeLabel = isDark ? 'Dark' : 'Light';
+
+  // Modules are static — memoize to avoid re-sorting on every render
+  const moduleMenuItems = useMemo(() => getModuleMenuItems(), []);
 
   const handleThemeToggle = () => {
     hapticMedium();
@@ -196,13 +202,6 @@ export function UserMenu({
                   onPress={onBlogPress}
                 />
               )}
-              {!isHidden('donor_dashboard') && (
-                <MenuItem
-                  icon="heart-outline"
-                  label="Donor Dashboard"
-                  onPress={onDonorDashboardPress}
-                />
-              )}
               {!isHidden('notification_settings') && (
                 <MenuItem
                   icon="notifications-outline"
@@ -210,6 +209,22 @@ export function UserMenu({
                   onPress={onNotificationSettingsPress}
                 />
               )}
+              {/* Module menu items */}
+              {moduleMenuItems.map((item) =>
+                item.hideMenuKey && isHidden(item.hideMenuKey) ? null : (
+                  <MenuItem
+                    key={item.id}
+                    icon={item.icon}
+                    label={item.label}
+                    iconColor={item.iconColor}
+                    onPress={() => {
+                      onClose();
+                      router.push(item.route as any);
+                    }}
+                  />
+                )
+              )}
+
               <MenuItem
                 icon="shield-checkmark-outline"
                 label="Privacy Policy"

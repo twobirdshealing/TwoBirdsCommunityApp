@@ -19,38 +19,33 @@ import DraggableFlatList, {
   ScaleDecorator,
 } from 'react-native-draggable-flatlist';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, sizing } from '@/constants/layout';
-import { useAudioPlayerContext } from '@/contexts/AudioPlayerContext';
+import { spacing } from '@/constants/layout';
+import { useTabContentPadding } from '@/contexts/BottomOffsetContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTabBar } from '@/contexts/TabBarContext';
 import { hapticMedium } from '@/utils/haptics';
 import { useWidgetPreferences, WidgetPreference } from '@/hooks/useWidgetPreferences';
 import { useAppFocus } from '@/hooks/useAppFocus';
 import { getAvailableWidgets, WidgetConfig } from '@/components/home/widgetRegistry';
+import { getWidgetComponentMap } from '@/modules/_registry';
 import { HomeWidget } from '@/components/home/HomeWidget';
 import { WelcomeBannerWidget } from '@/components/home/WelcomeBannerWidget';
 import { BlogWidget } from '@/components/home/BlogWidget';
 import { YouTubeWidget } from '@/components/home/YouTubeWidget';
-import { EventsWidget } from '@/components/home/EventsWidget';
 import { CoursesWidget } from '@/components/home/CoursesWidget';
-import { BookClubWidget } from '@/components/home/BookClubWidget';
-import { CeremonyWidget } from '@/components/home/CeremonyWidget';
 import { EditModeBar } from '@/components/home/EditModeBar';
 import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
 
 // -----------------------------------------------------------------------------
-// Widget Component Map
+// Widget Component Map — module widgets + core widgets
 // -----------------------------------------------------------------------------
 
 const WIDGET_COMPONENTS: Record<
   string,
   React.ComponentType<{ refreshKey: number }>
 > = {
-  'upcoming-booking': CeremonyWidget,
-  'featured-events': EventsWidget,
+  ...getWidgetComponentMap(),
   'my-courses': CoursesWidget,
-  'book-club': BookClubWidget,
   'latest-blog': BlogWidget,
   'latest-youtube': YouTubeWidget,
 };
@@ -71,18 +66,13 @@ interface WidgetItem {
 export default function HomeScreen() {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
-  const insets = useSafeAreaInsets();
-  const { currentBook } = useAudioPlayerContext();
+  const bottomInset = useTabContentPadding();
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
 
   // Refresh all widgets when app returns from background
   useAppFocus(useCallback(() => setRefreshKey((prev) => prev + 1), []));
-
-  // Dynamic bottom padding: tab bar + safe area + mini player (if active)
-  const MINI_PLAYER_HEIGHT = 59;
-  const bottomInset = sizing.height.tabBar + insets.bottom + (currentBook ? MINI_PLAYER_HEIGHT : 0) + spacing.md;
 
   const { handleScroll, setLocked } = useTabBar();
 

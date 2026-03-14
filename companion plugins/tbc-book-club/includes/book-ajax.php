@@ -19,8 +19,6 @@ class Tbc_Bc_Ajax_Handlers {
         add_action('wp_ajax_tbc_bc_search_users', array($this, 'ajax_search_users'));
         add_action('wp_ajax_tbc_bc_award_moderator', array($this, 'ajax_award_moderator'));
 
-        add_action('wp_ajax_tbc_bc_save_bookmark', array($this, 'ajax_save_bookmark'));
-        add_action('wp_ajax_tbc_bc_remove_bookmark', array($this, 'ajax_remove_bookmark'));
     }
 
     public function ajax_save_book() {
@@ -295,74 +293,4 @@ class Tbc_Bc_Ajax_Handlers {
         ));
     }
 
-    public function ajax_save_bookmark() {
-        check_ajax_referer('tbc-bc-player-nonce', 'nonce');
-        if (!is_user_logged_in()) {
-            wp_send_json_error('Must be logged in to save bookmarks');
-        }
-
-        global $wpdb;
-        $user_id = get_current_user_id();
-        $book_id = isset($_POST['book_id']) ? intval($_POST['book_id']) : 0;
-        $timestamp = isset($_POST['timestamp']) ? floatval($_POST['timestamp']) : 0;
-        $title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
-
-        if ($book_id <= 0) {
-            wp_send_json_error('Invalid book ID');
-        }
-
-        if ($timestamp <= 0 || !is_numeric($timestamp)) {
-            wp_send_json_error('Invalid timestamp');
-        }
-
-        $result = $wpdb->insert(
-            $wpdb->prefix . 'tbc_bc_bookmarks',
-            array(
-                'user_id' => $user_id,
-                'book_id' => $book_id,
-                'timestamp' => $timestamp,
-                'title' => $title
-            )
-        );
-
-        if ($result === false) {
-            wp_send_json_error('Database error: ' . $wpdb->last_error);
-        }
-        
-        wp_send_json_success(array(
-            'bookmark_id' => $wpdb->insert_id,
-            'title' => $title,
-            'formatted_time' => tbc_bc_seconds_to_time($timestamp)
-        ));
-    }
-
-    public function ajax_remove_bookmark() {
-        check_ajax_referer('tbc-bc-player-nonce', 'nonce');
-        if (!is_user_logged_in()) {
-            wp_send_json_error('Must be logged in to remove bookmarks');
-        }
-
-        global $wpdb;
-        $bookmark_id = isset($_POST['bookmark_id']) ? intval($_POST['bookmark_id']) : 0;
-        $user_id = get_current_user_id();
-        
-        if ($bookmark_id <= 0) {
-            wp_send_json_error('Invalid bookmark ID');
-        }
-
-        $result = $wpdb->delete(
-            $wpdb->prefix . 'tbc_bc_bookmarks',
-            array(
-                'id' => $bookmark_id,
-                'user_id' => $user_id
-            ),
-            array('%d', '%d')
-        );
-
-        if ($result === false) {
-            wp_send_json_error('Database error: ' . $wpdb->last_error);
-        }
-        
-        wp_send_json_success();
-    }
 }

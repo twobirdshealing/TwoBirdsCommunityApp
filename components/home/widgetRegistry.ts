@@ -1,12 +1,13 @@
 // =============================================================================
 // WIDGET REGISTRY - Configuration for all home screen widgets
 // =============================================================================
-// Single source of truth for available widgets. Adding a new widget means
-// adding one entry here + one component mapping in the home screen.
+// Core widgets are defined here. Module widgets are registered via their
+// module manifest in modules/_registry.ts and merged automatically.
 // =============================================================================
 
 import { Ionicons } from '@expo/vector-icons';
 import { FEATURES } from '@/constants/config';
+import { getModuleWidgets } from '@/modules/_registry';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -32,43 +33,16 @@ export interface WidgetConfig {
 }
 
 // -----------------------------------------------------------------------------
-// Registry
+// Core Widget Registry (non-module widgets)
 // -----------------------------------------------------------------------------
 
-export const WIDGET_REGISTRY: WidgetConfig[] = [
-  {
-    id: 'upcoming-booking',
-    title: 'Upcoming Booking',
-    icon: 'flame-outline',
-    seeAllRoute: '/(tabs)/calendar',
-    defaultEnabled: true,
-    canDisable: true,
-    externalWrapper: true,
-  },
-  {
-    id: 'book-club',
-    title: 'Book Club',
-    icon: 'book-outline',
-    seeAllRoute: '/bookclub',
-    featureFlag: 'BOOK_CLUB',
-    defaultEnabled: true,
-    canDisable: true,
-    externalWrapper: true,
-  },
-  {
-    id: 'featured-events',
-    title: 'Featured Events',
-    icon: 'calendar-outline',
-    seeAllRoute: '/(tabs)/calendar',
-    defaultEnabled: true,
-    canDisable: true,
-    externalWrapper: true,
-  },
+const CORE_WIDGETS: WidgetConfig[] = [
   {
     id: 'latest-youtube',
     title: 'YouTube',
     icon: 'logo-youtube',
     seeAllRoute: '/youtube',
+    featureFlag: 'YOUTUBE',
     defaultEnabled: true,
     canDisable: true,
     externalWrapper: true,
@@ -92,6 +66,16 @@ export const WIDGET_REGISTRY: WidgetConfig[] = [
     canDisable: true,
     externalWrapper: true,
   },
+];
+
+// -----------------------------------------------------------------------------
+// Merged Registry (core + module widgets)
+// -----------------------------------------------------------------------------
+
+/** Full widget registry — core widgets first, then module widgets */
+export const WIDGET_REGISTRY: WidgetConfig[] = [
+  ...CORE_WIDGETS,
+  ...getModuleWidgets(),
 ];
 
 // -----------------------------------------------------------------------------
