@@ -5,7 +5,7 @@
 // in-app link interception (HtmlContent.tsx).
 // =============================================================================
 
-import { SITE_URL } from '@/constants/config';
+import { APP_SCHEME, SITE_URL } from '@/constants/config';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -23,7 +23,7 @@ export type AppRoute = {
 /**
  * Map a web URL to an app route. Returns null if URL doesn't match any app route.
  *
- * @param url      Full URL (e.g. https://staging.twobirdschurch.com/spaces/general)
+ * @param url      Full URL (e.g. https://example.com/spaces/general)
  * @param portalSlug  Fluent Community portal slug (empty string when portal is at root)
  */
 export function mapUrlToRoute(url: string, portalSlug: string): AppRoute {
@@ -50,9 +50,10 @@ export function mapUrlToRoute(url: string, portalSlug: string): AppRoute {
  */
 function extractPath(url: string): string | null {
   try {
-    // Handle custom scheme URLs (twobirdscommunity://)
-    if (url.startsWith('twobirdscommunity://')) {
-      const pathPart = url.replace('twobirdscommunity://', '');
+    // Handle custom scheme URLs (e.g. myapp://)
+    const schemePrefix = `${APP_SCHEME}://`;
+    if (url.startsWith(schemePrefix)) {
+      const pathPart = url.replace(schemePrefix, '');
       return '/' + pathPart;
     }
 

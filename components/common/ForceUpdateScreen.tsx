@@ -4,7 +4,7 @@
 // Shown before auth/maintenance — user cannot proceed until they update.
 // =============================================================================
 
-import { getHeaderLogoSource } from '@/constants/config';
+import { APP_NAME, getHeaderLogoSource } from '@/constants/config';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { UpdateConfig } from '@/services/api/theme';
@@ -60,7 +60,7 @@ export function ForceUpdateScreen({ updateConfig }: ForceUpdateScreenProps) {
           Update Required
         </Text>
         <Text style={[styles.message, { color: colors.textSecondary }]}>
-          A new version of Two Birds is available. Please update to continue using the app.
+          A new version of {APP_NAME} is available. Please update to continue using the app.
         </Text>
 
         {/* Update button (only if store URL is configured) */}

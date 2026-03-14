@@ -67,7 +67,7 @@ function ErrorFallback({ onRetry }: { onRetry: () => void }) {
   const bg = isDark ? '#1a1a2e' : '#f8f9fa';
   const text = isDark ? '#e8e8e8' : '#1a1a2e';
   const textSecondary = isDark ? '#a0a0a0' : '#6b7280';
-  const buttonBg = '#6366F1';
+  const buttonBg = isDark ? '#555555' : '#333333';
   const buttonText = '#ffffff';
 
   return (

@@ -17,6 +17,8 @@ import type { BrandingConfig } from '@/services/api/theme';
 export const APP_NAME = 'Two Birds';                   // SETUP: Your app name
 export const APP_USER_AGENT = 'TBCCommunityApp/1.0';   // SETUP: User agent for API requests
 export const APP_VERSION = Constants.expoConfig?.version || '1.0.0';
+const rawScheme = Constants.expoConfig?.scheme;
+export const APP_SCHEME: string = Array.isArray(rawScheme) ? rawScheme[0] : rawScheme || 'app'; // Derived from app.json "scheme"
 
 // -----------------------------------------------------------------------------
 // SETUP: Site URL

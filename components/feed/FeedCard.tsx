@@ -1,7 +1,6 @@
 // =============================================================================
 // FEED CARD - A single post/feed item in the list
 // =============================================================================
-// UPDATED: Added PIN TO TOP option in menu for admins
 // - Bookmark icon
 // - 3-dot menu: Copy Link, Pin (admin), Edit (owner), Delete (owner)
 // - Sticky badge for pinned posts

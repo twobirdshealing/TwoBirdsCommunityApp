@@ -253,9 +253,9 @@ async function request<T>(
 
     if (!response.ok) {
       if (response.status >= 500) {
-        console.error('[API Error]', data);
+        log.error('HTTP', response.status, data);
       } else {
-        console.warn('[API Error]', data);
+        log.warn('HTTP', response.status, data);
       }
 
       // Handle JWT expiration or invalid token
@@ -277,10 +277,10 @@ async function request<T>(
           return request<T>(endpoint, { ...config, _isRetry: true });
         }
 
-        console.warn('[Auth] Silent refresh failed — clearing auth');
+        log.warn('Silent refresh failed — clearing auth');
         await clearAuth();
       } else if (isJwtExpired && config._isRetry) {
-        console.warn('[Auth] JWT still invalid after refresh — clearing auth');
+        log.warn('JWT still invalid after refresh — clearing auth');
         await clearAuth();
       }
 
@@ -296,7 +296,7 @@ async function request<T>(
       ...(includeHeaders ? { headers: response.headers } : {}),
     } as ApiResponse<T> | ApiResponseWithHeaders<T>;
   } catch (error) {
-    console.error('[API Network Error]', error);
+    log.error('Network error', error);
 
     return {
       success: false,

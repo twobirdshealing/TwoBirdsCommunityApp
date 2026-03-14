@@ -47,7 +47,6 @@ export interface Feed {
   updated_at: string;
   scheduled_at: string | null;
 
-  // ✅ Fluent meta payload (REAL)
   meta?: {
     bb_activity_id?: string;
 

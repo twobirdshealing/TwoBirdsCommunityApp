@@ -1,7 +1,6 @@
 // =============================================================================
 // FEED LIST - Scrollable list of feed cards with all features
 // =============================================================================
-// UPDATED: Added onPin callback for pin functionality
 // =============================================================================
 
 import { Ionicons } from '@expo/vector-icons';

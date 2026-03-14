@@ -1,5 +1,5 @@
 // =============================================================================
-// COLORS - Two Birds Community Color Palette
+// COLORS - App Color Palette
 // =============================================================================
 // Aligned with Fluent Community CSS variables (--fcom-*)
 // See: Fluent Reference Plugins/fluent-theme-integration-guide.md

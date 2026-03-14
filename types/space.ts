@@ -22,7 +22,7 @@ export interface Space {
   description: string | null;
   description_rendered?: string | null;
   type: SpaceType;
-  privacy: 'public' | 'private' | 'secret';  // ✅ UPDATED: Added 'secret'
+  privacy: 'public' | 'private' | 'secret';
   status: 'published' | 'draft' | 'archived';
   serial: string | number;
   settings: SpaceSettings;

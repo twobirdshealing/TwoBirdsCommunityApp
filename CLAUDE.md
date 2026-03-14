@@ -12,6 +12,8 @@ Files a buyer edits to make the app theirs:
 | Build profiles | `eas.json` | `SITE_URL` env var per profile (dev, preview, production) |
 | Branding assets | `assets/images/` | App icon, splash screen, login background/logo |
 | Default colors | `constants/colors.ts` | Fallback colors (overridden by Fluent Community theme sync) |
+| Firebase (Android) | `google-services.json` | Replace with your Firebase project config |
+| Firebase (iOS) | `GoogleService-Info.plist` | Replace with your Firebase project config |
 
 ## Module System
 
