@@ -102,7 +102,7 @@ export function useCachedData<T>({
   // -- Persist to AsyncStorage (fire-and-forget) --
   const persist = useCallback(
     (value: T) => {
-      AsyncStorage.setItem(cacheKey, JSON.stringify(value)).catch(() => {});
+      AsyncStorage.setItem(cacheKey, JSON.stringify(value)).catch((e) => log.warn('Cache persist failed:', e));
     },
     [cacheKey],
   );

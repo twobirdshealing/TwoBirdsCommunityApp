@@ -1,10 +1,11 @@
 <?php
 /**
  * Plugin Name: TBC Fluent Profiles
- * Plugin URI:  https://www.twobirdschurch.com
+ * Plugin URI:  https://twobirdscode.com
  * Description: Custom profile fields, OTP verification (Twilio), and multi-step registration for Fluent Community. Unified profiles, verification, and registration in one plugin.
  * Version:     2.5.1
- * Author:      Two Birds Community
+ * Author: Two Birds Code
+ * Author URI:  https://twobirdscode.com
  * Text Domain: tbc-fluent-profiles
  * Domain Path: /languages
  * Requires at least: 5.8

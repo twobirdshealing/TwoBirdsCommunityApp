@@ -7,8 +7,11 @@
 // =============================================================================
 
 import { AppConfigResponse, VisibilityConfig } from '@/services/api/theme';
+import { createLogger } from '@/utils/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useMemo, useEffect, useState } from 'react';
+
+const log = createLogger('AppConfig');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -45,7 +48,7 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   const applyConfig = useCallback((data: AppConfigResponse) => {
     if (data.visibility) {
       setVisibility(data.visibility);
-      AsyncStorage.setItem(VISIBILITY_CACHE_KEY, JSON.stringify(data.visibility)).catch(() => {});
+      AsyncStorage.setItem(VISIBILITY_CACHE_KEY, JSON.stringify(data.visibility)).catch((e) => log.warn('Visibility cache write failed:', e));
     }
     if (data.portal_slug !== undefined) {
       setPortalSlug(data.portal_slug);

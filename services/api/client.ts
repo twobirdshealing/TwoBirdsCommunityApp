@@ -42,6 +42,9 @@ export function setOnResponseHeaders(
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
+/** Default request timeout in milliseconds (20 seconds) */
+const DEFAULT_TIMEOUT_MS = 20_000;
+
 interface RequestConfig {
   method?: HttpMethod;
   body?: any; // eslint-disable-line @typescript-eslint/no-explicit-any -- accepts JSON, FormData, etc.
@@ -53,6 +56,8 @@ interface RequestConfig {
   rawBody?: boolean;
   /** When true, response Headers object is included in the success result */
   includeHeaders?: boolean;
+  /** Request timeout in milliseconds (default: 20000) */
+  timeout?: number;
   /** @internal Used to prevent infinite retry loops */
   _isRetry?: boolean;
 }
@@ -165,7 +170,7 @@ async function request<T>(
   endpoint: string,
   config: RequestConfig = {}
 ): Promise<ApiResponse<T> | ApiResponseWithHeaders<T>> {
-  const { method = 'GET', body, params, headers = {}, baseUrl, rawBody, includeHeaders } = config;
+  const { method = 'GET', body, params, headers = {}, baseUrl, rawBody, includeHeaders, timeout = DEFAULT_TIMEOUT_MS } = config;
 
   const url = buildUrl(endpoint, params, baseUrl);
   log(`${method} ${url}`);
@@ -212,16 +217,41 @@ async function request<T>(
       log('Request body (preview):', JSON.stringify(body).substring(0, 500));
     }
 
-    const response = await fetch(url, {
-      method,
-      headers: requestHeaders,
-      ...(body ? { body: isRaw ? body : JSON.stringify(body) } : {}),
-    });
+    // Set up request timeout via AbortController
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers: requestHeaders,
+        signal: controller.signal,
+        ...(body ? { body: isRaw ? body : JSON.stringify(body) } : {}),
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     // Debug: Log response status
     log('Response status:', response.status, response.statusText);
 
-    const data = await response.json();
+    // Parse JSON — handle non-JSON responses (e.g. HTML from 502 proxy errors)
+    let data: any;
+    try {
+      data = await response.json();
+    } catch {
+      const text = await response.text().catch(() => '');
+      log.warn('Failed to parse JSON response, status:', response.status, 'body preview:', text.substring(0, 200));
+      return {
+        success: false,
+        error: {
+          code: 'parse_error',
+          message: `Server returned invalid JSON (HTTP ${response.status})`,
+          data: { status: response.status },
+        },
+      };
+    }
 
     // Debug: Log first 500 chars of response
     if (__DEV__) {
@@ -296,6 +326,19 @@ async function request<T>(
       ...(includeHeaders ? { headers: response.headers } : {}),
     } as ApiResponse<T> | ApiResponseWithHeaders<T>;
   } catch (error) {
+    // Distinguish timeout from other network errors
+    if (error instanceof Error && error.name === 'AbortError') {
+      log.warn('Request timed out:', url);
+      return {
+        success: false,
+        error: {
+          code: 'timeout',
+          message: 'Request timed out — the server took too long to respond',
+          data: { status: 0 },
+        },
+      };
+    }
+
     log.error('Network error', error);
 
     return {

@@ -168,11 +168,9 @@ export interface ProfileComment {
 // -----------------------------------------------------------------------------
 // Auth User - Shared between auth service and AuthContext
 // -----------------------------------------------------------------------------
-// id is optional because JWT login doesn't return it — it's fetched
-// separately from the profile API after login.
 
 export interface AuthUser {
-  id?: number;
+  id: number;
   username: string;
   displayName: string;
   firstName?: string;

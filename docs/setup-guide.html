@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>White-Label Community App — Setup Guide</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .required { background: rgba(248, 81, 73, 0.15); color: var(--error); }
+  .optional { background: rgba(210, 153, 34, 0.15); color: var(--warning); }
+  .auto { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn {
+    border-left-color: var(--warning);
+  }
+  .callout-error {
+    border-left-color: var(--error);
+  }
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+  nav { position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 10; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  nav a { margin-right: 16px; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<h1>White-Label Community App</h1>
+<p class="subtitle">Setup Guide for Developers &amp; Agencies</p>
+
+<div class="callout">
+  This guide covers everything you need to rebrand, configure, and ship this app for your client.
+  Follow the sections in order for a clean first-time setup. Module development is covered in the <a href="#modules">Module System</a> section.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#quick-start">Quick Start</a></li>
+    <li><a href="#config-reference">Configuration Reference</a></li>
+    <li><a href="#branding-assets">Branding Assets</a></li>
+    <li><a href="#plugins">Companion Plugins</a></li>
+    <li><a href="#modules">Module System</a></li>
+    <li><a href="#theming">Theme System</a></li>
+    <li><a href="#build-deploy">Build &amp; Deploy</a></li>
+    <li><a href="#checklist">Pre-Launch Checklist</a></li>
+  </ol>
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="quick-start">1. Quick Start</h2>
+
+<p>Minimum steps to get the app running with your site:</p>
+
+<ol>
+  <li><strong>Install dependencies:</strong> <code>npm install</code></li>
+  <li><strong>Set your site URL</strong> in <code>eas.json</code> — replace the <code>SITE_URL</code> value in all build profiles</li>
+  <li><strong>Set your app name &amp; branding</strong> in <code>constants/config.ts</code> — update <code>APP_NAME</code> and <code>APP_USER_AGENT</code></li>
+  <li><strong>Update <code>app.json</code></strong> — app name, slug, scheme, bundle IDs, owner, EAS project ID, permission strings</li>
+  <li><strong>Replace branding images</strong> in <code>assets/images/</code></li>
+  <li><strong>Replace Firebase configs</strong> — <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS)</li>
+  <li><strong>Install companion plugins</strong> on your WordPress site (see <a href="#plugins">Companion Plugins</a>)</li>
+  <li><strong>Configure modules</strong> in <code>modules/_registry.ts</code> — comment out any modules you don't need</li>
+  <li><strong>Create a dev build:</strong> <code>eas build --profile development --platform all</code></li>
+</ol>
+
+<div class="callout callout-warn">
+  <strong>Important:</strong> This app requires a WordPress site with <a href="https://fluentcommunity.co">Fluent Community</a> installed.
+  The <code>tbc-community-app</code> companion plugin is required for the app to function.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="config-reference">2. Configuration Reference</h2>
+
+<p>Every file you need to edit, organized by purpose.</p>
+
+<!-- constants/config.ts -->
+<h3>constants/config.ts <span class="tag required">Required</span></h3>
+<p>All buyer-editable values are marked with <code>// SETUP</code> comments.</p>
+
+<table>
+  <tr><th>Value</th><th>What It Does</th><th>Example</th></tr>
+  <tr><td><code>APP_NAME</code></td><td>Display name used in UI where server branding isn't available</td><td><code>'My Community'</code></td></tr>
+  <tr><td><code>APP_USER_AGENT</code></td><td>User-Agent header sent with API requests</td><td><code>'MyCommunityApp/1.0'</code></td></tr>
+  <tr><td><code>SITE_URL</code> fallback</td><td>Local dev fallback (overridden by eas.json in builds)</td><td><code>'https://community.example.com'</code></td></tr>
+  <tr><td><code>PUSHER_CONFIG.APP_KEY</code></td><td>Your Pusher app key for real-time messaging</td><td><code>'abc123def456'</code></td></tr>
+  <tr><td><code>PUSHER_CONFIG.CLUSTER</code></td><td>Your Pusher cluster region</td><td><code>'us2'</code></td></tr>
+  <tr><td><code>FEATURES.*</code></td><td>Enable/disable core features (see table in file)</td><td><code>true / false</code></td></tr>
+</table>
+
+<!-- app.json -->
+<h3>app.json <span class="tag required">Required</span></h3>
+
+<div class="callout callout-error">
+  <strong>Do not miss these.</strong> Several values in app.json are easy to overlook but will cause builds to fail or ship with wrong branding.
+</div>
+
+<table>
+  <tr><th>Path</th><th>What It Does</th><th>Notes</th></tr>
+  <tr><td><code>expo.name</code></td><td>App display name</td><td>Shows in app stores and device home screen</td></tr>
+  <tr><td><code>expo.slug</code></td><td>Expo project slug</td><td>Must be unique across Expo</td></tr>
+  <tr><td><code>expo.version</code></td><td>App version string</td><td>Shown in app stores</td></tr>
+  <tr><td><code>expo.scheme</code></td><td>Custom URL scheme for deep links</td><td>e.g. <code>"mycommunity"</code> → <code>mycommunity://</code></td></tr>
+  <tr><td><code>expo.owner</code></td><td>Your Expo account name</td><td>Builds fail if this doesn't match your EAS account</td></tr>
+  <tr><td><code>expo.extra.eas.projectId</code></td><td>Your EAS project ID</td><td>Get from <code>eas init</code> or Expo dashboard. Push notifications break without this.</td></tr>
+  <tr><td><code>ios.bundleIdentifier</code></td><td>iOS bundle ID</td><td>e.g. <code>"com.yourcompany.community"</code></td></tr>
+  <tr><td><code>ios.buildNumber</code></td><td>iOS build number (string)</td><td>Matches version, e.g. <code>"1.0.0"</code></td></tr>
+  <tr><td><code>android.package</code></td><td>Android package name</td><td>e.g. <code>"com.yourcompany.community"</code></td></tr>
+  <tr><td><code>android.versionCode</code></td><td>Android version code (integer)</td><td>Pattern: <code>major*100 + minor*10 + patch</code></td></tr>
+  <tr><td><code>android.adaptiveIcon.backgroundColor</code></td><td>Background color for Android adaptive icon</td><td>Match your brand primary color</td></tr>
+  <tr><td><code>plugins &gt; expo-notifications &gt; color</code></td><td>Android notification accent color</td><td>Match your brand primary color</td></tr>
+  <tr><td><code>plugins &gt; expo-splash-screen &gt; backgroundColor</code></td><td>Splash screen background (light + dark)</td><td>Light: typically white. Dark: typically near-black.</td></tr>
+  <tr><td><code>plugins &gt; expo-image-picker &gt; cameraPermission</code></td><td>iOS camera permission dialog text</td><td>Replace app name in the string</td></tr>
+  <tr><td><code>plugins &gt; expo-image-picker &gt; photosPermission</code></td><td>iOS photo library permission dialog text</td><td>Replace app name in the string</td></tr>
+  <tr><td><code>plugins &gt; expo-media-library &gt; photosPermission</code></td><td>iOS media save permission dialog text</td><td>Replace app name in the string</td></tr>
+  <tr><td><code>plugins &gt; expo-media-library &gt; savePhotosPermission</code></td><td>iOS media save permission dialog text</td><td>Replace app name in the string</td></tr>
+</table>
+
+<!-- app.config.ts -->
+<h3>app.config.ts <span class="tag required">Required</span></h3>
+<p>Contains fallback values used when <code>app.json</code> or environment variables are not set. Update these to match your brand so local dev doesn't fall back to wrong values.</p>
+
+<table>
+  <tr><th>Line</th><th>Value</th><th>What to Change</th></tr>
+  <tr><td>~13</td><td><code>process.env.SITE_URL || '...'</code></td><td>Replace fallback URL with your site URL</td></tr>
+  <tr><td>~18</td><td><code>config.name ?? '...'</code></td><td>Replace fallback app name</td></tr>
+  <tr><td>~19</td><td><code>config.slug ?? '...'</code></td><td>Replace fallback slug</td></tr>
+</table>
+
+<!-- eas.json -->
+<h3>eas.json <span class="tag required">Required</span></h3>
+<p>Set <code>SITE_URL</code> in every build profile:</p>
+<pre><code>{
+  "build": {
+    "development": { "env": { "SITE_URL": "https://your-site.com" } },
+    "preview":     { "env": { "SITE_URL": "https://your-site.com" } },
+    "simulator":   { "env": { "SITE_URL": "https://your-site.com" } },
+    "production":  { "env": { "SITE_URL": "https://your-site.com" } }
+  }
+}</code></pre>
+
+<!-- package.json -->
+<h3>package.json <span class="tag optional">Optional</span></h3>
+<p>Update the <code>"name"</code> field (line 2) to your project name. Not user-visible but keeps your repo clean.</p>
+
+<!-- Firebase -->
+<h3>Firebase Configuration <span class="tag required">Required for Push Notifications</span></h3>
+<table>
+  <tr><th>File</th><th>Platform</th><th>How to Get It</th></tr>
+  <tr><td><code>google-services.json</code></td><td>Android</td><td>Firebase Console &gt; Project Settings &gt; Your Android app &gt; Download</td></tr>
+  <tr><td><code>GoogleService-Info.plist</code></td><td>iOS</td><td>Firebase Console &gt; Project Settings &gt; Your iOS app &gt; Download</td></tr>
+</table>
+<p>Replace the existing files with your Firebase project's configs. These are required for push notifications to work.</p>
+
+<!-- constants/colors.ts -->
+<h3>constants/colors.ts <span class="tag optional">Optional</span></h3>
+<p>Default fallback colors used before the server theme syncs. The app automatically pulls your Fluent Community theme colors — these are just the initial defaults on first launch.</p>
+
+<!-- ====================================================================== -->
+<h2 id="branding-assets">3. Branding Assets</h2>
+
+<p>Replace these files in <code>assets/images/</code>:</p>
+
+<table>
+  <tr><th>File</th><th>Purpose</th><th>Notes</th></tr>
+  <tr><td><code>app_icon_ios.png</code></td><td>iOS app icon</td><td>1024x1024, no transparency</td></tr>
+  <tr><td><code>app_icon_android.png</code></td><td>Android legacy icon</td><td>512x512</td></tr>
+  <tr><td><code>app_icon_android_adaptive_fg.png</code></td><td>Android adaptive icon foreground</td><td>Must work with <code>adaptiveIcon.backgroundColor</code> in app.json</td></tr>
+  <tr><td><code>app_icon_android_adaptive_bg.png</code></td><td>Android adaptive icon background</td><td>Optional — use solid color in app.json instead</td></tr>
+  <tr><td><code>app_icon_android_notification.png</code></td><td>Android notification icon</td><td>Monochrome, transparent background</td></tr>
+  <tr><td><code>splash_screen_img.png</code></td><td>Splash screen logo</td><td>Centered on splash backgroundColor</td></tr>
+  <tr><td><code>login_background_img.png</code></td><td>Login screen background</td><td>Full-screen background image</td></tr>
+  <tr><td><code>login_logo.png</code></td><td>Login screen logo (fallback)</td><td>Overridden by server-synced logo if available</td></tr>
+  <tr><td><code>logo.png</code></td><td>Header logo (fallback)</td><td>Wide format. Overridden by server-synced logo.</td></tr>
+</table>
+
+<div class="callout">
+  <strong>Server-synced branding:</strong> The login logo and header logo are automatically pulled from your Fluent Community site.
+  The static images in <code>assets/images/</code> are fallbacks for first launch or when the server is unreachable.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="plugins">4. Companion Plugins</h2>
+
+<p>WordPress plugins that power the app's backend. Located in the <code>companion plugins/</code> folder.</p>
+
+<h3>Required Plugins <span class="tag required">Must Install</span></h3>
+
+<table>
+  <tr><th>Plugin</th><th>Purpose</th><th>WordPress Dependencies</th></tr>
+  <tr>
+    <td><code>tbc-community-app</code></td>
+    <td>Main bridge plugin. All custom REST endpoints (auth, push, config, branding, etc.)</td>
+    <td><a href="https://fluentcommunity.co">Fluent Community</a> (free or Pro)</td>
+  </tr>
+  <tr>
+    <td><code>tbc-fluent-profiles</code></td>
+    <td>Custom profile fields, OTP verification (Twilio), multi-step registration</td>
+    <td>Fluent Community</td>
+  </tr>
+  <tr>
+    <td><code>tbc-multi-reactions</code></td>
+    <td>Multi-reaction system (emoji reactions on posts/comments)</td>
+    <td>Fluent Community</td>
+  </tr>
+</table>
+
+<h3>Optional Plugins <span class="tag optional">Module Add-ons</span></h3>
+
+<p>Install these only if you enable the corresponding module in <code>modules/_registry.ts</code>.</p>
+
+<table>
+  <tr><th>Plugin</th><th>Required Module</th><th>WordPress Dependencies</th><th>Purpose</th></tr>
+  <tr>
+    <td><code>tbc-calendar-fluent</code></td>
+    <td><code>calendarModule</code></td>
+    <td>WooCommerce</td>
+    <td>Event calendar with WooCommerce product date sorting</td>
+  </tr>
+  <tr>
+    <td><code>tbc-book-club</code></td>
+    <td><code>bookclubModule</code></td>
+    <td>None</td>
+    <td>Audiobook player with chapters, progress tracking, bookmarks</td>
+  </tr>
+  <tr>
+    <td><code>tbc-youtube</code></td>
+    <td><code>youtubeModule</code></td>
+    <td>None (YouTube Data API v3 key required)</td>
+    <td>YouTube channel integration with server-side caching</td>
+  </tr>
+</table>
+
+<h3>Core WordPress Requirements</h3>
+
+<table>
+  <tr><th>Feature</th><th>Requires</th></tr>
+  <tr><td>Community (feed, spaces, profiles)</td><td>Fluent Community (free)</td></tr>
+  <tr><td>Direct messaging</td><td>Fluent Community Pro + Fluent Messaging add-on</td></tr>
+  <tr><td>Courses</td><td>Fluent Community Pro + LMS add-on</td></tr>
+  <tr><td>Cart / E-commerce</td><td>WooCommerce</td></tr>
+  <tr><td>Push notifications</td><td>Firebase project + <code>tbc-community-app</code></td></tr>
+  <tr><td>Real-time updates</td><td><a href="https://pusher.com">Pusher</a> account (Channels product)</td></tr>
+  <tr><td>OTP verification</td><td><a href="https://twilio.com">Twilio</a> account (configured in <code>tbc-fluent-profiles</code>)</td></tr>
+</table>
+
+<!-- ====================================================================== -->
+<h2 id="modules">5. Module System</h2>
+
+<p>
+  Modules are self-contained features that plug into the app without touching core code.
+  Enable or disable them by editing <code>modules/_registry.ts</code>.
+</p>
+
+<h3>Enabling/Disabling Modules</h3>
+<pre><code>// modules/_registry.ts
+
+// Active — uncomment to enable:
+import { calendarModule } from './calendar/module';
+
+// Disabled — comment out to disable:
+// import { calendarModule } from './calendar/module';
+
+export const MODULES: ModuleManifest[] = [
+  calendarModule,   // Remove this line too when disabling
+];</code></pre>
+
+<div class="callout callout-warn">
+  <strong>Important:</strong> If a module has a tab, it also has a route stub file in <code>app/(tabs)/</code>.
+  The route stub can stay — it's harmless when the module is disabled. But if you want a clean build, remove it too.
+</div>
+
+<h3>What Modules Can Register</h3>
+<ul>
+  <li><strong>Bottom tabs</strong> — full-screen tab in the tab bar</li>
+  <li><strong>Home widgets</strong> — cards on the home screen</li>
+  <li><strong>Menu items</strong> — entries in the avatar dropdown menu</li>
+  <li><strong>Header icons</strong> — icon buttons in the top navigation bar</li>
+  <li><strong>Context providers</strong> — app-level state (e.g., audio player)</li>
+  <li><strong>Tab bar addons</strong> — persistent UI above the tab bar (e.g., mini player)</li>
+</ul>
+
+<p>
+  See <code>modules/_types.ts</code> for full TypeScript type definitions.
+</p>
+
+<!-- ====================================================================== -->
+<h2 id="theming">6. Theme System</h2>
+
+<p>The app's colors are <strong>automatically synced</strong> from your Fluent Community color settings. No manual color configuration needed in most cases.</p>
+
+<h3>How It Works</h3>
+<ol>
+  <li>You configure colors in <strong>Fluent Community &gt; Settings &gt; Design</strong> on your WordPress site</li>
+  <li>The <code>tbc-community-app</code> plugin exposes these via a REST endpoint (<code>/tbc-ca/v1/theme/colors</code>)</li>
+  <li>The app fetches and caches these colors on launch</li>
+  <li>Both light and dark mode colors are synced automatically</li>
+</ol>
+
+<h3>What's Automatic vs Manual</h3>
+<table>
+  <tr><th>Automatic (from server)</th><th>Manual (in app code)</th></tr>
+  <tr>
+    <td>
+      All body colors (text, backgrounds, borders, buttons)<br>
+      Tab bar colors (background, active, inactive)<br>
+      Light + dark mode variants<br>
+      Logo and site name (login screen)
+    </td>
+    <td>
+      Semantic colors: success, error, warning, info (in <code>constants/colors.ts</code>)<br>
+      Splash screen colors (in <code>app.json</code>)<br>
+      Notification accent color (in <code>app.json</code>)<br>
+      Adaptive icon background (in <code>app.json</code>)
+    </td>
+  </tr>
+</table>
+
+<h3>Using Colors in Components</h3>
+<pre><code>// Always use the hook — never import light/darkColors directly
+const { colors } = useTheme();
+
+// Examples
+style={{ color: colors.text }}
+style={{ backgroundColor: colors.surface }}
+style={{ borderColor: colors.border }}
+
+// For transparent variants, use withOpacity:
+import { withOpacity } from '@/constants/colors';
+style={{ backgroundColor: withOpacity(colors.primary, 0.12) }}</code></pre>
+
+<!-- ====================================================================== -->
+<h2 id="build-deploy">7. Build &amp; Deploy</h2>
+
+<h3>EAS Build Profiles</h3>
+<table>
+  <tr><th>Profile</th><th>Use Case</th><th>Command</th></tr>
+  <tr><td><code>development</code></td><td>Dev client with hot reload</td><td><code>eas build --profile development</code></td></tr>
+  <tr><td><code>simulator</code></td><td>iOS Simulator build</td><td><code>eas build --profile simulator --platform ios</code></td></tr>
+  <tr><td><code>preview</code></td><td>Internal testing (device installs)</td><td><code>eas build --profile preview</code></td></tr>
+  <tr><td><code>production</code></td><td>App Store / Play Store submission</td><td><code>eas build --profile production</code></td></tr>
+</table>
+
+<h3>Version Bumping</h3>
+<p>When releasing a new version, update <strong>all 4 places</strong>:</p>
+<table>
+  <tr><th>File</th><th>Field</th><th>Example</th></tr>
+  <tr><td><code>package.json</code></td><td><code>version</code></td><td><code>"1.2.0"</code></td></tr>
+  <tr><td><code>app.json</code></td><td><code>expo.version</code></td><td><code>"1.2.0"</code></td></tr>
+  <tr><td><code>app.json</code></td><td><code>ios.buildNumber</code></td><td><code>"1.2.0"</code> (string)</td></tr>
+  <tr><td><code>app.json</code></td><td><code>android.versionCode</code></td><td><code>120</code> (integer: major*100 + minor*10 + patch)</td></tr>
+</table>
+
+<h3>Submitting to Stores</h3>
+<pre><code># Build for production
+eas build --profile production --platform all
+
+# Submit to App Store
+eas submit --platform ios
+
+# Submit to Play Store
+eas submit --platform android</code></pre>
+
+<!-- ====================================================================== -->
+<h2 id="checklist">8. Pre-Launch Checklist</h2>
+
+<p>Go through this before submitting to app stores:</p>
+
+<table>
+  <tr><th>#</th><th>Item</th><th>File(s)</th><th>Done?</th></tr>
+  <tr><td>1</td><td>App name and slug updated</td><td><code>app.json</code>, <code>constants/config.ts</code></td><td></td></tr>
+  <tr><td>2</td><td>Bundle IDs / package names set</td><td><code>app.json</code> (ios.bundleIdentifier, android.package)</td><td></td></tr>
+  <tr><td>3</td><td>EAS project ID and owner updated</td><td><code>app.json</code> (expo.owner, expo.extra.eas.projectId)</td><td></td></tr>
+  <tr><td>4</td><td>URL scheme updated</td><td><code>app.json</code> (expo.scheme)</td><td></td></tr>
+  <tr><td>5</td><td>Permission dialog strings updated (no old brand name)</td><td><code>app.json</code> (expo-image-picker, expo-media-library)</td><td></td></tr>
+  <tr><td>6</td><td>SITE_URL set in all eas.json profiles</td><td><code>eas.json</code></td><td></td></tr>
+  <tr><td>7</td><td>SITE_URL fallback updated</td><td><code>constants/config.ts</code>, <code>app.config.ts</code></td><td></td></tr>
+  <tr><td>8</td><td>APP_NAME and APP_USER_AGENT updated</td><td><code>constants/config.ts</code></td><td></td></tr>
+  <tr><td>9</td><td>Pusher credentials set</td><td><code>constants/config.ts</code></td><td></td></tr>
+  <tr><td>10</td><td>Feature flags reviewed</td><td><code>constants/config.ts</code></td><td></td></tr>
+  <tr><td>11</td><td>Module registry reviewed (only needed modules enabled)</td><td><code>modules/_registry.ts</code></td><td></td></tr>
+  <tr><td>12</td><td>All branding images replaced</td><td><code>assets/images/</code></td><td></td></tr>
+  <tr><td>13</td><td>Notification + adaptive icon colors match brand</td><td><code>app.json</code></td><td></td></tr>
+  <tr><td>14</td><td>Splash screen background colors match brand</td><td><code>app.json</code></td><td></td></tr>
+  <tr><td>15</td><td>Firebase configs replaced</td><td><code>google-services.json</code>, <code>GoogleService-Info.plist</code></td><td></td></tr>
+  <tr><td>16</td><td>Default fallback colors reviewed</td><td><code>constants/colors.ts</code></td><td></td></tr>
+  <tr><td>17</td><td>Required companion plugins installed on WordPress</td><td>See <a href="#plugins">Plugin section</a></td><td></td></tr>
+  <tr><td>18</td><td>YouTube channel URL updated (if youtube module enabled)</td><td><code>constants/config.ts</code></td><td></td></tr>
+  <tr><td>19</td><td>package.json name updated</td><td><code>package.json</code></td><td></td></tr>
+  <tr><td>20</td><td>app.config.ts fallback values updated</td><td><code>app.config.ts</code></td><td></td></tr>
+  <tr><td>21</td><td>Production build tested on real device</td><td>—</td><td></td></tr>
+  <tr><td>22</td><td>Push notifications tested end-to-end</td><td>—</td><td></td></tr>
+  <tr><td>23</td><td>Deep links tested (both platforms)</td><td>—</td><td></td></tr>
+</table>
+
+<hr style="margin-top: 48px; border-color: var(--border);">
+<p style="color: var(--text-secondary); margin-top: 16px; font-size: 0.9rem;">
+  White-Label Community App &mdash; Built with React Native (Expo) for WordPress + Fluent Community.
+</p>
+
+</body>
+</html>

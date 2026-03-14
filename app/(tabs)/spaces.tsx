@@ -57,9 +57,9 @@ export default function SpacesScreen() {
 
   // Clean up old cache key from previous implementation
   useEffect(() => {
-    AsyncStorage.removeItem('tbc_spaces_list').catch(() => {});
-    AsyncStorage.removeItem('tbc_spaces_discover').catch(() => {});
-    AsyncStorage.removeItem('tbc_spaces_my').catch(() => {});
+    AsyncStorage.removeItem('tbc_spaces_list').catch((e) => log.warn('Cache cleanup failed:', e));
+    AsyncStorage.removeItem('tbc_spaces_discover').catch((e) => log.warn('Cache cleanup failed:', e));
+    AsyncStorage.removeItem('tbc_spaces_my').catch((e) => log.warn('Cache cleanup failed:', e));
   }, []);
 
   // ---------------------------------------------------------------------------

@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Re-register push token on every app start (token may have changed)
           if (FEATURES.PUSH_NOTIFICATIONS) {
             authService.getAuthToken().then(token => {
-              if (token) registerDeviceToken(token).catch(() => {});
+              if (token) registerDeviceToken(token).catch((e) => log.warn('Push token registration failed:', e));
             });
           }
 
@@ -191,7 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Register push token for new registrations
     if (FEATURES.PUSH_NOTIFICATIONS) {
-      registerDeviceToken(accessToken).catch(() => {});
+      registerDeviceToken(accessToken).catch((e) => log.warn('Push token registration failed:', e));
     }
   }, []);
 

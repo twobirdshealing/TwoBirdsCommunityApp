@@ -111,7 +111,6 @@ export const FEATURES = {
   MESSAGING: true,          // SETUP: Fluent Messaging (direct chat)
   COURSES: true,            // SETUP: Fluent LMS courses
   CART: true,               // SETUP: WooCommerce cart icon in header (disable if no WooCommerce)
-  YOUTUBE: true,            // SETUP: YouTube integration (channel videos & playlists via TBC-CA plugin)
   PROFILE_TABS: {           // SETUP: Which tabs appear on user profiles (About is always on)
     POSTS: false,           // User's posts feed
     SPACES: false,          // User's joined spaces
@@ -126,6 +125,7 @@ export const FEATURES = {
 export const TBC_CA_URL = `${SITE_URL}/wp-json/tbc-ca/v1`;
 export const TBC_FP_URL = `${SITE_URL}/wp-json/tbc-fp/v1`;
 export const TBC_MR_URL = `${SITE_URL}/wp-json/tbc-multi-reactions/v1`;
+export const TBC_YT_URL = `${SITE_URL}/wp-json/tbc-yt/v1`;
 export const WP_REST_URL = `${SITE_URL}/wp-json/wp/v2`;
 
 export const WP_ENDPOINTS = {
@@ -139,7 +139,6 @@ export const WP_ENDPOINTS = {
 // -----------------------------------------------------------------------------
 
 export const PRIVACY_POLICY_URL = `${SITE_URL}/privacy-policy/`;                           // SETUP: Privacy policy URL
-export const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/c/twobirdschurch?sub_confirmation=1'; // SETUP: YouTube channel "Subscribe" button URL (youtube/index.tsx header)
 
 // -----------------------------------------------------------------------------
 // Branding Helpers (server-synced logo with static fallback)

@@ -10,8 +10,11 @@ import {
 } from '@/constants/colors';
 import { getAppConfig, AppConfigResponse, MaintenanceConfig, UpdateConfig, ThemeData, BrandingConfig } from '@/services/api/theme';
 import { setSocialProviders } from '@/services/api/socialProviders';
+import { createLogger } from '@/utils/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+
+const log = createLogger('ThemeContext');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -133,7 +136,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setFromBatch = useCallback((data: AppConfigResponse) => {
     applyAppConfig(data);
     // Also cache so next cold start has latest data
-    AsyncStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(data)).catch(() => {});
+    AsyncStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(data)).catch((e) => log.warn('Config cache write failed:', e));
   }, []);
 
   const applyAppConfig = (data: AppConfigResponse) => {

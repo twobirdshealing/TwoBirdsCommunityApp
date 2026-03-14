@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: TBC - Community App
- * Plugin URI: https://twobirdschurch.com
+ * Plugin URI: https://twobirdscode.com
  * Description: Support plugin for the Two Birds Community mobile app. Provides web sessions for WebView, app-specific styling, and push notifications.
- * Version: 3.36.0
- * Author: Two Birds Church
- * Author URI: https://twobirdschurch.com
+ * Version: 3.37.0
+ * Author: Two Birds Code
+ * Author URI: https://twobirdscode.com
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: tbc-ca
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('TBC_CA_VERSION', '3.36.0');
+define('TBC_CA_VERSION', '3.37.0');
 define('TBC_CA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TBC_CA_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TBC_CA_PLUGIN_FILE', __FILE__);
@@ -69,7 +69,7 @@ spl_autoload_register(function ($class) {
         'account-api' => 'class-account-api.php',
         'app-config' => 'class-app-config.php',
         'rest-fields' => 'class-rest-fields.php',
-        'youtube-api' => 'class-youtube-api.php',
+
         'auth' => 'class-auth.php',
         'auth-api' => 'class-auth-api.php',
         'batch-api' => 'class-batch-api.php',

@@ -15,8 +15,7 @@
 // │  5. /fluent-community/v2/feeds/welcome-banner → welcome widget     │
 // │  6. /fluent-community/v2/courses?type=enrolled&per_page=5 → courses│
 // │  7. /wp/v2/posts?page=1&per_page=1&_embed=    → blog widget        │
-// │  8. /tbc-ca/v1/youtube/latest?limit=1         → youtube widget     │
-// │  9. /tbc-ca/v1/cart/count                     → cart badge count   │
+// │  8. /tbc-ca/v1/cart/count                     → cart badge count   │
 // └─────────────────────────────────────────────────────────────────────┘
 // Module widgets (calendar, bookclub, etc.) use useCachedData to
 // self-fetch on mount. No batch registration needed.
@@ -58,7 +57,6 @@ const WIDGET_CACHE_KEYS = {
   welcomeBanner: 'tbc_welcome_banner',
   courses: 'tbc_widget_enrolled_courses',
   blog: 'tbc_widget_latest_blog',
-  youtube: 'tbc_widget_latest_youtube',
 };
 
 // -----------------------------------------------------------------------------
@@ -107,7 +105,6 @@ export function useStartupData({
         { path: '/fluent-community/v2/feeds/welcome-banner' },
         { path: '/fluent-community/v2/courses?type=enrolled&per_page=5' },
         { path: '/wp/v2/posts?page=1&per_page=1&_embed=' },
-        { path: '/tbc-ca/v1/youtube/latest?limit=1' },
         { path: '/tbc-ca/v1/cart/count' },
       ];
 
@@ -194,18 +191,6 @@ export function useStartupData({
       if (Array.isArray(blogData) && blogData.length > 0) {
         freshKeys.push(WIDGET_CACHE_KEYS.blog);
         cacheWrites.push(AsyncStorage.setItem(WIDGET_CACHE_KEYS.blog, JSON.stringify(blogData[0])));
-      }
-
-      // YouTube
-      const youtubeData = findBatchResponse<{ videos?: unknown[] }>(
-        responses,
-        '/tbc-ca/v1/youtube/latest',
-      );
-      if (youtubeData?.videos?.[0]) {
-        freshKeys.push(WIDGET_CACHE_KEYS.youtube);
-        cacheWrites.push(
-          AsyncStorage.setItem(WIDGET_CACHE_KEYS.youtube, JSON.stringify(youtubeData.videos[0])),
-        );
       }
 
       // Write all caches in parallel, then mark them as batch-fresh

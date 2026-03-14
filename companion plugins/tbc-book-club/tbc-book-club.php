@@ -1,9 +1,11 @@
 <?php
 /**
  * Plugin Name: TBC - Book Club Manager
+ * Plugin URI: https://twobirdscode.com
  * Description: Manages and displays book club audiobooks with chapter support, progress tracking, and bookmarks.
  * Version: 2.3.0
- * Author: Two Birds Church
+ * Author: Two Birds Code
+ * Author URI: https://twobirdscode.com
  *
  * @see CHANGELOG.md for version history
  */

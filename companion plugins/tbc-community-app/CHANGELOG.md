@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.37.0
+- **YouTube API extracted**: Moved `TBC_CA_YouTube_API` to standalone tbc-youtube plugin (`tbc-yt/v1` namespace). Old `tbc-ca/v1/youtube` endpoints now served by tbc-youtube with backward compatibility. YouTube settings removed from General tab — configure via YouTube submenu page.
+
 ## v3.36.0
 - **Branding in app-config**: New `branding` section in `/app-config` response returns `site_name`, `site_tagline`, `logo`, and `logo_dark` from Fluent Community general settings (falls back to WordPress `blogname` / `blogdescription`). Enables white-label apps to sync branding from the server instead of hardcoding.
 

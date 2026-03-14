@@ -1,7 +1,7 @@
 // =============================================================================
 // CALENDAR MODULE - Events calendar with WooCommerce integration
 // =============================================================================
-// Companion plugin: tbc-calednar-fluent (WordPress)
+// Companion plugin: tbc-calendar-fluent (WordPress)
 // API namespace: /wp-json/tbc-wc/v1
 // =============================================================================
 
@@ -48,6 +48,6 @@ export const calendarModule: ModuleManifest = {
   ],
 
   hideMenuKey: 'calendar',
-  companionPlugin: 'tbc-calednar-fluent',
+  companionPlugin: 'tbc-calendar-fluent',
   apiBase: '/wp-json/tbc-wc/v1',
 };

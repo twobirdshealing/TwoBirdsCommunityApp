@@ -64,10 +64,9 @@ const CORE_ROUTE_PREFIXES = [
   '/webview',
   '/create-post',
   '/comments/',
-  // TODO: move to blog/youtube modules once modularized
+  // TODO: move to blog module once modularized
   '/blog/',
   '/blog-comments/',
-  '/youtube',
 ];
 
 /** Core + module-registered prefixes (resolved once at load time).

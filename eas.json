@@ -18,6 +18,7 @@
       }
     },
     "simulator": {
+      "developmentClient": false,
       "ios": {
         "simulator": true
       },

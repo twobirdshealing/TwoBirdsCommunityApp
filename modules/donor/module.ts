@@ -21,7 +21,7 @@ export const donorModule: ModuleManifest = {
       route: {
         pathname: '/webview',
         params: {
-          url: `${SITE_URL}/donor-dashboard/`,
+          url: `${SITE_URL}/donor-dashboard/`, // SETUP: Path to your donor dashboard page
           title: 'Donor Dashboard',
         },
       },

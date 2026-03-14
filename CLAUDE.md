@@ -1,4 +1,11 @@
-White-label community mobile app built on WordPress + Fluent Community. React Native (Expo), iOS + Android. Designed for developers and agencies to rebrand, configure, and ship to their clients. No bloat.
+Two Birds Community App — our live production community app built on WordPress + Fluent Community.
+React Native (Expo), iOS + Android. This is the Two Birds Church app instance.
+
+Site: https://community.twobirdschurch.com
+Dev brand: Two Birds Code (twobirdscode.com) — TBC
+
+> **Buyer-facing setup documentation lives in `docs/setup-guide.html`.**
+> When making changes to config files, module system, or plugin structure, keep docs in sync.
 
 ## White-Label Setup
 
@@ -8,12 +15,17 @@ Files a buyer edits to make the app theirs:
 |---|---|---|
 | App name, site URL, Pusher keys, feature flags | `constants/config.ts` | All buyer-editable values marked `// SETUP` |
 | Active modules | `modules/_registry.ts` | Comment out to disable a module |
-| Bundle IDs, app name, icons | `app.json` | iOS bundle ID, Android package name, icon paths |
+| Bundle IDs, app name, icons, scheme | `app.json` | iOS bundle ID, Android package name, icon paths |
+| EAS owner + project ID | `app.json` | `expo.owner`, `expo.extra.eas.projectId` — required for builds & push |
+| Permission dialog strings | `app.json` | Replace app name in camera/photos/media permission text |
+| Notification & icon colors | `app.json` | `expo-notifications` color, `adaptiveIcon.backgroundColor` |
 | Build profiles | `eas.json` | `SITE_URL` env var per profile (dev, preview, production) |
+| Fallback values | `app.config.ts` | SITE_URL fallback, name/slug fallbacks for local dev |
 | Branding assets | `assets/images/` | App icon, splash screen, login background/logo |
 | Default colors | `constants/colors.ts` | Fallback colors (overridden by Fluent Community theme sync) |
 | Firebase (Android) | `google-services.json` | Replace with your Firebase project config |
 | Firebase (iOS) | `GoogleService-Info.plist` | Replace with your Firebase project config |
+| Package name | `package.json` | `"name"` field (not user-visible, for repo cleanliness) |
 
 ## Module System
 
@@ -25,7 +37,7 @@ Self-contained features that plug into the app without touching core code. Each 
 
 Core features (feed, spaces, profiles, messaging, courses, blog, YouTube, cart) stay in core with `FEATURES.*` flags in `constants/config.ts`. Modules are for self-contained add-ons with their own companion WordPress plugins.
 
-Full documentation: `modules/README.md`
+Full documentation: `docs/setup-guide.html` (Module System section)
 
 ## Import Rules — Direct Imports Only
 
@@ -99,23 +111,20 @@ The app's colors are synced from Fluent Community's color schemas (light + dark 
 
 ## Companion Plugins & Themes
 
-The `companion plugins/` folder contains WordPress plugins and themes that work with this app. Always reference when needed.
+The `companion plugins/` folder contains WordPress plugins and themes that ship with or extend this app. `Refrence plugins ONLY/` subfolder holds third-party plugins for dev reference (gitignored).
 
-### Native Fluent Plugins (official, by the Fluent team — we built our app around these)
-- **fluent-community** — Core Fluent Community plugin
-- **fluent-community-pro** — Pro add-on
-- **fluent-messaging** — Messaging add-on
-
-### Our Custom Plugins (all custom APIs exposed through tbc-community-app)
-- **tbc-community-app** — Main bridge plugin connecting our app to WordPress. All custom REST endpoints live here.
-- **tbc-fluent-profiles** — Custom profile fields for Fluent Community
+### Core & Module Plugins (in `companion plugins/`)
+- **tbc-community-app** — Main bridge plugin connecting the app to WordPress. All custom REST endpoints live here.
+- **tbc-fluent-profiles** — Custom profile fields, OTP verification (Twilio), and registration for Fluent Community
 - **tbc-multi-reactions** — Multi-reaction support for Fluent Community
-- **tbc-otp-verification** — OTP verification for registration (Twilio)
-- **tbc-calednar-fluent** — Calendar plugin sits on top of WooCommerce with custom API, works with app calendar tab
-- **tbc-book-club** — Book club audiobook player with meetings, companion to bookclub module
+- **tbc-youtube** — YouTube channel integration with server-side caching (companion to youtube module)
+- **tbc-book-club** — Book club audiobook player with meetings (companion to bookclub module)
 
 ### Our Custom Theme
-- **fluent-starter** — Custom WordPress theme
+- **tbc-starter-theme** — Custom WordPress theme
+
+### Site-Specific Plugins (not in repo — on server only)
+Calendar, donation addons, donor dashboard, messaging center, checkout prerequisites, participant frontend, space manager, bulk tools, entry review — these are Two Birds Church site-specific and not part of the product.
 
 ## App Version Bumping
 
@@ -130,25 +139,25 @@ EAS is set to `appVersionSource: "local"` — all versioning comes from these fi
 
 ---
 
-## Custom — Two Birds Dev Notes
+## Dev Rules
 
-do not create new depndacies or utilites without asking. check entire project first we may already have these thigns centrailsed functions ect. dont recreate things duplciate code.
+Do not create new dependencies or utilities without asking. Check entire project first — we may already have centralised functions. Don't recreate things or duplicate code.
 
-we DONT want to break things!
-dont guess or make up apis always check first
+We DONT want to break things! Don't guess or make up APIs — always check first.
 
-after fixes or completed task ask user if we want to run /simplify
+After fixes or completed tasks ask user if we want to run /simplify
 
-When working on companion plugins after updates fixes changes make sure you update the version number on the plugin or theme and update changelog. If change log missing add one. always update version to bust cache even small updates
+When working on companion plugins after updates/fixes/changes, update the version number on the plugin or theme and update changelog. If changelog is missing add one. Always update version to bust cache even on small updates.
 
-Current TEST credentials for when YOU give me commands
-ask for fresh token
+## Testing
+
+Current test credentials — ask for fresh token:
+```
 curl -s -X POST "https://community.twobirdschurch.com/wp-json/tbc-ca/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"bluejay","password":"sapo"}' | python3 -m json.tool
+```
 
-then create curl
+Don't try running commands yourself — give them to me and wait for response. If unsure, always ask for an API response to understand the full picture.
 
-dont try running commands your self just give them to me and wait for response. if unsure always ask for a API response to understand full picture
+Server runs Ubuntu — use `python3` not `python` for curl JSON formatting (e.g. `| python3 -m json.tool`)
 
-Server runs Ubuntu - use python3 not python for curl JSON formatting (e.g. `| python3 -m json.tool`)
-
-all agents run opus
+All agents run opus

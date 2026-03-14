@@ -164,8 +164,9 @@ export default function WebViewScreen() {
           const response = await appApi.createWebSession(cartUrl);
 
           if (response.success && response.url && webViewRef.current) {
+            const safeUrl = JSON.stringify(response.url);
             webViewRef.current.injectJavaScript(
-              `window.location.assign('${response.url}'); true;`
+              `window.location.assign(${safeUrl}); true;`
             );
             setPageTitle('Cart');
           }
