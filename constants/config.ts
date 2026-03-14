@@ -109,9 +109,9 @@ export const FEATURES = {
   CART: true,               // SETUP: WooCommerce cart icon in header (disable if no WooCommerce)
   YOUTUBE: true,            // SETUP: YouTube integration (channel videos & playlists via TBC-CA plugin)
   PROFILE_TABS: {           // SETUP: Which tabs appear on user profiles (About is always on)
-    POSTS: true,            // User's posts feed
-    SPACES: true,           // User's joined spaces
-    COMMENTS: true,         // User's comments
+    POSTS: false,           // User's posts feed
+    SPACES: false,          // User's joined spaces
+    COMMENTS: false,        // User's comments
   },
 };
 
