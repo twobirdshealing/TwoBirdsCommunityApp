@@ -366,17 +366,6 @@ export async function getItems() {
 
 If your module's API lives in the core plugin (`tbc-community-app`), the API service stays in `services/api/` (core) and your module imports it from there.
 
-## Included Modules
-
-These ship with the app as working examples of different module patterns. Keep, modify, or remove them as needed.
-
-| Module | Folder | Pattern | What it demonstrates |
-|---|---|---|---|
-| Calendar | `modules/calendar/` | Tab + Widgets | Bottom tab with companion WP plugin, two home widgets |
-| Book Club | `modules/bookclub/` | Widget + Menu + Provider + Addon | Home widget, menu item, context provider, tab bar addon (mini player) |
-| Donate | `modules/donate/` | Tab (WebView) + Menu | Tab with `interceptPress` (opens WebView), custom `tabBarIcon`, `tabColor`, menu item with `iconColor` |
-| Donor Dashboard | `modules/donor/` | Menu only | Single menu item that opens a WebView — simplest possible module |
-
 ## Tab Bar Addon
 
 A module can register a `tabBarAddon` — a component that renders above the tab bar buttons. The tab bar automatically measures the addon's height and exposes it via `BottomOffsetContext`. Screens use `useTabContentPadding()` to get correct bottom padding (includes tab bar + safe area + addon height).
