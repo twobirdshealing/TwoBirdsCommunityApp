@@ -26,28 +26,24 @@ import { useTabBar } from '@/contexts/TabBarContext';
 import { hapticMedium } from '@/utils/haptics';
 import { useWidgetPreferences, WidgetPreference } from '@/hooks/useWidgetPreferences';
 import { useAppFocus } from '@/hooks/useAppFocus';
-import { getAvailableWidgets, WidgetConfig } from '@/components/home/widgetRegistry';
+import { getAvailableWidgets, getCoreWidgetComponentMap } from '@/components/home/widgetRegistry';
 import { getWidgetComponentMap } from '@/modules/_registry';
+import type { WidgetRegistration } from '@/modules/_types';
 import { HomeWidget } from '@/components/home/HomeWidget';
 import { WelcomeBannerWidget } from '@/components/home/WelcomeBannerWidget';
-import { BlogWidget } from '@/components/home/BlogWidget';
-import { YouTubeWidget } from '@/components/home/YouTubeWidget';
-import { CoursesWidget } from '@/components/home/CoursesWidget';
 import { EditModeBar } from '@/components/home/EditModeBar';
 import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
 
 // -----------------------------------------------------------------------------
-// Widget Component Map — module widgets + core widgets
+// Widget Component Map — core + module widgets (unified)
 // -----------------------------------------------------------------------------
 
 const WIDGET_COMPONENTS: Record<
   string,
   React.ComponentType<{ refreshKey: number }>
 > = {
+  ...getCoreWidgetComponentMap(),
   ...getWidgetComponentMap(),
-  'my-courses': CoursesWidget,
-  'latest-blog': BlogWidget,
-  'latest-youtube': YouTubeWidget,
 };
 
 // -----------------------------------------------------------------------------
@@ -56,7 +52,7 @@ const WIDGET_COMPONENTS: Record<
 
 interface WidgetItem {
   pref: WidgetPreference;
-  config: WidgetConfig;
+  config: WidgetRegistration;
 }
 
 // -----------------------------------------------------------------------------

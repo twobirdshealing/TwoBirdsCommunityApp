@@ -3,40 +3,21 @@
 // =============================================================================
 // Core widgets are defined here. Module widgets are registered via their
 // module manifest in modules/_registry.ts and merged automatically.
+// Both use the same WidgetRegistration type from modules/_types.ts.
 // =============================================================================
 
-import { Ionicons } from '@expo/vector-icons';
 import { FEATURES } from '@/constants/config';
+import type { WidgetRegistration } from '@/modules/_types';
 import { getModuleWidgets } from '@/modules/_registry';
-
-// -----------------------------------------------------------------------------
-// Types
-// -----------------------------------------------------------------------------
-
-export interface WidgetConfig {
-  /** Unique stable ID — never change once shipped (used as AsyncStorage key) */
-  id: string;
-  /** Display title shown in HomeWidget header */
-  title: string;
-  /** Ionicon name for header */
-  icon?: keyof typeof Ionicons.glyphMap;
-  /** "See all" route — if undefined, no "See all" link */
-  seeAllRoute?: string;
-  /** Feature flag key — if set and false, widget is excluded entirely */
-  featureFlag?: keyof typeof FEATURES;
-  /** Default enabled state for new users */
-  defaultEnabled: boolean;
-  /** Whether the user can disable this widget */
-  canDisable: boolean;
-  /** Whether the home screen wraps this in HomeWidget (true) or widget handles its own layout (false) */
-  externalWrapper: boolean;
-}
+import { YouTubeWidget } from '@/components/home/YouTubeWidget';
+import { BlogWidget } from '@/components/home/BlogWidget';
+import { CoursesWidget } from '@/components/home/CoursesWidget';
 
 // -----------------------------------------------------------------------------
 // Core Widget Registry (non-module widgets)
 // -----------------------------------------------------------------------------
 
-const CORE_WIDGETS: WidgetConfig[] = [
+const CORE_WIDGETS: WidgetRegistration[] = [
   {
     id: 'latest-youtube',
     title: 'YouTube',
@@ -46,6 +27,7 @@ const CORE_WIDGETS: WidgetConfig[] = [
     defaultEnabled: true,
     canDisable: true,
     externalWrapper: true,
+    component: YouTubeWidget,
   },
   {
     id: 'latest-blog',
@@ -55,6 +37,7 @@ const CORE_WIDGETS: WidgetConfig[] = [
     defaultEnabled: true,
     canDisable: true,
     externalWrapper: true,
+    component: BlogWidget,
   },
   {
     id: 'my-courses',
@@ -65,6 +48,7 @@ const CORE_WIDGETS: WidgetConfig[] = [
     defaultEnabled: true,
     canDisable: true,
     externalWrapper: true,
+    component: CoursesWidget,
   },
 ];
 
@@ -73,7 +57,7 @@ const CORE_WIDGETS: WidgetConfig[] = [
 // -----------------------------------------------------------------------------
 
 /** Full widget registry — core widgets first, then module widgets */
-export const WIDGET_REGISTRY: WidgetConfig[] = [
+export const WIDGET_REGISTRY: WidgetRegistration[] = [
   ...CORE_WIDGETS,
   ...getModuleWidgets(),
 ];
@@ -83,11 +67,23 @@ export const WIDGET_REGISTRY: WidgetConfig[] = [
 // -----------------------------------------------------------------------------
 
 /** Get the subset of widgets that pass their feature flag check */
-export function getAvailableWidgets(): WidgetConfig[] {
+export function getAvailableWidgets(): WidgetRegistration[] {
   return WIDGET_REGISTRY.filter((w) => {
     if (w.featureFlag) {
       return FEATURES[w.featureFlag] === true;
     }
     return true;
   });
+}
+
+/** Core widget component map (id → component) for home screen */
+export function getCoreWidgetComponentMap(): Record<
+  string,
+  React.ComponentType<{ refreshKey: number }>
+> {
+  const map: Record<string, React.ComponentType<{ refreshKey: number }>> = {};
+  for (const w of CORE_WIDGETS) {
+    map[w.id] = w.component;
+  }
+  return map;
 }

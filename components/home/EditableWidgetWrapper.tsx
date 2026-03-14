@@ -17,14 +17,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, shadows, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { useTheme } from '@/contexts/ThemeContext';
-import type { WidgetConfig } from './widgetRegistry';
+import type { WidgetRegistration } from '@/modules/_types';
 
 // -----------------------------------------------------------------------------
 // Props
 // -----------------------------------------------------------------------------
 
 interface EditableWidgetWrapperProps {
-  config: WidgetConfig;
+  config: WidgetRegistration;
   isEnabled: boolean;
   isEditing: boolean;
   drag?: () => void;

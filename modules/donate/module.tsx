@@ -27,7 +27,7 @@ export const donateModule: ModuleManifest = {
     icon: 'heart',
     iconOutline: 'heart-outline',
     order: 100,
-    component: require('../../app/(tabs)/donate').default,
+    component: () => null, // Never renders — interceptPress opens WebView
     hideMenuKey: 'donate',
     tabColor: 'error', // uses themeColors.error (red) instead of active/inactive
     tabBarIcon: ({ focused, color }) => (

@@ -8,6 +8,10 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { FEATURES } from '@/constants/config';
+import type { ColorTheme } from '@/constants/colors';
+
+/** Keys of ColorTheme whose values are strings (excludes nested objects like tabBar) */
+type ColorTokenKey = { [K in keyof ColorTheme]: ColorTheme[K] extends string ? K : never }[keyof ColorTheme];
 
 // -----------------------------------------------------------------------------
 // Tab Registration
@@ -33,7 +37,7 @@ export interface TabRegistration {
   /** Custom tab icon component (overrides icon/iconOutline if provided) */
   tabBarIcon?: (props: { focused: boolean; color: string }) => React.ReactNode;
   /** Override tab color — use a theme token name (e.g. 'error' for red). Defaults to tabBar.active/inactive */
-  tabColor?: string;
+  tabColor?: ColorTokenKey;
 }
 
 // -----------------------------------------------------------------------------

@@ -20,6 +20,7 @@ import { TopHeader } from '@/components/navigation/TopHeader';
 import { BottomOffsetProvider, useSetAddonHeight } from '@/contexts/BottomOffsetContext';
 import { useAppConfig } from '@/contexts/AppConfigContext';
 import { spacing, typography } from '@/constants/layout';
+import type { TabRegistration } from '@/modules/_types';
 import { getModuleTabs, getTabBarAddons } from '@/modules/_registry';
 
 // -----------------------------------------------------------------------------
@@ -101,7 +102,7 @@ function TabItemButton({ routeKey, label, icon, isFocused, color, accessibilityL
 
 // Module registrations (static — resolved once at load time)
 const tabBarAddons = getTabBarAddons();
-const moduleTabMeta: Record<string, { color?: string; hideKey?: string }> = {};
+const moduleTabMeta: Record<string, { color?: TabRegistration['tabColor']; hideKey?: string }> = {};
 for (const tab of getModuleTabs()) {
   moduleTabMeta[tab.name] = { color: tab.tabColor, hideKey: tab.hideMenuKey };
 }
@@ -153,7 +154,7 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
           const isFocused = state.routes[state.index]?.key === route.key;
           const colorToken = moduleTabMeta[route.name]?.color;
           const color = colorToken
-            ? (themeColors as any)[colorToken] ?? themeColors.tabBar.active
+            ? (themeColors[colorToken] as string) ?? themeColors.tabBar.active
             : (isFocused ? themeColors.tabBar.active : themeColors.tabBar.inactive);
 
           const onPress = () => {

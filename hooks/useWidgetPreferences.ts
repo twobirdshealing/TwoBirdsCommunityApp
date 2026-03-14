@@ -7,7 +7,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getAvailableWidgets, WidgetConfig } from '@/components/home/widgetRegistry';
+import { getAvailableWidgets } from '@/components/home/widgetRegistry';
+import type { WidgetRegistration } from '@/modules/_types';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('WidgetPrefs');
@@ -35,7 +36,7 @@ interface WidgetPreferences {
 // -----------------------------------------------------------------------------
 
 /** Build default preferences from the registry */
-function buildDefaults(available: WidgetConfig[]): WidgetPreferences {
+function buildDefaults(available: WidgetRegistration[]): WidgetPreferences {
   return {
     version: 1,
     order: available.map((w) => ({
@@ -53,7 +54,7 @@ function buildDefaults(available: WidgetConfig[]): WidgetPreferences {
  */
 function mergePreferences(
   saved: WidgetPreferences,
-  available: WidgetConfig[],
+  available: WidgetRegistration[],
 ): WidgetPreferences {
   const availableIds = new Set(available.map((w) => w.id));
   const savedIds = new Set(saved.order.map((p) => p.id));

@@ -1,11 +1,29 @@
-This is a companion for our social media site running off Fluent community and WordPress. This app is designed to be intuitive lightweight modern in all aspects NO BLOAT fully compatible with IOS and ANDROID devices.
+White-label community mobile app built on WordPress + Fluent Community. React Native (Expo), iOS + Android. Designed for developers and agencies to rebrand, configure, and ship to their clients. No bloat.
 
-do not create new depndacies or utilites without asking. check entire project first we may already have these thigns centrailsed functions ect. dont recreate things duplciate code. 
+## White-Label Setup
 
-we DONT want to break things!
-dont guess or make up apis always check first
+Files a buyer edits to make the app theirs:
 
-after fixes or completed task ask user if we want to run /simplify
+| What | File(s) | Notes |
+|---|---|---|
+| App name, site URL, Pusher keys, feature flags | `constants/config.ts` | All buyer-editable values marked `// SETUP` |
+| Active modules | `modules/_registry.ts` | Comment out to disable a module |
+| Bundle IDs, app name, icons | `app.json` | iOS bundle ID, Android package name, icon paths |
+| Build profiles | `eas.json` | `SITE_URL` env var per profile (dev, preview, production) |
+| Branding assets | `assets/images/` | App icon, splash screen, login background/logo |
+| Default colors | `constants/colors.ts` | Fallback colors (overridden by Fluent Community theme sync) |
+
+## Module System
+
+Self-contained features that plug into the app without touching core code. Each module registers any combination of: bottom tabs, home widgets, menu items, header icons, context providers, tab bar addons.
+
+- **Define** a manifest in `modules/yourmodule/module.ts`
+- **Register** in `modules/_registry.ts` (one line to enable/disable)
+- **Route stub** in `app/(tabs)/` (one-line re-export, only if module has a tab)
+
+Core features (feed, spaces, profiles, messaging, courses, blog, YouTube, cart) stay in core with `FEATURES.*` flags in `constants/config.ts`. Modules are for self-contained add-ons with their own companion WordPress plugins.
+
+Full documentation: `modules/README.md`
 
 ## Import Rules — Direct Imports Only
 
@@ -15,42 +33,6 @@ after fixes or completed task ask user if we want to run /simplify
 - `import { Avatar } from '@/components/common'` — WRONG (barrel import)
 
 Do NOT create `index.ts` barrel/re-export files in any directory.
-
-## Companion Plugins & Themes
-
-The `companion plugins/` folder contains WordPress plugins and themes that work with this app. Always reference when needed.
-
-### Native Fluent Plugins (official, by the Fluent team — we built our app around these)
-- **fluent-community** — Core Fluent Community plugin
-- **fluent-community-pro** — Pro add-on
-- **fluent-messaging** — Messaging add-on
-
-### Our Custom Plugins (all custom APIs exposed through tbc-community-app)
-- **tbc-community-app** — Main bridge plugin connecting our app to WordPress. All custom REST endpoints live here.
-- **tbc-fluent-profiles** — Custom profile fields for Fluent Community
-- **tbc-multi-reactions** — Multi-reaction support for Fluent Community
-- **tbc-otp-verification** — OTP verification for registration (Twilio)
-- **tbc-calednar-fluent** — Calednar plugin sits on top of WooCommerce with custom API works with our app calendar tab
-
-
-### Our Custom Theme
-- **fluent-starter** — Custom WordPress theme
-
-Current TEST credtials for when YOU give me commands 
-ask for fresh token 
-curl -s -X POST "https://community.twobirdschurch.com/wp-json/tbc-ca/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"bluejay","password":"sapo"}' | python3 -m json.tool
-
-
-
-then create curl
-
-dont try running commands your self jsut give them to me and wait for response. if unsure always ask for a API response to understand full pciture
-
-Server runs Ubuntu - use python3 not python for curl JSON formatting (e.g. `| python3 -m json.tool`)
-
-all agents run opus
-
----
 
 ## Theme System — Fluent Community Color Sync
 
@@ -113,7 +95,25 @@ The app's colors are synced from Fluent Community's color schemas (light + dark 
 - `shadowColor: '#000'` is fine (iOS standard)
 - Calendar status gradients, YouTube brand red, video player black backgrounds are intentionally static
 
-When working on companion plugins after updates fixes changes make sure you update the version number on the plugin or theme and update changelog. If change log missing add one.always update version to bust chacne even small udpates
+## Companion Plugins & Themes
+
+The `companion plugins/` folder contains WordPress plugins and themes that work with this app. Always reference when needed.
+
+### Native Fluent Plugins (official, by the Fluent team — we built our app around these)
+- **fluent-community** — Core Fluent Community plugin
+- **fluent-community-pro** — Pro add-on
+- **fluent-messaging** — Messaging add-on
+
+### Our Custom Plugins (all custom APIs exposed through tbc-community-app)
+- **tbc-community-app** — Main bridge plugin connecting our app to WordPress. All custom REST endpoints live here.
+- **tbc-fluent-profiles** — Custom profile fields for Fluent Community
+- **tbc-multi-reactions** — Multi-reaction support for Fluent Community
+- **tbc-otp-verification** — OTP verification for registration (Twilio)
+- **tbc-calednar-fluent** — Calendar plugin sits on top of WooCommerce with custom API, works with app calendar tab
+- **tbc-book-club** — Book club audiobook player with meetings, companion to bookclub module
+
+### Our Custom Theme
+- **fluent-starter** — Custom WordPress theme
 
 ## App Version Bumping
 
@@ -125,3 +125,28 @@ After completing a task, ask the user if we should bump the app version. If yes,
 4. `app.json` → `android.versionCode` (integer, pattern: `major*100 + minor*10 + patch` e.g. `301`)
 
 EAS is set to `appVersionSource: "local"` — all versioning comes from these files, not remote.
+
+---
+
+## Custom — Two Birds Dev Notes
+
+do not create new depndacies or utilites without asking. check entire project first we may already have these thigns centrailsed functions ect. dont recreate things duplciate code.
+
+we DONT want to break things!
+dont guess or make up apis always check first
+
+after fixes or completed task ask user if we want to run /simplify
+
+When working on companion plugins after updates fixes changes make sure you update the version number on the plugin or theme and update changelog. If change log missing add one. always update version to bust cache even small updates
+
+Current TEST credentials for when YOU give me commands
+ask for fresh token
+curl -s -X POST "https://community.twobirdschurch.com/wp-json/tbc-ca/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"bluejay","password":"sapo"}' | python3 -m json.tool
+
+then create curl
+
+dont try running commands your self just give them to me and wait for response. if unsure always ask for a API response to understand full picture
+
+Server runs Ubuntu - use python3 not python for curl JSON formatting (e.g. `| python3 -m json.tool`)
+
+all agents run opus
