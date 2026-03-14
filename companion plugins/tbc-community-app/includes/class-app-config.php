@@ -59,6 +59,9 @@ class TBC_CA_App_Config {
         // ─── Portal slug (for deep linking) ────────────────────────────────
         $response['portal_slug'] = $this->get_portal_slug();
 
+        // ─── Branding (public — site name + logo from Fluent) ──────────────
+        $response['branding'] = $this->get_branding();
+
         // ─── Maintenance mode (public — always returned) ─────────────────
         $response['maintenance'] = $this->get_maintenance_status();
 
@@ -151,6 +154,39 @@ class TBC_CA_App_Config {
             'hide_cart' => in_array('cart', $hidden, true),
             'hide_menu' => $menu_hidden,
         ];
+    }
+
+    // =========================================================================
+    // Branding (site name + logo from Fluent Community)
+    // =========================================================================
+
+    /**
+     * Get branding data — site name from Fluent Community (falls back to WP),
+     * logo + dark logo from Fluent general settings
+     */
+    private function get_branding() {
+        $branding = [
+            'site_name'    => get_option('blogname', ''),
+            'site_tagline' => get_option('blogdescription', ''),
+            'logo'         => '',
+            'logo_dark'    => '',
+        ];
+
+        if (class_exists('FluentCommunity\App\Services\Helper')) {
+            $general = \FluentCommunity\App\Services\Helper::generalSettings();
+
+            if (!empty($general['site_title'])) {
+                $branding['site_name'] = $general['site_title'];
+            }
+            if (!empty($general['logo'])) {
+                $branding['logo'] = $general['logo'];
+            }
+            if (!empty($general['white_logo'])) {
+                $branding['logo_dark'] = $general['white_logo'];
+            }
+        }
+
+        return $branding;
     }
 
     // =========================================================================

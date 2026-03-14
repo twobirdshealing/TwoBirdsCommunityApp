@@ -12,6 +12,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, sizing } from '@/constants/layout';
+import { getLogoSource } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
@@ -22,7 +23,7 @@ export default function ProfileCompleteScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, markProfileComplete } = useAuth();
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, branding, isDark } = useTheme();
   const [existing, setExisting] = useState<ProfileExistingData | undefined>();
   const [missingFields, setMissingFields] = useState<string[] | undefined>();
   const [loading, setLoading] = useState(true);
@@ -60,10 +61,12 @@ export default function ProfileCompleteScreen() {
         >
           <View style={styles.header}>
             <Image
-              source={require('@/assets/images/login_logo.png')}
+              source={getLogoSource(branding, isDark)}
+              placeholder={require('@/assets/images/login_logo.png')}
               style={styles.logo}
               contentFit="contain"
               cachePolicy="memory-disk"
+              transition={200}
             />
           </View>
 

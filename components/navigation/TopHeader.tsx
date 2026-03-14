@@ -8,7 +8,7 @@
 // 4. Push notifications (instant notification badge bump)
 // =============================================================================
 
-import { FEATURES, SITE_URL } from '@/constants/config';
+import { FEATURES, SITE_URL, getHeaderLogoSource } from '@/constants/config';
 import { spacing, shadows, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -43,7 +43,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, branding, isDark } = useTheme();
   const { visibility } = useAppConfig();
   const {
     unreadMessages,
@@ -180,7 +180,8 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
         <View style={styles.leftSection}>
           {showLogo ? (
             <Image
-              source={require('@/assets/images/logo.png')}
+              source={getHeaderLogoSource(branding, isDark)}
+              placeholder={require('@/assets/images/logo.png')}
               style={styles.logo}
               contentFit="contain"
               transition={200}

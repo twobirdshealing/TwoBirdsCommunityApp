@@ -71,6 +71,13 @@ export interface UpdateConfig {
   android_store_url: string;
 }
 
+export interface BrandingConfig {
+  site_name: string;
+  site_tagline: string;
+  logo: string;       // Logo URL from Fluent (used everywhere — header + login)
+  logo_dark: string;  // Logo for dark mode (Fluent's white_logo)
+}
+
 export interface AppConfigResponse {
   success: boolean;
   theme: ThemeData;
@@ -79,6 +86,7 @@ export interface AppConfigResponse {
   update?: UpdateConfig | null;
   maintenance?: MaintenanceConfig;
   visibility?: VisibilityConfig;
+  branding?: BrandingConfig;
 }
 
 // -----------------------------------------------------------------------------

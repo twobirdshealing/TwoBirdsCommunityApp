@@ -7,6 +7,8 @@
 // =============================================================================
 
 import Constants from 'expo-constants';
+import type { ImageSource } from 'expo-image';
+import type { BrandingConfig } from '@/services/api/theme';
 
 // -----------------------------------------------------------------------------
 // SETUP: App Info
@@ -136,3 +138,30 @@ export const WP_ENDPOINTS = {
 
 export const PRIVACY_POLICY_URL = `${SITE_URL}/privacy-policy/`;                           // SETUP: Privacy policy URL
 export const YOUTUBE_CHANNEL_URL = 'https://www.youtube.com/c/twobirdschurch?sub_confirmation=1'; // SETUP: YouTube channel "Subscribe" button URL (youtube/index.tsx header)
+
+// -----------------------------------------------------------------------------
+// Branding Helpers (server-synced logo with static fallback)
+// -----------------------------------------------------------------------------
+
+const STATIC_LOGO = require('@/assets/images/login_logo.png');
+const STATIC_HEADER_LOGO = require('@/assets/images/logo.png');
+
+/** Logo for login/register/forgot-password. Uses dark variant when available in dark mode. */
+export function getLogoSource(
+  branding: BrandingConfig | null,
+  isDark: boolean,
+): ImageSource {
+  const url = isDark && branding?.logo_dark ? branding.logo_dark : branding?.logo;
+  if (url) return { uri: url };
+  return STATIC_LOGO;
+}
+
+/** Header logo — same Fluent logo, different static fallback (wide format). */
+export function getHeaderLogoSource(
+  branding: BrandingConfig | null,
+  isDark: boolean = false,
+): ImageSource {
+  const url = isDark && branding?.logo_dark ? branding.logo_dark : branding?.logo;
+  if (url) return { uri: url };
+  return STATIC_HEADER_LOGO;
+}

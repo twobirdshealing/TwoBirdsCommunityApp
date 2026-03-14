@@ -24,7 +24,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography, sizing } from '@/constants/layout';
-import { PRIVACY_POLICY_URL } from '@/constants/config';
+import { PRIVACY_POLICY_URL, getLogoSource } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
@@ -56,7 +56,7 @@ export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { registerAndLogin, isAuthenticated, user: currentUser, updateUser } = useAuth();
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, branding, isDark } = useTheme();
 
   // State
   const [step, setStep] = useState<Step>(1);
@@ -666,10 +666,12 @@ export default function RegisterScreen() {
           {step <= 2 && (
             <View style={styles.header}>
               <Image
-                source={require('@/assets/images/login_logo.png')}
+                source={getLogoSource(branding, isDark)}
+                placeholder={require('@/assets/images/login_logo.png')}
                 style={styles.logo}
                 contentFit="contain"
                 cachePolicy="memory-disk"
+                transition={200}
               />
             </View>
           )}

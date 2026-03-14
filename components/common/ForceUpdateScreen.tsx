@@ -4,6 +4,7 @@
 // Shown before auth/maintenance — user cannot proceed until they update.
 // =============================================================================
 
+import { getHeaderLogoSource } from '@/constants/config';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { UpdateConfig } from '@/services/api/theme';
@@ -25,7 +26,7 @@ interface ForceUpdateScreenProps {
 // -----------------------------------------------------------------------------
 
 export function ForceUpdateScreen({ updateConfig }: ForceUpdateScreenProps) {
-  const { colors } = useTheme();
+  const { colors, branding, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   const storeUrl = Platform.OS === 'ios'
@@ -43,10 +44,12 @@ export function ForceUpdateScreen({ updateConfig }: ForceUpdateScreenProps) {
       <View style={styles.content}>
         {/* Logo */}
         <Image
-          source={require('@/assets/images/logo.png')}
+          source={getHeaderLogoSource(branding, isDark)}
+          placeholder={require('@/assets/images/logo.png')}
           style={styles.logo}
           contentFit="contain"
           cachePolicy="memory-disk"
+          transition={200}
         />
 
         {/* Icon */}

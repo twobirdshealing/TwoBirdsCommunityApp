@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.36.0
+- **Branding in app-config**: New `branding` section in `/app-config` response returns `site_name`, `site_tagline`, `logo`, and `logo_dark` from Fluent Community general settings (falls back to WordPress `blogname` / `blogdescription`). Enables white-label apps to sync branding from the server instead of hardcoding.
+
 ## v3.35.0
 - **UI Visibility: pass all keys to app**: Removed whitelist filter in `get_visibility_flags()` — all hidden element keys (including `donate`, `donor_dashboard`, and custom keys) now flow through `hide_menu[]` to the app. Previously only 5 core keys were returned.
 - **Custom visibility elements**: Admins can add custom key/label pairs in Settings → UI Visibility. These appear as columns in the role-based visibility grid. Use this when adding app modules with `hideMenuKey` — no PHP code changes needed.

@@ -8,7 +8,7 @@ import {
   lightColors,
   mapFluentToAppColors,
 } from '@/constants/colors';
-import { getAppConfig, AppConfigResponse, MaintenanceConfig, UpdateConfig, ThemeData } from '@/services/api/theme';
+import { getAppConfig, AppConfigResponse, MaintenanceConfig, UpdateConfig, ThemeData, BrandingConfig } from '@/services/api/theme';
 import { setSocialProviders } from '@/services/api/socialProviders';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -26,6 +26,7 @@ interface ThemeContextType {
   setTheme: (mode: ThemeMode) => void;
   update: UpdateConfig | null;
   maintenance: MaintenanceConfig | null;
+  branding: BrandingConfig | null;
   refreshAppConfig: () => Promise<void>;
   /** Accept pre-fetched data (from startup batch or _layout orchestrator) */
   setFromBatch: (data: AppConfigResponse) => void;
@@ -56,6 +57,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   } | null>(null);
   const [update, setUpdate] = useState<UpdateConfig | null>(null);
   const [maintenance, setMaintenance] = useState<MaintenanceConfig | null>(null);
+  const [branding, setBranding] = useState<BrandingConfig | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   // Resolve isDark from preference
@@ -149,6 +151,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (data.maintenance) {
       setMaintenance(data.maintenance);
     }
+    // Apply branding
+    setBranding(data.branding ?? null);
   };
 
   const applyThemeColors = (theme: ThemeData) => {
@@ -181,7 +185,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Memoize provider value to prevent unnecessary consumer re-renders
   // ---------------------------------------------------------------------------
 
-  const value = useMemo(() => ({ theme, isDark, colors, setTheme, update, maintenance, refreshAppConfig, setFromBatch }), [theme, isDark, colors, setTheme, update, maintenance, refreshAppConfig, setFromBatch]);
+  const value = useMemo(() => ({ theme, isDark, colors, setTheme, update, maintenance, branding, refreshAppConfig, setFromBatch }), [theme, isDark, colors, setTheme, update, maintenance, branding, refreshAppConfig, setFromBatch]);
 
   // ---------------------------------------------------------------------------
   // Don't render children until preference is loaded (prevents flash)

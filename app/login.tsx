@@ -20,7 +20,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography, sizing } from '@/constants/layout';
-import { PRIVACY_POLICY_URL } from '@/constants/config';
+import { PRIVACY_POLICY_URL, APP_NAME, getLogoSource } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
@@ -35,12 +35,15 @@ export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { login, isLoading } = useAuth();
-  const { colors: themeColors } = useTheme();
+  const { colors: themeColors, branding, isDark } = useTheme();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  const siteName = branding?.site_name || APP_NAME;
+  const siteTagline = branding ? branding.site_tagline : 'Community';
 
   const handleLogin = async () => {
     hapticMedium();
@@ -79,13 +82,15 @@ export default function LoginScreen() {
           {/* Logo / Header */}
           <View style={styles.header}>
             <Image
-              source={require('@/assets/images/login_logo.png')}
+              source={getLogoSource(branding, isDark)}
+              placeholder={require('@/assets/images/login_logo.png')}
               style={styles.logo}
               contentFit="contain"
               cachePolicy="memory-disk"
+              transition={200}
             />
-            <Text style={[styles.title, { color: themeColors.text }]}>Two Birds</Text>
-            <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>Community</Text>
+            <Text style={[styles.title, { color: themeColors.text }]}>{siteName}</Text>
+            {siteTagline ? <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>{siteTagline}</Text> : null}
           </View>
 
           {/* Form Card */}

@@ -5,6 +5,7 @@
 // and a login button so bypass-eligible users can authenticate.
 // =============================================================================
 
+import { getHeaderLogoSource } from '@/constants/config';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,7 +39,7 @@ export function MaintenanceScreen({
   isAuthenticated = false,
   isRetrying = false,
 }: MaintenanceScreenProps) {
-  const { colors } = useTheme();
+  const { colors, branding, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -55,10 +56,12 @@ export function MaintenanceScreen({
       <View style={styles.content}>
         {/* Logo */}
         <Image
-          source={require('@/assets/images/logo.png')}
+          source={getHeaderLogoSource(branding, isDark)}
+          placeholder={require('@/assets/images/logo.png')}
           style={styles.logo}
           contentFit="contain"
           cachePolicy="memory-disk"
+          transition={200}
         />
 
         {/* Icon */}
