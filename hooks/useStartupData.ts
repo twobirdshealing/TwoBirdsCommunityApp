@@ -14,8 +14,7 @@
 // │  4. /fluent-community/v2/chat/unread_threads  → message count      │
 // │  5. /fluent-community/v2/feeds/welcome-banner → welcome widget     │
 // │  6. /fluent-community/v2/courses?type=enrolled&per_page=5 → courses│
-// │  7. /wp/v2/posts?page=1&per_page=1&_embed=    → blog widget        │
-// │  8. /tbc-ca/v1/cart/count                     → cart badge count   │
+// │  7. /tbc-ca/v1/cart/count                     → cart badge count   │
 // └─────────────────────────────────────────────────────────────────────┘
 // Module widgets (calendar, bookclub, etc.) use useCachedData to
 // self-fetch on mount. No batch registration needed.
@@ -56,7 +55,6 @@ interface ProfileData {
 const WIDGET_CACHE_KEYS = {
   welcomeBanner: 'tbc_welcome_banner',
   courses: 'tbc_widget_enrolled_courses',
-  blog: 'tbc_widget_latest_blog',
 };
 
 // -----------------------------------------------------------------------------
@@ -104,7 +102,6 @@ export function useStartupData({
         // Core widget data (module widgets self-fetch via useCachedData)
         { path: '/fluent-community/v2/feeds/welcome-banner' },
         { path: '/fluent-community/v2/courses?type=enrolled&per_page=5' },
-        { path: '/wp/v2/posts?page=1&per_page=1&_embed=' },
         { path: '/tbc-ca/v1/cart/count' },
       ];
 
@@ -181,16 +178,6 @@ export function useStartupData({
         const courses = coursesData.courses?.data ?? [];
         freshKeys.push(WIDGET_CACHE_KEYS.courses);
         cacheWrites.push(AsyncStorage.setItem(WIDGET_CACHE_KEYS.courses, JSON.stringify(courses)));
-      }
-
-      // Blog
-      const blogData = findBatchResponse<unknown[]>(
-        responses,
-        '/wp/v2/posts',
-      );
-      if (Array.isArray(blogData) && blogData.length > 0) {
-        freshKeys.push(WIDGET_CACHE_KEYS.blog);
-        cacheWrites.push(AsyncStorage.setItem(WIDGET_CACHE_KEYS.blog, JSON.stringify(blogData[0])));
       }
 
       // Write all caches in parallel, then mark them as batch-fresh

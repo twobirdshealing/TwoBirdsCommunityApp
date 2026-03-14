@@ -3,7 +3,7 @@
 // =============================================================================
 // Hero-style card: featured image with gradient overlay (title, author, date)
 // Footer: excerpt + "Read Article" button + read time + comment count
-// Used in: app/blog/index.tsx (blog list)
+// Used in: modules/blog/screens/BlogListScreen.tsx
 // =============================================================================
 
 import React from 'react';
@@ -19,7 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
-import { WPPost } from '@/types/blog';
+import { WPPost } from '@/modules/blog/types/blog';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';

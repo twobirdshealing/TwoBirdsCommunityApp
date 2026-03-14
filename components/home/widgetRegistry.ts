@@ -9,7 +9,6 @@
 import { FEATURES } from '@/constants/config';
 import type { WidgetRegistration } from '@/modules/_types';
 import { getModuleWidgets } from '@/modules/_registry';
-import { BlogWidget } from '@/components/home/BlogWidget';
 import { CoursesWidget } from '@/components/home/CoursesWidget';
 
 // -----------------------------------------------------------------------------
@@ -17,16 +16,6 @@ import { CoursesWidget } from '@/components/home/CoursesWidget';
 // -----------------------------------------------------------------------------
 
 const CORE_WIDGETS: WidgetRegistration[] = [
-  {
-    id: 'latest-blog',
-    title: 'Latest Blog',
-    icon: 'newspaper-outline',
-    seeAllRoute: '/blog',
-    defaultEnabled: true,
-    canDisable: true,
-    externalWrapper: true,
-    component: BlogWidget,
-  },
   {
     id: 'my-courses',
     title: 'My Courses',

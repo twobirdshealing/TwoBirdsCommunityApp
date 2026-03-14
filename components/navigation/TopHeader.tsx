@@ -138,11 +138,6 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     router.push('/courses');
   };
 
-  const handleBlogPress = () => {
-    setMenuVisible(false);
-    router.push('/blog');
-  };
-
   const handleNotificationSettingsPress = () => {
     setMenuVisible(false);
     router.push('/notification-settings');
@@ -276,7 +271,6 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
         onDirectoryPress={handleDirectoryPress}
         onBookmarksPress={handleBookmarksPress}
         onCoursesPress={handleCoursesPress}
-        onBlogPress={handleBlogPress}
         onNotificationSettingsPress={handleNotificationSettingsPress}
         onLogout={handleLogout}
       />

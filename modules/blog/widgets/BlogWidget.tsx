@@ -15,11 +15,11 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
-import { blogApi } from '@/services/api/blog';
+import { blogApi } from '@/modules/blog/services/blogApi';
 import { useCachedData } from '@/hooks/useCachedData';
 import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 import { formatSmartDate } from '@/utils/formatDate';
-import type { WPPost } from '@/types/blog';
+import type { WPPost } from '@/modules/blog/types/blog';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------

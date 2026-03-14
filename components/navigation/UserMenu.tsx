@@ -42,7 +42,6 @@ interface UserMenuProps {
   onDirectoryPress: () => void;
   onBookmarksPress: () => void;
   onCoursesPress: () => void;
-  onBlogPress: () => void;
   onNotificationSettingsPress: () => void;
   onLogout: () => void;
 }
@@ -91,7 +90,6 @@ export function UserMenu({
   onDirectoryPress,
   onBookmarksPress,
   onCoursesPress,
-  onBlogPress,
   onNotificationSettingsPress,
   onLogout,
 }: UserMenuProps) {
@@ -193,13 +191,6 @@ export function UserMenu({
                   icon="school-outline"
                   label="My Courses"
                   onPress={onCoursesPress}
-                />
-              )}
-              {!isHidden('blog') && (
-                <MenuItem
-                  icon="newspaper-outline"
-                  label="Blog"
-                  onPress={onBlogPress}
                 />
               )}
               {!isHidden('notification_settings') && (

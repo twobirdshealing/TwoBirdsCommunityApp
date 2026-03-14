@@ -1,7 +1,7 @@
 // =============================================================================
 // BLOG TYPES - WordPress REST API post and comment types
 // =============================================================================
-// Used by: services/api/blog.ts, components/blog/*, app/blog/*
+// Used by: modules/blog/services/blogApi.ts, modules/blog/components/*
 // API: /wp-json/wp/v2/posts, /wp-json/wp/v2/comments
 // =============================================================================
 

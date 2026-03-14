@@ -12,8 +12,8 @@ import {
   WPPostsResponse,
   WPCommentsResponse,
   CreateWPCommentData,
-} from '@/types/blog';
-import { request, type ApiResponseWithHeaders } from './client';
+} from '@/modules/blog/types/blog';
+import { request } from '@/services/api/client';
 import type { ApiError } from '@/types/api';
 
 // -----------------------------------------------------------------------------

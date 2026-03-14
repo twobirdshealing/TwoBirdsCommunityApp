@@ -25,8 +25,7 @@ import { bookclubModule } from './bookclub/module';
 import { donateModule } from './donate/module';
 import { donorModule } from './donor/module';
 import { youtubeModule } from './youtube/module';
-// Planned modules (not yet created):
-// import { blogModule } from './blog/module';
+import { blogModule } from './blog/module';
 
 // -----------------------------------------------------------------------------
 // Active Modules — add/remove from this array
@@ -38,7 +37,7 @@ export const MODULES: ModuleManifest[] = [
   donateModule,
   donorModule,
   youtubeModule,
-  // blogModule,
+  blogModule,
 ];
 
 // -----------------------------------------------------------------------------
