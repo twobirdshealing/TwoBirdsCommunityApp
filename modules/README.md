@@ -300,9 +300,7 @@ Core UI uses increments of 10. Place your module items between them:
 | 10 | Home (core) |
 | 20 | Activity (core) |
 | 30 | Spaces (core) |
-| 40 | Calendar (module) |
-| 50+ | Your modules |
-| 100 | Donate (module) |
+| 40+ | Your modules |
 
 **Header icons:**
 
@@ -318,10 +316,7 @@ Core UI uses increments of 10. Place your module items between them:
 | Order | Item |
 |---|---|
 | 10-50 | Core items (Profile, Spaces, Directory, etc.) |
-| 55 | Book Club (module) |
-| 60 | Donate (module) |
-| 65 | Donor Dashboard (module) |
-| 70+ | Your items |
+| 60+ | Your items |
 | 90 | Privacy Policy, Dark Mode (core) |
 
 ## Server-Driven Visibility
@@ -371,36 +366,24 @@ export async function getItems() {
 
 If your module's API lives in the core plugin (`tbc-community-app`), the API service stays in `services/api/` (core) and your module imports it from there.
 
-## Existing Modules
+## Included Modules
 
-| Module | Folder | Tab | Widget | Menu | Header | Addon | Plugin |
-|---|---|---|---|---|---|---|---|
-| Calendar | `modules/calendar/` | Yes (order 40) | Ceremony, Events | — | — | — | `tbc-calednar-fluent` |
-| Book Club | `modules/bookclub/` | — | BookClub | Yes | — | MiniPlayer | `tbc-book-club` |
-| Donate | `modules/donate/` | Yes (order 100) | — | Yes | — | — | — (WebView) |
-| Donor Dashboard | `modules/donor/` | — | — | Yes | — | — | — (WebView) |
+These ship with the app as working examples of different module patterns. Keep, modify, or remove them as needed.
 
-### Calendar
-Events calendar with WooCommerce integration. Bottom tab + two home widgets (upcoming booking, featured events). Companion plugin: `tbc-calednar-fluent`.
-
-### Book Club
-Audiobook player with bookmarks and meeting schedule. Home widget + menu item + context provider (`AudioPlayerContext`) + tab bar addon (`MiniPlayer`). Fully self-contained — removing it from the registry leaves the app working perfectly. Companion plugin: `tbc-book-club`.
-
-### Donate
-Donation tab that opens a WebView. Uses `interceptPress` to redirect to `/webview` with the donation page URL. Custom animated heart icon via `tabBarIcon` and red color via `tabColor: 'error'`. Also registers a menu item with `iconColor: 'error'` for a red heart in the dropdown. No standalone screens or API.
-
-### Donor Dashboard
-Menu-only module — adds "Donor Dashboard" to the avatar dropdown, opens a WebView. No tab, no widget, no API.
+| Module | Folder | Pattern | What it demonstrates |
+|---|---|---|---|
+| Calendar | `modules/calendar/` | Tab + Widgets | Bottom tab with companion WP plugin, two home widgets |
+| Book Club | `modules/bookclub/` | Widget + Menu + Provider + Addon | Home widget, menu item, context provider, tab bar addon (mini player) |
+| Donate | `modules/donate/` | Tab (WebView) + Menu | Tab with `interceptPress` (opens WebView), custom `tabBarIcon`, `tabColor`, menu item with `iconColor` |
+| Donor Dashboard | `modules/donor/` | Menu only | Single menu item that opens a WebView — simplest possible module |
 
 ## Tab Bar Addon
 
 A module can register a `tabBarAddon` — a component that renders above the tab bar buttons. The tab bar automatically measures the addon's height and exposes it via `BottomOffsetContext`. Screens use `useTabContentPadding()` to get correct bottom padding (includes tab bar + safe area + addon height).
 
 - Multiple modules can register addons — they stack vertically (dev mode logs when multiple are registered)
-- Each addon component controls its own visibility (e.g., MiniPlayer returns `null` when no audio is playing)
+- Each addon component controls its own visibility (e.g., a mini player returns `null` when no audio is playing)
 - When all addons are hidden, the measured height is 0 — padding adjusts automatically
-
-**Example:** The Book Club module registers `MiniPlayer` as its `tabBarAddon`. When a user plays an audiobook, the MiniPlayer slides in above the tab bar. All scrollable screens automatically get extra bottom padding.
 
 ## Core vs Module
 
@@ -408,7 +391,7 @@ The rule: if it's **self-contained content**, it goes in a module. Modules shoul
 
 **Core features** (not modules) include: feed, spaces, profiles, notifications, messaging, courses, blog, YouTube, cart. These are tightly integrated with the app's API client, auth system, or response headers. They use `FEATURES.*` flags in `constants/config.ts` for compile-time toggling.
 
-**Modules** include: calendar, book club, donate, donor dashboard. These are self-contained, have their own companion plugins (or just open WebViews), and can be removed by deleting one line from `_registry.ts`.
+**Modules** are self-contained features that have their own companion plugins (or just open WebViews) and can be removed by deleting one line from `_registry.ts`.
 
 Core provides generic hooks that modules can leverage:
 - `useTabContentPadding()` — bottom padding for scrollable content (tab bar + safe area + addon height)
