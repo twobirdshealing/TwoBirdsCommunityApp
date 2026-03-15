@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>White-Label Community App — Component &amp; Design System Reference</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+    --purple: #d2a8ff;
+    --green: #7ee787;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  h4 { font-size: 1rem; margin-top: 20px; margin-bottom: 8px; color: var(--purple); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .core { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+  .shared { background: rgba(88, 166, 255, 0.15); color: var(--accent); }
+  .screen { background: rgba(210, 153, 34, 0.15); color: var(--warning); }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn { border-left-color: var(--warning); }
+  .callout-error { border-left-color: var(--error); }
+  .callout-success { border-left-color: var(--success); }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+  nav { position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 10; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  nav a { margin-right: 16px; font-size: 0.9rem; }
+  .swatch-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
+  .swatch {
+    width: 48px; height: 48px; border-radius: 8px; border: 1px solid var(--border);
+    display: flex; align-items: flex-end; justify-content: center;
+    font-size: 0.6em; padding-bottom: 2px; color: var(--text-secondary);
+  }
+  .prop-table td:first-child { font-family: monospace; color: var(--green); white-space: nowrap; }
+  .prop-table td:nth-child(2) { font-family: monospace; color: var(--purple); white-space: nowrap; }
+  .component-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+  }
+  .component-card h4 { margin-top: 0; }
+  .component-card .file-path { display: block; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<h1>Component &amp; Design System Reference</h1>
+<p class="subtitle">White-Label Community App &mdash; Developer Documentation</p>
+
+<div class="callout">
+  This document covers every reusable component, design token, and pattern in the component library.
+  Use this as your reference when building new screens, creating modules, or customizing the app for a client.
+  For setup &amp; configuration, see <a href="setup-guide.html">Setup Guide</a>.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#design-tokens">Design Tokens</a> &mdash; spacing, sizing, typography, shadows, colors</li>
+    <li><a href="#theme-system">Theme System</a> &mdash; how colors flow from WordPress</li>
+    <li><a href="#core-components">Core Components</a> &mdash; Button, TextInputField, AnimatedPressable, etc.</li>
+    <li><a href="#layout-components">Layout &amp; Navigation</a> &mdash; PageHeader, TopHeader, TabBar, BottomSheet</li>
+    <li><a href="#display-components">Display Components</a> &mdash; Avatar, UserDisplayName, HtmlContent, etc.</li>
+    <li><a href="#feedback-components">Feedback &amp; State</a> &mdash; LoadingSpinner, EmptyState, ErrorMessage, etc.</li>
+    <li><a href="#form-components">Form Components</a> &mdash; DynamicFormField, SelectModal, SocialLinksForm</li>
+    <li><a href="#media-components">Media Components</a> &mdash; YouTubeEmbed, VideoPlayer, MediaViewer</li>
+    <li><a href="#feature-components">Feature Components</a> &mdash; Feed, Composer, Profile, Space, Course, Member, Message</li>
+    <li><a href="#import-rules">Import Rules &amp; Conventions</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="design-tokens">1. Design Tokens</h2>
+<!-- ================================================================== -->
+
+<p>All design tokens live in <span class="file-path">constants/layout.ts</span>. Import them directly:</p>
+<pre><code>import { spacing, sizing, typography, shadows } from '@/constants/layout';</code></pre>
+
+<h3>Spacing (4px grid)</h3>
+<table>
+  <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+  <tr><td><code>spacing.xs</code></td><td>4px</td><td>Tiny gaps, icon padding</td></tr>
+  <tr><td><code>spacing.sm</code></td><td>8px</td><td>Between related elements, icon gaps</td></tr>
+  <tr><td><code>spacing.md</code></td><td>12px</td><td>Default padding, gaps</td></tr>
+  <tr><td><code>spacing.lg</code></td><td>16px</td><td>Section padding, form field spacing</td></tr>
+  <tr><td><code>spacing.xl</code></td><td>20px</td><td>Screen-level padding</td></tr>
+  <tr><td><code>spacing.xxl</code></td><td>24px</td><td>Major section separators</td></tr>
+</table>
+
+<h3>Sizing</h3>
+<table>
+  <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+  <tr><td><code>sizing.touchTarget</code></td><td>44px</td><td>Minimum touch target (accessibility)</td></tr>
+  <tr><td><code>sizing.iconButton</code></td><td>40px</td><td>Header and close buttons</td></tr>
+  <tr><td><code>sizing.icon.xxl</code></td><td>48px</td><td>Large decorative icons</td></tr>
+  <tr><td><code>sizing.height.button</code></td><td>48px</td><td>Standard button height</td></tr>
+  <tr><td><code>sizing.height.buttonSmall</code></td><td>36px</td><td>Compact button height</td></tr>
+  <tr><td><code>sizing.height.tabBar</code></td><td>46px</td><td>Bottom tab bar height</td></tr>
+  <tr><td><code>sizing.input.height</code></td><td>48px</td><td>Standard form input height</td></tr>
+  <tr><td><code>sizing.input.heightSmall</code></td><td>36px</td><td>Compact inputs (search, filters)</td></tr>
+  <tr><td><code>sizing.input.paddingHorizontal</code></td><td>16px</td><td>Input horizontal padding</td></tr>
+  <tr><td><code>sizing.input.paddingVertical</code></td><td>12px</td><td>Input vertical padding</td></tr>
+</table>
+
+<h4>Avatar Sizes</h4>
+<table>
+  <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+  <tr><td><code>sizing.avatar.xs</code></td><td>24px</td><td>Inline mentions</td></tr>
+  <tr><td><code>sizing.avatar.sm</code></td><td>32px</td><td>Comment avatars</td></tr>
+  <tr><td><code>sizing.avatar.md</code></td><td>48px</td><td>Feed cards, list items</td></tr>
+  <tr><td><code>sizing.avatar.lg</code></td><td>56px</td><td>Member cards</td></tr>
+  <tr><td><code>sizing.avatar.xl</code></td><td>80px</td><td>Profile header</td></tr>
+  <tr><td><code>sizing.avatar.xxl</code></td><td>120px</td><td>Profile edit</td></tr>
+</table>
+
+<h4>Border Radius</h4>
+<table>
+  <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+  <tr><td><code>sizing.borderRadius.sm</code></td><td>8px</td><td>Cards, buttons (compact)</td></tr>
+  <tr><td><code>sizing.borderRadius.md</code></td><td>12px</td><td>Buttons, inputs, cards (standard)</td></tr>
+  <tr><td><code>sizing.borderRadius.lg</code></td><td>16px</td><td>Modals, sheets, large cards</td></tr>
+  <tr><td><code>sizing.borderRadius.full</code></td><td>9999px</td><td>Circular (avatars, pills)</td></tr>
+</table>
+
+<h3>Typography</h3>
+<table>
+  <tr><th>Token</th><th>Value</th><th>Use</th></tr>
+  <tr><td><code>typography.size.xs</code></td><td>11px</td><td>Badges, timestamps, captions</td></tr>
+  <tr><td><code>typography.size.sm</code></td><td>13px</td><td>Labels, secondary text, small buttons</td></tr>
+  <tr><td><code>typography.size.md</code></td><td>15px</td><td>Body text, inputs, buttons</td></tr>
+  <tr><td><code>typography.size.lg</code></td><td>17px</td><td>Titles, large buttons</td></tr>
+  <tr><td><code>typography.size.xl</code></td><td>20px</td><td>Section headings</td></tr>
+  <tr><td><code>typography.size.xxl</code></td><td>24px</td><td>Screen titles</td></tr>
+  <tr><td><code>typography.weight.medium</code></td><td>'500'</td><td>Body text emphasis</td></tr>
+  <tr><td><code>typography.weight.semibold</code></td><td>'600'</td><td>Buttons, labels, headings</td></tr>
+  <tr><td><code>typography.weight.bold</code></td><td>'700'</td><td>Page titles, strong emphasis</td></tr>
+  <tr><td><code>typography.lineHeight.tight</code></td><td>1.2</td><td>Headings</td></tr>
+  <tr><td><code>typography.lineHeight.normal</code></td><td>1.5</td><td>Body text</td></tr>
+  <tr><td><code>typography.lineHeight.relaxed</code></td><td>1.75</td><td>Long-form content</td></tr>
+</table>
+
+<h3>Shadows (Elevation)</h3>
+<table>
+  <tr><th>Token</th><th>Elevation</th><th>Use</th></tr>
+  <tr><td><code>shadows.sm</code></td><td>1</td><td>Cards, list items</td></tr>
+  <tr><td><code>shadows.md</code></td><td>3</td><td>Floating elements, dropdowns</td></tr>
+  <tr><td><code>shadows.lg</code></td><td>5</td><td>Modals, sheets</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="theme-system">2. Theme System</h2>
+<!-- ================================================================== -->
+
+<p>Colors are synced from the WordPress site's Fluent Community theme. They flow through:</p>
+<pre><code>Fluent Community (WordPress) → REST API (/tbc-ca/v1/theme/colors) → ThemeContext → useTheme().colors</code></pre>
+
+<div class="callout callout-warn">
+  <strong>Never hardcode colors.</strong> Always use <code>const { colors } = useTheme()</code> inside components.
+  The only exceptions are: <code>shadowColor: '#000'</code> (iOS standard), YouTube brand red, and video player backgrounds.
+</div>
+
+<h3>Color Tokens</h3>
+<table>
+  <tr><th>Token</th><th>Light Default</th><th>Use</th></tr>
+  <tr><td><code>colors.primary</code></td><td>#6366F1</td><td>Links, accents, brand color</td></tr>
+  <tr><td><code>colors.primaryDark</code></td><td>#4F46E5</td><td>Button backgrounds</td></tr>
+  <tr><td><code>colors.background</code></td><td>#F9FAFB</td><td>Page background</td></tr>
+  <tr><td><code>colors.surface</code></td><td>#FFFFFF</td><td>Card/content backgrounds</td></tr>
+  <tr><td><code>colors.backgroundSecondary</code></td><td>#F3F4F6</td><td>Comment areas, secondary surfaces</td></tr>
+  <tr><td><code>colors.text</code></td><td>#111827</td><td>Primary text</td></tr>
+  <tr><td><code>colors.textSecondary</code></td><td>#6B7280</td><td>Subtitles, meta text</td></tr>
+  <tr><td><code>colors.textTertiary</code></td><td>#9CA3AF</td><td>Hints, placeholders, disabled text</td></tr>
+  <tr><td><code>colors.textInverse</code></td><td>#FFFFFF</td><td>Text on colored buttons</td></tr>
+  <tr><td><code>colors.border</code></td><td>#E5E7EB</td><td>Primary borders, dividers</td></tr>
+  <tr><td><code>colors.borderLight</code></td><td>#F3F4F6</td><td>Subtle/light borders</td></tr>
+  <tr><td><code>colors.overlay</code></td><td>rgba(0,0,0,0.5)</td><td>Modal/sheet backdrops</td></tr>
+</table>
+
+<h4>Semantic Colors</h4>
+<table>
+  <tr><th>State</th><th>Primary Token</th><th>Light Token</th><th>Use</th></tr>
+  <tr><td>Success</td><td><code>colors.success</code></td><td><code>colors.successLight</code></td><td>Online indicators, completion</td></tr>
+  <tr><td>Error</td><td><code>colors.error</code></td><td><code>colors.errorLight</code></td><td>Validation errors, destructive</td></tr>
+  <tr><td>Warning</td><td><code>colors.warning</code></td><td><code>colors.warningLight</code></td><td>Caution states</td></tr>
+  <tr><td>Info</td><td><code>colors.info</code></td><td><code>colors.infoLight</code></td><td>Verified badges, notices</td></tr>
+</table>
+
+<h4>Tab Bar Colors</h4>
+<table>
+  <tr><th>Token</th><th>Use</th></tr>
+  <tr><td><code>colors.tabBar.background</code></td><td>Tab bar background</td></tr>
+  <tr><td><code>colors.tabBar.border</code></td><td>Tab bar top border</td></tr>
+  <tr><td><code>colors.tabBar.active</code></td><td>Active tab icon/label</td></tr>
+  <tr><td><code>colors.tabBar.inactive</code></td><td>Inactive tab icon/label</td></tr>
+</table>
+
+<h3>Transparent Variants</h3>
+<pre><code>import { withOpacity } from '@/constants/colors';
+
+// Creates a transparent version of any theme color
+withOpacity(colors.primary, 0.12)  // Light brand tint for pills/badges
+withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
+
+<h3>Key Files</h3>
+<table>
+  <tr><th>File</th><th>Role</th></tr>
+  <tr><td><span class="file-path">constants/colors.ts</span></td><td>ColorTheme interface, light/dark defaults, <code>mapFluentToAppColors()</code>, <code>withOpacity()</code></td></tr>
+  <tr><td><span class="file-path">contexts/ThemeContext.tsx</span></td><td>Provider, caches colors, syncs from API</td></tr>
+  <tr><td><span class="file-path">services/api/theme.ts</span></td><td>Fetches <code>/tbc-ca/v1/theme/colors</code></td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="core-components">3. Core Components</h2>
+<!-- ================================================================== -->
+
+<p>These are the primary building blocks used across the entire app. All live in <span class="file-path">components/common/</span>.</p>
+
+<!-- Button -->
+<div class="component-card">
+  <h4>Button <span class="tag core">Core</span></h4>
+  <span class="file-path">components/common/Button.tsx</span>
+  <p>Unified button component with 4 variants, 2 sizes, loading/disabled states, and optional icon. Built on <code>AnimatedPressable</code> for consistent spring-scale press feedback.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>title</td><td>string</td><td>''</td><td>Button label (optional for <code>iconOnly</code>)</td></tr>
+    <tr><td>variant</td><td>'primary' | 'secondary' | 'text' | 'destructive'</td><td>'primary'</td><td>Visual style</td></tr>
+    <tr><td>size</td><td>'md' | 'sm'</td><td>'md'</td><td>Size preset</td></tr>
+    <tr><td>loading</td><td>boolean</td><td>false</td><td>Show spinner, auto-disables</td></tr>
+    <tr><td>disabled</td><td>boolean</td><td>false</td><td>Disable (also auto-set when loading)</td></tr>
+    <tr><td>icon</td><td>Ionicons name</td><td>&mdash;</td><td>Icon left of title</td></tr>
+    <tr><td>iconOnly</td><td>boolean</td><td>false</td><td>Circular icon-only button (hides title)</td></tr>
+    <tr><td>style</td><td>ViewStyle</td><td>&mdash;</td><td>Override container style</td></tr>
+    <tr><td>textStyle</td><td>TextStyle</td><td>&mdash;</td><td>Override text style</td></tr>
+  </table>
+
+  <h4>Variants</h4>
+  <table>
+    <tr><th>Variant</th><th>Background</th><th>Border</th><th>Text Color</th></tr>
+    <tr><td><code>primary</code></td><td><code>colors.primary</code></td><td>none</td><td><code>colors.textInverse</code></td></tr>
+    <tr><td><code>secondary</code></td><td>transparent</td><td><code>colors.border</code></td><td><code>colors.primary</code></td></tr>
+    <tr><td><code>text</code></td><td>transparent</td><td>none</td><td><code>colors.primary</code></td></tr>
+    <tr><td><code>destructive</code></td><td><code>colors.error</code></td><td>none</td><td><code>colors.textInverse</code></td></tr>
+  </table>
+
+  <h4>Sizes</h4>
+  <table>
+    <tr><th>Size</th><th>Height</th><th>Font Size</th></tr>
+    <tr><td><code>md</code></td><td>48px</td><td>17px (semibold)</td></tr>
+    <tr><td><code>sm</code></td><td>36px</td><td>13px (semibold)</td></tr>
+  </table>
+
+<pre><code>import { Button } from '@/components/common/Button';
+
+// Primary (default)
+&lt;Button title="Sign In" onPress={handleLogin} loading={isLoading} /&gt;
+
+// Secondary outline
+&lt;Button title="Following" variant="secondary" size="sm" onPress={handleFollow} /&gt;
+
+// Text link
+&lt;Button title="Back to Login" variant="text" onPress={() =&gt; router.back()} /&gt;
+
+// Destructive
+&lt;Button title="Delete" variant="destructive" onPress={handleDelete} /&gt;
+
+// With icon
+&lt;Button title="Enroll" icon="add-circle-outline" onPress={handleEnroll} /&gt;
+
+// Icon-only (circular)
+&lt;Button icon="chatbubble-outline" iconOnly variant="secondary" onPress={handleChat} /&gt;</code></pre>
+
+  <div class="callout callout-success">
+    <strong>Tip:</strong> Don't pass <code>disabled={loading}</code> &mdash; Button auto-disables when <code>loading</code> is true.
+    Only pass <code>disabled</code> for additional conditions (e.g., form validation).
+  </div>
+</div>
+
+<!-- TextInputField -->
+<div class="component-card">
+  <h4>TextInputField <span class="tag core">Core</span></h4>
+  <span class="file-path">components/common/TextInputField.tsx</span>
+  <p>Themed form input with optional label, error state, and password toggle. For standard forms (login, registration, profile edit). <em>Not</em> for chat inputs, search bars, or OTP codes.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>label</td><td>string</td><td>&mdash;</td><td>Label text above input</td></tr>
+    <tr><td>error</td><td>string</td><td>&mdash;</td><td>Error message below input (colors border red)</td></tr>
+    <tr><td>password</td><td>boolean</td><td>false</td><td>Adds show/hide toggle button</td></tr>
+    <tr><td>containerStyle</td><td>ViewStyle</td><td>&mdash;</td><td>Override container style</td></tr>
+    <tr><td>inputStyle</td><td>ViewStyle</td><td>&mdash;</td><td>Override input style</td></tr>
+    <tr><td>...rest</td><td>TextInputProps</td><td>&mdash;</td><td>All React Native TextInput props</td></tr>
+  </table>
+
+<pre><code>import { TextInputField } from '@/components/common/TextInputField';
+
+// Basic
+&lt;TextInputField
+  label="Email or Username"
+  value={email}
+  onChangeText={setEmail}
+  placeholder="Enter your email"
+  autoCapitalize="none"
+  keyboardType="email-address"
+/&gt;
+
+// Password with toggle
+&lt;TextInputField
+  label="Password"
+  value={password}
+  onChangeText={setPassword}
+  password
+  onSubmitEditing={handleLogin}
+/&gt;
+
+// With error
+&lt;TextInputField
+  label="Name"
+  value={name}
+  onChangeText={setName}
+  error={errors.name}
+/&gt;</code></pre>
+</div>
+
+<!-- AnimatedPressable -->
+<div class="component-card">
+  <h4>AnimatedPressable <span class="tag core">Core</span></h4>
+  <span class="file-path">components/common/AnimatedPressable.tsx</span>
+  <p>Pressable wrapper with spring-scale animation and haptic feedback. The foundation for <code>Button</code> and all tappable cards/widgets.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>animated</td><td>boolean</td><td>true</td><td>Enable/disable spring animation</td></tr>
+    <tr><td>scaleValue</td><td>number</td><td>0.98</td><td>Scale target when pressed</td></tr>
+    <tr><td>haptic</td><td>boolean</td><td>true</td><td>Fire hapticLight() on press</td></tr>
+    <tr><td>...rest</td><td>PressableProps</td><td>&mdash;</td><td>All React Native Pressable props</td></tr>
+  </table>
+
+  <div class="callout callout-warn">
+    <strong>When to use:</strong> Use <code>AnimatedPressable</code> for tappable cards, list items, and custom interactive elements.
+    For standard buttons, use <code>Button</code> instead. If you add custom haptic in <code>onPress</code>, pass <code>haptic={false}</code> to avoid double haptic feedback.
+  </div>
+
+<pre><code>import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+
+// Tappable card
+&lt;AnimatedPressable onPress={() =&gt; router.push(`/profile/${username}`)}&gt;
+  {/* card content */}
+&lt;/AnimatedPressable&gt;
+
+// With custom haptic (disable built-in)
+&lt;AnimatedPressable haptic={false} onPress={() =&gt; { hapticMedium(); doAction(); }}&gt;
+  {/* ... */}
+&lt;/AnimatedPressable&gt;</code></pre>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="layout-components">4. Layout &amp; Navigation</h2>
+<!-- ================================================================== -->
+
+<!-- PageHeader -->
+<div class="component-card">
+  <h4>PageHeader <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/navigation/PageHeader.tsx</span>
+  <p>Standard header for detail screens with back/close button, centered title, and optional right action.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>leftAction</td><td>'back' | 'close' | 'none'</td><td>'back'</td><td>Left button type</td></tr>
+    <tr><td>onLeftPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Left button handler</td></tr>
+    <tr><td>title</td><td>string</td><td>&mdash;</td><td>Centered title text</td></tr>
+    <tr><td>showLoader</td><td>boolean</td><td>false</td><td>Show loading indicator in title area</td></tr>
+    <tr><td>rightIcon</td><td>Ionicons name</td><td>&mdash;</td><td>Right icon button</td></tr>
+    <tr><td>onRightPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Right button handler</td></tr>
+    <tr><td>rightBadgeCount</td><td>number</td><td>&mdash;</td><td>Badge on right icon</td></tr>
+    <tr><td>rightElement</td><td>ReactNode</td><td>&mdash;</td><td>Custom right element (overrides rightIcon)</td></tr>
+  </table>
+
+<pre><code>&lt;PageHeader
+  leftAction="back"
+  onLeftPress={() =&gt; router.back()}
+  title="Edit Profile"
+  rightElement={&lt;Button title="Save" size="sm" onPress={handleSave} loading={saving} /&gt;}
+/&gt;</code></pre>
+</div>
+
+<!-- TopHeader -->
+<div class="component-card">
+  <h4>TopHeader <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/navigation/TopHeader.tsx</span>
+  <p>Main app header with logo/title and icon buttons for messages, notifications, cart, and user avatar menu.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>showLogo</td><td>boolean</td><td>true</td><td>Show app logo</td></tr>
+    <tr><td>title</td><td>string</td><td>&mdash;</td><td>Title text (alternative to logo)</td></tr>
+  </table>
+</div>
+
+<!-- HeaderIconButton -->
+<div class="component-card">
+  <h4>HeaderIconButton <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/navigation/HeaderIconButton.tsx</span>
+  <p>Icon button for headers with optional notification badge count.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>icon</td><td>Ionicons name</td><td>&mdash;</td><td>Icon to display</td></tr>
+    <tr><td>onPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Press handler</td></tr>
+    <tr><td>badgeCount</td><td>number</td><td>&mdash;</td><td>Badge count (red circle)</td></tr>
+    <tr><td>size</td><td>number</td><td>24</td><td>Icon size</td></tr>
+    <tr><td>color</td><td>string</td><td>&mdash;</td><td>Icon color override</td></tr>
+  </table>
+</div>
+
+<!-- ScreenHeader -->
+<div class="component-card">
+  <h4>ScreenHeader <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/ScreenHeader.tsx</span>
+  <p>Simple close button + centered title. Used inside modals and bottom sheets.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>title</td><td>string</td><td>&mdash;</td><td>Centered title</td></tr>
+    <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close button handler</td></tr>
+  </table>
+</div>
+
+<!-- TabBar -->
+<div class="component-card">
+  <h4>TabBar <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/TabBar.tsx</span>
+  <p>Horizontal tab navigation with animated active indicator. Generic &mdash; works with any key type.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>tabs</td><td>{ key: K; title: string }[]</td><td>&mdash;</td><td>Tab definitions</td></tr>
+    <tr><td>activeTab</td><td>K</td><td>&mdash;</td><td>Currently active tab key</td></tr>
+    <tr><td>onTabChange</td><td>(key: K) =&gt; void</td><td>&mdash;</td><td>Tab change handler</td></tr>
+  </table>
+
+<pre><code>&lt;TabBar
+  tabs={[{ key: 'posts', title: 'Posts' }, { key: 'about', title: 'About' }]}
+  activeTab={activeTab}
+  onTabChange={setActiveTab}
+/&gt;</code></pre>
+</div>
+
+<!-- BottomSheet -->
+<div class="component-card">
+  <h4>BottomSheet <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/BottomSheet.tsx</span>
+  <p>Slide-up modal built on <code>@gorhom/bottom-sheet</code> with keyboard handling, backdrop, and optional title/footer.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide the sheet</td></tr>
+    <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close handler</td></tr>
+    <tr><td>heightPercentage</td><td>number</td><td>0.9</td><td>Sheet height (0-1)</td></tr>
+    <tr><td>title</td><td>string</td><td>&mdash;</td><td>Optional header title</td></tr>
+    <tr><td>footerComponent</td><td>React.FC</td><td>&mdash;</td><td>Sticky footer</td></tr>
+    <tr><td>children</td><td>ReactNode</td><td>&mdash;</td><td>Sheet content</td></tr>
+  </table>
+
+  <p>Use the companion <code>SheetInput</code> render-prop wrapper to register text inputs with the sheet's keyboard handling.</p>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="display-components">5. Display Components</h2>
+<!-- ================================================================== -->
+
+<!-- Avatar -->
+<div class="component-card">
+  <h4>Avatar <span class="tag core">Core</span></h4>
+  <span class="file-path">components/common/Avatar.tsx</span>
+  <p>User profile image with initials fallback and optional online indicator dot.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>source</td><td>string</td><td>&mdash;</td><td>Image URL</td></tr>
+    <tr><td>size</td><td>'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl'</td><td>'md'</td><td>Size preset (uses sizing.avatar tokens)</td></tr>
+    <tr><td>online</td><td>boolean</td><td>false</td><td>Show green online dot</td></tr>
+    <tr><td>fallback</td><td>string</td><td>&mdash;</td><td>Initials text when no image</td></tr>
+  </table>
+</div>
+
+<!-- UserDisplayName -->
+<div class="component-card">
+  <h4>UserDisplayName <span class="tag core">Core</span></h4>
+  <span class="file-path">components/common/UserDisplayName.tsx</span>
+  <p>Inline display name with verified badge and profile badges. Handles all the complexity of name + badges layout.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>name</td><td>string</td><td>&mdash;</td><td>Display name text</td></tr>
+    <tr><td>verified</td><td>boolean</td><td>false</td><td>Show verified checkmark</td></tr>
+    <tr><td>badgeSlugs</td><td>string[]</td><td>&mdash;</td><td>Profile badge slugs to render</td></tr>
+    <tr><td>size</td><td>'sm' | 'md' | 'lg' | 'xl'</td><td>'md'</td><td>Text size preset</td></tr>
+    <tr><td>bold</td><td>boolean</td><td>true</td><td>Bold weight</td></tr>
+    <tr><td>nameColor</td><td>string</td><td>&mdash;</td><td>Override text color</td></tr>
+  </table>
+</div>
+
+<!-- HtmlContent -->
+<div class="component-card">
+  <h4>HtmlContent <span class="tag core">Core</span></h4>
+  <span class="file-path">components/common/HtmlContent.tsx</span>
+  <p>Rich HTML renderer with theme-aware styling, deep linking (profiles, spaces), image galleries, and YouTube embeds.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>html</td><td>string</td><td>&mdash;</td><td>HTML string to render</td></tr>
+    <tr><td>contentWidth</td><td>number</td><td>&mdash;</td><td>Available width for layout</td></tr>
+    <tr><td>baseFontSize</td><td>number</td><td>15</td><td>Base font size</td></tr>
+    <tr><td>selectable</td><td>boolean</td><td>false</td><td>Allow text selection</td></tr>
+    <tr><td>onLinkNavigate</td><td>() =&gt; void</td><td>&mdash;</td><td>Called when link navigation happens</td></tr>
+  </table>
+</div>
+
+<!-- VerifiedBadge -->
+<div class="component-card">
+  <h4>VerifiedBadge <span class="tag core">Core</span></h4>
+  <span class="file-path">components/common/VerifiedBadge.tsx</span>
+  <p>Inline checkmark badge next to display names. Uses <code>colors.info</code> color.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>size</td><td>number</td><td>14</td><td>Badge size in pixels</td></tr>
+  </table>
+</div>
+
+<!-- ProfileBadge -->
+<div class="component-card">
+  <h4>ProfileBadge <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/ProfileBadge.tsx</span>
+  <p>Inline colored pill with emoji/logo and label. Used for member role badges, achievement badges, etc.</p>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="feedback-components">6. Feedback &amp; State Components</h2>
+<!-- ================================================================== -->
+
+<!-- LoadingSpinner -->
+<div class="component-card">
+  <h4>LoadingSpinner <span class="tag core">Core</span></h4>
+  <span class="file-path">components/common/LoadingSpinner.tsx</span>
+  <p>Full-screen or inline loading indicator with optional message.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>fullScreen</td><td>boolean</td><td>true</td><td>Center in full screen</td></tr>
+    <tr><td>message</td><td>string</td><td>&mdash;</td><td>Loading message text</td></tr>
+    <tr><td>size</td><td>'small' | 'large'</td><td>'large'</td><td>Spinner size</td></tr>
+    <tr><td>color</td><td>string</td><td>&mdash;</td><td>Spinner color override</td></tr>
+  </table>
+</div>
+
+<!-- EmptyState -->
+<div class="component-card">
+  <h4>EmptyState <span class="tag core">Core</span></h4>
+  <span class="file-path">components/common/EmptyState.tsx</span>
+  <p>Centered icon + message + optional action button. Used for empty lists, no results, etc.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>icon</td><td>Ionicons name</td><td>&mdash;</td><td>Icon above message</td></tr>
+    <tr><td>title</td><td>string</td><td>&mdash;</td><td>Title text</td></tr>
+    <tr><td>message</td><td>string</td><td>&mdash;</td><td>Description text</td></tr>
+    <tr><td>actionLabel</td><td>string</td><td>&mdash;</td><td>Action button text</td></tr>
+    <tr><td>onAction</td><td>() =&gt; void</td><td>&mdash;</td><td>Action button handler</td></tr>
+  </table>
+
+<pre><code>&lt;EmptyState
+  icon="chatbubbles-outline"
+  title="No messages yet"
+  message="Start a conversation with someone!"
+  actionLabel="New Message"
+  onAction={() =&gt; setShowNewMessage(true)}
+/&gt;</code></pre>
+</div>
+
+<!-- ErrorMessage -->
+<div class="component-card">
+  <h4>ErrorMessage <span class="tag core">Core</span></h4>
+  <span class="file-path">components/common/ErrorMessage.tsx</span>
+  <p>Error display with optional retry button. Supports full-screen or inline mode.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>message</td><td>string</td><td>&mdash;</td><td>Error message text</td></tr>
+    <tr><td>onRetry</td><td>() =&gt; void</td><td>&mdash;</td><td>Retry button handler (shows button when set)</td></tr>
+    <tr><td>fullScreen</td><td>boolean</td><td>true</td><td>Center in full screen</td></tr>
+    <tr><td>title</td><td>string</td><td>&mdash;</td><td>Error title text</td></tr>
+  </table>
+</div>
+
+<!-- MaintenanceScreen -->
+<div class="component-card">
+  <h4>MaintenanceScreen <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/MaintenanceScreen.tsx</span>
+  <p>Full-screen maintenance overlay with auto-retry (30s), manual retry button, and login/logout actions.</p>
+</div>
+
+<!-- ForceUpdateScreen -->
+<div class="component-card">
+  <h4>ForceUpdateScreen <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/ForceUpdateScreen.tsx</span>
+  <p>Full-screen blocking overlay when a required app update is available. Links to app store.</p>
+</div>
+
+<!-- ErrorBoundary -->
+<div class="component-card">
+  <h4>ErrorBoundary <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/ErrorBoundary.tsx</span>
+  <p>React error boundary that catches render errors and shows a fallback UI.</p>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="form-components">7. Form Components</h2>
+<!-- ================================================================== -->
+
+<!-- DynamicFormField -->
+<div class="component-card">
+  <h4>DynamicFormField <span class="tag core">Core</span></h4>
+  <span class="file-path">components/common/DynamicFormField.tsx</span>
+  <p>Polymorphic form field that renders the correct input for any field type: text, email, date, phone, radio, select, checkbox, textarea, password. Used by the registration wizard and profile edit.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>fieldKey</td><td>string</td><td>&mdash;</td><td>Field identifier</td></tr>
+    <tr><td>field</td><td>FormFieldConfig</td><td>&mdash;</td><td>Field configuration (type, label, options, etc.)</td></tr>
+    <tr><td>value</td><td>any</td><td>&mdash;</td><td>Current field value</td></tr>
+    <tr><td>onChange</td><td>(value: any) =&gt; void</td><td>&mdash;</td><td>Change handler</td></tr>
+    <tr><td>error</td><td>string</td><td>&mdash;</td><td>Validation error message</td></tr>
+    <tr><td>disabled</td><td>boolean</td><td>false</td><td>Disable the field</td></tr>
+  </table>
+</div>
+
+<!-- SelectModal -->
+<div class="component-card">
+  <h4>SelectModal <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/SelectModal.tsx</span>
+  <p>Option picker modal for select/radio fields. Renders a scrollable list of options with checkmark on selected.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide modal</td></tr>
+    <tr><td>title</td><td>string</td><td>&mdash;</td><td>Modal title</td></tr>
+    <tr><td>options</td><td>string[]</td><td>&mdash;</td><td>Available options</td></tr>
+    <tr><td>selectedValue</td><td>string</td><td>&mdash;</td><td>Currently selected</td></tr>
+    <tr><td>onSelect</td><td>(value: string) =&gt; void</td><td>&mdash;</td><td>Selection handler</td></tr>
+    <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close handler</td></tr>
+  </table>
+</div>
+
+<!-- SocialLinksForm -->
+<div class="component-card">
+  <h4>SocialLinksForm <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/SocialLinksForm.tsx</span>
+  <p>Reusable social link inputs (Facebook, Twitter, Instagram, etc.) with provider icons and domain prefixes. Used in registration and profile edit.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>providers</td><td>SocialProvider[]</td><td>&mdash;</td><td>Available social providers</td></tr>
+    <tr><td>values</td><td>Record&lt;string, string&gt;</td><td>&mdash;</td><td>Current values keyed by provider</td></tr>
+    <tr><td>onChange</td><td>(key: string, value: string) =&gt; void</td><td>&mdash;</td><td>Change handler</td></tr>
+  </table>
+</div>
+
+<!-- PasswordStrengthMeter -->
+<div class="component-card">
+  <h4>PasswordStrengthMeter <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/PasswordStrengthMeter.tsx</span>
+  <p>Advisory password strength bar with label (Weak/Fair/Good/Strong).</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>password</td><td>string</td><td>&mdash;</td><td>Password to evaluate</td></tr>
+  </table>
+</div>
+
+<!-- ProfilePhotoPicker -->
+<div class="component-card">
+  <h4>ProfilePhotoPicker <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/ProfilePhotoPicker.tsx</span>
+  <p>Cover photo + avatar photo picker with camera overlay icons and upload progress indicators.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>avatarSource</td><td>string</td><td>&mdash;</td><td>Avatar image URL</td></tr>
+    <tr><td>coverSource</td><td>string</td><td>&mdash;</td><td>Cover image URL</td></tr>
+    <tr><td>fallbackName</td><td>string</td><td>&mdash;</td><td>Initials fallback</td></tr>
+    <tr><td>onAvatarPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Avatar tap handler (opens picker)</td></tr>
+    <tr><td>onCoverPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Cover tap handler (opens picker)</td></tr>
+    <tr><td>avatarUploading</td><td>boolean</td><td>false</td><td>Show avatar upload spinner</td></tr>
+    <tr><td>coverUploading</td><td>boolean</td><td>false</td><td>Show cover upload spinner</td></tr>
+  </table>
+</div>
+
+<!-- DropdownMenu -->
+<div class="component-card">
+  <h4>DropdownMenu <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/DropdownMenu.tsx</span>
+  <p>Modal-based dropdown menu with icon + label items. Supports destructive items styled in red.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide menu</td></tr>
+    <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close handler</td></tr>
+    <tr><td>items</td><td>DropdownMenuItem[]</td><td>&mdash;</td><td>Menu items with icon, label, onPress, destructive flag</td></tr>
+    <tr><td>anchor</td><td>{top, right}</td><td>&mdash;</td><td>Position anchor</td></tr>
+  </table>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="media-components">8. Media Components</h2>
+<!-- ================================================================== -->
+
+<p>All live in <span class="file-path">components/media/</span>.</p>
+
+<!-- YouTubeEmbed -->
+<div class="component-card">
+  <h4>YouTubeEmbed <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/media/YouTubeEmbed.tsx</span>
+  <p>Native YouTube player using <code>react-native-youtube-iframe</code>.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>videoId</td><td>string</td><td>&mdash;</td><td>YouTube video ID</td></tr>
+    <tr><td>playing</td><td>boolean</td><td>false</td><td>Auto-play</td></tr>
+  </table>
+</div>
+
+<!-- VideoPlayer -->
+<div class="component-card">
+  <h4>VideoPlayer <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/media/VideoPlayer.tsx</span>
+  <p>Native video playback using <code>expo-video</code> with poster image support.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>url</td><td>string</td><td>&mdash;</td><td>Video URL</td></tr>
+    <tr><td>posterUrl</td><td>string</td><td>&mdash;</td><td>Poster/thumbnail image URL</td></tr>
+  </table>
+</div>
+
+<!-- MediaViewer -->
+<div class="component-card">
+  <h4>MediaViewer <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/media/MediaViewer.tsx</span>
+  <p>Full-screen image gallery with swipe navigation, pinch-to-zoom, download, and share.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide viewer</td></tr>
+    <tr><td>images</td><td>MediaViewerImage[]</td><td>&mdash;</td><td>Array of image objects</td></tr>
+    <tr><td>initialIndex</td><td>number</td><td>0</td><td>Starting image index</td></tr>
+    <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close handler</td></tr>
+  </table>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="feature-components">9. Feature Components</h2>
+<!-- ================================================================== -->
+
+<p>These components are organized by feature domain. They use the core components internally.</p>
+
+<h3>Feed</h3>
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>FeedList</td><td><span class="file-path">components/feed/FeedList.tsx</span></td><td>Main feed list with infinite scroll, pull-to-refresh</td></tr>
+  <tr><td>FeedCard</td><td><span class="file-path">components/feed/FeedCard.tsx</span></td><td>Single post card: author, content, media, reactions, comments</td></tr>
+  <tr><td>CommentSheet</td><td><span class="file-path">components/feed/CommentSheet.tsx</span></td><td>Bottom sheet for viewing/adding comments on posts</td></tr>
+  <tr><td>CommentItem</td><td><span class="file-path">components/feed/CommentItem.tsx</span></td><td>Single comment with reactions and reply</td></tr>
+  <tr><td>ReactionPicker</td><td><span class="file-path">components/feed/ReactionPicker.tsx</span></td><td>Emoji reaction picker (multi-reaction)</td></tr>
+  <tr><td>SurveyCard</td><td><span class="file-path">components/feed/SurveyCard.tsx</span></td><td>Poll/survey embedded in feed</td></tr>
+  <tr><td>WelcomeBanner</td><td><span class="file-path">components/feed/WelcomeBanner.tsx</span></td><td>Welcome banner at top of feed</td></tr>
+</table>
+
+<h3>Composer</h3>
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>CreatePostContent</td><td><span class="file-path">components/composer/CreatePostContent.tsx</span></td><td>Full-screen post composer (10tap rich text editor)</td></tr>
+  <tr><td>QuickPostBox</td><td><span class="file-path">components/composer/QuickPostBox.tsx</span></td><td>"What's happening?" placeholder that opens composer</td></tr>
+  <tr><td>ComposerToolbar</td><td><span class="file-path">components/composer/ComposerToolbar.tsx</span></td><td>Bottom toolbar: image, GIF, poll, video, submit</td></tr>
+  <tr><td>MarkdownToolbar</td><td><span class="file-path">components/composer/MarkdownToolbar.tsx</span></td><td>Rich text formatting buttons (bold, italic, lists, etc.)</td></tr>
+  <tr><td>GifPickerModal</td><td><span class="file-path">components/composer/GifPickerModal.tsx</span></td><td>GIF search modal (Giphy API)</td></tr>
+  <tr><td>PollBuilderSheet</td><td><span class="file-path">components/composer/PollBuilderSheet.tsx</span></td><td>Bottom sheet for creating poll options</td></tr>
+</table>
+
+<h3>Profile</h3>
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>ProfileHeader</td><td><span class="file-path">components/profile/ProfileHeader.tsx</span></td><td>Hero section: cover, avatar, name, bio, actions</td></tr>
+  <tr><td>ProfileCompletionSteps</td><td><span class="file-path">components/profile/ProfileCompletionSteps.tsx</span></td><td>Onboarding: bio + avatar steps after registration</td></tr>
+  <tr><td>ProfileMenu</td><td><span class="file-path">components/profile/ProfileMenu.tsx</span></td><td>Actions menu (edit, message, block, report)</td></tr>
+  <tr><td>AboutTab</td><td><span class="file-path">components/profile/AboutTab.tsx</span></td><td>About section with custom fields</td></tr>
+</table>
+
+<h3>Space</h3>
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>SpaceCard</td><td><span class="file-path">components/space/SpaceCard.tsx</span></td><td>Space card: cover, emoji, title, stats, join button</td></tr>
+  <tr><td>SpaceInfoHeader</td><td><span class="file-path">components/space/SpaceInfoHeader.tsx</span></td><td>Space detail header with description and join CTA</td></tr>
+  <tr><td>SpaceLockScreen</td><td><span class="file-path">components/space/SpaceLockScreen.tsx</span></td><td>Private/secret space access barrier</td></tr>
+  <tr><td>SpaceMenu</td><td><span class="file-path">components/space/SpaceMenu.tsx</span></td><td>Space actions dropdown (leave, edit, etc.)</td></tr>
+</table>
+
+<h3>Course</h3>
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>CourseCard</td><td><span class="file-path">components/course/CourseCard.tsx</span></td><td>Course card: cover, emoji, title, stats, progress</td></tr>
+  <tr><td>ProgressBar</td><td><span class="file-path">components/course/ProgressBar.tsx</span></td><td>Horizontal progress bar</td></tr>
+  <tr><td>SectionList</td><td><span class="file-path">components/course/SectionList.tsx</span></td><td>Expandable section with lesson rows</td></tr>
+  <tr><td>LessonRow</td><td><span class="file-path">components/course/LessonRow.tsx</span></td><td>Lesson item with completion status</td></tr>
+</table>
+
+<h3>Member</h3>
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>MemberCard</td><td><span class="file-path">components/member/MemberCard.tsx</span></td><td>Member list item: avatar, name, role, bio, follow/message</td></tr>
+</table>
+
+<h3>Message</h3>
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>ConversationCard</td><td><span class="file-path">components/message/ConversationCard.tsx</span></td><td>Thread list item with unread indicator, swipe delete</td></tr>
+  <tr><td>MessageBubble</td><td><span class="file-path">components/message/MessageBubble.tsx</span></td><td>Chat message bubble with reactions</td></tr>
+  <tr><td>ChatInput</td><td><span class="file-path">components/message/ChatInput.tsx</span></td><td>Message input with send button</td></tr>
+  <tr><td>NewMessageModal</td><td><span class="file-path">components/message/NewMessageModal.tsx</span></td><td>New conversation modal with member search</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="import-rules">10. Import Rules &amp; Conventions</h2>
+<!-- ================================================================== -->
+
+<h3>Direct Imports Only</h3>
+<div class="callout callout-error">
+  <strong>No barrel files.</strong> Always import directly from the source file. Metro bundler doesn't tree-shake &mdash; barrel imports load every sibling module.
+</div>
+
+<pre><code>// Correct
+import { Avatar } from '@/components/common/Avatar';
+import { Button } from '@/components/common/Button';
+import { spacing, sizing, typography } from '@/constants/layout';
+
+// WRONG (barrel import)
+import { Avatar, Button } from '@/components/common';</code></pre>
+
+<h3>Theme Colors</h3>
+<pre><code>// Always use the hook
+const { colors } = useTheme();
+
+// Use tokens, not raw colors
+backgroundColor: colors.primary       // correct
+backgroundColor: '#6366F1'            // WRONG
+
+// For text on colored buttons
+color: colors.textInverse             // correct
+color: '#fff'                         // WRONG
+
+// For transparent variants
+import { withOpacity } from '@/constants/colors';
+backgroundColor: withOpacity(colors.primary, 0.12)</code></pre>
+
+<h3>Component Patterns</h3>
+<pre><code>// Button: don't duplicate disabled with loading
+&lt;Button title="Save" loading={saving} /&gt;                    // correct
+&lt;Button title="Save" loading={saving} disabled={saving} /&gt;  // redundant
+
+// AnimatedPressable: avoid double haptic
+&lt;AnimatedPressable haptic={false} onPress={() =&gt; { hapticMedium(); doThing(); }}&gt;
+  {/* custom haptic — disable built-in hapticLight */}
+&lt;/AnimatedPressable&gt;
+
+// TextInputField: for forms only
+&lt;TextInputField label="Name" ... /&gt;   // form input — use TextInputField
+// Chat input, search bar, OTP — use raw TextInput (specialized UX)</code></pre>
+
+<h3>File Organization</h3>
+<table>
+  <tr><th>Directory</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">components/common/</span></td><td>Reusable across features (buttons, inputs, feedback)</td></tr>
+  <tr><td><span class="file-path">components/navigation/</span></td><td>Headers, tab bars, navigation elements</td></tr>
+  <tr><td><span class="file-path">components/media/</span></td><td>Video, image, gallery components</td></tr>
+  <tr><td><span class="file-path">components/composer/</span></td><td>Post creation flow</td></tr>
+  <tr><td><span class="file-path">components/feed/</span></td><td>Feed cards, comments, reactions</td></tr>
+  <tr><td><span class="file-path">components/profile/</span></td><td>Profile views and editing</td></tr>
+  <tr><td><span class="file-path">components/space/</span></td><td>Space cards, headers, access control</td></tr>
+  <tr><td><span class="file-path">components/course/</span></td><td>Course cards, progress, lessons</td></tr>
+  <tr><td><span class="file-path">components/member/</span></td><td>Member directory cards</td></tr>
+  <tr><td><span class="file-path">components/message/</span></td><td>Chat UI components</td></tr>
+  <tr><td><span class="file-path">components/settings/</span></td><td>Settings screens</td></tr>
+  <tr><td><span class="file-path">constants/</span></td><td>Design tokens, config, colors</td></tr>
+  <tr><td><span class="file-path">contexts/</span></td><td>React contexts (Auth, Theme, Pusher)</td></tr>
+  <tr><td><span class="file-path">hooks/</span></td><td>Custom hooks</td></tr>
+  <tr><td><span class="file-path">services/api/</span></td><td>API service layer</td></tr>
+  <tr><td><span class="file-path">modules/</span></td><td>Self-contained add-on modules</td></tr>
+</table>
+
+<p style="margin-top: 48px; color: var(--text-secondary); text-align: center; font-size: 0.9em;">
+  Generated for the White-Label Community App &mdash; <a href="setup-guide.html">Setup Guide</a> &bull; <a href="logging.html">Logging Reference</a>
+</p>
+
+</body>
+</html>

@@ -35,6 +35,7 @@ import { ReactionType } from '@/types/feed';
 import { commentsApi } from '@/services/api/comments';
 import { mediaApi } from '@/services/api/media';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { Button } from '@/components/common/Button';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
@@ -647,9 +648,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
             ) : error ? (
               <View style={styles.centered}>
                 <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-                <AnimatedPressable onPress={fetchComments} style={[styles.retryButton, { backgroundColor: themeColors.primary }]}>
-                  <Text style={[styles.retryText, { color: themeColors.textInverse }]}>Try Again</Text>
-                </AnimatedPressable>
+                <Button title="Try Again" onPress={fetchComments} style={styles.retryButton} />
               </View>
             ) : comments.length === 0 && !stickyComment ? (
               <View style={styles.centered}>
@@ -876,13 +875,7 @@ const styles = StyleSheet.create({
   },
 
   retryButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: sizing.borderRadius.md,
-  },
-
-  retryText: {
-    fontWeight: typography.weight.semibold,
+    marginTop: spacing.md,
   },
 
   emptyIcon: {

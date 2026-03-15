@@ -5,13 +5,14 @@
 // =============================================================================
 
 import { APP_NAME, getHeaderLogoSource } from '@/constants/config';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { UpdateConfig } from '@/services/api/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { Button } from '@/components/common/Button';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -65,16 +66,11 @@ export function ForceUpdateScreen({ updateConfig }: ForceUpdateScreenProps) {
 
         {/* Update button (only if store URL is configured) */}
         {storeUrl ? (
-          <Pressable
-            style={({ pressed }) => [
-              styles.updateButton,
-              { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
-            ]}
+          <Button
+            title="Update Now"
+            icon="arrow-up-circle-outline"
             onPress={handleUpdate}
-          >
-            <Ionicons name="arrow-up-circle-outline" size={18} color={colors.textInverse} />
-            <Text style={[styles.updateText, { color: colors.textInverse }]}>Update Now</Text>
-          </Pressable>
+          />
         ) : (
           <Text style={[styles.fallback, { color: colors.textTertiary }]}>
             Please update from your app store.
@@ -125,22 +121,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: spacing.xl,
     maxWidth: 320,
-  },
-
-  updateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: sizing.borderRadius.md,
-    minWidth: 140,
-    gap: spacing.sm,
-  },
-
-  updateText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
   },
 
   fallback: {

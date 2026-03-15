@@ -6,13 +6,14 @@
 // =============================================================================
 
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Space } from '@/types/space';
+import { Button } from '@/components/common/Button';
 import { QuickPostBox } from '@/components/composer/QuickPostBox';
 import { getPrivacyIcon } from '@/components/space/SpaceCard';
 import { stripHtmlPreserveBreaks } from '@/utils/htmlToText';
@@ -101,22 +102,13 @@ export function SpaceInfoHeader({ space, onPostPress, hidePostBox, isNonMember, 
       {/* Quick Post Box or Join CTA */}
       {!hidePostBox && (
         isNonMember ? (
-          <Pressable
-            onPress={onJoinPress}
-            disabled={isJoining}
-            style={[styles.joinBar, { backgroundColor: themeColors.primaryDark }]}
-          >
-            {isJoining ? (
-              <ActivityIndicator size="small" color={themeColors.textInverse} />
-            ) : (
-              <>
-                <Ionicons name="add-circle-outline" size={20} color={themeColors.textInverse} />
-                <Text style={[styles.joinBarText, { color: themeColors.textInverse }]}>
-                  Join Space to Post
-                </Text>
-              </>
-            )}
-          </Pressable>
+          <Button
+            title="Join Space to Post"
+            icon="add-circle-outline"
+            onPress={onJoinPress!}
+            loading={isJoining}
+            style={styles.joinBar}
+          />
         ) : (
           <QuickPostBox
             onPress={onPostPress}
@@ -214,18 +206,7 @@ const styles = StyleSheet.create({
   },
 
   joinBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
     marginHorizontal: spacing.md,
     marginTop: spacing.sm,
-    paddingVertical: spacing.md,
-    borderRadius: sizing.borderRadius.sm,
-    minHeight: sizing.height.button,
-  },
-  joinBarText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
   },
 });

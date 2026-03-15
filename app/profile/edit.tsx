@@ -21,7 +21,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { Button } from '@/components/common/Button';
 import { hapticLight } from '@/utils/haptics';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -465,17 +465,12 @@ export default function EditProfileScreen() {
         onLeftPress={() => router.back()}
         title="Edit Profile"
         rightElement={
-          <AnimatedPressable
-            style={[styles.saveButton, { backgroundColor: themeColors.primary }]}
+          <Button
+            title="Save"
+            size="sm"
             onPress={() => handleSave()}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color={themeColors.textInverse} />
-            ) : (
-              <Text style={[styles.saveButtonText, { color: themeColors.textInverse }]}>Save</Text>
-            )}
-          </AnimatedPressable>
+            loading={saving}
+          />
         }
       />
 
@@ -700,17 +695,12 @@ export default function EditProfileScreen() {
               autoFocus
             />
 
-            <AnimatedPressable
-              style={[styles.otpVerifyButton, { backgroundColor: themeColors.primary }, (otp.verifying || saving) && styles.otpButtonDisabled]}
+            <Button
+              title="Verify"
               onPress={otp.handleVerify}
-              disabled={otp.verifying || saving}
-            >
-              {otp.verifying || saving ? (
-                <ActivityIndicator color={themeColors.textInverse} />
-              ) : (
-                <Text style={[styles.otpVerifyButtonText, { color: themeColors.textInverse }]}>Verify</Text>
-              )}
-            </AnimatedPressable>
+              loading={otp.verifying || saving}
+              style={styles.otpVerifyButton}
+            />
 
             <View style={styles.otpActions}>
               <Pressable
@@ -767,20 +757,6 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: spacing.lg,
-  },
-
-  // Save button in header
-  saveButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: sizing.borderRadius.sm,
-    minWidth: 60,
-    alignItems: 'center',
-  },
-
-  saveButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
   },
 
   // Section titles
@@ -887,20 +863,7 @@ const styles = StyleSheet.create({
   },
 
   otpVerifyButton: {
-    borderRadius: sizing.borderRadius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
     marginTop: spacing.sm,
-  },
-
-  otpVerifyButtonText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-  },
-
-  otpButtonDisabled: {
-    opacity: 0.7,
   },
 
   otpActions: {

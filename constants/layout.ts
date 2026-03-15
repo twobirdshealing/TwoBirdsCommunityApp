@@ -50,6 +50,14 @@ export const sizing = {
     tabBar: 46,
   },
 
+  // Form input sizing
+  input: {
+    height: 48,            // Standard input height
+    heightSmall: 36,       // Compact inputs (search bars, filters)
+    paddingHorizontal: 16, // spacing.lg
+    paddingVertical: 12,   // spacing.md
+  },
+
   // Touch targets (minimum for accessibility)
   touchTarget: 44,
 

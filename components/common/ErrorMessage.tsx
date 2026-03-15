@@ -10,7 +10,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { Button } from '@/components/common/Button';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -54,9 +54,7 @@ export function ErrorMessage({
 
       {/* Retry Button */}
       {onRetry && (
-        <AnimatedPressable style={[styles.retryButton, { backgroundColor: themeColors.primary }]} onPress={onRetry}>
-          <Text style={[styles.retryText, { color: themeColors.surface }]}>Try Again</Text>
-        </AnimatedPressable>
+        <Button title="Try Again" onPress={onRetry} />
       )}
     </View>
   );
@@ -106,16 +104,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
 
-  retryButton: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: sizing.borderRadius.md,
-  },
-
-  retryText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-  },
 });
 
 export default ErrorMessage;

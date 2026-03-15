@@ -9,7 +9,6 @@
 
 import React, { useCallback, useState } from 'react';
 import {
-  ActivityIndicator,
   StyleSheet,
   Text,
   TextInput,
@@ -19,6 +18,7 @@ import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { Button } from '@/components/common/Button';
 import { SocialLinksForm } from '@/components/common/SocialLinksForm';
 import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
 import { useSocialProviders } from '@/hooks/useSocialProviders';
@@ -26,7 +26,6 @@ import { updateProfile, patchProfileMedia } from '@/services/api/profiles';
 import { completeRegistration, type ProfileExistingData } from '@/services/api/registration';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import { hapticMedium } from '@/utils/haptics';
-import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -301,28 +300,19 @@ export function ProfileCompletionSteps({
             onChange={(key, value) => setSocialLinks(prev => ({ ...prev, [key]: value }))}
           />
 
-          <AnimatedPressable
-            style={[styles.primaryButton, { backgroundColor: themeColors.primary }, saving && styles.buttonDisabled]}
+          <Button
+            title="Save & Continue"
             onPress={handleSaveBio}
-            disabled={saving}
-            accessibilityRole="button"
-            accessibilityLabel="Save and continue"
-          >
-            {saving ? (
-              <ActivityIndicator color={themeColors.textInverse} />
-            ) : (
-              <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Save & Continue</Text>
-            )}
-          </AnimatedPressable>
+            loading={saving}
+            style={styles.buttonMargin}
+          />
           {!bioRequired && !bio.trim() && (
-            <AnimatedPressable
-              style={[styles.skipButton]}
+            <Button
+              title="Skip for now"
+              variant="text"
               onPress={() => setStep(2)}
-              accessibilityRole="button"
-              accessibilityLabel="Skip bio"
-            >
-              <Text style={[styles.skipButtonText, { color: themeColors.textSecondary }]}>Skip for now</Text>
-            </AnimatedPressable>
+              style={styles.skipButton}
+            />
           )}
         </>
       ) : (
@@ -343,26 +333,13 @@ export function ProfileCompletionSteps({
             coverUploading={uploadingCover}
           />
 
-          <AnimatedPressable
-            style={[
-              avatarUri
-                ? [styles.primaryButton, { backgroundColor: themeColors.primary }]
-                : [styles.secondaryButton, { borderColor: themeColors.border }],
-              (uploadingAvatar || uploadingCover) && styles.buttonDisabled,
-            ]}
+          <Button
+            title={avatarUri ? 'Done' : (avatarRequired ? 'Add a profile photo' : 'Skip for now')}
+            variant={avatarUri ? 'primary' : 'secondary'}
             onPress={handleFinish}
             disabled={uploadingAvatar || uploadingCover}
-            accessibilityRole="button"
-            accessibilityLabel={avatarUri ? 'Done' : (avatarRequired ? 'Add a profile photo' : 'Skip profile photos')}
-          >
-            <Text style={[
-              avatarUri
-                ? [styles.primaryButtonText, { color: themeColors.textInverse }]
-                : [styles.secondaryButtonText, { color: themeColors.text }],
-            ]}>
-              {avatarUri ? 'Done' : (avatarRequired ? 'Add a profile photo' : 'Skip for now')}
-            </Text>
-          </AnimatedPressable>
+            style={styles.buttonMargin}
+          />
         </>
       )}
     </>
@@ -445,45 +422,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  primaryButton: {
-    borderRadius: sizing.borderRadius.md,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+  buttonMargin: {
     marginTop: spacing.md,
-  },
-
-  primaryButtonText: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-  },
-
-  secondaryButton: {
-    borderRadius: sizing.borderRadius.md,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.md,
-    borderWidth: 1,
-  },
-
-  secondaryButtonText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.medium,
-  },
-
-  buttonDisabled: {
-    opacity: 0.7,
   },
 
   skipButton: {
-    alignItems: 'center',
-    paddingVertical: spacing.md,
     marginTop: spacing.xs,
-  },
-
-  skipButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
   },
 });

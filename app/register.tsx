@@ -28,6 +28,7 @@ import { PRIVACY_POLICY_URL, getLogoSource } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
+import { Button } from '@/components/common/Button';
 import { DynamicFormField } from '@/components/common/DynamicFormField';
 import { PasswordStrengthMeter } from '@/components/common/PasswordStrengthMeter';
 import { SelectModal } from '@/components/common/SelectModal';
@@ -40,7 +41,6 @@ import {
   type FieldsResponse,
 } from '@/services/api/registration';
 import { hapticMedium } from '@/utils/haptics';
-import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -446,12 +446,10 @@ export default function RegisterScreen() {
             <Text style={[styles.disabledText, { color: themeColors.textSecondary }]}>
               {fieldsConfig?.message || 'Registration is currently closed. Please try again later.'}
             </Text>
-            <AnimatedPressable
-              style={[styles.primaryButton, { backgroundColor: themeColors.primary }]}
+            <Button
+              title="Back to Login"
               onPress={() => router.back()}
-            >
-              <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Back to Login</Text>
-            </AnimatedPressable>
+            />
           </View>
         </View>
       </ImageBackground>
@@ -467,24 +465,18 @@ export default function RegisterScreen() {
       {getFieldsForStep(1).map(([key, field]) => renderField(key, field))}
       {/* When no custom fields, merge step 2 fields (terms) into step 1 */}
       {!hasCustomFields && getFieldsForStep(2).map(([key, field]) => renderField(key, field))}
-      <AnimatedPressable
-        style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
+      <Button
+        title={hasCustomFields ? 'Next' : 'Create Account'}
         onPress={hasCustomFields ? handleNextStep : () => handleSubmitRegistration()}
-        disabled={submitting}
-        accessibilityRole="button"
-        accessibilityLabel={hasCustomFields ? 'Next step' : 'Create account'}
-      >
-        {submitting ? (
-          <ActivityIndicator color={themeColors.textInverse} />
-        ) : (
-          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>
-            {hasCustomFields ? 'Next' : 'Create Account'}
-          </Text>
-        )}
-      </AnimatedPressable>
-      <Pressable style={styles.linkButton} onPress={() => router.back()} accessibilityRole="link" accessibilityLabel="Back to login">
-        <Text style={[styles.linkText, { color: themeColors.primary }]}>Back to Login</Text>
-      </Pressable>
+        loading={submitting}
+        style={styles.buttonMargin}
+      />
+      <Button
+        title="Back to Login"
+        variant="text"
+        onPress={() => router.back()}
+        style={styles.linkButton}
+      />
       <Pressable
         style={styles.linkButton}
         onPress={() => router.push({ pathname: '/webview', params: { url: PRIVACY_POLICY_URL, title: 'Privacy Policy', noAuth: '1' } })}
@@ -499,22 +491,18 @@ export default function RegisterScreen() {
   const renderStep2 = () => (
     <>
       {getFieldsForStep(2).map(([key, field]) => renderField(key, field))}
-      <AnimatedPressable
-        style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
+      <Button
+        title="Create Account"
         onPress={() => handleSubmitRegistration()}
-        disabled={submitting}
-        accessibilityRole="button"
-        accessibilityLabel="Create account"
-      >
-        {submitting ? (
-          <ActivityIndicator color={themeColors.textInverse} />
-        ) : (
-          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Create Account</Text>
-        )}
-      </AnimatedPressable>
-      <Pressable style={styles.linkButton} onPress={() => { setError(null); setStep(1); }} accessibilityRole="button" accessibilityLabel="Go back">
-        <Text style={[styles.linkText, { color: themeColors.primary }]}>Back</Text>
-      </Pressable>
+        loading={submitting}
+        style={styles.buttonMargin}
+      />
+      <Button
+        title="Back"
+        variant="text"
+        onPress={() => { setError(null); setStep(1); }}
+        style={styles.linkButton}
+      />
     </>
   );
 
@@ -548,19 +536,12 @@ export default function RegisterScreen() {
           autoFocus
         />
       </View>
-      <AnimatedPressable
-        style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
+      <Button
+        title="Verify Email"
         onPress={handleVerifyEmail}
-        disabled={submitting}
-        accessibilityRole="button"
-        accessibilityLabel="Verify email"
-      >
-        {submitting ? (
-          <ActivityIndicator color={themeColors.textInverse} />
-        ) : (
-          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Verify Email</Text>
-        )}
-      </AnimatedPressable>
+        loading={submitting}
+        style={styles.buttonMargin}
+      />
       <View style={styles.otpActions}>
         <Pressable
           onPress={handleResendEmailCode}
@@ -575,9 +556,12 @@ export default function RegisterScreen() {
           </Text>
         </Pressable>
       </View>
-      <Pressable style={styles.linkButton} onPress={() => { setError(null); setEmailVerifyCode(''); setStep(hasCustomFields ? 2 : 1); }}>
-        <Text style={[styles.linkText, { color: themeColors.primary }]}>Go Back</Text>
-      </Pressable>
+      <Button
+        title="Go Back"
+        variant="text"
+        onPress={() => { setError(null); setEmailVerifyCode(''); setStep(hasCustomFields ? 2 : 1); }}
+        style={styles.linkButton}
+      />
     </>
   );
 
@@ -618,19 +602,12 @@ export default function RegisterScreen() {
           <Text style={[styles.errorText, { color: themeColors.error }]}>{otp.error}</Text>
         </View>
       ) : null}
-      <AnimatedPressable
-        style={[styles.primaryButton, { backgroundColor: themeColors.primary }, (otp.verifying || submitting) && styles.buttonDisabled]}
+      <Button
+        title="Verify"
         onPress={() => { hapticMedium(); otp.handleVerify(); }}
-        disabled={otp.verifying || submitting}
-        accessibilityRole="button"
-        accessibilityLabel="Verify phone number"
-      >
-        {otp.verifying || submitting ? (
-          <ActivityIndicator color={themeColors.textInverse} />
-        ) : (
-          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Verify</Text>
-        )}
-      </AnimatedPressable>
+        loading={otp.verifying || submitting}
+        style={styles.buttonMargin}
+      />
       <View style={styles.otpActions}>
         <Pressable
           onPress={otp.handleResend}
@@ -652,9 +629,12 @@ export default function RegisterScreen() {
           </Pressable>
         )}
       </View>
-      <Pressable style={styles.linkButton} onPress={() => { setError(null); otp.setCode(''); setStep(hasEmailVerify ? 3 : hasCustomFields ? 2 : 1); }}>
-        <Text style={[styles.linkText, { color: themeColors.primary }]}>Go Back</Text>
-      </Pressable>
+      <Button
+        title="Go Back"
+        variant="text"
+        onPress={() => { setError(null); otp.setCode(''); setStep(hasEmailVerify ? 3 : hasCustomFields ? 2 : 1); }}
+        style={styles.linkButton}
+      />
     </>
   );
 
@@ -849,26 +829,12 @@ const styles = StyleSheet.create({
   },
 
   // Buttons
-  primaryButton: {
-    borderRadius: sizing.borderRadius.md,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+  buttonMargin: {
     marginTop: spacing.md,
   },
 
-  primaryButtonText: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-  },
-
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-
   linkButton: {
-    alignItems: 'center',
-    marginTop: spacing.lg,
+    marginTop: spacing.sm,
   },
 
   linkText: {

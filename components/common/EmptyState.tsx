@@ -16,8 +16,8 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, typography, sizing } from '@/constants/layout';
-import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { spacing, typography } from '@/constants/layout';
+import { Button } from '@/components/common/Button';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -70,9 +70,7 @@ export function EmptyState({
       
       {/* Action Button */}
       {actionLabel && onAction && (
-        <AnimatedPressable style={[styles.actionButton, { backgroundColor: themeColors.primary }]} onPress={onAction}>
-          <Text style={[styles.actionText, { color: themeColors.textInverse }]}>{actionLabel}</Text>
-        </AnimatedPressable>
+        <Button title={actionLabel} onPress={onAction} style={styles.actionButton} />
       )}
     </View>
   );
@@ -109,14 +107,6 @@ const styles = StyleSheet.create({
 
   actionButton: {
     marginTop: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: sizing.borderRadius.md,
-  },
-
-  actionText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
   },
 });
 

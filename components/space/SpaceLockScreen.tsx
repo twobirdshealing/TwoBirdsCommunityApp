@@ -7,7 +7,6 @@
 
 import React from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,6 +19,7 @@ import { useRouter } from 'expo-router';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { Button } from '@/components/common/Button';
 import { LockScreenBlock, LockScreenConfig } from '@/types/space';
 import { stripHtmlTags } from '@/utils/htmlToText';
 
@@ -69,19 +69,11 @@ export function SpaceLockScreen({ config, onRequestAccess, isPending, isRequesti
           ))}
         {config.canSendRequest && (
           <View style={styles.requestButtonContainer}>
-            <Pressable
+            <Button
+              title="Ask to Join"
               onPress={onRequestAccess}
-              disabled={isRequesting}
-              style={[styles.requestButton, { backgroundColor: themeColors.primary, opacity: isRequesting ? 0.6 : 1 }]}
-            >
-              {isRequesting ? (
-                <ActivityIndicator size="small" color={themeColors.textInverse} />
-              ) : (
-                <Text style={[styles.requestButtonText, { color: themeColors.textInverse }]}>
-                  Ask to Join
-                </Text>
-              )}
-            </Pressable>
+              loading={isRequesting}
+            />
           </View>
         )}
       </ScrollView>
@@ -100,19 +92,12 @@ export function SpaceLockScreen({ config, onRequestAccess, isPending, isRequesti
           Ask to join and a team member will let you in soon.
         </Text>
         {config.canSendRequest && (
-          <Pressable
+          <Button
+            title="Request Access"
             onPress={onRequestAccess}
-            disabled={isRequesting}
-            style={[styles.requestButton, { backgroundColor: themeColors.primary, opacity: isRequesting ? 0.6 : 1 }]}
-          >
-            {isRequesting ? (
-              <ActivityIndicator size="small" color={themeColors.textInverse} />
-            ) : (
-              <Text style={[styles.requestButtonText, { color: themeColors.textInverse }]}>
-                Request Access
-              </Text>
-            )}
-          </Pressable>
+            loading={isRequesting}
+            style={styles.requestButton}
+          />
         )}
       </View>
     </View>
@@ -225,16 +210,7 @@ const styles = StyleSheet.create({
 
   // Request button
   requestButton: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: sizing.borderRadius.sm,
     marginTop: spacing.md,
-    minWidth: 160,
-    alignItems: 'center',
-  },
-  requestButtonText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
   },
   requestButtonContainer: {
     alignItems: 'center',

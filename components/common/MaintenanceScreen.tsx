@@ -6,13 +6,14 @@
 // =============================================================================
 
 import { getHeaderLogoSource } from '@/constants/config';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { Button } from '@/components/common/Button';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -73,23 +74,13 @@ export function MaintenanceScreen({
         </Text>
 
         {/* Retry button */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.retryButton,
-            { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
-          ]}
+        <Button
+          title="Try Again"
+          icon="refresh-outline"
           onPress={onRetry}
+          loading={isRetrying}
           disabled={isRetrying}
-        >
-          {isRetrying ? (
-            <ActivityIndicator size="small" color={colors.textInverse} />
-          ) : (
-            <>
-              <Ionicons name="refresh-outline" size={18} color={colors.textInverse} />
-              <Text style={[styles.retryText, { color: colors.textInverse }]}>Try Again</Text>
-            </>
-          )}
-        </Pressable>
+        />
 
         <Text style={[styles.autoRetry, { color: colors.textTertiary }]}>
           Auto-checking every 30 seconds
@@ -100,25 +91,20 @@ export function MaintenanceScreen({
       <View style={styles.bottomSection}>
         {isAuthenticated ? (
           onLogout && (
-            <Pressable
-              style={({ pressed }) => [styles.textButton, pressed && { opacity: 0.6 }]}
+            <Button
+              title="Logout"
+              variant="text"
               onPress={onLogout}
-            >
-              <Text style={[styles.textButtonLabel, { color: colors.textSecondary }]}>Logout</Text>
-            </Pressable>
+            />
           )
         ) : (
           onLogin && (
-            <Pressable
-              style={({ pressed }) => [
-                styles.loginButton,
-                { borderColor: colors.border, opacity: pressed ? 0.8 : 1 },
-              ]}
+            <Button
+              title="Login"
+              variant="secondary"
+              icon="log-in-outline"
               onPress={onLogin}
-            >
-              <Ionicons name="log-in-outline" size={18} color={colors.text} />
-              <Text style={[styles.loginText, { color: colors.text }]}>Login</Text>
-            </Pressable>
+            />
           )
         )}
       </View>
@@ -161,22 +147,6 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
 
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: sizing.borderRadius.md,
-    minWidth: 140,
-    gap: spacing.sm,
-  },
-
-  retryText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
-  },
-
   autoRetry: {
     fontSize: typography.size.sm,
     marginTop: spacing.md,
@@ -187,28 +157,4 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
   },
 
-  loginButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: sizing.borderRadius.md,
-    borderWidth: 1,
-    gap: spacing.sm,
-  },
-
-  loginText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.medium,
-  },
-
-  textButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-
-  textButtonLabel: {
-    fontSize: typography.size.md,
-  },
 });

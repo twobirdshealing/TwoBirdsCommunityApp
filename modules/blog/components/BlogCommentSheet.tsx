@@ -28,6 +28,7 @@ import { SITE_URL } from '@/constants/config';
 import { WPComment } from '@/modules/blog/types/blog';
 import { blogApi } from '@/modules/blog/services/blogApi';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { Button } from '@/components/common/Button';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { ScreenHeader } from '@/components/common/ScreenHeader';
@@ -410,12 +411,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
           ) : error ? (
             <View style={styles.centered}>
               <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-              <AnimatedPressable
-                onPress={fetchComments}
-                style={[styles.retryButton, { backgroundColor: themeColors.primary }]}
-              >
-                <Text style={[styles.retryText, { color: themeColors.textInverse }]}>Try Again</Text>
-              </AnimatedPressable>
+              <Button title="Try Again" onPress={fetchComments} style={styles.retryButton} />
             </View>
           ) : comments.length === 0 ? (
             <View style={styles.centered}>
@@ -540,13 +536,7 @@ const styles = StyleSheet.create({
   },
 
   retryButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: sizing.borderRadius.md,
-  },
-
-  retryText: {
-    fontWeight: typography.weight.semibold,
+    marginTop: spacing.md,
   },
 
   emptyIcon: {

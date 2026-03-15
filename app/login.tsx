@@ -6,16 +6,13 @@
 
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   ImageBackground,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,8 +21,9 @@ import { PRIVACY_POLICY_URL, APP_NAME, getLogoSource } from '@/constants/config'
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
-import { hapticLight, hapticMedium } from '@/utils/haptics';
-import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { hapticMedium } from '@/utils/haptics';
+import { Button } from '@/components/common/Button';
+import { TextInputField } from '@/components/common/TextInputField';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -40,7 +38,6 @@ export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
   const siteName = branding?.site_name || APP_NAME;
   const siteTagline = branding ? branding.site_tagline : 'Community';
@@ -103,64 +100,39 @@ export default function LoginScreen() {
             )}
 
             {/* Username/Email Input */}
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: themeColors.text }]}>Email or Username</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: themeColors.background, borderColor: themeColors.border, color: themeColors.text }]}
-                value={username}
-                onChangeText={setUsername}
-                placeholder="Enter your email or username"
-                placeholderTextColor={themeColors.textTertiary}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                textContentType="username"
-                autoComplete="username"
-                editable={!isLoading}
-              />
-            </View>
+            <TextInputField
+              label="Email or Username"
+              value={username}
+              onChangeText={setUsername}
+              placeholder="Enter your email or username"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              textContentType="username"
+              autoComplete="username"
+              editable={!isLoading}
+            />
 
             {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: themeColors.text }]}>Password</Text>
-              <View style={[styles.passwordContainer, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
-                <TextInput
-                  style={[styles.passwordInput, { color: themeColors.text }]}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Enter your password"
-                  placeholderTextColor={themeColors.textTertiary}
-                  secureTextEntry={!showPassword}
-                  textContentType="password"
-                  autoComplete="password"
-                  editable={!isLoading}
-                  onSubmitEditing={handleLogin}
-                />
-                <Pressable
-                  style={styles.showPasswordButton}
-                  onPress={() => { hapticLight(); setShowPassword(!showPassword); }}
-                  accessibilityRole="button"
-                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={themeColors.textSecondary} />
-                </Pressable>
-              </View>
-            </View>
+            <TextInputField
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Enter your password"
+              password
+              textContentType="password"
+              autoComplete="password"
+              editable={!isLoading}
+              onSubmitEditing={handleLogin}
+            />
 
             {/* Login Button */}
-            <AnimatedPressable
-              style={[styles.loginButton, { backgroundColor: themeColors.primary }, isLoading && styles.loginButtonDisabled]}
+            <Button
+              title="Sign In"
               onPress={handleLogin}
-              disabled={isLoading}
-              accessibilityRole="button"
-              accessibilityLabel="Sign in"
-            >
-              {isLoading ? (
-                <ActivityIndicator color={themeColors.textInverse} />
-              ) : (
-                <Text style={[styles.loginButtonText, { color: themeColors.textInverse }]}>Sign In</Text>
-              )}
-            </AnimatedPressable>
+              loading={isLoading}
+              style={styles.loginButton}
+            />
 
             {/* Forgot Password Link */}
             <Pressable style={styles.forgotPassword} onPress={() => router.push('/forgot-password')} accessibilityRole="link" accessibilityLabel="Forgot password">
@@ -250,43 +222,6 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  inputContainer: {
-    marginBottom: spacing.lg,
-  },
-
-  label: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    marginBottom: spacing.sm,
-  },
-
-  input: {
-    borderWidth: 1,
-    borderRadius: sizing.borderRadius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    fontSize: typography.size.md,
-  },
-
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: sizing.borderRadius.md,
-  },
-
-  passwordInput: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    fontSize: typography.size.md,
-  },
-
-  showPasswordButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-
   errorContainer: {
     borderWidth: 1,
     borderRadius: sizing.borderRadius.md,
@@ -300,20 +235,7 @@ const styles = StyleSheet.create({
   },
 
   loginButton: {
-    borderRadius: sizing.borderRadius.md,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginTop: spacing.md,
-  },
-
-  loginButtonDisabled: {
-    opacity: 0.7,
-  },
-
-  loginButtonText: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
   },
 
   forgotPassword: {

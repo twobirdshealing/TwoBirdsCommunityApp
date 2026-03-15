@@ -8,7 +8,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   ImageBackground,
   Pressable,
   ScrollView,
@@ -18,7 +17,6 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +26,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { forgotPassword, resetPassword } from '@/services/api/registration';
 import { verifyOtp, resendOtp, requestVoiceCall } from '@/services/api/otp';
-import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { Button } from '@/components/common/Button';
+import { TextInputField } from '@/components/common/TextInputField';
 import { PasswordStrengthMeter } from '@/components/common/PasswordStrengthMeter';
 
 // -----------------------------------------------------------------------------
@@ -65,8 +64,6 @@ export default function ForgotPasswordScreen() {
   // Step 3: New password
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resetToken, setResetToken] = useState('');
   const [resetLogin, setResetLogin] = useState('');
 
@@ -255,46 +252,33 @@ export default function ForgotPasswordScreen() {
         </Text>
       </View>
 
-      <View style={styles.inputContainer}>
-        <Text style={[styles.label, { color: themeColors.text }]}>Email or Username</Text>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: themeColors.background,
-              borderColor: themeColors.border,
-              color: themeColors.text,
-            },
-          ]}
-          value={login}
-          onChangeText={setLogin}
-          placeholder="Enter your email or username"
-          placeholderTextColor={themeColors.textTertiary}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          textContentType="username"
-          autoComplete="username"
-          editable={!submitting}
-          onSubmitEditing={handleForgot}
-        />
-      </View>
+      <TextInputField
+        label="Email or Username"
+        value={login}
+        onChangeText={setLogin}
+        placeholder="Enter your email or username"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+        textContentType="username"
+        autoComplete="username"
+        editable={!submitting}
+        onSubmitEditing={handleForgot}
+      />
 
-      <AnimatedPressable
-        style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
+      <Button
+        title="Send Code"
         onPress={handleForgot}
-        disabled={submitting}
-      >
-        {submitting ? (
-          <ActivityIndicator color={themeColors.textInverse} />
-        ) : (
-          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Send Code</Text>
-        )}
-      </AnimatedPressable>
+        loading={submitting}
+        style={styles.buttonMargin}
+      />
 
-      <Pressable style={styles.linkButton} onPress={() => router.back()}>
-        <Text style={[styles.linkText, { color: themeColors.primary }]}>Back to Login</Text>
-      </Pressable>
+      <Button
+        title="Back to Login"
+        variant="text"
+        onPress={() => router.back()}
+        style={styles.linkButton}
+      />
     </>
   );
 
@@ -332,17 +316,12 @@ export default function ForgotPasswordScreen() {
         />
       </View>
 
-      <AnimatedPressable
-        style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
+      <Button
+        title="Verify"
         onPress={handleVerifyOtp}
-        disabled={submitting}
-      >
-        {submitting ? (
-          <ActivityIndicator color={themeColors.textInverse} />
-        ) : (
-          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Verify</Text>
-        )}
-      </AnimatedPressable>
+        loading={submitting}
+        style={styles.buttonMargin}
+      />
 
       <View style={styles.otpActions}>
         <Pressable
@@ -366,12 +345,12 @@ export default function ForgotPasswordScreen() {
         )}
       </View>
 
-      <Pressable
-        style={styles.linkButton}
+      <Button
+        title="Go Back"
+        variant="text"
         onPress={() => { setError(null); setOtpCode(''); setStep(1); }}
-      >
-        <Text style={[styles.linkText, { color: themeColors.primary }]}>Go Back</Text>
-      </Pressable>
+        style={styles.linkButton}
+      />
     </>
   );
 
@@ -387,88 +366,44 @@ export default function ForgotPasswordScreen() {
       </View>
 
       <View style={styles.inputContainer}>
-        <Text style={[styles.label, { color: themeColors.text }]}>New Password</Text>
-        <View style={[
-          styles.passwordContainer,
-          {
-            backgroundColor: themeColors.background,
-            borderColor: themeColors.border,
-          },
-        ]}>
-          <TextInput
-            style={[styles.passwordInput, { color: themeColors.text }]}
-            value={newPassword}
-            onChangeText={setNewPassword}
-            placeholder="Enter new password"
-            placeholderTextColor={themeColors.textTertiary}
-            secureTextEntry={!showPassword}
-            textContentType="newPassword"
-            autoComplete="password-new"
-            editable={!submitting}
-          />
-          <Pressable
-            style={styles.showPasswordButton}
-            onPress={() => setShowPassword(!showPassword)}
-          >
-            <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={themeColors.textSecondary} />
-          </Pressable>
-        </View>
+        <TextInputField
+          label="New Password"
+          value={newPassword}
+          onChangeText={setNewPassword}
+          placeholder="Enter new password"
+          password
+          textContentType="newPassword"
+          autoComplete="password-new"
+          editable={!submitting}
+          containerStyle={{ marginBottom: 0 }}
+        />
         <PasswordStrengthMeter password={newPassword} />
       </View>
 
-      <View style={styles.inputContainer}>
-        <Text style={[styles.label, { color: themeColors.text }]}>Confirm Password</Text>
-        <View style={[
-          styles.passwordContainer,
-          {
-            backgroundColor: themeColors.background,
-            borderColor: themeColors.border,
-          },
-        ]}>
-          <TextInput
-            style={[styles.passwordInput, { color: themeColors.text }]}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            placeholder="Confirm new password"
-            placeholderTextColor={themeColors.textTertiary}
-            secureTextEntry={!showConfirmPassword}
-            textContentType="newPassword"
-            autoComplete="password-new"
-            editable={!submitting}
-            onSubmitEditing={handleResetPassword}
-          />
-          <Pressable
-            style={styles.showPasswordButton}
-            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-          >
-            <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={20} color={themeColors.textSecondary} />
-          </Pressable>
-        </View>
-      </View>
+      <TextInputField
+        label="Confirm Password"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        placeholder="Confirm new password"
+        password
+        textContentType="newPassword"
+        autoComplete="password-new"
+        editable={!submitting}
+        onSubmitEditing={handleResetPassword}
+      />
 
-      <AnimatedPressable
-        style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
+      <Button
+        title="Reset Password"
         onPress={handleResetPassword}
-        disabled={submitting}
-      >
-        {submitting ? (
-          <ActivityIndicator color={themeColors.textInverse} />
-        ) : (
-          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Reset Password</Text>
-        )}
-      </AnimatedPressable>
+        loading={submitting}
+        style={styles.buttonMargin}
+      />
     </>
   );
 
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
-
-  const stepTitles: Record<Step, string> = {
-    1: 'Forgot Password',
-    2: 'Verify Phone',
-    3: 'New Password',
-  };
 
   return (
     <ImageBackground
@@ -610,15 +545,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
-  // Inputs
+  // Inputs (OTP code inputs stay inline — specialized styling)
   inputContainer: {
     marginBottom: spacing.lg,
-  },
-
-  label: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    marginBottom: spacing.sm,
   },
 
   input: {
@@ -634,25 +563,6 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.semibold,
     textAlign: 'center',
     letterSpacing: 8,
-  },
-
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: sizing.borderRadius.md,
-  },
-
-  passwordInput: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    fontSize: typography.size.md,
-  },
-
-  showPasswordButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
   },
 
   // Messages
@@ -681,21 +591,8 @@ const styles = StyleSheet.create({
   },
 
   // Buttons
-  primaryButton: {
-    borderRadius: sizing.borderRadius.md,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+  buttonMargin: {
     marginTop: spacing.md,
-  },
-
-  primaryButtonText: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-  },
-
-  buttonDisabled: {
-    opacity: 0.7,
   },
 
   linkButton: {

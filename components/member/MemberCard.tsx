@@ -14,12 +14,13 @@
 // =============================================================================
 
 import React from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { Button } from '@/components/common/Button';
 import { spacing, sizing, typography } from '@/constants/layout';
 import { hapticLight, hapticMedium } from '@/utils/haptics';
 import { getProviderIcon } from '@/services/api/socialProviders';
@@ -243,45 +244,24 @@ export const MemberCard = React.memo(function MemberCard({
         <View style={styles.actionsContainer}>
           {/* Follow Button */}
           {onFollowPress && (
-            <Pressable
-              style={[
-                styles.actionButton,
-                styles.memberFollowButton,
-                { backgroundColor: themeColors.primary },
-                isFollowing && { backgroundColor: 'transparent', borderWidth: 1, borderColor: themeColors.primary },
-              ]}
+            <Button
+              title={isFollowing ? 'Following' : 'Follow'}
+              variant={isFollowing ? 'secondary' : 'primary'}
+              size="sm"
               onPress={() => { hapticMedium(); onFollowPress(member); }}
-              disabled={followLoading}
-              accessibilityRole="button"
-              accessibilityLabel={isFollowing ? `Unfollow ${displayName}` : `Follow ${displayName}`}
-            >
-              {followLoading ? (
-                <ActivityIndicator
-                  size="small"
-                  color={isFollowing ? themeColors.primary : themeColors.textInverse}
-                />
-              ) : (
-                <Text style={[
-                  styles.followButtonText,
-                  { color: themeColors.textInverse },
-                  isFollowing && { color: themeColors.primary },
-                ]}>
-                  {isFollowing ? 'Following' : 'Follow'}
-                </Text>
-              )}
-            </Pressable>
+              loading={followLoading}
+              style={styles.followButton}
+            />
           )}
 
           {/* Message Button */}
           {onMessagePress && (
-            <Pressable
-              style={[styles.messageButton, { borderColor: themeColors.primary }]}
+            <Button
+              icon="chatbubble-outline"
+              iconOnly
+              variant="secondary"
               onPress={() => { hapticLight(); onMessagePress(member); }}
-              accessibilityRole="button"
-              accessibilityLabel={`Message ${displayName}`}
-            >
-              <Ionicons name="chatbubble-outline" size={22} color={themeColors.primary} />
-            </Pressable>
+            />
           )}
         </View>
       )}
@@ -409,29 +389,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
 
-  actionButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  memberFollowButton: {
-    paddingHorizontal: spacing.md,
-    minHeight: sizing.height.buttonSmall,
+  followButton: {
     borderRadius: sizing.height.buttonSmall / 2,
-  },
-
-  messageButton: {
-    width: sizing.touchTarget,
-    height: sizing.touchTarget,
-    borderRadius: sizing.touchTarget / 2,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  followButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
   },
 });
 

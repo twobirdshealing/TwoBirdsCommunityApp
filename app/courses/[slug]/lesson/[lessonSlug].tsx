@@ -40,6 +40,7 @@ import { CourseLesson, CourseSection, CourseTrack } from '@/types/course';
 import { extractYouTubeId } from '@/utils/youtube';
 import { hapticMedium, hapticLight } from '@/utils/haptics';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { Button } from '@/components/common/Button';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -367,12 +368,10 @@ export default function LessonViewScreen() {
             <Text style={[styles.lockedMessage, { color: themeColors.textSecondary }]}>
               Please enroll in this course to access this lesson
             </Text>
-            <AnimatedPressable
-              style={[styles.backToCourseButton, { backgroundColor: themeColors.primary }]}
+            <Button
+              title="Back to Course"
               onPress={() => router.back()}
-            >
-              <Text style={[styles.backToCourseText, { color: themeColors.textInverse }]}>Back to Course</Text>
-            </AnimatedPressable>
+            />
           </View>
         </View>
       </>
@@ -534,15 +533,12 @@ export default function LessonViewScreen() {
 
           {/* State: Not completed (idle) — show Mark as Complete button */}
           {track?.isEnrolled && !isCompleted && !completing && !justCompleted && (
-            <AnimatedPressable
-              style={[styles.completeButton, { backgroundColor: themeColors.primary }]}
+            <Button
+              title="Mark as Complete"
+              icon="checkmark-circle-outline"
               onPress={handleMarkComplete}
-            >
-              <Ionicons name="checkmark-circle-outline" size={20} color={themeColors.textInverse} />
-              <Text style={[styles.completeButtonText, { color: themeColors.textInverse }]}>
-                Mark as Complete
-              </Text>
-            </AnimatedPressable>
+              style={styles.completeButton}
+            />
           )}
 
           {/* State: Completed OR not enrolled — show nav row */}
@@ -655,17 +651,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.sm,
     marginBottom: spacing.xxl,
-  },
-
-  backToCourseButton: {
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.md,
-    borderRadius: sizing.borderRadius.md,
-  },
-
-  backToCourseText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
   },
 
   // Hero

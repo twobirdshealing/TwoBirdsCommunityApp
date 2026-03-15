@@ -10,10 +10,11 @@ import {
   View,
 } from 'react-native';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { Button } from '@/components/common/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { hapticLight, hapticMedium } from '@/utils/haptics';
+import { hapticMedium } from '@/utils/haptics';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -63,7 +64,7 @@ export function ComposerToolbar({
         {/* Image Picker */}
         <AnimatedPressable
           style={styles.actionButton}
-          onPress={() => { hapticLight(); onImagePress(); }}
+          onPress={onImagePress}
           disabled={isUploading}
         >
           {isUploading ? (
@@ -81,7 +82,7 @@ export function ComposerToolbar({
         {onGifPress && (
           <AnimatedPressable
             style={styles.actionButton}
-            onPress={() => { hapticLight(); onGifPress(); }}
+            onPress={onGifPress}
           >
             <Text style={[
               styles.gifBadge,
@@ -95,7 +96,7 @@ export function ComposerToolbar({
         {onPollPress && (
           <AnimatedPressable
             style={styles.actionButton}
-            onPress={() => { hapticLight(); onPollPress(); }}
+            onPress={onPollPress}
           >
             <Ionicons
               name={hasPoll ? 'stats-chart' : 'stats-chart-outline'}
@@ -109,7 +110,7 @@ export function ComposerToolbar({
         {onVideoPress && (
           <AnimatedPressable
             style={styles.actionButton}
-            onPress={() => { hapticLight(); onVideoPress?.(); }}
+            onPress={onVideoPress}
           >
             <Ionicons
               name="videocam-outline"
@@ -135,21 +136,14 @@ export function ComposerToolbar({
       </View>
 
       {/* Right: Submit Button */}
-      <AnimatedPressable
-        style={[
-          styles.submitButton,
-          { backgroundColor: themeColors.primary },
-          !canSubmit && styles.submitButtonDisabled,
-        ]}
+      <Button
+        title={submitLabel}
+        size="sm"
         onPress={() => { hapticMedium(); onSubmit(); }}
+        haptic={false}
+        loading={isSubmitting}
         disabled={!canSubmit}
-      >
-        {isSubmitting ? (
-          <ActivityIndicator size="small" color={themeColors.textInverse} />
-        ) : (
-          <Text style={[styles.submitText, { color: themeColors.textInverse }]}>{submitLabel}</Text>
-        )}
-      </AnimatedPressable>
+      />
     </View>
   );
 }
@@ -181,18 +175,6 @@ const styles = StyleSheet.create({
     borderRadius: sizing.iconButton / 2,
   },
 
-  submitButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: sizing.borderRadius.lg,
-    minWidth: 80,
-    alignItems: 'center',
-  },
-
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-
   gifBadge: {
     fontSize: typography.size.xs,
     fontWeight: typography.weight.bold,
@@ -203,10 +185,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  submitText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
 });
 
 export default ComposerToolbar;

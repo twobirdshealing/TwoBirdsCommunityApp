@@ -12,7 +12,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   RefreshControl,
   ScrollView,
@@ -38,7 +37,7 @@ import { useCachedData } from '@/hooks/useCachedData';
 import { coursesApi } from '@/services/api/courses';
 import { Course, CourseLesson, CourseSection, CourseTrack } from '@/types/course';
 import { hapticMedium } from '@/utils/haptics';
-import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { Button } from '@/components/common/Button';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -307,33 +306,21 @@ export default function CourseDetailScreen() {
                     {isComplete ? 'Course Complete!' : `${Math.round(progress)}% Complete`}
                   </Text>
                 </View>
-                <AnimatedPressable
-                  style={[styles.actionButton, { backgroundColor: themeColors.primary }]}
+                <Button
+                  title={isComplete ? 'Review Course' : 'Continue Learning'}
+                  icon={isComplete ? 'refresh-outline' : 'play-outline'}
                   onPress={handleContinueLearning}
-                >
-                  <Ionicons name={isComplete ? 'refresh-outline' : 'play-outline'} size={20} color={themeColors.textInverse} />
-                  <Text style={[styles.actionButtonText, { color: themeColors.textInverse }]}>
-                    {isComplete ? 'Review Course' : 'Continue Learning'}
-                  </Text>
-                </AnimatedPressable>
+                  style={styles.actionButton}
+                />
               </>
             ) : (
-              <AnimatedPressable
-                style={[styles.actionButton, { backgroundColor: themeColors.primary }]}
+              <Button
+                title="Enroll in Course"
+                icon="add-circle-outline"
                 onPress={handleEnroll}
-                disabled={enrolling}
-              >
-                {enrolling ? (
-                  <ActivityIndicator size="small" color={themeColors.textInverse} />
-                ) : (
-                  <>
-                    <Ionicons name="add-circle-outline" size={20} color={themeColors.textInverse} />
-                    <Text style={[styles.actionButtonText, { color: themeColors.textInverse }]}>
-                      Enroll in Course
-                    </Text>
-                  </>
-                )}
-              </AnimatedPressable>
+                loading={enrolling}
+                style={styles.actionButton}
+              />
             )}
           </View>
 
@@ -516,11 +503,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: sizing.borderRadius.md,
     gap: spacing.sm,
-  },
-
-  actionButtonText: {
-    fontSize: typography.size.md,
-    fontWeight: typography.weight.semibold,
   },
 
   // Details
