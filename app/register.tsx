@@ -3,9 +3,9 @@
 // =============================================================================
 // Step 1: Basic info (name, email, username, password)
 // Step 2: Custom profile fields + terms
-// Step 3: Email verification (if required)
-// Step 4: Phone OTP verification (if required)
-// Step 5: Profile completion (bio + avatar via shared component)
+// Step 3: Email verification (if required)  → EmailVerifyStep
+// Step 4: Phone OTP verification (if required) → PhoneOtpStep
+// Step 5: Profile completion (bio + avatar)  → ProfileCompletionSteps
 // =============================================================================
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -16,7 +16,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -33,6 +32,8 @@ import { DynamicFormField } from '@/components/common/DynamicFormField';
 import { PasswordStrengthMeter } from '@/components/common/PasswordStrengthMeter';
 import { SelectModal } from '@/components/common/SelectModal';
 import { ProfileCompletionSteps } from '@/components/profile/ProfileCompletionSteps';
+import { EmailVerifyStep } from '@/components/register/EmailVerifyStep';
+import { PhoneOtpStep } from '@/components/register/PhoneOtpStep';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
 import {
   getRegistrationFields,
@@ -55,7 +56,7 @@ type Step = 1 | 2 | 3 | 4 | 5;
 export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { registerAndLogin, isAuthenticated, user: currentUser, updateUser } = useAuth();
+  const { registerAndLogin, user: currentUser } = useAuth();
   const { colors: themeColors, branding, isDark } = useTheme();
 
   // State
@@ -69,9 +70,7 @@ export default function RegisterScreen() {
   // Form data (all steps)
   const [formData, setFormData] = useState<Record<string, any>>({});
 
-  // Email verification state (step 3, if enabled)
-  const [emailVerifyCode, setEmailVerifyCode] = useState('');
-  const [emailResendTimer, setEmailResendTimer] = useState(0);
+  // Email verification token (set when server requires email verify)
   const [verificationToken, setVerificationToken] = useState('');
 
   // Select modal state
@@ -83,20 +82,13 @@ export default function RegisterScreen() {
   // sees the latest version without needing to be in its dependency array.
   const submitRef = useRef<(otpSessionKey?: string) => Promise<void>>(undefined);
 
-  const otp = useOtpVerification({
-    onVerified: async (sessionKey) => {
-      await submitRef.current?.(sessionKey);
-    },
-  });
+  const handleOtpVerified = useCallback(async (sessionKey: string) => {
+    await submitRef.current?.(sessionKey);
+  }, []);
 
-  // Email resend timer
-  useEffect(() => {
-    if (emailResendTimer <= 0) return;
-    const interval = setInterval(() => {
-      setEmailResendTimer((prev) => (prev <= 1 ? 0 : prev - 1));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [emailResendTimer]);
+  const otp = useOtpVerification({
+    onVerified: handleOtpVerified,
+  });
 
   // ---------------------------------------------------------------------------
   // Fetch fields on mount
@@ -213,10 +205,6 @@ export default function RegisterScreen() {
       if (emailCode && emailToken) {
         payload.__two_fa_code = emailCode;
         payload.__two_fa_signed_token = emailToken;
-      } else if (verificationToken && emailVerifyCode) {
-        // Use stored state if not passed as params
-        payload.__two_fa_code = emailVerifyCode;
-        payload.__two_fa_signed_token = verificationToken;
       }
 
       // Include OTP session key if verifying
@@ -288,40 +276,20 @@ export default function RegisterScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData, validateStep, registerAndLogin, getFieldsForStep, verificationToken, emailVerifyCode, otp, fieldsConfig]);
+  }, [formData, validateStep, registerAndLogin, getFieldsForStep, otp, fieldsConfig]);
 
   // Keep ref in sync so OTP onVerified always calls latest version
   submitRef.current = handleSubmitRegistration;
 
   // ---------------------------------------------------------------------------
-  // Email verification (Step 3)
+  // Email verification callbacks (passed to EmailVerifyStep)
   // ---------------------------------------------------------------------------
 
-  const handleVerifyEmail = useCallback(async () => {
-    hapticMedium();
-    setError(null);
+  const handleEmailVerify = useCallback(async (code: string, token: string) => {
+    await handleSubmitRegistration(undefined, code, token);
+  }, [handleSubmitRegistration]);
 
-    if (!emailVerifyCode.length) {
-      setError('Please enter the verification code from your email.');
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      // Resubmit registration with email verification code + token
-      await handleSubmitRegistration(undefined, emailVerifyCode, verificationToken);
-    } catch (e) {
-      setError('Verification failed. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  }, [emailVerifyCode, verificationToken, handleSubmitRegistration]);
-
-  const handleResendEmailCode = useCallback(async () => {
-    if (emailResendTimer > 0) return;
-
-    setError(null);
+  const handleEmailResend = useCallback(async () => {
     setSubmitting(true);
 
     try {
@@ -335,19 +303,16 @@ export default function RegisterScreen() {
 
       if (result.email_verification_required && result.verification_token) {
         setVerificationToken(result.verification_token);
-        setEmailResendTimer(60);
-        setEmailVerifyCode('');
+        return {};
       } else {
-        setError('Failed to resend code.');
+        return { error: 'Failed to resend code.' };
       }
     } catch (e) {
-      setError('Failed to resend code.');
+      return { error: 'Failed to resend code.' };
     } finally {
       setSubmitting(false);
     }
-  }, [formData, emailResendTimer]);
-
-  // (Steps 5-6 are now handled by ProfileCompletionSteps component)
+  }, [formData]);
 
   // ---------------------------------------------------------------------------
   // Dynamic field renderer
@@ -457,7 +422,7 @@ export default function RegisterScreen() {
   }
 
   // ---------------------------------------------------------------------------
-  // Render steps
+  // Render steps 1 & 2 (inline — they're thin dynamic field lists)
   // ---------------------------------------------------------------------------
 
   const renderStep1 = () => (
@@ -501,138 +466,6 @@ export default function RegisterScreen() {
         title="Back"
         variant="text"
         onPress={() => { setError(null); setStep(1); }}
-        style={styles.linkButton}
-      />
-    </>
-  );
-
-  const renderStep3_EmailVerify = () => (
-    <>
-      <View style={styles.otpHeader}>
-        <Text style={[styles.otpTitle, { color: themeColors.text }]}>
-          Verify Your Email
-        </Text>
-        <Text style={[styles.otpSubtitle, { color: themeColors.textSecondary }]}>
-          Enter the 6-digit code sent to {formData.email || 'your email'}
-        </Text>
-      </View>
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={[
-            styles.input,
-            styles.otpInput,
-            {
-              backgroundColor: themeColors.background,
-              borderColor: themeColors.border,
-              color: themeColors.text,
-            },
-          ]}
-          value={emailVerifyCode}
-          onChangeText={(text) => setEmailVerifyCode(text.replace(/[^0-9]/g, ''))}
-          placeholder="000000"
-          placeholderTextColor={themeColors.textTertiary}
-          keyboardType="number-pad"
-          maxLength={6}
-          autoFocus
-        />
-      </View>
-      <Button
-        title="Verify Email"
-        onPress={handleVerifyEmail}
-        loading={submitting}
-        style={styles.buttonMargin}
-      />
-      <View style={styles.otpActions}>
-        <Pressable
-          onPress={handleResendEmailCode}
-          disabled={emailResendTimer > 0}
-          style={styles.otpAction}
-        >
-          <Text style={[
-            styles.linkText,
-            { color: emailResendTimer > 0 ? themeColors.textTertiary : themeColors.primary },
-          ]}>
-            {emailResendTimer > 0 ? `Resend code (${emailResendTimer}s)` : 'Resend code'}
-          </Text>
-        </Pressable>
-      </View>
-      <Button
-        title="Go Back"
-        variant="text"
-        onPress={() => { setError(null); setEmailVerifyCode(''); setStep(hasCustomFields ? 2 : 1); }}
-        style={styles.linkButton}
-      />
-    </>
-  );
-
-  const renderStep4_PhoneOtp = () => (
-    <>
-      <View style={styles.otpHeader}>
-        <Text style={[styles.otpTitle, { color: themeColors.text }]}>
-          Verify Your Phone
-        </Text>
-        <Text style={[styles.otpSubtitle, { color: themeColors.textSecondary }]}>
-          Enter the code sent to {otp.phoneMasked}
-        </Text>
-      </View>
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={[
-            styles.input,
-            styles.otpInput,
-            {
-              backgroundColor: themeColors.background,
-              borderColor: themeColors.border,
-              color: themeColors.text,
-            },
-          ]}
-          value={otp.code}
-          onChangeText={(text) => otp.setCode(text.replace(/[^0-9]/g, ''))}
-          placeholder="0000"
-          placeholderTextColor={themeColors.textTertiary}
-          keyboardType="number-pad"
-          maxLength={8}
-          textContentType="oneTimeCode"
-          autoComplete="sms-otp"
-          autoFocus
-        />
-      </View>
-      {otp.error ? (
-        <View style={[styles.errorContainer, { backgroundColor: themeColors.errorLight, borderColor: withOpacity(themeColors.error, 0.3) }]}>
-          <Text style={[styles.errorText, { color: themeColors.error }]}>{otp.error}</Text>
-        </View>
-      ) : null}
-      <Button
-        title="Verify"
-        onPress={() => { hapticMedium(); otp.handleVerify(); }}
-        loading={otp.verifying || submitting}
-        style={styles.buttonMargin}
-      />
-      <View style={styles.otpActions}>
-        <Pressable
-          onPress={otp.handleResend}
-          disabled={otp.resendTimer > 0}
-          style={styles.otpAction}
-        >
-          <Text style={[
-            styles.linkText,
-            { color: otp.resendTimer > 0 ? themeColors.textTertiary : themeColors.primary },
-          ]}>
-            {otp.resendTimer > 0 ? `Resend code (${otp.resendTimer}s)` : 'Resend code'}
-          </Text>
-        </Pressable>
-        {otp.voiceFallback && (
-          <Pressable onPress={otp.handleVoiceCall} style={styles.otpAction}>
-            <Text style={[styles.linkText, { color: themeColors.primary }]}>
-              Try voice call
-            </Text>
-          </Pressable>
-        )}
-      </View>
-      <Button
-        title="Go Back"
-        variant="text"
-        onPress={() => { setError(null); otp.setCode(''); setStep(hasEmailVerify ? 3 : hasCustomFields ? 2 : 1); }}
         style={styles.linkButton}
       />
     </>
@@ -685,8 +518,8 @@ export default function RegisterScreen() {
               </Text>
             ) : null}
 
-            {/* Error Message */}
-            {error && step < 5 && (
+            {/* Error Message (steps 1-2 only — verification steps manage their own errors) */}
+            {error && step <= 2 && (
               <View style={[styles.errorContainer, { backgroundColor: themeColors.errorLight, borderColor: withOpacity(themeColors.error, 0.3) }]}>
                 <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
               </View>
@@ -694,8 +527,23 @@ export default function RegisterScreen() {
 
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
-            {step === 3 && renderStep3_EmailVerify()}
-            {step === 4 && renderStep4_PhoneOtp()}
+            {step === 3 && (
+              <EmailVerifyStep
+                email={formData.email || ''}
+                verificationToken={verificationToken}
+                submitting={submitting}
+                onVerify={handleEmailVerify}
+                onResend={handleEmailResend}
+                onBack={() => { setError(null); setStep(hasCustomFields ? 2 : 1); }}
+              />
+            )}
+            {step === 4 && (
+              <PhoneOtpStep
+                otp={otp}
+                submitting={submitting}
+                onBack={() => { setError(null); otp.setCode(''); setStep(hasEmailVerify ? 3 : hasCustomFields ? 2 : 1); }}
+              />
+            )}
             {step === 5 && (
               <ProfileCompletionSteps
                 username={currentUser?.username || formData.username || ''}
@@ -802,19 +650,6 @@ const styles = StyleSheet.create({
     borderRadius: sizing.borderRadius.sm,
   },
 
-  // Inputs (used for OTP code inputs)
-  inputContainer: {
-    marginBottom: spacing.lg,
-  },
-
-  input: {
-    borderWidth: 1,
-    borderRadius: sizing.borderRadius.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    fontSize: typography.size.md,
-  },
-
   // Errors
   errorContainer: {
     borderWidth: 1,
@@ -837,11 +672,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
 
-  linkText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-
   privacyText: {
     fontSize: typography.size.xs,
   },
@@ -859,42 +689,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.xl,
   },
-
-  // OTP (Step 3)
-  otpHeader: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-
-  otpTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.bold,
-    textAlign: 'center',
-  },
-
-  otpSubtitle: {
-    fontSize: typography.size.sm,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-
-  otpInput: {
-    fontSize: typography.size.xxl,
-    fontWeight: typography.weight.semibold,
-    textAlign: 'center',
-    letterSpacing: 8,
-  },
-
-  otpActions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.xl,
-    marginTop: spacing.lg,
-  },
-
-  otpAction: {
-    paddingVertical: spacing.xs,
-  },
-
-
 });

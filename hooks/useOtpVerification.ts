@@ -157,3 +157,6 @@ export function useOtpVerification({ onVerified }: UseOtpVerificationOptions) {
     reset,
   };
 }
+
+/** Return type of useOtpVerification — used by step components that receive it as a prop */
+export type OtpVerificationState = ReturnType<typeof useOtpVerification>;

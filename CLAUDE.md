@@ -1,8 +1,13 @@
-Two Birds Community App — our live production community app built on WordPress + Fluent Community.
-React Native (Expo), iOS + Android. This is the Two Birds Church app instance.
+Two Birds Church Community App — React Native (Expo), iOS + Android, built on WordPress + Fluent Community.
 
 Site: https://community.twobirdschurch.com
 Dev brand: Two Birds Code (twobirdscode.com) — TBC
+
+## Dev Workflow
+
+**This repo is both our live production app AND the development source for the white-label product.** All coding happens here. When we hit a milestone, we run `bash scripts/create-white-label.sh` to generate a clean snapshot at `../TBC-Community-App (White Lable)/` with site-specific values replaced by placeholders. Never edit the white-label folder directly — it gets overwritten each snapshot.
+
+**Architecture goal:** Keep core clean, fast, and stable — only update it for Fluent Community compatibility. New features go in as modules so they don't interfere with core code.
 
 > **Buyer-facing setup documentation lives in `docs/setup-guide.html`.**
 > When making changes to config files, module system, or plugin structure, keep docs in sync.
@@ -37,6 +42,20 @@ Self-contained features that plug into the app without touching core code. Each 
 
 Core features (feed, spaces, profiles, messaging, courses, blog, YouTube, cart) stay in core with `FEATURES.*` flags in `constants/config.ts`. Modules are for self-contained add-ons with their own companion WordPress plugins.
 
+## ADDon Modules
+We have 
+Blog module - this is not part of core it is avlaible as an addon. not part of the snap shot
+
+bookclub module - this is not part of core it is avlaible as an addon. not part of the snap shot
+
+youtube module - this is not part of core it is avlaible as an addon. not part of the snap shot
+
+Caledndar module - this is not part of core. This is custom to our site two birds church only specific to our needs not an addon that is public.
+
+donate module - this is not part of core. This is custom to our site two birds church only specific to our needs not an addon that is public.
+
+donor module - this is not part of core. This is custom to our site two birds church only specific to our needs not an addon that is public.
+
 Full documentation: `docs/setup-guide.html` (Module System section)
 
 ## Import Rules — Direct Imports Only
@@ -50,7 +69,7 @@ Do NOT create `index.ts` barrel/re-export files in any directory.
 
 ## Theme System — Fluent Community Color Sync
 
-The app's colors are synced from Fluent Community's color schemas (light + dark mode). Colors flow:
+The app, compaion plugins, and modules use colors that are synced from Fluent Community's color schemas (light + dark mode). Colors flow:
 
 `Fluent Community (Utility.php)` → `tbc-community-app REST API (/tbc-ca/v1/theme/colors)` → `services/api/theme.ts` → `ThemeContext` → `useTheme().colors`
 
@@ -119,12 +138,14 @@ The `companion plugins/` folder contains WordPress plugins and themes that ship 
 - **tbc-multi-reactions** — Multi-reaction support for Fluent Community
 - **tbc-youtube** — YouTube channel integration with server-side caching (companion to youtube module)
 - **tbc-book-club** — Book club audiobook player with meetings (companion to bookclub module)
+- **tbc-calendar-fluent** - our private claendar plugin that links to our claendar module
+
 
 ### Our Custom Theme
 - **tbc-starter-theme** — Custom WordPress theme
 
 ### Site-Specific Plugins (not in repo — on server only)
-Calendar, donation addons, donor dashboard, messaging center, checkout prerequisites, participant frontend, space manager, bulk tools, entry review — these are Two Birds Church site-specific and not part of the product.
+donation addons, donor dashboard, messaging center, checkout prerequisites, participant frontend, space manager, bulk tools, entry review — these are Two Birds Church site-specific and not part of the product we ocaisoly bring them into the compaion folder for refernce.
 
 ## App Version Bumping
 
@@ -137,7 +158,52 @@ After completing a task, ask the user if we should bump the app version. If yes,
 
 EAS is set to `appVersionSource: "local"` — all versioning comes from these files, not remote.
 
+## White-Label Snapshot
+
+After a version bump, ask the user if we should create a new white-label snapshot.
+
+The snapshot script copies this app to the white-label folder with all site-specific values replaced by generic placeholders. It does NOT modify this repo — only writes to the target folder.
+
+**To run:** `bash scripts/create-white-label.sh`
+
+**What it does:**
+1. Copies project to `../TBC-Community-App (White Lable)/` (excludes node_modules, .git, modules, companion plugins)
+2. Copies only core companion plugins (allowlist: tbc-community-app, tbc-fluent-profiles, tbc-multi-reactions, tbc-starter-theme)
+3. Copies only module infrastructure (`_registry.ts`, `_types.ts`) — no module folders
+4. Replaces Two Birds-specific values with placeholders in config.ts, app.json, eas.json, app.config.ts, package.json
+5. Removes Firebase configs, adds FIREBASE_SETUP.md guide
+6. Removes CLAUDE.md and scripts/ from the output
+7. Verifies no site-specific references remain
+
+**What ships in the base white-label product:**
+- Core app (all screens, services, components)
+- Core companion plugins: tbc-community-app, tbc-fluent-profiles, tbc-multi-reactions, tbc-starter-theme
+
+**Sold separately as add-ons (NOT in white-label):**
+- Blog module, YouTube module + tbc-youtube plugin, Book Club module + tbc-book-club plugin
+
+**Two Birds site-specific (never sold):**
+- Calendar, Donate, Donor modules
+
 ---
+
+## Development & Debugging
+
+- **Dev client**: App uses `expo-dev-client` (NOT Expo Go). After adding native modules, a new dev client build is needed via EAS.
+- **Logging**: Use `createLogger(tag)` from `@/utils/logger` for all debug logging. It only outputs in `__DEV__` mode, zero-cost in production. Don't use raw `console.log` — always use tagged loggers.
+  ```ts
+  const log = createLogger('Pusher');
+  log('connected');        // [Pusher] connected
+  log.warn('reconnecting'); // [Pusher] reconnecting
+  log.error('failed', err); // [Pusher] failed <error>
+  ```
+- **`__DEV__` checks**: Used throughout for dev-only validation (module registry, duplicate detection). Never wrap user-facing logic in `__DEV__`.
+- **Common commands**:
+  - `npx expo start --dev-client --clear` — start local dev server (clears Metro cache)
+  - `eas build --platform ios --profile production` — build via EAS
+  - `eas build --platform android --profile production` — build via EAS
+  - `eas submit --platform ios --latest` — submit latest iOS build to App Store Connect
+  - Android: download the `.aab` from EAS manually, upload to Google Play Console
 
 ## Dev Rules
 
