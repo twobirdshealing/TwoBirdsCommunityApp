@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TBC Community App — Feature Audit & Comparison</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+    --pro: #a371f7;
+    --msg: #f778ba;
+    --app-extra: #3fb950;
+    --roadmap: #d29922;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  h4 { font-size: 1rem; margin-top: 20px; margin-bottom: 8px; color: var(--text-secondary); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.9em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: 600;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+  .tag-free { background: rgba(88, 166, 255, 0.15); color: var(--accent); }
+  .tag-pro { background: rgba(163, 113, 247, 0.15); color: var(--pro); }
+  .tag-msg { background: rgba(247, 120, 186, 0.15); color: var(--msg); }
+  .tag-app { background: rgba(63, 185, 80, 0.15); color: var(--app-extra); }
+  .tag-roadmap { background: rgba(210, 153, 34, 0.15); color: var(--roadmap); }
+  .tag-addon { background: rgba(210, 153, 34, 0.15); color: var(--warning); }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn { border-left-color: var(--warning); }
+  .callout-error { border-left-color: var(--error); }
+  .callout-success { border-left-color: var(--success); }
+  .callout-pro { border-left-color: var(--pro); }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+
+  /* Feature comparison table styles */
+  .check { color: var(--success); font-weight: bold; font-size: 1.1em; }
+  .cross { color: var(--error); font-size: 1.1em; }
+  .partial { color: var(--warning); font-size: 1.1em; }
+  .na { color: var(--text-secondary); font-size: 0.85em; }
+
+  /* Legend box */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0 24px;
+    font-size: 0.9em;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+
+  /* Stats grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+    display: block;
+  }
+  .stat-label {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    margin-top: 4px;
+  }
+
+  /* Highlight rows */
+  .row-app td { background: rgba(63, 185, 80, 0.04); }
+  .row-roadmap td { background: rgba(210, 153, 34, 0.04); }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    table { font-size: 0.8em; }
+    th, td { padding: 6px 8px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .legend { gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Feature Audit & Comparison</h1>
+<p class="subtitle">Comprehensive feature mapping: Fluent Community ecosystem vs. TBC Community App</p>
+
+<div class="callout">
+  This document provides a full audit of every feature in the Fluent Community plugin ecosystem (Free, Pro, Messages)
+  and maps them against what the TBC Community App supports, where we go beyond, and where we have gaps for the roadmap.
+  Module-specific features (Blog, YouTube, Book Club, Calendar) have their own dedicated docs.
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="check">&#10003;</span> Supported</div>
+  <div class="legend-item"><span class="partial">&#9679;</span> Partial</div>
+  <div class="legend-item"><span class="cross">&#10005;</span> Not yet</div>
+  <div class="legend-item"><span class="na">N/A</span> Not applicable</div>
+  <div class="legend-item"><span class="tag tag-free">FREE</span> Fluent Community</div>
+  <div class="legend-item"><span class="tag tag-pro">PRO</span> Fluent Community Pro</div>
+  <div class="legend-item"><span class="tag tag-msg">MSG</span> Fluent Messages</div>
+  <div class="legend-item"><span class="tag tag-app">APP EXTRA</span> Our exclusive</div>
+  <div class="legend-item"><span class="tag tag-roadmap">ROADMAP</span> Planned</div>
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#at-a-glance">At a Glance</a></li>
+    <li><a href="#app-exclusives">App-Exclusive Features</a></li>
+    <li><a href="#feed-posts">Feed &amp; Posts</a></li>
+    <li><a href="#comments">Comments</a></li>
+    <li><a href="#reactions">Reactions</a></li>
+    <li><a href="#spaces">Spaces &amp; Groups</a></li>
+    <li><a href="#profiles">Profiles</a></li>
+    <li><a href="#social">Follow, Block &amp; Social</a></li>
+    <li><a href="#messaging">Messaging &amp; Chat</a></li>
+    <li><a href="#notifications">Notifications &amp; Push</a></li>
+    <li><a href="#courses">Courses &amp; LMS</a></li>
+    <li><a href="#members">Member Directory</a></li>
+    <li><a href="#moderation">Moderation</a></li>
+    <li><a href="#media">Media &amp; Storage</a></li>
+    <li><a href="#auth">Authentication &amp; Registration</a></li>
+    <li><a href="#theming">Theming &amp; Appearance</a></li>
+    <li><a href="#gamification">Leaderboard &amp; Gamification</a></li>
+    <li><a href="#analytics">Analytics</a></li>
+    <li><a href="#integrations">Integrations</a></li>
+    <li><a href="#admin">Admin &amp; Settings</a></li>
+    <li><a href="#ux-polish">UX &amp; App Polish</a></li>
+    <li><a href="#modules">Module Ecosystem</a></li>
+    <li><a href="#roadmap">Roadmap &amp; Gaps</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="at-a-glance">1. At a Glance</h2>
+
+<p>The TBC Community App is a native mobile client for WordPress sites running Fluent Community. It covers the vast majority of Fluent Community Free + Pro + Messages features, adds significant mobile-exclusive capabilities, and ships with an extensible module system for add-on features.</p>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-number">28</span>
+    <span class="stat-label">Screens / Routes</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">75+</span>
+    <span class="stat-label">UI Components</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">6</span>
+    <span class="stat-label">Modules</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">6</span>
+    <span class="stat-label">Companion Plugins</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">17</span>
+    <span class="stat-label">API Services</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">7</span>
+    <span class="stat-label">Feature Flags</span>
+  </div>
+</div>
+
+<h3>Coverage Summary</h3>
+<table>
+  <tr>
+    <th>Fluent Tier</th>
+    <th>Total Features</th>
+    <th>App Supports</th>
+    <th>Coverage</th>
+  </tr>
+  <tr>
+    <td>Free (Community)</td>
+    <td>~55</td>
+    <td>~52</td>
+    <td><span class="check">~95%</span></td>
+  </tr>
+  <tr>
+    <td>Pro</td>
+    <td>~65</td>
+    <td>~40</td>
+    <td><span class="partial">~62%</span></td>
+  </tr>
+  <tr>
+    <td>Messages</td>
+    <td>~30</td>
+    <td>~28</td>
+    <td><span class="check">~93%</span></td>
+  </tr>
+  <tr class="row-app">
+    <td>App-Exclusive</td>
+    <td colspan="3"><strong>30+ features</strong> not available in Fluent Community web at all</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="app-exclusives">2. App-Exclusive Features</h2>
+
+<p>These are capabilities the TBC Community App delivers that <strong>do not exist</strong> in any version of Fluent Community's web portal. This is our competitive edge &mdash; the reasons communities need a native app.</p>
+
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>Description</th>
+    <th>Category</th>
+  </tr>
+  <tr class="row-app">
+    <td>Native Push Notifications <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Real iOS/Android push via Expo + Firebase. Device registration, granular per-category preferences, background tap routing to exact screens. App icon badge sync.</td>
+    <td>Engagement</td>
+  </tr>
+  <tr class="row-app">
+    <td>Custom Tab Bar Navigation <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Fully custom bottom tab bar with centered layout, haptic feedback, module-injected tabs, animated icons (pulsing donate heart), tab bar addons (mini audio player), and server-driven tab visibility. Not achievable in web.</td>
+    <td>UX</td>
+  </tr>
+  <tr class="row-app">
+    <td>Startup Batch API <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Single HTTP request replaces ~12 individual calls on app launch. Pre-populates widget caches, notification counts, profile status, and cart count. Sub-second cold start experience.</td>
+    <td>Performance</td>
+  </tr>
+  <tr class="row-app">
+    <td>Response Header Piggyback <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Every API response returns live unread counts (notifications, messages, cart) in headers. Badges update passively without polling.</td>
+    <td>Performance</td>
+  </tr>
+  <tr class="row-app">
+    <td>Home Screen Widget System <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Drag-and-drop reorderable home screen widgets. Toggle visibility, persist preferences. Module-injectable &mdash; each module can register its own widget. Forward-compatible (new widgets auto-appear).</td>
+    <td>UX</td>
+  </tr>
+  <tr class="row-app">
+    <td>Module System <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Self-contained feature modules that plug in without touching core code. Register tabs, widgets, menu items, header icons, context providers. Enable/disable with one line. Powers blog, YouTube, book club, calendar, donate, and donor modules.</td>
+    <td>Architecture</td>
+  </tr>
+  <tr class="row-app">
+    <td>Multi-Step Registration Wizard <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Server-driven dynamic form with phone OTP verification (Twilio SMS + voice fallback), email verification, password strength meter, and profile completion gate. Far beyond Fluent's default registration.</td>
+    <td>Onboarding</td>
+  </tr>
+  <tr class="row-app">
+    <td>Authenticated WebView Bridge <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Seamless SSO into any WordPress page (donations, WooCommerce checkout, event booking, donor dashboard) via one-time login URL. Theme CSS auto-injected for dark mode parity.</td>
+    <td>Integration</td>
+  </tr>
+  <tr class="row-app">
+    <td>Force Update &amp; Maintenance Mode <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Server-controlled gates that block the app during maintenance (with admin bypass) or force users to update to a minimum version. Direct links to App Store / Play Store.</td>
+    <td>Operations</td>
+  </tr>
+  <tr class="row-app">
+    <td>Deep Linking <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Universal Links (iOS) + App Links (Android) + custom URL scheme. Portal-slug-aware URL mapper. In-app HTML link interception. Queued deep links for unauthenticated state.</td>
+    <td>UX</td>
+  </tr>
+  <tr class="row-app">
+    <td>Haptic Feedback <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Tactile haptic responses on reactions, bookmarks, button presses, and navigation. Light, medium, and warning intensities.</td>
+    <td>UX</td>
+  </tr>
+  <tr class="row-app">
+    <td>Secure Token Storage <span class="tag tag-app">APP EXTRA</span></td>
+    <td>JWT access tokens, refresh tokens, and credentials stored in iOS Keychain / Android Keystore via SecureStore. Silent re-authentication on 401/403 with retry.</td>
+    <td>Security</td>
+  </tr>
+  <tr class="row-app">
+    <td>Cache Registry &amp; Cleanup <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Self-registering cache system with centralized cleanup on logout. AsyncStorage + in-memory caching with cross-screen invalidation events.</td>
+    <td>Architecture</td>
+  </tr>
+  <tr class="row-app">
+    <td>Optimistic UI Updates <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Reactions, bookmarks, follows, and votes update instantly with automatic rollback on failure. Native-feeling responsiveness.</td>
+    <td>UX</td>
+  </tr>
+  <tr class="row-app">
+    <td>Profile Completion Flow <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Server-driven profile completion requirements (bio, avatar). Gated navigation redirects incomplete profiles to completion screen after login.</td>
+    <td>Onboarding</td>
+  </tr>
+  <tr class="row-app">
+    <td>Account Deletion <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Full account deactivation (soft, reversible) and permanent deletion with "DELETE" confirmation. Required by App Store guidelines.</td>
+    <td>Compliance</td>
+  </tr>
+  <tr class="row-app">
+    <td>Password Recovery with OTP <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Forgot password flow with OTP verification and reset token, entirely within the app.</td>
+    <td>Auth</td>
+  </tr>
+  <tr class="row-app">
+    <td>Server-Driven Visibility <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Server controls which tabs, menu items, and features are visible via <code>hide_menu</code> array. Admins can toggle features without an app update.</td>
+    <td>Operations</td>
+  </tr>
+  <tr class="row-app">
+    <td>White-Label Ready <span class="tag tag-app">APP EXTRA</span></td>
+    <td>One-command snapshot script generates a clean white-label version with all site-specific values replaced by placeholders. Sellable product for any Fluent Community site.</td>
+    <td>Business</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="feed-posts">3. Feed &amp; Posts</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Create text posts in spaces</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Rich text editor with 10tap/TipTap + markdown toolbar</td>
+  </tr>
+  <tr>
+    <td>Edit / delete own posts</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>3-dot menu on each post</td>
+  </tr>
+  <tr>
+    <td>Media upload (images, files)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Multi-image upload, camera + gallery picker</td>
+  </tr>
+  <tr>
+    <td>oEmbed link previews</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Auto-expand with rich preview cards</td>
+  </tr>
+  <tr>
+    <td>Bookmarks (save/unsave posts)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Dedicated bookmarks screen with sort options (latest, oldest, popular, new_activity, likes)</td>
+  </tr>
+  <tr>
+    <td>Post topics / tags</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Filter feed by topic slug</td>
+  </tr>
+  <tr>
+    <td>@mentions &amp; @everyone</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>In-context user search for mentions</td>
+  </tr>
+  <tr>
+    <td>Sticky / pinned posts</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Pin/unpin via post menu (admin/mod)</td>
+  </tr>
+  <tr>
+    <td>Welcome banner on feed</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Home widget, pre-loaded via batch API</td>
+  </tr>
+  <tr>
+    <td>Feed filtering (space, user, search)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Sort by recent or popular</td>
+  </tr>
+  <tr>
+    <td>Duplicate post detection</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Server-side enforcement</td>
+  </tr>
+  <tr>
+    <td>Markdown support</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Custom htmlToMarkdown converter for 10tap editor</td>
+  </tr>
+  <tr>
+    <td>Surveys / polls</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Poll builder sheet, vote casting, visual results, voter list</td>
+  </tr>
+  <tr>
+    <td>Scheduled posts</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Admin-only, scheduled for future</td>
+  </tr>
+  <tr>
+    <td>"Following" feed filter</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Show posts only from followed users</td>
+  </tr>
+  <tr>
+    <td>Rich post layout (vs classic)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Web-only visual option, not relevant for mobile card layout</td>
+  </tr>
+  <tr>
+    <td>Topics management (admin CRUD)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td>Admin feature &mdash; managed from WordPress dashboard</td>
+  </tr>
+  <tr class="row-app">
+    <td>GIF picker (Giphy) <span class="tag tag-app">APP EXTRA</span></td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Full Giphy search with preview before sending, uses Fluent Community's Giphy proxy</td>
+  </tr>
+  <tr class="row-app">
+    <td>YouTube inline embed <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Auto-detects YouTube URLs in posts and renders inline player</td>
+  </tr>
+  <tr class="row-app">
+    <td>Native video player <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Full-featured video playback for uploaded videos with play button overlay</td>
+  </tr>
+  <tr class="row-app">
+    <td>Image gallery lightbox <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Full-screen image viewer with swipe gestures</td>
+  </tr>
+  <tr class="row-app">
+    <td>Video attachment via URL <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Attach videos by URL in composer modal</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="comments">4. Comments</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Create comments on posts</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Full-screen comment sheet modal</td>
+  </tr>
+  <tr>
+    <td>Edit / delete own comments</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Threaded / nested replies</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Parent/reply threading with visual indent</td>
+  </tr>
+  <tr>
+    <td>Pin / unpin comments</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Top-level only, admin/mod</td>
+  </tr>
+  <tr>
+    <td>@mentions in comments</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Media attachments in comments</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Image + GIF via meta</td>
+  </tr>
+  <tr>
+    <td>Comment reactions</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Multi-reaction system (via tbc-multi-reactions)</td>
+  </tr>
+  <tr>
+    <td>Duplicate comment detection</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Server-side enforcement</td>
+  </tr>
+  <tr>
+    <td>Paginated comment loading</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>With sort options</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="reactions">5. Reactions</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Like / react to posts</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Like / react to comments</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>View who reacted</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr class="row-app">
+    <td>Multi-reaction types <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Custom reaction picker with configurable types (emoji/icons/colors). Powered by tbc-multi-reactions plugin &mdash; goes beyond Fluent's simple like</td>
+  </tr>
+  <tr class="row-app">
+    <td>Reaction swap <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Change your reaction without un-reacting first</td>
+  </tr>
+  <tr class="row-app">
+    <td>Reaction breakdown modal <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Full breakdown showing who reacted with which type</td>
+  </tr>
+  <tr class="row-app">
+    <td>Haptic feedback on react <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Tactile light haptic on reaction tap</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="spaces">6. Spaces &amp; Groups</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Browse / discover spaces</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Spaces tab with search and discover mode</td>
+  </tr>
+  <tr>
+    <td>Space detail (feed, info, cover)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Full space screen with header, feed, members</td>
+  </tr>
+  <tr>
+    <td>Join / leave spaces</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Space privacy levels (public, private, secret)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Space groups (categories)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Organizational categories for spaces</td>
+  </tr>
+  <tr>
+    <td>Space members list</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>With search and role filters</td>
+  </tr>
+  <tr>
+    <td>Join request approval (private spaces)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="partial">&#9679;</span></td>
+    <td>Server-side works; approval UI managed via web dashboard</td>
+  </tr>
+  <tr>
+    <td>Space admin (create, edit, delete spaces)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td>Admin feature managed from WordPress dashboard</td>
+  </tr>
+  <tr>
+    <td>Space links (custom links per space)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Display custom links on space detail</td>
+  </tr>
+  <tr>
+    <td>Lock screen / paywall for spaces</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Space lock screen component for restricted access</td>
+  </tr>
+  <tr>
+    <td>Space-specific moderation rules</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Admin config &mdash; server-side only</td>
+  </tr>
+  <tr>
+    <td>Sidebar links management</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Web sidebar &mdash; mobile has no sidebar</td>
+  </tr>
+  <tr>
+    <td>Space group chat</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Community threads (group chat per space)</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="profiles">7. Profiles</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>View profile (avatar, cover, bio, name)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Rich profile header with cover photo</td>
+  </tr>
+  <tr>
+    <td>Edit display name, bio, short description</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Full edit profile screen</td>
+  </tr>
+  <tr>
+    <td>Upload avatar / cover photo</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Camera + gallery picker</td>
+  </tr>
+  <tr>
+    <td>Social links on profile</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Server-driven provider list (Instagram, YouTube, Facebook, Bluesky, TikTok, Twitter/X, LinkedIn, Reddit, etc.)</td>
+  </tr>
+  <tr>
+    <td>Verified badge</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Verified checkmark icon throughout the app</td>
+  </tr>
+  <tr>
+    <td>Profile completion score</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Completion steps UI + server-driven requirements</td>
+  </tr>
+  <tr>
+    <td>Profile deactivation</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Plus permanent deletion (App Store requirement)</td>
+  </tr>
+  <tr>
+    <td>Profile tabs (posts, spaces, comments)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Configurable via feature flags</td>
+  </tr>
+  <tr>
+    <td>Custom username</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Edit username in profile settings</td>
+  </tr>
+  <tr>
+    <td>Email change with verification</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Followers / following count display</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>With paginated connections screen</td>
+  </tr>
+  <tr class="row-app">
+    <td>Custom badges <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Server-defined badges with colors, labels, and icons displayed on profiles and member cards</td>
+  </tr>
+  <tr class="row-app">
+    <td>Custom profile fields <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Admin-configurable custom fields via tbc-fluent-profiles plugin</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="social">8. Follow, Block &amp; Social</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Follow / unfollow users</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Optimistic UI with instant feedback</td>
+  </tr>
+  <tr>
+    <td>Block / unblock users</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Hides posts from blocked users, deactivates DM threads</td>
+  </tr>
+  <tr>
+    <td>View followers / following lists</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Paginated connections screen</td>
+  </tr>
+  <tr>
+    <td>Follow email notification bell</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Bell icon on profile toggles email notifications for followed user's posts (level 1 &harr; 2)</td>
+  </tr>
+  <tr>
+    <td>Follow notification</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>In-app notification when someone follows you</td>
+  </tr>
+  <tr>
+    <td>Hide posts from blocked users in feed</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Server-side filtering</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="messaging">9. Messaging &amp; Chat</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>1:1 direct messaging</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Full chat interface with conversation list</td>
+  </tr>
+  <tr>
+    <td>Send text messages</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Image attachments in messages</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Delete own messages</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Delete DM threads</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Message reactions (emoji)</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Discord-style emoji reactions with real-time updates</td>
+  </tr>
+  <tr>
+    <td>Unread thread count</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Badge on Messages header icon, passively updated via response headers</td>
+  </tr>
+  <tr>
+    <td>Mark thread as read</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Cursor-based message pagination</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Load older messages on scroll</td>
+  </tr>
+  <tr>
+    <td>New message with user search</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>New message modal with user search</td>
+  </tr>
+  <tr>
+    <td>Block / unblock in chat</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Deactivates thread on block</td>
+  </tr>
+  <tr>
+    <td>Real-time WebSocket delivery</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Pusher private channels with auto-reconnect on app resume</td>
+  </tr>
+  <tr>
+    <td>Real-time reaction updates</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Live reaction events via Pusher</td>
+  </tr>
+  <tr>
+    <td>Community threads (space group chat)</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Space-based group chat threads</td>
+  </tr>
+  <tr>
+    <td>Unread message email digest</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Server-side email feature, not app-specific</td>
+  </tr>
+  <tr class="row-app">
+    <td>Reply-to-message (quote reply) <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Quote reply with visual reference to original message</td>
+  </tr>
+  <tr class="row-app">
+    <td>Push notification for new messages <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Native push that routes directly to conversation on tap</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="notifications">10. Notifications &amp; Push</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>In-app notification list</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Paginated list with type icons</td>
+  </tr>
+  <tr>
+    <td>Unread notification count</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Badge on bell icon, passively updated via response headers</td>
+  </tr>
+  <tr>
+    <td>Mark individual / all as read</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Notification for comments, mentions, reactions</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Per-space email notification preferences</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Granular per-space settings in notification settings screen</td>
+  </tr>
+  <tr>
+    <td>Follow notification</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr class="row-app">
+    <td>Native Push Notifications <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Expo + Firebase push for iOS &amp; Android. Foreground display, background tap routing, permission flow, sound/banner/list config.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Push notification preferences <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Granular per-category push preferences (server-driven categories)</td>
+  </tr>
+  <tr class="row-app">
+    <td>Device registration / unregistration <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Auto-register on login, unregister on logout</td>
+  </tr>
+  <tr class="row-app">
+    <td>App icon badge count <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>OS-level badge synced with unread notification count</td>
+  </tr>
+  <tr class="row-app">
+    <td>Deep-link routing from push tap <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Tapping a push notification opens the exact screen (post, space, course, profile, module route)</td>
+  </tr>
+  <tr class="row-app">
+    <td>Module push handler support <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Modules can intercept and handle their own push notification types</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="courses">11. Courses &amp; LMS</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Course listing with search &amp; filter</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Filter: enrolled/all, sort: alpha/oldest/latest, categories</td>
+  </tr>
+  <tr>
+    <td>Course enrollment</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Course detail with sections &amp; lessons</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Section list with expandable lesson rows</td>
+  </tr>
+  <tr>
+    <td>Lesson content viewing</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Full lesson detail screen with HTML content rendering</td>
+  </tr>
+  <tr>
+    <td>Lesson completion toggle</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Mark complete / incomplete</td>
+  </tr>
+  <tr>
+    <td>Progress tracking (per course)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Progress bar component</td>
+  </tr>
+  <tr>
+    <td>Course lockscreen / paywall</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Gated enrollment with lock screen</td>
+  </tr>
+  <tr>
+    <td>Quiz lesson type</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Multiple choice quizzes with passing score</td>
+  </tr>
+  <tr>
+    <td>Course free preview</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Allow preview of first N lessons</td>
+  </tr>
+  <tr class="row-app">
+    <td>My Courses home widget <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Enrolled courses shown on home dashboard, pre-loaded via batch API</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="members">12. Member Directory</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Member listing with search</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Paginated directory with search</td>
+  </tr>
+  <tr>
+    <td>Sort (name, last activity, created)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>@mention search (space-scoped)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Member status filtering (admin)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td>Admin feature &mdash; WordPress dashboard</td>
+  </tr>
+  <tr>
+    <td>Manager roles CRUD</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td>Admin feature &mdash; WordPress dashboard</td>
+  </tr>
+  <tr>
+    <td>Analytics: top members, posters, commenters</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Could surface in member directory or home widget</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="moderation">13. Moderation</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Report content (posts &amp; comments)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Users can report posts &amp; comments via 3-dot action menu. Reason picker + optional explanation. Uses FC Pro moderation API &mdash; server handles queue, notifications, duplicates.</td>
+  </tr>
+  <tr>
+    <td>Profanity word filter</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Server-side auto-flag, no app UI needed</td>
+  </tr>
+  <tr>
+    <td>First post approval</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Server-side enforcement, no app UI needed</td>
+  </tr>
+  <tr>
+    <td>Moderation queue (list/filter reports)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Could be useful for admin/mod in-app</td>
+  </tr>
+  <tr>
+    <td>Approve / unpublish flagged content</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td>Admin feature &mdash; WordPress dashboard for now</td>
+  </tr>
+  <tr>
+    <td>Admin delete posts &amp; comments</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Admins/mods can delete any post or comment</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="media">14. Media &amp; Storage</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Local file upload (images)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Camera + gallery picker with permission handling</td>
+  </tr>
+  <tr>
+    <td>Media in posts, comments, messages</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Cloud storage (S3, R2, BunnyCDN)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Transparent &mdash; app uploads to whatever storage the server is configured with</td>
+  </tr>
+  <tr>
+    <td>Document library module</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Browse and download shared documents</td>
+  </tr>
+  <tr class="row-app">
+    <td>Multi-image gallery grid <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Instagram-style grid layout for multiple images in a post</td>
+  </tr>
+  <tr class="row-app">
+    <td>Full-screen image lightbox <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Pinch-to-zoom, swipe-to-dismiss image viewer</td>
+  </tr>
+  <tr class="row-app">
+    <td>YouTube inline embed player <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Auto-detects YouTube URLs and renders native inline player</td>
+  </tr>
+  <tr class="row-app">
+    <td>Native video player <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Uploaded video playback with play button overlay</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="auth">15. Authentication &amp; Registration</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Login / logout</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>JWT-based with SecureStore token storage</td>
+  </tr>
+  <tr>
+    <td>Registration</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Multi-step wizard with server-driven fields, OTP, email verify, profile completion</td>
+  </tr>
+  <tr>
+    <td>Access role configuration</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Server-side admin setting</td>
+  </tr>
+  <tr>
+    <td>Email auto-login links</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Magic link authentication</td>
+  </tr>
+  <tr>
+    <td>Invitation system (invite links)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Share invite links from the app</td>
+  </tr>
+  <tr class="row-app">
+    <td>Phone OTP verification (Twilio) <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>SMS + voice call fallback, powered by tbc-fluent-profiles plugin</td>
+  </tr>
+  <tr class="row-app">
+    <td>Silent token refresh <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Auto re-authenticates on 401/403 using stored credentials. Prevents infinite loops with _isRetry flag.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Password recovery with OTP <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>In-app forgot password flow with OTP verification</td>
+  </tr>
+  <tr class="row-app">
+    <td>Password strength meter <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Visual strength indicator during registration</td>
+  </tr>
+  <tr class="row-app">
+    <td>Account permanent deletion <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Required by App Store. "DELETE" confirmation gate.</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="theming">16. Theming &amp; Appearance</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Light / dark mode</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>User toggle in menu, auto-synced color tokens from Fluent Community</td>
+  </tr>
+  <tr>
+    <td>Color scheme sync from Fluent</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Full body + header token mapping (15+ tokens). Background refresh on app resume.</td>
+  </tr>
+  <tr>
+    <td>Logo sync from Fluent</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Light + dark mode logo variants, site name fallback</td>
+  </tr>
+  <tr>
+    <td>RTL language support</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span></td>
+  </tr>
+  <tr>
+    <td>Custom CSS / JS injection</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Web-only feature, not applicable to native</td>
+  </tr>
+  <tr>
+    <td>"Powered by" branding removal</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Web portal feature, app has no "powered by" branding</td>
+  </tr>
+  <tr class="row-app">
+    <td>Tab bar color sync <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Tab bar background, border, active/inactive colors pulled from Fluent header tokens</td>
+  </tr>
+  <tr class="row-app">
+    <td>WebView theme injection <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>App theme CSS auto-injected into WebViews for dark mode parity</td>
+  </tr>
+  <tr class="row-app">
+    <td>Two-layer theme cache <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>AsyncStorage + in-memory cache with background refresh &mdash; instant themed launch</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="gamification">17. Leaderboard &amp; Gamification</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Points &amp; levels system</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Display user level and points on profile</td>
+  </tr>
+  <tr>
+    <td>Leaderboard display</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Leaderboard screen or home widget</td>
+  </tr>
+  <tr>
+    <td>User badges (admin-defined)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Badges displayed on profiles and member cards with colors/icons</td>
+  </tr>
+  <tr>
+    <td>Badge CRUD for admins</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td>Admin feature &mdash; WordPress dashboard</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="analytics">18. Analytics</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Community overview analytics</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td>Admin feature &mdash; WordPress dashboard</td>
+  </tr>
+  <tr>
+    <td>Member analytics (top members, posters)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Could surface in leaderboard widget</td>
+  </tr>
+  <tr>
+    <td>Space analytics (popular spaces)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="tag tag-roadmap">ROADMAP</span> Could surface in spaces discovery</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="integrations">19. Integrations</h2>
+
+<table>
+  <tr>
+    <th style="width:40%">Feature</th>
+    <th style="width:12%">Fluent Tier</th>
+    <th style="width:12%">App</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>FluentCRM automation triggers</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Server-side CRM integration, no app UI needed</td>
+  </tr>
+  <tr>
+    <td>Webhooks for events</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Server-side, no app UI needed</td>
+  </tr>
+  <tr>
+    <td>Giphy GIF search</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Full GIF picker with preview, uses Fluent Community's proxy endpoint</td>
+  </tr>
+  <tr>
+    <td>Emoji picker</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Multi-reaction picker with custom reaction types</td>
+  </tr>
+  <tr>
+    <td>SEO sitemap generation</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Web-only feature, not applicable to mobile app</td>
+  </tr>
+  <tr>
+    <td>Paymattic (payment gating)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="na">N/A</span></td>
+    <td>Server-side gating, app respects lock screens</td>
+  </tr>
+  <tr class="row-app">
+    <td>WooCommerce cart <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Cart icon with live badge count in header, opens WooCommerce checkout in authenticated WebView</td>
+  </tr>
+  <tr class="row-app">
+    <td>Pusher real-time <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Private channel WebSocket with auto-reconnect, ticker polling, and cooldown logic</td>
+  </tr>
+  <tr class="row-app">
+    <td>Firebase push (iOS + Android) <span class="tag tag-app">APP EXTRA</span></td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Expo Push + Firebase Cloud Messaging for native push delivery</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="admin">20. Admin &amp; Settings</h2>
+
+<div class="callout">
+  <strong>Admin philosophy:</strong> The app is a <em>member-facing client</em>. Community administration (space management, user moderation, analytics, settings) happens in the WordPress dashboard.
+  The app provides admin/mod in-line actions (pin, delete, manage members) but does not replicate the full admin panel.
+</div>
+
+<table>
+  <tr>
+    <th>Admin Feature</th>
+    <th>Fluent Tier</th>
+    <th>In App?</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td>Pin/unpin posts &amp; comments</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Admin/mod inline action</td>
+  </tr>
+  <tr>
+    <td>Delete any post or comment</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Admin/mod inline action</td>
+  </tr>
+  <tr>
+    <td>Space member management</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="partial">&#9679;</span></td>
+    <td>View members &amp; roles; add/remove managed from web</td>
+  </tr>
+  <tr>
+    <td>Maintenance mode bypass</td>
+    <td>&mdash;</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Admins can log in and access app during maintenance</td>
+  </tr>
+  <tr>
+    <td>Full admin dashboard</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td>By design &mdash; admin stays in WordPress</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="ux-polish">21. UX &amp; App Polish</h2>
+
+<p>These are native mobile UX features that make the app feel premium and aren't possible in a web community portal.</p>
+
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>Description</th>
+  </tr>
+  <tr class="row-app">
+    <td>Custom bottom tab bar <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Fully custom tab bar with centered layout, module-injected tabs, animated icons (pulsing donate heart), tab bar addons (mini audio player). Server-driven visibility toggles tabs without app updates.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Haptic feedback system <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Tactile responses on reactions, bookmarks, button presses, and navigation. Light, medium, and warning intensities tuned per interaction type.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Optimistic UI updates <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Reactions, bookmarks, follows, and votes update instantly with automatic rollback on server failure. Zero perceived latency.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Drag-and-drop home widgets <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Reorderable widgets with drag handles. Toggle visibility. Forward-compatible &mdash; new widgets auto-appear when modules are added.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Animated pressable components <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Scale animation + haptic on touch for interactive elements. Native-feeling bounce feedback.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Edge-to-edge display <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Full edge-to-edge rendering on Android with translucent status/navigation bars. <code>react-native-keyboard-controller</code> for proper keyboard handling.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Pull-to-refresh <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Pull-to-refresh on all list screens (feed, spaces, courses, notifications, messages).</td>
+  </tr>
+  <tr class="row-app">
+    <td>Infinite scroll pagination <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Smooth infinite scroll with loading indicators. FlashList v2 for performant virtualized lists.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Bottom sheet modals <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Native-feeling bottom sheets for comments, polls, reactions, menus, and user interactions.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Relative date formatting <span class="tag tag-app">APP EXTRA</span></td>
+    <td>"2 hours ago", "3 days ago" &mdash; natural language timestamps throughout the app.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Compact number formatting <span class="tag tag-app">APP EXTRA</span></td>
+    <td>"1.2K", "3.4M" for counts &mdash; clean and scannable.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Error boundary with fallback <span class="tag tag-app">APP EXTRA</span></td>
+    <td>React error boundary catches crashes per screen, shows friendly fallback UI instead of white screen.</td>
+  </tr>
+  <tr class="row-app">
+    <td>Sub-second cold start <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Batch API + cached theme + cached widgets = instant-feeling app launch with data already populated.</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="modules">22. Module Ecosystem</h2>
+
+<p>The app's module system is an architecture-level exclusive &mdash; Fluent Community has no equivalent. Modules are self-contained feature packages that register any combination of: bottom tabs, home widgets, menu items, header icons, context providers, and tab bar addons.</p>
+
+<div class="callout-success callout">
+  Each module gets its own dedicated documentation page. This section provides the overview.
+</div>
+
+<table>
+  <tr>
+    <th>Module</th>
+    <th>Type</th>
+    <th>Tab</th>
+    <th>Widget</th>
+    <th>Menu</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><strong>Blog</strong></td>
+    <td><span class="tag tag-addon">ADD-ON</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>WordPress blog integration with post listing, full content view, and WP comment system</td>
+  </tr>
+  <tr>
+    <td><strong>YouTube</strong></td>
+    <td><span class="tag tag-addon">ADD-ON</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td>YouTube channel videos and playlists with server-side caching. Companion plugin: tbc-youtube</td>
+  </tr>
+  <tr>
+    <td><strong>Book Club</strong></td>
+    <td><span class="tag tag-addon">ADD-ON</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Audiobook library with full player, chapter navigation, bookmarks, meeting schedule, persistent mini player. Companion plugin: tbc-book-club</td>
+  </tr>
+  <tr>
+    <td><strong>Calendar</strong></td>
+    <td>Site-specific</td>
+    <td><span class="check">&#10003;</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td>Month grid calendar with event listing, WooCommerce booking integration, RSVP/waitlist. Two home widgets. Companion plugin: tbc-calendar-fluent</td>
+  </tr>
+  <tr>
+    <td><strong>Donate</strong></td>
+    <td>Site-specific</td>
+    <td><span class="check">&#10003;</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Animated heart tab icon that opens WooCommerce donation page in authenticated WebView</td>
+  </tr>
+  <tr>
+    <td><strong>Donor Dashboard</strong></td>
+    <td>Site-specific</td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Menu item that opens donor dashboard in authenticated WebView</td>
+  </tr>
+</table>
+
+<h3>Module Architecture Highlights</h3>
+<ul>
+  <li><strong>Zero-touch core:</strong> Modules never modify core files. Register once in <code>_registry.ts</code> and the system wires everything up.</li>
+  <li><strong>Server-driven visibility:</strong> The server's <code>hide_menu</code> array can hide module tabs and menu items without an app update.</li>
+  <li><strong>Forward-compatible widgets:</strong> When a new module is enabled, its widget auto-appears on the home screen in the next launch.</li>
+  <li><strong>Push notification routing:</strong> Modules can register push handlers to intercept and route their own notification types.</li>
+  <li><strong>Context providers:</strong> Modules can inject React context providers (e.g., Book Club's audio player state) into the app's provider tree.</li>
+  <li><strong>Tab bar addons:</strong> Modules can inject persistent UI above the tab bar (e.g., Book Club's mini player).</li>
+</ul>
+
+<!-- ================================================================ -->
+<h2 id="roadmap">23. Roadmap &amp; Gaps</h2>
+
+<p>Features from Fluent Community Pro/Messages that we don't yet support, plus improvements we want to make. Grouped by priority.</p>
+
+<h3>High Priority</h3>
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>Source</th>
+    <th>Impact</th>
+  </tr>
+  <tr class="row-done">
+    <td><s>Report content (posts &amp; comments)</s></td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span> Implemented &mdash; ReportModal in post &amp; comment action menus.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Community threads (space group chat)</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td>High engagement feature. Spaces with group chat are more active.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>"Following" feed filter</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Key for large communities &mdash; shows only posts from followed users.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Quiz lesson type in courses</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Essential for LMS-focused communities. Multiple choice with passing score.</td>
+  </tr>
+</table>
+
+<h3>Medium Priority</h3>
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>Source</th>
+    <th>Impact</th>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Scheduled posts</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Admin/mod convenience for content planning.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Leaderboard &amp; points display</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Gamification drives engagement. Show levels, points, and rankings.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Invitation system (share invite links)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Growth feature &mdash; viral sharing from within the app.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Space links (custom links per space)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td>Display space-associated links on the space detail screen.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Course free preview</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Preview first N lessons before enrollment/payment.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Document library</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Browse and download shared documents / resources.</td>
+  </tr>
+</table>
+
+<h3>Low Priority / Nice to Have</h3>
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>Source</th>
+    <th>Impact</th>
+  </tr>
+  <tr class="row-roadmap">
+    <td>RTL language support</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td>Needed for Arabic, Hebrew communities. Moderate implementation effort.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Email auto-login (magic link)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Convenience feature, deep link from email directly into authenticated app.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Member analytics (top posters, commenters)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Could surface as a home widget or in member directory.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Space analytics (popular spaces)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Could enhance space discovery with popularity indicators.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Moderation queue (in-app for mods)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Nice for active moderators who live in the app.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Topics admin management</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Admin CRUD for topics &mdash; currently requires WordPress dashboard.</td>
+  </tr>
+</table>
+
+<h3>Not Applicable to Mobile</h3>
+<p>These Fluent Community features are web-specific and intentionally not implemented in the native app:</p>
+<ul>
+  <li><strong>Custom CSS / JS injection</strong> &mdash; web portal only</li>
+  <li><strong>Sidebar links</strong> &mdash; mobile has no sidebar (uses tab bar + menu)</li>
+  <li><strong>Rich post layout toggle</strong> &mdash; mobile uses native card layout</li>
+  <li><strong>Member list layout toggle</strong> &mdash; mobile uses native list layout</li>
+  <li><strong>"Powered by" branding</strong> &mdash; not present in native app</li>
+  <li><strong>SEO sitemap</strong> &mdash; web indexing, not relevant for app</li>
+  <li><strong>Portal slug configuration</strong> &mdash; web URL path, app uses deep link mapping</li>
+</ul>
+
+<!-- ================================================================ -->
+
+<hr style="margin-top: 48px;">
+<p style="color: var(--text-secondary); font-size: 0.9em; margin-top: 16px;">
+  <strong>Related docs:</strong>
+  <a href="setup-guide.html">Setup Guide</a> &bull;
+  <a href="logging.html">Logging System</a> &bull;
+  <a href="components.html">Components</a>
+</p>
+
+</body>
+</html>

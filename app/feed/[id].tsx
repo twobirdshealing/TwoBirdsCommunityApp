@@ -18,6 +18,7 @@ import { createLogger } from '@/utils/logger';
 const log = createLogger('FeedDetail');
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { FeedCard } from '@/components/feed/FeedCard';
+import { FeedModalsProvider } from '@/contexts/FeedModalsContext';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -167,6 +168,7 @@ export default function SinglePostScreen() {
         }}
       />
 
+      <FeedModalsProvider>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -192,6 +194,7 @@ export default function SinglePostScreen() {
           onDelete={handleDelete}
         />
       </ScrollView>
+      </FeedModalsProvider>
     </View>
   );
 }

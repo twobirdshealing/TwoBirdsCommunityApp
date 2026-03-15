@@ -145,7 +145,7 @@
     <li><a href="#feedback-components">Feedback &amp; State</a> &mdash; LoadingSpinner, EmptyState, ErrorMessage, etc.</li>
     <li><a href="#form-components">Form Components</a> &mdash; DynamicFormField, SelectModal, SocialLinksForm</li>
     <li><a href="#media-components">Media Components</a> &mdash; YouTubeEmbed, VideoPlayer, MediaViewer</li>
-    <li><a href="#feature-components">Feature Components</a> &mdash; Feed, Composer, Profile, Space, Course, Member, Message</li>
+    <li><a href="#feature-components">Feature Components</a> &mdash; Feed, Composer, Profile, Space, Course, Member, Message, Register</li>
     <li><a href="#import-rules">Import Rules &amp; Conventions</a></li>
   </ol>
 </div>
@@ -793,6 +793,23 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
   </table>
 </div>
 
+<!-- ReportModal -->
+<div class="component-card">
+  <h4>ReportModal <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/ReportModal.tsx</span>
+  <p>Modal for reporting posts and comments to moderators. Radio-style reason picker with 6 options (Spam, Harassment, Misinformation, Inappropriate Content, Hate Speech, Other), optional explanation text field, and submit button. Uses Fluent Community Pro&rsquo;s built-in moderation API &mdash; server handles duplicates, moderator protection, and notification.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide modal</td></tr>
+    <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close handler (resets state)</td></tr>
+    <tr><td>contentType</td><td>&quot;post&quot; | &quot;comment&quot;</td><td>&mdash;</td><td>Type of content being reported</td></tr>
+    <tr><td>postId</td><td>number</td><td>&mdash;</td><td>Feed post ID (parent post for comments)</td></tr>
+    <tr><td>parentId</td><td>number</td><td>&mdash;</td><td>Comment ID (only for comment reports)</td></tr>
+    <tr><td>userId</td><td>number</td><td>&mdash;</td><td>Content author&rsquo;s user ID</td></tr>
+  </table>
+</div>
+
 <!-- ================================================================== -->
 <h2 id="media-components">8. Media Components</h2>
 <!-- ================================================================== -->
@@ -849,9 +866,10 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <h3>Feed</h3>
 <table>
   <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
-  <tr><td>FeedList</td><td><span class="file-path">components/feed/FeedList.tsx</span></td><td>Main feed list with infinite scroll, pull-to-refresh</td></tr>
-  <tr><td>FeedCard</td><td><span class="file-path">components/feed/FeedCard.tsx</span></td><td>Single post card: author, content, media, reactions, comments</td></tr>
-  <tr><td>CommentSheet</td><td><span class="file-path">components/feed/CommentSheet.tsx</span></td><td>Bottom sheet for viewing/adding comments on posts</td></tr>
+  <tr><td>FeedList</td><td><span class="file-path">components/feed/FeedList.tsx</span></td><td>Main feed list with infinite scroll, pull-to-refresh. Wraps content in <code>FeedModalsProvider</code></td></tr>
+  <tr><td>FeedCard</td><td><span class="file-path">components/feed/FeedCard.tsx</span></td><td>Single post card: author, content, media, reactions, comments, action menu (copy link, pin, edit, delete, report). Modals hoisted to <code>FeedModalsContext</code> via <code>useFeedModals()</code></td></tr>
+  <tr><td>FeedModalsProvider</td><td><span class="file-path">contexts/FeedModalsContext.tsx</span></td><td>Shared modal instances for feed cards (menu, reaction picker, breakdown, media viewer, report). Renders 1 instance of each instead of N per card in a list</td></tr>
+  <tr><td>CommentSheet</td><td><span class="file-path">components/feed/CommentSheet.tsx</span></td><td>Full-screen comments panel with rich text editor; comment actions (copy link, pin, edit, delete, report)</td></tr>
   <tr><td>CommentItem</td><td><span class="file-path">components/feed/CommentItem.tsx</span></td><td>Single comment with reactions and reply</td></tr>
   <tr><td>ReactionPicker</td><td><span class="file-path">components/feed/ReactionPicker.tsx</span></td><td>Emoji reaction picker (multi-reaction)</td></tr>
   <tr><td>SurveyCard</td><td><span class="file-path">components/feed/SurveyCard.tsx</span></td><td>Poll/survey embedded in feed</td></tr>
@@ -910,6 +928,16 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
   <tr><td>ChatInput</td><td><span class="file-path">components/message/ChatInput.tsx</span></td><td>Message input with send button</td></tr>
   <tr><td>NewMessageModal</td><td><span class="file-path">components/message/NewMessageModal.tsx</span></td><td>New conversation modal with member search</td></tr>
 </table>
+
+<h3>Register</h3>
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>EmailVerifyStep</td><td><span class="file-path">components/register/EmailVerifyStep.tsx</span></td><td>Step 3: email verification code input with resend timer</td></tr>
+  <tr><td>PhoneOtpStep</td><td><span class="file-path">components/register/PhoneOtpStep.tsx</span></td><td>Step 4: phone OTP verification with voice call fallback</td></tr>
+</table>
+<p>Both steps use shared styles from <span class="file-path">components/register/styles.ts</span> (<code>verificationStyles</code>).
+PhoneOtpStep receives the full <code>OtpVerificationState</code> type (exported from <span class="file-path">hooks/useOtpVerification.ts</span>) as its <code>otp</code> prop.
+Steps 1&ndash;2 (account info, profile fields) remain inline in <span class="file-path">app/register.tsx</span> as they are thin dynamic field lists.</p>
 
 <!-- ================================================================== -->
 <h2 id="import-rules">10. Import Rules &amp; Conventions</h2>
@@ -971,6 +999,7 @@ backgroundColor: withOpacity(colors.primary, 0.12)</code></pre>
   <tr><td><span class="file-path">components/course/</span></td><td>Course cards, progress, lessons</td></tr>
   <tr><td><span class="file-path">components/member/</span></td><td>Member directory cards</td></tr>
   <tr><td><span class="file-path">components/message/</span></td><td>Chat UI components</td></tr>
+  <tr><td><span class="file-path">components/register/</span></td><td>Registration verification step components</td></tr>
   <tr><td><span class="file-path">components/settings/</span></td><td>Settings screens</td></tr>
   <tr><td><span class="file-path">constants/</span></td><td>Design tokens, config, colors</td></tr>
   <tr><td><span class="file-path">contexts/</span></td><td>React contexts (Auth, Theme, Pusher)</td></tr>
@@ -980,7 +1009,7 @@ backgroundColor: withOpacity(colors.primary, 0.12)</code></pre>
 </table>
 
 <p style="margin-top: 48px; color: var(--text-secondary); text-align: center; font-size: 0.9em;">
-  Generated for the White-Label Community App &mdash; <a href="setup-guide.html">Setup Guide</a> &bull; <a href="logging.html">Logging Reference</a>
+  Generated for the White-Label Community App &mdash; <a href="setup-guide.html">Setup Guide</a> &bull; <a href="architecture.html">Architecture</a> &bull; <a href="logging.html">Logging Reference</a> &bull; <a href="features.html">Features</a>
 </p>
 
 </body>

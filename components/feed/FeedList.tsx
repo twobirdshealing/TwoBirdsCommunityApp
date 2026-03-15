@@ -15,6 +15,7 @@ import React from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, RefreshControl, StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { FeedCard } from './FeedCard';
+import { FeedModalsProvider } from '@/contexts/FeedModalsContext';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -125,28 +126,30 @@ export function FeedList({
   };
 
   return (
-    <FlashList
-      data={feeds}
-      keyExtractor={(item) => item.id.toString()}
-      renderItem={renderItem}
-      contentContainerStyle={[styles.list, { paddingBottom: bottomPadding }]}
-      showsVerticalScrollIndicator={false}
-      ListHeaderComponent={ListHeaderComponent}
-      onScroll={onScroll}
-      scrollEventThrottle={16}
-      refreshControl={
-        onRefresh ? (
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[themeColors.primary]}
-            tintColor={themeColors.primary}
-          />
-        ) : undefined
-      }
-      onEndReached={onLoadMore}
-      onEndReachedThreshold={0.5}
-    />
+    <FeedModalsProvider>
+      <FlashList
+        data={feeds}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderItem}
+        contentContainerStyle={[styles.list, { paddingBottom: bottomPadding }]}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={ListHeaderComponent}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[themeColors.primary]}
+              tintColor={themeColors.primary}
+            />
+          ) : undefined
+        }
+        onEndReached={onLoadMore}
+        onEndReachedThreshold={0.5}
+      />
+    </FeedModalsProvider>
   );
 }
 

@@ -39,6 +39,7 @@ import { Button } from '@/components/common/Button';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
+import { ReportModal } from '@/components/common/ReportModal';
 import { MarkdownToolbar } from '@/components/composer/MarkdownToolbar';
 import { GifPickerModal } from '@/components/composer/GifPickerModal';
 import { GifAttachment } from '@/types/gif';
@@ -114,6 +115,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   const [commentMedia, setCommentMedia] = useState<{ images: Array<{ url: string }>; index: number } | null>(null);
   // Menu state
   const [menuComment, setMenuComment] = useState<Comment | null>(null);
+  const [reportComment, setReportComment] = useState<Comment | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | undefined>();
   const menuButtonRefs = useRef<Record<number, View | null>>({});
 
@@ -498,6 +500,10 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
       );
     }
 
+    if (!isOwner) {
+      items.push({ key: 'report', label: 'Report', icon: 'flag-outline', onPress: () => { setMenuComment(null); setReportComment(comment); }, destructive: true });
+    }
+
     return items;
   };
 
@@ -824,6 +830,16 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         onClose={() => setMenuComment(null)}
         items={getCommentMenuItems()}
         anchor={menuAnchor}
+      />
+
+      {/* Report Comment Modal */}
+      <ReportModal
+        visible={!!reportComment}
+        onClose={() => setReportComment(null)}
+        contentType="comment"
+        postId={postId || 0}
+        parentId={reportComment?.id}
+        userId={Number(reportComment?.user_id || 0)}
       />
 
       {/* GIF Picker Modal */}

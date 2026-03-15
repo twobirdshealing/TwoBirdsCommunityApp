@@ -88,6 +88,9 @@ export const ENDPOINTS = {
     `/courses/${courseSlug}/lessons/${lessonSlug}/by-slug`,
   COURSE_LESSON_COMPLETION: (courseId: number, lessonId: number) =>
     `/courses/${courseId}/lessons/${lessonId}/completion`,
+
+  // Moderation
+  MODERATION_REPORT: '/moderation/report',
 };
 
 // -----------------------------------------------------------------------------

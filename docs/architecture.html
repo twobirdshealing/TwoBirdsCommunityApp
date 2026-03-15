@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App &mdash; Architecture Guide</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .required { background: rgba(248, 81, 73, 0.15); color: var(--error); }
+  .auto { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn {
+    border-left-color: var(--warning);
+  }
+  .callout-error {
+    border-left-color: var(--error);
+  }
+  .callout-success {
+    border-left-color: var(--success);
+  }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85em;
+    line-height: 1.7;
+    overflow-x: auto;
+    white-space: pre;
+  }
+</style>
+</head>
+<body>
+
+<h1>Architecture Guide</h1>
+<p class="subtitle">How the app works end-to-end &mdash; from cold start to real-time updates</p>
+
+<div class="callout">
+  <strong>Stack:</strong> React Native (Expo 55) &bull; React 19 with React Compiler &bull; Expo Router (file-based) &bull; WordPress + Fluent Community backend &bull; Pusher WebSockets &bull; JWT authentication
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#folder-structure">Folder Structure</a></li>
+    <li><a href="#boot-sequence">Boot Sequence</a></li>
+    <li><a href="#provider-stack">Provider Stack</a></li>
+    <li><a href="#authentication">Authentication</a></li>
+    <li><a href="#api-client">API Client</a></li>
+    <li><a href="#data-fetching">Data Fetching</a></li>
+    <li><a href="#startup-batch">Startup Batch</a></li>
+    <li><a href="#realtime">Real-Time (Pusher)</a></li>
+    <li><a href="#routing">Routing &amp; Navigation</a></li>
+    <li><a href="#module-system">Module System</a></li>
+    <li><a href="#theme-system">Theme System</a></li>
+    <li><a href="#state-management">State Management</a></li>
+    <li><a href="#key-files">Key Files Reference</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="folder-structure">1. Folder Structure</h2>
+<!-- ================================================================== -->
+
+<div class="diagram">app/                    Expo Router screens (file-based routing)
+  (tabs)/               Bottom tab screens
+  courses/              Course + lesson screens
+  feed/                 Single post view
+  messages/             Chat screens
+  profile/              Profile view + edit
+  space/                Space detail + members
+assets/                 Images, fonts, splash
+companion plugins/      WordPress plugins that ship with the app
+components/             UI components by domain
+  common/               Shared: Button, Avatar, TextInputField, etc.
+  composer/             Post creation flow
+  feed/                 FeedCard, CommentSheet, reactions
+  media/                Video, image, gallery
+  member/               MemberCard
+  message/              Chat bubbles, input, modals
+  navigation/           Headers, tab bar
+  notification/         Notification cards
+  profile/              Profile views, edit, completion
+  register/             Registration step components
+  space/                Space cards, headers, lock screens
+  settings/             Settings screens
+constants/              Design tokens, config, colors, API endpoints
+contexts/               React contexts (Auth, Theme, Pusher, etc.)
+hooks/                  Custom hooks (data fetching, actions, etc.)
+modules/                Self-contained add-on features
+  _registry.ts          Module registration (one line to enable/disable)
+  _types.ts             ModuleManifest interface
+  blog/                 Blog module (add-on)
+  bookclub/             Book club module (add-on)
+  youtube/              YouTube module (add-on)
+  calendar/             Calendar module (site-specific)
+  donate/               Donate module (site-specific)
+  donor/                Donor module (site-specific)
+services/               Core services
+  api/                  API client + endpoint functions
+  auth.ts               JWT token management
+  pusher.ts             WebSocket client
+  push.ts               Push notification service
+types/                  TypeScript type definitions
+utils/                  Utility functions (logger, formatters, etc.)
+docs/                   Developer documentation (you are here)</div>
+
+<!-- ================================================================== -->
+<h2 id="boot-sequence">2. Boot Sequence</h2>
+<!-- ================================================================== -->
+
+<p>What happens when a user opens the app, from cold start to interactive:</p>
+
+<div class="diagram">1. Expo loads &rarr; app/_layout.tsx mounts
+2. Provider stack wraps the app (Theme, Auth, Config, Pusher, Modules...)
+3. AuthContext.checkAuthStatus()
+   &rarr; Reads SecureStore for stored JWT + user info
+   &rarr; If valid: sets isAuthenticated = true
+   &rarr; If missing/expired: routes to /login
+4. Auth guard in RootLayoutNav evaluates route access
+5. useStartupData fires (single batch HTTP request)
+   &rarr; 7 API paths in one request (replaces ~12 individual calls)
+   &rarr; Distributes results to contexts + AsyncStorage caches
+6. ThemeContext receives app-config with Fluent Community colors
+7. Pusher connects to private channel for real-time messaging
+8. Module onInit() callbacks fire (non-blocking)
+9. Home screen renders with cached widget data (instant)
+   &rarr; Widgets refresh in background via useCachedData</div>
+
+<div class="callout callout-success">
+  <strong>Fast perceived startup.</strong> Cached data renders immediately. The batch request populates fresh data in the background. Users see content within milliseconds of auth check completing.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="provider-stack">3. Provider Stack</h2>
+<!-- ================================================================== -->
+
+<p>The provider hierarchy in <span class="file-path">app/_layout.tsx</span>, outermost to innermost:</p>
+
+<table>
+  <tr><th>#</th><th>Provider</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>1</td><td>GestureHandlerRootView</td><td>react-native-gesture-handler</td><td>Gesture handling for bottom sheets, swipes</td></tr>
+  <tr><td>2</td><td>ErrorBoundary</td><td>components/common/ErrorBoundary.tsx</td><td>App-wide crash recovery</td></tr>
+  <tr><td>3</td><td>ThemeProvider</td><td>contexts/ThemeContext.tsx</td><td>Colors, dark mode, branding</td></tr>
+  <tr><td>4</td><td>AuthProvider</td><td>contexts/AuthContext.tsx</td><td>JWT auth state, login/logout</td></tr>
+  <tr><td>5</td><td>AppConfigProvider</td><td>contexts/AppConfigContext.tsx</td><td>Server config, feature flags, maintenance</td></tr>
+  <tr><td>6</td><td>UnreadCountsProvider</td><td>contexts/UnreadCountsContext.tsx</td><td>Badge counts (notifications, messages, cart)</td></tr>
+  <tr><td>7</td><td>PusherProvider</td><td>contexts/PusherContext.tsx</td><td>Real-time WebSocket connection</td></tr>
+  <tr><td>8</td><td>ModuleProviders</td><td>Dynamic from module registry</td><td>Module-specific contexts (audio player, etc.)</td></tr>
+  <tr><td>9</td><td>KeyboardProvider</td><td>react-native-keyboard-controller</td><td>Keyboard avoidance + edge-to-edge</td></tr>
+  <tr><td>10</td><td>BottomSheetModalProvider</td><td>@gorhom/bottom-sheet</td><td>Bottom sheet modals</td></tr>
+</table>
+
+<div class="callout callout-warn">
+  <strong>Order matters.</strong> AuthProvider must be inside ThemeProvider (login screen needs colors). PusherProvider must be inside AuthProvider (needs auth token for private channels). ModuleProviders are inside both (modules may use auth + theme).
+</div>
+
+<!-- ================================================================== -->
+<h2 id="authentication">4. Authentication</h2>
+<!-- ================================================================== -->
+
+<h3>JWT Token Flow</h3>
+
+<div class="diagram">Login:
+  POST /tbc-ca/v1/auth/login { username, password }
+  &rarr; { access_token (1d), refresh_token (6mo), user }
+  &rarr; Stored in expo-secure-store
+  &rarr; Push token registered (non-blocking)
+
+Silent Refresh (on 401/403):
+  API client detects expired token
+  &rarr; POST /tbc-ca/v1/auth/refresh { refresh_token }
+  &rarr; New access_token stored
+  &rarr; Original request retried with _isRetry flag
+  &rarr; If refresh fails: clear auth, route to /login
+
+Logout:
+  Unregister push token &rarr; server-side session revoke
+  &rarr; Clear SecureStore (jwt, refresh, user)
+  &rarr; Clear AsyncStorage caches
+  &rarr; Module cleanup callbacks
+  &rarr; Pusher disconnect</div>
+
+<h3>SecureStore Keys</h3>
+<table>
+  <tr><th>Key</th><th>Contents</th></tr>
+  <tr><td><code>tbc_auth_jwt</code></td><td>Access token (Bearer)</td></tr>
+  <tr><td><code>tbc_auth_refresh</code></td><td>Refresh token</td></tr>
+  <tr><td><code>tbc_user_info</code></td><td>User profile (JSON string: id, username, email, avatar, displayName)</td></tr>
+</table>
+
+<h3>Auth Guard</h3>
+<p>The <code>RootLayoutNav</code> component in <span class="file-path">app/_layout.tsx</span> acts as a route guard:</p>
+<ul>
+  <li>Unauthenticated users can only access: <code>/login</code>, <code>/register</code>, <code>/forgot-password</code>, <code>/webview</code> (with <code>noAuth</code> param)</li>
+  <li>Authenticated users are redirected away from auth screens</li>
+  <li>Profile-incomplete users are redirected to <code>/profile-complete</code></li>
+  <li>The <code>/register</code> route stays accessible even after auth (for the avatar/bio completion step)</li>
+</ul>
+
+<h3>Key Files</h3>
+<table>
+  <tr><th>File</th><th>Role</th></tr>
+  <tr><td><span class="file-path">services/auth.ts</span></td><td>Token storage, silent refresh, credential management</td></tr>
+  <tr><td><span class="file-path">contexts/AuthContext.tsx</span></td><td>React context: login(), logout(), registerAndLogin(), user state</td></tr>
+  <tr><td><span class="file-path">services/api/registration.ts</span></td><td>Registration API (getFields, submit, resetPassword)</td></tr>
+  <tr><td><span class="file-path">services/api/otp.ts</span></td><td>OTP verification (send, verify, resend, voice call)</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="api-client">5. API Client</h2>
+<!-- ================================================================== -->
+
+<p>All HTTP requests go through a centralized client at <span class="file-path">services/api/client.ts</span>.</p>
+
+<h3>Request Pipeline</h3>
+<ol>
+  <li>Build URL with query params from the base URL</li>
+  <li>Attach Bearer token from <code>getAuthToken()</code></li>
+  <li>Set Content-Type (skip for FormData uploads)</li>
+  <li>20-second timeout via AbortController</li>
+  <li>Pre-flight connectivity check (NetInfo)</li>
+  <li>Send request, parse JSON response</li>
+</ol>
+
+<h3>Error Handling</h3>
+<ul>
+  <li><strong>401/403 with JWT codes</strong> &rarr; silent refresh + retry (one attempt, <code>_isRetry</code> flag prevents loops)</li>
+  <li><strong>Multiple error shapes normalized</strong> &mdash; handles <code>{ message: string | string[] }</code>, <code>{ code, message, data }</code>, plain strings</li>
+  <li><strong>Validation errors</strong> extracted from nested objects into flat field-keyed map</li>
+  <li><strong>Network errors</strong> caught and mapped to readable messages</li>
+</ul>
+
+<h3>Response Header Interceptor</h3>
+<p>Every authenticated response is scanned for custom headers that update app-wide state:</p>
+<table>
+  <tr><th>Header</th><th>Purpose</th><th>Consumer</th></tr>
+  <tr><td><code>X-TBC-Unread-Notifications</code></td><td>Notification badge count</td><td>UnreadCountsContext</td></tr>
+  <tr><td><code>X-TBC-Unread-Messages</code></td><td>Message badge count</td><td>UnreadCountsContext</td></tr>
+  <tr><td><code>X-TBC-Cart-Count</code></td><td>Cart item count</td><td>UnreadCountsContext</td></tr>
+  <tr><td><code>X-TBC-Maintenance</code></td><td>Maintenance mode flag</td><td>ThemeContext</td></tr>
+  <tr><td><code>X-TBC-Profile-Incomplete</code></td><td>Profile completion gate</td><td>AuthContext</td></tr>
+  <tr><td><code>X-TBC-Min-App-Version</code></td><td>Force update gate</td><td>ThemeContext</td></tr>
+</table>
+
+<h3>Exported Methods</h3>
+<pre><code>import { get, post, put, del, patch, request } from '@/services/api/client';
+
+// Standard CRUD
+const feeds = await get&lt;FeedsResponse&gt;('/feeds', { per_page: 20 });
+const result = await post&lt;CreateResponse&gt;('/feeds', { message: '...' });
+
+// Custom base URL (for non-Fluent endpoints)
+const config = await request&lt;AppConfig&gt;('/app-config', {
+  baseUrl: TBC_CA_URL,  // uses /tbc-ca/v1 instead of /fluent-community/v2
+});</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="data-fetching">6. Data Fetching</h2>
+<!-- ================================================================== -->
+
+<p>The app uses a <strong>stale-while-revalidate (SWR)</strong> pattern via <span class="file-path">hooks/useCachedData.ts</span>. Cached data renders instantly; fresh data loads in the background.</p>
+
+<h3>How It Works</h3>
+<div class="diagram">Mount:
+  1. Read AsyncStorage instantly (no loading spinner if cache exists)
+  2. Fetch fresh data in background
+  3. Update state + persist to AsyncStorage
+
+App Focus:
+  1. Check if data is older than staleTime
+  2. If stale: fetch fresh in background
+  3. If fresh: skip network call
+
+Pull-to-Refresh:
+  1. Always fetches fresh (ignores staleTime)
+  2. Shows refresh indicator
+
+Cross-Screen Invalidation:
+  1. Screen A mutates data
+  2. Emits cache event via invalidateOn key
+  3. Screen B (listening on same key) refetches silently</div>
+
+<h3>Usage</h3>
+<pre><code>const { data, isLoading, isRefreshing, error, refresh, mutate } = useCachedData({
+  cacheKey: 'tbc_space_members_general',
+  fetcher: () =&gt; getSpaceMembers('general'),
+  refreshOnFocus: true,
+  staleTime: 30000,  // skip network if fetched within 30s
+  invalidateOn: 'space_members_changed',  // cross-screen refresh
+});</code></pre>
+
+<h3>Batch Fresh Skip</h3>
+<p>When the startup batch pre-populates a widget's cache key, <code>useCachedData</code> skips its initial network fetch. This prevents duplicate requests on app boot.</p>
+<pre><code>// In useStartupData: writes to AsyncStorage + marks as batch-fresh
+await AsyncStorage.setItem('tbc_widget_enrolled_courses', JSON.stringify(courses));
+markBatchFresh(['tbc_widget_enrolled_courses']);
+
+// In the widget: useCachedData checks isBatchFresh() on mount
+// If batch-fresh, skip initial fetch — cache is already current</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="startup-batch">7. Startup Batch</h2>
+<!-- ================================================================== -->
+
+<p>A single HTTP request at <span class="file-path">hooks/useStartupData.ts</span> replaces ~12 individual calls on authenticated app start.</p>
+
+<h3>Batch Paths</h3>
+<table>
+  <tr><th>#</th><th>Path</th><th>Data</th><th>Distributed To</th></tr>
+  <tr><td>1</td><td><code>/tbc-ca/v1/app-config</code></td><td>Server config + visibility flags</td><td>ThemeContext, AppConfigContext</td></tr>
+  <tr><td>2</td><td><code>/fluent-community/v2/profile/{user}</code></td><td>Profile refresh (avatar, name)</td><td>AuthContext.updateUser()</td></tr>
+  <tr><td>3</td><td><code>/fluent-community/v2/notifications/unread</code></td><td>Unread notification count</td><td>UnreadCountsContext + OS badge</td></tr>
+  <tr><td>4</td><td><code>/fluent-community/v2/chat/unread_threads</code></td><td>Unread message threads</td><td>UnreadCountsContext</td></tr>
+  <tr><td>5</td><td><code>/fluent-community/v2/feeds/welcome-banner</code></td><td>Welcome widget data</td><td>AsyncStorage (widget cache)</td></tr>
+  <tr><td>6</td><td><code>/fluent-community/v2/courses?type=enrolled</code></td><td>Enrolled courses</td><td>AsyncStorage (widget cache)</td></tr>
+  <tr><td>7</td><td><code>/tbc-ca/v1/cart/count</code></td><td>Cart badge count</td><td>UnreadCountsContext</td></tr>
+</table>
+
+<div class="callout">
+  <strong>Modules don't use the batch.</strong> Module widgets (calendar, bookclub, etc.) self-fetch via <code>useCachedData</code> when they mount. This keeps the batch lean and avoids coupling modules to core startup.
+</div>
+
+<h3>Lifecycle</h3>
+<ul>
+  <li>Fires once per authentication (via <code>hasRun</code> ref)</li>
+  <li>Resets on logout so it re-fires on next login</li>
+  <li>If the batch fails, widgets fall back to their own fetching &mdash; no user-visible error</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="realtime">8. Real-Time (Pusher)</h2>
+<!-- ================================================================== -->
+
+<p>The app uses <strong>Pusher WebSockets</strong> for real-time chat. Config in <span class="file-path">constants/config.ts</span>, client in <span class="file-path">services/pusher.ts</span>, React context in <span class="file-path">contexts/PusherContext.tsx</span>.</p>
+
+<h3>Connection Flow</h3>
+<div class="diagram">Auth confirmed &rarr; initializePusher(userId)
+  &rarr; Create Pusher client with custom authorizer
+  &rarr; Subscribe to private-chat_user_{userId}
+  &rarr; Listen for 'message' + 'reaction' events
+
+Authorizer:
+  &rarr; Fetches fresh JWT each time (not closure-captured)
+  &rarr; POST /pusher/auth with socket_id + channel_name
+  &rarr; Returns { auth: string } for private channel access</div>
+
+<h3>Events</h3>
+<table>
+  <tr><th>Event</th><th>Payload</th><th>Handler</th></tr>
+  <tr><td><code>message</code></td><td><code>{ thread_id, message: ChatMessage }</code></td><td>Updates chat UI, increments unread count</td></tr>
+  <tr><td><code>reaction</code></td><td><code>{ message_id, thread_id, reactions }</code></td><td>Updates emoji reactions on messages</td></tr>
+</table>
+
+<h3>React Hooks</h3>
+<pre><code>// Subscribe to new messages in a specific thread
+useNewMessageListener((data) =&gt; {
+  if (data.thread_id === currentThreadId) {
+    appendMessage(data.message);
+  }
+});
+
+// Subscribe to reaction changes
+useReactionListener((data) =&gt; {
+  if (data.thread_id === currentThreadId) {
+    updateReactions(data.message_id, data.reactions);
+  }
+});</code></pre>
+
+<h3>Lifecycle</h3>
+<ul>
+  <li><strong>Connect:</strong> On auth confirmed (PusherContext effect)</li>
+  <li><strong>Reconnect:</strong> On app foreground (preserves existing handlers)</li>
+  <li><strong>Disconnect:</strong> On logout (clears all handlers)</li>
+  <li><strong>Ticker polling:</strong> Keeps <code>xprofile.last_activity</code> fresh so server sends real-time events (server skips broadcasts for users inactive >5 min)</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="routing">9. Routing &amp; Navigation</h2>
+<!-- ================================================================== -->
+
+<p>The app uses <strong>Expo Router</strong> (file-based routing). Every file in <span class="file-path">app/</span> is a route.</p>
+
+<h3>Route Map</h3>
+<table>
+  <tr><th>Route</th><th>Screen</th><th>Auth Required</th></tr>
+  <tr><td><code>/login</code></td><td>Login</td><td>No</td></tr>
+  <tr><td><code>/register</code></td><td>Multi-step registration</td><td>No (stays accessible post-auth for avatar step)</td></tr>
+  <tr><td><code>/forgot-password</code></td><td>OTP-based password reset</td><td>No</td></tr>
+  <tr><td><code>/(tabs)</code></td><td>Home (bottom tab container)</td><td>Yes</td></tr>
+  <tr><td><code>/(tabs)/activity</code></td><td>Activity / Notifications feed</td><td>Yes</td></tr>
+  <tr><td><code>/(tabs)/spaces</code></td><td>Spaces directory</td><td>Yes</td></tr>
+  <tr><td><code>/feed/[id]</code></td><td>Single post view</td><td>Yes</td></tr>
+  <tr><td><code>/create-post</code></td><td>Post composer (modal)</td><td>Yes</td></tr>
+  <tr><td><code>/space/[slug]</code></td><td>Space detail + feed</td><td>Yes</td></tr>
+  <tr><td><code>/space/[slug]/members</code></td><td>Space member list</td><td>Yes</td></tr>
+  <tr><td><code>/profile/[username]</code></td><td>User profile</td><td>Yes</td></tr>
+  <tr><td><code>/profile/edit</code></td><td>Edit own profile</td><td>Yes</td></tr>
+  <tr><td><code>/messages</code></td><td>Chat thread list</td><td>Yes</td></tr>
+  <tr><td><code>/messages/user/[userId]</code></td><td>Chat conversation</td><td>Yes</td></tr>
+  <tr><td><code>/courses</code></td><td>Course catalog</td><td>Yes</td></tr>
+  <tr><td><code>/courses/[slug]</code></td><td>Course detail</td><td>Yes</td></tr>
+  <tr><td><code>/courses/[slug]/lesson/[lessonSlug]</code></td><td>Lesson view</td><td>Yes</td></tr>
+  <tr><td><code>/directory</code></td><td>Member directory</td><td>Yes</td></tr>
+  <tr><td><code>/bookmarks</code></td><td>Saved posts</td><td>Yes</td></tr>
+  <tr><td><code>/notifications</code></td><td>Notification list</td><td>Yes</td></tr>
+  <tr><td><code>/webview</code></td><td>In-app browser (cart, policies)</td><td>Configurable</td></tr>
+</table>
+
+<h3>Deep Links &amp; Push Notifications</h3>
+<p>Universal links and push notification taps are handled in <span class="file-path">app/_layout.tsx</span>:</p>
+<ul>
+  <li>Deep links are <strong>queued</strong> until auth state is determined</li>
+  <li>Route validation checks against known routes + module <code>routePrefixes</code></li>
+  <li>Parameters are sanitized before navigation</li>
+  <li>Modules can intercept push notifications via <code>notificationHandler</code> in their manifest</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="module-system">10. Module System</h2>
+<!-- ================================================================== -->
+
+<p>Self-contained features that plug into the app without touching core code. Each module registers a <strong>manifest</strong> declaring what it provides.</p>
+
+<h3>Module Manifest</h3>
+<pre><code>// modules/yourmodule/module.ts
+import type { ModuleManifest } from '@/modules/_types';
+
+export const YourModule: ModuleManifest = {
+  id: 'yourmodule',
+  name: 'Your Module',
+  version: '1.0.0',
+
+  // Optional registrations:
+  tab: { ... },              // Bottom tab
+  widgets: [{ ... }],        // Home screen widgets
+  providers: [{ ... }],      // Context providers
+  menuItems: [{ ... }],      // User menu items
+  headerIcons: [{ ... }],    // Top header icons
+  tabBarAddon: MiniPlayer,   // Tab bar addon (audio player, cart bar)
+  routePrefixes: ['/yourmodule'], // For push/deep link routing
+  companionPlugin: 'tbc-yourplugin', // WordPress plugin slug
+
+  onInit: () =&gt; { ... },     // Called after auth confirmed
+  onCleanup: () =&gt; { ... },  // Called on logout
+  notificationHandler: (data, router) =&gt; { ... }, // Push handler
+};</code></pre>
+
+<h3>Enabling a Module</h3>
+<pre><code>// modules/_registry.ts
+import { YourModule } from './yourmodule/module';
+
+export const MODULES: ModuleManifest[] = [
+  YourModule,       // Add one line to enable
+  // OtherModule,   // Comment out to disable
+];</code></pre>
+
+<h3>How Core Consumes Modules</h3>
+<table>
+  <tr><th>Registration</th><th>Where It's Used</th></tr>
+  <tr><td><code>tab</code></td><td>Tab bar renders module tabs (sorted by order)</td></tr>
+  <tr><td><code>widgets</code></td><td>Home screen renders widget components</td></tr>
+  <tr><td><code>providers</code></td><td>_layout.tsx wraps app with module providers</td></tr>
+  <tr><td><code>menuItems</code></td><td>User menu includes module items</td></tr>
+  <tr><td><code>headerIcons</code></td><td>Top header shows module icons</td></tr>
+  <tr><td><code>tabBarAddon</code></td><td>Stacked above tab bar (mini players, etc.)</td></tr>
+  <tr><td><code>routePrefixes</code></td><td>Validated for push notification routing</td></tr>
+  <tr><td><code>notificationHandler</code></td><td>Called first for module-specific push notifications</td></tr>
+</table>
+
+<h3>Route Stubs</h3>
+<p>If a module has a tab, it needs a one-line route stub in <span class="file-path">app/(tabs)/</span>:</p>
+<pre><code>// app/(tabs)/yourmodule.tsx
+export { default } from '@/modules/yourmodule/screens/YourModuleScreen';</code></pre>
+
+<div class="callout callout-warn">
+  <strong>Modules must be self-contained.</strong> Don't import from modules into core code. Core provides hooks and utilities that modules can use, not the other way around.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="theme-system">11. Theme System</h2>
+<!-- ================================================================== -->
+
+<p>Colors are synced from the WordPress site's <strong>Fluent Community</strong> color scheme. The app always matches the web portal's look.</p>
+
+<h3>Color Flow</h3>
+<div class="diagram">Fluent Community admin (WordPress)
+  &darr; saves color scheme
+tbc-community-app plugin (PHP)
+  &darr; exposes via REST API
+GET /tbc-ca/v1/app-config (public, no auth)
+  &darr; returns light + dark color tokens
+services/api/theme.ts &rarr; mapFluentToAppColors()
+  &darr; maps Fluent keys to app tokens
+ThemeContext &rarr; caches in AsyncStorage
+  &darr; provides via useTheme() hook
+Components use colors.primary, colors.surface, etc.</div>
+
+<h3>Token Categories</h3>
+<p><strong>Server-synced tokens</strong> (from Fluent Community):</p>
+<ul>
+  <li><strong>Surface/Background:</strong> <code>surface</code>, <code>background</code>, <code>backgroundSecondary</code>, <code>activeBg</code>, <code>lightBg</code>, <code>deepBg</code>, <code>highlightBg</code></li>
+  <li><strong>Text:</strong> <code>text</code>, <code>textSecondary</code>, <code>textTertiary</code>, <code>textInverse</code></li>
+  <li><strong>Accent:</strong> <code>primary</code>, <code>primaryDark</code></li>
+  <li><strong>Border:</strong> <code>border</code>, <code>borderLight</code></li>
+  <li><strong>Tab Bar:</strong> <code>tabBar.background</code>, <code>tabBar.border</code>, <code>tabBar.active</code>, <code>tabBar.inactive</code></li>
+</ul>
+
+<p><strong>App-only tokens</strong> (local defaults, not from server):</p>
+<ul>
+  <li><strong>Semantic:</strong> <code>success</code>/<code>successLight</code>, <code>error</code>/<code>errorLight</code>, <code>warning</code>/<code>warningLight</code>, <code>info</code>/<code>infoLight</code></li>
+  <li><strong>Special:</strong> <code>overlay</code> (modal backdrops)</li>
+</ul>
+
+<h3>Usage Rules</h3>
+<pre><code>// Always use the hook
+const { colors } = useTheme();
+
+// GOOD
+backgroundColor: colors.primary
+color: colors.textInverse        // text on colored buttons
+borderColor: colors.border
+
+// BAD
+backgroundColor: '#6366F1'      // hardcoded color
+color: '#fff'                    // use colors.textInverse
+borderColor: '#e5e7eb'           // use colors.border
+
+// For transparent variants
+import { withOpacity } from '@/constants/colors';
+backgroundColor: withOpacity(colors.primary, 0.12)  // light brand tint</code></pre>
+
+<p>Full token mapping in <a href="components.html#theme-system">Component Reference &rsaquo; Theme System</a>.</p>
+
+<!-- ================================================================== -->
+<h2 id="state-management">12. State Management</h2>
+<!-- ================================================================== -->
+
+<p>The app uses <strong>React contexts + hooks</strong> &mdash; no Redux, no Zustand, no external state library.</p>
+
+<h3>State Layers</h3>
+<table>
+  <tr><th>Layer</th><th>Pattern</th><th>Examples</th></tr>
+  <tr><td>Global (app-wide)</td><td>React Context</td><td>Auth, Theme, AppConfig, UnreadCounts, Pusher</td></tr>
+  <tr><td>Screen (persisted)</td><td>useCachedData hook</td><td>Feed lists, space members, courses, widget data</td></tr>
+  <tr><td>Screen (ephemeral)</td><td>useState / useRef</td><td>Form inputs, modals, scroll position</td></tr>
+  <tr><td>Cross-screen sync</td><td>Cache events</td><td>Post created &rarr; feed refreshes, member followed &rarr; list updates</td></tr>
+  <tr><td>Real-time</td><td>Pusher event handlers</td><td>New chat message, reaction update</td></tr>
+  <tr><td>Persistent</td><td>AsyncStorage</td><td>Cached API responses, widget preferences, theme preference</td></tr>
+  <tr><td>Secure</td><td>expo-secure-store</td><td>JWT tokens, user credentials</td></tr>
+</table>
+
+<h3>Cross-Screen Invalidation</h3>
+<p>When one screen mutates data, other screens listening on the same cache event key automatically refresh:</p>
+<pre><code>// Screen A: create a post
+await createFeed(data);
+emitCacheEvent('feeds_changed');  // tell other screens
+
+// Screen B: useCachedData with invalidateOn
+useCachedData({
+  cacheKey: 'space_feed_general',
+  fetcher: () =&gt; getSpaceFeeds('general'),
+  invalidateOn: 'feeds_changed',  // auto-refetch when event fires
+});</code></pre>
+
+<div class="callout callout-success">
+  <strong>No global store.</strong> The SWR pattern + cache events handle 95% of cross-screen data sync. Pusher handles the remaining 5% (real-time chat). This keeps the architecture simple and avoids the overhead of a state management library.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="key-files">13. Key Files Reference</h2>
+<!-- ================================================================== -->
+
+<h3>Entry &amp; Layout</h3>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">app/_layout.tsx</span></td><td>Root layout: provider stack, auth guard, deep links, startup</td></tr>
+  <tr><td><span class="file-path">app/(tabs)/_layout.tsx</span></td><td>Tab bar layout with module tabs</td></tr>
+</table>
+
+<h3>Services</h3>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">services/auth.ts</span></td><td>JWT storage, silent refresh, credential management</td></tr>
+  <tr><td><span class="file-path">services/api/client.ts</span></td><td>HTTP client: requests, retry, error normalization, headers</td></tr>
+  <tr><td><span class="file-path">services/api/batch.ts</span></td><td>Batch request helper (multiple paths in one HTTP call)</td></tr>
+  <tr><td><span class="file-path">services/api/moderation.ts</span></td><td>Content reporting (POST /moderation/report via FC Pro)</td></tr>
+  <tr><td><span class="file-path">services/pusher.ts</span></td><td>Pusher WebSocket client</td></tr>
+  <tr><td><span class="file-path">services/push.ts</span></td><td>Push notification registration + OS badge sync</td></tr>
+  <tr><td><span class="file-path">services/cacheRegistry.ts</span></td><td>Cache invalidation events + clear-all on logout</td></tr>
+</table>
+
+<h3>Contexts</h3>
+<table>
+  <tr><th>File</th><th>State</th></tr>
+  <tr><td><span class="file-path">contexts/AuthContext.tsx</span></td><td>User, isAuthenticated, login/logout/register</td></tr>
+  <tr><td><span class="file-path">contexts/ThemeContext.tsx</span></td><td>Colors, dark mode, branding, maintenance, force update</td></tr>
+  <tr><td><span class="file-path">contexts/AppConfigContext.tsx</span></td><td>Feature flags, visibility config</td></tr>
+  <tr><td><span class="file-path">contexts/UnreadCountsContext.tsx</span></td><td>Badge counts: notifications, messages, cart</td></tr>
+  <tr><td><span class="file-path">contexts/PusherContext.tsx</span></td><td>WebSocket connection, event subscriptions</td></tr>
+  <tr><td><span class="file-path">contexts/FeedModalsContext.tsx</span></td><td>Shared feed modals: menu, reaction picker, breakdown, media viewer, report (1 instance per provider, not per card)</td></tr>
+</table>
+
+<h3>Hooks</h3>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">hooks/useCachedData.ts</span></td><td>Stale-while-revalidate data fetching + caching</td></tr>
+  <tr><td><span class="file-path">hooks/useStartupData.ts</span></td><td>Startup batch: 7 API paths in one request</td></tr>
+  <tr><td><span class="file-path">hooks/useFeedActions.ts</span></td><td>Feed CRUD: react, bookmark, pin, edit, delete</td></tr>
+  <tr><td><span class="file-path">hooks/useChatMessages.ts</span></td><td>Chat: messages, pagination, optimistic send, Pusher sync</td></tr>
+  <tr><td><span class="file-path">hooks/useOtpVerification.ts</span></td><td>Shared OTP state: code, timer, verify, resend, voice call</td></tr>
+  <tr><td><span class="file-path">hooks/useTickerPolling.ts</span></td><td>Background polling for unread counts + activity ping</td></tr>
+</table>
+
+<h3>Constants &amp; Config</h3>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">constants/config.ts</span></td><td>Site URL, API endpoints, Pusher keys, feature flags</td></tr>
+  <tr><td><span class="file-path">constants/layout.ts</span></td><td>Design tokens: spacing, sizing, typography, shadows</td></tr>
+  <tr><td><span class="file-path">constants/colors.ts</span></td><td>Color definitions, Fluent-to-app token map, withOpacity()</td></tr>
+</table>
+
+<h3>Module Infrastructure</h3>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">modules/_types.ts</span></td><td>ModuleManifest interface definition</td></tr>
+  <tr><td><span class="file-path">modules/_registry.ts</span></td><td>Active module list + derived registrations</td></tr>
+</table>
+
+<h3>Types</h3>
+<table>
+  <tr><th>File</th><th>Types</th></tr>
+  <tr><td><span class="file-path">types/user.ts</span></td><td>AuthUser, Profile, XProfile</td></tr>
+  <tr><td><span class="file-path">types/feed.ts</span></td><td>Feed, ReactionType, reaction breakdown</td></tr>
+  <tr><td><span class="file-path">types/message.ts</span></td><td>ChatMessage, Thread, CreateThreadRequest</td></tr>
+  <tr><td><span class="file-path">types/space.ts</span></td><td>Space, SpaceGroup, membership</td></tr>
+  <tr><td><span class="file-path">types/comment.ts</span></td><td>Comment, reply threading</td></tr>
+  <tr><td><span class="file-path">types/course.ts</span></td><td>Course, Lesson, enrollment</td></tr>
+  <tr><td><span class="file-path">types/notification.ts</span></td><td>Notification types + push payload</td></tr>
+  <tr><td><span class="file-path">types/api.ts</span></td><td>ApiError, ApiResponse</td></tr>
+</table>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  Architecture
+</p>
+
+</body>
+</html>

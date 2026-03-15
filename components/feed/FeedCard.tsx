@@ -2,13 +2,12 @@
 // FEED CARD - A single post/feed item in the list
 // =============================================================================
 // - Bookmark icon
-// - 3-dot menu: Copy Link, Pin (admin), Edit (owner), Delete (owner)
+// - 3-dot menu: Copy Link, Pin (admin), Edit (owner), Delete (owner), Report (non-owner)
 // - Sticky badge for pinned posts
 // =============================================================================
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   StyleSheet,
   Text,
@@ -18,19 +17,16 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
-import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
+import { hapticLight, hapticMedium } from '@/utils/haptics';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 import { VideoPlayer } from '@/components/media/VideoPlayer';
 import { PlayButtonOverlay } from '@/components/media/PlayButtonOverlay';
-import { MediaViewer } from '@/components/media/MediaViewer';
-import { ReactionPicker } from './ReactionPicker';
-import { ReactionBreakdownModal } from './ReactionBreakdownModal';
 import { ReactionIcon } from './ReactionIcon';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
+import { useFeedModals } from '@/contexts/FeedModalsContext';
 import { shadows, sizing, spacing, typography } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { Feed, ReactionType } from '@/types/feed';
@@ -39,11 +35,8 @@ import { formatCompactNumber } from '@/utils/formatNumber';
 import { stripHtmlTags } from '@/utils/htmlToText';
 import { HtmlContent } from '@/components/common/HtmlContent';
 import { useAuth } from '@/contexts/AuthContext';
-import { SITE_URL } from '@/constants/config';
 import { extractYouTubeId } from '@/utils/youtube';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
-import { DropdownMenu } from '@/components/common/DropdownMenu';
-import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { SurveyCard } from '@/components/feed/SurveyCard';
 
 // -----------------------------------------------------------------------------
@@ -158,17 +151,9 @@ export const FeedCard = React.memo(function FeedCard({
   const [isBookmarked, setIsBookmarked] = useState(feed.bookmarked || false);
   useEffect(() => { setIsBookmarked(feed.bookmarked || false); }, [feed.bookmarked]);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [showMediaViewer, setShowMediaViewer] = useState(false);
-  const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
-  const [showReactionPicker, setShowReactionPicker] = useState(false);
-  const [showBreakdown, setShowBreakdown] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | undefined>();
-  const [reactionAnchor, setReactionAnchor] = useState<{ top: number; left: number } | undefined>();
+  const { openMenu, openReactionPicker, openReactionBreakdown, openMediaViewer } = useFeedModals();
   const menuButtonRef = useRef<View>(null);
   const reactionButtonRef = useRef<View>(null);
-  const longPressTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  
   // Extract data
   const author = feed.xprofile;
   const authorName = author?.display_name || 'Unknown';
@@ -228,60 +213,22 @@ export const FeedCard = React.memo(function FeedCard({
     onBookmarkToggle?.(newState);
   };
 
-  const handleCopyLink = async () => {
-    const url = `${SITE_URL}/portal/post/${feed.slug}`;
-    try {
-      await Clipboard.setStringAsync(url);
-      Alert.alert('Copied!', 'Link copied to clipboard');
-    } catch (err) {
-      Alert.alert('Link', url);
-    }
-  };
-
-  // Build menu items for Android DropdownMenu
-  const getMenuItems = (): DropdownMenuItem[] => {
-    const items: DropdownMenuItem[] = [
-      { key: 'copy', label: 'Copy Link', icon: 'link-outline', onPress: () => { setShowMenu(false); handleCopyLink(); } },
-    ];
-
-    if (canPin) {
-      items.push({
-        key: 'pin',
-        label: isSticky ? 'Unpin from Top' : 'Pin to Top',
-        icon: 'pin-outline',
-        onPress: () => { setShowMenu(false); onPin?.(); },
-      });
-    }
-
-    if (canEditOrDelete) {
-      items.push(
-        { key: 'edit', label: 'Edit', icon: 'create-outline', onPress: () => { setShowMenu(false); onEdit?.(); } },
-        { key: 'delete', label: 'Delete', icon: 'trash-outline', onPress: () => { setShowMenu(false); handleDelete(); }, destructive: true },
-      );
-    }
-
-    return items;
-  };
-
   const handleMenuPress = () => {
     hapticLight();
     (menuButtonRef.current as any)?.measureInWindow?.((x: number, y: number, width: number, height: number) => {
       const screenWidth = Dimensions.get('window').width;
-      setMenuAnchor({ top: y + height + 4, right: screenWidth - x - width });
-      setShowMenu(true);
+      openMenu({
+        feed,
+        anchor: { top: y + height + 4, right: screenWidth - x - width },
+        isOwner,
+        canEditOrDelete,
+        canPin,
+        isSticky,
+        onEdit,
+        onDelete,
+        onPin,
+      });
     });
-  };
-
-  const handleDelete = () => {
-    hapticWarning();
-    Alert.alert(
-      'Delete Post',
-      'Are you sure you want to delete this post?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: onDelete },
-      ]
-    );
   };
 
   // ---------------------------------------------------------------------------
@@ -411,8 +358,10 @@ export const FeedCard = React.memo(function FeedCard({
           <AnimatedPressable
             key={index}
             onPress={() => {
-              setMediaViewerIndex(index);
-              setShowMediaViewer(true);
+              const allImages = media.type === 'images' && media.imageUrls
+                ? media.imageUrls.map((u) => ({ url: u }))
+                : media.imageUrl ? [{ url: media.imageUrl }] : [];
+              openMediaViewer({ images: allImages, initialIndex: index });
             }}
             style={style}
           >
@@ -567,8 +516,11 @@ export const FeedCard = React.memo(function FeedCard({
             onLongPress={() => {
               hapticMedium();
               (reactionButtonRef.current as any)?.measureInWindow?.((x: number, y: number, width: number, height: number) => {
-                setReactionAnchor({ top: y, left: x + width / 2 });
-                setShowReactionPicker(true);
+                openReactionPicker({
+                  anchor: { top: y, left: x + width / 2 },
+                  currentType: userReactionType,
+                  onSelect: (type) => onReact?.(type),
+                });
               });
             }}
             delayLongPress={400}
@@ -603,7 +555,7 @@ export const FeedCard = React.memo(function FeedCard({
         {reactionBreakdown.length > 0 && reactionsCount > 0 && (
           <Pressable
             style={styles.footerRight}
-            onPress={() => setShowBreakdown(true)}
+            onPress={() => openReactionBreakdown({ objectType: 'feed', objectId: feed.id })}
           >
             <View style={styles.reactionEmojiStack}>
               {reactionBreakdown.slice(0, display.count).map((item, i) => (
@@ -631,46 +583,6 @@ export const FeedCard = React.memo(function FeedCard({
         )}
       </View>
 
-      {/* ===== Reaction Picker Modal ===== */}
-      <ReactionPicker
-        visible={showReactionPicker}
-        onSelect={(type) => onReact?.(type)}
-        onClose={() => setShowReactionPicker(false)}
-        currentType={userReactionType}
-        anchor={reactionAnchor}
-      />
-
-      {/* ===== Reaction Breakdown Modal ===== */}
-      <ReactionBreakdownModal
-        visible={showBreakdown}
-        onClose={() => setShowBreakdown(false)}
-        objectType="feed"
-        objectId={feed.id}
-      />
-
-      {/* ===== Media Viewer Overlay ===== */}
-      {hasImage && (
-        <MediaViewer
-          visible={showMediaViewer}
-          images={
-            media.type === 'images' && media.imageUrls
-              ? media.imageUrls.map((url) => ({ url }))
-              : media.imageUrl
-              ? [{ url: media.imageUrl }]
-              : []
-          }
-          initialIndex={mediaViewerIndex}
-          onClose={() => setShowMediaViewer(false)}
-        />
-      )}
-
-      {/* ===== Post Options Menu ===== */}
-      <DropdownMenu
-        visible={showMenu}
-        onClose={() => setShowMenu(false)}
-        items={getMenuItems()}
-        anchor={menuAnchor}
-      />
     </View>
   );
 });
