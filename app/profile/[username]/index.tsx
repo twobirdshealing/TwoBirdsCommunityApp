@@ -23,6 +23,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { withOpacity } from '@/constants/colors';
 import { FEATURES } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -32,6 +33,7 @@ import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { profilesApi, patchProfileMedia } from '@/services/api/profiles';
 import { commentsApi } from '@/services/api/comments';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
+import { hapticLight } from '@/utils/haptics';
 import { Profile, ProfileComment } from '@/types/user';
 import { Feed } from '@/types/feed';
 import { Space } from '@/types/space';
@@ -112,6 +114,7 @@ export default function UserProfileScreen() {
 
   // Derived state from profile data
   const isFollowing = (profile?.follow || 0) > 0;
+  const isEmailNotifyOn = profile?.follow === 2;
   const isBlocked = profile?.is_blocked_by_you === true;
 
   // ---------------------------------------------------------------------------
@@ -338,6 +341,19 @@ export default function UserProfileScreen() {
       Alert.alert('Error', 'Failed to update follow status');
     } finally {
       setFollowLoading(false);
+    }
+  };
+
+  const handleEmailNotifyToggle = async () => {
+    if (!username || !isFollowing) return;
+    hapticLight();
+    const newLevel = isEmailNotifyOn ? 1 : 2;
+    mutate(prev => prev ? { ...prev, follow: newLevel } : prev);
+    try {
+      await profilesApi.toggleFollowNotification(username);
+    } catch (err) {
+      log.error('Toggle email notification failed:', err);
+      mutate(prev => prev ? { ...prev, follow: isEmailNotifyOn ? 2 : 1 } : prev);
     }
   };
 
@@ -568,8 +584,28 @@ export default function UserProfileScreen() {
                 )}
               </Pressable>
 
+              {isFollowing && (
+                <Pressable
+                  style={[
+                    styles.notifyButton,
+                    { backgroundColor: isEmailNotifyOn ? withOpacity(themeColors.primary, 0.12) : themeColors.backgroundSecondary },
+                  ]}
+                  onPress={handleEmailNotifyToggle}
+                >
+                  <Ionicons
+                    name={isEmailNotifyOn ? 'notifications' : 'notifications-outline'}
+                    size={18}
+                    color={isEmailNotifyOn ? themeColors.primary : themeColors.text}
+                  />
+                  <Text style={[styles.notifyButtonText, { color: isEmailNotifyOn ? themeColors.primary : themeColors.text }]}>
+                    Notify
+                  </Text>
+                </Pressable>
+              )}
+
               <Pressable style={[styles.messageButton, { backgroundColor: themeColors.backgroundSecondary }]} onPress={handleMessagePress}>
-                <Ionicons name="chatbubble-outline" size={20} color={themeColors.text} />
+                <Ionicons name="chatbubble-outline" size={18} color={themeColors.text} />
+                <Text style={[styles.notifyButtonText, { color: themeColors.text }]}>Chat</Text>
               </Pressable>
             </>
           )}
@@ -583,7 +619,7 @@ export default function UserProfileScreen() {
         onTabChange={setActiveTab}
       />
     </>
-  ), [profile, isOwnProfile, avatarUploading, isBlocked, isFollowing, followLoading, blockLoading, visibleTabs, activeTab, themeColors]);
+  ), [profile, isOwnProfile, avatarUploading, isBlocked, isFollowing, isEmailNotifyOn, followLoading, blockLoading, visibleTabs, activeTab, themeColors]);
 
   // ---------------------------------------------------------------------------
   // Render: Loading
@@ -903,12 +939,29 @@ const styles = StyleSheet.create({
 
   followingButtonText: {},
 
-  messageButton: {
-    width: 44,
-    height: 44,
-    borderRadius: sizing.touchTarget / 2,
-    justifyContent: 'center',
+  notifyButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+    paddingHorizontal: spacing.md,
+    borderRadius: sizing.touchTarget / 2,
+    gap: 4,
+  },
+
+  notifyButtonText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+
+  messageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+    paddingHorizontal: spacing.md,
+    borderRadius: sizing.touchTarget / 2,
+    gap: 4,
   },
 
   restrictedContainer: {

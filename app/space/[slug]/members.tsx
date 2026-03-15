@@ -67,7 +67,7 @@ export default function SpaceMembersScreen() {
   const [hasMore, setHasMore] = useState(true);
 
   // Follow state
-  const { followMap, setFollowMap, followLoadingMap, handleFollowPress, isFollowing, isFollowLoading } = useFollowToggle();
+  const { followMap, setFollowMap, followLoadingMap, handleFollowPress, handleNotifyPress, isFollowing, isNotifyOn, isFollowLoading } = useFollowToggle();
 
   // ---------------------------------------------------------------------------
   // Sorted members (admins/facilitators first)
@@ -262,7 +262,9 @@ export default function SpaceMembersScreen() {
                     onPress={handleMemberPress}
                     onMessagePress={isSelf ? undefined : handleMessagePress}
                     onFollowPress={isSelf ? undefined : handleFollowPress}
+                    onNotifyPress={isSelf ? undefined : handleNotifyPress}
                     isFollowing={isFollowing(memberId)}
+                    isNotifyOn={isNotifyOn(memberId)}
                     followLoading={isFollowLoading(memberId)}
                     showRole={true}
                     showBio={true}

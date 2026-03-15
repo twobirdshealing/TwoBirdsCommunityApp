@@ -46,8 +46,34 @@ export function useFollowToggle() {
     }
   }, [followMap]);
 
+  const handleNotifyPress = useCallback(async (member: MemberCardData) => {
+    const memberId = Number(member.xprofile?.user_id || member.user_id);
+    const username = member.xprofile?.username || member.username;
+    if (!username || !memberId) return;
+
+    const currentLevel = followMap[memberId] || 0;
+    if (currentLevel < 1) return; // must be following
+
+    const newLevel = currentLevel === 2 ? 1 : 2;
+
+    try {
+      await optimisticUpdate(
+        setFollowMap,
+        prev => ({ ...prev, [memberId]: newLevel }),
+        () => profilesApi.toggleFollowNotification(username),
+      );
+    } catch (err) {
+      log.error('Toggle notification error:', err);
+    }
+  }, [followMap]);
+
   const isFollowing = useCallback(
     (userId: number) => (followMap[userId] || 0) > 0,
+    [followMap]
+  );
+
+  const isNotifyOn = useCallback(
+    (userId: number) => followMap[userId] === 2,
     [followMap]
   );
 
@@ -61,7 +87,9 @@ export function useFollowToggle() {
     setFollowMap,
     followLoadingMap,
     handleFollowPress,
+    handleNotifyPress,
     isFollowing,
+    isNotifyOn,
     isFollowLoading,
   };
 }

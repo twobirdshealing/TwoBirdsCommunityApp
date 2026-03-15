@@ -73,7 +73,7 @@ export default function ChurchDirectoryScreen() {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Follow state
-  const { followMap, setFollowMap, followLoadingMap, handleFollowPress, isFollowing, isFollowLoading } = useFollowToggle();
+  const { followMap, setFollowMap, followLoadingMap, handleFollowPress, handleNotifyPress, isFollowing, isNotifyOn, isFollowLoading } = useFollowToggle();
 
   // ---------------------------------------------------------------------------
   // Fetch Members
@@ -280,7 +280,9 @@ export default function ChurchDirectoryScreen() {
                   onPress={handleMemberPress}
                   onMessagePress={isSelf ? undefined : handleMessagePress}
                   onFollowPress={isSelf ? undefined : handleFollowPress}
+                  onNotifyPress={isSelf ? undefined : handleNotifyPress}
                   isFollowing={isFollowing(memberId)}
+                  isNotifyOn={isNotifyOn(memberId)}
                   followLoading={isFollowLoading(memberId)}
                   showRole={false}
                   showBio={true}

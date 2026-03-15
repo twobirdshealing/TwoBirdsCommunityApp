@@ -22,6 +22,7 @@ import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Button } from '@/components/common/Button';
 import { spacing, sizing, typography } from '@/constants/layout';
+import { withOpacity } from '@/constants/colors';
 import { hapticLight, hapticMedium } from '@/utils/haptics';
 import { getProviderIcon } from '@/services/api/socialProviders';
 import { useSocialProviders } from '@/hooks/useSocialProviders';
@@ -68,7 +69,9 @@ interface MemberCardProps {
   onPress?: (member: MemberCardData) => void;
   onMessagePress?: (member: MemberCardData) => void;
   onFollowPress?: (member: MemberCardData) => void;
+  onNotifyPress?: (member: MemberCardData) => void;
   isFollowing?: boolean;
+  isNotifyOn?: boolean;
   followLoading?: boolean;
   showRole?: boolean;
   showBio?: boolean;
@@ -131,7 +134,9 @@ export const MemberCard = React.memo(function MemberCard({
   onPress,
   onMessagePress,
   onFollowPress,
+  onNotifyPress,
   isFollowing = false,
+  isNotifyOn = false,
   followLoading = false,
   showRole = true,
   showBio = true,
@@ -254,13 +259,29 @@ export const MemberCard = React.memo(function MemberCard({
             />
           )}
 
+          {/* Email Notify Bell (only when following) */}
+          {isFollowing && onNotifyPress && (
+            <Button
+              title="Notify"
+              icon={isNotifyOn ? 'notifications' : 'notifications-outline'}
+              variant="secondary"
+              size="sm"
+              onPress={() => { hapticLight(); onNotifyPress(member); }}
+              iconColor={isNotifyOn ? themeColors.primary : undefined}
+              textStyle={isNotifyOn ? { color: themeColors.primary } : undefined}
+              style={[styles.actionPill, isNotifyOn && { backgroundColor: withOpacity(themeColors.primary, 0.12), borderColor: 'transparent' }]}
+            />
+          )}
+
           {/* Message Button */}
           {onMessagePress && (
             <Button
+              title="Chat"
               icon="chatbubble-outline"
-              iconOnly
               variant="secondary"
+              size="sm"
               onPress={() => { hapticLight(); onMessagePress(member); }}
+              style={styles.actionPill}
             />
           )}
         </View>
@@ -390,6 +411,10 @@ const styles = StyleSheet.create({
   },
 
   followButton: {
+    borderRadius: sizing.height.buttonSmall / 2,
+  },
+
+  actionPill: {
     borderRadius: sizing.height.buttonSmall / 2,
   },
 });

@@ -96,7 +96,7 @@ export default function ConnectionsScreen() {
   const [followingState, setFollowingState] = useState<TabState>({ ...INITIAL_TAB_STATE });
   const [followersState, setFollowersState] = useState<TabState>({ ...INITIAL_TAB_STATE });
 
-  const { followMap, setFollowMap, handleFollowPress, isFollowing, isFollowLoading } = useFollowToggle();
+  const { followMap, setFollowMap, handleFollowPress, handleNotifyPress, isFollowing, isNotifyOn, isFollowLoading } = useFollowToggle();
 
   // ---------------------------------------------------------------------------
   // State helpers
@@ -286,7 +286,9 @@ export default function ConnectionsScreen() {
                   onPress={handleMemberPress}
                   onMessagePress={isSelf ? undefined : handleMessagePress}
                   onFollowPress={isSelf ? undefined : handleFollowPress}
+                  onNotifyPress={isSelf ? undefined : handleNotifyPress}
                   isFollowing={isFollowing(memberId)}
+                  isNotifyOn={isNotifyOn(memberId)}
                   followLoading={isFollowLoading(memberId)}
                   showRole={false}
                   showBio={true}

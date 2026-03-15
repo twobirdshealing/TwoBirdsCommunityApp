@@ -45,6 +45,8 @@ export interface ButtonProps extends Omit<AnimatedPressableProps, 'style'> {
   icon?: keyof typeof Ionicons.glyphMap;
   /** Render as circular icon-only button (title hidden) */
   iconOnly?: boolean;
+  /** Override icon color */
+  iconColor?: string;
   /** Override container style */
   style?: StyleProp<ViewStyle>;
   /** Override text style */
@@ -63,6 +65,7 @@ export function Button({
   disabled = false,
   icon,
   iconOnly = false,
+  iconColor,
   style,
   textStyle,
   ...pressableProps
@@ -128,7 +131,7 @@ export function Button({
             <Ionicons
               name={icon}
               size={iconSize}
-              color={variantStyles.text}
+              color={iconColor || variantStyles.text}
               style={!iconOnly ? styles.iconGap : undefined}
             />
           )}
