@@ -7,6 +7,9 @@
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
 import { DiscoverSpacesResponse, JoinSpaceResponse, MembersListResponse, SpaceDetailResponse, SpaceGroupOptionsResponse, SpaceGroupsResponse, SpacesResponse } from '@/types/space';
 import { get, post } from './client';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('SpacesAPI');
 
 // -----------------------------------------------------------------------------
 // Request Options
@@ -98,6 +101,7 @@ export async function getSpaceGroups(options: { with_spaces?: boolean; include_e
 // -----------------------------------------------------------------------------
 
 export async function joinSpace(spaceSlug: string) {
+  log('joinSpace:', spaceSlug);
   return post<JoinSpaceResponse>(`${ENDPOINTS.SPACES}/${spaceSlug}/join`);
 }
 
@@ -106,6 +110,7 @@ export async function joinSpace(spaceSlug: string) {
 // -----------------------------------------------------------------------------
 
 export async function leaveSpace(spaceSlug: string) {
+  log('leaveSpace:', spaceSlug);
   return post<{ message: string }>(`${ENDPOINTS.SPACES}/${spaceSlug}/leave`);
 }
 

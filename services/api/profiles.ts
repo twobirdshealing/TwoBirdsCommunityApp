@@ -7,6 +7,9 @@ import { Feed } from '@/types/feed';
 import { Profile, ProfileComment, XProfile } from '@/types/user';
 import { Space } from '@/types/space';
 import { get, post, put } from './client';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('ProfilesAPI');
 
 // -----------------------------------------------------------------------------
 // Get Profile by Username
@@ -101,6 +104,7 @@ export async function updateProfile(username: string, data: {
   badge_slugs?: string[];
   status?: string;
 }) {
+  log('updateProfile:', username);
   return post<{ profile: Profile }>(ENDPOINTS.PROFILE(username), { data });
 }
 
@@ -112,7 +116,17 @@ export async function patchProfileMedia(username: string, data: {
   avatar?: string;
   cover_photo?: string;
 }) {
+  log('patchProfileMedia:', username, data.avatar ? 'avatar' : '', data.cover_photo ? 'cover' : '');
   return put<{ message: string }>(ENDPOINTS.PROFILE(username), { data });
+}
+
+// -----------------------------------------------------------------------------
+// Toggle Email Notification for Followed User (level 1 ↔ 2)
+// -----------------------------------------------------------------------------
+
+export async function toggleFollowNotification(username: string) {
+  log('toggleFollowNotification:', username);
+  return post<{ message: string }>(`${ENDPOINTS.PROFILE(username)}/notification`);
 }
 
 // -----------------------------------------------------------------------------
@@ -120,6 +134,7 @@ export async function patchProfileMedia(username: string, data: {
 // -----------------------------------------------------------------------------
 
 export async function blockUser(username: string) {
+  log('blockUser:', username);
   return post<{ follow: { status: string } | null; xprofile: XProfile }>(
     `${ENDPOINTS.PROFILE(username)}/block`
   );
@@ -130,6 +145,7 @@ export async function blockUser(username: string) {
 // -----------------------------------------------------------------------------
 
 export async function unblockUser(username: string) {
+  log('unblockUser:', username);
   return post<{ message: string }>(
     `${ENDPOINTS.PROFILE(username)}/unblock`
   );
@@ -150,6 +166,7 @@ export const profilesApi = {
   unfollowUser,
   getFollowers,
   getFollowing,
+  toggleFollowNotification,
   blockUser,
   unblockUser,
 };

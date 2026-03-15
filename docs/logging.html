@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — Logging System</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .required { background: rgba(248, 81, 73, 0.15); color: var(--error); }
+  .auto { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn {
+    border-left-color: var(--warning);
+  }
+  .callout-error {
+    border-left-color: var(--error);
+  }
+  .callout-success {
+    border-left-color: var(--success);
+  }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+  .output-example {
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0 16px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85em;
+    line-height: 1.8;
+  }
+  .output-example .log { color: #e6edf3; }
+  .output-example .warn { color: var(--warning); }
+  .output-example .error { color: var(--error); }
+  .output-example .tag { background: none; padding: 0; margin: 0; color: var(--accent); font-size: 1em; }
+</style>
+</head>
+<body>
+
+<h1>Logging System</h1>
+<p class="subtitle">Tagged debug logging with zero production cost</p>
+
+<div class="callout">
+  <strong>Source file:</strong> <span class="file-path">utils/logger.ts</span><br>
+  All logging uses <code>createLogger(tag)</code>. Never use raw <code>console.log</code> / <code>console.warn</code> / <code>console.error</code> directly.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#usage">Basic Usage</a></li>
+    <li><a href="#methods">Methods</a></li>
+    <li><a href="#when-to-log">When to Log</a></li>
+    <li><a href="#tag-naming">Tag Naming Conventions</a></li>
+    <li><a href="#current-tags">All Current Tags</a></li>
+    <li><a href="#adding-logging">Adding Logging to a New File</a></li>
+    <li><a href="#console-output">Console Output Examples</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="overview">1. Overview</h2>
+
+<p>The app uses a centralized tagged logger that automatically silences all output in production builds. In <code>__DEV__</code> mode, every log line is prefixed with a tag so you can quickly filter and trace issues by subsystem.</p>
+
+<div class="callout callout-success">
+  <strong>Zero production cost.</strong> In production, <code>createLogger</code> returns no-op functions — no string formatting, no console calls, no performance impact.
+</div>
+
+<h3>How it works</h3>
+<pre><code>// utils/logger.ts — the entire implementation
+
+type LogFn = (...args: any[]) =&gt; void;
+type Logger = LogFn &amp; { warn: LogFn; error: LogFn };
+
+const noop: LogFn = () =&gt; {};
+
+export function createLogger(tag: string): Logger {
+  if (__DEV__) {
+    return Object.assign(
+      (...args: any[]) =&gt; console.log(`[${tag}]`, ...args),
+      {
+        warn: (...args: any[]) =&gt; console.warn(`[${tag}]`, ...args),
+        error: (...args: any[]) =&gt; console.error(`[${tag}]`, ...args),
+      },
+    );
+  }
+  return Object.assign(noop, { warn: noop, error: noop });
+}</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="usage">2. Basic Usage</h2>
+
+<pre><code>import { createLogger } from '@/utils/logger';
+
+const log = createLogger('MyFeature');
+
+// General info
+log('initialized with', items.length, 'items');
+
+// Warnings (non-fatal issues)
+log.warn('retrying after timeout');
+
+// Errors (something broke)
+log.error('failed to load data:', error);</code></pre>
+
+<div class="callout callout-warn">
+  <strong>Always</strong> declare the logger at module level (top of file), not inside functions or components. This ensures the <code>__DEV__</code> check runs once at import time.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="methods">3. Methods</h2>
+
+<table>
+  <thead>
+    <tr><th>Method</th><th>Maps to</th><th>Use for</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>log(...args)</code></td>
+      <td><code>console.log</code></td>
+      <td>General info — state changes, request details, lifecycle events</td>
+    </tr>
+    <tr>
+      <td><code>log.warn(...args)</code></td>
+      <td><code>console.warn</code></td>
+      <td>Non-fatal issues — retries, fallbacks, unexpected but handled states</td>
+    </tr>
+    <tr>
+      <td><code>log.error(...args)</code></td>
+      <td><code>console.error</code></td>
+      <td>Failures — API errors, caught exceptions, broken invariants</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="when-to-log">4. When to Log</h2>
+
+<h3>DO log</h3>
+<ul>
+  <li><strong>Write operations</strong> — creating, updating, deleting (posts, messages, profiles, threads)</li>
+  <li><strong>Auth events</strong> — login, logout, token refresh, credential storage</li>
+  <li><strong>Errors and failures</strong> — API errors, batch failures, unexpected states</li>
+  <li><strong>Connection events</strong> — Pusher connect/disconnect, push notification registration</li>
+  <li><strong>Batch operations</strong> — what's being batched, which sub-requests failed</li>
+  <li><strong>Cache events</strong> — cache hits, misses, clears (when debugging data freshness)</li>
+</ul>
+
+<h3>DO NOT log</h3>
+<ul>
+  <li><strong>Every read/GET request</strong> — too noisy, the API client already logs at request level</li>
+  <li><strong>Render cycles</strong> — never log inside render functions or on every re-render</li>
+  <li><strong>Sensitive data</strong> — never log tokens, passwords, or full user credentials</li>
+  <li><strong>UI state changes</strong> — tab switches, scroll positions, animation frames</li>
+</ul>
+
+<h3>Pattern: log on mutations, not on reads</h3>
+<pre><code>// GOOD — log the write operation
+export async function createThread(data: CreateThreadRequest) {
+  log('createThread intent:', data.intent_type, data.intent_id);
+  return post&lt;CreateThreadResponse&gt;(ENDPOINTS.CHAT_THREADS, data);
+}
+
+// GOOD — log errors and failures
+if (!response.success) {
+  log.error('batch failed:', response.error?.message);
+  throw new Error(response.error?.message || 'Batch request failed');
+}
+
+// BAD — don't log every read
+export async function getThreads() {
+  log('fetching threads');  // &lt;-- unnecessary, too noisy
+  return get&lt;ThreadsResponse&gt;(ENDPOINTS.CHAT_THREADS);
+}</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="tag-naming">5. Tag Naming Conventions</h2>
+
+<table>
+  <thead>
+    <tr><th>File type</th><th>Tag pattern</th><th>Example</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>API service</td><td><code>{Domain}API</code></td><td><code>FeedsAPI</code>, <code>MessagesAPI</code>, <code>ProfilesAPI</code></td></tr>
+    <tr><td>Context provider</td><td><code>{Name}Context</code> or <code>{Name}</code></td><td><code>AuthContext</code>, <code>ThemeContext</code>, <code>AppConfig</code></td></tr>
+    <tr><td>Core service</td><td><code>{Name}</code></td><td><code>Auth</code>, <code>Pusher</code>, <code>Push</code></td></tr>
+    <tr><td>Hook</td><td><code>{Name}</code></td><td><code>FeedActions</code>, <code>ChatMessages</code>, <code>Ticker</code></td></tr>
+    <tr><td>Component</td><td><code>{Name}</code></td><td><code>CreatePost</code>, <code>Comments</code>, <code>MediaViewer</code></td></tr>
+    <tr><td>Screen</td><td><code>{Name}</code></td><td><code>Profile</code>, <code>Activity</code>, <code>SpacePage</code></td></tr>
+    <tr><td>Module service</td><td><code>{Module}API</code></td><td><code>YouTubeAPI</code></td></tr>
+    <tr><td>Module component</td><td><code>{Module}{Name}</code></td><td><code>BlogComments</code>, <code>AudioPlayer</code></td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <strong>Keep tags short and unique.</strong> You'll be scanning these in the console — <code>MessagesAPI</code> is better than <code>MessagesApiService</code>. Check the table below to avoid duplicating an existing tag.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="current-tags">6. All Current Tags</h2>
+
+<p>Every active logger tag in the codebase, organized by layer.</p>
+
+<h3>Services &amp; API Layer</h3>
+<table>
+  <thead>
+    <tr><th>Tag</th><th>File</th><th>What it logs</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>API</code></td><td>services/api/client.ts</td><td>All HTTP requests, responses, 401/403 retries</td></tr>
+    <tr><td><code>Auth</code></td><td>services/auth.ts</td><td>Login, token refresh, credential storage</td></tr>
+    <tr><td><code>Pusher</code></td><td>services/pusher.ts</td><td>WebSocket connect, disconnect, channel events</td></tr>
+    <tr><td><code>Push</code></td><td>services/push.ts</td><td>Push notification registration, token management</td></tr>
+    <tr><td><code>CacheRegistry</code></td><td>services/cacheRegistry.ts</td><td>Cache clear events on logout</td></tr>
+    <tr><td><code>FeedsAPI</code></td><td>services/api/feeds.ts</td><td>Feed creation, sticky toggle</td></tr>
+    <tr><td><code>CommentsAPI</code></td><td>services/api/comments.ts</td><td>Comment mutations</td></tr>
+    <tr><td><code>MessagesAPI</code></td><td>services/api/messages.ts</td><td>Thread create, send, delete, block/unblock</td></tr>
+    <tr><td><code>ProfilesAPI</code></td><td>services/api/profiles.ts</td><td>Profile update, media patch, block/unblock</td></tr>
+    <tr><td><code>SpacesAPI</code></td><td>services/api/spaces.ts</td><td>Join, leave space</td></tr>
+    <tr><td><code>BatchAPI</code></td><td>services/api/batch.ts</td><td>Batch request count, individual failures</td></tr>
+    <tr><td><code>MediaAPI</code></td><td>services/api/media.ts</td><td>Media uploads</td></tr>
+    <tr><td><code>PushAPI</code></td><td>services/api/push.ts</td><td>Push token registration API calls</td></tr>
+    <tr><td><code>RegistrationAPI</code></td><td>services/api/registration.ts</td><td>Registration flow API calls</td></tr>
+    <tr><td><code>OtpAPI</code></td><td>services/api/otp.ts</td><td>OTP send/verify</td></tr>
+    <tr><td><code>BadgeAPI</code></td><td>services/api/badges.ts</td><td>Badge data fetching</td></tr>
+    <tr><td><code>EmailPrefsAPI</code></td><td>services/api/emailPrefs.ts</td><td>Email preference updates</td></tr>
+    <tr><td><code>AppConfigAPI</code></td><td>services/api/theme.ts</td><td>Theme/config fetch from server</td></tr>
+  </tbody>
+</table>
+
+<h3>Contexts</h3>
+<table>
+  <thead>
+    <tr><th>Tag</th><th>File</th><th>What it logs</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>AuthContext</code></td><td>contexts/AuthContext.tsx</td><td>Auth state transitions, login/logout flow</td></tr>
+    <tr><td><code>AppConfig</code></td><td>contexts/AppConfigContext.tsx</td><td>App config load, feature flag state</td></tr>
+    <tr><td><code>ThemeContext</code></td><td>contexts/ThemeContext.tsx</td><td>Theme sync, color cache</td></tr>
+  </tbody>
+</table>
+
+<h3>Hooks</h3>
+<table>
+  <thead>
+    <tr><th>Tag</th><th>File</th><th>What it logs</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>StartupBatch</code></td><td>hooks/useStartupData.ts</td><td>Startup data loading</td></tr>
+    <tr><td><code>CachedData</code></td><td>hooks/useCachedData.ts</td><td>Cache hits/misses</td></tr>
+    <tr><td><code>FeedActions</code></td><td>hooks/useFeedActions.ts</td><td>Feed interactions (like, pin, delete)</td></tr>
+    <tr><td><code>ChatMessages</code></td><td>hooks/useChatMessages.ts</td><td>Message loading, pagination</td></tr>
+    <tr><td><code>ChatReactions</code></td><td>hooks/useChatReactions.tsx</td><td>Chat reaction toggles</td></tr>
+    <tr><td><code>FollowToggle</code></td><td>hooks/useFollowToggle.ts</td><td>Follow/unfollow actions</td></tr>
+    <tr><td><code>ReactionConfig</code></td><td>hooks/useReactionConfig.ts</td><td>Reaction config loading</td></tr>
+    <tr><td><code>Ticker</code></td><td>hooks/useTickerPolling.ts</td><td>Polling intervals, unread count updates</td></tr>
+    <tr><td><code>WidgetPrefs</code></td><td>hooks/useWidgetPreferences.ts</td><td>Widget order/visibility preferences</td></tr>
+  </tbody>
+</table>
+
+<h3>Components</h3>
+<table>
+  <thead>
+    <tr><th>Tag</th><th>File</th><th>What it logs</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>CreatePost</code></td><td>components/composer/CreatePostContent.tsx</td><td>Post composition, submission</td></tr>
+    <tr><td><code>SpaceSelector</code></td><td>components/composer/SpaceSelector.tsx</td><td>Space selection for posting</td></tr>
+    <tr><td><code>GifPicker</code></td><td>components/composer/GifPickerModal.tsx</td><td>GIF search</td></tr>
+    <tr><td><code>VideoAttach</code></td><td>components/composer/VideoAttachModal.tsx</td><td>Video attachment</td></tr>
+    <tr><td><code>Comments</code></td><td>components/feed/CommentSheet.tsx</td><td>Comment loading, submission</td></tr>
+    <tr><td><code>ImageMedia</code></td><td>components/media/ImageMedia.tsx</td><td>Image loading states</td></tr>
+    <tr><td><code>MediaViewer</code></td><td>components/media/MediaViewer.tsx</td><td>Full-screen media viewer</td></tr>
+    <tr><td><code>LinkPreview</code></td><td>components/media/LinkPreview.tsx</td><td>Link preview fetching</td></tr>
+    <tr><td><code>ChatInput</code></td><td>components/message/ChatInput.tsx</td><td>Message input state</td></tr>
+    <tr><td><code>NewMessage</code></td><td>components/message/NewMessageModal.tsx</td><td>New message modal</td></tr>
+    <tr><td><code>SpaceMenu</code></td><td>components/space/SpaceMenu.tsx</td><td>Space menu actions</td></tr>
+  </tbody>
+</table>
+
+<h3>Screens</h3>
+<table>
+  <thead>
+    <tr><th>Tag</th><th>File</th><th>What it logs</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>Profile</code></td><td>app/profile/[username]/index.tsx</td><td>Profile loading</td></tr>
+    <tr><td><code>ProfileEdit</code></td><td>app/profile/edit.tsx</td><td>Profile edit/save</td></tr>
+    <tr><td><code>Activity</code></td><td>app/(tabs)/activity.tsx</td><td>Activity feed</td></tr>
+    <tr><td><code>SpacesScreen</code></td><td>app/(tabs)/spaces.tsx</td><td>Spaces list</td></tr>
+    <tr><td><code>SpacePage</code></td><td>app/space/[slug]/index.tsx</td><td>Space detail page</td></tr>
+    <tr><td><code>FeedDetail</code></td><td>app/feed/[id].tsx</td><td>Single feed post view</td></tr>
+    <tr><td><code>Notifications</code></td><td>app/notifications.tsx</td><td>Notification list</td></tr>
+    <tr><td><code>Bookmarks</code></td><td>app/bookmarks.tsx</td><td>Bookmarks list</td></tr>
+    <tr><td><code>Messages</code></td><td>app/messages/index.tsx</td><td>Messages list</td></tr>
+    <tr><td><code>WebView</code></td><td>app/webview.tsx</td><td>WebView navigation events</td></tr>
+  </tbody>
+</table>
+
+<h3>Module Tags</h3>
+<table>
+  <thead>
+    <tr><th>Tag</th><th>Module</th><th>File</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>YouTubeAPI</code></td><td>YouTube</td><td>modules/youtube/services/youtubeApi.ts</td></tr>
+    <tr><td><code>BlogComments</code></td><td>Blog</td><td>modules/blog/components/BlogCommentSheet.tsx</td></tr>
+    <tr><td><code>AudioPlayer</code></td><td>Book Club</td><td>modules/bookclub/contexts/AudioPlayerContext.tsx</td></tr>
+    <tr><td><code>EventWebView</code></td><td>Calendar</td><td>modules/calendar/hooks/useEventWebView.ts</td></tr>
+  </tbody>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="adding-logging">7. Adding Logging to a New File</h2>
+
+<p>Two lines at the top of your file — that's it:</p>
+
+<pre><code>import { createLogger } from '@/utils/logger';
+
+const log = createLogger('YourTag');</code></pre>
+
+<p>Then use <code>log()</code>, <code>log.warn()</code>, and <code>log.error()</code> throughout the file.</p>
+
+<h3>Step-by-step for an API service</h3>
+<pre><code>// services/api/widgets.ts
+
+import { ENDPOINTS } from '@/constants/config';
+import { get, post } from './client';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('WidgetsAPI');
+
+export async function getWidgets() {
+  // No logging needed — it's a read
+  return get('/widgets');
+}
+
+export async function createWidget(data: CreateWidgetData) {
+  // Log the write operation
+  log('createWidget:', data.name);
+  return post('/widgets', data);
+}
+
+export async function deleteWidget(id: number) {
+  // Log destructive operations
+  log('deleteWidget:', id);
+  return post(`/widgets/${id}/delete`, {});
+}</code></pre>
+
+<h3>Step-by-step for a module</h3>
+<pre><code>// modules/mymodule/services/myApi.ts
+
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('MyModuleAPI');
+
+// Follow the same pattern — log writes, skip reads</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="console-output">8. Console Output Examples</h2>
+
+<p>What you'll see in the Metro dev console when running the app:</p>
+
+<div class="output-example">
+  <div class="log"><span class="tag">[Auth]</span> login successful, storing token</div>
+  <div class="log"><span class="tag">[BatchAPI]</span> batch of 4 requests: ["/notifications/unread", "/chat/unread_threads", ...]</div>
+  <div class="log"><span class="tag">[Pusher]</span> connected to private-chat_user_42</div>
+  <div class="log"><span class="tag">[FeedsAPI]</span> Creating feed with: {"space": "general", ...}</div>
+  <div class="log"><span class="tag">[MessagesAPI]</span> sendMessage thread: 15 +2 attachments</div>
+  <div class="warn"><span class="tag">[BatchAPI]</span> 1 failed in batch: ["/chat/unread_threads (403)"]</div>
+  <div class="log"><span class="tag">[ProfilesAPI]</span> patchProfileMedia: johndoe avatar</div>
+  <div class="error"><span class="tag">[API]</span> 401 on /feeds — refreshing token</div>
+  <div class="log"><span class="tag">[Auth]</span> token refreshed successfully</div>
+  <div class="log"><span class="tag">[SpacesAPI]</span> joinSpace: book-club</div>
+</div>
+
+<p>Use your terminal's search/filter to isolate a specific tag when debugging. For example, search <code>[Pusher]</code> to see only WebSocket events.</p>
+
+<!-- ================================================================== -->
+<h2 id="rules">9. Rules</h2>
+
+<div class="callout callout-error">
+  <strong>Never use raw <code>console.log</code> / <code>console.warn</code> / <code>console.error</code>.</strong><br>
+  Always use <code>createLogger</code>. The only exception is the module registry's <code>__DEV__</code>-wrapped validation warnings and the <code>ErrorBoundary</code> component.
+</div>
+
+<ol>
+  <li><strong>Import from <code>@/utils/logger</code></strong> — the only logging utility in the project.</li>
+  <li><strong>Declare at module level</strong> — <code>const log = createLogger('Tag')</code> at the top of the file, not inside functions.</li>
+  <li><strong>Log writes, not reads</strong> — mutations, creates, deletes, state transitions. Skip GET requests.</li>
+  <li><strong>Never log sensitive data</strong> — no tokens, passwords, full credentials, or personal data.</li>
+  <li><strong>Keep tags short and unique</strong> — check the <a href="#current-tags">tag list</a> before picking a new one.</li>
+  <li><strong>Use the right level</strong> — <code>log()</code> for info, <code>log.warn()</code> for handled issues, <code>log.error()</code> for failures.</li>
+  <li><strong>No per-tag toggle config</strong> — all loggers are on in dev, all off in production. Use terminal search to filter.</li>
+  <li><strong>Don't create a new logging utility</strong> — <code>createLogger</code> is the only one. Don't add dependencies like winston, pino, etc.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> · <a href="architecture.html">Architecture</a> · <a href="components.html">Components</a> · Logging System · <a href="features.html">Features</a>
+</p>
+
+</body>
+</html>

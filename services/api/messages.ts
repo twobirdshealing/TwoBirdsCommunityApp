@@ -12,6 +12,9 @@ import {
   ThreadsResponse,
 } from '@/types/message';
 import { get, post } from './client';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('MessagesAPI');
 
 // -----------------------------------------------------------------------------
 // Get All Threads (Conversations)
@@ -36,6 +39,7 @@ export async function getThreadsForUser(userId: number) {
 // -----------------------------------------------------------------------------
 
 export async function createThread(data: CreateThreadRequest) {
+  log('createThread intent:', data.intent_type, data.intent_id);
   return post<CreateThreadResponse>(ENDPOINTS.CHAT_THREADS, data);
 }
 
@@ -81,6 +85,7 @@ export async function sendMessage(
   attachments?: MessageAttachment[],
   replyData?: { reply_to: number; reply_text: string }
 ) {
+  log('sendMessage thread:', threadId, attachments?.length ? `+${attachments.length} attachments` : '');
   // Build request matching native web app format
   const body: Record<string, any> = {
     text,
@@ -153,6 +158,7 @@ export async function markThreadsRead(threadIds: number[]) {
 // Author-only — plugin checks user_id match server-side
 
 export async function deleteMessage(messageId: number) {
+  log('deleteMessage:', messageId);
   return post(ENDPOINTS.CHAT_MESSAGE_DELETE(messageId), {});
 }
 
@@ -169,6 +175,7 @@ export async function toggleReaction(messageId: number, emoji: string) {
 // -----------------------------------------------------------------------------
 
 export async function deleteThread(threadId: number) {
+  log('deleteThread:', threadId);
   return post(ENDPOINTS.CHAT_THREAD_DELETE(threadId), {});
 }
 
@@ -187,6 +194,7 @@ export async function getThread(threadId: number) {
 // -----------------------------------------------------------------------------
 
 export async function blockThread(threadId: number) {
+  log('blockThread:', threadId);
   return post(ENDPOINTS.CHAT_THREAD_BLOCK(threadId), {});
 }
 
@@ -195,6 +203,7 @@ export async function blockThread(threadId: number) {
 // -----------------------------------------------------------------------------
 
 export async function unblockThread(threadId: number) {
+  log('unblockThread:', threadId);
   return post(ENDPOINTS.CHAT_THREAD_UNBLOCK(threadId), {});
 }
 

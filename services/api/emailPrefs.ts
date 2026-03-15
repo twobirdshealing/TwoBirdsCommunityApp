@@ -7,6 +7,9 @@
 // =============================================================================
 
 import { get, post } from './client';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('EmailPrefsAPI');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -72,6 +75,7 @@ export async function getEmailPrefs(username: string) {
  * all user_globals and space_prefs must be included or they'll be reset.
  */
 export async function updateEmailPrefs(username: string, payload: EmailPrefsPayload) {
+  log('updateEmailPrefs:', username);
   return post<EmailPrefsSaveResponse>(
     `/profile/${username}/notification-preferences`,
     payload

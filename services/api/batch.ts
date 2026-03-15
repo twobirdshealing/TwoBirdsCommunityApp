@@ -7,6 +7,9 @@
 
 import { TBC_CA_URL } from '@/constants/config';
 import { request, ApiResponse } from './client';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('BatchAPI');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -43,6 +46,7 @@ interface BatchPayload {
 export async function batchRequest(
   requests: BatchRequest[],
 ): Promise<BatchResponseItem[]> {
+  log(`batch of ${requests.length} requests:`, requests.map(r => r.path));
   const response = await request<BatchPayload>('/batch', {
     method: 'POST',
     body: { requests },
@@ -50,7 +54,13 @@ export async function batchRequest(
   });
 
   if (!response.success) {
+    log.error('batch failed:', response.error?.message);
     throw new Error(response.error?.message || 'Batch request failed');
+  }
+
+  const failures = response.data.responses.filter(r => r.status >= 400);
+  if (failures.length) {
+    log.warn(`${failures.length} failed in batch:`, failures.map(f => `${f.path} (${f.status})`));
   }
 
   return response.data.responses;
