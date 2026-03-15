@@ -81,7 +81,17 @@
       "expo-asset",
       "expo-image",
       "expo-sharing",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "nativeDebugSymbolLevel": "FULL"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
