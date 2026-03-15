@@ -24,7 +24,7 @@ import {
   View,
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import { NotificationTypeIcon } from './NotificationTypeIcon';
+import { NotificationActionIcon } from './NotificationTypeIcon';
 import { hapticLight } from '@/utils/haptics';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
@@ -140,7 +140,7 @@ export const NotificationCard = React.memo(function NotificationCard({
             fallback={actorName}
           />
           <View style={styles.typeIconOverlay}>
-            <NotificationTypeIcon
+            <NotificationActionIcon
               type={notification.type}
               reactionType={notification.tbc_reaction_type}
               reactionIconUrl={notification.tbc_reaction_icon_url}
