@@ -120,7 +120,9 @@ sed -i \
 
 # --- eas.json ---
 sed -i \
-  's|https://community.twobirdschurch.com|https://community.yoursite.com|g' \
+  -e 's|https://community.twobirdschurch.com|https://community.yoursite.com|g' \
+  -e 's|"appleId": "[^"]*"|"appleId": "your-apple-id@example.com"|' \
+  -e 's|"ascAppId": "[^"]*"|"ascAppId": "YOUR_ASC_APP_ID"|' \
   "$TARGET_DIR/eas.json"
 
 # --- app.config.ts ---

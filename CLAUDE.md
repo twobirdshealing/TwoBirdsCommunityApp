@@ -24,7 +24,7 @@ Files a buyer edits to make the app theirs:
 | EAS owner + project ID | `app.json` | `expo.owner`, `expo.extra.eas.projectId` — required for builds & push |
 | Permission dialog strings | `app.json` | Replace app name in camera/photos/media permission text |
 | Notification & icon colors | `app.json` | `expo-notifications` color, `adaptiveIcon.backgroundColor` |
-| Build profiles | `eas.json` | `SITE_URL` env var per profile (dev, preview, production) |
+| Build profiles + submit config | `eas.json` | `SITE_URL` per profile, Apple ID + ascAppId for iOS submissions |
 | Fallback values | `app.config.ts` | SITE_URL fallback, name/slug fallbacks for local dev |
 | Branding assets | `assets/images/` | App icon, splash screen, login background/logo |
 | Default colors | `constants/colors.ts` | Fallback colors (overridden by Fluent Community theme sync) |

@@ -34,6 +34,11 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "jay@twobirdshealing.org",
+        "ascAppId": "1563113528"
+      }
+    }
   }
 }
