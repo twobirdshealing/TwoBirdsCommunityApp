@@ -1,0 +1,93 @@
+/**
+ * TBC WooCommerce Calendar - Google Maps Styles
+ */
+
+/* Google Maps internal element fixes */
+.gm-svpc div img {
+    position: relative !important;
+}
+
+.gm-svpc > div:last-of-type {
+    width: 32px;
+    height: 32px;
+}
+
+.tbc-wc-google-map {
+    margin-bottom: 10px;
+    height: 300px;
+    width: 100%;
+    display: block !important;
+}
+
+.tbc-wc-map-container.show {
+    max-height: 300px;
+    margin-bottom: 10px;
+    border: 1px solid var(--fcom-primary-border, #e0e0e0);
+    border-radius: 5px;
+}
+
+.tbc-wc-event-details-location {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.tbc-wc-map-toggle-btn {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+    flex-shrink: 0;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    box-shadow: none !important;
+}
+
+.tbc-wc-map-toggle-btn:hover,
+.tbc-wc-map-toggle-btn:focus,
+.tbc-wc-map-toggle-btn:active {
+    background-color: transparent;
+    opacity: 0.7;
+    outline: none;
+    border: none;
+    box-shadow: none;
+}
+
+.tbc-wc-map-toggle-btn:focus {
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.tbc-wc-map-toggle-btn .tbc-wc-toggle-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--fcom-text-link, #2271b1);
+    background: transparent;
+    border: none;
+}
+
+.tbc-wc-location-text {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+}
+
+.tbc-wc-location-text .tbc-wc-icon {
+    margin-right: 5px;
+}
+
+.tbc-wc-map-container {
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    max-height: 0;
+}

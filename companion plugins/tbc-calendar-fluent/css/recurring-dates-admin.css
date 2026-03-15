@@ -1,0 +1,468 @@
+/**
+ * TBC WooCommerce Calendar - Recurring Dates Admin Styles
+ * Contains styles for recurring event settings:
+ * - Recurring type controls
+ * - Individual dates table
+ * - Interval exceptions table
+ * - Settings expansion panels
+ */
+
+/* ===== RECURRING SETTINGS CONTAINER ===== */
+.tbc-wc-recurring-settings {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+/* Recurring type selection */
+#_tbc_wc_recurring_type {
+    max-width: 200px;
+}
+
+/* Recurring interval settings */
+.tbc-wc-interval-settings {
+    padding: 10px;
+    margin: 15px 0;
+    background: #f9f9f9;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+/* Interval options (daily, weekly, monthly, yearly) */
+.tbc-wc-interval-options {
+    padding: 10px;
+    margin-bottom: 15px;
+    background: #f7f7f7;
+    border-left: 3px solid #007cba;
+}
+
+/* Every count field styling */
+._tbc_wc_recurring_count_field {
+    display: flex;
+    align-items: center;
+}
+
+.tbc-wc-every-unit-label {
+    margin-left: 10px;
+    font-weight: 500;
+}
+
+/* ===== TABLE BASE STYLING ===== */
+.tbc-wc-individual-dates tr,
+.tbc-wc-interval-exceptions tr {
+    cursor: move;
+}
+
+.tbc-wc-individual-dates tr.ui-sortable-helper,
+.tbc-wc-interval-exceptions tr.ui-sortable-helper {
+    background: #f9f9f9;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.tbc-wc-individual-dates tr td.tbc-wc-sort,
+.tbc-wc-interval-exceptions tr td.tbc-wc-sort {
+    width: 20px;
+    text-align: center;
+    cursor: grab;
+}
+
+.tbc-wc-individual-dates tr td.tbc-wc-sort .dashicons,
+.tbc-wc-interval-exceptions tr td.tbc-wc-sort .dashicons {
+    color: #aaa;
+}
+
+.tbc-wc-individual-dates tr:hover td.tbc-wc-sort .dashicons,
+.tbc-wc-interval-exceptions tr:hover td.tbc-wc-sort .dashicons {
+    color: #777;
+}
+
+/* Visual feedback on sorting */
+.highlight {
+    background-color: #fffde7 !important;
+    transition: background-color 0.5s ease;
+}
+
+/* ===== MAIN DATE STYLING ===== */
+tr.tbc-wc-main-date {
+    background-color: #f0f7ff;
+}
+
+.tbc-wc-main-date-field {
+    background-color: #f0f7ff !important;
+    cursor: not-allowed;
+    text-align: center !important;
+}
+
+/* Primary event label styling */
+.tbc-wc-primary-event-label {
+    font-size: 13px;
+    color: #555;
+    font-style: italic;
+}
+
+tr.tbc-wc-main-date .tbc-wc-sales-count {
+    color: #0073aa;
+}
+
+tr.tbc-wc-main-date .dashicons-star-filled {
+    color: #ffb900;
+}
+
+/* ===== COMMON TABLE LAYOUT ===== */
+#tbc-wc-individual-dates-table th,
+#tbc-wc-interval-exceptions-table th {
+    text-align: center;
+    font-weight: 600;
+    padding: 8px 5px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #ddd;
+}
+
+#tbc-wc-individual-dates-table input[type="text"],
+#tbc-wc-interval-exceptions-table input[type="text"] {
+    text-align: center;
+    width: 100%;
+}
+
+#tbc-wc-individual-dates-table .tbc-wc-date-field,
+#tbc-wc-individual-dates-table .tbc-wc-end-date-field,
+#tbc-wc-interval-exceptions-table .tbc-wc-date-field {
+    text-align: center;
+}
+
+/* Sales Count Column (Donations) */
+#tbc-wc-individual-dates-table .tbc-wc-sales-count,
+#tbc-wc-interval-exceptions-table .tbc-wc-sales-count {
+    text-align: center;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+/* ===== INDIVIDUAL DATES STYLING ===== */
+/* Individual Dates Container */
+#tbc-wc-individual-dates-container {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.tbc-wc-individual-date-row {
+    background-color: #f7fbff;
+}
+
+.tbc-wc-individual-settings-row .tbc-wc-date-settings-panel {
+    background-color: #f0f7ff;
+}
+
+/* ===== INTERVAL EXCEPTIONS STYLING ===== */
+/* Interval Exceptions Container */
+.tbc-wc-interval-exceptions-container {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.tbc-wc-exception-date-row {
+    background-color: #fef8fa;
+}
+
+.tbc-wc-exception-settings-row .tbc-wc-date-settings-panel {
+    background-color: #fef0f5;
+}
+
+/* ===== SETTINGS TOGGLE & PANEL ===== */
+/* Settings cell styling */
+.tbc-wc-settings-cell {
+    text-align: center;
+    vertical-align: middle;
+    padding: 8px 5px;
+}
+
+/* Settings toggle button */
+.tbc-wc-toggle-date-settings {
+    cursor: pointer;
+    transition: transform 0.3s ease, color 0.3s ease;
+    text-decoration: none;
+    color: #555;
+    font-size: 20px;
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    text-align: center;
+}
+
+.tbc-wc-toggle-date-settings:hover {
+    background-color: #e0e0e0;
+    color: #0073aa;
+}
+
+.tbc-wc-toggle-date-settings.tbc-wc-settings-expanded {
+    color: #0073aa;
+    background-color: #e6f2f9;
+    transform: rotate(45deg);
+}
+
+/* Settings panel styling */
+.tbc-wc-date-settings-row {
+    background-color: #f9f9f9;
+}
+
+.tbc-wc-settings-panel {
+    padding: 0;
+}
+
+/* Animation for settings panel */
+.tbc-wc-date-settings-row.animating {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Improved date settings panel layout */
+.tbc-wc-date-settings-panel {
+    padding: 15px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    align-items: start;
+    border-top: 1px dashed #ddd;
+    border-bottom: 1px dashed #ddd;
+}
+
+.tbc-wc-main-date-settings-row .tbc-wc-date-settings-panel {
+    background-color: #e6f0fd;
+}
+
+.tbc-wc-setting-group {
+    margin: 0;
+    padding: 12px 8px;
+    background-color: #ffffff;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    text-align: center;
+}
+
+.tbc-wc-setting-group .tbc-wc-setting-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #555;
+    font-size: 13px;
+}
+
+/* ===== SETTING GROUPS STYLING ===== */
+/* Status Combined Group */
+.tbc-wc-status-combined-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 8px 8px 8px !important;
+    border-left: 3px solid #d32f2f;
+    background-color: #fff8f8;
+}
+
+.tbc-wc-status-combined-group .tbc-wc-setting-label {
+    margin-bottom: 8px;
+    color: #d32f2f;
+    font-weight: 500;
+}
+
+.tbc-wc-status-option {
+    margin-bottom: 5px;
+}
+
+/* RSVP Combined Group */
+.tbc-wc-rsvp-combined-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 8px 8px 8px !important;
+    border-left: 3px solid #0073aa;
+    background-color: #f7fbff;
+}
+
+.tbc-wc-rsvp-combined-group .tbc-wc-setting-label {
+    margin-bottom: 8px;
+    color: #0073aa;
+    font-weight: 500;
+}
+
+.tbc-wc-rsvp-option {
+    margin-bottom: 5px;
+}
+
+/* Progress Bar Combined Group */
+.tbc-wc-progress-combined-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 8px 8px 8px !important;
+    border-left: 3px solid #673AB7;
+    background-color: #f8f5ff;
+}
+
+.tbc-wc-progress-combined-group .tbc-wc-setting-label {
+    margin-bottom: 8px;
+    color: #673AB7;
+    font-weight: 500;
+}
+
+.tbc-wc-progress-option {
+    margin-bottom: 5px;
+}
+
+/* Color picker fields */
+.tbc-wc-progress-option input[type="color"] {
+    width: 60px;
+    padding: 0;
+    height: 24px;
+}
+
+/* Selects in progress options */
+.tbc-wc-progress-option select {
+    width: 100%;
+    max-width: 150px;
+}
+
+/* Actions Combined Group */
+.tbc-wc-actions-combined-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 8px 8px 8px !important;
+    border-left: 3px solid #2e7d32;
+    background-color: #f1f8f1;
+}
+
+.tbc-wc-actions-combined-group .tbc-wc-setting-label {
+    margin-bottom: 8px;
+    color: #2e7d32;
+    font-weight: 500;
+}
+
+/* Style for toggle buttons */
+.tbc-wc-event-close-toggle, 
+.tbc-wc-event-hide-toggle,
+.tbc-wc-event-rsvp-toggle,
+.tbc-wc-event-progress-toggle {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 5px 8px;
+    border: 1px solid;
+    border-radius: 3px;
+    background: #fff;
+    white-space: nowrap;
+    /* Override WooCommerce styles */
+    float: none !important;
+    width: auto !important;
+    margin: 0 auto !important;
+}
+
+.tbc-wc-event-close-toggle {
+    color: #d32f2f;
+    border-color: #d32f2f;
+}
+
+.tbc-wc-event-hide-toggle {
+    color: #ff9800;
+    border-color: #ff9800;
+}
+
+.tbc-wc-event-rsvp-toggle {
+    color: #0073aa;
+    border-color: #0073aa;
+}
+
+.tbc-wc-event-progress-toggle {
+    color: #673AB7;
+    border-color: #673AB7;
+}
+
+/* Override WooCommerce label styles */
+.tbc-wc-date-settings-panel .tbc-wc-setting-group label {
+    float: none !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: center !important;
+    display: inline-block !important;
+}
+
+.tbc-wc-event-close-toggle input,
+.tbc-wc-event-hide-toggle input,
+.tbc-wc-event-rsvp-toggle input,
+.tbc-wc-event-progress-toggle input {
+    margin: 0 2px 0 0;
+    padding: 0;
+    vertical-align: middle;
+}
+
+/* View and Remove button styling */
+.tbc-wc-setting-group .tbc-wc-view-orders,
+.tbc-wc-setting-group .tbc-wc-view-event,
+.tbc-wc-setting-group .tbc-wc-remove-individual-date,
+.tbc-wc-setting-group .tbc-wc-remove-exception-date {
+    display: block;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.tbc-wc-setting-group .tbc-wc-view-orders,
+.tbc-wc-setting-group .tbc-wc-view-event {
+    background-color: #f0f0f0;
+    border-color: #0073aa;
+    color: #0073aa;
+}
+
+.tbc-wc-setting-group .tbc-wc-view-orders:hover,
+.tbc-wc-setting-group .tbc-wc-view-event:hover {
+    background-color: #e6f2f9;
+    border-color: #006799;
+}
+
+.tbc-wc-setting-group .tbc-wc-remove-individual-date,
+.tbc-wc-setting-group .tbc-wc-remove-exception-date {
+    background-color: #fff5f5;
+    border-color: #d32f2f;
+    color: #d32f2f;
+}
+
+.tbc-wc-setting-group .tbc-wc-remove-individual-date:hover,
+.tbc-wc-setting-group .tbc-wc-remove-exception-date:hover {
+    background-color: #ffeaea;
+    border-color: #b71c1c;
+}
+
+/* ===== RSVP DEADLINE OPTIONS ===== */
+.tbc-wc-rsvp-deadline-date-container,
+.tbc-wc-rsvp-deadline-rule-container {
+    margin-top: 5px;
+}
+
+.tbc-wc-rsvp-deadline-type {
+    width: 100%;
+}
+
+.tbc-wc-rsvp-deadline-rule {
+    width: 100%;
+}
+
+/* ===== RESPONSIVE ADJUSTMENTS ===== */
+@media screen and (max-width: 782px) {
+    .tbc-wc-date-settings-panel {
+        grid-template-columns: 1fr;
+    }
+    
+    .tbc-wc-setting-group {
+        margin-bottom: 10px;
+    }
+    
+    .tbc-wc-interval-settings,
+    #tbc-wc-individual-dates-container,
+    .tbc-wc-interval-exceptions-container {
+        padding: 10px 5px;
+    }
+}

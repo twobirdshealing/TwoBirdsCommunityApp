@@ -1,0 +1,655 @@
+/**
+ * TBC WooCommerce Calendar - Main Calendar View Styles
+ */
+
+/* ===== TOOLBAR STYLES (Fluent Community) ===== */
+
+/* Calendar header */
+.tbc-wc-calendar-header {
+    background: transparent;
+    margin-bottom: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.tbc-wc-calendar-header .tbc-wc-month-navigation {
+    box-shadow: none;
+    border-top: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+/* Toolbar - single row, compact */
+.tbc-wc-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px;
+    background: transparent;
+}
+
+/* SVG icons */
+.tbc-wc-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* Waitlist link */
+.tbc-wc-toolbar-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    color: var(--fcom-text-link, #2271b1);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 4px;
+    transition: opacity 0.15s ease;
+}
+
+.tbc-wc-toolbar-link:hover {
+    opacity: 0.8;
+    text-decoration: none;
+}
+
+/* Perk badge - subtle chip */
+.tbc-wc-perk-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tbc-wc-perk-badge.tbc-wc-perk-active {
+    background: rgba(139,92,246,0.15);
+    color: #a78bfa;
+}
+
+
+/* Controls group */
+.tbc-wc-toolbar-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+/* Category select */
+.tbc-wc-toolbar-select {
+    padding: 6px 28px 6px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 6px;
+    background-color: var(--fcom-primary-bg, #ffffff);
+    color: var(--fcom-primary-text, #19283a);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23525866' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 6px center;
+    background-repeat: no-repeat;
+    background-size: 14px;
+    transition: border-color 0.15s ease;
+}
+
+.tbc-wc-toolbar-select:hover {
+    border-color: var(--fcom-text-link, #2271b1);
+}
+
+.tbc-wc-toolbar-select:focus {
+    outline: none;
+    border-color: var(--fcom-text-link, #2271b1);
+}
+
+/* iOS-style pill toggle */
+.tbc-wc-view-toggle {
+    display: flex;
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    border-radius: 8px;
+    padding: 3px;
+    border: none;
+}
+
+.tbc-wc-view-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--fcom-secondary-text, #525866);
+    transition: all 0.2s ease;
+}
+
+.tbc-wc-view-btn:hover {
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.tbc-wc-view-btn.tbc-wc-view-active {
+    background: var(--fcom-text-link, #2271b1);
+    color: #fff;
+}
+
+/* Screen reader only */
+.screen-reader-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ===== NAVIGATION STYLES ===== */
+/* Month navigation */
+.tbc-wc-month-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--fcom-primary-bg, #ffffff);
+    color: var(--fcom-primary-text, #19283a);
+    padding: 10px;
+    font-size: 1.2em;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.tbc-wc-month-navigation .tbc-wc-nav-button {
+    background-color: transparent;
+    color: var(--fcom-primary-text, #19283a);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    opacity: 1;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 15px;
+    text-decoration: none;
+    font-size: 0.7em;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: bold;
+    flex: 0 0 auto;
+    width: 125px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.tbc-wc-month-navigation .tbc-wc-nav-button:hover {
+    background-color: var(--fcom-active-bg, #f0f3f5);
+}
+
+.tbc-wc-month-navigation .tbc-wc-nav-button:active {
+    transform: scale(0.95);
+}
+
+.tbc-wc-month-navigation .tbc-wc-current-month {
+    font-weight: bold;
+    text-align: center;
+    font-size: 1em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    flex: 1 1 auto;
+}
+
+.tbc-wc-month-navigation .tbc-wc-placeholder {
+    flex: 0 0 auto;
+    visibility: hidden;
+    width: 125px;
+}
+
+/* Empty month message */
+.tbc-wc-empty-month-message {
+    text-align: center;
+    padding: 20px;
+    background-color: var(--fcom-secondary-bg, #f0f2f5);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 5px;
+    margin: 20px 0;
+}
+
+.tbc-wc-empty-month-message p {
+    font-size: 16px;
+    color: var(--fcom-secondary-text, #525866);
+    margin: 0;
+}
+
+/* Calendar projection limit message */
+.tbc-wc-calendar-projection-limit-message {
+    text-align: center;
+    padding: 40px 20px;
+    margin: 20px 0;
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.tbc-wc-limit-message-content h3 {
+    color: var(--fcom-primary-text, #19283a);
+    margin-bottom: 15px;
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.tbc-wc-limit-message-content p {
+    color: var(--fcom-secondary-text, #525866);
+    font-size: 16px;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.tbc-wc-back-to-current {
+    display: inline-block;
+    background-color: var(--fcom-primary-button, #2B2E33);
+    color: var(--fcom-primary-button-text, #ffffff);
+    padding: 8px 16px;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: filter 0.3s ease;
+    margin-top: 10px;
+}
+
+.tbc-wc-back-to-current:hover {
+    filter: brightness(0.9);
+    color: var(--fcom-primary-button-text, #ffffff);
+}
+
+/* ===== MAIN CALENDAR STYLES ===== */
+.tbc-wc-calendar {
+    width: 100%;
+    font-family: Arial, sans-serif;
+}
+
+.tbc-wc-calendar .tbc-wc-month-section {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.tbc-wc-calendar .tbc-wc-month-section h2 {
+    display: none;
+}
+
+.tbc-wc-calendar .tbc-wc-event-time,
+.tbc-wc-calendar .tbc-wc-event-location,
+.tbc-wc-calendar .tbc-wc-event-price {
+    display: block;
+    font-size: 1em;
+    color: var(--fcom-primary-text, #19283a);
+    margin-bottom: 5px;
+}
+
+.tbc-wc-calendar .tbc-wc-event-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tbc-wc-calendar .tbc-wc-event-item {
+    border-bottom: 1px solid var(--fcom-primary-border, #e3e8ee);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.tbc-wc-calendar .tbc-wc-event-item:last-child {
+    border-bottom: none;
+}
+
+.tbc-wc-calendar .tbc-wc-event-item:hover {
+    background-color: var(--fcom-active-bg, rgba(0,0,0,0.05));
+    transform: scale(1.02);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    z-index: 1;
+}
+
+.tbc-wc-calendar .tbc-wc-event-item-link {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 15px 20px 15px 30px;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    min-height: 120px;
+}
+
+.tbc-wc-calendar .tbc-wc-date-image-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 300px;
+    margin-right: 20px;
+}
+
+.tbc-wc-calendar .tbc-wc-event-date {
+    flex: 0 0 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 100px;
+    border: 2px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 8px;
+    background-color: var(--fcom-primary-bg, #ffffff);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-right: 10px;
+    margin-left: 15px;
+    padding: 5px;
+}
+
+.tbc-wc-calendar .tbc-wc-event-day {
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.tbc-wc-calendar .tbc-wc-event-day-number {
+    font-size: 28px;
+    font-weight: bold;
+    line-height: 1;
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.tbc-wc-calendar .tbc-wc-event-day-suffix {
+    font-size: 12px;
+    top: -0.5em;
+    position: relative;
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.tbc-wc-calendar .tbc-wc-event-month {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--fcom-primary-text, #19283a);
+    margin-top: 2px;
+    font-weight: bold;
+}
+
+.tbc-wc-calendar .tbc-wc-event-image-container {
+    flex: 0 0 200px;
+    height: 200px;
+    position: relative;
+    align-self: center;
+}
+
+.tbc-wc-calendar .tbc-wc-event-image {
+    position: relative;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.tbc-wc-calendar .tbc-wc-event-image img {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    display: block;
+    transition: transform 0.3s ease;
+    object-fit: cover;
+}
+
+.tbc-wc-calendar .tbc-wc-event-item:hover .tbc-wc-event-image img {
+    transform: scale(1.05);
+}
+
+.tbc-wc-calendar .tbc-wc-event-details {
+    flex: 1;
+    align-self: center;
+}
+
+.tbc-wc-calendar .tbc-wc-event-title {
+    width: 100%;
+    text-align: center;
+    font-size: 1.1em;
+    margin: 0 0 10px 0;
+    transition: color 0.3s ease;
+    order: -1;
+}
+
+.tbc-wc-calendar .tbc-wc-event-item:hover .tbc-wc-event-title {
+    color: var(--fcom-text-link, #2271b1);
+}
+
+.tbc-wc-calendar .tbc-wc-event-description {
+    font-size: 0.9em;
+    color: var(--fcom-secondary-text, #525866);
+}
+
+/* Status labels */
+.tbc-wc-calendar .tbc-wc-status-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 25px;
+    height: 100%;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 3px;
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    z-index: 2;
+    text-transform: uppercase;
+}
+
+.tbc-wc-event-booked {
+    background: linear-gradient(to bottom, #28a745, #34ce57);
+}
+
+.tbc-wc-calendar .tbc-wc-event-closed {
+    background: linear-gradient(to bottom, #FF4B47, #FF6B65);
+}
+
+.tbc-wc-calendar .tbc-wc-event-open {
+    background: linear-gradient(to bottom, #345BFF, #527DFF);
+}
+
+/* WooCommerce spacing fix */
+.woocommerce-shop .bb-grid-cell:not(.no-gutter),
+.woocommerce-shop .bb-grid > :not(.no-gutter) {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+}
+
+/* ===== MOBILE STYLES ===== */
+@media (max-width: 768px) {
+    /* Navigation mobile styles */
+    .tbc-wc-month-navigation {
+        font-size: 1em;
+    }
+
+    .tbc-wc-month-navigation .tbc-wc-nav-button {
+        width: 70px;
+        padding: 3px 6px;
+        font-size: 0.5em;
+    }
+
+    .tbc-wc-month-navigation .tbc-wc-current-month {
+        font-size: 0.8em;
+    }
+
+    .tbc-wc-month-navigation .tbc-wc-placeholder {
+        width: 70px;
+    }
+    
+    .tbc-wc-calendar-projection-limit-message {
+        padding: 30px 15px;
+        margin: 15px 0;
+    }
+    
+    .tbc-wc-limit-message-content h3 {
+        font-size: 18px;
+    }
+    
+    .tbc-wc-limit-message-content p {
+        font-size: 14px;
+    }
+
+    /* Calendar mobile styles */
+    .tbc-wc-calendar .tbc-wc-event-item-link {
+        padding: 12px 1px 12px 25px;
+        min-height: auto;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        position: relative;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-title {
+        width: 100%;
+        text-align: center;
+        font-size: 1em;
+        margin-bottom: 10px;
+        order: -1;
+    }
+
+    .tbc-wc-calendar .tbc-wc-date-image-container {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-date,
+    .tbc-wc-calendar .tbc-wc-event-image-container {
+        flex: 0 0 80px;
+        height: 80px;
+        width: 80px;
+        margin: 0 5px;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-date {
+        padding: 5px;
+        line-height: 80%;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-day {
+        font-size: 10px;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-day-number {
+        font-size: 24px;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-day-suffix {
+        font-size: 10px;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-month {
+        font-size: 10px;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-image img {
+        border-radius: 8px;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-details {
+        width: 100%;
+        padding-left: 0;
+        margin-top: 10px;
+        margin-left: 5px;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-price,
+    .tbc-wc-calendar .tbc-wc-event-location,
+    .tbc-wc-calendar .tbc-wc-event-time {
+        font-size: 13px;
+        margin-bottom: 0px;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-description {
+        display: none;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-item:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    .tbc-wc-calendar .tbc-wc-event-item:hover .tbc-wc-event-image img {
+        transform: none;
+    }
+}
+
+/* Small phone - compact */
+@media (max-width: 480px) {
+    .tbc-wc-toolbar {
+        padding: 6px 8px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .tbc-wc-toolbar-link span:last-child {
+        display: none;
+    }
+
+    .tbc-wc-toolbar-select {
+        font-size: 12px;
+        padding: 5px 24px 5px 8px;
+    }
+
+    .tbc-wc-view-btn {
+        padding: 5px 8px;
+    }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+    .tbc-wc-toolbar {
+        padding: 10px 16px;
+    }
+}
+
+/* ===== DARK MODE OVERRIDES ===== */
+html.dark .tbc-wc-calendar .tbc-wc-month-section {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+html.dark .tbc-wc-calendar .tbc-wc-event-item:hover {
+    background-color: rgba(255,255,255,0.05);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+html.dark .tbc-wc-calendar .tbc-wc-event-date {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+html.dark .tbc-wc-calendar-projection-limit-message {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* ===== SERIES MODE - Full width layout ===== */
+.tbc-wc-series-mode .woocommerce div.product div.summary,
+.tbc-wc-series-mode.woocommerce div.product div.summary {
+    float: none;
+    width: 100%;
+    clear: both;
+}
+
+/* Hide cart form in series mode */
+.tbc-wc-series-mode form.cart {
+    display: none;
+}
