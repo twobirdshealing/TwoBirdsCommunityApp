@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App &mdash; Real-Time Messaging (Pusher)</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn { border-left-color: var(--warning); }
+  .callout-error { border-left-color: var(--error); }
+  .callout-success { border-left-color: var(--success); }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85em;
+    line-height: 1.7;
+    overflow-x: auto;
+    white-space: pre;
+  }
+</style>
+</head>
+<body>
+
+<h1>Real-Time Messaging (Pusher)</h1>
+<p class="subtitle">WebSocket connection, private channels, event handling, and lifecycle management</p>
+
+<div class="callout">
+  <strong>Key files:</strong><br>
+  <span class="file-path">services/pusher.ts</span> &mdash; Pusher client singleton, auth, channel subscriptions, event dispatch<br>
+  <span class="file-path">contexts/PusherContext.tsx</span> &mdash; React provider, lifecycle hooks, convenience subscription hooks<br>
+  <span class="file-path">hooks/useTickerPolling.ts</span> &mdash; Activity keepalive (server skips broadcasts to inactive users)<br>
+  <span class="file-path">hooks/useAppFocus.ts</span> &mdash; App foreground detection for reconnection<br>
+  <span class="file-path">constants/config.ts</span> &mdash; Pusher app key, cluster, auth endpoint
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#config">Configuration</a></li>
+    <li><a href="#connection-flow">Connection Flow</a></li>
+    <li><a href="#channels">Channels &amp; Auth</a></li>
+    <li><a href="#events">Events</a></li>
+    <li><a href="#subscribing">Subscribing to Events</a></li>
+    <li><a href="#lifecycle">Connection Lifecycle</a></li>
+    <li><a href="#ticker">Activity Keepalive (Ticker)</a></li>
+    <li><a href="#server-side">Server-Side Broadcasting</a></li>
+    <li><a href="#consumers">Event Consumers</a></li>
+    <li><a href="#setup">Buyer Setup</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="overview">1. Overview</h2>
+
+<p>The app uses <strong>Pusher WebSockets</strong> for real-time chat. When another user sends a message or reacts to one, the server broadcasts the event through Pusher and the app updates instantly &mdash; no polling required.</p>
+
+<p>Pusher is provided by Fluent Community's <strong>Fluent Messaging</strong> plugin. The app doesn't run its own Pusher server &mdash; it connects to the same Pusher/Soketi instance the web portal uses.</p>
+
+<div class="callout callout-success">
+  <strong>Two events, one channel.</strong> The entire real-time system handles just two event types (<code>message</code> and <code>reaction</code>) on one private channel per user. Everything else (deletions, new threads, read receipts) uses polling fallbacks. Simple by design.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="architecture">2. Architecture</h2>
+
+<p>Three layers, each with a single responsibility:</p>
+
+<table>
+  <tr><th>Layer</th><th>File</th><th>Responsibility</th></tr>
+  <tr>
+    <td>Service (singleton)</td>
+    <td><span class="file-path">services/pusher.ts</span></td>
+    <td>Pusher client, connection, channel subscription, raw event dispatch to handler Sets</td>
+  </tr>
+  <tr>
+    <td>Context (provider)</td>
+    <td><span class="file-path">contexts/PusherContext.tsx</span></td>
+    <td>React lifecycle (connect on auth, disconnect on logout, reconnect on foreground), convenience hooks</td>
+  </tr>
+  <tr>
+    <td>Consumers (components/hooks)</td>
+    <td>Various</td>
+    <td>Subscribe via <code>useNewMessageListener</code> / <code>useReactionListener</code>, update local UI state</td>
+  </tr>
+</table>
+
+<h3>Data flow</h3>
+<div class="diagram">Server broadcasts event via Pusher
+    &darr;
+Pusher WebSocket delivers to app
+    &darr;
+services/pusher.ts receives on channel
+    &darr;
+Iterates handler Set (messageHandlers / reactionHandlers)
+    &darr;
+Each registered handler fires (multiple consumers)
+    &darr;
+&boxur; useChatMessages &rarr; appends message to chat UI
+&boxur; Messages screen &rarr; updates thread preview + unread count
+&boxur; TopHeader &rarr; bumps unread badge</div>
+
+<h3>Handler registry pattern</h3>
+<p>The service uses two <code>Set&lt;Function&gt;</code> collections as event registries. Components register handlers on mount and unregister on unmount. This decouples the WebSocket layer from React &mdash; any number of components can listen without the service knowing about React at all.</p>
+
+<pre><code>// services/pusher.ts — handler pattern
+const messageHandlers: Set&lt;MessageHandler&gt; = new Set();
+
+// Components add handlers
+export function onNewMessage(handler: MessageHandler): () =&gt; void {
+  messageHandlers.add(handler);
+  return () =&gt; messageHandlers.delete(handler);  // cleanup
+}
+
+// When event arrives, all handlers fire
+userChannel.bind('message', (data: PusherMessage) =&gt; {
+  messageHandlers.forEach(handler =&gt; handler(data));
+});</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="config">3. Configuration</h2>
+
+<p>Pusher credentials live in <span class="file-path">constants/config.ts</span>:</p>
+
+<pre><code>// constants/config.ts
+export const PUSHER_CONFIG = {
+  APP_KEY: 'YOUR_PUSHER_APP_KEY',     // SETUP: From Pusher dashboard or Fluent settings
+  CLUSTER: 'YOUR_PUSHER_CLUSTER',     // SETUP: e.g. 'us3', 'eu', 'ap1'
+  AUTH_ENDPOINT: `${API_URL}/chat/broadcast/auth`,  // Fluent Messaging's auth endpoint
+};</code></pre>
+
+<table>
+  <tr><th>Value</th><th>Where to find it</th></tr>
+  <tr>
+    <td><code>APP_KEY</code></td>
+    <td>WordPress admin &rarr; Fluent Community &rarr; Settings &rarr; Messaging &rarr; Real-time config. Or <code>wp-config.php</code> constant <code>FLUENT_SOCKET_APP_KEY</code>.</td>
+  </tr>
+  <tr>
+    <td><code>CLUSTER</code></td>
+    <td>Same location. Common values: <code>mt1</code> (default Soketi), <code>us2</code>, <code>us3</code>, <code>eu</code>, <code>ap1</code>.</td>
+  </tr>
+  <tr>
+    <td><code>AUTH_ENDPOINT</code></td>
+    <td>Auto-derived from <code>API_URL</code>. Don't change unless using a custom auth proxy.</td>
+  </tr>
+</table>
+
+<div class="callout callout-warn">
+  <strong>Fluent Messaging required.</strong> Real-time messaging requires the <strong>Fluent Messaging</strong> add-on (part of Fluent Community Pro). Without it, there's no Pusher config, no channels, and no chat. The app's messaging features gracefully degrade &mdash; the Messages tab just won't appear if the <code>FEATURES.MESSAGING</code> flag is off.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="connection-flow">4. Connection Flow</h2>
+
+<div class="diagram">1. User logs in &rarr; AuthContext sets isAuthenticated = true
+2. PusherContext effect fires &rarr; calls initializePusher(user.id)
+3. initializePusher:
+   a. Fetches JWT from SecureStore
+   b. Creates Pusher client with custom authorizer
+   c. Subscribes to private-chat_user_{userId}
+   d. Pusher calls authorizer &rarr; POST /chat/broadcast/auth
+   e. Server validates JWT + channel access &rarr; returns auth signature
+   f. Channel subscription succeeds
+   g. Binds 'message' + 'reaction' event listeners
+4. Ticker polling starts (keeps last_activity fresh)
+5. App is now receiving real-time events</div>
+
+<h3>Auth token handling</h3>
+<p>The authorizer fetches a <strong>fresh JWT on every channel auth request</strong>, not the token captured at init time. This handles the case where the token was silently refreshed between init and the actual channel subscription:</p>
+
+<pre><code>// services/pusher.ts — custom authorizer
+authorizer: (channel) =&gt; ({
+  authorize: async (socketId, callback) =&gt; {
+    // Fresh token each time — may have been refreshed since init
+    const freshToken = await getAuthToken();
+    if (!freshToken) {
+      callback(new Error('No auth token'), null);
+      return;
+    }
+
+    const response = await fetch(PUSHER_CONFIG.AUTH_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${freshToken}`,
+      },
+      body: JSON.stringify({
+        socket_id: socketId,
+        channel_name: channel.name,
+      }),
+    });
+
+    const data = await response.json();
+    callback(null, data);  // { auth: 'KEY:SIGNATURE' }
+  },
+}),</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="channels">5. Channels &amp; Auth</h2>
+
+<h3>Channel naming</h3>
+<p>Each user subscribes to one private channel:</p>
+
+<table>
+  <tr><th>Channel</th><th>Pattern</th><th>Who subscribes</th></tr>
+  <tr>
+    <td>DM channel</td>
+    <td><code>private-chat_user_{userId}</code></td>
+    <td>The user with that ID (only they can authorize)</td>
+  </tr>
+</table>
+
+<p>The server also supports space/group channels (<code>private-chat_space_{spaceId}</code>) for community chat, but the app currently uses only user channels for DMs.</p>
+
+<h3>Server-side authorization</h3>
+<p>The auth endpoint at <code>/wp-json/fluent-community/v2/chat/broadcast/auth</code> validates:</p>
+
+<ol>
+  <li>User is authenticated (valid JWT in <code>Authorization</code> header)</li>
+  <li>User has an active Fluent Community profile (<code>status === 'active'</code>)</li>
+  <li>User can access the channel (for <code>private-chat_user_*</code>: the user ID in the channel name matches the authenticated user)</li>
+</ol>
+
+<p>Returns <code>{ auth: "APP_KEY:HMAC_SHA256_SIGNATURE" }</code> &mdash; standard Pusher protocol.</p>
+
+<!-- ================================================================== -->
+<h2 id="events">6. Events</h2>
+
+<p>The server broadcasts two event types. All other data changes (thread creation, message deletion, read receipts) are handled by polling.</p>
+
+<h3>message</h3>
+<p>Fired when someone sends a message in a thread the user is part of.</p>
+
+<pre><code>// PusherMessage type
+{
+  thread_id: number | string;
+  message: {
+    id: number;
+    thread_id: number | string;
+    user_id: number | string;
+    text: string;                    // HTML: &lt;div class="chat_text"&gt;&lt;p&gt;...&lt;/p&gt;&lt;/div&gt;
+    created_at: string;
+    xprofile: XProfile;              // Sender info (name, avatar, username)
+    meta?: {
+      reactions?: Record&lt;string, number[]&gt;;
+      reply_to?: number;
+      reply_text?: string;
+    };
+    attachments?: ChatAttachment[];
+  };
+}</code></pre>
+
+<h3>reaction</h3>
+<p>Fired when someone adds or removes a reaction on a message.</p>
+
+<pre><code>// PusherReaction type
+{
+  message_id: number;
+  thread_id: number | string;
+  reactions: Record&lt;string, number[]&gt;;  // { "❤️": [123, 456], "👍": [789] }
+}</code></pre>
+
+<p>Reactions use a Discord-style format: each emoji key maps to an array of user IDs who reacted with it. Empty arrays are cleaned up server-side when the last user removes their reaction.</p>
+
+<!-- ================================================================== -->
+<h2 id="subscribing">7. Subscribing to Events</h2>
+
+<p>Components use convenience hooks from <span class="file-path">contexts/PusherContext.tsx</span>:</p>
+
+<pre><code>import { useNewMessageListener, useReactionListener } from '@/contexts/PusherContext';
+
+// Listen for new messages
+useNewMessageListener((data) =&gt; {
+  if (data.thread_id === currentThreadId) {
+    appendMessage(data.message);
+    scrollToBottom();
+  }
+});
+
+// Listen for reaction changes
+useReactionListener((data) =&gt; {
+  if (data.thread_id === currentThreadId) {
+    updateReactions(data.message_id, data.reactions);
+  }
+});</code></pre>
+
+<h3>How the hooks work</h3>
+<p>Both hooks follow the same pattern:</p>
+
+<pre><code>// contexts/PusherContext.tsx
+export function useNewMessageListener(handler: MessageHandler) {
+  const { subscribeToMessages } = usePusher();
+  const stableHandler = useEffectEvent(handler);  // stable ref, no dep array issues
+
+  useEffect(() =&gt; {
+    const unsubscribe = subscribeToMessages(stableHandler);
+    return unsubscribe;  // auto-cleanup on unmount
+  }, [subscribeToMessages]);
+}</code></pre>
+
+<p><code>useEffectEvent</code> (React 19) wraps the handler so it always calls the latest version without triggering effect re-runs. This means you can reference local state in your handler without adding it to deps.</p>
+
+<div class="callout callout-error">
+  <strong>Don't call <code>onNewMessage</code> / <code>onReaction</code> directly.</strong> Always use the hooks (<code>useNewMessageListener</code>, <code>useReactionListener</code>). They handle stable refs and cleanup. Direct calls risk handler leaks.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="lifecycle">8. Connection Lifecycle</h2>
+
+<table>
+  <tr><th>Event</th><th>What happens</th><th>Handlers cleared?</th></tr>
+  <tr>
+    <td>Auth confirmed</td>
+    <td><code>initializePusher(userId)</code> &mdash; creates client, subscribes to channel</td>
+    <td>No (fresh start)</td>
+  </tr>
+  <tr>
+    <td>App backgrounded</td>
+    <td>Pusher's built-in connection management pauses the WebSocket</td>
+    <td>No</td>
+  </tr>
+  <tr>
+    <td>App foregrounded</td>
+    <td><code>reconnectPusher()</code> &mdash; checks connection state, reconnects if needed</td>
+    <td>No (preserves handlers)</td>
+  </tr>
+  <tr>
+    <td>User switch</td>
+    <td>Disconnects old channel, initializes for new user</td>
+    <td>No</td>
+  </tr>
+  <tr>
+    <td>Logout</td>
+    <td><code>disconnectPusher()</code> + <code>clearHandlers()</code></td>
+    <td><strong>Yes</strong> (full cleanup)</td>
+  </tr>
+  <tr>
+    <td>Provider unmount</td>
+    <td><code>disconnectPusher()</code> only (handlers are React-lifecycle-managed)</td>
+    <td>No</td>
+  </tr>
+</table>
+
+<h3>Reconnect cooldown</h3>
+<p>The reconnect function has a <strong>10-second cooldown</strong> to prevent thrashing when the app quickly backgrounds and foregrounds:</p>
+
+<pre><code>// services/pusher.ts
+const RECONNECT_COOLDOWN = 10_000;
+
+export async function reconnectPusher(): Promise&lt;boolean&gt; {
+  // Skip if connection is fresh (connected less than 10s ago)
+  if (connectedAt && Date.now() - connectedAt &lt; RECONNECT_COOLDOWN) {
+    return true;
+  }
+
+  // Skip full teardown if WebSocket is still alive
+  if (pusherClient?.connection.state === 'connected') {
+    connectedAt = Date.now();
+    return true;
+  }
+
+  // Full reconnect: disconnect (keep handlers) &rarr; reinitialize
+  // ...
+}</code></pre>
+
+<div class="callout">
+  <strong>Handlers survive reconnect.</strong> The <code>reconnectPusher</code> function tears down and rebuilds the Pusher client and channel, but the handler Sets are module-level state that persist across reconnections. Components don't need to re-subscribe.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="ticker">9. Activity Keepalive (Ticker)</h2>
+
+<p>The Fluent Messaging server <strong>skips Pusher broadcasts to users inactive for more than 5 minutes</strong>. This is a server-side performance optimization &mdash; it avoids waking sleeping clients.</p>
+
+<p>The app works around this with a ticker poll that keeps <code>xprofile.last_activity</code> fresh:</p>
+
+<table>
+  <tr><th>Property</th><th>Value</th></tr>
+  <tr><td>Endpoint</td><td><code>GET /feeds/ticker</code></td></tr>
+  <tr><td>Interval</td><td>3.5&ndash;4.5 minutes (randomized to avoid thundering herd)</td></tr>
+  <tr><td>Fires on</td><td>Initial auth, each interval, and app foreground</td></tr>
+  <tr><td>Pauses on</td><td>App background</td></tr>
+  <tr><td>Error handling</td><td>Silently ignored (background keepalive, not critical)</td></tr>
+</table>
+
+<div class="callout callout-warn">
+  <strong>Don't remove the ticker.</strong> Without it, the server stops sending Pusher events after 5 minutes of apparent inactivity. Messages would still arrive when the user manually refreshes, but real-time delivery would silently stop.
+</div>
+
+<h3>How it works</h3>
+<pre><code>// hooks/useTickerPolling.ts (simplified)
+const MIN_INTERVAL = 210_000;  // 3.5 minutes
+const MAX_INTERVAL = 270_000;  // 4.5 minutes
+
+function randomInterval(): number {
+  return MIN_INTERVAL + Math.random() * (MAX_INTERVAL - MIN_INTERVAL);
+}
+
+// Tick immediately on start, then schedule next tick
+const tick = async () =&gt; {
+  await getTicker(sinceRef.current);
+  timerRef.current = setTimeout(tick, randomInterval());
+};
+
+// Pause on background, resume + tick immediately on foreground
+AppState.addEventListener('change', (state) =&gt; {
+  if (state === 'active' && !activeRef.current) {
+    activeRef.current = true;
+    tick();
+  } else {
+    activeRef.current = false;
+    clearTimeout(timerRef.current);
+  }
+});</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="server-side">10. Server-Side Broadcasting</h2>
+
+<p>Understanding the server side helps debug why events might not arrive.</p>
+
+<h3>Broadcast flow</h3>
+<div class="diagram">User sends message via app
+    &darr;
+POST /wp-json/fluent-community/v2/chat/messages/{threadId}
+    &darr;
+Fluent Messaging creates message record in DB
+    &darr;
+do_action('fluent_messaging/after_add_message', $message)
+    &darr;
+For each participant in the thread:
+  &boxur; Check last_activity &lt; 5 minutes ago
+  &boxur; If active: PusherHelper::sendMessage(
+        'private-chat_user_{userId}', 'message', $payload
+    )
+    &darr;
+Pusher routes event to subscribed clients</div>
+
+<h3>Server-side activity gate</h3>
+<p>The server only broadcasts to users whose <code>xprofile.last_activity</code> is within 5 minutes of the current time. This is why the <a href="#ticker">ticker polling</a> is essential.</p>
+
+<pre><code>// Fluent Messaging — ChatController.php (simplified)
+if (current_time('timestamp') - strtotime($xprofile-&gt;last_activity) &lt; 300) {
+  PusherHelper::sendMessage(
+    'private-chat_user_' . $userId,
+    'message',
+    ['thread_id' =&gt; $thread-&gt;id, 'message' =&gt; $message]
+  );
+}</code></pre>
+
+<h3>Socket providers</h3>
+<p>Fluent Messaging supports three socket providers. The app works with all of them &mdash; the Pusher JS client handles protocol compatibility:</p>
+
+<table>
+  <tr><th>Provider</th><th>Description</th><th>Config</th></tr>
+  <tr><td><code>fluent-socket</code></td><td>Default &mdash; Fluent's hosted Soketi instance at <code>ws.fluentsocket.com</code></td><td><code>wp-config.php</code> constants or Fluent admin</td></tr>
+  <tr><td><code>pusher</code></td><td>Pusher Cloud (pusher.com)</td><td>Pusher dashboard credentials</td></tr>
+  <tr><td><code>custom</code></td><td>Self-hosted Soketi with custom host/port</td><td>Custom host, port, scheme in settings</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="consumers">11. Event Consumers</h2>
+
+<p>Every component that listens to Pusher events and what it does with them:</p>
+
+<table>
+  <tr><th>Consumer</th><th>File</th><th>Event</th><th>Behavior</th></tr>
+  <tr>
+    <td>Chat thread</td>
+    <td><span class="file-path">hooks/useChatMessages.ts</span></td>
+    <td><code>message</code></td>
+    <td>Appends message to list if thread_id matches, scrolls to bottom</td>
+  </tr>
+  <tr>
+    <td>Chat thread</td>
+    <td><span class="file-path">hooks/useChatMessages.ts</span></td>
+    <td><code>reaction</code></td>
+    <td>Updates reactions on specific message by ID</td>
+  </tr>
+  <tr>
+    <td>Messages list</td>
+    <td><span class="file-path">app/messages/index.tsx</span></td>
+    <td><code>message</code></td>
+    <td>Updates thread preview text, bumps unread count. Refetches if thread is unknown.</td>
+  </tr>
+  <tr>
+    <td>Top header</td>
+    <td><span class="file-path">components/navigation/TopHeader.tsx</span></td>
+    <td><code>message</code></td>
+    <td>Increments unread message badge (filters out own messages)</td>
+  </tr>
+</table>
+
+<h3>Pattern: filter by thread_id</h3>
+<p>Most consumers check <code>thread_id</code> before processing. This is important because all DM events arrive on a single channel &mdash; a handler in Thread A shouldn't process messages for Thread B:</p>
+
+<pre><code>// hooks/useChatMessages.ts
+useNewMessageListener((data) =&gt; {
+  if (data.thread_id !== threadId) return;  // not our thread
+  setMessages(prev =&gt; [...prev, data.message]);
+  scrollToBottom();
+});</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="setup">12. Buyer Setup</h2>
+
+<p>For white-label buyers setting up real-time messaging:</p>
+
+<ol>
+  <li>Install <strong>Fluent Community Pro</strong> + <strong>Fluent Messaging</strong> add-on on WordPress</li>
+  <li>Go to Fluent Community &rarr; Settings &rarr; Messaging &rarr; enable real-time</li>
+  <li>Note the <strong>App Key</strong> and <strong>Cluster</strong> from the real-time config section</li>
+  <li>Update <span class="file-path">constants/config.ts</span>:
+    <pre><code>export const PUSHER_CONFIG = {
+  APP_KEY: 'your_app_key_here',
+  CLUSTER: 'your_cluster_here',
+  AUTH_ENDPOINT: `${API_URL}/chat/broadcast/auth`,
+};</code></pre>
+  </li>
+  <li>Ensure <code>FEATURES.MESSAGING</code> is <code>true</code> in the same file</li>
+  <li>Build and test &mdash; messages should arrive in real-time</li>
+</ol>
+
+<div class="callout">
+  <strong>Where do the credentials come from?</strong> Fluent Community can use Pusher Cloud (you create an app at <a href="https://pusher.com">pusher.com</a>) or Fluent's built-in Soketi service (credentials appear in Fluent admin). Either way, the app key and cluster go in <code>PUSHER_CONFIG</code>.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="rules">13. Rules</h2>
+
+<ol>
+  <li><strong>Always use the hooks</strong> (<code>useNewMessageListener</code>, <code>useReactionListener</code>) to subscribe to events. Never call <code>onNewMessage</code> / <code>onReaction</code> directly from components.</li>
+  <li><strong>Filter by <code>thread_id</code></strong> in your handler. All DM events arrive on a single channel &mdash; without filtering, you'll process events for unrelated threads.</li>
+  <li><strong>Don't remove the ticker polling.</strong> Without it, the server stops broadcasting to the app after 5 minutes.</li>
+  <li><strong>Don't clear handlers on reconnect.</strong> Handlers are React-lifecycle-managed. Only <code>clearHandlers()</code> on logout.</li>
+  <li><strong>Auth endpoint is fixed.</strong> It's always <code>{API_URL}/chat/broadcast/auth</code> &mdash; provided by Fluent Messaging. Don't create a custom endpoint.</li>
+  <li><strong>Fresh token per auth.</strong> The authorizer fetches a new JWT each time, not the one captured at init. This handles silent token refresh.</li>
+  <li><strong>Dev logging:</strong> <code>Pusher.logToConsole = true</code> is enabled in <code>__DEV__</code> mode for raw WebSocket traffic. Zero-cost in production.</li>
+  <li><strong>No new events.</strong> If you need to add a new real-time event type, add a new handler Set in <code>pusher.ts</code>, bind it to the channel event, create a convenience hook in <code>PusherContext.tsx</code>, and update this doc.</li>
+  <li><strong>Reconnect cooldown is 10 seconds.</strong> Don't decrease it &mdash; rapid reconnects waste bandwidth and can trigger Pusher rate limits.</li>
+  <li><strong>Connection state logging</strong> uses the <code>Pusher</code> tag via <code>createLogger('Pusher')</code>. Filter console output with <code>[Pusher]</code> to debug connection issues.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  Pusher &middot;
+  <a href="theme-system.html">Theme System</a>
+</p>
+
+</body>
+</html>

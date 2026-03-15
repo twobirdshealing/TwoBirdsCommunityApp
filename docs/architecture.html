@@ -430,7 +430,7 @@ markBatchFresh(['tbc_widget_enrolled_courses']);
 
 Authorizer:
   &rarr; Fetches fresh JWT each time (not closure-captured)
-  &rarr; POST /pusher/auth with socket_id + channel_name
+  &rarr; POST /chat/broadcast/auth with socket_id + channel_name
   &rarr; Returns { auth: string } for private channel access</div>
 
 <h3>Events</h3>
@@ -735,6 +735,7 @@ useCachedData({
   <a href="components.html">Components</a> &middot;
   <a href="features.html">Features</a> &middot;
   <a href="logging.html">Logging</a> &middot;
+  <a href="pusher.html">Pusher</a> &middot;
   <a href="theme-system.html">Theme System</a>
 </p>
 
