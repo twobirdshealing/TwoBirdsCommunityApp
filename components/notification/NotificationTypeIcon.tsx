@@ -12,7 +12,7 @@ import { ColorTheme, withOpacity } from '@/constants/colors';
 import { ReactionIcon } from '@/components/feed/ReactionIcon';
 import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { useTheme } from '@/contexts/ThemeContext';
-import { NotificationType } from '@/types/notification';
+import { NotificationAction } from '@/types/notification';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -21,8 +21,8 @@ import { StyleSheet, View } from 'react-native';
 // Types
 // -----------------------------------------------------------------------------
 
-interface NotificationTypeIconProps {
-  type: NotificationType;
+interface NotificationActionIconProps {
+  type: NotificationAction;
   /** Reaction type from tbc-multi-reactions API (e.g. 'laugh', 'wow') */
   reactionType?: string;
   /** Custom icon URL for the reaction (uploaded image) */
@@ -42,7 +42,7 @@ interface IconConfig {
   backgroundColor: string;
 }
 
-function getIconConfig(type: NotificationType, tc: ColorTheme): IconConfig {
+function getIconConfig(type: NotificationAction, tc: ColorTheme): IconConfig {
   // Handle action-style types (e.g., "feed/mentioned")
   const normalizedType = type?.toLowerCase() || '';
 
@@ -167,13 +167,13 @@ function getIconConfig(type: NotificationType, tc: ColorTheme): IconConfig {
 // Component
 // -----------------------------------------------------------------------------
 
-export const NotificationTypeIcon = React.memo(function NotificationTypeIcon({
+export const NotificationActionIcon = React.memo(function NotificationActionIcon({
   type,
   reactionType,
   reactionIconUrl,
   reactionEmoji,
   size = 20,
-}: NotificationTypeIconProps) {
+}: NotificationActionIconProps) {
   const { colors: themeColors } = useTheme();
   const { getReaction } = useReactionConfig();
   const config = getIconConfig(type, themeColors);
@@ -239,4 +239,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default NotificationTypeIcon;
+export default NotificationActionIcon;

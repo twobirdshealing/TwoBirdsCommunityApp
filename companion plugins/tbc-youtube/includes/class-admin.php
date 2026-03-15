@@ -78,6 +78,8 @@ class TBC_YT_Admin {
             ? esc_url_raw($input['channel_url'])
             : '';
 
+        $sanitized['delete_data_on_uninstall'] = !empty($input['delete_data_on_uninstall']);
+
         // Clear cache if requested
         if (!empty($input['clear_cache'])) {
             TBC_YT_API::get_instance()->clear_cache();
@@ -207,6 +209,26 @@ class TBC_YT_Admin {
                 <p class="description" style="margin-top: 8px;">
                     <?php _e('Legacy endpoints under <code>/wp-json/tbc-ca/v1/youtube/*</code> are also registered for backward compatibility.', 'tbc-youtube'); ?>
                 </p>
+
+                <hr />
+                <h2><?php _e('Data Management', 'tbc-youtube'); ?></h2>
+                <table class="form-table" role="presentation">
+                    <tr>
+                        <th scope="row"><?php _e('Uninstall Behavior', 'tbc-youtube'); ?></th>
+                        <td>
+                            <label>
+                                <input type="checkbox"
+                                       name="tbc_youtube_settings[delete_data_on_uninstall]"
+                                       value="1"
+                                       <?php checked(!empty($settings['delete_data_on_uninstall'])); ?> />
+                                <?php _e('Delete all plugin data when uninstalled', 'tbc-youtube'); ?>
+                            </label>
+                            <p class="description">
+                                <?php _e('When enabled, uninstalling this plugin will permanently remove all settings and cached data. Leave unchecked to preserve data if reinstalling later.', 'tbc-youtube'); ?>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
 
                 <?php submit_button(); ?>
             </form>

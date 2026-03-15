@@ -7,6 +7,7 @@
 // =============================================================================
 
 import { Ionicons } from '@expo/vector-icons';
+import type { Router } from 'expo-router';
 import { FEATURES } from '@/constants/config';
 import type { ColorTheme } from '@/constants/colors';
 
@@ -149,4 +150,24 @@ export interface ModuleManifest {
   tabBarAddon?: React.ComponentType;
   /** Route prefixes for push notification / deep link validation (e.g. ['/bookclub']) */
   routePrefixes?: string[];
+
+  // ---------------------------------------------------------------------------
+  // Lifecycle hooks (all optional)
+  // ---------------------------------------------------------------------------
+
+  /** Called once after auth is confirmed on app start (fire-and-forget) */
+  onInit?: () => void | Promise<void>;
+  /** Called on logout — clear module-specific caches or state */
+  onCleanup?: () => void;
+
+  // ---------------------------------------------------------------------------
+  // Push notification handler (optional)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Handle a push notification tap. Receives the notification data and router.
+   * Return `true` if this module handled the notification (stops further routing).
+   * Return `false` to let core or other modules handle it.
+   */
+  notificationHandler?: (data: Record<string, unknown>, router: Router) => boolean;
 }

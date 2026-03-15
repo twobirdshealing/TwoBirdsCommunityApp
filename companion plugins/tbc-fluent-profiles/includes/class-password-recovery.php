@@ -82,7 +82,7 @@ class PasswordRecovery {
         }
 
         $clean_phone = $result['data']['phone'] ?? $formatted;
-        $session_key = Helpers::generate_session_key('tbc_otp_recovery_');
+        $session_key = Helpers::generate_session_key('tbc_fp_recovery_');
 
         Helpers::store_session($session_key, [
             'verified'     => false,

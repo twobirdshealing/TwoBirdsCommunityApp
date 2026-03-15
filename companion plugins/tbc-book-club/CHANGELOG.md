@@ -2,6 +2,10 @@
 
 All notable changes to the TBC Book Club Manager plugin.
 
+## v2.3.1
+- Added "Delete all plugin data when uninstalled" setting in Data Management section — uninstall preserves all data by default to prevent accidental data loss during troubleshooting or reinstalls
+- Added `uninstall.php` — when opted in, removes books table, bookmarks table, and plugin options
+
 ## v2.3.0
 - **REST API**: Moved book club REST endpoints from tbc-community-app into this plugin under `tbc-bc/v1` namespace (GET /books, GET /books/{id}, POST /books/{id}/bookmarks, DELETE /books/{id}/bookmarks/{bookmark_id})
 - **Frontend removed**: Stripped all web frontend UI — player, book selector, book info shortcodes, frontend JS/CSS/SVGs. Admin UI unchanged.

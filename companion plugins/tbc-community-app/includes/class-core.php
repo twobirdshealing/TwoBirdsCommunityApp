@@ -27,9 +27,7 @@ class TBC_CA_Core {
     private function load_dependencies() {
         // Load all class files
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-api.php';
-        require_once TBC_CA_PLUGIN_DIR . 'includes/class-registration-api.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-password-api.php';
-        require_once TBC_CA_PLUGIN_DIR . 'includes/class-otp-api.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/webview/class-web-session.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/webview/class-app-view.php';
 
@@ -70,9 +68,7 @@ class TBC_CA_Core {
 
         // Initialize REST API
         TBC_CA_API::get_instance();
-        TBC_CA_Registration_API::get_instance();  // @deprecated — moved to tbc-fluent-profiles (tbc-fp/v1/register), kept for backward compat
         TBC_CA_Password_API::get_instance();
-        TBC_CA_OTP_API::get_instance();           // @deprecated — moved to tbc-fluent-profiles (tbc-fp/v1/otp), kept for backward compat
 
         // Initialize WebView components
         TBC_CA_Web_Session::get_instance();

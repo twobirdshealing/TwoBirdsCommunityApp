@@ -24,10 +24,9 @@ export const APP_SCHEME: string = Array.isArray(rawScheme) ? rawScheme[0] : rawS
 // SETUP: Site URL
 // -----------------------------------------------------------------------------
 
-// EAS build profiles override this via SITE_URL env var (see eas.json).
-// This fallback is used for local dev with `npx expo start`.
-export const SITE_URL: string =
-  Constants.expoConfig?.extra?.siteUrl || 'https://community.twobirdschurch.com'; // SETUP: Your WordPress site URL
+// SETUP: Set your WordPress site URL in eas.json (env.SITE_URL).
+// app.config.ts reads it and passes it via expo.extra.siteUrl.
+export const SITE_URL: string = Constants.expoConfig?.extra?.siteUrl; // SETUP: Your WordPress site URL
 
 export const API_URL = `${SITE_URL}/wp-json/fluent-community/v2`;
 
@@ -111,6 +110,7 @@ export const FEATURES = {
   MESSAGING: true,          // SETUP: Fluent Messaging (direct chat)
   COURSES: true,            // SETUP: Fluent LMS courses
   CART: true,               // SETUP: WooCommerce cart icon in header (disable if no WooCommerce)
+  MULTI_REACTIONS: true,    // SETUP: Multi-reaction support via TBC Multi-Reactions plugin (disable if plugin not installed)
   PROFILE_TABS: {           // SETUP: Which tabs appear on user profiles (About is always on)
     POSTS: false,           // User's posts feed
     SPACES: false,          // User's joined spaces

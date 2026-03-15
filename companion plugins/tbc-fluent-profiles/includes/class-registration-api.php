@@ -231,11 +231,19 @@ class RegistrationApi {
         // Email verification
         $email_verification_required = (bool) $auth_helper::isTwoFactorEnabled();
 
+        // Profile completion settings
+        $profile_completion = [
+            'enabled'        => (bool) Helpers::get_option('profile_completion_enabled', true),
+            'require_bio'    => (bool) Helpers::get_option('profile_completion_require_bio', true),
+            'require_avatar' => (bool) Helpers::get_option('profile_completion_require_avatar', true),
+        ];
+
         return new \WP_REST_Response([
             'registration_enabled'        => $registration_enabled,
             'otp_required'                => $otp_required,
             'voice_fallback'              => $voice_fallback,
             'email_verification_required' => $email_verification_required,
+            'profile_completion'          => $profile_completion,
             'fields'                      => $fields,
         ], 200);
     }
@@ -386,7 +394,7 @@ class RegistrationApi {
 
         // --- OTP flow ---
 
-        $session_key = sanitize_text_field($data['tbc_otp_session_key'] ?? '');
+        $session_key = sanitize_text_field($data['tbc_fp_session_key'] ?? '');
         $otp_enabled = (bool) Helpers::get_option('enable_registration_verification', true);
 
         if ($otp_enabled) {
@@ -441,7 +449,7 @@ class RegistrationApi {
                     }
 
                     $clean_phone = $result['data']['phone'] ?? $formatted;
-                    $new_session_key = Helpers::generate_session_key('tbc_otp_session_');
+                    $new_session_key = Helpers::generate_session_key('tbc_fp_session_');
 
                     Helpers::store_session($new_session_key, [
                         'verified'     => false,

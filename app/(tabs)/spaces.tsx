@@ -20,8 +20,6 @@ import {
   TextInput,
   View
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -54,13 +52,6 @@ export default function SpacesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
   const [showTabFade, setShowTabFade] = useState(true);
-
-  // Clean up old cache key from previous implementation
-  useEffect(() => {
-    AsyncStorage.removeItem('tbc_spaces_list').catch((e) => log.warn('Cache cleanup failed:', e));
-    AsyncStorage.removeItem('tbc_spaces_discover').catch((e) => log.warn('Cache cleanup failed:', e));
-    AsyncStorage.removeItem('tbc_spaces_my').catch((e) => log.warn('Cache cleanup failed:', e));
-  }, []);
 
   // ---------------------------------------------------------------------------
   // Fetch Groups + Spaces in parallel

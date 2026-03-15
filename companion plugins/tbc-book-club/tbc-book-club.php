@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Book Club Manager
  * Plugin URI: https://twobirdscode.com
  * Description: Manages and displays book club audiobooks with chapter support, progress tracking, and bookmarks.
- * Version: 2.3.0
+ * Version: 2.3.1
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  *
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 
 class Tbc_Bc_Audiobook {
     private static $instance = null;
-    const VERSION = '2.3.0';
+    const VERSION = '2.3.1';
     
     public static function get_instance() {
         if (null === self::$instance) {
@@ -35,9 +35,25 @@ class Tbc_Bc_Audiobook {
         add_action('init', array($this, 'init'));
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_enqueue_scripts', array($this, 'admin_scripts'));
+        add_action('wp_ajax_tbc_bc_save_uninstall_pref', array($this, 'ajax_save_uninstall_pref'));
     }
     
     public function init() {}
+
+    /**
+     * AJAX handler: save uninstall data preference
+     */
+    public function ajax_save_uninstall_pref() {
+        check_ajax_referer('tbc_bc_data_mgmt');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized', 403);
+        }
+
+        $value = isset($_POST['value']) && $_POST['value'] === '1';
+        update_option('tbc_bc_delete_data_on_uninstall', $value);
+        wp_send_json_success();
+    }
 
     public static function activate() {
         require_once plugin_dir_path(__FILE__) . 'includes/book-database-create.php';

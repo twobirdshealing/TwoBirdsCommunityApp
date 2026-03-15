@@ -39,6 +39,8 @@ interface ProfileCompletionStepsProps {
   existing?: ProfileExistingData;
   /** Whether avatar upload is required before completing. Default true. */
   avatarRequired?: boolean;
+  /** Whether bio is required before completing. Default true. */
+  bioRequired?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -51,6 +53,7 @@ export function ProfileCompletionSteps({
   onComplete,
   existing,
   avatarRequired = true,
+  bioRequired = true,
 }: ProfileCompletionStepsProps) {
   const { user: currentUser, updateUser } = useAuth();
   const { colors: themeColors } = useTheme();
@@ -84,7 +87,7 @@ export function ProfileCompletionSteps({
     hapticMedium();
 
     const bioTrimmed = bio.trim();
-    if (!bioTrimmed) {
+    if (bioRequired && !bioTrimmed) {
       setError('Please write a short bio before continuing.');
       return;
     }
@@ -133,7 +136,7 @@ export function ProfileCompletionSteps({
     } finally {
       setSaving(false);
     }
-  }, [bio, website, socialLinks, username, displayName, currentUser]);
+  }, [bio, bioRequired, website, socialLinks, username, displayName, currentUser]);
 
   // ---------------------------------------------------------------------------
   // Step 2: Avatar + Cover
@@ -249,7 +252,7 @@ export function ProfileCompletionSteps({
 
           <View style={styles.inputContainer}>
             <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
-              Bio <Text style={{ color: themeColors.error }}>*</Text>
+              Bio{bioRequired && <Text style={{ color: themeColors.error }}> *</Text>}
             </Text>
             <TextInput
               style={[
@@ -311,6 +314,16 @@ export function ProfileCompletionSteps({
               <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Save & Continue</Text>
             )}
           </AnimatedPressable>
+          {!bioRequired && !bio.trim() && (
+            <AnimatedPressable
+              style={[styles.skipButton]}
+              onPress={() => setStep(2)}
+              accessibilityRole="button"
+              accessibilityLabel="Skip bio"
+            >
+              <Text style={[styles.skipButtonText, { color: themeColors.textSecondary }]}>Skip for now</Text>
+            </AnimatedPressable>
+          )}
         </>
       ) : (
         <>
@@ -461,5 +474,16 @@ const styles = StyleSheet.create({
 
   buttonDisabled: {
     opacity: 0.7,
+  },
+
+  skipButton: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    marginTop: spacing.xs,
+  },
+
+  skipButtonText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
   },
 });

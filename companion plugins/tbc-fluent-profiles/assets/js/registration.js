@@ -172,7 +172,7 @@
             }
 
             if (otpKey) {
-                payload.tbc_otp_session_key = otpKey;
+                payload.tbc_fp_session_key = otpKey;
             }
 
             var result = await apiPost('register', payload);

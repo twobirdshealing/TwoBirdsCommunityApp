@@ -1,12 +1,21 @@
 <?php
 /**
  * Uninstall handler for TBC Multi Reactions
- * Removes plugin data when uninstalled via WP admin
+ * Only removes data if the "Delete data on uninstall" setting is enabled.
  *
  * @package TBC_Multi_Reactions
  */
 
 defined('WP_UNINSTALL_PLUGIN') || exit;
+
+$tbc_mr_settings = get_option('tbc_mr_settings', []);
+
+// Only remove data if the user explicitly opted in
+if (empty($tbc_mr_settings['delete_data_on_uninstall'])) {
+    return;
+}
+
+// === Full data removal (user opted in) ===
 
 // Remove settings
 delete_option('tbc_mr_settings');
@@ -14,32 +23,11 @@ delete_option('tbc_mr_pending_reaction');
 delete_option('tbc_mr_db_version');
 
 // Remove the tbc_mr_reaction_type column from FC's table
-global $wpdb;
-$tbc_mr_table_name = $wpdb->prefix . 'fcom_post_reactions';
-
-// Check if table exists before trying to alter it
-// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall cleanup, one-time operation.
-$tbc_mr_table_exists = $wpdb->get_var(
-    $wpdb->prepare("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s", DB_NAME, $tbc_mr_table_name)
-);
-
-if ($tbc_mr_table_exists) {
-    // Check if column exists before dropping
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall cleanup.
-    $tbc_mr_column_exists = $wpdb->get_results(
-        $wpdb->prepare(
-            "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = 'tbc_mr_reaction_type'",
-            DB_NAME, $tbc_mr_table_name
-        )
-    );
-
-    if (!empty($tbc_mr_column_exists)) {
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- DDL with $wpdb->prefix table name during uninstall.
-        $wpdb->query("ALTER TABLE `{$tbc_mr_table_name}` DROP COLUMN `tbc_mr_reaction_type`");
-    }
-}
+require_once __DIR__ . '/includes/class-database.php';
+\TBCMultiReactions\Database::remove_reaction_type_column();
 
 // Delete icon media records and their physical files
+global $wpdb;
 $tbc_mr_media_table = $wpdb->prefix . 'fcom_media_archive';
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall cleanup.
 $tbc_mr_media_exists = $wpdb->get_var(

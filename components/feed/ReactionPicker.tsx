@@ -60,6 +60,9 @@ export function ReactionPicker({
   const { colors: themeColors } = useTheme();
   const { reactions } = useReactionConfig();
 
+  // No reactions configured (plugin disabled) — don't render picker
+  if (reactions.length === 0) return null;
+
   // Calculate popover position
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;

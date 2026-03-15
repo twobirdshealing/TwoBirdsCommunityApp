@@ -2,6 +2,20 @@
 
 All notable changes to the TBC Fluent Profiles plugin.
 
+## v2.6.1
+- Added `profile_completion` settings to `/register/fields` REST response — includes `enabled`, `require_bio`, `require_avatar` so the mobile app can adapt the registration flow based on gate configuration
+
+## v2.6.0
+- Renamed all transient session prefixes from `tbc_otp_*` to `tbc_fp_*` (session, recovery, profile)
+- Renamed API payload field from `tbc_otp_session_key` to `tbc_fp_session_key`
+- Renamed HTTP header from `X-TBC-OTP-Session` to `X-TBC-FP-Session`
+- Removed one-time `tbc_otp_*` → `tbc_fp_*` option prefix migration (no longer needed for fresh installs)
+- Cleaned up uninstall.php: removed legacy `tbc_otp_*` option deletion and migration flag cleanup
+
+## v2.5.2
+- Added "Delete all plugin data when uninstalled" setting in Data Management section — uninstall preserves all data by default to prevent accidental data loss during troubleshooting or reinstalls
+- Added `uninstall.php` — when opted in, removes settings, field definitions, OTP config, user meta (custom field values + registration complete flag), OTP transients, and SMS roles
+
 ## v2.5.1
 - **Fix: Profile completion gate now validates required fields** — `POST /register/complete` checks `get_missing_fields()` before marking complete; returns 422 with missing fields if avatar/bio not uploaded (previously blindly set flag to '1')
 - **Fix: Avatar required in registration flow** — mobile app avatar step now validates avatar is uploaded before allowing completion (client-side + server-side guard)

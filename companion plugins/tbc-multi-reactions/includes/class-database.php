@@ -59,13 +59,40 @@ class Database {
     }
 
     /**
-     * Remove tbc_mr_reaction_type column (for uninstall)
+     * Remove tbc_mr_reaction_type column from fcom_post_reactions table (for uninstall)
      */
     public static function remove_reaction_type_column() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'fcom_post_reactions';
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- DDL for uninstall cleanup.
-        $wpdb->query("ALTER TABLE `{$table_name}` DROP COLUMN IF EXISTS `tbc_mr_reaction_type`");
+
+        // Check if table exists
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall cleanup.
+        $table_exists = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s",
+                DB_NAME,
+                $table_name
+            )
+        );
+
+        if (!$table_exists) {
+            return;
+        }
+
+        // Check if column exists before dropping
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall cleanup.
+        $column_exists = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = 'tbc_mr_reaction_type'",
+                DB_NAME,
+                $table_name
+            )
+        );
+
+        if (!empty($column_exists)) {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- DDL with $wpdb->prefix table name during uninstall.
+            $wpdb->query("ALTER TABLE `{$table_name}` DROP COLUMN `tbc_mr_reaction_type`");
+        }
     }
 
     /**
@@ -257,24 +284,6 @@ class Database {
         }
 
         return $breakdowns;
-    }
-
-    /**
-     * Nullify reaction type for removed reaction types
-     *
-     * @param string $type The reaction type key to nullify
-     * @return int|false Number of rows affected or false on error
-     */
-    public static function nullify_reaction_type($type) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'fcom_post_reactions';
-
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- One-time cleanup when reaction type is removed.
-        return $wpdb->query($wpdb->prepare(
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $table is from $wpdb->prefix.
-            "UPDATE `{$table}` SET tbc_mr_reaction_type = NULL WHERE tbc_mr_reaction_type = %s",
-            $type
-        ));
     }
 
     /**

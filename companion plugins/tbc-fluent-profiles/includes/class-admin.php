@@ -16,6 +16,22 @@ class Admin {
 
     public function __construct($fields = null) {
         $this->fields = $fields ?: new Fields();
+        add_action('wp_ajax_tbc_fp_save_uninstall_pref', [$this, 'ajax_save_uninstall_pref']);
+    }
+
+    /**
+     * AJAX handler: save uninstall data preference
+     */
+    public function ajax_save_uninstall_pref() {
+        check_ajax_referer('tbc_fp_data_mgmt');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized', 403);
+        }
+
+        $value = isset($_POST['value']) && $_POST['value'] === '1';
+        update_option('tbc_fp_delete_data_on_uninstall', $value);
+        wp_send_json_success();
     }
 
     /**

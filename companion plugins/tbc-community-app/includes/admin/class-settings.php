@@ -108,6 +108,9 @@ class TBC_CA_Admin_Settings {
         $sanitized['app_store_id']         = sanitize_text_field($input['app_store_id'] ?? '');
         $sanitized['smart_banner_enabled'] = !empty($input['smart_banner_enabled']);
 
+        // Data management
+        $sanitized['delete_data_on_uninstall'] = !empty($input['delete_data_on_uninstall']);
+
         return $sanitized;
     }
 
@@ -342,6 +345,26 @@ class TBC_CA_Admin_Settings {
                                     <?php _e('Show "Open in App" banner on community pages', 'tbc-ca'); ?>
                                 </label>
                                 <p class="description"><?php _e('iOS uses the native Smart App Banner. Android shows a custom bottom banner on Chrome.', 'tbc-ca'); ?></p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Data Management -->
+                <div class="tbc-ca-section">
+                    <h2><?php _e('Data Management', 'tbc-ca'); ?></h2>
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><?php _e('Uninstall Behavior', 'tbc-ca'); ?></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox"
+                                           name="tbc_ca_settings[delete_data_on_uninstall]"
+                                           value="1"
+                                           <?php checked(!empty($settings['delete_data_on_uninstall'])); ?> />
+                                    <?php _e('Delete all plugin data when uninstalled', 'tbc-ca'); ?>
+                                </label>
+                                <p class="description"><?php _e('When enabled, uninstalling this plugin will permanently remove all settings, device tokens, push logs, JWT secrets, and database tables. Leave unchecked to preserve data if reinstalling later.', 'tbc-ca'); ?></p>
                             </td>
                         </tr>
                     </table>

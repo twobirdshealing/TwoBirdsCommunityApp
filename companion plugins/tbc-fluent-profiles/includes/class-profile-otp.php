@@ -41,12 +41,12 @@ class ProfileOtp {
 
         // Check if a verified session is present — let save through
         // phpcs:ignore WordPress.Security.NonceVerification.Missing
-        $session_key = isset($_POST['tbc_otp_session_key'])
-            ? sanitize_text_field(wp_unslash($_POST['tbc_otp_session_key']))
+        $session_key = isset($_POST['tbc_fp_session_key'])
+            ? sanitize_text_field(wp_unslash($_POST['tbc_fp_session_key']))
             : '';
         if (empty($session_key)) {
-            $session_key = isset($_SERVER['HTTP_X_TBC_OTP_SESSION'])
-                ? sanitize_text_field(wp_unslash($_SERVER['HTTP_X_TBC_OTP_SESSION']))
+            $session_key = isset($_SERVER['HTTP_X_TBC_FP_SESSION'])
+                ? sanitize_text_field(wp_unslash($_SERVER['HTTP_X_TBC_FP_SESSION']))
                 : '';
         }
 
@@ -85,7 +85,7 @@ class ProfileOtp {
         }
 
         $clean_phone = $result['data']['phone'] ?? $new_phone;
-        $session_key = Helpers::generate_session_key('tbc_otp_profile_');
+        $session_key = Helpers::generate_session_key('tbc_fp_profile_');
 
         Helpers::store_session($session_key, [
             'verified'     => false,
@@ -126,11 +126,11 @@ class ProfileOtp {
         }
 
         // If a verified session is attached, allow save through
-        $raw = $data['tbc_otp_session_key'] ?? null;
+        $raw = $data['tbc_fp_session_key'] ?? null;
         $session_key = is_string($raw) ? sanitize_text_field($raw) : '';
         if (empty($session_key)) {
-            $session_key = isset($_SERVER['HTTP_X_TBC_OTP_SESSION'])
-                ? sanitize_text_field(wp_unslash($_SERVER['HTTP_X_TBC_OTP_SESSION']))
+            $session_key = isset($_SERVER['HTTP_X_TBC_FP_SESSION'])
+                ? sanitize_text_field(wp_unslash($_SERVER['HTTP_X_TBC_FP_SESSION']))
                 : '';
         }
         if (!empty($session_key) && Helpers::is_verified($session_key)) {
@@ -169,7 +169,7 @@ class ProfileOtp {
         }
 
         $clean_phone = $result['data']['phone'] ?? $new_phone;
-        $session_key = Helpers::generate_session_key('tbc_otp_profile_');
+        $session_key = Helpers::generate_session_key('tbc_fp_profile_');
 
         Helpers::store_session($session_key, [
             'verified'     => false,

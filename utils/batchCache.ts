@@ -8,6 +8,8 @@
 // Auto-expires after 30 seconds so subsequent focus/refresh still works.
 // =============================================================================
 
+import { registerCache } from '@/services/cacheRegistry';
+
 /** Map of cache key → timestamp when batch wrote to it */
 const batchFreshKeys = new Map<string, number>();
 
@@ -42,9 +44,5 @@ export function isBatchFresh(key: string): boolean {
   return true;
 }
 
-/**
- * Clear all batch-fresh markers (e.g. on logout).
- */
-export function clearBatchFresh(): void {
-  batchFreshKeys.clear();
-}
+// Self-register so clearAllUserCaches() handles this on logout
+registerCache({ clearMemory: () => batchFreshKeys.clear() });

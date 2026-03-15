@@ -3,7 +3,7 @@
  * Plugin Name: TBC Fluent Profiles
  * Plugin URI:  https://twobirdscode.com
  * Description: Custom profile fields, OTP verification (Twilio), and multi-step registration for Fluent Community. Unified profiles, verification, and registration in one plugin.
- * Version:     2.5.1
+ * Version:     2.6.1
  * Author: Two Birds Code
  * Author URI:  https://twobirdscode.com
  * Text Domain: tbc-fluent-profiles
@@ -20,7 +20,7 @@
 defined('ABSPATH') or die('No direct script access allowed');
 
 // Core plugin constants
-define('TBC_FP_VERSION', '2.5.1');
+define('TBC_FP_VERSION', '2.6.1');
 define('TBC_FP_FILE', __FILE__);
 define('TBC_FP_DIR', plugin_dir_path(__FILE__));
 define('TBC_FP_URL', plugin_dir_url(__FILE__));
@@ -53,25 +53,6 @@ function tbc_fp_check_dependencies() {
 add_action('plugins_loaded', function () {
     if (!tbc_fp_check_dependencies()) {
         return;
-    }
-
-    // One-time migration: rename tbc_otp_* options to tbc_fp_* (v2.4.1)
-    if (!get_option('tbc_fp_prefix_migrated')) {
-        $migrate_keys = [
-            'twilio_sid', 'twilio_token', 'verify_service_sid',
-            'enable_registration_verification', 'enable_password_recovery',
-            'enable_profile_verification', 'enable_voice_fallback',
-            'enable_email_verification', 'disable_rate_limit',
-            'restrict_duplicates', 'blocked_numbers', 'phone_meta_key', 'phone_meta_key_custom',
-        ];
-        foreach ($migrate_keys as $key) {
-            $old_val = get_option('tbc_otp_' . $key);
-            if ($old_val !== false) {
-                update_option('tbc_fp_' . $key, $old_val);
-                delete_option('tbc_otp_' . $key);
-            }
-        }
-        update_option('tbc_fp_prefix_migrated', '1');
     }
 
     // Ensure SMS roles exist (safety net for existing installs that skip activation hook)
@@ -159,11 +140,11 @@ register_deactivation_hook(__FILE__, function () {
     global $wpdb;
     $wpdb->query(
         "DELETE FROM {$wpdb->options}
-         WHERE option_name LIKE '_transient_tbc_otp_session_%'
-            OR option_name LIKE '_transient_timeout_tbc_otp_session_%'
-            OR option_name LIKE '_transient_tbc_otp_recovery_%'
-            OR option_name LIKE '_transient_timeout_tbc_otp_recovery_%'
-            OR option_name LIKE '_transient_tbc_otp_profile_%'
-            OR option_name LIKE '_transient_timeout_tbc_otp_profile_%'"
+         WHERE option_name LIKE '_transient_tbc_fp_session_%'
+            OR option_name LIKE '_transient_timeout_tbc_fp_session_%'
+            OR option_name LIKE '_transient_tbc_fp_recovery_%'
+            OR option_name LIKE '_transient_timeout_tbc_fp_recovery_%'
+            OR option_name LIKE '_transient_tbc_fp_profile_%'
+            OR option_name LIKE '_transient_timeout_tbc_fp_profile_%'"
     );
 });

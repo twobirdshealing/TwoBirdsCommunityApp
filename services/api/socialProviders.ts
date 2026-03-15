@@ -59,6 +59,8 @@ export const DEFAULT_PROVIDERS: SocialProvider[] = [
 // Module-level cache + listener pattern
 // -----------------------------------------------------------------------------
 
+import { registerCache } from '@/services/cacheRegistry';
+
 let _providers: SocialProvider[] = DEFAULT_PROVIDERS;
 let _listeners: Array<() => void> = [];
 
@@ -82,7 +84,5 @@ export function subscribeSocialProviders(listener: () => void): () => void {
   };
 }
 
-/** Clear cache (e.g. on logout) */
-export function clearSocialProvidersCache() {
-  _providers = DEFAULT_PROVIDERS;
-}
+// Self-register so clearAllUserCaches() handles this on logout
+registerCache({ clearMemory: () => { _providers = DEFAULT_PROVIDERS; } });

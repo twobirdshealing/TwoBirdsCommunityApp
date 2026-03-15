@@ -36,6 +36,16 @@ uasort($tbc_mr_reaction_types, function($a, $b) {
                         <span><?php esc_html_e('Enable Multi-Reactions', 'tbc-multi-reactions'); ?></span>
                     </label>
                 </div>
+                <div class="tbc-mr-setting-row">
+                    <label class="tbc-mr-toggle-label">
+                        <input type="hidden" name="tbc_mr_settings[delete_data_on_uninstall]" value="0" />
+                        <input type="checkbox" name="tbc_mr_settings[delete_data_on_uninstall]" value="1"
+                            class="tbc-mr-toggle" <?php checked(!empty($settings['delete_data_on_uninstall'])); ?> />
+                        <span class="tbc-mr-toggle-switch"></span>
+                        <span><?php esc_html_e('Delete all reaction data when plugin is uninstalled', 'tbc-multi-reactions'); ?></span>
+                    </label>
+                    <p class="description" style="margin-left: 52px; margin-top: 4px;"><?php esc_html_e('When enabled, uninstalling this plugin will permanently remove all reaction data, custom icons, and settings. Leave unchecked to preserve data if reinstalling later.', 'tbc-multi-reactions'); ?></p>
+                </div>
             </div>
         </div>
 

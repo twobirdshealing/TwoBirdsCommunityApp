@@ -33,6 +33,11 @@ export interface FieldsResponse {
   otp_required: boolean;
   voice_fallback: boolean;
   email_verification_required: boolean;
+  profile_completion?: {
+    enabled: boolean;
+    require_bio: boolean;
+    require_avatar: boolean;
+  };
   fields: Record<string, RegistrationField>;
   message?: string;
 }

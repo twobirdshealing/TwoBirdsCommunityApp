@@ -2,6 +2,14 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.39.0
+- Removed deprecated registration API (`tbc-ca/v1/register/*`) and OTP API (`tbc-ca/v1/otp/*`) — all registration and OTP now handled by tbc-fluent-profiles (`tbc-fp/v1`)
+- Removed autoloader entries and class file loading for `class-registration-api.php` and `class-otp-api.php`
+
+## v3.38.0
+- Added "Delete all plugin data when uninstalled" setting in General tab — uninstall preserves all data by default to prevent accidental data loss during troubleshooting or reinstalls
+- Added `uninstall.php` — when opted in, removes settings, device tokens, push logs, JWT secrets, session meta, and database tables
+
 ## v3.37.0
 - **YouTube API extracted**: Moved `TBC_CA_YouTube_API` to standalone tbc-youtube plugin (`tbc-yt/v1` namespace). Old `tbc-ca/v1/youtube` endpoints now served by tbc-youtube with backward compatibility. YouTube settings removed from General tab — configure via YouTube submenu page.
 

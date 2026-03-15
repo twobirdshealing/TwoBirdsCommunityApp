@@ -224,10 +224,17 @@ export async function reconnectPusher(): Promise<boolean> {
     return false;
   }
 
-  // Skip reconnect if connection was established recently (e.g. permission dialog caused app state change)
+  // Skip reconnect if already connected and connection is fresh
   const RECONNECT_COOLDOWN = 10_000;
   if (connectedAt && Date.now() - connectedAt < RECONNECT_COOLDOWN) {
     log('Skipping reconnect — connection is fresh');
+    return true;
+  }
+
+  // Skip full teardown if WebSocket is still alive (brief background)
+  if (pusherClient?.connection.state === 'connected') {
+    log('Already connected — skipping reconnect');
+    connectedAt = Date.now();
     return true;
   }
 

@@ -7,6 +7,8 @@
 // Each module must also have a thin route stub in app/ (see module README).
 // =============================================================================
 
+import type { Router } from 'expo-router';
+import { registerCache } from '@/services/cacheRegistry';
 import type {
   ModuleManifest,
   TabRegistration,
@@ -114,6 +116,53 @@ export function getTabBarAddons(): React.ComponentType[] {
 /** All module route prefixes for push notification / deep link validation */
 export function getModuleRoutePrefixes(): string[] {
   return MODULES.flatMap((m) => m.routePrefixes ?? []);
+}
+
+// -----------------------------------------------------------------------------
+// Lifecycle hooks (called by _layout.tsx)
+// -----------------------------------------------------------------------------
+
+/** Call onInit() on all modules (fire-and-forget, errors logged not thrown) */
+export async function initModules(): Promise<void> {
+  for (const mod of MODULES) {
+    try {
+      await mod.onInit?.();
+    } catch (e) {
+      if (__DEV__) console.warn(`[Modules] ${mod.id} onInit failed:`, e);
+    }
+  }
+}
+
+/** Call onCleanup() on all modules (e.g. on logout) */
+export function cleanupModules(): void {
+  for (const mod of MODULES) {
+    try {
+      mod.onCleanup?.();
+    } catch (e) {
+      if (__DEV__) console.warn(`[Modules] ${mod.id} onCleanup failed:`, e);
+    }
+  }
+}
+
+// Self-register so module cleanup runs automatically on logout
+registerCache({ clearMemory: cleanupModules });
+
+// -----------------------------------------------------------------------------
+// Push notification handler (called by _layout.tsx)
+// -----------------------------------------------------------------------------
+
+/**
+ * Let modules handle a push notification tap.
+ * Returns true if any module handled it, false to fall through to core routing.
+ */
+export function handleModuleNotification(
+  data: Record<string, unknown>,
+  router: Router
+): boolean {
+  for (const mod of MODULES) {
+    if (mod.notificationHandler?.(data, router)) return true;
+  }
+  return false;
 }
 
 /** Widget component map (id → component) for home screen */

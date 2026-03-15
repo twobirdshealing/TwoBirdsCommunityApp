@@ -377,6 +377,39 @@ uasort($fields, function ($a, $b) {
     </form>
     </div><!-- /tab-profile-completion -->
 
+    <!-- Data Management (shown on all tabs) -->
+    <div class="tbc-fp-section" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #c3c4c7;">
+        <h2><?php esc_html_e('Data Management', 'tbc-fluent-profiles'); ?></h2>
+        <table class="form-table">
+            <tr>
+                <th scope="row"><?php esc_html_e('Uninstall Behavior', 'tbc-fluent-profiles'); ?></th>
+                <td>
+                    <label>
+                        <input type="checkbox"
+                               id="tbc_fp_delete_data_on_uninstall"
+                               name="tbc_fp_delete_data_on_uninstall"
+                               value="1"
+                               <?php checked(get_option('tbc_fp_delete_data_on_uninstall', false)); ?> />
+                        <?php esc_html_e('Delete all plugin data when uninstalled', 'tbc-fluent-profiles'); ?>
+                    </label>
+                    <p class="description"><?php esc_html_e('When enabled, uninstalling this plugin will permanently remove all settings, custom field definitions, and OTP configuration. User profile data (field values) stored in user meta will also be removed. Leave unchecked to preserve data if reinstalling later.', 'tbc-fluent-profiles'); ?></p>
+                    <?php wp_nonce_field('tbc_fp_data_mgmt', 'tbc_fp_data_mgmt_nonce'); ?>
+                    <button type="button" class="button button-secondary" style="margin-top: 8px;" onclick="
+                        var cb = document.getElementById('tbc_fp_delete_data_on_uninstall');
+                        var nonce = document.querySelector('[name=tbc_fp_data_mgmt_nonce]').value;
+                        fetch(ajaxurl, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                            body: 'action=tbc_fp_save_uninstall_pref&value=' + (cb.checked ? '1' : '0') + '&_wpnonce=' + nonce
+                        }).then(function(r) { return r.json(); }).then(function(d) {
+                            if (d.success) { alert('<?php echo esc_js(__('Saved.', 'tbc-fluent-profiles')); ?>'); }
+                        });
+                    "><?php esc_html_e('Save Preference', 'tbc-fluent-profiles'); ?></button>
+                </td>
+            </tr>
+        </table>
+    </div>
+
 </div>
 
 <!-- Field Editor Modal -->

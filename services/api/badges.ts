@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TBC_CA_URL } from '@/constants/config';
 import type { Badge } from '@/types/user';
 import { createLogger } from '@/utils/logger';
+import { registerCache } from '@/services/cacheRegistry';
 
 const log = createLogger('BadgeAPI');
 
@@ -31,6 +32,9 @@ interface BadgeDefinitionsResponse {
 
 const BADGE_CACHE_KEY = 'tbc_badge_definitions';
 let cachedBadges: BadgeDefinitions | null = null;
+
+// Self-register so clearAllUserCaches() handles this on logout
+registerCache({ clearMemory: () => { cachedBadges = null; } });
 
 // -----------------------------------------------------------------------------
 // API
@@ -102,12 +106,3 @@ export function resolveBadges(slugs: string[]): Badge[] {
     .map((slug) => ({ slug, ...cachedBadges![slug] }));
 }
 
-/**
- * Clear both in-memory and AsyncStorage badge cache (e.g. on logout)
- */
-export function clearBadgeCache() {
-  cachedBadges = null;
-  AsyncStorage.removeItem(BADGE_CACHE_KEY).catch((e) => {
-    log.warn('Cache clear failed:', e);
-  });
-}

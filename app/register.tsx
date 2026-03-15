@@ -193,8 +193,11 @@ export default function RegisterScreen() {
     hapticMedium();
     setError(null);
 
-    // Validate step 2 fields first (if coming from step 2 directly)
-    if (!otpSessionKey && !emailCode && !validateStep(2)) return;
+    // Validate form fields (skip if resubmitting after OTP/email verification)
+    if (!otpSessionKey && !emailCode) {
+      if (!validateStep(1)) return;
+      if (!validateStep(2)) return;
+    }
 
     setSubmitting(true);
 
@@ -218,7 +221,7 @@ export default function RegisterScreen() {
 
       // Include OTP session key if verifying
       if (otpSessionKey) {
-        payload.tbc_otp_session_key = otpSessionKey;
+        payload.tbc_fp_session_key = otpSessionKey;
       }
 
       const result = await submitRegistration(payload);
@@ -254,7 +257,13 @@ export default function RegisterScreen() {
           },
         );
 
-        // Go to avatar step
+        // Skip profile completion if gate is disabled
+        if (!fieldsConfig?.profile_completion?.enabled) {
+          router.replace('/(tabs)');
+          return;
+        }
+
+        // Go to profile completion step
         setStep(5);
         return;
       }
@@ -279,7 +288,7 @@ export default function RegisterScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData, validateStep, registerAndLogin, getFieldsForStep, verificationToken, emailVerifyCode, otp, fieldsConfig?.voice_fallback]);
+  }, [formData, validateStep, registerAndLogin, getFieldsForStep, verificationToken, emailVerifyCode, otp, fieldsConfig]);
 
   // Keep ref in sync so OTP onVerified always calls latest version
   submitRef.current = handleSubmitRegistration;
@@ -370,17 +379,19 @@ export default function RegisterScreen() {
   // Step indicator
   // ---------------------------------------------------------------------------
 
+  const hasCustomFields = getFieldsForStep(2).some(([key]) => key !== 'terms');
   const hasEmailVerify = fieldsConfig?.email_verification_required || false;
   const hasPhoneOtp = fieldsConfig?.otp_required || false;
-  const totalSteps = 2 + (hasEmailVerify ? 1 : 0) + (hasPhoneOtp ? 1 : 0); // base 2 + optional email + optional OTP (profile completion has its own steps)
+  const totalSteps = (hasCustomFields ? 2 : 1) + (hasEmailVerify ? 1 : 0) + (hasPhoneOtp ? 1 : 0);
 
   // Map actual step number to visual position (accounting for skipped steps)
   const getVisualStep = useCallback((actualStep: number): number => {
     let visual = actualStep;
+    if (!hasCustomFields && actualStep >= 2) visual--;
     if (!hasEmailVerify && actualStep >= 3) visual--;
     if (!hasPhoneOtp && actualStep >= 4) visual--;
     return visual;
-  }, [hasEmailVerify, hasPhoneOtp]);
+  }, [hasCustomFields, hasEmailVerify, hasPhoneOtp]);
 
   const renderStepIndicator = () => {
     const visualStep = getVisualStep(step);
@@ -454,14 +465,22 @@ export default function RegisterScreen() {
   const renderStep1 = () => (
     <>
       {getFieldsForStep(1).map(([key, field]) => renderField(key, field))}
+      {/* When no custom fields, merge step 2 fields (terms) into step 1 */}
+      {!hasCustomFields && getFieldsForStep(2).map(([key, field]) => renderField(key, field))}
       <AnimatedPressable
         style={[styles.primaryButton, { backgroundColor: themeColors.primary }, submitting && styles.buttonDisabled]}
-        onPress={handleNextStep}
+        onPress={hasCustomFields ? handleNextStep : () => handleSubmitRegistration()}
         disabled={submitting}
         accessibilityRole="button"
-        accessibilityLabel="Next step"
+        accessibilityLabel={hasCustomFields ? 'Next step' : 'Create account'}
       >
-        <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>Next</Text>
+        {submitting ? (
+          <ActivityIndicator color={themeColors.textInverse} />
+        ) : (
+          <Text style={[styles.primaryButtonText, { color: themeColors.textInverse }]}>
+            {hasCustomFields ? 'Next' : 'Create Account'}
+          </Text>
+        )}
       </AnimatedPressable>
       <Pressable style={styles.linkButton} onPress={() => router.back()} accessibilityRole="link" accessibilityLabel="Back to login">
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Back to Login</Text>
@@ -556,7 +575,7 @@ export default function RegisterScreen() {
           </Text>
         </Pressable>
       </View>
-      <Pressable style={styles.linkButton} onPress={() => { setError(null); setEmailVerifyCode(''); setStep(2); }}>
+      <Pressable style={styles.linkButton} onPress={() => { setError(null); setEmailVerifyCode(''); setStep(hasCustomFields ? 2 : 1); }}>
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Go Back</Text>
       </Pressable>
     </>
@@ -633,7 +652,7 @@ export default function RegisterScreen() {
           </Pressable>
         )}
       </View>
-      <Pressable style={styles.linkButton} onPress={() => { setError(null); otp.setCode(''); setStep(hasEmailVerify ? 3 : 2); }}>
+      <Pressable style={styles.linkButton} onPress={() => { setError(null); otp.setCode(''); setStep(hasEmailVerify ? 3 : hasCustomFields ? 2 : 1); }}>
         <Text style={[styles.linkText, { color: themeColors.primary }]}>Go Back</Text>
       </Pressable>
     </>
@@ -702,7 +721,8 @@ export default function RegisterScreen() {
                 username={currentUser?.username || formData.username || ''}
                 displayName={currentUser?.displayName || formData.full_name || ''}
                 onComplete={() => router.replace('/(tabs)')}
-                avatarRequired
+                avatarRequired={fieldsConfig?.profile_completion?.require_avatar ?? true}
+                bioRequired={fieldsConfig?.profile_completion?.require_bio ?? true}
               />
             )}
           </View>

@@ -328,7 +328,7 @@ export default function EditProfileScreen() {
 
       // Include verified OTP session key for resubmit
       if (otpSessionKeyOverride) {
-        payload.tbc_otp_session_key = otpSessionKeyOverride;
+        payload.tbc_fp_session_key = otpSessionKeyOverride;
       }
 
       const response = await profilesApi.updateProfile(username, payload);

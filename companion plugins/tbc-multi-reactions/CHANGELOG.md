@@ -2,6 +2,14 @@
 
 All notable changes to the TBC Multi Reactions plugin.
 
+## v1.5.5
+- Added "Delete data on uninstall" setting — uninstall no longer deletes reaction data by default, preventing accidental data loss during troubleshooting or reinstalls
+- Moved column removal logic into `Database::remove_reaction_type_column()` (single source of truth)
+- Removed unused `create_table()` method from Database class
+
+## v1.5.4
+- Removed destructive `nullify_reaction_type()` method — disabling a reaction type now safely hides it without losing data, and re-enabling brings all old reactions back instantly
+
 ## v1.5.3
 - Fixed comment reaction padding — target `.reply_box` parent via `:has()` for actual breathing room in reply row
 

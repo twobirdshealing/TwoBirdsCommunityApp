@@ -24,9 +24,6 @@ export type NotificationAction =
   | 'lesson/completed'
   | string;
 
-// Legacy type alias for backwards compatibility
-export type NotificationType = NotificationAction;
-
 // -----------------------------------------------------------------------------
 // Route Object (for navigation)
 // -----------------------------------------------------------------------------

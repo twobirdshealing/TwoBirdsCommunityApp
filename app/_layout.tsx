@@ -32,11 +32,18 @@ import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { getModuleProviders, getModuleRoutePrefixes } from '@/modules/_registry';
+import { getModuleProviders, getModuleRoutePrefixes, initModules, handleModuleNotification } from '@/modules/_registry';
 import 'react-native-reanimated';
 
 // Keep the native splash screen visible until we're ready to render
 SplashScreen.preventAutoHideAsync();
+
+// Dev-mode setup validation — catch common white-label configuration mistakes
+if (__DEV__) {
+  if (APP_VERSION === '1.0.0') {
+    console.warn('[SETUP] APP_VERSION is still 1.0.0 — update version in package.json and app.json');
+  }
+}
 
 // Transparent nav theme — lets the root View background show through card containers,
 // preventing white flash on first stack navigation.
@@ -129,6 +136,16 @@ function RootLayoutNav() {
     onUnreadMessages: setUnreadMessages,
     onCartCount: setCartCount,
   });
+
+  // ---------------------------------------------------------------------------
+  // Module Lifecycle — init modules after auth is confirmed
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      initModules();
+    }
+  }, [isAuthenticated]);
 
   // ---------------------------------------------------------------------------
   // Response Header Interceptor — piggyback unread counts + maintenance
@@ -237,10 +254,12 @@ function RootLayoutNav() {
 
       // Route based on notification data
       if (data?.route && typeof data.route === 'string' && isValidRoute(data.route)) {
-        // Small delay to ensure navigation is ready
+        // Server-specified route — highest priority
         setTimeout(() => {
           router.push(data.route as any);
         }, 100);
+      } else if (handleModuleNotification(data ?? {}, router)) {
+        // Module handled it — stop here
       } else if (data?.feed_id) {
         const id = sanitizeParam(data.feed_id);
         if (id) router.push({ pathname: '/feed/[id]', params: { id } });

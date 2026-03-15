@@ -83,6 +83,7 @@
   .required { background: rgba(248, 81, 73, 0.15); color: var(--error); }
   .optional { background: rgba(210, 153, 34, 0.15); color: var(--warning); }
   .auto { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+  .addon { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
   .callout {
     border-left: 4px solid var(--accent);
     background: var(--surface);
@@ -133,6 +134,7 @@
 <div class="toc">
   <strong>Contents</strong>
   <ol>
+    <li><a href="#prerequisites">Prerequisites</a></li>
     <li><a href="#quick-start">Quick Start</a></li>
     <li><a href="#config-reference">Configuration Reference</a></li>
     <li><a href="#branding-assets">Branding Assets</a></li>
@@ -141,24 +143,103 @@
     <li><a href="#theming">Theme System</a></li>
     <li><a href="#build-deploy">Build &amp; Deploy</a></li>
     <li><a href="#checklist">Pre-Launch Checklist</a></li>
+    <li><a href="#troubleshooting">Troubleshooting</a></li>
   </ol>
 </div>
 
 <!-- ====================================================================== -->
-<h2 id="quick-start">1. Quick Start</h2>
+<h2 id="prerequisites">1. Prerequisites</h2>
 
-<p>Minimum steps to get the app running with your site:</p>
+<p>Make sure you have these accounts and tools ready before starting setup.</p>
+
+<h3>Required Accounts &amp; Services</h3>
+<table>
+  <tr><th>Service</th><th>What It's For</th><th>Cost</th></tr>
+  <tr>
+    <td><a href="https://fluentcommunity.co">Fluent Community</a></td>
+    <td>WordPress community plugin — powers the feed, spaces, profiles, and all backend content. Must be installed on your WordPress site.</td>
+    <td>Free tier available (Pro for messaging, courses)</td>
+  </tr>
+  <tr>
+    <td><a href="https://expo.dev">Expo Account</a></td>
+    <td>Cloud build service (EAS) for compiling iOS and Android binaries. Also handles push notification tokens.</td>
+    <td>Free tier (30 builds/month)</td>
+  </tr>
+  <tr>
+    <td><a href="https://developer.apple.com">Apple Developer Account</a></td>
+    <td>Required to submit to the iOS App Store and sign builds.</td>
+    <td>$99/year</td>
+  </tr>
+  <tr>
+    <td><a href="https://play.google.com/console">Google Play Console</a></td>
+    <td>Required to submit to the Google Play Store.</td>
+    <td>$25 one-time</td>
+  </tr>
+</table>
+
+<h3>Optional Services</h3>
+<p>These are only needed if you use the features they power. The app works fine without them.</p>
+<table>
+  <tr><th>Service</th><th>What It Powers</th><th>When You Can Skip It</th><th>Cost</th></tr>
+  <tr>
+    <td><a href="https://console.firebase.google.com">Firebase</a></td>
+    <td>Push notifications — alerts users about new posts, replies, chat messages, etc.</td>
+    <td>Set <code>FEATURES.PUSH_NOTIFICATIONS = false</code> in <code>constants/config.ts</code> if you don't need push.</td>
+    <td>Free (Spark plan)</td>
+  </tr>
+  <tr>
+    <td><a href="https://pusher.com">Pusher Channels</a></td>
+    <td>Real-time updates — live message delivery, typing indicators, instant feed updates.</td>
+    <td>Only needed with Fluent Community Pro + Fluent Messaging. Skip if you don't use the chat/messaging feature.</td>
+    <td>Free tier (200k msgs/day)</td>
+  </tr>
+  <tr>
+    <td><a href="https://twilio.com">Twilio</a></td>
+    <td>OTP phone verification during user registration — sends a code to the user's phone number to verify it. Configured in the <code>tbc-fluent-profiles</code> plugin settings in WordPress admin.</td>
+    <td>Skip if you don't need phone verification on signup. Registration works without it — the phone number field simply won't appear.</td>
+    <td>Pay-as-you-go</td>
+  </tr>
+</table>
+
+<h3>Development Tools</h3>
+<table>
+  <tr><th>Tool</th><th>Version</th><th>Install / Check</th></tr>
+  <tr><td>Node.js</td><td>18+ (LTS recommended)</td><td><code>node -v</code></td></tr>
+  <tr><td>npm</td><td>Comes with Node.js</td><td><code>npm -v</code></td></tr>
+  <tr><td>EAS CLI</td><td>Latest</td><td><code>npm install -g eas-cli</code></td></tr>
+  <tr><td>Git</td><td>Any recent version</td><td><code>git --version</code></td></tr>
+</table>
+
+<div class="callout">
+  <strong>No Xcode or Android Studio needed.</strong> EAS builds happen in the cloud. You only need local IDEs if you want to run builds on the iOS Simulator or do native debugging.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="quick-start">2. Quick Start</h2>
+
+<p>Minimum steps to get the app running with your site. See <a href="#prerequisites">Prerequisites</a> for required accounts and tools.</p>
 
 <ol>
   <li><strong>Install dependencies:</strong> <code>npm install</code></li>
+  <li><strong>Set up EAS CLI</strong> (if first time):
+    <pre><code>npm install -g eas-cli
+eas login
+eas init</code></pre>
+    <code>eas init</code> generates a project ID — copy it into <code>app.json</code> → <code>expo.extra.eas.projectId</code>.
+    Also set <code>expo.owner</code> to your Expo account username.
+  </li>
   <li><strong>Set your site URL</strong> in <code>eas.json</code> — replace the <code>SITE_URL</code> value in all build profiles</li>
   <li><strong>Set your app name &amp; branding</strong> in <code>constants/config.ts</code> — update <code>APP_NAME</code> and <code>APP_USER_AGENT</code></li>
-  <li><strong>Update <code>app.json</code></strong> — app name, slug, scheme, bundle IDs, owner, EAS project ID, permission strings</li>
+  <li><strong>Update <code>app.json</code></strong> — app name, slug, scheme, bundle IDs, permission strings</li>
+  <li><strong>Update <code>app.config.ts</code></strong> — replace fallback values for SITE_URL, app name, and slug</li>
   <li><strong>Replace branding images</strong> in <code>assets/images/</code></li>
-  <li><strong>Replace Firebase configs</strong> — <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS)</li>
+  <li><strong>Replace Firebase configs</strong> — <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS). See <a href="#firebase-setup">Firebase Setup</a>.</li>
   <li><strong>Install companion plugins</strong> on your WordPress site (see <a href="#plugins">Companion Plugins</a>)</li>
   <li><strong>Configure modules</strong> in <code>modules/_registry.ts</code> — comment out any modules you don't need</li>
-  <li><strong>Create a dev build:</strong> <code>eas build --profile development --platform all</code></li>
+  <li><strong>Create a dev build</strong> (first build takes ~15 minutes):
+    <pre><code>eas build --profile development --platform all</code></pre>
+    When the build finishes, install it on your device via the QR code or download link EAS provides.
+  </li>
 </ol>
 
 <div class="callout callout-warn">
@@ -167,7 +248,7 @@
 </div>
 
 <!-- ====================================================================== -->
-<h2 id="config-reference">2. Configuration Reference</h2>
+<h2 id="config-reference">3. Configuration Reference</h2>
 
 <p>Every file you need to edit, organized by purpose.</p>
 
@@ -179,10 +260,16 @@
   <tr><th>Value</th><th>What It Does</th><th>Example</th></tr>
   <tr><td><code>APP_NAME</code></td><td>Display name used in UI where server branding isn't available</td><td><code>'My Community'</code></td></tr>
   <tr><td><code>APP_USER_AGENT</code></td><td>User-Agent header sent with API requests</td><td><code>'MyCommunityApp/1.0'</code></td></tr>
-  <tr><td><code>SITE_URL</code> fallback</td><td>Local dev fallback (overridden by eas.json in builds)</td><td><code>'https://community.example.com'</code></td></tr>
+  <tr><td><code>SITE_URL</code></td><td>Derived from eas.json (no fallback — build fails if missing)</td><td><code>'https://community.example.com'</code></td></tr>
   <tr><td><code>PUSHER_CONFIG.APP_KEY</code></td><td>Your Pusher app key for real-time messaging</td><td><code>'abc123def456'</code></td></tr>
   <tr><td><code>PUSHER_CONFIG.CLUSTER</code></td><td>Your Pusher cluster region</td><td><code>'us2'</code></td></tr>
-  <tr><td><code>FEATURES.*</code></td><td>Enable/disable core features (see table in file)</td><td><code>true / false</code></td></tr>
+  <tr><td><code>FEATURES.DARK_MODE</code></td><td>Dark mode synced from Fluent Community theme</td><td><code>true</code></td></tr>
+  <tr><td><code>FEATURES.PUSH_NOTIFICATIONS</code></td><td>Push notifications via TBC-CA plugin</td><td><code>true</code></td></tr>
+  <tr><td><code>FEATURES.MESSAGING</code></td><td>Fluent Messaging (direct chat)</td><td><code>true</code></td></tr>
+  <tr><td><code>FEATURES.COURSES</code></td><td>Fluent LMS courses</td><td><code>true</code></td></tr>
+  <tr><td><code>FEATURES.CART</code></td><td>WooCommerce cart icon in header</td><td><code>true</code></td></tr>
+  <tr><td><code>FEATURES.MULTI_REACTIONS</code></td><td>Multi-reaction support (requires TBC Multi-Reactions plugin). When off, uses single like button.</td><td><code>true</code></td></tr>
+  <tr><td><code>FEATURES.PROFILE_TABS.*</code></td><td>Which tabs appear on user profiles (POSTS, SPACES, COMMENTS)</td><td><code>false</code></td></tr>
 </table>
 
 <!-- app.json -->
@@ -215,18 +302,17 @@
 
 <!-- app.config.ts -->
 <h3>app.config.ts <span class="tag required">Required</span></h3>
-<p>Contains fallback values used when <code>app.json</code> or environment variables are not set. Update these to match your brand so local dev doesn't fall back to wrong values.</p>
+<p>Reads <code>SITE_URL</code> from the environment (set in <code>eas.json</code>) and wires up deep links automatically. <strong>The build will fail if <code>SITE_URL</code> is not set</strong> — there is no fallback.</p>
 
 <table>
   <tr><th>Line</th><th>Value</th><th>What to Change</th></tr>
-  <tr><td>~13</td><td><code>process.env.SITE_URL || '...'</code></td><td>Replace fallback URL with your site URL</td></tr>
   <tr><td>~18</td><td><code>config.name ?? '...'</code></td><td>Replace fallback app name</td></tr>
   <tr><td>~19</td><td><code>config.slug ?? '...'</code></td><td>Replace fallback slug</td></tr>
 </table>
 
 <!-- eas.json -->
 <h3>eas.json <span class="tag required">Required</span></h3>
-<p>Set <code>SITE_URL</code> in every build profile:</p>
+<p><strong>Critical:</strong> <code>SITE_URL</code> must be set in every build profile. The app will not build without it.</p>
 <pre><code>{
   "build": {
     "development": { "env": { "SITE_URL": "https://your-site.com" } },
@@ -241,20 +327,62 @@
 <p>Update the <code>"name"</code> field (line 2) to your project name. Not user-visible but keeps your repo clean.</p>
 
 <!-- Firebase -->
-<h3>Firebase Configuration <span class="tag required">Required for Push Notifications</span></h3>
-<table>
-  <tr><th>File</th><th>Platform</th><th>How to Get It</th></tr>
-  <tr><td><code>google-services.json</code></td><td>Android</td><td>Firebase Console &gt; Project Settings &gt; Your Android app &gt; Download</td></tr>
-  <tr><td><code>GoogleService-Info.plist</code></td><td>iOS</td><td>Firebase Console &gt; Project Settings &gt; Your iOS app &gt; Download</td></tr>
-</table>
-<p>Replace the existing files with your Firebase project's configs. These are required for push notifications to work.</p>
+<h3 id="firebase-setup">Firebase Configuration <span class="tag required">Required for Push Notifications</span></h3>
+
+<p>Push notifications require a Firebase project linked to your app. Follow these steps:</p>
+
+<ol>
+  <li><strong>Create a Firebase project</strong> at <a href="https://console.firebase.google.com">console.firebase.google.com</a></li>
+  <li><strong>Add an Android app</strong> in Firebase:
+    <ul>
+      <li>Set the package name to <strong>exactly match</strong> <code>android.package</code> in your <code>app.json</code> (e.g. <code>com.yourcompany.community</code>)</li>
+      <li>Download <code>google-services.json</code> → place in the project root (replaces the existing file)</li>
+    </ul>
+  </li>
+  <li><strong>Add an iOS app</strong> in Firebase:
+    <ul>
+      <li>Set the bundle ID to <strong>exactly match</strong> <code>ios.bundleIdentifier</code> in your <code>app.json</code></li>
+      <li>Download <code>GoogleService-Info.plist</code> → place in the project root (replaces the existing file)</li>
+    </ul>
+  </li>
+  <li><strong>Upload your APNs key</strong> (required for iOS push):
+    <ul>
+      <li>In <a href="https://developer.apple.com/account/resources/authkeys/list">Apple Developer → Keys</a>, create a key with <strong>APNs</strong> enabled</li>
+      <li>Download the <code>.p8</code> key file and note the <strong>Key ID</strong></li>
+      <li>In Firebase Console → Project Settings → Cloud Messaging → iOS, upload the <code>.p8</code> file with your Key ID and Team ID</li>
+    </ul>
+  </li>
+</ol>
+
+<div class="callout callout-error">
+  <strong>Package names must match exactly.</strong> If the package name in Firebase doesn't match <code>app.json</code>, push notifications will silently fail — no error, just no notifications delivered.
+</div>
 
 <!-- constants/colors.ts -->
 <h3>constants/colors.ts <span class="tag optional">Optional</span></h3>
 <p>Default fallback colors used before the server theme syncs. The app automatically pulls your Fluent Community theme colors — these are just the initial defaults on first launch.</p>
 
+<!-- Pusher Setup -->
+<h3>Pusher Setup <span class="tag optional">Optional — Real-Time Messaging</span></h3>
+<p>Only needed if you use Fluent Community Pro with the Fluent Messaging add-on and want real-time message delivery.</p>
+
+<ol>
+  <li>Create an account at <a href="https://pusher.com">pusher.com</a> and create a new <strong>Channels</strong> app</li>
+  <li>Choose the cluster closest to your server (e.g. <code>us2</code>, <code>eu</code>, <code>ap1</code>)</li>
+  <li>Copy the <strong>App Key</strong> and <strong>Cluster</strong> from your Channels dashboard</li>
+  <li>Set them in <code>constants/config.ts</code>:
+    <pre><code>PUSHER_CONFIG.APP_KEY = 'your-app-key';
+PUSHER_CONFIG.CLUSTER = 'your-cluster';</code></pre>
+  </li>
+  <li>In your WordPress admin, go to <strong>Fluent Community → Settings → Pusher</strong> and enter the same App ID, Key, Secret, and Cluster</li>
+</ol>
+
+<div class="callout callout-warn">
+  <strong>Credentials must match.</strong> The Pusher App Key and Cluster in the app must be identical to what's configured in Fluent Community on your WordPress site. The server handles Pusher authentication via the <code>tbc-community-app</code> plugin.
+</div>
+
 <!-- ====================================================================== -->
-<h2 id="branding-assets">3. Branding Assets</h2>
+<h2 id="branding-assets">4. Branding Assets</h2>
 
 <p>Replace these files in <code>assets/images/</code>:</p>
 
@@ -277,58 +405,81 @@
 </div>
 
 <!-- ====================================================================== -->
-<h2 id="plugins">4. Companion Plugins</h2>
+<h2 id="plugins">5. Companion Plugins</h2>
 
 <p>WordPress plugins that power the app's backend. Located in the <code>companion plugins/</code> folder.</p>
 
+<h3>Installing Plugins</h3>
+
+<ol>
+  <li>In the <code>companion plugins/</code> folder, find the plugin folder you need</li>
+  <li>Zip the folder (e.g. create <code>tbc-community-app.zip</code>)</li>
+  <li>In WordPress admin: <strong>Plugins → Add New → Upload Plugin</strong> → select the <code>.zip</code> → <strong>Install Now → Activate</strong></li>
+  <li>Repeat for each plugin</li>
+</ol>
+
+<div class="callout callout-warn">
+  <strong>Install order matters.</strong> Install <code>tbc-community-app</code> first — other plugins depend on it.
+  Recommended order: <code>tbc-community-app</code> → <code>tbc-fluent-profiles</code> → <code>tbc-multi-reactions</code> → any add-on plugins.
+</div>
+
 <h3>Required Plugins <span class="tag required">Must Install</span></h3>
+
+<p>These ship with the product and are required for the app to function.</p>
 
 <table>
   <tr><th>Plugin</th><th>Purpose</th><th>WordPress Dependencies</th></tr>
   <tr>
     <td><code>tbc-community-app</code></td>
-    <td>Main bridge plugin. All custom REST endpoints (auth, push, config, branding, etc.)</td>
+    <td>Main bridge plugin. All custom REST endpoints (auth, push notifications, config, branding, theme sync, etc.)</td>
     <td><a href="https://fluentcommunity.co">Fluent Community</a> (free or Pro)</td>
   </tr>
   <tr>
     <td><code>tbc-fluent-profiles</code></td>
-    <td>Custom profile fields, OTP verification (Twilio), multi-step registration</td>
+    <td>Custom profile fields, multi-step registration, OTP phone verification (optional, requires <a href="https://twilio.com">Twilio</a> — configured in plugin settings)</td>
     <td>Fluent Community</td>
   </tr>
   <tr>
     <td><code>tbc-multi-reactions</code></td>
-    <td>Multi-reaction system (emoji reactions on posts/comments)</td>
+    <td>Multi-reaction system — emoji reactions on posts and comments</td>
     <td>Fluent Community</td>
   </tr>
 </table>
 
-<h3>Optional Plugins <span class="tag optional">Module Add-ons</span></h3>
+<h3>Add-on Plugins <span class="tag addon">Sold Separately</span></h3>
 
-<p>Install these only if you enable the corresponding module in <code>modules/_registry.ts</code>.</p>
+<p>These modules and their companion plugins are purchased separately and are <strong>not included</strong> in the base product. Install only if you have purchased the add-on.</p>
 
 <table>
-  <tr><th>Plugin</th><th>Required Module</th><th>WordPress Dependencies</th><th>Purpose</th></tr>
-  <tr>
-    <td><code>tbc-calendar-fluent</code></td>
-    <td><code>calendarModule</code></td>
-    <td>WooCommerce</td>
-    <td>Event calendar with WooCommerce product date sorting</td>
-  </tr>
+  <tr><th>Plugin</th><th>Module</th><th>WordPress Dependencies</th><th>Purpose</th></tr>
   <tr>
     <td><code>tbc-book-club</code></td>
     <td><code>bookclubModule</code></td>
     <td>None</td>
-    <td>Audiobook player with chapters, progress tracking, bookmarks</td>
+    <td>Audiobook player with chapters, progress tracking, bookmarks, and meeting schedules. Includes persistent mini-player above the tab bar.</td>
   </tr>
   <tr>
     <td><code>tbc-youtube</code></td>
     <td><code>youtubeModule</code></td>
     <td>None (YouTube Data API v3 key required)</td>
-    <td>YouTube channel integration with server-side caching</td>
+    <td>YouTube channel integration with server-side caching. Shows latest videos on the home screen.</td>
+  </tr>
+</table>
+
+<h3>Optional Theme <span class="tag optional">Optional</span></h3>
+
+<table>
+  <tr><th>Theme</th><th>Purpose</th><th>Notes</th></tr>
+  <tr>
+    <td><code>tbc-starter-theme</code></td>
+    <td>A minimal WordPress starter theme designed to work with Fluent Community</td>
+    <td>Optional — use your own theme if you prefer. Install via WordPress admin: <strong>Appearance → Themes → Add New → Upload Theme</strong>.</td>
   </tr>
 </table>
 
 <h3>Core WordPress Requirements</h3>
+
+<p>Features that depend on WordPress plugins or third-party services:</p>
 
 <table>
   <tr><th>Feature</th><th>Requires</th></tr>
@@ -336,13 +487,14 @@
   <tr><td>Direct messaging</td><td>Fluent Community Pro + Fluent Messaging add-on</td></tr>
   <tr><td>Courses</td><td>Fluent Community Pro + LMS add-on</td></tr>
   <tr><td>Cart / E-commerce</td><td>WooCommerce</td></tr>
-  <tr><td>Push notifications</td><td>Firebase project + <code>tbc-community-app</code></td></tr>
-  <tr><td>Real-time updates</td><td><a href="https://pusher.com">Pusher</a> account (Channels product)</td></tr>
-  <tr><td>OTP verification</td><td><a href="https://twilio.com">Twilio</a> account (configured in <code>tbc-fluent-profiles</code>)</td></tr>
+  <tr><td>Blog</td><td>WordPress posts (built-in, uses standard WP REST API)</td></tr>
+  <tr><td>Push notifications</td><td>Firebase project + <code>tbc-community-app</code> (see <a href="#firebase-setup">Firebase Setup</a>)</td></tr>
+  <tr><td>Real-time updates</td><td><a href="https://pusher.com">Pusher</a> Channels account — only needed with Fluent Community Pro messaging</td></tr>
+  <tr><td>OTP verification</td><td><a href="https://twilio.com">Twilio</a> account — configured in <code>tbc-fluent-profiles</code> plugin settings. Optional.</td></tr>
 </table>
 
 <!-- ====================================================================== -->
-<h2 id="modules">5. Module System</h2>
+<h2 id="modules">6. Module System</h2>
 
 <p>
   Modules are self-contained features that plug into the app without touching core code.
@@ -353,19 +505,46 @@
 <pre><code>// modules/_registry.ts
 
 // Active — uncomment to enable:
-import { calendarModule } from './calendar/module';
+import { blogModule } from './blog/module';
 
 // Disabled — comment out to disable:
-// import { calendarModule } from './calendar/module';
+// import { blogModule } from './blog/module';
 
 export const MODULES: ModuleManifest[] = [
-  calendarModule,   // Remove this line too when disabling
+  blogModule,   // Remove this line too when disabling
 ];</code></pre>
 
 <div class="callout callout-warn">
   <strong>Important:</strong> If a module has a tab, it also has a route stub file in <code>app/(tabs)/</code>.
   The route stub can stay — it's harmless when the module is disabled. But if you want a clean build, remove it too.
 </div>
+
+<h3>Available Modules</h3>
+
+<table>
+  <tr><th>Module</th><th>Registers</th><th>Description</th><th>Requirements</th><th>Ships With</th></tr>
+  <tr>
+    <td><code>blogModule</code></td>
+    <td>Home widget, menu item</td>
+    <td>WordPress blog posts and comments. Uses the standard WP REST API — no companion plugin needed.</td>
+    <td>Published WordPress blog posts</td>
+    <td><span class="tag auto">Base</span></td>
+  </tr>
+  <tr>
+    <td><code>bookclubModule</code></td>
+    <td>Home widget, menu item, tab bar mini-player, context provider</td>
+    <td>Audiobook player with chapter navigation, progress tracking, bookmarks, and meeting schedules. Includes a persistent mini-player above the tab bar.</td>
+    <td><code>tbc-book-club</code> plugin</td>
+    <td><span class="tag addon">Add-on</span></td>
+  </tr>
+  <tr>
+    <td><code>youtubeModule</code></td>
+    <td>Home widget</td>
+    <td>Shows latest videos from a YouTube channel with server-side caching. Accessed via a "See All" link on the home screen widget.</td>
+    <td><code>tbc-youtube</code> plugin, YouTube Data API v3 key</td>
+    <td><span class="tag addon">Add-on</span></td>
+  </tr>
+</table>
 
 <h3>What Modules Can Register</h3>
 <ul>
@@ -377,12 +556,22 @@ export const MODULES: ModuleManifest[] = [
   <li><strong>Tab bar addons</strong> — persistent UI above the tab bar (e.g., mini player)</li>
 </ul>
 
+<h3>Building Your Own Modules</h3>
 <p>
-  See <code>modules/_types.ts</code> for full TypeScript type definitions.
+  The module system is designed for extensibility. To create your own module:
+</p>
+<ol>
+  <li>Create a folder in <code>modules/yourmodule/</code></li>
+  <li>Define a manifest in <code>module.ts</code> that exports a <code>ModuleManifest</code> object</li>
+  <li>Register it in <code>modules/_registry.ts</code> (one import + one array entry)</li>
+  <li>If your module has a tab, add a route stub in <code>app/(tabs)/</code> (one-line re-export)</li>
+</ol>
+<p>
+  See <code>modules/_types.ts</code> for full TypeScript type definitions and the existing modules for examples.
 </p>
 
 <!-- ====================================================================== -->
-<h2 id="theming">6. Theme System</h2>
+<h2 id="theming">7. Theme System</h2>
 
 <p>The app's colors are <strong>automatically synced</strong> from your Fluent Community color settings. No manual color configuration needed in most cases.</p>
 
@@ -427,7 +616,41 @@ import { withOpacity } from '@/constants/colors';
 style={{ backgroundColor: withOpacity(colors.primary, 0.12) }}</code></pre>
 
 <!-- ====================================================================== -->
-<h2 id="build-deploy">7. Build &amp; Deploy</h2>
+<h2 id="build-deploy">8. Build &amp; Deploy</h2>
+
+<h3>First-Time EAS Setup</h3>
+<p>If this is your first time using EAS (Expo Application Services):</p>
+<ol>
+  <li><strong>Install EAS CLI</strong> globally:
+    <pre><code>npm install -g eas-cli</code></pre>
+  </li>
+  <li><strong>Log in</strong> to your Expo account:
+    <pre><code>eas login</code></pre>
+  </li>
+  <li><strong>Initialize the project</strong> (links it to your Expo account):
+    <pre><code>eas init</code></pre>
+    This generates a project ID. Copy it to <code>app.json</code> → <code>expo.extra.eas.projectId</code> and set <code>expo.owner</code> to your Expo username.
+  </li>
+  <li><strong>iOS (first build only):</strong> EAS will prompt you to log in with your Apple Developer account and will manage provisioning profiles automatically.</li>
+  <li><strong>Android (first production build):</strong> EAS creates and securely stores your signing keystore. For Play Store, you can use Google Play App Signing.</li>
+</ol>
+
+<h3>Local Development</h3>
+<p>This app uses an <strong>Expo dev client</strong> (not Expo Go). The dev client is a custom build that includes all native modules the app uses.</p>
+<ol>
+  <li><strong>Build the dev client</strong> (one-time, or after adding native modules):
+    <pre><code>eas build --profile development --platform [ios|android]</code></pre>
+  </li>
+  <li><strong>Install the dev client</strong> on your device or simulator from the EAS build link</li>
+  <li><strong>Start the dev server:</strong>
+    <pre><code>npx expo start</code></pre>
+  </li>
+  <li>Open the dev client on your device — it connects to the dev server automatically (same WiFi network required)</li>
+</ol>
+
+<div class="callout">
+  <strong>Dev client vs Expo Go:</strong> Expo Go doesn't include the native modules this app needs (push notifications, secure storage, etc.). You only need to rebuild the dev client when adding or removing native packages — code changes hot-reload instantly.
+</div>
 
 <h3>EAS Build Profiles</h3>
 <table>
@@ -459,7 +682,7 @@ eas submit --platform ios
 eas submit --platform android</code></pre>
 
 <!-- ====================================================================== -->
-<h2 id="checklist">8. Pre-Launch Checklist</h2>
+<h2 id="checklist">9. Pre-Launch Checklist</h2>
 
 <p>Go through this before submitting to app stores:</p>
 
@@ -467,28 +690,75 @@ eas submit --platform android</code></pre>
   <tr><th>#</th><th>Item</th><th>File(s)</th><th>Done?</th></tr>
   <tr><td>1</td><td>App name and slug updated</td><td><code>app.json</code>, <code>constants/config.ts</code></td><td></td></tr>
   <tr><td>2</td><td>Bundle IDs / package names set</td><td><code>app.json</code> (ios.bundleIdentifier, android.package)</td><td></td></tr>
-  <tr><td>3</td><td>EAS project ID and owner updated</td><td><code>app.json</code> (expo.owner, expo.extra.eas.projectId)</td><td></td></tr>
+  <tr><td>3</td><td>EAS project ID and owner updated (via <code>eas init</code>)</td><td><code>app.json</code> (expo.owner, expo.extra.eas.projectId)</td><td></td></tr>
   <tr><td>4</td><td>URL scheme updated</td><td><code>app.json</code> (expo.scheme)</td><td></td></tr>
   <tr><td>5</td><td>Permission dialog strings updated (no old brand name)</td><td><code>app.json</code> (expo-image-picker, expo-media-library)</td><td></td></tr>
-  <tr><td>6</td><td>SITE_URL set in all eas.json profiles</td><td><code>eas.json</code></td><td></td></tr>
-  <tr><td>7</td><td>SITE_URL fallback updated</td><td><code>constants/config.ts</code>, <code>app.config.ts</code></td><td></td></tr>
+  <tr><td>6</td><td>SITE_URL set in all eas.json profiles (required — build fails without it)</td><td><code>eas.json</code></td><td></td></tr>
   <tr><td>8</td><td>APP_NAME and APP_USER_AGENT updated</td><td><code>constants/config.ts</code></td><td></td></tr>
-  <tr><td>9</td><td>Pusher credentials set</td><td><code>constants/config.ts</code></td><td></td></tr>
-  <tr><td>10</td><td>Feature flags reviewed</td><td><code>constants/config.ts</code></td><td></td></tr>
+  <tr><td>9</td><td>Pusher credentials set (if using real-time messaging)</td><td><code>constants/config.ts</code></td><td></td></tr>
+  <tr><td>10</td><td>Feature flags reviewed (disable features you don't use)</td><td><code>constants/config.ts</code></td><td></td></tr>
   <tr><td>11</td><td>Module registry reviewed (only needed modules enabled)</td><td><code>modules/_registry.ts</code></td><td></td></tr>
   <tr><td>12</td><td>All branding images replaced</td><td><code>assets/images/</code></td><td></td></tr>
   <tr><td>13</td><td>Notification + adaptive icon colors match brand</td><td><code>app.json</code></td><td></td></tr>
   <tr><td>14</td><td>Splash screen background colors match brand</td><td><code>app.json</code></td><td></td></tr>
-  <tr><td>15</td><td>Firebase configs replaced</td><td><code>google-services.json</code>, <code>GoogleService-Info.plist</code></td><td></td></tr>
-  <tr><td>16</td><td>Default fallback colors reviewed</td><td><code>constants/colors.ts</code></td><td></td></tr>
-  <tr><td>17</td><td>Required companion plugins installed on WordPress</td><td>See <a href="#plugins">Plugin section</a></td><td></td></tr>
-  <tr><td>18</td><td>YouTube channel URL updated (if youtube module enabled)</td><td><code>constants/config.ts</code></td><td></td></tr>
-  <tr><td>19</td><td>package.json name updated</td><td><code>package.json</code></td><td></td></tr>
-  <tr><td>20</td><td>app.config.ts fallback values updated</td><td><code>app.config.ts</code></td><td></td></tr>
-  <tr><td>21</td><td>Production build tested on real device</td><td>—</td><td></td></tr>
-  <tr><td>22</td><td>Push notifications tested end-to-end</td><td>—</td><td></td></tr>
-  <tr><td>23</td><td>Deep links tested (both platforms)</td><td>—</td><td></td></tr>
+  <tr><td>15</td><td>Firebase configs replaced (package names match app.json)</td><td><code>google-services.json</code>, <code>GoogleService-Info.plist</code></td><td></td></tr>
+  <tr><td>16</td><td>APNs key uploaded in Firebase (for iOS push)</td><td>Firebase Console → Cloud Messaging</td><td></td></tr>
+  <tr><td>17</td><td>Default fallback colors reviewed</td><td><code>constants/colors.ts</code></td><td></td></tr>
+  <tr><td>18</td><td>Required companion plugins installed in correct order</td><td>See <a href="#plugins">Plugin section</a></td><td></td></tr>
+  <tr><td>19</td><td>Fluent Community theme colors configured</td><td>WP Admin → Fluent Community → Settings → Design</td><td></td></tr>
+  <tr><td>20</td><td>Pusher credentials match between app and WordPress (if applicable)</td><td><code>constants/config.ts</code>, WP Fluent Community settings</td><td></td></tr>
+  <tr><td>21</td><td>(Add-on) YouTube API key configured in <code>tbc-youtube</code> plugin (if purchased)</td><td>WP Admin → YouTube plugin settings</td><td></td></tr>
+  <tr><td>22</td><td>package.json name updated</td><td><code>package.json</code></td><td></td></tr>
+  <tr><td>23</td><td>app.config.ts fallback values updated (name, slug, SITE_URL)</td><td><code>app.config.ts</code></td><td></td></tr>
+  <tr><td>24</td><td>Production build tested on real device — install via <code>eas build --profile preview</code>, test login, feed, profile</td><td>—</td><td></td></tr>
+  <tr><td>25</td><td>Push notifications tested — trigger from WordPress, verify delivery on both platforms</td><td>—</td><td></td></tr>
+  <tr><td>26</td><td>Deep links tested — open <code>https://yoursite.com/spaces/general</code> in mobile browser, should open app</td><td>—</td><td></td></tr>
 </table>
+
+<!-- ====================================================================== -->
+<h2 id="troubleshooting">10. Troubleshooting</h2>
+
+<h3>App Won't Connect to Server</h3>
+<ul>
+  <li>Verify <code>SITE_URL</code> is correct in <code>eas.json</code> — must include <code>https://</code>, no trailing slash</li>
+  <li>Verify <code>tbc-community-app</code> plugin is installed and <strong>activated</strong> on WordPress</li>
+  <li>Test the API directly: visit <code>https://yoursite.com/wp-json/tbc-ca/v1/config</code> in a browser — should return JSON</li>
+  <li>Check WordPress permalink settings — must <strong>not</strong> be set to "Plain" (use Post name or any other option)</li>
+  <li>If using Cloudflare or a CDN, ensure <code>/wp-json/</code> paths are not cached or blocked</li>
+</ul>
+
+<h3>Colors Not Syncing from Fluent Community</h3>
+<ul>
+  <li>Verify <code>tbc-community-app</code> plugin is active</li>
+  <li>Test the endpoint: visit <code>https://yoursite.com/wp-json/tbc-ca/v1/theme/colors</code> — should return color data</li>
+  <li>Colors are cached on device — force-quit and reopen the app to refresh</li>
+  <li>Check your colors are configured in <strong>Fluent Community → Settings → Design</strong> in WordPress admin</li>
+</ul>
+
+<h3>Push Notifications Not Working</h3>
+<ul>
+  <li>Verify Firebase config files match your app's bundle ID / package name <strong>exactly</strong></li>
+  <li><strong>iOS:</strong> Ensure your APNs key (<code>.p8</code> file) is uploaded in Firebase Console → Cloud Messaging settings</li>
+  <li><strong>Android:</strong> Verify <code>google-services.json</code> is in the project root and has the correct package name</li>
+  <li>Check that <code>FEATURES.PUSH_NOTIFICATIONS = true</code> in <code>constants/config.ts</code></li>
+  <li>EAS project ID must be set in <code>app.json</code> — push tokens are registered via Expo's push service</li>
+</ul>
+
+<h3>Build Fails</h3>
+<ul>
+  <li><strong>"Owner mismatch":</strong> <code>expo.owner</code> in <code>app.json</code> doesn't match your <code>eas login</code> account</li>
+  <li><strong>"Project ID not found":</strong> run <code>eas init</code> to generate one, then copy it to <code>app.json</code></li>
+  <li><strong>iOS signing issues:</strong> EAS usually handles this automatically — try <code>eas credentials</code> to manage certificates</li>
+  <li><strong>Android keystore:</strong> on first production build, EAS creates and stores this for you automatically</li>
+</ul>
+
+<h3>Real-Time Messaging Not Working</h3>
+<ul>
+  <li>Verify Pusher credentials in <code>constants/config.ts</code> match your <a href="https://dashboard.pusher.com">Pusher dashboard</a></li>
+  <li>Verify the <strong>same credentials</strong> are set in WordPress: <strong>Fluent Community → Settings → Pusher</strong></li>
+  <li>Check Pusher dashboard → Debug Console for connection attempts and errors</li>
+  <li>Ensure <strong>Fluent Community Pro</strong> + <strong>Fluent Messaging</strong> add-on are both installed and active</li>
+</ul>
 
 <hr style="margin-top: 48px; border-color: var(--border);">
 <p style="color: var(--text-secondary); margin-top: 16px; font-size: 0.9rem;">

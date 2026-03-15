@@ -8,7 +8,7 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
-  // Read from EAS env or fall back to staging
+  // SETUP: Change the fallback URL to your site. EAS builds use eas.json env instead.
   const siteUrl =
     process.env.SITE_URL || 'https://community.twobirdschurch.com';
   const hostname = new URL(siteUrl).hostname;

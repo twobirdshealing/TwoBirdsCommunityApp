@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1
+
+- Added "Delete all plugin data when uninstalled" setting in Data Management section — uninstall preserves all data by default to prevent accidental data loss during troubleshooting or reinstalls
+- Added `uninstall.php` — when opted in, removes settings, version option, and YouTube cache transients
+
 ## 1.2.0 — 2026-03-14
 
 - Removed hardcoded default channel ID — all fields must be configured by the admin

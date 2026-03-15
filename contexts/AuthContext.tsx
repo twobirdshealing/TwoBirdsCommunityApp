@@ -3,13 +3,9 @@
 // =============================================================================
 
 import * as authService from '@/services/auth';
-import { clearBadgeCache } from '@/services/api/badges';
-import { clearSocialProvidersCache } from '@/services/api/socialProviders';
-import { clearReactionConfigCache } from '@/hooks/useReactionConfig';
-import { clearBatchFresh } from '@/utils/batchCache';
+import { clearAllUserCaches } from '@/services/cacheRegistry';
 import { registerDeviceToken } from '@/services/push';
 import { FEATURES } from '@/constants/config';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createLogger } from '@/utils/logger';
 import type { AuthUser } from '@/types/user';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -127,30 +123,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await authService.logout();
 
-      // Clear in-memory caches
-      clearBadgeCache();
-      clearSocialProvidersCache();
-      clearReactionConfigCache();
-      clearBatchFresh();
-
-      // Clear user-specific AsyncStorage caches (keep account-agnostic preferences)
-      try {
-        const allKeys = await AsyncStorage.getAllKeys();
-        const userCacheKeys = allKeys.filter(k =>
-          k.startsWith('tbc_activity_') ||
-          k.startsWith('tbc_bookmarks') ||
-          k.startsWith('tbc_feed_') ||
-          k.startsWith('tbc_widget_') ||
-          k.startsWith('tbc_welcome_') ||
-          k.startsWith('tbc_calendar_')
-        );
-        if (userCacheKeys.length > 0) {
-          await AsyncStorage.multiRemove(userCacheKeys);
-          log('Cleared', userCacheKeys.length, 'cached keys');
-        }
-      } catch (e) {
-        log('Error clearing app caches:', e);
-      }
+      // Clear all user-specific caches (AsyncStorage + in-memory)
+      await clearAllUserCaches();
 
       setUser(null);
       setIsAuthenticated(false);

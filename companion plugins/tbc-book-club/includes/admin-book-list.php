@@ -106,4 +106,36 @@ $book_club_url = home_url('/book-club/');
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
+
+    <!-- Data Management -->
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #c3c4c7;">
+        <h2><?php esc_html_e('Data Management'); ?></h2>
+        <table class="form-table">
+            <tr>
+                <th scope="row"><?php esc_html_e('Uninstall Behavior'); ?></th>
+                <td>
+                    <label>
+                        <input type="checkbox"
+                               id="tbc_bc_delete_data_on_uninstall"
+                               value="1"
+                               <?php checked(get_option('tbc_bc_delete_data_on_uninstall', false)); ?> />
+                        <?php esc_html_e('Delete all plugin data when uninstalled'); ?>
+                    </label>
+                    <p class="description"><?php esc_html_e('When enabled, uninstalling this plugin will permanently remove all books, bookmarks, and database tables. Leave unchecked to preserve data if reinstalling later.'); ?></p>
+                    <?php wp_nonce_field('tbc_bc_data_mgmt', 'tbc_bc_data_mgmt_nonce'); ?>
+                    <button type="button" class="button button-secondary" style="margin-top: 8px;" onclick="
+                        var cb = document.getElementById('tbc_bc_delete_data_on_uninstall');
+                        var nonce = document.querySelector('[name=tbc_bc_data_mgmt_nonce]').value;
+                        fetch(ajaxurl, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                            body: 'action=tbc_bc_save_uninstall_pref&value=' + (cb.checked ? '1' : '0') + '&_wpnonce=' + nonce
+                        }).then(function(r) { return r.json(); }).then(function(d) {
+                            if (d.success) { alert('Saved.'); }
+                        });
+                    "><?php esc_html_e('Save Preference'); ?></button>
+                </td>
+            </tr>
+        </table>
+    </div>
 </div>

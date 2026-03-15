@@ -219,7 +219,7 @@ class Helpers {
     /**
      * Generate a unique session key with the given prefix.
      */
-    public static function generate_session_key(string $prefix = 'tbc_otp_session_'): string {
+    public static function generate_session_key(string $prefix = 'tbc_fp_session_'): string {
         return $prefix . wp_generate_uuid4();
     }
 

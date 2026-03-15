@@ -173,7 +173,7 @@
 
             // ── Profile save with pending verified session — inject header ──
             if (pendingSessionKey) {
-                xhr.setRequestHeader('X-TBC-OTP-Session', pendingSessionKey);
+                xhr.setRequestHeader('X-TBC-FP-Session', pendingSessionKey);
                 pendingSessionKey = null;
                 return origSend.apply(this, arguments);
             }
@@ -318,7 +318,7 @@
         xhr._tbcOtpBypass = true;
         xhr.open(originalRequestMethod || 'POST', originalRequestUrl, true);
         xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
-        xhr.setRequestHeader('X-TBC-OTP-Session', currentSessionKey);
+        xhr.setRequestHeader('X-TBC-FP-Session', currentSessionKey);
         xhr.setRequestHeader('X-WP-Nonce', getWPRestNonce());
         xhr.onload = function () { showProfileSaveSuccess(); };
         xhr.onerror = function () { window.location.reload(); };

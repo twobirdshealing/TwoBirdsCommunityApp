@@ -152,6 +152,7 @@ class Admin {
         $reaction_types = array_intersect_key($reaction_types, $defaults);
 
         $output['reaction_types'] = $reaction_types;
+        $output['delete_data_on_uninstall'] = isset($input['delete_data_on_uninstall']) && $input['delete_data_on_uninstall'] === '1';
         return $output;
     }
 
