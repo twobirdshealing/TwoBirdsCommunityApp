@@ -6,7 +6,7 @@
 // Does NOT fetch on its own — all fetching is orchestrated by _layout.tsx.
 // =============================================================================
 
-import { AppConfigResponse, VisibilityConfig } from '@/services/api/theme';
+import { AppConfigResponse, VisibilityConfig } from '@/services/api/appConfig';
 import { createLogger } from '@/utils/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useMemo, useEffect, useState } from 'react';

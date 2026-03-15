@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — Theme System</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn { border-left-color: var(--warning); }
+  .callout-error { border-left-color: var(--error); }
+  .callout-success { border-left-color: var(--success); }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+  .color-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Theme System</h1>
+<p class="subtitle">Fluent Community color sync, token mapping, and usage rules</p>
+
+<div class="callout">
+  <strong>Key files:</strong><br>
+  <span class="file-path">constants/colors.ts</span> &mdash; ColorTheme interface, defaults, <code>mapFluentToAppColors()</code>, <code>withOpacity()</code><br>
+  <span class="file-path">contexts/ThemeContext.tsx</span> &mdash; Provider, caches in AsyncStorage, background-refreshes from API<br>
+  <span class="file-path">services/api/appConfig.ts</span> &mdash; Fetches <code>/tbc-ca/v1/app-config</code> (public, includes JWT when available)<br>
+  <span class="file-path">companion plugins/tbc-community-app/includes/class-app-config.php</span> &mdash; PHP REST endpoint
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#flow">Data Flow</a></li>
+    <li><a href="#color-tokens">App Color Tokens</a></li>
+    <li><a href="#fluent-mapping">Fluent &rarr; App Token Map</a></li>
+    <li><a href="#fluent-css-vars">Fluent CSS Variables Reference</a></li>
+    <li><a href="#fluent-schemas">Fluent Color Schemas</a></li>
+    <li><a href="#fluent-defaults">Fluent Default Values</a></li>
+    <li><a href="#api-endpoint">API Endpoint</a></li>
+    <li><a href="#theme-context">ThemeContext &amp; Caching</a></li>
+    <li><a href="#with-opacity">withOpacity Helper</a></li>
+    <li><a href="#companion-plugins">Companion Plugin CSS</a></li>
+    <li><a href="#intentional-static">Intentionally Static Colors</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="flow">1. Data Flow</h2>
+
+<p>Colors are synced from Fluent Community's admin-configured color schemas (light + dark mode) to the app at runtime:</p>
+
+<pre><code>Fluent Community Admin (Color Customizer)
+    &darr;
+Utility::getColorConfig() + getColorSchemas() + getCustomizationSettings()
+    &darr;
+class-app-config.php &rarr; GET /wp-json/tbc-ca/v1/app-config
+    &darr;
+services/api/appConfig.ts &rarr; getAppConfig()
+    &darr;
+ThemeContext &rarr; applyThemeColors() &rarr; mapFluentToAppColors()
+    &darr;
+useTheme().colors &rarr; All 137+ components</code></pre>
+
+<h3>Startup sequence</h3>
+<ol>
+  <li>ThemeContext mounts, loads saved theme preference (light/dark) from AsyncStorage</li>
+  <li>Loads cached app config from AsyncStorage &mdash; applies immediately (no flash)</li>
+  <li>Background-fetches fresh config from <code>/app-config</code></li>
+  <li>Merges Fluent overrides on top of app defaults, caches for next launch</li>
+</ol>
+
+<div class="callout callout-success">
+  <strong>Cache-first, refresh-behind.</strong> Users see cached colors instantly on cold start. The API fetch runs in the background and updates silently. No loading spinner for colors.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="color-tokens">2. App Color Tokens</h2>
+
+<p>The <code>ColorTheme</code> interface in <span class="file-path">constants/colors.ts</span> defines every token the app uses. Components access them via <code>useTheme().colors</code>.</p>
+
+<h3>Brand</h3>
+<table>
+  <tr><th>Token</th><th>Purpose</th><th>Light Default</th><th>Dark Default</th></tr>
+  <tr><td><code>primary</code></td><td>Links, brand accent, tinted backgrounds</td><td><span class="color-swatch" style="background:#6366F1"></span>#6366F1</td><td><span class="color-swatch" style="background:#818CF8"></span>#818CF8</td></tr>
+  <tr><td><code>primaryDark</code></td><td>Button backgrounds, strong CTA</td><td><span class="color-swatch" style="background:#4F46E5"></span>#4F46E5</td><td><span class="color-swatch" style="background:#6366F1"></span>#6366F1</td></tr>
+</table>
+
+<h3>Backgrounds</h3>
+<table>
+  <tr><th>Token</th><th>Purpose</th><th>Light Default</th><th>Dark Default</th></tr>
+  <tr><td><code>background</code></td><td>Page/screen background</td><td><span class="color-swatch" style="background:#F9FAFB"></span>#F9FAFB</td><td><span class="color-swatch" style="background:#111827"></span>#111827</td></tr>
+  <tr><td><code>surface</code></td><td>Card/content background</td><td><span class="color-swatch" style="background:#FFFFFF"></span>#FFFFFF</td><td><span class="color-swatch" style="background:#1F2937"></span>#1F2937</td></tr>
+  <tr><td><code>backgroundSecondary</code></td><td>Comment areas, secondary sections</td><td><span class="color-swatch" style="background:#F3F4F6"></span>#F3F4F6</td><td><span class="color-swatch" style="background:#374151"></span>#374151</td></tr>
+  <tr><td><code>activeBg</code></td><td>Active/selected item background</td><td><span class="color-swatch" style="background:#f0f3f5"></span>#f0f3f5</td><td><span class="color-swatch" style="background:#42464D"></span>#42464D</td></tr>
+  <tr><td><code>lightBg</code></td><td>Light accent background</td><td><span class="color-swatch" style="background:#E1E4EA"></span>#E1E4EA</td><td><span class="color-swatch" style="background:#2B303B"></span>#2B303B</td></tr>
+  <tr><td><code>deepBg</code></td><td>Code blocks, preformatted text</td><td><span class="color-swatch" style="background:#222530"></span>#222530</td><td><span class="color-swatch" style="background:#E1E4EA"></span>#E1E4EA</td></tr>
+  <tr><td><code>highlightBg</code></td><td>Notices, alerts, highlighted comments</td><td><span class="color-swatch" style="background:#fffce3"></span>#fffce3</td><td><span class="color-swatch" style="background:#2c2c1a"></span>#2c2c1a</td></tr>
+</table>
+
+<h3>Text</h3>
+<table>
+  <tr><th>Token</th><th>Purpose</th><th>Light Default</th><th>Dark Default</th></tr>
+  <tr><td><code>text</code></td><td>Main body text</td><td><span class="color-swatch" style="background:#111827"></span>#111827</td><td><span class="color-swatch" style="background:#F9FAFB"></span>#F9FAFB</td></tr>
+  <tr><td><code>textSecondary</code></td><td>Meta text, subtitles, timestamps</td><td><span class="color-swatch" style="background:#6B7280"></span>#6B7280</td><td><span class="color-swatch" style="background:#9CA3AF"></span>#9CA3AF</td></tr>
+  <tr><td><code>textTertiary</code></td><td>Disabled text, hints, placeholders</td><td><span class="color-swatch" style="background:#9CA3AF"></span>#9CA3AF</td><td><span class="color-swatch" style="background:#6B7280"></span>#6B7280</td></tr>
+  <tr><td><code>textInverse</code></td><td>Text on colored buttons (inverse contrast)</td><td><span class="color-swatch" style="background:#FFFFFF;border-color:#666"></span>#FFFFFF</td><td><span class="color-swatch" style="background:#111827"></span>#111827</td></tr>
+</table>
+
+<h3>UI Elements</h3>
+<table>
+  <tr><th>Token</th><th>Purpose</th><th>Light Default</th><th>Dark Default</th></tr>
+  <tr><td><code>border</code></td><td>Main borders, dividers, skeleton bg</td><td><span class="color-swatch" style="background:#E5E7EB"></span>#E5E7EB</td><td><span class="color-swatch" style="background:#374151"></span>#374151</td></tr>
+  <tr><td><code>borderLight</code></td><td>Subtle/light borders</td><td><span class="color-swatch" style="background:#F3F4F6"></span>#F3F4F6</td><td><span class="color-swatch" style="background:#1F2937"></span>#1F2937</td></tr>
+</table>
+
+<h3>Semantic (app-only, not from Fluent)</h3>
+<table>
+  <tr><th>Token</th><th>Purpose</th><th>Light</th><th>Dark</th></tr>
+  <tr><td><code>success</code> / <code>successLight</code></td><td>Success states, online indicators</td><td><span class="color-swatch" style="background:#10B981"></span>#10B981 / <span class="color-swatch" style="background:#D1FAE5"></span>#D1FAE5</td><td><span class="color-swatch" style="background:#10B981"></span>#10B981 / <span class="color-swatch" style="background:#064E3B"></span>#064E3B</td></tr>
+  <tr><td><code>error</code> / <code>errorLight</code></td><td>Error states, destructive actions</td><td><span class="color-swatch" style="background:#EF4444"></span>#EF4444 / <span class="color-swatch" style="background:#FEE2E2"></span>#FEE2E2</td><td><span class="color-swatch" style="background:#EF4444"></span>#EF4444 / <span class="color-swatch" style="background:#7F1D1D"></span>#7F1D1D</td></tr>
+  <tr><td><code>warning</code> / <code>warningLight</code></td><td>Warning states</td><td><span class="color-swatch" style="background:#F59E0B"></span>#F59E0B / <span class="color-swatch" style="background:#FEF3C7"></span>#FEF3C7</td><td><span class="color-swatch" style="background:#F59E0B"></span>#F59E0B / <span class="color-swatch" style="background:#78350F"></span>#78350F</td></tr>
+  <tr><td><code>info</code> / <code>infoLight</code></td><td>Info states, verified badges</td><td><span class="color-swatch" style="background:#3B82F6"></span>#3B82F6 / <span class="color-swatch" style="background:#DBEAFE"></span>#DBEAFE</td><td><span class="color-swatch" style="background:#3B82F6"></span>#3B82F6 / <span class="color-swatch" style="background:#1E3A5F"></span>#1E3A5F</td></tr>
+</table>
+
+<h3>Tab Bar</h3>
+<table>
+  <tr><th>Token</th><th>Purpose</th><th>Light Default</th><th>Dark Default</th></tr>
+  <tr><td><code>tabBar.background</code></td><td>Tab bar background</td><td>#FFFFFF</td><td>#1F2937</td></tr>
+  <tr><td><code>tabBar.border</code></td><td>Tab bar top border</td><td>#E5E7EB</td><td>#374151</td></tr>
+  <tr><td><code>tabBar.active</code></td><td>Active tab icon/label</td><td>#6366F1</td><td>#818CF8</td></tr>
+  <tr><td><code>tabBar.inactive</code></td><td>Inactive tab icon/label</td><td>#9CA3AF</td><td>#6B7280</td></tr>
+</table>
+
+<h3>Special</h3>
+<table>
+  <tr><th>Token</th><th>Purpose</th><th>Value</th></tr>
+  <tr><td><code>overlay</code></td><td>Modal/sheet backdrops</td><td>rgba(0,0,0,0.5) light / rgba(0,0,0,0.7) dark</td></tr>
+</table>
+
+<div class="callout">
+  <strong>Dual-purpose tokens:</strong> <code>info</code> doubles as verified badge color, <code>success</code> doubles as online indicator, <code>border</code> doubles as skeleton/placeholder background.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="fluent-mapping">3. Fluent &rarr; App Token Map</h2>
+
+<p>The <code>mapFluentToAppColors()</code> function in <span class="file-path">constants/colors.ts</span> maps Fluent Community color tokens to app tokens. This mapping is server-driven and auto-synced.</p>
+
+<h3>Body tokens (content area)</h3>
+<table>
+  <tr><th>Fluent Key</th><th>CSS Variable</th><th>App Token</th><th>Purpose</th></tr>
+  <tr><td><code>primary_bg</code></td><td><code>--fcom-primary-bg</code></td><td><code>surface</code></td><td>Card/content background</td></tr>
+  <tr><td><code>secondary_bg</code></td><td><code>--fcom-secondary-bg</code></td><td><code>background</code></td><td>Page background</td></tr>
+  <tr><td><code>secondary_content_bg</code></td><td><code>--fcom-secondary-content-bg</code></td><td><code>backgroundSecondary</code></td><td>Comment/secondary areas</td></tr>
+  <tr><td><code>active_bg</code></td><td><code>--fcom-active-bg</code></td><td><code>activeBg</code></td><td>Active/selected item bg</td></tr>
+  <tr><td><code>light_bg</code></td><td><code>--fcom-light-bg</code></td><td><code>lightBg</code></td><td>Light accent background</td></tr>
+  <tr><td><code>deep_bg</code></td><td><code>--fcom-deep-bg</code></td><td><code>deepBg</code></td><td>Code block / preformatted bg</td></tr>
+  <tr><td><code>highlight_bg</code></td><td><code>--fcom-highlight-bg</code></td><td><code>highlightBg</code></td><td>Notices, alerts, highlights</td></tr>
+  <tr><td><code>primary_text</code></td><td><code>--fcom-primary-text</code></td><td><code>text</code></td><td>Main body text</td></tr>
+  <tr><td><code>secondary_text</code></td><td><code>--fcom-secondary-text</code></td><td><code>textSecondary</code></td><td>Meta/subtitle text</td></tr>
+  <tr><td><code>text_off</code></td><td><code>--fcom-text-off</code></td><td><code>textTertiary</code></td><td>Disabled/hint text</td></tr>
+  <tr><td><code>text_link</code></td><td><code>--fcom-text-link</code></td><td><code>primary</code></td><td>Links &amp; brand accent</td></tr>
+  <tr><td><code>primary_button</code></td><td><code>--fcom-primary-button</code></td><td><code>primaryDark</code></td><td>Button background</td></tr>
+  <tr><td><code>primary_button_text</code></td><td><code>--fcom-primary-button-text</code></td><td><code>textInverse</code></td><td>Button text (inverse)</td></tr>
+  <tr><td><code>primary_border</code></td><td><code>--fcom-primary-border</code></td><td><code>border</code></td><td>Main borders</td></tr>
+  <tr><td><code>secondary_border</code></td><td><code>--fcom-secondary-border</code></td><td><code>borderLight</code></td><td>Light/subtle borders</td></tr>
+</table>
+
+<h3>Header tokens &rarr; Tab Bar</h3>
+<table>
+  <tr><th>Fluent Key (header section)</th><th>App Token</th></tr>
+  <tr><td><code>primary_bg</code></td><td><code>tabBar.background</code></td></tr>
+  <tr><td><code>primary_border</code></td><td><code>tabBar.border</code></td></tr>
+  <tr><td><code>menu_text_active</code></td><td><code>tabBar.active</code></td></tr>
+  <tr><td><code>menu_text</code></td><td><code>tabBar.inactive</code></td></tr>
+</table>
+
+<h3>Sidebar tokens</h3>
+<p>Received from the API but <strong>not used</strong> on mobile (no sidebar in the app). The sidebar section contains: <code>primary_bg</code>, <code>primary_border</code>, <code>menu_text</code>, <code>menu_text_active</code>, <code>menu_text_hover</code>, <code>menu_bg_hover</code>, <code>active_bg</code>.</p>
+
+<h3>Unmapped Fluent tokens</h3>
+<p>These tokens exist in Fluent schemas but are not mapped to app tokens (not needed on mobile):</p>
+<ul>
+  <li><code>menu_text</code> (body) &mdash; body-level menu text, not relevant to mobile</li>
+  <li><code>menu_text_active</code> (body) &mdash; body-level active menu, not relevant</li>
+  <li><code>menu_text_hover</code> &mdash; hover states don't exist on mobile</li>
+  <li><code>menu_bg_hover</code> &mdash; hover states don't exist on mobile</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="fluent-css-vars">4. Fluent CSS Variables Reference</h2>
+
+<p>Fluent Community generates CSS variables with the <code>--fcom-</code> prefix. These are used by companion WordPress plugins and themes. The naming convention converts underscores to hyphens: <code>primary_bg</code> &rarr; <code>--fcom-primary-bg</code>.</p>
+
+<h3>Core variables (from Utility.php)</h3>
+<table>
+  <tr><th>CSS Variable</th><th>Purpose</th></tr>
+  <tr><td><code>--fcom-primary-bg</code></td><td>Main backgrounds</td></tr>
+  <tr><td><code>--fcom-secondary-bg</code></td><td>Secondary surfaces</td></tr>
+  <tr><td><code>--fcom-secondary-content-bg</code></td><td>Content boxes</td></tr>
+  <tr><td><code>--fcom-primary-text</code></td><td>Main text</td></tr>
+  <tr><td><code>--fcom-secondary-text</code></td><td>Meta/labels</td></tr>
+  <tr><td><code>--fcom-text-off</code></td><td>Muted/disabled text</td></tr>
+  <tr><td><code>--fcom-text-link</code></td><td>Links/accents</td></tr>
+  <tr><td><code>--fcom-primary-border</code></td><td>Borders/dividers</td></tr>
+  <tr><td><code>--fcom-secondary-border</code></td><td>Secondary borders</td></tr>
+  <tr><td><code>--fcom-active-bg</code></td><td>Hover/active states</td></tr>
+  <tr><td><code>--fcom-light-bg</code></td><td>Light backgrounds</td></tr>
+  <tr><td><code>--fcom-deep-bg</code></td><td>Deep/dark backgrounds</td></tr>
+  <tr><td><code>--fcom-highlight-bg</code></td><td>Highlights/emphasis</td></tr>
+  <tr><td><code>--fcom-primary-button</code></td><td>Button backgrounds</td></tr>
+  <tr><td><code>--fcom-primary-button-text</code></td><td>Button text</td></tr>
+  <tr><td><code>--fcom-menu-text</code></td><td>Menu text</td></tr>
+  <tr><td><code>--fcom-menu-text-active</code></td><td>Active menu items</td></tr>
+  <tr><td><code>--fcom-menu-text-hover</code></td><td>Hover menu items</td></tr>
+  <tr><td><code>--fcom-menu-bg-hover</code></td><td>Menu hover backgrounds</td></tr>
+</table>
+
+<h3>Messenger/Chat additional variables</h3>
+<p>The Fluent Messaging plugin adds extra CSS variables for chat UI:</p>
+<table>
+  <tr><th>CSS Variable</th><th>Purpose</th></tr>
+  <tr><td><code>--fcom-danger-bg</code> / <code>--fcom-danger-color</code></td><td>Danger states</td></tr>
+  <tr><td><code>--fcom-success-color</code></td><td>Success states</td></tr>
+  <tr><td><code>--fcom-warning-bg</code> / <code>--fcom-warning-color</code></td><td>Warning states</td></tr>
+  <tr><td><code>--fcom-info-bg</code></td><td>Info states</td></tr>
+  <tr><td><code>--fcom-message-reply-bg</code></td><td>Message reply background</td></tr>
+  <tr><td><code>--fcom-reply-hover-bg</code></td><td>Reply hover background</td></tr>
+  <tr><td><code>--fcom-modal-backdrop</code></td><td>Modal backdrop</td></tr>
+  <tr><td><code>--fcom-skeleton-bg</code></td><td>Skeleton/placeholder background</td></tr>
+  <tr><td><code>--fcom-tertiary-text</code></td><td>Tertiary text</td></tr>
+  <tr><td><code>--fcom-primary-button-dark</code></td><td>Dark button variant</td></tr>
+  <tr><td><code>--fcom-primary-color</code></td><td>Primary brand color</td></tr>
+  <tr><td><code>--fcom-code-bg</code></td><td>Code block background</td></tr>
+  <tr><td><code>--fcom-table-header-bg</code></td><td>Table header background</td></tr>
+</table>
+
+<h3>Layout variables (non-color)</h3>
+<table>
+  <tr><th>CSS Variable</th><th>Purpose</th></tr>
+  <tr><td><code>--fcom-header-height</code></td><td>Header height</td></tr>
+  <tr><td><code>--fcom-main-content-width</code></td><td>Content width</td></tr>
+  <tr><td><code>--fcom-mobile-menu-height</code></td><td>Mobile menu height</td></tr>
+  <tr><td><code>--fcom-font-size-small</code> / <code>medium</code> / <code>large</code> / <code>larger</code> / <code>xxlarge</code></td><td>Font size scale</td></tr>
+</table>
+
+<div class="callout callout-warn">
+  <strong>Always use fallbacks in CSS.</strong> Companion plugins and themes must use <code>var(--fcom-primary-bg, #ffffff)</code> &mdash; never <code>var(--fcom-primary-bg)</code> alone. Fallbacks guard against CSS load-order race conditions and keep IDE linters happy. All companion plugins require Fluent Community to be active.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="fluent-schemas">5. Fluent Color Schemas</h2>
+
+<p>Fluent Community ships 5 predefined color schemas for each mode, plus a custom option:</p>
+
+<table>
+  <tr><th>Schema</th><th>Accent (Light)</th><th>Accent (Dark)</th></tr>
+  <tr><td><code>default</code></td><td>Blue #2271b1</td><td>Blue #60a5fa</td></tr>
+  <tr><td><code>sunset_sands</code></td><td>Orange #E67E22</td><td>Orange #F39C12</td></tr>
+  <tr><td><code>ocean_blue</code></td><td>Facebook blue #1877F2</td><td>Blue #2D88FF</td></tr>
+  <tr><td><code>sky_blue</code></td><td>Twitter blue #1D9BF0</td><td>Blue #1D9BF0</td></tr>
+  <tr><td><code>emerald_essence</code></td><td>Green #10B981</td><td>Green #10B981</td></tr>
+  <tr><td><code>custom</code></td><td colspan="2">Admin-configured overrides</td></tr>
+</table>
+
+<p>The admin selects a light schema and a dark schema independently. Custom overrides are merged on top of the selected schema's base colors.</p>
+
+<h3>Three selector sections</h3>
+<p>Each schema defines colors for three sections:</p>
+<ul>
+  <li><strong>body</strong> &mdash; content area (15 color tokens) &rarr; mapped to app body tokens</li>
+  <li><strong>fcom_top_menu</strong> &mdash; header/navigation (7 tokens) &rarr; mapped to app <code>tabBar</code></li>
+  <li><strong>spaces</strong> &mdash; sidebar navigation (7 tokens) &rarr; not used on mobile</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="fluent-defaults">6. Fluent Default Values</h2>
+
+<p>These are the actual default values from Fluent Community's <code>default</code> schema (from <span class="file-path">Utility.php</span>). The app's fallback defaults in <code>constants/colors.ts</code> are different &mdash; they use a Tailwind-inspired palette for a clean cold-start appearance before the API responds.</p>
+
+<h3>Default light schema (body)</h3>
+<table>
+  <tr><th>Token</th><th>Fluent Default</th><th>App Default</th></tr>
+  <tr><td><code>primary_bg</code></td><td>#ffffff</td><td>#FFFFFF (same)</td></tr>
+  <tr><td><code>secondary_bg</code></td><td>#f0f2f5</td><td>#F9FAFB</td></tr>
+  <tr><td><code>secondary_content_bg</code></td><td>#f0f3f5</td><td>#F3F4F6</td></tr>
+  <tr><td><code>primary_text</code></td><td>#19283a</td><td>#111827</td></tr>
+  <tr><td><code>secondary_text</code></td><td>#525866</td><td>#6B7280</td></tr>
+  <tr><td><code>text_off</code></td><td>#959595</td><td>#9CA3AF</td></tr>
+  <tr><td><code>text_link</code></td><td>#2271b1</td><td>#6366F1</td></tr>
+  <tr><td><code>primary_button</code></td><td>#2B2E33</td><td>#4F46E5</td></tr>
+  <tr><td><code>primary_button_text</code></td><td>#ffffff</td><td>#FFFFFF (same)</td></tr>
+  <tr><td><code>primary_border</code></td><td>#e3e8ee</td><td>#E5E7EB</td></tr>
+  <tr><td><code>secondary_border</code></td><td>#9CA3AF</td><td>#F3F4F6</td></tr>
+  <tr><td><code>active_bg</code></td><td>#f0f3f5</td><td>#f0f3f5 (same)</td></tr>
+  <tr><td><code>light_bg</code></td><td>#E1E4EA</td><td>#E1E4EA (same)</td></tr>
+  <tr><td><code>deep_bg</code></td><td>#222530</td><td>#222530 (same)</td></tr>
+  <tr><td><code>highlight_bg</code></td><td>#fffce3</td><td>#fffce3 (same)</td></tr>
+</table>
+
+<div class="callout">
+  <strong>Why the difference?</strong> App defaults are intentionally distinct from Fluent defaults. They use a consistent Tailwind-inspired palette that looks good standalone. Once the API responds (usually within 1-2 seconds on first launch, instant on subsequent launches from cache), Fluent's actual colors take over.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="api-endpoint">7. API Endpoint</h2>
+
+<h3>GET /wp-json/tbc-ca/v1/app-config</h3>
+
+<p>Public endpoint (no auth required). Automatically includes JWT when available for role-based visibility flags.</p>
+
+<pre><code>// Response structure (AppConfigResponse)
+{
+  "success": true,
+  "theme": {
+    "dark_mode_enabled": true,
+    "light_schema": "default",
+    "dark_schema": "default",
+    "light": {
+      "body": { "primary_bg": "#ffffff", "secondary_bg": "#f0f2f5", ... },
+      "header": { "primary_bg": "#ffffff", "menu_text_active": "#545861", ... },
+      "sidebar": { ... }  // received but unused on mobile
+    },
+    "dark": {
+      "body": { "primary_bg": "#2B2E33", ... },
+      "header": { ... },
+      "sidebar": { ... }
+    }
+  },
+  "social_providers": [...],
+  "update": { "min_version": "3.0.0", "ios_store_url": "...", "android_store_url": "..." },
+  "portal_slug": "portal",
+  "branding": { "site_name": "...", "site_tagline": "...", "logo": "...", "logo_dark": "..." },
+  "maintenance": { "enabled": false, "message": "..." },
+  "visibility": { "hide_cart": false, "hide_menu": [] }  // only when authenticated
+}</code></pre>
+
+<h3>PHP implementation</h3>
+<p>Located in <span class="file-path">companion plugins/tbc-community-app/includes/class-app-config.php</span>.</p>
+<p>The <code>get_theme_data()</code> method:</p>
+<ol>
+  <li>Calls <code>Utility::getColorConfig()</code> to get selected schema names + custom overrides</li>
+  <li>Calls <code>Utility::getColorSchemas()</code> to get all schema definitions</li>
+  <li>Calls <code>Utility::getCustomizationSettings()</code> for the dark mode enabled flag</li>
+  <li>Selects the active light/dark schema by name</li>
+  <li>Merges admin custom overrides on top of schema defaults</li>
+  <li>Renames internal keys (<code>fcom_top_menu</code> &rarr; <code>header</code>, <code>spaces</code> &rarr; <code>sidebar</code>)</li>
+</ol>
+
+<div class="callout callout-warn">
+  <strong>No server-side caching.</strong> The PHP endpoint calls Fluent Utility methods on each request. Caching happens on the client side (AsyncStorage). If Fluent Community is not active, the endpoint returns <code>{ light: null, dark: null }</code> and the app uses its built-in defaults.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="theme-context">8. ThemeContext &amp; Caching</h2>
+
+<p><span class="file-path">contexts/ThemeContext.tsx</span> manages theme state and exposes <code>useTheme()</code>.</p>
+
+<h3>What it provides</h3>
+<table>
+  <tr><th>Property</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>theme</code></td><td><code>'light' | 'dark'</code></td><td>Current mode</td></tr>
+  <tr><td><code>isDark</code></td><td><code>boolean</code></td><td>Shorthand for <code>theme === 'dark'</code></td></tr>
+  <tr><td><code>colors</code></td><td><code>ColorTheme</code></td><td>Active color palette (defaults + Fluent overrides)</td></tr>
+  <tr><td><code>setTheme(mode)</code></td><td><code>(mode) => void</code></td><td>Switch mode, persists to AsyncStorage</td></tr>
+  <tr><td><code>update</code></td><td><code>UpdateConfig | null</code></td><td>Min app version + store URLs</td></tr>
+  <tr><td><code>maintenance</code></td><td><code>MaintenanceConfig | null</code></td><td>Maintenance mode status</td></tr>
+  <tr><td><code>branding</code></td><td><code>BrandingConfig | null</code></td><td>Site name, tagline, logo URLs</td></tr>
+  <tr><td><code>refreshAppConfig()</code></td><td><code>() => Promise</code></td><td>Force-refresh from API</td></tr>
+  <tr><td><code>setFromBatch(data)</code></td><td><code>(data) => void</code></td><td>Accept pre-fetched config from startup batch</td></tr>
+</table>
+
+<h3>Color merging</h3>
+<pre><code>// How colors are built (simplified)
+const base = isDark ? { ...darkColors } : { ...lightColors };
+const overrides = isDark ? fluentOverrides?.dark : fluentOverrides?.light;
+
+// Merge flat tokens, then tabBar separately
+return {
+  ...base,
+  ...overrides,
+  tabBar: overrides?.tabBar?.background
+    ? { ...base.tabBar, ...overrides.tabBar }
+    : base.tabBar,
+};</code></pre>
+
+<h3>Storage keys</h3>
+<table>
+  <tr><th>Key</th><th>Purpose</th></tr>
+  <tr><td><code>theme_preference</code></td><td>User's light/dark choice</td></tr>
+  <tr><td><code>tbc_app_config_cache</code></td><td>Full <code>AppConfigResponse</code> JSON (theme + branding + maintenance + etc.)</td></tr>
+</table>
+
+<div class="callout callout-success">
+  <strong>Flash prevention.</strong> <code>ThemeProvider</code> returns <code>null</code> until AsyncStorage loads (the <code>isReady</code> gate). This prevents a flash of wrong-theme colors on cold start.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="with-opacity">9. withOpacity Helper</h2>
+
+<p>Converts a hex color to an rgba string with the given opacity. Used across 36+ files for tinted backgrounds, pills, badges, and overlays.</p>
+
+<pre><code>import { withOpacity } from '@/constants/colors';
+
+// Tinted brand background for pills/badges
+backgroundColor: withOpacity(colors.primary, 0.12)
+
+// Subtle border
+borderColor: withOpacity(colors.border, 0.5)
+
+// Light error background
+backgroundColor: withOpacity(colors.error, 0.1)</code></pre>
+
+<h3>Input handling</h3>
+<table>
+  <tr><th>Input</th><th>Output</th></tr>
+  <tr><td><code>'#6366F1', 0.12</code></td><td><code>'rgba(99, 102, 241, 0.12)'</code></td></tr>
+  <tr><td><code>'#fff', 0.5</code></td><td><code>'rgba(255, 255, 255, 0.5)'</code> (3-char hex expanded)</td></tr>
+  <tr><td><code>'rgba(0, 0, 0, 0.5)', 0.3</code></td><td><code>'rgba(0, 0, 0, 0.3)'</code> (alpha replaced)</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="companion-plugins">10. Companion Plugin CSS</h2>
+
+<p>WordPress companion plugins and themes must use Fluent CSS variables with fallbacks to stay theme-compatible.</p>
+
+<h3>CSS pattern for companion plugins</h3>
+<pre><code>/* CORRECT &mdash; Works with or without Fluent */
+.my-component {
+    background: var(--fcom-primary-bg, #ffffff);
+    color: var(--fcom-primary-text, #19283a);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+/* WRONG &mdash; Breaks without Fluent */
+.my-component {
+    background: var(--fcom-primary-bg);
+}</code></pre>
+
+<h3>Dark mode</h3>
+<p>Dark mode is activated via the <code>html.dark</code> class on the document root. Colors using <code>--fcom-*</code> variables auto-switch. Only override shadows, overlays, and hover effects:</p>
+<pre><code>/* Light mode (default) */
+.my-card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Dark mode &mdash; only override what changes */
+html.dark .my-card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+html.dark .my-item:hover {
+    background: rgba(255,255,255,0.05);
+}</code></pre>
+
+<h3>Quick reference: Fluent variable &rarr; typical use</h3>
+<table>
+  <tr><th>Use case</th><th>Variable</th></tr>
+  <tr><td>Card background</td><td><code>var(--fcom-primary-bg, #ffffff)</code></td></tr>
+  <tr><td>Page background</td><td><code>var(--fcom-secondary-bg, #f0f2f5)</code></td></tr>
+  <tr><td>Body text</td><td><code>var(--fcom-primary-text, #19283a)</code></td></tr>
+  <tr><td>Meta/label text</td><td><code>var(--fcom-secondary-text, #525866)</code></td></tr>
+  <tr><td>Links &amp; accents</td><td><code>var(--fcom-text-link, #2271b1)</code></td></tr>
+  <tr><td>Borders</td><td><code>var(--fcom-primary-border, #e3e8ee)</code></td></tr>
+  <tr><td>Buttons</td><td><code>var(--fcom-primary-button, #2B2E33)</code></td></tr>
+  <tr><td>Button text</td><td><code>var(--fcom-primary-button-text, #ffffff)</code></td></tr>
+  <tr><td>Disabled text</td><td><code>var(--fcom-text-off, #959595)</code></td></tr>
+  <tr><td>Input focus ring</td><td><code>var(--fcom-text-link, #2271b1)</code></td></tr>
+</table>
+
+<div class="callout">
+  <strong>Full CSS guide:</strong> See <span class="file-path">companion plugins/tbc-starter-theme/fluent-theme-integration-guide.md</span> for component examples (buttons, cards, forms, navigation, badges) and a complete CSS file template.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="intentional-static">11. Intentionally Static Colors</h2>
+
+<p>Some colors are intentionally hardcoded and should <strong>not</strong> be converted to theme tokens:</p>
+
+<table>
+  <tr><th>Context</th><th>Color</th><th>Why</th></tr>
+  <tr><td>Video player backgrounds</td><td><code>#000</code></td><td>Video content requires black bg</td></tr>
+  <tr><td>YouTube play button</td><td><code>rgba(255, 0, 0, 0.85)</code></td><td>YouTube brand red (trademark)</td></tr>
+  <tr><td>Play button icon</td><td><code>#fff</code></td><td>White on red/dark overlay</td></tr>
+  <tr><td>iOS shadow color</td><td><code>#000</code></td><td>RN iOS standard &mdash; shadowColor is always black, shadowOpacity controls intensity</td></tr>
+  <tr><td>Media viewer backdrop</td><td><code>rgba(0, 0, 0, 0.95)</code></td><td>Full-screen media needs near-black</td></tr>
+  <tr><td>Calendar status gradients</td><td>Various</td><td>Status colors are fixed for consistency</td></tr>
+  <tr><td>Space lock/info overlays</td><td><code>#fff</code></td><td>Text on server-driven gradient backgrounds</td></tr>
+  <tr><td>ErrorBoundary fallback</td><td>Hardcoded light/dark</td><td>Renders outside ThemeProvider when provider crashes</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="rules">12. Rules</h2>
+
+<ol>
+  <li><strong>Always</strong> use <code>const { colors } = useTheme()</code> in components &mdash; never import <code>lightColors</code> or <code>darkColors</code> directly.</li>
+  <li>Use <code>colors.textInverse</code> for text on colored buttons &mdash; not <code>#fff</code>.</li>
+  <li>Use <code>colors.error</code> / <code>colors.errorLight</code> for error states &mdash; not <code>#EF4444</code> / <code>#FEE2E2</code>.</li>
+  <li>Use <code>colors.success</code> / <code>colors.successLight</code> for success states.</li>
+  <li>Use <code>colors.overlay</code> for modal/sheet backdrops &mdash; not <code>rgba(0,0,0,0.5)</code>.</li>
+  <li>Use <code>withOpacity(color, opacity)</code> from <code>@/constants/colors</code> for transparent variants of theme colors.</li>
+  <li><code>shadowColor: '#000'</code> is fine (iOS standard). No need to theme it.</li>
+  <li>Video/media black backgrounds, YouTube brand red, and calendar gradients are intentionally static.</li>
+  <li>In companion plugin CSS, <strong>always</strong> use fallback values: <code>var(--fcom-primary-bg, #ffffff)</code>.</li>
+  <li>Dark mode in CSS is activated via <code>html.dark</code> &mdash; only override shadows, overlays, and hover effects.</li>
+  <li>When adding a new app color token, add it to the <code>ColorTheme</code> interface, both default objects, and update this doc.</li>
+  <li>The <code>ErrorBoundary</code> component uses <code>Appearance.getColorScheme()</code> directly &mdash; this is intentional (it renders outside ThemeProvider).</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  Theme System
+</p>
+
+</body>
+</html>

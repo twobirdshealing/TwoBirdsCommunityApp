@@ -1,7 +1,9 @@
 // =============================================================================
-// APP CONFIG API SERVICE - Fetch Fluent Community theme colors & app settings
+// APP CONFIG API SERVICE - Fetch app config from /tbc-ca/v1/app-config
 // =============================================================================
-// Public endpoint (no auth needed) — returns theme + social providers
+// Public endpoint — returns theme colors, branding, social providers,
+// maintenance status, update config, and (when auth'd) visibility flags.
+// Includes JWT when available for role-based visibility.
 // =============================================================================
 
 import { TBC_CA_URL } from '@/constants/config';

@@ -8,7 +8,7 @@
 
 import Constants from 'expo-constants';
 import type { ImageSource } from 'expo-image';
-import type { BrandingConfig } from '@/services/api/theme';
+import type { BrandingConfig } from '@/services/api/appConfig';
 
 // -----------------------------------------------------------------------------
 // SETUP: App Info

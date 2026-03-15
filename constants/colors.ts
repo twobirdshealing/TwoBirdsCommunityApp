@@ -1,8 +1,9 @@
 // =============================================================================
 // COLORS - App Color Palette
 // =============================================================================
-// Aligned with Fluent Community CSS variables (--fcom-*)
-// See: Fluent Reference Plugins/fluent-theme-integration-guide.md
+// Token names map to Fluent Community CSS variables (--fcom-*)
+// Defaults are overridden at runtime by ThemeContext via /app-config API
+// Full reference: docs/theme-system.html
 //
 // Usage:
 //   import { useTheme } from '@/contexts/ThemeContext';
@@ -61,7 +62,7 @@ export interface ColorTheme {
 }
 
 // -----------------------------------------------------------------------------
-// Light Colors (Fluent default light schema values)
+// Light Colors (app defaults — overridden by Fluent API at runtime)
 // -----------------------------------------------------------------------------
 
 export const lightColors: ColorTheme = {
@@ -111,7 +112,7 @@ export const lightColors: ColorTheme = {
 };
 
 // -----------------------------------------------------------------------------
-// Dark Colors (Fluent default dark schema values)
+// Dark Colors (app defaults — overridden by Fluent API at runtime)
 // -----------------------------------------------------------------------------
 
 export const darkColors: ColorTheme = {
@@ -203,7 +204,13 @@ export function mapFluentToAppColors(
 // -----------------------------------------------------------------------------
 
 export const withOpacity = (color: string, opacity: number): string => {
-  const hex = color.replace('#', '');
+  // Pass through rgba/rgb values (just replace the alpha)
+  if (color.startsWith('rgb')) return color.replace(/[\d.]+\)$/, `${opacity})`);
+  let hex = color.replace('#', '');
+  // Expand 3-char hex (#fff → ffffff)
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
   const r = parseInt(hex.substring(0, 2), 16);
   const g = parseInt(hex.substring(2, 4), 16);
   const b = parseInt(hex.substring(4, 6), 16);

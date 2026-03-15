@@ -18,7 +18,7 @@ import { UnreadCountsProvider, useUnreadCounts } from '@/contexts/UnreadCountsCo
 import { useAppFocus } from '@/hooks/useAppFocus';
 import { useStartupData } from '@/hooks/useStartupData';
 import { setOnResponseHeaders } from '@/services/api/client';
-import { getAppConfig, AppConfigResponse } from '@/services/api/theme';
+import { getAppConfig, AppConfigResponse } from '@/services/api/appConfig';
 import { syncBadgeCount } from '@/services/push';
 import { mapUrlToRoute } from '@/utils/deepLinkMapper';
 import { ThemeProvider as NavThemeProvider, DefaultTheme, type Theme as NavTheme } from '@react-navigation/native';

@@ -8,7 +8,7 @@ import {
   lightColors,
   mapFluentToAppColors,
 } from '@/constants/colors';
-import { getAppConfig, AppConfigResponse, MaintenanceConfig, UpdateConfig, ThemeData, BrandingConfig } from '@/services/api/theme';
+import { getAppConfig, AppConfigResponse, MaintenanceConfig, UpdateConfig, ThemeData, BrandingConfig } from '@/services/api/appConfig';
 import { setSocialProviders } from '@/services/api/socialProviders';
 import { createLogger } from '@/utils/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';

@@ -26,7 +26,7 @@ import { batchRequest, findBatchResponse } from '@/services/api/batch';
 import { markBatchFresh } from '@/utils/batchCache';
 import { syncBadgeCount } from '@/services/push';
 import { createLogger } from '@/utils/logger';
-import type { AppConfigResponse } from '@/services/api/theme';
+import type { AppConfigResponse } from '@/services/api/appConfig';
 import type { AuthUser } from '@/types/user';
 
 const log = createLogger('StartupBatch');

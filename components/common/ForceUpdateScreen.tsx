@@ -7,7 +7,7 @@
 import { APP_NAME, getHeaderLogoSource } from '@/constants/config';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { UpdateConfig } from '@/services/api/theme';
+import { UpdateConfig } from '@/services/api/appConfig';
 import { Ionicons } from '@expo/vector-icons';
 import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

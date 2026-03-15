@@ -69,62 +69,14 @@ Do NOT create `index.ts` barrel/re-export files in any directory.
 
 ## Theme System — Fluent Community Color Sync
 
-The app, compaion plugins, and modules use colors that are synced from Fluent Community's color schemas (light + dark mode). Colors flow:
+Full reference: `docs/theme-system.html` (token maps, Fluent CSS variables, usage rules, PHP endpoint)
 
-`Fluent Community (Utility.php)` → `tbc-community-app REST API (/tbc-ca/v1/theme/colors)` → `services/api/theme.ts` → `ThemeContext` → `useTheme().colors`
-
-### Key Files
-- `constants/colors.ts` — `ColorTheme` interface, light/dark defaults, `mapFluentToAppColors()`, `withOpacity()`
-- `contexts/ThemeContext.tsx` — Provider, caches colors in SecureStore, background-refreshes from API
-- `services/api/theme.ts` — Fetches `/tbc-ca/v1/theme/colors` (public, no auth)
-- `companion plugins/tbc-community-app/includes/theme/class-theme-colors.php` — REST endpoint
-
-### Fluent → App Token Map (server-driven, auto-synced)
-
-**Body tokens (content area):**
-
-| Fluent Key | App Token | Purpose |
-|---|---|---|
-| `primary_bg` | `surface` | Card/content background |
-| `secondary_bg` | `background` | Page background |
-| `secondary_content_bg` | `backgroundSecondary` | Comment/secondary areas |
-| `active_bg` | `activeBg` | Active/selected item bg |
-| `light_bg` | `lightBg` | Light accent background |
-| `deep_bg` | `deepBg` | Code block / preformatted text bg |
-| `highlight_bg` | `highlightBg` | Notice/alert bg, highlighted comments |
-| `primary_text` | `text` | Main body text |
-| `secondary_text` | `textSecondary` | Meta/subtitle text |
-| `text_off` | `textTertiary` | Disabled/hint text |
-| `text_link` | `primary` | Links & brand accent |
-| `primary_button` | `primaryDark` | Button background |
-| `primary_button_text` | `textInverse` | Button text (inverse) |
-| `primary_border` | `border` | Main borders |
-| `secondary_border` | `borderLight` | Light/subtle borders |
-
-**Header tokens → Tab Bar:**
-
-| Fluent Key | App Token |
-|---|---|
-| `primary_bg` | `tabBar.background` |
-| `primary_border` | `tabBar.border` |
-| `menu_text_active` | `tabBar.active` |
-| `menu_text` | `tabBar.inactive` |
-
-**Sidebar tokens** — received but not used (mobile has no sidebar).
-
-### App-Only Tokens (local defaults, not from Fluent)
-- **Semantic:** `success`, `successLight`, `error`, `errorLight`, `warning`, `warningLight`, `info`, `infoLight`
-- **Special:** `overlay`
-- Use `withOpacity(color, opacity)` for lighter brand tints — e.g. `withOpacity(colors.primary, 0.12)` for pills/badges
-- `info` doubles as verified badge color, `success` doubles as online indicator color, `border` doubles as skeleton/placeholder bg
-
-### Usage Rules
-- **Always** use `const { colors } = useTheme()` — never import `lightColors`/`darkColors` directly in components
+Quick rules:
+- **Always** use `const { colors } = useTheme()` — never import `lightColors`/`darkColors` directly
 - Use `colors.textInverse` for text on colored buttons — NOT `#fff`
-- Use `colors.error` / `colors.errorLight` for error states — NOT `#EF4444` / `#FEE2E2`
-- Use `colors.success` / `colors.successLight` for success states
+- Use semantic tokens (`colors.error`, `colors.success`) — NOT hex literals
 - Use `colors.overlay` for modal/sheet backdrops — NOT `rgba(0,0,0,0.5)`
-- Use `withOpacity(color, opacity)` from `@/constants/colors` for transparent variants of theme colors
+- Use `withOpacity(color, opacity)` from `@/constants/colors` for transparent variants
 - `shadowColor: '#000'` is fine (iOS standard)
 - Calendar status gradients, YouTube brand red, video player black backgrounds are intentionally static
 
