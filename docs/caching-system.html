@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — Data Fetching &amp; Caching</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .required { background: rgba(248, 81, 73, 0.15); color: var(--error); }
+  .auto { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn {
+    border-left-color: var(--warning);
+  }
+  .callout-error {
+    border-left-color: var(--error);
+  }
+  .callout-success {
+    border-left-color: var(--success);
+  }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+  .flow-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85em;
+    line-height: 1.8;
+    white-space: pre;
+    overflow-x: auto;
+  }
+</style>
+</head>
+<body>
+
+<h1>Data Fetching &amp; Caching</h1>
+<p class="subtitle">Stale-while-revalidate pattern with batch startup, cross-screen invalidation, and optimistic updates</p>
+
+<div class="callout">
+  <strong>Source files:</strong>
+  <span class="file-path">hooks/useCachedData.ts</span> &middot;
+  <span class="file-path">utils/cacheEvents.ts</span> &middot;
+  <span class="file-path">utils/batchCache.ts</span> &middot;
+  <span class="file-path">utils/optimisticUpdate.ts</span> &middot;
+  <span class="file-path">services/cacheRegistry.ts</span> &middot;
+  <span class="file-path">hooks/useStartupData.ts</span><br>
+  Every screen and widget fetches data through <code>useCachedData</code>. Data loads instantly from AsyncStorage, refreshes silently in the background, and stays in sync across screens via cache events.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">How It Works</a></li>
+    <li><a href="#usecacheddata">useCachedData Hook</a></li>
+    <li><a href="#screens-vs-widgets">Screens vs Widgets</a></li>
+    <li><a href="#cache-events">Cache Events (Cross-Screen Invalidation)</a></li>
+    <li><a href="#batch-startup">Batch Startup Loading</a></li>
+    <li><a href="#optimistic-updates">Optimistic Updates</a></li>
+    <li><a href="#usearraymutate">useArrayMutate Adapter</a></li>
+    <li><a href="#cache-registry">Cache Registry (Logout Cleanup)</a></li>
+    <li><a href="#cache-keys">Cache Key Reference</a></li>
+    <li><a href="#adding-caching">Adding Caching to a New Screen</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="overview">1. How It Works</h2>
+
+<p>The app uses a <strong>stale-while-revalidate (SWR)</strong> pattern. When a screen mounts, it loads cached data from AsyncStorage immediately (no loading spinner if cache exists), then fetches fresh data from the network in the background. If the fresh data differs, the UI updates seamlessly.</p>
+
+<div class="flow-diagram">Mount
+  &darr;
+  AsyncStorage.getItem(cacheKey)
+  &darr;
+  Cache hit? &rarr; Render immediately (isLoading = false)
+  &darr;
+  Batch-fresh? &rarr; Skip network fetch (startup batch already populated it)
+  &darr;
+  Fetch from API in background
+  &darr;
+  Update state + persist to AsyncStorage</div>
+
+<p>Data stays in sync across screens through three mechanisms:</p>
+<ol>
+  <li><strong>Cache events</strong> &mdash; after a mutation (create post, bookmark, join space), the mutating screen emits a cache event. Other screens subscribed to that event silently re-fetch.</li>
+  <li><strong>App focus refresh</strong> &mdash; when the user returns to the app from the background, screens re-fetch (with a cooldown to prevent rapid-fire requests).</li>
+  <li><strong>Batch startup</strong> &mdash; on authenticated startup, a single batch API call pre-populates multiple cache keys. Screens that mount after the batch skip their initial network fetch.</li>
+</ol>
+
+<!-- ====================================================================== -->
+<h2 id="usecacheddata">2. useCachedData Hook</h2>
+
+<p>The single data-fetching hook used by every screen and widget in the app.</p>
+
+<h3>Import</h3>
+<pre><code>import { useCachedData } from '@/hooks/useCachedData';</code></pre>
+
+<h3>API</h3>
+<pre><code>const {
+  data,          // T | null — cached or fresh data
+  isLoading,     // true only on first load with no cache
+  isRefreshing,  // true during background/pull refresh
+  error,         // Error | null
+  refresh,       // () =&gt; Promise&lt;void&gt; — imperative pull-to-refresh
+  mutate,        // (T | (prev =&gt; T | null)) =&gt; void — optimistic updates
+} = useCachedData&lt;T&gt;({
+  cacheKey,        // AsyncStorage key (required)
+  fetcher,         // async () =&gt; T (required)
+  refreshKey,      // number — changes trigger re-fetch (default: 0)
+  refreshOnFocus,  // boolean — refetch on app resume (default: true)
+  enabled,         // boolean — gate all fetching (default: true)
+  invalidateOn,    // CacheEvent — auto-refresh on this event
+  staleTime,       // ms — skip fetch if data is fresh (default: 0)
+});</code></pre>
+
+<h3>Options Reference</h3>
+
+<table>
+  <tr><th>Option</th><th>Type</th><th>Default</th><th>Purpose</th></tr>
+  <tr>
+    <td><code>cacheKey</code></td>
+    <td><code>string</code></td>
+    <td>&mdash;</td>
+    <td>AsyncStorage key. Prefix with <code>tbc_</code>. Include dynamic segments for parameterized screens (e.g. <code>`tbc_space_feeds_${slug}`</code>).</td>
+  </tr>
+  <tr>
+    <td><code>fetcher</code></td>
+    <td><code>() =&gt; Promise&lt;T&gt;</code></td>
+    <td>&mdash;</td>
+    <td>Async function that fetches and returns data. Should throw on failure.</td>
+  </tr>
+  <tr>
+    <td><code>refreshKey</code></td>
+    <td><code>number</code></td>
+    <td><code>0</code></td>
+    <td>Parent-driven refresh. When the value changes, data re-fetches (respects staleTime). Used by widgets whose parent controls refresh timing.</td>
+  </tr>
+  <tr>
+    <td><code>refreshOnFocus</code></td>
+    <td><code>boolean</code></td>
+    <td><code>true</code></td>
+    <td>Re-fetch when the app returns from background. Disable for widgets (parent drives refresh).</td>
+  </tr>
+  <tr>
+    <td><code>enabled</code></td>
+    <td><code>boolean</code></td>
+    <td><code>true</code></td>
+    <td>Gate all fetching. Use when a required parameter isn't available yet (e.g. <code>enabled: !!slug</code>).</td>
+  </tr>
+  <tr>
+    <td><code>invalidateOn</code></td>
+    <td><code>CacheEvent</code></td>
+    <td>&mdash;</td>
+    <td>Subscribes to a <a href="#cache-events">cache event</a>. When the event fires, data silently re-fetches (no spinner).</td>
+  </tr>
+  <tr>
+    <td><code>staleTime</code></td>
+    <td><code>number</code> (ms)</td>
+    <td><code>0</code></td>
+    <td>Skip network fetch if data was fetched within this window. Screens use 0 (always fresh on focus, with a 5s cooldown). Widgets use <code>WIDGET_STALE_TIME</code> (120s).</td>
+  </tr>
+</table>
+
+<h3>Screen Example</h3>
+<pre><code>// app/(tabs)/activity.tsx
+
+const {
+  data: feedsData,
+  isLoading: loading,
+  isRefreshing: refreshing,
+  error: fetchError,
+  refresh,
+  mutate,
+} = useCachedData&lt;Feed[]&gt;({
+  cacheKey: 'tbc_activity_feeds',
+  invalidateOn: CACHE_EVENTS.FEEDS,
+  fetcher: async () =&gt; {
+    const response = await feedsApi.getFeeds({ per_page: 20 });
+    if (!response.success) {
+      throw new Error(response.error?.message || 'Failed to load feeds');
+    }
+    return response.data.feeds?.data || [];
+  },
+});
+
+const feeds = feedsData || [];
+const error = fetchError?.message || null;
+const setFeeds = useArrayMutate(mutate);</code></pre>
+
+<h3>Widget Example</h3>
+<pre><code>// components/home/CoursesWidget.tsx
+
+import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+
+const { data: courses } = useCachedData&lt;Course[]&gt;({
+  cacheKey: 'tbc_widget_enrolled_courses',
+  staleTime: WIDGET_STALE_TIME,
+  fetcher: async () =&gt; {
+    const response = await coursesApi.getCourses({ type: 'enrolled', per_page: 5 });
+    if (!response.success) throw new Error('Failed');
+    return response.data.courses?.data || [];
+  },
+});</code></pre>
+
+<!-- ====================================================================== -->
+<h2 id="screens-vs-widgets">3. Screens vs Widgets</h2>
+
+<p>Screens and widgets use the same hook but with different defaults tuned to their lifecycle:</p>
+
+<table>
+  <tr><th>Behavior</th><th>Screens</th><th>Widgets</th></tr>
+  <tr>
+    <td><code>staleTime</code></td>
+    <td><code>0</code> (always fetch on focus)</td>
+    <td><code>WIDGET_STALE_TIME</code> (120s)</td>
+  </tr>
+  <tr>
+    <td><code>refreshOnFocus</code></td>
+    <td><code>true</code> (default)</td>
+    <td><code>false</code> (parent drives refresh)</td>
+  </tr>
+  <tr>
+    <td><code>invalidateOn</code></td>
+    <td>Set to relevant event (e.g. <code>CACHE_EVENTS.FEEDS</code>)</td>
+    <td>Usually not set</td>
+  </tr>
+  <tr>
+    <td>Rapid focus protection</td>
+    <td>5s cooldown (FOCUS_COOLDOWN_MS)</td>
+    <td>staleTime handles this</td>
+  </tr>
+  <tr>
+    <td>Batch startup</td>
+    <td>N/A &mdash; screens aren't batch-populated</td>
+    <td>Core widgets skip initial fetch if batch-fresh</td>
+  </tr>
+</table>
+
+<div class="callout callout-success">
+  <strong>Import <code>WIDGET_STALE_TIME</code></strong> from <code>@/hooks/useCachedData</code> &mdash; never hardcode <code>120000</code> or <code>120_000</code>. This keeps the value consistent across all widgets and easy to tune.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="cache-events">4. Cache Events (Cross-Screen Invalidation)</h2>
+
+<p>When a mutation happens on one screen (new post, bookmark toggle, profile edit), other screens need to know. Cache events are a lightweight pub/sub for this.</p>
+
+<h3>Source</h3>
+<p><span class="file-path">utils/cacheEvents.ts</span></p>
+
+<h3>Available Events</h3>
+<table>
+  <tr><th>Constant</th><th>Value</th><th>Emitted When</th></tr>
+  <tr><td><code>CACHE_EVENTS.FEEDS</code></td><td><code>'feeds'</code></td><td>Post created, edited, deleted, commented on</td></tr>
+  <tr><td><code>CACHE_EVENTS.BOOKMARKS</code></td><td><code>'bookmarks'</code></td><td>Post bookmarked or unbookmarked</td></tr>
+  <tr><td><code>CACHE_EVENTS.SPACES</code></td><td><code>'spaces'</code></td><td>Space joined, left</td></tr>
+  <tr><td><code>CACHE_EVENTS.PROFILE</code></td><td><code>'profile'</code></td><td>Profile edited (avatar, name, bio, etc.)</td></tr>
+</table>
+
+<h3>Emitting an Event</h3>
+<pre><code>import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
+
+// After creating a post:
+cacheEvents.emit(CACHE_EVENTS.FEEDS);
+
+// After toggling a bookmark:
+cacheEvents.emit(CACHE_EVENTS.BOOKMARKS);</code></pre>
+
+<h3>Subscribing (Automatic via useCachedData)</h3>
+<pre><code>// The Activity feed auto-refreshes when any screen emits FEEDS:
+useCachedData&lt;Feed[]&gt;({
+  cacheKey: 'tbc_activity_feeds',
+  invalidateOn: CACHE_EVENTS.FEEDS,  // &larr; subscribes automatically
+  fetcher: ...,
+});</code></pre>
+
+<h3>Subscribing (Manual — rare)</h3>
+<p>If you're not using <code>useCachedData</code> (e.g., manual state with side effects), subscribe directly:</p>
+<pre><code>useEffect(() =&gt; {
+  return cacheEvents.subscribe(CACHE_EVENTS.FEEDS, () =&gt; {
+    fetchFeeds();
+  });
+}, [fetchFeeds]);</code></pre>
+
+<div class="callout callout-error">
+  <strong>Always use <code>CACHE_EVENTS.FEEDS</code></strong> &mdash; never raw strings like <code>'feeds'</code>. The <code>CacheEvent</code> type enforces this at compile time.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="batch-startup">5. Batch Startup Loading</h2>
+
+<p>On authenticated startup, <span class="file-path">hooks/useStartupData.ts</span> fires a single batch API call that replaces ~7 individual HTTP requests. Results are distributed to contexts (config, auth, badges) and written to AsyncStorage for widget caches.</p>
+
+<h3>What the Batch Fetches</h3>
+<table>
+  <tr><th>#</th><th>Endpoint</th><th>Goes To</th></tr>
+  <tr><td>1</td><td><code>/tbc-ca/v1/app-config</code></td><td>AppConfigContext</td></tr>
+  <tr><td>2</td><td><code>/fluent-community/v2/profile/{user}</code></td><td>AuthContext (avatar, name)</td></tr>
+  <tr><td>3</td><td><code>/fluent-community/v2/notifications/unread</code></td><td>Notification badge count</td></tr>
+  <tr><td>4</td><td><code>/fluent-community/v2/chat/unread_threads</code></td><td>Message badge count</td></tr>
+  <tr><td>5</td><td><code>/fluent-community/v2/feeds/welcome-banner</code></td><td>AsyncStorage &rarr; WelcomeBannerWidget</td></tr>
+  <tr><td>6</td><td><code>/fluent-community/v2/courses?type=enrolled&amp;per_page=5</code></td><td>AsyncStorage &rarr; CoursesWidget</td></tr>
+  <tr><td>7</td><td><code>/tbc-ca/v1/cart/count</code></td><td>Cart badge count</td></tr>
+</table>
+
+<h3>Batch-Fresh Coordination</h3>
+<p><span class="file-path">utils/batchCache.ts</span> prevents duplicate network requests. After the batch writes widget data to AsyncStorage, it calls <code>markBatchFresh(keys)</code>. When those widgets mount, <code>useCachedData</code> checks <code>isBatchFresh(cacheKey)</code> &mdash; if true, it skips the initial network fetch since the cache was just populated.</p>
+
+<pre><code>// In useStartupData.ts — after writing to AsyncStorage:
+await Promise.all(cacheWrites);
+markBatchFresh(freshKeys);
+
+// In useCachedData — on initial mount:
+if (hasCachedData && isBatchFresh(cacheKey)) {
+  log(cacheKey, 'skipping initial fetch — batch-fresh');
+  return; // Use cache, don't hit network
+}</code></pre>
+
+<p>Batch-fresh status auto-expires after 30 seconds, so subsequent focus/refresh cycles still work normally.</p>
+
+<div class="callout">
+  <strong>Modules don't use the batch.</strong> Module widgets (calendar, bookclub, YouTube, blog) self-fetch via <code>useCachedData</code> when they mount. Only core widgets participate in the batch to keep it lean and avoid coupling modules to core startup.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="optimistic-updates">6. Optimistic Updates</h2>
+
+<p>For mutations where the user expects instant feedback (pin/unpin, bookmark toggle, reactions), the app updates the UI immediately and reverts if the API call fails.</p>
+
+<h3>Source</h3>
+<p><span class="file-path">utils/optimisticUpdate.ts</span></p>
+
+<h3>Pattern</h3>
+<pre><code>import { optimisticUpdate } from '@/utils/optimisticUpdate';
+
+const response = await optimisticUpdate(
+  setFeeds,                                           // setState function
+  prev =&gt; prev.map(f =&gt;                              // optimistic updater
+    f.id === feed.id ? { ...f, is_sticky: true } : f
+  ),
+  () =&gt; feedsApi.toggleSticky(feed.id, true),         // API call
+);
+
+if (!response.success) {
+  Alert.alert('Error', response.error?.message || 'Failed');
+}</code></pre>
+
+<h3>How It Works</h3>
+<ol>
+  <li>Captures a snapshot of current state inside the updater</li>
+  <li>Applies the optimistic update immediately (UI updates)</li>
+  <li>Awaits the API call</li>
+  <li>On failure (<code>{ success: false }</code> or thrown error): reverts to snapshot</li>
+  <li>Returns the <code>ApiResponse</code> so the caller can handle success (show alerts, emit cache events)</li>
+</ol>
+
+<div class="callout callout-warn">
+  <strong>The <code>setState</code> parameter must be a function updater</strong> (not a direct value), because <code>optimisticUpdate</code> captures the snapshot inside the updater callback.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="usearraymutate">7. useArrayMutate Adapter</h2>
+
+<p>Feed screens need <code>React.Dispatch&lt;SetStateAction&lt;Feed[]&gt;&gt;</code> for the shared <code>useFeedActions</code> and <code>useFeedReactions</code> hooks. But <code>useCachedData</code>&rsquo;s <code>mutate</code> accepts <code>T | null</code>. The adapter bridges the two:</p>
+
+<pre><code>import { useCachedData, useArrayMutate } from '@/hooks/useCachedData';
+
+const { data: feedsData, mutate, ...rest } = useCachedData&lt;Feed[]&gt;({ ... });
+const feeds = feedsData || [];
+const setFeeds = useArrayMutate(mutate);
+
+// Now setFeeds works like a normal setState for arrays:
+const { handleDelete, handleEdit, ... } = useFeedActions({ setFeeds, refresh });
+const handleReact = useFeedReactions(feeds, setFeeds);</code></pre>
+
+<p>Internally, <code>useArrayMutate</code> wraps the mutate call and treats <code>null</code> as an empty array, so downstream hooks never see <code>null</code>.</p>
+
+<!-- ====================================================================== -->
+<h2 id="cache-registry">8. Cache Registry (Logout Cleanup)</h2>
+
+<p>On logout, all user-specific caches must be cleared. Instead of manually listing every key, <span class="file-path">services/cacheRegistry.ts</span> provides a blanket clear.</p>
+
+<h3>How It Works</h3>
+<ol>
+  <li><strong>AsyncStorage</strong> &mdash; removes ALL keys starting with <code>tbc_</code> except an explicit keep-list</li>
+  <li><strong>In-memory caches</strong> &mdash; calls all registered clear functions (e.g., batchCache clears its Map)</li>
+</ol>
+
+<pre><code>// AuthContext logout calls:
+import { clearAllUserCaches } from '@/services/cacheRegistry';
+await clearAllUserCaches();</code></pre>
+
+<h3>Keys That Survive Logout</h3>
+<p>These are site-level (not user-specific) and persist across login/logout:</p>
+<table>
+  <tr><th>Key</th><th>Purpose</th></tr>
+  <tr><td><code>tbc_app_config_cache</code></td><td>Site maintenance mode, update config, branding</td></tr>
+  <tr><td><code>tbc_app_visibility_cache</code></td><td>Site-level menu visibility (hide_menu[])</td></tr>
+  <tr><td><code>tbc_socket_config_cache</code></td><td>Socket provider config (Pusher/Soketi)</td></tr>
+</table>
+
+<h3>Registering In-Memory Caches</h3>
+<p>If you have an in-memory cache (Map, object, variable), register its clear function so it gets wiped on logout:</p>
+<pre><code>import { registerCache } from '@/services/cacheRegistry';
+
+const myCache = new Map&lt;string, Data&gt;();
+
+// Self-registers at import time — no manual wiring needed
+registerCache({ clearMemory: () =&gt; myCache.clear() });</code></pre>
+
+<!-- ====================================================================== -->
+<h2 id="cache-keys">9. Cache Key Reference</h2>
+
+<p>All cache keys use the <code>tbc_</code> prefix. This table shows the current keys, who writes them, and who reads them.</p>
+
+<table>
+  <tr><th>Cache Key</th><th>Writer</th><th>Reader</th></tr>
+  <tr><td><code>tbc_activity_feeds</code></td><td>Activity screen fetcher</td><td>Activity screen</td></tr>
+  <tr><td><code>tbc_bookmarks</code></td><td>Bookmarks screen fetcher</td><td>Bookmarks screen</td></tr>
+  <tr><td><code>tbc_spaces_list</code></td><td>Spaces tab fetcher</td><td>Spaces tab</td></tr>
+  <tr><td><code>tbc_space_feeds_${slug}</code></td><td>Space page fetcher</td><td>Space page</td></tr>
+  <tr><td><code>tbc_profile_${username}</code></td><td>Profile screen fetcher</td><td>Profile screen</td></tr>
+  <tr><td><code>tbc_feed_detail_${id}</code></td><td>Feed detail fetcher</td><td>Feed detail screen</td></tr>
+  <tr><td><code>tbc_welcome_banner</code></td><td>Startup batch + widget fetcher</td><td>WelcomeBannerWidget</td></tr>
+  <tr><td><code>tbc_widget_enrolled_courses</code></td><td>Startup batch + widget fetcher</td><td>CoursesWidget</td></tr>
+  <tr><td><code>tbc_notifications</code></td><td>Notifications screen fetcher</td><td>Notifications screen</td></tr>
+  <tr><td><code>tbc_messages</code></td><td>Messages screen fetcher</td><td>Messages screen</td></tr>
+</table>
+
+<div class="callout callout-warn">
+  <strong>Dynamic cache keys</strong> (e.g. <code>tbc_space_feeds_${slug}</code>) create a new AsyncStorage entry per slug. These are cleaned up on logout by the <a href="#cache-registry">cache registry</a>'s blanket <code>tbc_*</code> clear, but they do accumulate during a session. This is fine for normal usage but worth noting if a user visits hundreds of unique spaces.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="adding-caching">10. Adding Caching to a New Screen</h2>
+
+<h3>Step 1: Choose your cache key</h3>
+<p>Prefix with <code>tbc_</code>. If the screen is parameterized, include the param:</p>
+<pre><code>const cacheKey = 'tbc_my_feature';           // static screen
+const cacheKey = `tbc_my_feature_${id}`;     // parameterized screen
+const cacheKey = 'tbc_widget_my_widget';     // widget</code></pre>
+
+<h3>Step 2: Write the fetcher</h3>
+<p>The fetcher should return the data directly. Throw on failure &mdash; <code>useCachedData</code> catches it and sets <code>error</code>.</p>
+<pre><code>const fetcher = async () =&gt; {
+  const response = await myApi.getData();
+  if (!response.success) {
+    throw new Error(response.error?.message || 'Failed to load data');
+  }
+  return response.data.items;
+};</code></pre>
+
+<h3>Step 3: Use the hook</h3>
+<pre><code>const { data, isLoading, isRefreshing, error, refresh, mutate } = useCachedData({
+  cacheKey: 'tbc_my_feature',
+  fetcher,
+  invalidateOn: CACHE_EVENTS.FEEDS,  // if relevant — omit if not
+});</code></pre>
+
+<h3>Step 4: If your screen has a list with shared feed actions</h3>
+<pre><code>const setItems = useArrayMutate(mutate);
+const { handleDelete, handleEdit, ... } = useFeedActions({ setFeeds: setItems, refresh });</code></pre>
+
+<h3>Step 5: If your screen mutates data other screens care about</h3>
+<pre><code>// After the mutation succeeds:
+cacheEvents.emit(CACHE_EVENTS.FEEDS);</code></pre>
+
+<h3>Step 6: For widgets, use WIDGET_STALE_TIME</h3>
+<pre><code>import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+
+const { data } = useCachedData({
+  cacheKey: 'tbc_widget_my_widget',
+  staleTime: WIDGET_STALE_TIME,
+  fetcher,
+});</code></pre>
+
+<!-- ====================================================================== -->
+<h2 id="rules">11. Rules</h2>
+
+<ol>
+  <li><strong>Use <code>useCachedData</code> for all data fetching.</strong> Don&rsquo;t write manual useEffect + useState fetch cycles. The hook handles caching, loading states, error handling, focus refresh, and cache invalidation.</li>
+  <li><strong>Prefix all cache keys with <code>tbc_</code>.</strong> The cache registry clears all <code>tbc_*</code> keys on logout. Non-prefixed keys won't get cleaned up.</li>
+  <li><strong>Use <code>CACHE_EVENTS.X</code>, not raw strings.</strong> The <code>CacheEvent</code> type prevents typos and makes event usage searchable.</li>
+  <li><strong>Use <code>WIDGET_STALE_TIME</code>, not <code>120000</code>.</strong> Import from <code>@/hooks/useCachedData</code>. Keeps the value consistent and easy to change.</li>
+  <li><strong>Emit cache events after mutations.</strong> If your screen creates/edits/deletes data that appears on other screens, emit the relevant event so they refresh.</li>
+  <li><strong>Use <code>optimisticUpdate</code> for instant-feedback mutations.</strong> Pin, bookmark, react &mdash; anything the user expects to happen instantly. It handles snapshot + rollback.</li>
+  <li><strong>Fetchers should throw on failure.</strong> Return data on success, throw on failure. <code>useCachedData</code> catches errors and sets <code>error</code> state. Don&rsquo;t return <code>null</code> to indicate failure.</li>
+  <li><strong>Don&rsquo;t add modules to the startup batch.</strong> Module widgets self-fetch via <code>useCachedData</code>. Only core widgets participate in the batch.</li>
+  <li><strong>Register in-memory caches for logout cleanup.</strong> If you create a Map, cache object, or any in-memory store, call <code>registerCache()</code> so it gets cleared on logout.</li>
+  <li><strong>Use <code>useArrayMutate</code> for feed list screens.</strong> Don&rsquo;t write manual mutate adapters. The hook bridges <code>useCachedData</code>&rsquo;s <code>mutate</code> to the <code>SetStateAction&lt;T[]&gt;</code> that <code>useFeedActions</code> and <code>useFeedReactions</code> expect.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  Data Fetching &amp; Caching &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  <a href="module-system.html">Module System</a> &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="theme-system.html">Theme System</a>
+</p>
+
+</body>
+</html>

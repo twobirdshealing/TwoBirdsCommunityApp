@@ -221,7 +221,11 @@
 <!-- ====================================================================== -->
 <h2 id="quick-start">2. Quick Start</h2>
 
-<p>Minimum steps to get the app running with your site. See <a href="#prerequisites">Prerequisites</a> for required accounts and tools.</p>
+<p>There are two ways to configure your app: the <strong>setup form</strong> (recommended) or <strong>manual editing</strong>. Both achieve the same result.</p>
+
+<h3 id="setup-form">Option A: Setup Form (Recommended)</h3>
+
+<p>The <a href="setup-form.html">interactive setup form</a> lets you fill in your values at your own pace &mdash; no need to have everything ready at once. Fill in what you know, run the script, and come back later for the rest.</p>
 
 <ol>
   <li><strong>Install dependencies:</strong> <code>npm install</code></li>
@@ -229,21 +233,54 @@
     <pre><code>npm install -g eas-cli
 eas login
 eas init</code></pre>
-    <code>eas init</code> generates a project ID — copy it into <code>app.json</code> → <code>expo.extra.eas.projectId</code>.
-    Also set <code>expo.owner</code> to your Expo account username.
+    <code>eas init</code> generates a project ID &mdash; you'll put this in the setup form.
   </li>
-  <li><strong>Set your site URL</strong> in <code>eas.json</code> — replace the <code>SITE_URL</code> value in all build profiles</li>
-  <li><strong>Set your app name &amp; branding</strong> in <code>constants/config.ts</code> — update <code>APP_NAME</code> and <code>APP_USER_AGENT</code></li>
-  <li><strong>Update <code>app.json</code></strong> — app name, slug, scheme, bundle IDs, permission strings</li>
-  <li><strong>Update <code>app.config.ts</code></strong> — edit the YOUR CONFIG section: fallback URL, name, slug, and module deep link paths</li>
-  <li><strong>Replace branding images</strong> in <code>assets/images/</code></li>
-  <li><strong>Replace Firebase configs</strong> — <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS). See <a href="#firebase-setup">Firebase Setup</a>.</li>
-  <li><strong>Install companion plugins</strong> on your WordPress site (see <a href="#plugins">Companion Plugins</a>)</li>
-  <li><strong>Configure modules</strong> in <code>modules/_registry.ts</code> — comment out any modules you don't need</li>
+  <li><strong>Open <code>setup.config</code></strong> in your editor and fill in your values. Each field has a comment explaining what it is. Leave blank any fields you don't have yet &mdash; the script will skip them.</li>
+  <li><strong>Run the setup script:</strong>
+    <pre><code>bash scripts/setup-app.sh</code></pre>
+    This reads your form, applies all filled-in values to the config files (<code>app.json</code>, <code>eas.json</code>, <code>config.ts</code>, <code>app.config.ts</code>, <code>package.json</code>), and then runs the validator to show what's done and what's still missing. Safe to run multiple times.
+  </li>
+  <li><strong>Handle the manual steps</strong> the script can't automate:
+    <ul>
+      <li>Replace <a href="#branding-assets">branding images</a> in <code>assets/images/</code></li>
+      <li>Add <a href="#firebase-setup">Firebase config files</a> (<code>google-services.json</code> + <code>GoogleService-Info.plist</code>)</li>
+      <li>Install <a href="#plugins">companion plugins</a> on your WordPress site</li>
+      <li>Configure <a href="#modules">modules</a> in <code>modules/_registry.ts</code></li>
+    </ul>
+  </li>
+  <li><strong>Re-run the validator</strong> any time to check your progress:
+    <pre><code>bash scripts/validate-setup.sh</code></pre>
+    Every failure links to the relevant section of this guide. When all checks pass, you're ready to build.
+  </li>
   <li><strong>Create a dev build</strong> (first build takes ~15 minutes):
     <pre><code>eas build --profile development --platform all</code></pre>
     When the build finishes, install it on your device via the QR code or download link EAS provides.
   </li>
+</ol>
+
+<div class="callout">
+  <strong>Tip:</strong> If you're using an AI coding assistant (Claude Code, Cursor, etc.), the validator's machine-readable issue log at the bottom of its output includes doc references it can follow to fix issues automatically.
+</div>
+
+<h3>Option B: Manual Editing</h3>
+
+<p>If you prefer to edit config files directly, here are the minimum steps. See <a href="#config-reference">Configuration Reference</a> for details on each file.</p>
+
+<ol>
+  <li><strong>Install dependencies:</strong> <code>npm install</code></li>
+  <li><strong>Set up EAS CLI:</strong> <code>npm install -g eas-cli && eas login && eas init</code></li>
+  <li><strong>Set your site URL</strong> in <code>eas.json</code> &mdash; replace the <code>SITE_URL</code> value in all build profiles</li>
+  <li><strong>Set your app name &amp; branding</strong> in <code>constants/config.ts</code> &mdash; update <code>APP_NAME</code> and <code>APP_USER_AGENT</code></li>
+  <li><strong>Update <code>app.json</code></strong> &mdash; app name, slug, scheme, bundle IDs, EAS project ID, owner, permission strings</li>
+  <li><strong>Update <code>app.config.ts</code></strong> &mdash; edit the YOUR CONFIG section: fallback URL, name, slug</li>
+  <li><strong>Replace branding images</strong> in <code>assets/images/</code></li>
+  <li><strong>Replace Firebase configs</strong> &mdash; <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS). See <a href="#firebase-setup">Firebase Setup</a>.</li>
+  <li><strong>Install companion plugins</strong> on your WordPress site (see <a href="#plugins">Companion Plugins</a>)</li>
+  <li><strong>Configure modules</strong> in <code>modules/_registry.ts</code></li>
+  <li><strong>Run the validator</strong> to catch anything you missed:
+    <pre><code>bash scripts/validate-setup.sh</code></pre>
+  </li>
+  <li><strong>Create a dev build:</strong> <code>eas build --profile development --platform all</code></li>
 </ol>
 
 <div class="callout callout-warn">
@@ -726,9 +763,10 @@ eas submit --platform android</code></pre>
   <tr><td>21</td><td>(Add-on) YouTube API key configured in <code>tbc-youtube</code> plugin (if purchased)</td><td>WP Admin → YouTube plugin settings</td><td></td></tr>
   <tr><td>22</td><td>package.json name updated</td><td><code>package.json</code></td><td></td></tr>
   <tr><td>23</td><td>app.config.ts YOUR CONFIG section updated (name, slug, SITE_URL fallback, module deep link paths)</td><td><code>app.config.ts</code></td><td></td></tr>
-  <tr><td>24</td><td>Production build tested on real device — install via <code>eas build --profile preview</code>, test login, feed, profile</td><td>—</td><td></td></tr>
-  <tr><td>25</td><td>Push notifications tested — trigger from WordPress, verify delivery on both platforms</td><td>—</td><td></td></tr>
-  <tr><td>26</td><td>Deep links tested — open <code>https://yoursite.com/spaces/general</code> in mobile browser, should open app</td><td>—</td><td></td></tr>
+  <tr><td>24</td><td>Setup validator passes — <code>bash scripts/validate-setup.sh</code> shows 0 failures</td><td><code>scripts/validate-setup.sh</code></td><td></td></tr>
+  <tr><td>25</td><td>Production build tested on real device — install via <code>eas build --profile preview</code>, test login, feed, profile</td><td>—</td><td></td></tr>
+  <tr><td>26</td><td>Push notifications tested — trigger from WordPress, verify delivery on both platforms</td><td>—</td><td></td></tr>
+  <tr><td>27</td><td>Deep links tested — open <code>https://yoursite.com/spaces/general</code> in mobile browser, should open app</td><td>—</td><td></td></tr>
 </table>
 
 <!-- ====================================================================== -->
@@ -859,8 +897,10 @@ git merge upstream/main</code></pre>
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
 <p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
   Setup Guide &middot;
+  <a href="setup-form.html">Setup Form</a> &middot;
   <a href="architecture.html">Architecture</a> &middot;
   <a href="components.html">Components</a> &middot;
+  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
   <a href="features.html">Features</a> &middot;
   <a href="logging.html">Logging</a> &middot;
   <a href="module-system.html">Module System</a> &middot;
