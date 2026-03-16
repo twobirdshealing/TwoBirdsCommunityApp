@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — Courses & LMS</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .required { background: rgba(248, 81, 73, 0.15); color: var(--error); }
+  .auto { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn {
+    border-left-color: var(--warning);
+  }
+  .callout-error {
+    border-left-color: var(--error);
+  }
+  .callout-success {
+    border-left-color: var(--success);
+  }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Courses &amp; LMS</h1>
+<p class="subtitle">Fluent LMS integration &mdash; course browsing, enrollment, lesson content, and progress tracking</p>
+
+<div class="callout">
+  <strong>Key files:</strong> <span class="file-path">services/api/courses.ts</span> (API), <span class="file-path">types/course.ts</span> (types), <span class="file-path">app/courses/</span> (screens)<br>
+  The app integrates with Fluent Community's LMS to display courses, render lesson content, track progress with optimistic updates, and support deep links to specific lessons.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#types">Data Types</a></li>
+    <li><a href="#api">Courses API</a></li>
+    <li><a href="#course-list">Course List Screen</a></li>
+    <li><a href="#course-detail">Course Detail Screen</a></li>
+    <li><a href="#lesson-view">Lesson View Screen</a></li>
+    <li><a href="#enrollment">Enrollment</a></li>
+    <li><a href="#progress">Progress Tracking</a></li>
+    <li><a href="#lesson-content">Lesson Content Rendering</a></li>
+    <li><a href="#components">Components</a></li>
+    <li><a href="#home-widget">Home Widget</a></li>
+    <li><a href="#files">File Reference</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="overview">1. Overview</h2>
+
+<p>Courses are structured learning content managed through Fluent Community's LMS. The app provides:</p>
+
+<ul>
+  <li><strong>Course browsing</strong> &mdash; all courses and enrolled courses tabs with search</li>
+  <li><strong>Course detail</strong> &mdash; sections with collapsible lesson lists, progress tracking</li>
+  <li><strong>Lesson viewer</strong> &mdash; HTML content, YouTube videos, documents, comments</li>
+  <li><strong>Progress</strong> &mdash; per-lesson completion with optimistic updates</li>
+  <li><strong>Home widget</strong> &mdash; carousel of enrolled courses on the home screen</li>
+</ul>
+
+<h3>Navigation Flow</h3>
+<pre><code>Courses List (/courses)
+  → Course Detail (/courses/[slug])
+    → Lesson View (/courses/[slug]/lesson/[lessonSlug])
+      → Previous / Next lesson navigation</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="types">2. Data Types</h2>
+
+<p><span class="file-path">types/course.ts</span> defines all course-related interfaces:</p>
+
+<h3>Course</h3>
+<pre><code>interface Course {
+  id: number;
+  title: string;
+  slug: string;
+  description: string;
+  cover_photo: string | null;
+  status: 'published' | 'draft';
+  privacy: 'public' | 'private' | 'secret';
+  settings: CourseSettings;
+  instructor: CourseInstructor;
+  sections_count: number;
+  lessons_count: number;
+  students_count: number;
+  sections?: CourseSection[];      // Detail endpoint only
+  track?: CourseTrack;             // User's progress
+  lockscreen_config?: CourseLockscreenConfig;
+}</code></pre>
+
+<h3>CourseSettings</h3>
+<table>
+  <tr><th>Field</th><th>Description</th></tr>
+  <tr><td><code>course_type</code></td><td><code>'self_paced'</code>, <code>'scheduled'</code>, or <code>'structured'</code></td></tr>
+  <tr><td><code>emoji</code></td><td>Custom emoji badge displayed on cover</td></tr>
+  <tr><td><code>hide_members_count</code></td><td>Hide student count ('yes'/'no')</td></tr>
+  <tr><td><code>hide_instructor_view</code></td><td>Hide instructor card ('yes'/'no')</td></tr>
+  <tr><td><code>disable_comments</code></td><td>Disable lesson comments ('yes'/'no')</td></tr>
+</table>
+
+<h3>CourseSection &amp; CourseLesson</h3>
+<pre><code>interface CourseSection {
+  id: number;
+  title: string;
+  slug: string;
+  serial: number;
+  lessons: CourseLesson[];
+  is_locked: boolean;
+  unlock_date?: string;
+}
+
+interface CourseLesson {
+  id: number;
+  title: string;
+  slug: string;
+  serial: number;
+  content: string;               // HTML (may be empty if lazy_load)
+  content_type: string;          // 'text', 'quiz', etc.
+  featured_image: string | null;
+  is_locked: boolean;
+  is_viewable: boolean;
+  meta: CourseLessonMeta;
+}</code></pre>
+
+<h3>CourseTrack (Progress)</h3>
+<pre><code>interface CourseTrack {
+  completed_lessons: string[];   // Array of lesson IDs (as strings)
+  isEnrolled: boolean;
+  progress: number;              // 0-100 percentage
+}</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="api">3. Courses API</h2>
+
+<p><span class="file-path">services/api/courses.ts</span> provides all course operations:</p>
+
+<table>
+  <tr><th>Function</th><th>Endpoint</th><th>Description</th></tr>
+  <tr><td><code>getCourses(options)</code></td><td><code>GET /courses</code></td><td>List courses (paginated, searchable, filterable)</td></tr>
+  <tr><td><code>getCourseBySlug(slug, intendedLessonSlug?)</code></td><td><code>GET /courses/{slug}/by-slug</code></td><td>Course detail with sections and lessons</td></tr>
+  <tr><td><code>getLessonBySlug(courseSlug, lessonSlug)</code></td><td><code>GET /courses/{slug}/lessons/{lessonSlug}/by-slug</code></td><td>Individual lesson with full content</td></tr>
+  <tr><td><code>enrollInCourse(courseId)</code></td><td><code>POST /courses/{id}/enroll</code></td><td>Enroll current user</td></tr>
+  <tr><td><code>toggleLessonCompletion(courseId, lessonId, state)</code></td><td><code>PUT /courses/{id}/lessons/{lessonId}/completion</code></td><td>Mark lesson complete or incomplete</td></tr>
+</table>
+
+<h3>Query Options</h3>
+<pre><code>interface GetCoursesOptions {
+  page?: number;
+  per_page?: number;
+  search?: string;
+  topic_slug?: string;        // Filter by category
+  type?: 'enrolled';          // Only enrolled courses
+  sort_by?: 'alphabetical' | 'oldest' | 'latest';
+  with_categories?: boolean;  // Include category list
+}</code></pre>
+
+<div class="callout">
+  <strong>Intended lesson slug optimization.</strong> When navigating to a specific lesson via deep link, pass <code>intendedLessonSlug</code> to <code>getCourseBySlug()</code>. The server pre-populates that lesson's content, avoiding a second API call.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="course-list">4. Course List Screen</h2>
+
+<p><span class="file-path">app/courses/index.tsx</span> &mdash; route: <code>/courses</code></p>
+
+<ul>
+  <li><strong>Tabs:</strong> "All Courses" and "My Courses" (enrolled only)</li>
+  <li><strong>Search:</strong> Text input with 400ms debounce</li>
+  <li><strong>List:</strong> FlashList with infinite scroll pagination</li>
+  <li><strong>Pull-to-refresh:</strong> Resets pagination and refetches</li>
+  <li><strong>Cards:</strong> CourseCard with cover photo, title, stats, and progress bar for enrolled courses</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="course-detail">5. Course Detail Screen</h2>
+
+<p><span class="file-path">app/courses/[slug].tsx</span> &mdash; route: <code>/courses/[slug]</code></p>
+
+<h3>Layout</h3>
+<ol>
+  <li><strong>Hero section</strong> &mdash; cover photo (or placeholder icon) with emoji badge and stats overlay (sections, lessons, students)</li>
+  <li><strong>Instructor card</strong> &mdash; avatar + name + student count (tappable to profile, hidden if <code>hide_instructor_view</code>)</li>
+  <li><strong>Enrollment CTA</strong> &mdash; "Enroll in Course" button, or progress bar + "Continue Learning" if enrolled</li>
+  <li><strong>Course details</strong> &mdash; rich text description section</li>
+  <li><strong>Sections list</strong> &mdash; collapsible sections with lesson rows showing lock/check/number indicators</li>
+</ol>
+
+<h3>Continue Learning</h3>
+<p>The "Continue Learning" button navigates to the first incomplete lesson. If all lessons are complete, it navigates to the first lesson in the course.</p>
+
+<!-- ================================================================== -->
+<h2 id="lesson-view">6. Lesson View Screen</h2>
+
+<p><span class="file-path">app/courses/[slug]/lesson/[lessonSlug].tsx</span> &mdash; route: <code>/courses/[slug]/lesson/[lessonSlug]</code></p>
+
+<h3>Layout</h3>
+<ol>
+  <li><strong>Hero image</strong> &mdash; extracted from the first <code>&lt;img&gt;</code> or <code>&lt;figure&gt;</code> in the lesson HTML (removed from body to avoid duplication)</li>
+  <li><strong>YouTube video</strong> &mdash; if <code>lesson.meta.media.url</code> contains a YouTube URL</li>
+  <li><strong>Lesson body</strong> &mdash; remaining HTML rendered via HtmlContent component</li>
+  <li><strong>Documents</strong> &mdash; downloadable files from <code>lesson.meta.document_lists</code></li>
+  <li><strong>Comments</strong> &mdash; if enabled, shows comment count badge and links to comments screen</li>
+  <li><strong>Sticky bottom bar</strong> &mdash; state-specific UI (see below)</li>
+</ol>
+
+<h3>Bottom Bar States</h3>
+<table>
+  <tr><th>State</th><th>UI</th></tr>
+  <tr><td>Not enrolled</td><td>Previous / Next navigation buttons</td></tr>
+  <tr><td>Enrolled, not complete</td><td>"Mark as Complete" button</td></tr>
+  <tr><td>Completing</td><td>Loading spinner + success animation</td></tr>
+  <tr><td>Completed</td><td>Success badge + Previous / Next navigation</td></tr>
+</table>
+
+<h3>Lesson Navigation</h3>
+<p>Previous/Next buttons navigate sequentially through lessons across section boundaries. Sections are flattened into a linear list for prev/next calculation. Locked or non-viewable lessons are skipped (buttons disabled).</p>
+
+<h3>Locked Lessons</h3>
+<p>If a lesson is locked (<code>is_locked: true</code>), the screen shows a lock icon with "This lesson is locked" message and a "Back to Course" button.</p>
+
+<!-- ================================================================== -->
+<h2 id="enrollment">7. Enrollment</h2>
+
+<h3>Enrollment Flow</h3>
+<ol>
+  <li>User taps "Enroll in Course" on the course detail screen</li>
+  <li>Optimistic update: set <code>isEnrolled: true</code>, <code>progress: 0</code></li>
+  <li>API call: <code>enrollInCourse(courseId)</code></li>
+  <li>Server returns <code>CourseEnrollResponse</code> with updated <code>CourseTrack</code></li>
+  <li>Refetch course detail to unlock lesson content</li>
+  <li>UI switches to "Continue Learning" button + progress bar</li>
+</ol>
+
+<h3>Lock Screens</h3>
+<p>Non-enrolled users of private/restricted courses see a lock screen, similar to spaces. The <code>CourseLockscreenConfig</code> supports custom blocks, join requests, and external redirects.</p>
+
+<!-- ================================================================== -->
+<h2 id="progress">8. Progress Tracking</h2>
+
+<h3>Completion Flow</h3>
+<ol>
+  <li>User taps "Mark as Complete" on a lesson</li>
+  <li>Optimistic update: add lesson ID to <code>completed_lessons</code> array</li>
+  <li>API call: <code>toggleLessonCompletion(courseId, lessonId, 'completed')</code></li>
+  <li>Server recalculates <code>progress</code> percentage</li>
+  <li>Response includes updated <code>CourseTrack</code></li>
+  <li>If <code>is_completed: true</code>, shows "Course Complete!" alert</li>
+  <li>Animated success badge reveals, then Previous/Next buttons slide in</li>
+</ol>
+
+<div class="callout callout-warn">
+  <strong>Optimistic updates revert on failure.</strong> If the API call fails, the lesson is removed from <code>completed_lessons</code> and progress reverts. The server's <code>CourseTrack</code> is always authoritative.
+</div>
+
+<h3>Progress Bar</h3>
+<p><span class="file-path">components/course/ProgressBar.tsx</span> renders a horizontal progress bar:</p>
+<ul>
+  <li>Color: <code>primary</code> until 99%, then <code>success</code> (green) at 100%</li>
+  <li>Clamped to 0&ndash;100 range</li>
+  <li>Optional percentage label</li>
+  <li>Configurable height (default 6px)</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="lesson-content">9. Lesson Content Rendering</h2>
+
+<h3>HTML Content</h3>
+<p>Lesson content is stored as HTML in the <code>content</code> field and rendered via the <code>HtmlContent</code> component (see <a href="components.html">Components</a>).</p>
+
+<h3>Hero Image Extraction</h3>
+<p>The first <code>&lt;figure&gt;</code> containing an <code>&lt;img&gt;</code> (or standalone <code>&lt;img&gt;</code>) is extracted from the HTML and rendered as a full-width hero image above the body. This prevents the image from appearing twice.</p>
+
+<h3>Lazy Loading</h3>
+<p>The course detail API may return lessons with empty <code>content</code> fields when <code>lazy_load</code> is enabled. In this case, the lesson view fetches individual lesson content via <code>getLessonBySlug()</code>.</p>
+
+<div class="callout">
+  <strong>Intended lesson slug.</strong> When navigating to a lesson via deep link, the course is fetched with <code>intendedLessonSlug</code> query parameter. The server pre-populates that specific lesson's content, avoiding the lazy-load second fetch.
+</div>
+
+<h3>Video &amp; Documents</h3>
+<ul>
+  <li><strong>YouTube:</strong> If <code>lesson.meta.media.url</code> contains a YouTube URL, a YouTubeEmbed component renders below the hero</li>
+  <li><strong>Documents:</strong> <code>lesson.meta.document_lists</code> array rendered as downloadable file cards with file-type icons (PDF, image, video, audio, archive). Tapping opens via <code>Linking.openURL()</code></li>
+</ul>
+
+<h3>Comments</h3>
+<p>Lesson comments are enabled when <code>lesson.meta.enable_comments !== 'no'</code> AND <code>course.settings.disable_comments !== 'yes'</code>. The comments button navigates to <code>/comments/[lessonId]</code> using the lesson's ID as the post ID.</p>
+
+<!-- ================================================================== -->
+<h2 id="components">10. Components</h2>
+
+<table>
+  <tr><th>Component</th><th>File</th><th>Description</th></tr>
+  <tr><td>CourseCard</td><td><span class="file-path">components/course/CourseCard.tsx</span></td><td>Hero card with cover, title, stats, progress bar</td></tr>
+  <tr><td>ProgressBar</td><td><span class="file-path">components/course/ProgressBar.tsx</span></td><td>Horizontal progress indicator (0&ndash;100%)</td></tr>
+  <tr><td>SectionList</td><td><span class="file-path">components/course/SectionList.tsx</span></td><td>Collapsible section header with lesson count and lock state</td></tr>
+  <tr><td>LessonRow</td><td><span class="file-path">components/course/LessonRow.tsx</span></td><td>Lesson item with lock/check/number indicator, quiz/video badges</td></tr>
+  <tr><td>CoursesWidget</td><td><span class="file-path">components/home/CoursesWidget.tsx</span></td><td>Home screen carousel of enrolled courses</td></tr>
+</table>
+
+<h3>LessonRow Indicators</h3>
+<table>
+  <tr><th>State</th><th>Indicator</th></tr>
+  <tr><td>Locked</td><td>Grey lock icon</td></tr>
+  <tr><td>Completed</td><td>Green checkmark</td></tr>
+  <tr><td>Available</td><td>Lesson number in empty circle</td></tr>
+</table>
+
+<h3>LessonRow Badges</h3>
+<ul>
+  <li><strong>Quiz badge</strong> &mdash; shown when <code>content_type === 'quiz'</code></li>
+  <li><strong>Video duration</strong> &mdash; formatted as MM:SS or HH:MM:SS from <code>meta.video_length</code></li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="home-widget">11. Home Widget</h2>
+
+<p><span class="file-path">components/home/CoursesWidget.tsx</span> shows a horizontal carousel on the home screen:</p>
+
+<ul>
+  <li>Fetches enrolled courses: <code>getCourses({ type: 'enrolled', per_page: 5 })</code></li>
+  <li>Each card: cover photo + gradient + title + progress bar</li>
+  <li>Stale time: 120 seconds (only refetches if older)</li>
+  <li>If no enrollments: shows "Browse Courses" CTA button</li>
+  <li>Tapping a card navigates to course detail</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="files">12. File Reference</h2>
+
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">services/api/courses.ts</span></td><td>All course API functions (list, detail, enroll, complete)</td></tr>
+  <tr><td><span class="file-path">types/course.ts</span></td><td>Course, CourseSection, CourseLesson, CourseTrack, settings types</td></tr>
+  <tr><td><span class="file-path">app/courses/index.tsx</span></td><td>Course list screen with tabs and search</td></tr>
+  <tr><td><span class="file-path">app/courses/[slug].tsx</span></td><td>Course detail with sections and enrollment</td></tr>
+  <tr><td><span class="file-path">app/courses/[slug]/lesson/[lessonSlug].tsx</span></td><td>Lesson viewer with content, video, documents, completion</td></tr>
+  <tr><td><span class="file-path">components/course/CourseCard.tsx</span></td><td>Course card with cover and progress</td></tr>
+  <tr><td><span class="file-path">components/course/ProgressBar.tsx</span></td><td>Progress bar (primary color, green at 100%)</td></tr>
+  <tr><td><span class="file-path">components/course/SectionList.tsx</span></td><td>Collapsible section with lesson count</td></tr>
+  <tr><td><span class="file-path">components/course/LessonRow.tsx</span></td><td>Lesson item with state indicators and badges</td></tr>
+  <tr><td><span class="file-path">components/home/CoursesWidget.tsx</span></td><td>Home screen enrolled courses carousel</td></tr>
+  <tr><td><span class="file-path">utils/deepLinkMapper.ts</span></td><td>Course deep link mapping (<code>/courses/*</code>)</td></tr>
+  <tr><td><span class="file-path">constants/config.ts</span></td><td><code>FEATURES.COURSES</code> flag, endpoint paths</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="rules">13. Rules</h2>
+
+<ol>
+  <li><strong>Use course slug for fetching, course ID for mutations.</strong> <code>getCourseBySlug(slug)</code> and <code>getLessonBySlug()</code> use slugs. <code>enrollInCourse(id)</code> and <code>toggleLessonCompletion(id, lessonId)</code> use numeric IDs. Don't mix them up.</li>
+
+  <li><strong>Pass <code>intendedLessonSlug</code> for deep link navigation.</strong> When navigating to a specific lesson, include this parameter in the course detail fetch. The server pre-populates that lesson's content, avoiding a second fetch.</li>
+
+  <li><strong>Handle lazy-loaded lesson content.</strong> Course detail may return lessons with empty <code>content</code> fields. Always check for empty content and fetch individually via <code>getLessonBySlug()</code> when needed.</li>
+
+  <li><strong>Optimistic updates are authoritative until server responds.</strong> Add lesson ID to <code>completed_lessons</code> immediately. On API success, replace the entire track with the server response. On failure, revert the optimistic change.</li>
+
+  <li><strong>Flatten sections for prev/next navigation.</strong> Lessons span multiple sections but prev/next navigation is linear. Flatten all sections' lesson arrays into a single list sorted by section serial then lesson serial.</li>
+
+  <li><strong>Check both lesson and course settings for comments.</strong> Comments are enabled only when <code>lesson.meta.enable_comments !== 'no'</code> AND <code>course.settings.disable_comments !== 'yes'</code>. Either flag can disable them.</li>
+
+  <li><strong>Hero images are extracted from HTML, not duplicated.</strong> The first <code>&lt;img&gt;</code> or <code>&lt;figure&gt;</code> is removed from the HTML body after being rendered as a hero. Don't render the full HTML unmodified or the image appears twice.</li>
+
+  <li><strong>Progress bar turns green at 100%.</strong> Use <code>primary</code> color for 0&ndash;99% and <code>success</code> for 100%. This is the ProgressBar component's built-in behavior &mdash; don't override it.</li>
+
+  <li><strong>Cache course detail by slug.</strong> Use cache key <code>tbc_course_{slug}</code> with <code>useCachedData</code>. The home widget uses its own cache key with a 120-second stale time.</li>
+
+  <li><strong>Lesson IDs in <code>completed_lessons</code> are strings.</strong> The server returns lesson IDs as strings in the array, not numbers. Compare with <code>String(lesson.id)</code> when checking completion status.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  <a href="companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="content-creation.html">Content Creation &amp; Composer</a> &middot;
+  Courses &amp; LMS &middot;
+  <a href="deep-linking.html">Deep Linking &amp; URL Routing</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="feed-system.html">Feed System</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  <a href="media-uploads.html">Media &amp; Uploads</a> &middot;
+  <a href="messaging.html">Messaging &amp; Chat</a> &middot;
+  <a href="module-system.html">Module System</a> &middot;
+  <a href="notifications.html">Notifications</a> &middot;
+  <a href="profile-system.html">Profile System</a> &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="registration.html">Registration &amp; Onboarding</a> &middot;
+  <a href="spaces.html">Spaces (Groups)</a> &middot;
+  <a href="state-management.html">State Management</a> &middot;
+  <a href="theme-system.html">Theme System</a>
+</p>
+
+</body>
+</html>
