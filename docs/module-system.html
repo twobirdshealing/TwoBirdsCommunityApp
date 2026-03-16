@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App &mdash; Module System</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .required { background: rgba(248, 81, 73, 0.15); color: var(--error); }
+  .auto { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn {
+    border-left-color: var(--warning);
+  }
+  .callout-error {
+    border-left-color: var(--error);
+  }
+  .callout-success {
+    border-left-color: var(--success);
+  }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Module System</h1>
+<p class="subtitle">Self-contained features that plug into the app without touching core code</p>
+
+<div class="callout">
+  <strong>Source files:</strong>
+  <span class="file-path">modules/_types.ts</span> (type definitions) &middot;
+  <span class="file-path">modules/_registry.ts</span> (active modules)<br>
+  Modules register tabs, widgets, menu items, header icons, context providers, and tab bar addons via a manifest. Core code reads from the registry &mdash; modules never import core layouts or navigation.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#manifest">Module Manifest</a></li>
+    <li><a href="#registration-types">Registration Types</a></li>
+    <li><a href="#registry">The Registry</a></li>
+    <li><a href="#integration-points">Integration Points</a></li>
+    <li><a href="#visibility">Visibility &amp; Feature Flags</a></li>
+    <li><a href="#lifecycle">Lifecycle Hooks</a></li>
+    <li><a href="#create-module">Creating a Module (Step-by-Step)</a></li>
+    <li><a href="#directory-structure">Directory Structure</a></li>
+    <li><a href="#api-patterns">API Service Patterns</a></li>
+    <li><a href="#examples">Real Module Examples</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="overview">1. Overview</h2>
+
+<p>The module system lets you add features to the app &mdash; bottom tabs, home screen widgets, menu items, header icons, context providers, and persistent UI above the tab bar &mdash; without editing any core files. Each module is a self-contained folder under <code>modules/</code> with a manifest that declares what it registers.</p>
+
+<div class="callout callout-success">
+  <strong>Zero core changes.</strong> Adding or removing a module requires exactly two edits: one import line and one array entry in <code>modules/_registry.ts</code>. Core code reads from the registry at build time &mdash; no runtime discovery, no config files, no dynamic imports.
+</div>
+
+<p>The system is static by design. All modules are resolved at import time, producing a flat list of registrations that core code maps over. This keeps the bundle predictable, startup fast, and debugging simple.</p>
+
+<!-- ================================================================== -->
+<h2 id="architecture">2. Architecture</h2>
+
+<h3>How it fits together</h3>
+<pre><code>modules/
+  _types.ts          &larr; TypeScript interfaces (ModuleManifest, TabRegistration, etc.)
+  _registry.ts       &larr; Active modules array + derived functions
+  blog/
+    module.ts        &larr; Manifest (exports blogModule)
+    screens/         &larr; Screen components
+    widgets/         &larr; Home screen widgets
+    services/        &larr; API calls
+    types/           &larr; TypeScript types
+    components/      &larr; UI components
+  bookclub/
+    module.ts
+    contexts/        &larr; Context providers (AudioPlayerContext)
+    ...
+
+app/
+  _layout.tsx        &larr; Injects module providers, lifecycle, notifications
+  (tabs)/
+    _layout.tsx      &larr; Renders module tabs + tab bar addons
+    index.tsx        &larr; Renders module widgets on home screen
+    calendar.tsx     &larr; Route stub (one-line re-export)
+  blog/
+    index.tsx        &larr; Route stub for /blog
+    [id].tsx         &larr; Route stub for /blog/:id
+
+components/
+  navigation/
+    TopHeader.tsx    &larr; Renders module header icons
+    UserMenu.tsx     &larr; Renders module menu items
+  home/
+    widgetRegistry.ts &larr; Merges core + module widgets</code></pre>
+
+<h3>Data flow</h3>
+<p>Module manifests are imported statically into <code>_registry.ts</code>. The registry exposes getter functions (<code>getModuleTabs()</code>, <code>getModuleWidgets()</code>, etc.) that core files call at render time. Modules never import core layouts &mdash; the dependency arrow is always <strong>core &rarr; registry &rarr; module manifest</strong>.</p>
+
+<!-- ================================================================== -->
+<h2 id="manifest">3. Module Manifest</h2>
+
+<p>Every module exports a <code>ModuleManifest</code> object from its <code>module.ts</code> file. This is the only file the registry imports.</p>
+
+<pre><code>// modules/_types.ts
+
+export interface ModuleManifest {
+  id: string;              // Unique module ID (never change once shipped)
+  name: string;            // Human-readable name
+  version: string;         // Semver version
+
+  // Registration slots (all optional)
+  tab?: TabRegistration;
+  widgets?: WidgetRegistration[];
+  providers?: ProviderRegistration[];
+  menuItems?: MenuItemRegistration[];
+  headerIcons?: HeaderIconRegistration[];
+  tabBarAddon?: React.ComponentType;
+  routePrefixes?: string[];
+
+  // Metadata (informational &mdash; not consumed by runtime code)
+  hideMenuKey?: string;       // Server visibility key
+  companionPlugin?: string;   // WordPress plugin slug
+  apiBase?: string;           // REST API base URL
+
+  // Lifecycle hooks
+  onInit?: () =&gt; void | Promise&lt;void&gt;;
+  onCleanup?: () =&gt; void;
+
+  // Push notification handler
+  notificationHandler?: (data: Record&lt;string, unknown&gt;, router: Router) =&gt; boolean;
+}</code></pre>
+
+<h3>Manifest fields reference</h3>
+<table>
+  <thead>
+    <tr><th>Field</th><th>Type</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>id</code> <span class="tag required">required</span></td><td>string</td><td>Unique ID. Used in dev validation. Never change after shipping.</td></tr>
+    <tr><td><code>name</code> <span class="tag required">required</span></td><td>string</td><td>Human-readable name (for documentation, not displayed in UI).</td></tr>
+    <tr><td><code>version</code> <span class="tag required">required</span></td><td>string</td><td>Semver version string.</td></tr>
+    <tr><td><code>tab</code></td><td>TabRegistration</td><td>Bottom tab &mdash; one per module maximum.</td></tr>
+    <tr><td><code>widgets</code></td><td>WidgetRegistration[]</td><td>Home screen widgets. A module can register multiple.</td></tr>
+    <tr><td><code>providers</code></td><td>ProviderRegistration[]</td><td>Context providers injected into the app tree.</td></tr>
+    <tr><td><code>menuItems</code></td><td>MenuItemRegistration[]</td><td>Items in the avatar dropdown menu.</td></tr>
+    <tr><td><code>headerIcons</code></td><td>HeaderIconRegistration[]</td><td>Icons in the top header bar.</td></tr>
+    <tr><td><code>tabBarAddon</code></td><td>ComponentType</td><td>Persistent UI above the tab bar (e.g., mini player).</td></tr>
+    <tr><td><code>routePrefixes</code></td><td>string[]</td><td>Route prefixes for deep link / push notification validation.</td></tr>
+    <tr><td><code>hideMenuKey</code></td><td>string</td><td>Server visibility key. Inherited by tab if tab doesn't set its own.</td></tr>
+    <tr><td><code>companionPlugin</code></td><td>string</td><td>WordPress companion plugin slug (informational).</td></tr>
+    <tr><td><code>apiBase</code></td><td>string</td><td>REST API base URL (informational).</td></tr>
+    <tr><td><code>onInit</code></td><td>() =&gt; void</td><td>Called once after authentication is confirmed.</td></tr>
+    <tr><td><code>onCleanup</code></td><td>() =&gt; void</td><td>Called on logout. Clear caches, reset state.</td></tr>
+    <tr><td><code>notificationHandler</code></td><td>(data, router) =&gt; boolean</td><td>Handle push notification taps. Return <code>true</code> to stop fallthrough.</td></tr>
+  </tbody>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="registration-types">4. Registration Types</h2>
+
+<h3>TabRegistration</h3>
+<p>Adds a bottom tab to the tab bar.</p>
+<pre><code>interface TabRegistration {
+  name: string;           // Must match filename in app/(tabs)/ (e.g. 'calendar')
+  title: string;          // Label shown under the tab icon
+  icon: string;           // Ionicon name for focused state
+  iconOutline: string;    // Ionicon name for unfocused state
+  order: number;          // Sort position (core: Home=10, Activity=20, Spaces=30)
+  component: ComponentType;  // The tab screen component
+  hideMenuKey?: string;   // Server visibility key
+  interceptPress?: (router: any) =&gt; void;  // Override tab press behavior
+  tabBarIcon?: (props: { focused: boolean; color: string }) =&gt; ReactNode;  // Custom icon
+  tabColor?: ColorTokenKey;  // Override active/inactive color (theme token name)
+}</code></pre>
+
+<div class="callout callout-warn">
+  <strong>Route stub required.</strong> If your module has a tab, you must create a one-line re-export file in <code>app/(tabs)/</code>. Expo Router requires a real file for each route.
+</div>
+
+<h3>WidgetRegistration</h3>
+<p>Adds a card to the home screen.</p>
+<pre><code>interface WidgetRegistration {
+  id: string;             // Stable ID (AsyncStorage key &mdash; never change once shipped)
+  title: string;          // Header text in HomeWidget wrapper
+  icon?: string;          // Ionicon name for header
+  seeAllRoute?: string;   // "See All" navigation target
+  featureFlag?: string;   // If set and false, widget is excluded entirely
+  defaultEnabled: boolean;   // Default visibility for new users
+  canDisable: boolean;       // Whether user can toggle in edit mode
+  externalWrapper: boolean;  // true = HomeWidget wraps it; false = widget handles own layout
+  component: ComponentType&lt;{ refreshKey: number }&gt;;  // Widget component
+}</code></pre>
+
+<div class="callout">
+  <strong>refreshKey prop.</strong> The home screen passes a <code>refreshKey</code> number that increments on pull-to-refresh. Use it to trigger data refetch. Return <code>null</code> from your widget if there's no data &mdash; never render an empty card.
+</div>
+
+<h3>ProviderRegistration</h3>
+<p>Injects a React context provider into the app tree.</p>
+<pre><code>interface ProviderRegistration {
+  id: string;       // Unique ID
+  order: number;    // Lower = wraps outer in the tree
+  component: ComponentType&lt;{ children: ReactNode }&gt;;
+}</code></pre>
+
+<h3>MenuItemRegistration</h3>
+<p>Adds an item to the avatar dropdown menu.</p>
+<pre><code>interface MenuItemRegistration {
+  id: string;
+  label: string;          // Display text
+  icon: string;           // Ionicon name
+  route: string | { pathname: string; params: Record&lt;string, string&gt; };
+  order: number;          // Core items use 10-90 &mdash; place yours in the gaps
+  hideMenuKey?: string;   // Server visibility key
+  iconColor?: string;     // Theme token for icon color override
+}</code></pre>
+
+<h3>HeaderIconRegistration</h3>
+<p>Adds an icon button to the top header.</p>
+<pre><code>interface HeaderIconRegistration {
+  id: string;
+  icon: string;                // Ionicon name
+  route: string | { pathname: string; params: Record&lt;string, string&gt; };
+  order: number;               // Core: Messages=10, Notifications=20, Cart=30
+  accessibilityLabel?: string;
+  hideMenuKey?: string;
+}</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="registry">5. The Registry</h2>
+
+<p>The registry (<span class="file-path">modules/_registry.ts</span>) is where modules are activated. It's the only file you edit when adding or removing a module.</p>
+
+<pre><code>// modules/_registry.ts
+
+import { blogModule } from './blog/module';
+import { bookclubModule } from './bookclub/module';
+
+export const MODULES: ModuleManifest[] = [
+  blogModule,
+  bookclubModule,
+  // Add new modules here &mdash; comment out to disable
+];</code></pre>
+
+<h3>Derived functions</h3>
+<p>The registry exports getter functions that core code calls. These sort by order, inherit visibility keys, and flatten nested arrays:</p>
+
+<table>
+  <thead>
+    <tr><th>Function</th><th>Returns</th><th>Consumed by</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>getModuleTabs()</code></td><td>TabRegistration[] sorted by order</td><td><span class="file-path">app/(tabs)/_layout.tsx</span></td></tr>
+    <tr><td><code>getModuleWidgets()</code></td><td>WidgetRegistration[] flat list</td><td><span class="file-path">components/home/widgetRegistry.ts</span></td></tr>
+    <tr><td><code>getModuleProviders()</code></td><td>ProviderRegistration[] sorted by order</td><td><span class="file-path">app/_layout.tsx</span></td></tr>
+    <tr><td><code>getModuleMenuItems()</code></td><td>MenuItemRegistration[] sorted by order</td><td><span class="file-path">components/navigation/UserMenu.tsx</span></td></tr>
+    <tr><td><code>getModuleHeaderIcons()</code></td><td>HeaderIconRegistration[] sorted by order</td><td><span class="file-path">components/navigation/TopHeader.tsx</span></td></tr>
+    <tr><td><code>getTabBarAddons()</code></td><td>ComponentType[] in order</td><td><span class="file-path">app/(tabs)/_layout.tsx</span></td></tr>
+    <tr><td><code>getModuleRoutePrefixes()</code></td><td>string[] flat list</td><td><span class="file-path">app/_layout.tsx</span></td></tr>
+    <tr><td><code>getWidgetComponentMap()</code></td><td>Record&lt;string, ComponentType&gt;</td><td><span class="file-path">app/(tabs)/index.tsx</span></td></tr>
+    <tr><td><code>initModules()</code></td><td>Promise&lt;void&gt;</td><td><span class="file-path">app/_layout.tsx</span> (after auth)</td></tr>
+    <tr><td><code>cleanupModules()</code></td><td>void</td><td>Cache registry (on logout)</td></tr>
+    <tr><td><code>handleModuleNotification()</code></td><td>boolean</td><td><span class="file-path">app/_layout.tsx</span> (notification tap)</td></tr>
+  </tbody>
+</table>
+
+<h3>Dev-mode validation</h3>
+<p>In <code>__DEV__</code> mode, the registry checks for:</p>
+<ul>
+  <li>Duplicate module IDs</li>
+  <li>Duplicate widget IDs</li>
+  <li>Multiple <code>tabBarAddon</code> registrations (warns they'll stack)</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="integration-points">6. Integration Points</h2>
+
+<p>Here's exactly where each registration type gets rendered in the app:</p>
+
+<h3>Bottom tabs</h3>
+<p><span class="file-path">app/(tabs)/_layout.tsx</span> calls <code>getModuleTabs()</code> and renders a <code>Tabs.Screen</code> for each. Module tabs appear after core tabs (Home, Activity, Spaces), sorted by <code>order</code>.</p>
+<pre><code>// How core code renders module tabs (simplified)
+{getModuleTabs().map((tab) =&gt; (
+  &lt;Tabs.Screen
+    key={tab.name}
+    name={tab.name}
+    options={{
+      title: tab.title,
+      href: isHidden(tab.hideMenuKey) ? null : undefined,
+      tabBarIcon: tab.tabBarIcon || (({ focused, color }) =&gt;
+        &lt;Ionicons name={focused ? tab.icon : tab.iconOutline} color={color} /&gt;
+      ),
+    }}
+    listeners={tab.interceptPress ? {
+      tabPress: (e) =&gt; { e.preventDefault(); tab.interceptPress!(router); }
+    } : undefined}
+  /&gt;
+))}</code></pre>
+
+<h3>Home screen widgets</h3>
+<p><span class="file-path">app/(tabs)/index.tsx</span> merges core and module widgets into a single list. Users can reorder and toggle widgets in edit mode (long-press). Preferences persist in AsyncStorage.</p>
+
+<h3>Avatar dropdown menu</h3>
+<p><span class="file-path">components/navigation/UserMenu.tsx</span> renders module menu items after core items (Profile, Spaces, Bookmarks, etc.), sorted by <code>order</code>.</p>
+
+<h3>Top header icons</h3>
+<p><span class="file-path">components/navigation/TopHeader.tsx</span> renders module icons after core icons (Messages, Notifications, Cart) and before the avatar button.</p>
+
+<h3>Context providers</h3>
+<p><span class="file-path">app/_layout.tsx</span> wraps the app in module providers using <code>reduceRight</code>:</p>
+<pre><code>// ModuleProviders component in app/_layout.tsx
+function ModuleProviders({ children }) {
+  const providers = getModuleProviders();
+  return providers.reduceRight(
+    (acc, { component: Provider }) =&gt; &lt;Provider&gt;{acc}&lt;/Provider&gt;,
+    children
+  );
+}
+
+// Position in provider tree:
+&lt;ThemeProvider&gt;
+  &lt;AuthProvider&gt;
+    &lt;AppConfigProvider&gt;
+      &lt;PusherProvider&gt;
+        &lt;ModuleProviders&gt;       &larr; Module providers injected here
+          &lt;KeyboardProvider&gt;
+            &lt;RootLayoutNav /&gt;
+          &lt;/KeyboardProvider&gt;
+        &lt;/ModuleProviders&gt;
+      &lt;/PusherProvider&gt;
+    &lt;/AppConfigProvider&gt;
+  &lt;/AuthProvider&gt;
+&lt;/ThemeProvider&gt;</code></pre>
+
+<h3>Tab bar addons</h3>
+<p><span class="file-path">app/(tabs)/_layout.tsx</span> renders addon components in a measured container above the tab buttons. The height is tracked via <code>BottomOffsetContext</code> so content below knows where the tab bar starts.</p>
+
+<h3>Push notification routing</h3>
+<p><span class="file-path">app/_layout.tsx</span> calls <code>handleModuleNotification(data, router)</code> when a notification is tapped. Modules return <code>true</code> to claim the notification, <code>false</code> to let core handle it.</p>
+
+<!-- ================================================================== -->
+<h2 id="visibility">7. Visibility &amp; Feature Flags</h2>
+
+<p>Three layers control what the user sees:</p>
+
+<table>
+  <thead>
+    <tr><th>Layer</th><th>Mechanism</th><th>Controlled by</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Build-time</strong></td>
+      <td>Module is in/out of <code>MODULES</code> array in <code>_registry.ts</code></td>
+      <td>Developer</td>
+    </tr>
+    <tr>
+      <td><strong>Server-side</strong></td>
+      <td><code>hide_menu[]</code> from <code>/app-config</code> API &mdash; matched against <code>hideMenuKey</code></td>
+      <td>WordPress admin (per-role visibility)</td>
+    </tr>
+    <tr>
+      <td><strong>Feature flags</strong></td>
+      <td><code>featureFlag</code> on widgets &mdash; checked against <code>FEATURES.*</code> in config.ts</td>
+      <td>Developer (config.ts)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>hideMenuKey inheritance</h3>
+<p>If a module sets <code>hideMenuKey</code> at the manifest level, it's inherited by the tab registration (unless the tab sets its own). Menu items and header icons set their own <code>hideMenuKey</code> individually.</p>
+
+<pre><code>// Module-level hideMenuKey inherited by tab
+export const bookclubModule: ModuleManifest = {
+  id: 'bookclub',
+  hideMenuKey: 'bookclub',  // &larr; Tab inherits this
+  tab: { ... },             // Tab doesn't need its own hideMenuKey
+  menuItems: [{
+    hideMenuKey: 'bookclub', // &larr; Menu items set their own
+    ...
+  }],
+};</code></pre>
+
+<h3>Widget user preferences</h3>
+<p>Users can reorder and toggle widgets on the home screen (long-press to enter edit mode). These preferences are stored in AsyncStorage and persist across sessions. The <code>defaultEnabled</code> and <code>canDisable</code> fields on <code>WidgetRegistration</code> control the initial state and whether toggling is allowed.</p>
+
+<!-- ================================================================== -->
+<h2 id="lifecycle">8. Lifecycle Hooks</h2>
+
+<h3>onInit</h3>
+<p>Called once per app session after authentication is confirmed. Fire-and-forget &mdash; errors are logged but don't crash the app.</p>
+<pre><code>// In app/_layout.tsx
+useEffect(() =&gt; {
+  if (isAuthenticated) {
+    initModules();  // calls onInit() on each module
+  }
+}, [isAuthenticated]);</code></pre>
+
+<h3>onCleanup</h3>
+<p>Called automatically on logout via the cache registry system. Use it to clear module-specific caches, reset state, or tear down connections.</p>
+<pre><code>// _registry.ts self-registers with the cache system
+registerCache({ clearMemory: cleanupModules });</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="create-module">9. Creating a Module (Step-by-Step)</h2>
+
+<p>Let's build a module called "events" that registers a home widget and a menu item.</p>
+
+<h3>Step 1: Create the folder structure</h3>
+<pre><code>modules/events/
+  module.ts           &larr; Manifest
+  widgets/
+    EventsWidget.tsx  &larr; Home widget component
+  screens/
+    EventsScreen.tsx  &larr; Main screen
+  services/
+    eventsApi.ts      &larr; API calls
+  types/
+    events.ts         &larr; TypeScript types</code></pre>
+
+<h3>Step 2: Define your types</h3>
+<pre><code>// modules/events/types/events.ts
+
+export interface Event {
+  id: number;
+  title: string;
+  date: string;
+  location: string;
+}
+
+export interface EventsResponse {
+  success: boolean;
+  events: Event[];
+}</code></pre>
+
+<h3>Step 3: Create your API service</h3>
+<pre><code>// modules/events/services/eventsApi.ts
+
+import { SITE_URL } from '@/constants/config';
+import { request } from '@/services/api/client';
+import type { EventsResponse } from '../types/events';
+
+const API_BASE = `${SITE_URL}/wp-json/my-events/v1`;
+
+export async function getEvents() {
+  return request&lt;EventsResponse&gt;('/events', { baseUrl: API_BASE });
+}
+
+export async function getUpcomingEvent() {
+  return request&lt;EventsResponse&gt;('/events/upcoming', { baseUrl: API_BASE });
+}</code></pre>
+
+<div class="callout">
+  <strong>Use the centralized <code>request()</code> client</strong> from <code>@/services/api/client</code> for any endpoints that require authentication. It handles JWT injection, 401 retry, and silent token refresh automatically.
+</div>
+
+<h3>Step 4: Build your widget</h3>
+<pre><code>// modules/events/widgets/EventsWidget.tsx
+
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useCachedData } from '@/hooks/useCachedData';
+import { getUpcomingEvent } from '../services/eventsApi';
+
+interface Props {
+  refreshKey: number;
+}
+
+export function EventsWidget({ refreshKey }: Props) {
+  const { colors } = useTheme();
+  const { data } = useCachedData('tbc_widget_events', getUpcomingEvent, { refreshKey });
+
+  // Return null if no data &mdash; never render an empty card
+  if (!data?.events?.length) return null;
+
+  const event = data.events[0];
+  return (
+    &lt;View style={[styles.card, { backgroundColor: colors.surface }]}&gt;
+      &lt;Text style={{ color: colors.text }}&gt;{event.title}&lt;/Text&gt;
+      &lt;Text style={{ color: colors.textSecondary }}&gt;{event.date}&lt;/Text&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  card: { padding: 16, borderRadius: 12 },
+});</code></pre>
+
+<h3>Step 5: Build your screen</h3>
+<pre><code>// modules/events/screens/EventsScreen.tsx
+
+import React from 'react';
+import { View } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useCachedData } from '@/hooks/useCachedData';
+import { PageHeader } from '@/components/navigation/PageHeader';
+import { getEvents } from '../services/eventsApi';
+
+export default function EventsScreen() {
+  const { colors } = useTheme();
+  const { data, loading, refetch } = useCachedData('tbc_events_list', getEvents);
+
+  return (
+    &lt;View style={{ flex: 1, backgroundColor: colors.background }}&gt;
+      &lt;PageHeader title="Events" /&gt;
+      {/* Your event list here */}
+    &lt;/View&gt;
+  );
+}</code></pre>
+
+<h3>Step 6: Write the manifest</h3>
+<pre><code>// modules/events/module.ts
+
+import type { ModuleManifest } from '@/modules/_types';
+import { EventsWidget } from './widgets/EventsWidget';
+
+export const eventsModule: ModuleManifest = {
+  id: 'events',
+  name: 'Events',
+  version: '1.0.0',
+
+  widgets: [
+    {
+      id: 'upcoming-event',
+      title: 'Upcoming Event',
+      icon: 'calendar-outline',
+      seeAllRoute: '/events',
+      defaultEnabled: true,
+      canDisable: true,
+      externalWrapper: true,
+      component: EventsWidget,
+    },
+  ],
+
+  menuItems: [
+    {
+      id: 'events',
+      label: 'Events',
+      icon: 'calendar-outline',
+      route: '/events',
+      order: 50,
+      hideMenuKey: 'events',
+    },
+  ],
+
+  routePrefixes: ['/events'],
+  companionPlugin: 'my-events-plugin',
+  apiBase: '/wp-json/my-events/v1',
+};</code></pre>
+
+<h3>Step 7: Create route stubs</h3>
+<pre><code>// app/events/index.tsx
+export { default } from '@/modules/events/screens/EventsScreen';</code></pre>
+
+<div class="callout callout-warn">
+  <strong>One-line re-exports only.</strong> Route stubs must be a single <code>export { default }</code> line. The actual screen component lives in your module folder. This keeps Expo Router happy while your module stays self-contained.
+</div>
+
+<h3>Step 8: Register in the registry</h3>
+<pre><code>// modules/_registry.ts
+
+import { eventsModule } from './events/module';   // Add import
+
+export const MODULES: ModuleManifest[] = [
+  // ...existing modules
+  eventsModule,   // Add to array
+];</code></pre>
+
+<p>That's it. Your widget appears on the home screen, your menu item appears in the avatar dropdown, and <code>/events</code> routes to your screen.</p>
+
+<!-- ================================================================== -->
+<h2 id="directory-structure">10. Directory Structure</h2>
+
+<p>Recommended folder layout for a module. Only <code>module.ts</code> is required &mdash; everything else depends on what your module does.</p>
+
+<pre><code>modules/yourmodule/
+  module.ts              &larr; Required: ModuleManifest export
+  screens/               &larr; Screen components (one per route)
+    YourScreen.tsx
+    YourDetailScreen.tsx
+  widgets/               &larr; Home screen widget components
+    YourWidget.tsx
+  components/            &larr; Internal UI components
+    YourCard.tsx
+    YourSheet.tsx
+  services/              &larr; API service functions
+    yourApi.ts
+  contexts/              &larr; Context providers (if registering providers)
+    YourContext.tsx
+  hooks/                 &larr; Custom hooks
+    useYourHook.ts
+  types/                 &larr; TypeScript types
+    your.ts</code></pre>
+
+<div class="callout callout-error">
+  <strong>No barrel files.</strong> Never create <code>index.ts</code> re-export files. Always import directly from the source file. Metro doesn't tree-shake &mdash; barrel imports force loading every sibling even when you only need one.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="api-patterns">11. API Service Patterns</h2>
+
+<h3>Authenticated endpoints &mdash; use request()</h3>
+<p>For any endpoint that requires a logged-in user, use the centralized <code>request()</code> from <code>@/services/api/client</code>. It handles JWT injection, 401/403 retry, and silent token refresh.</p>
+
+<pre><code>// modules/bookclub/services/bookclubApi.ts
+
+import { SITE_URL } from '@/constants/config';
+import { request } from '@/services/api/client';
+
+const API_BASE = `${SITE_URL}/wp-json/tbc-bc/v1`;
+
+export async function getBooks() {
+  return request&lt;BooksListResponse&gt;('/books', { baseUrl: API_BASE });
+}
+
+export async function createBookmark(bookId: number, timestamp: number) {
+  return request&lt;CreateBookmarkResponse&gt;(`/books/${bookId}/bookmarks`, {
+    baseUrl: API_BASE,
+    method: 'POST',
+    body: { timestamp },
+  });
+}</code></pre>
+
+<h3>Public endpoints &mdash; fetch() is fine</h3>
+<p>For truly public endpoints that never need authentication (e.g., YouTube video proxying), you can use <code>fetch()</code> directly. This avoids unnecessary JWT overhead and 401 retry logic.</p>
+
+<pre><code>// modules/youtube/services/youtubeApi.ts
+
+import { TBC_YT_URL } from '@/constants/config';
+
+export async function getLatestVideos(limit: number = 1) {
+  const response = await fetch(`${TBC_YT_URL}/latest?limit=${limit}`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) return null;
+  const data = await response.json();
+  return data.success ? data : null;
+}</code></pre>
+
+<h3>WP REST API (standard WordPress)</h3>
+<p>For standard WordPress endpoints (posts, comments, users), use <code>request()</code> with <code>WP_REST_URL</code> as the base. The blog module demonstrates this pattern with a thin <code>wpRequest()</code> wrapper:</p>
+
+<pre><code>// modules/blog/services/blogApi.ts
+
+import { WP_REST_URL } from '@/constants/config';
+import { request } from '@/services/api/client';
+
+async function wpRequest&lt;T&gt;(endpoint: string, options = {}) {
+  return request&lt;T&gt;(endpoint, {
+    ...options,
+    baseUrl: WP_REST_URL,
+    includeHeaders: true,  // Needed for X-WP-Total pagination headers
+  });
+}</code></pre>
+
+<h3>Logging in services</h3>
+<p>Use <code>createLogger()</code> from <code>@/utils/logger</code>. Follow the convention: log writes, skip reads. See <a href="logging.html">Logging docs</a> for full details.</p>
+
+<pre><code>import { createLogger } from '@/utils/logger';
+const log = createLogger('EventsAPI');
+
+export async function createEvent(data) {
+  log('createEvent:', data.title);
+  return request('/events', { baseUrl: API_BASE, method: 'POST', body: data });
+}</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="examples">12. Real Module Examples</h2>
+
+<p>The codebase includes modules covering every registration type. Use these as templates.</p>
+
+<h3>Widget + Menu only (Blog)</h3>
+<p>Simplest pattern &mdash; no tab, no providers. Shows a widget on the home screen and a menu item in the avatar dropdown.</p>
+<pre><code>// modules/blog/module.ts
+
+export const blogModule: ModuleManifest = {
+  id: 'blog',
+  name: 'Blog',
+  version: '1.0.0',
+
+  widgets: [{
+    id: 'latest-blog',
+    title: 'Latest Blog',
+    icon: 'newspaper-outline',
+    seeAllRoute: '/blog',
+    defaultEnabled: true,
+    canDisable: true,
+    externalWrapper: true,
+    component: BlogWidget,
+  }],
+
+  menuItems: [{
+    id: 'blog',
+    label: 'Blog',
+    icon: 'newspaper-outline',
+    route: '/blog',
+    order: 60,
+    hideMenuKey: 'blog',
+  }],
+
+  routePrefixes: ['/blog', '/blog-comments'],
+};</code></pre>
+<p><strong>Route stubs:</strong> <code>app/blog/index.tsx</code>, <code>app/blog/[id].tsx</code></p>
+
+<h3>Widget only (YouTube)</h3>
+<p>Even simpler &mdash; just a widget, no menu item. Users access the full screen via the widget's "See All" link.</p>
+<pre><code>// modules/youtube/module.ts
+
+export const youtubeModule: ModuleManifest = {
+  id: 'youtube',
+  name: 'YouTube',
+  version: '1.0.0',
+
+  widgets: [{
+    id: 'latest-youtube',
+    title: 'YouTube',
+    icon: 'logo-youtube',
+    seeAllRoute: '/youtube',
+    defaultEnabled: true,
+    canDisable: true,
+    externalWrapper: true,
+    component: YouTubeWidget,
+  }],
+
+  routePrefixes: ['/youtube'],
+  companionPlugin: 'tbc-youtube',
+};</code></pre>
+
+<h3>Tab + Widgets (Calendar)</h3>
+<p>Has its own bottom tab and multiple home widgets.</p>
+<pre><code>// modules/calendar/module.ts
+
+export const calendarModule: ModuleManifest = {
+  id: 'calendar',
+  name: 'Calendar',
+  version: '1.0.0',
+
+  tab: {
+    name: 'calendar',
+    title: 'Calendar',
+    icon: 'calendar',
+    iconOutline: 'calendar-outline',
+    order: 40,
+    component: CalendarTab,
+  },
+
+  widgets: [
+    { id: 'upcoming-booking', title: 'Upcoming Booking', icon: 'flame-outline',
+      seeAllRoute: '/(tabs)/calendar', defaultEnabled: true, canDisable: true,
+      externalWrapper: true, component: CeremonyWidget },
+    { id: 'featured-events', title: 'Featured Events', icon: 'calendar-outline',
+      seeAllRoute: '/(tabs)/calendar', defaultEnabled: true, canDisable: true,
+      externalWrapper: true, component: EventsWidget },
+  ],
+
+  hideMenuKey: 'calendar',
+  companionPlugin: 'tbc-calendar-fluent',
+  apiBase: '/wp-json/tbc-wc/v1',
+};</code></pre>
+<p><strong>Route stub:</strong> <code>app/(tabs)/calendar.tsx</code> &rarr; <code>export { default } from '@/modules/calendar/screens/CalendarTab'</code></p>
+
+<h3>Provider + Tab Bar Addon (Book Club)</h3>
+<p>The most complex pattern. Registers a context provider for global audio state and a mini player that sits above the tab bar.</p>
+<pre><code>// modules/bookclub/module.ts
+
+export const bookclubModule: ModuleManifest = {
+  id: 'bookclub',
+  name: 'Book Club',
+  version: '1.0.0',
+
+  providers: [{
+    id: 'bookclub-audio',
+    order: 50,
+    component: AudioPlayerProvider,
+  }],
+
+  tabBarAddon: MiniPlayer,   // Renders above tab buttons when audio is playing
+
+  widgets: [{
+    id: 'book-club',
+    title: 'Book Club',
+    icon: 'book-outline',
+    seeAllRoute: '/bookclub',
+    defaultEnabled: true,
+    canDisable: true,
+    externalWrapper: true,
+    component: BookClubWidget,
+  }],
+
+  menuItems: [{
+    id: 'bookclub',
+    label: 'Book Club',
+    icon: 'book-outline',
+    route: '/bookclub',
+    order: 55,
+    hideMenuKey: 'bookclub',
+  }],
+
+  routePrefixes: ['/bookclub'],
+  hideMenuKey: 'bookclub',
+  companionPlugin: 'tbc-book-club',
+  apiBase: '/wp-json/tbc-bc/v1',
+};</code></pre>
+
+<h3>Tab intercept (Donate)</h3>
+<p>A tab that never renders its screen &mdash; instead, pressing it opens a WebView. Demonstrates <code>interceptPress</code>, custom <code>tabBarIcon</code>, and <code>tabColor</code> override.</p>
+<pre><code>// modules/donate/module.tsx
+
+const DONATE_ROUTE_PARAMS = {
+  url: `${SITE_URL}/calendar/donate/`,
+  title: 'Donate',
+  rightIcon: 'cart-outline',
+  rightAction: 'cart',
+};
+
+export const donateModule: ModuleManifest = {
+  id: 'donate',
+  name: 'Donate',
+  version: '1.0.0',
+
+  tab: {
+    name: 'donate',
+    title: 'Donate',
+    icon: 'heart',
+    iconOutline: 'heart-outline',
+    order: 100,
+    component: () =&gt; null,       // Never renders
+    hideMenuKey: 'donate',
+    tabColor: 'error',            // Red instead of default active/inactive
+    tabBarIcon: ({ focused, color }) =&gt; &lt;DonateTabIcon focused={focused} color={color} /&gt;,
+    interceptPress: (router) =&gt; {
+      router.push({ pathname: '/webview', params: DONATE_ROUTE_PARAMS });
+    },
+  },
+
+  menuItems: [{
+    id: 'donate',
+    label: 'Donate',
+    icon: 'heart-outline',
+    route: { pathname: '/webview', params: DONATE_ROUTE_PARAMS },
+    order: 60,
+    hideMenuKey: 'donate',
+    iconColor: 'error',
+  }],
+};</code></pre>
+
+<h3>Menu-only (Donor)</h3>
+<p>The simplest possible module &mdash; just a menu item, no tab, no widget.</p>
+<pre><code>// modules/donor/module.ts
+
+export const donorModule: ModuleManifest = {
+  id: 'donor',
+  name: 'Donor Dashboard',
+  version: '1.0.0',
+
+  menuItems: [{
+    id: 'donor-dashboard',
+    label: 'Donor Dashboard',
+    icon: 'wallet-outline',
+    route: {
+      pathname: '/webview',
+      params: { url: `${SITE_URL}/donor-dashboard/`, title: 'Donor Dashboard' },
+    },
+    order: 65,
+    hideMenuKey: 'donor_dashboard',
+  }],
+};</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="rules">13. Rules</h2>
+
+<div class="callout callout-error">
+  <strong>Modules never import core layouts or navigation files.</strong> The dependency arrow is always core &rarr; registry &rarr; module. If you need to render something in a specific location, register it via the manifest.
+</div>
+
+<ol>
+  <li><strong>One manifest, one export.</strong> Your <code>module.ts</code> exports a single <code>ModuleManifest</code> object. The registry imports only this file.</li>
+  <li><strong>No barrel files.</strong> Import directly from source files. Never create <code>index.ts</code> re-exports.</li>
+  <li><strong>Import core via <code>@/</code> aliases.</strong> Modules can import from <code>@/components</code>, <code>@/contexts</code>, <code>@/services</code>, <code>@/hooks</code>, <code>@/constants</code>, <code>@/utils</code>. Never import from other modules.</li>
+  <li><strong>No inter-module dependencies.</strong> Module A must never import from Module B. If two modules need shared state, extract it to core.</li>
+  <li><strong>IDs are permanent.</strong> Widget <code>id</code> and module <code>id</code> are used as AsyncStorage keys. Never change them after shipping &mdash; you'll lose user preferences.</li>
+  <li><strong>Route stubs are one-liners.</strong> Files in <code>app/</code> for module routes must be a single re-export: <code>export { default } from '@/modules/...'</code>.</li>
+  <li><strong>Always use <code>useTheme()</code>.</strong> Never hardcode colors. Import <code>useTheme</code> from <code>@/contexts/ThemeContext</code> and use semantic tokens. See <a href="theme-system.html">Theme System docs</a>.</li>
+  <li><strong>Use <code>createLogger()</code> for logging.</strong> Tag pattern: <code>{Module}API</code> for services, <code>{Module}{Name}</code> for components. See <a href="logging.html">Logging docs</a>.</li>
+  <li><strong>Use <code>useCachedData()</code> for data fetching.</strong> The centralized hook handles caching, loading states, and refresh. Prefix cache keys with <code>tbc_{module}_</code>.</li>
+  <li><strong>Widgets return <code>null</code> when empty.</strong> Never render an empty card or placeholder. The home screen skips null widgets cleanly.</li>
+  <li><strong>Register companion plugin and apiBase.</strong> Even though they're informational, they make the manifest self-documenting for other developers.</li>
+  <li><strong>Don't create new dependencies without checking.</strong> The core already has centralized utilities for HTTP, caching, theming, logging, haptics, and date formatting. Check before adding.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  Module System &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="theme-system.html">Theme System</a>
+</p>
+
+</body>
+</html>
