@@ -121,6 +121,7 @@
     <li><a href="#tbc-starter-theme">TBC Starter Theme</a> <span class="tag required">Core</span></li>
     <li><a href="#tbc-youtube">TBC YouTube</a> <span class="tag optional">Addon</span></li>
     <li><a href="#tbc-book-club">TBC Book Club</a> <span class="tag optional">Addon</span></li>
+    <li><a href="#tbc-license-server">TBC License Server</a> <span class="tag auto">Infra</span></li>
     <li><a href="#app-constants">App-Side URL Constants</a></li>
     <li><a href="#installation">Installation</a></li>
   </ol>
@@ -166,6 +167,12 @@
     <td><code>tbc-bc/v1</code></td>
     <td><span class="tag optional">Addon</span></td>
     <td>Audiobook player with chapters, bookmarks, and progress</td>
+  </tr>
+  <tr>
+    <td><strong>tbc-license-server</strong></td>
+    <td><code>tbc-license/v1</code></td>
+    <td><span class="tag auto">Infra</span></td>
+    <td>License validation and update delivery (FluentCart Pro bridge)</td>
   </tr>
 </table>
 
@@ -364,7 +371,62 @@
 </ol>
 
 <!-- ====================================================================== -->
-<h2 id="app-constants">8. App-Side URL Constants</h2>
+<h2 id="tbc-license-server">8. TBC License Server</h2>
+
+<p><span class="file-path">companion plugins/tbc-license-server/</span> <span class="tag auto">Infra</span></p>
+
+<p>Thin bridge between the buyer&rsquo;s setup dashboard and <strong>FluentCart Pro&rsquo;s licensing module</strong>. This plugin lives on the <em>seller&rsquo;s</em> WordPress site (twobirdscode.com), not on buyer sites. It translates the dashboard&rsquo;s update-check API call into FluentCart&rsquo;s License model and returns the response in the format the dashboard expects.</p>
+
+<div class="callout callout-warn">
+  <strong>Requires FluentCart Pro</strong> with the Licensing module enabled. FluentCart handles all license management (key generation, subscription sync, admin UI, customer portal, file hosting). This plugin only exposes the REST endpoint.
+</div>
+
+<h3>Endpoint</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
+  <tr><td>POST</td><td><code>/check</code></td><td>No</td><td>Validate license key, return plan + expiry + latest version info</td></tr>
+</table>
+
+<h3>Request</h3>
+<pre><code>POST /wp-json/tbc-license/v1/check
+{
+  "licenseKey": "TBC-XXXX-XXXX-XXXX",
+  "currentVersion": "3.0.6",
+  "product": "tbc-community-app"
+}</code></pre>
+
+<h3>Response (valid, update available)</h3>
+<pre><code>{
+  "valid": true,
+  "plan": "core",
+  "expiresAt": "2027-03-16",
+  "latest": {
+    "version": "3.1.0",
+    "date": "2026-03-20",
+    "changelog": "### v3.1.0\n- Fluent Community 1.9 support",
+    "downloadUrl": "https://twobirdscode.com/?fct-download=...",
+    "size": 2048000
+  }
+}</code></pre>
+
+<h3>Response (up to date)</h3>
+<pre><code>{ "valid": true, "plan": "core", "expiresAt": "2027-03-16", "latest": null }</code></pre>
+
+<h3>How It Works</h3>
+<ol>
+  <li>Looks up the license key in FluentCart&rsquo;s <code>fct_licenses</code> table</li>
+  <li>Checks expiration and active status via FluentCart&rsquo;s License model</li>
+  <li>Reads version info from the product&rsquo;s <code>license_settings</code> meta</li>
+  <li>Generates a time-limited signed download URL via FluentCart&rsquo;s Helper class</li>
+  <li>Returns the response in the dashboard&rsquo;s expected format</li>
+</ol>
+
+<div class="callout">
+  <strong>Not a buyer plugin.</strong> This is infrastructure for the TBC product &mdash; it runs on the seller&rsquo;s server only. Buyers interact with it indirectly through their setup dashboard&rsquo;s Updates tab.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="app-constants">9. App-Side URL Constants</h2>
 
 <p>The app references plugin APIs via URL constants defined in <span class="file-path">constants/config.ts</span>. All are derived from <code>SITE_URL</code>.</p>
 
@@ -388,7 +450,7 @@ const response = await fetch(`${TBC_FP_URL}/register`, { ... });
 const response = await get('/breakdown/feed/42', { baseUrl: TBC_MR_URL });</code></pre>
 
 <!-- ====================================================================== -->
-<h2 id="installation">9. Installation</h2>
+<h2 id="installation">10. Installation</h2>
 
 <h3>For Buyers (White-Label Setup)</h3>
 <ol>

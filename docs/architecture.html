@@ -191,7 +191,11 @@ services/               Core services
   push.ts               Push notification service
 types/                  TypeScript type definitions
 utils/                  Utility functions (logger, formatters, etc.)
-docs/                   Developer documentation (you are here)</div>
+setup/                  Buyer setup tools
+  dashboard.js          Local web dashboard (config, assets, builds, updates)
+docs/                   Developer documentation (you are here)
+manifest.json           Core version, update URL, protected paths (update system)
+scripts/                Dev-only scripts (white-label snapshot, not shipped)</div>
 
 <!-- ================================================================== -->
 <h2 id="boot-sequence">2. Boot Sequence</h2>
@@ -715,6 +719,14 @@ useCachedData({
   <tr><th>File</th><th>Purpose</th></tr>
   <tr><td><span class="file-path">modules/_types.ts</span></td><td>ModuleManifest interface definition</td></tr>
   <tr><td><span class="file-path">modules/_registry.ts</span></td><td>Active module list + derived registrations</td></tr>
+</table>
+
+<h3>Setup &amp; Updates</h3>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">setup/dashboard.js</span></td><td>Local web dashboard: config editor, asset management, feature flags, EAS builds, module import, update system with license activation, backup/restore. Zero npm dependencies.</td></tr>
+  <tr><td><span class="file-path">manifest.json</span></td><td>Core version, update URL, protected paths list, core plugins list. Read by the dashboard for update checks; updated by the update system when a new version is applied.</td></tr>
+  <tr><td><span class="file-path">setup/.license</span></td><td>Buyer&rsquo;s license key (gitignored). Stored by the dashboard, sent to the license server for update checks.</td></tr>
 </table>
 
 <h3>Types</h3>
