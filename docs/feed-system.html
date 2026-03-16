@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — Feed System</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn { border-left-color: var(--warning); }
+  .callout-error { border-left-color: var(--error); }
+  .callout-success { border-left-color: var(--success); }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Feed System</h1>
+<p class="subtitle">Posts, reactions, comments, sticky posts, surveys, bookmarks, and media in the community feed.</p>
+
+<div class="callout">
+  <strong>Key files:</strong>
+  <span class="file-path">services/api/feeds.ts</span> (feed API),
+  <span class="file-path">services/api/comments.ts</span> (comment API),
+  <span class="file-path">types/feed.ts</span> &amp; <span class="file-path">types/comment.ts</span> (types),
+  <span class="file-path">components/feed/</span> (all feed UI),
+  <span class="file-path">hooks/useFeedReactions.ts</span> &amp; <span class="file-path">hooks/useFeedActions.ts</span> (shared logic),
+  <span class="file-path">contexts/FeedModalsContext.tsx</span> (hoisted modals).
+  <br><br>
+  The feed is the core content surface. Posts come from the Fluent Community API. Multi-reactions are handled by the <code>tbc-multi-reactions</code> companion plugin.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Architecture Overview</a></li>
+    <li><a href="#types">Data Types</a></li>
+    <li><a href="#feeds-api">Feeds API</a></li>
+    <li><a href="#comments-api">Comments API</a></li>
+    <li><a href="#screens">Feed Screens</a></li>
+    <li><a href="#components">Feed Components</a></li>
+    <li><a href="#reactions">Multi-Reaction System</a></li>
+    <li><a href="#comments">Comments</a></li>
+    <li><a href="#sticky">Sticky / Pinned Posts</a></li>
+    <li><a href="#surveys">Surveys &amp; Polls</a></li>
+    <li><a href="#bookmarks">Bookmarks</a></li>
+    <li><a href="#media">Media in Posts</a></li>
+    <li><a href="#caching">Feed Caching</a></li>
+    <li><a href="#modals">Hoisted Modals Pattern</a></li>
+    <li><a href="#ticker">Ticker Polling</a></li>
+    <li><a href="#hooks">Shared Hooks Reference</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="overview">1. Architecture Overview</h2>
+
+<pre><code>┌────────────────────────────────────────────────────────────────┐
+│                        Feed Screens                            │
+│  activity.tsx · space/[slug] · bookmarks.tsx · feed/[id].tsx   │
+└──────────────────────┬─────────────────────────────────────────┘
+                       │ uses
+         ┌─────────────┼──────────────┐
+         ▼             ▼              ▼
+  useFeedActions  useFeedReactions  useCachedData
+  (nav, CRUD)    (optimistic react)  (SWR cache)
+         │             │              │
+         ▼             ▼              ▼
+┌────────────────────────────────────────┐
+│          services/api/feeds.ts         │
+│          services/api/comments.ts      │
+│   (all HTTP calls to Fluent Community) │
+└────────────────────────────────────────┘
+         │
+         ▼
+┌────────────────────────────────────────┐
+│    FeedModalsContext (hoisted modals)   │
+│  Menu · ReactionPicker · Breakdown     │
+│  MediaViewer · ReportModal             │
+└────────────────────────────────────────┘</code></pre>
+
+<p>Each feed screen follows the same pattern:</p>
+<ol>
+  <li>Fetch feeds via <code>useCachedData</code> (stale-while-revalidate from AsyncStorage)</li>
+  <li>Pass <code>feeds</code> + <code>setFeeds</code> to <code>useFeedReactions</code> and <code>useFeedActions</code></li>
+  <li>Render with <code>FeedList</code> → <code>FeedCard</code> components</li>
+  <li>All modals (menu, picker, breakdown, media, report) are hoisted into <code>FeedModalsProvider</code> — one instance per screen, not per card</li>
+</ol>
+
+<!-- ================================================================== -->
+<h2 id="types">2. Data Types</h2>
+
+<h3>Feed</h3>
+<p>Defined in <span class="file-path">types/feed.ts</span>. Main post object from Fluent Community.</p>
+
+<table>
+  <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+  <tr><td><code>id</code></td><td><code>number</code></td><td>Unique post ID</td></tr>
+  <tr><td><code>user_id</code></td><td><code>number</code></td><td>Author</td></tr>
+  <tr><td><code>space_id</code></td><td><code>number | null</code></td><td><code>null</code> = community-level post</td></tr>
+  <tr><td><code>type</code></td><td><code>FeedType</code></td><td><code>'feed' | 'text' | 'announcement' | 'course_lesson' | 'question'</code></td></tr>
+  <tr><td><code>content_type</code></td><td><code>ContentType</code></td><td><code>'text' | 'markdown' | 'html' | 'document' | 'survey' | 'video' | 'audio'</code></td></tr>
+  <tr><td><code>title</code></td><td><code>string | null</code></td><td>Optional post title</td></tr>
+  <tr><td><code>slug</code></td><td><code>string</code></td><td>URL-safe identifier</td></tr>
+  <tr><td><code>message</code></td><td><code>string</code></td><td>Raw content (markdown/text)</td></tr>
+  <tr><td><code>message_rendered</code></td><td><code>string</code></td><td>Server-rendered HTML</td></tr>
+  <tr><td><code>is_sticky</code></td><td><code>boolean | number</code></td><td>Pinned post flag (0/1 or true/false)</td></tr>
+  <tr><td><code>meta</code></td><td><code>object</code></td><td>Media, survey config, video URLs — see <a href="#media">Media</a></td></tr>
+  <tr><td><code>has_user_react</code></td><td><code>boolean</code></td><td>Whether current user has reacted</td></tr>
+  <tr><td><code>user_reaction_type</code></td><td><code>ReactionType | null</code></td><td>Which reaction type the user chose</td></tr>
+  <tr><td><code>reaction_breakdown</code></td><td><code>ReactionBreakdown[]</code></td><td>Per-type count + emoji (from tbc-multi-reactions)</td></tr>
+  <tr><td><code>bookmarked</code></td><td><code>boolean</code></td><td>Whether user bookmarked this post</td></tr>
+  <tr><td><code>xprofile</code></td><td><code>XProfile</code></td><td>Author profile (avatar, badges, verified)</td></tr>
+  <tr><td><code>space</code></td><td><code>FeedSpace</code></td><td>Space info if posted in a space</td></tr>
+</table>
+
+<h3>Comment</h3>
+<p>Defined in <span class="file-path">types/comment.ts</span>.</p>
+
+<table>
+  <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+  <tr><td><code>id</code></td><td><code>number</code></td><td>Unique comment ID</td></tr>
+  <tr><td><code>post_id</code></td><td><code>string | number</code></td><td>Parent feed ID</td></tr>
+  <tr><td><code>parent_id</code></td><td><code>number | null</code></td><td><code>null</code> = top-level, non-null = reply</td></tr>
+  <tr><td><code>message</code></td><td><code>string</code></td><td>Raw content</td></tr>
+  <tr><td><code>message_rendered</code></td><td><code>string</code></td><td>Server-rendered HTML</td></tr>
+  <tr><td><code>is_sticky</code></td><td><code>number | string</code></td><td>Pinned comment (0/1)</td></tr>
+  <tr><td><code>reaction_breakdown</code></td><td><code>ReactionBreakdown[]</code></td><td>Same shape as feed reactions</td></tr>
+  <tr><td><code>meta</code></td><td><code>CommentMeta</code></td><td>Media preview, images</td></tr>
+  <tr><td><code>replies</code></td><td><code>Comment[]</code></td><td>Nested replies (if populated)</td></tr>
+</table>
+
+<h3>ReactionBreakdown</h3>
+
+<pre><code>interface ReactionBreakdown {
+  type: ReactionType;    // 'like', 'love', 'custom_123', etc.
+  emoji: string;         // '👍', '❤️', etc.
+  icon_url?: string;     // Custom icon image (null for emoji-only)
+  name: string;          // Display name
+  count: number;         // How many users reacted with this type
+  color: string;         // Hex color for UI accents
+}</code></pre>
+
+<h3>SurveyConfig</h3>
+
+<pre><code>interface SurveyConfig {
+  type: 'single_choice' | 'multi_choice';
+  options: SurveyOption[];
+  end_date: string;      // ISO date or empty string
+}
+
+interface SurveyOption {
+  slug: string;          // 'opt_1', 'opt_2', etc.
+  label: string;
+  vote_counts?: number;  // Omitted when 0
+  voted?: boolean;       // Omitted when false
+}</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="feeds-api">3. Feeds API</h2>
+
+<p>All feed endpoints in <span class="file-path">services/api/feeds.ts</span>. Exported as both named functions and <code>feedsApi</code> object.</p>
+
+<table>
+  <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
+  <tr><td><code>getFeeds(options)</code></td><td>GET</td><td><code>/feeds</code></td><td>List feeds with pagination, space/user/search filters. Sticky posts in <code>response.data.sticky</code>.</td></tr>
+  <tr><td><code>getFeedById(id)</code></td><td>GET</td><td><code>/feeds/{id}/by-id</code></td><td>Single post by numeric ID</td></tr>
+  <tr><td><code>getFeedBySlug(slug)</code></td><td>GET</td><td><code>/feeds/{slug}/by-slug</code></td><td>Single post by URL slug</td></tr>
+  <tr><td><code>createFeed(data)</code></td><td>POST</td><td><code>/feeds</code></td><td>Create a new post</td></tr>
+  <tr><td><code>updateFeed(id, data)</code></td><td>POST</td><td><code>/feeds/{id}</code></td><td>Edit an existing post</td></tr>
+  <tr><td><code>deleteFeed(id)</code></td><td>DELETE</td><td><code>/feeds/{id}</code></td><td>Delete a post (with confirmation in UI)</td></tr>
+  <tr><td><code>toggleSticky(id, isSticky)</code></td><td>PATCH</td><td><code>/feeds/{id}</code></td><td>Pin/unpin a post</td></tr>
+  <tr><td><code>reactToFeed(feedId, type, hasReact)</code></td><td>POST</td><td><code>/feeds/{id}/react</code></td><td>Add/remove reaction (sends <code>X-TBC-Reaction-Type</code> header)</td></tr>
+  <tr><td><code>swapReactionType(id, objectType, type)</code></td><td>POST</td><td><code>TBC_MR_URL/swap</code></td><td>Change existing reaction to different type</td></tr>
+  <tr><td><code>toggleBookmark(feedId, isBookmarked)</code></td><td>POST</td><td><code>/feeds/{id}/react</code></td><td>Bookmark/unbookmark (uses <code>react_type: 'bookmark'</code>)</td></tr>
+  <tr><td><code>getBookmarks(options)</code></td><td>GET</td><td><code>/feeds/bookmarks</code></td><td>List user's bookmarked posts</td></tr>
+  <tr><td><code>getFeedReactions(feedId, type?)</code></td><td>GET</td><td><code>/feeds/{id}/reactions</code></td><td>List reactions on a post</td></tr>
+  <tr><td><code>getReactionBreakdown(type, id)</code></td><td>GET</td><td><code>TBC_MR_URL/breakdown/{type}/{id}</code></td><td>Server-accurate reaction counts (for reconciliation)</td></tr>
+  <tr><td><code>getReactionBreakdownUsers(type, id)</code></td><td>GET</td><td><code>TBC_MR_URL/breakdown/{type}/{id}/users</code></td><td>Who reacted with what (for breakdown modal)</td></tr>
+  <tr><td><code>castSurveyVote(feedId, slugs[])</code></td><td>POST</td><td><code>/feeds/{id}/apps/survey-vote</code></td><td>Cast or change survey vote</td></tr>
+  <tr><td><code>getSurveyVoters(feedId, slug)</code></td><td>GET</td><td><code>/feeds/{id}/apps/survey-voters/{slug}</code></td><td>Who voted for a specific option</td></tr>
+  <tr><td><code>getTicker(since?)</code></td><td>GET</td><td><code>/feeds/ticker</code></td><td>Keepalive for Pusher broadcast eligibility</td></tr>
+  <tr><td><code>getWelcomeBanner()</code></td><td>GET</td><td><code>/feeds/welcome-banner</code></td><td>Home page welcome banner config</td></tr>
+  <tr><td><code>getOembed(url)</code></td><td>GET</td><td><code>/feeds/oembed</code></td><td>Link/video embed metadata</td></tr>
+</table>
+
+<h3>GetFeedsOptions</h3>
+<pre><code>interface GetFeedsOptions {
+  page?: number;           // Default: 1
+  per_page?: number;       // Default: DEFAULT_PER_PAGE (20)
+  space?: string;          // Space slug (not ID!)
+  user_id?: number;        // Filter by author
+  search?: string;         // Full-text search
+  topic_slug?: string;     // Filter by topic
+  order_by_type?: 'recent' | 'popular';
+  disable_sticky?: boolean;
+}</code></pre>
+
+<div class="callout-error callout">
+  <strong>Use <code>space</code> (slug), not <code>space_id</code>.</strong> The Fluent Community web app sends <code>{"space": "book-club"}</code>, not <code>{"space_id": 50}</code>. Using <code>space_id</code> will silently fail.
+</div>
+
+<h3>CreateFeedData</h3>
+<pre><code>interface CreateFeedData {
+  message: string;
+  title?: string;
+  space?: string;          // Slug, not ID
+  type?: 'text' | 'feed';
+  content_type?: 'text' | 'markdown' | 'html';
+  privacy?: 'public' | 'private';
+  status?: 'published' | 'draft';
+  media_images?: Array&lt;{ url, type, width, height, provider }&gt;;
+  media?: { type: 'oembed'; url: string };
+  meta?: Record&lt;string, any&gt;;
+  survey?: { type, options: { label, slug }[], end_date };
+}</code></pre>
+
+<h3>FeedsResponse</h3>
+<pre><code>interface FeedsResponse {
+  feeds: {
+    data: Feed[];
+    current_page: number;
+    per_page: number;
+    from: number;
+    to: number;
+    has_more: boolean;
+    total: number;
+  };
+  sticky: Feed[] | null;   // Pinned posts (separate from data array)
+  execution_time: number;
+}</code></pre>
+
+<div class="callout callout-warn">
+  <strong>Sticky post shape varies.</strong> The <code>sticky</code> field can be <code>null</code>, an empty array, or an array of Feed objects depending on the Fluent Community version. Always handle all cases.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="comments-api">4. Comments API</h2>
+
+<p>All comment endpoints in <span class="file-path">services/api/comments.ts</span>. Exported as <code>commentsApi</code> object.</p>
+
+<table>
+  <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
+  <tr><td><code>getComments(postId, options)</code></td><td>GET</td><td><code>/feeds/{postId}/comments</code></td><td>List comments (flat array + sticky comment)</td></tr>
+  <tr><td><code>getComment(commentId)</code></td><td>GET</td><td><code>/comments/{id}</code></td><td>Single comment by ID</td></tr>
+  <tr><td><code>createComment(postId, data)</code></td><td>POST</td><td><code>/feeds/{postId}/comments</code></td><td>Post a new comment</td></tr>
+  <tr><td><code>updateComment(postId, commentId, data)</code></td><td>POST</td><td><code>/feeds/{postId}/comments/{id}</code></td><td>Edit an existing comment</td></tr>
+  <tr><td><code>deleteComment(postId, commentId)</code></td><td>DELETE</td><td><code>/feeds/{postId}/comments/{id}</code></td><td>Delete a comment</td></tr>
+  <tr><td><code>reactToComment(postId, commentId, hasReacted, type)</code></td><td>POST</td><td><code>/feeds/{postId}/comments/{id}/reactions</code></td><td>Toggle reaction on comment</td></tr>
+  <tr><td><code>pinComment(postId, commentId, pin)</code></td><td>PATCH</td><td><code>/feeds/{postId}/comments/{id}</code></td><td>Pin/unpin comment (FC 2.2.01+)</td></tr>
+</table>
+
+<div class="callout callout-error">
+  <strong>Use <code>comment</code>, not <code>message</code>.</strong> The create/update comment payload field is <code>comment</code>, matching the Fluent Community web app. Using <code>message</code> will silently fail.
+</div>
+
+<h3>CreateCommentData</h3>
+<pre><code>interface CreateCommentData {
+  comment: string;        // NOT 'message'!
+  content_type?: 'text' | 'markdown' | 'html';
+  parent_id?: number;     // For nested replies
+  media_images?: Array&lt;{ url, type, width, height, provider }&gt;;
+  meta?: Record&lt;string, any&gt;;
+}</code></pre>
+
+<h3>CommentsResponse</h3>
+<pre><code>interface CommentsResponse {
+  comments: Comment[];          // Flat array of all comments
+  sticky_comment?: Comment;     // Pinned comment (FC 2.2.01+)
+}</code></pre>
+
+<h3>Comment reaction payload</h3>
+<p>Unlike feed reactions which send <code>{ react_type, remove? }</code>, comment reactions use a toggle state:</p>
+<pre><code>// Add reaction:    { state: 1 }
+// Remove reaction: { state: 0 }
+// + X-TBC-Reaction-Type header for multi-reaction tracking</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="screens">5. Feed Screens</h2>
+
+<table>
+  <tr><th>Screen</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>Activity</td><td><span class="file-path">app/(tabs)/activity.tsx</span></td><td>Main community feed — all posts with sticky merged at top</td></tr>
+  <tr><td>Space Feed</td><td><span class="file-path">app/space/[slug]/index.tsx</span></td><td>Posts within a specific space, with join/lock handling</td></tr>
+  <tr><td>Bookmarks</td><td><span class="file-path">app/bookmarks.tsx</span></td><td>User's saved posts</td></tr>
+  <tr><td>Post Detail</td><td><span class="file-path">app/feed/[id].tsx</span></td><td>Single post view (deep links, push notifications)</td></tr>
+  <tr><td>Comments</td><td><span class="file-path">app/comments/[postId].tsx</span></td><td>Full comment thread screen</td></tr>
+  <tr><td>Composer</td><td><span class="file-path">app/create-post.tsx</span></td><td>Create/edit posts with media, surveys, markdown</td></tr>
+</table>
+
+<p>All list screens (activity, space, bookmarks) follow the same pattern:</p>
+
+<pre><code>// 1. Fetch with SWR cache
+const { data: feeds, setData: setFeeds, refresh } = useCachedData&lt;Feed[]&gt;({
+  cacheKey: 'tbc_activity_feeds',
+  fetcher: () => getFeeds({ page: 1 }),
+  transform: (res) => mergeStickyFeeds(res),
+  invalidateOn: CACHE_EVENTS.FEEDS,
+});
+
+// 2. Wire up shared hooks
+const handleReact = useFeedReactions(feeds, setFeeds);
+const actions = useFeedActions({ setFeeds, refresh });
+
+// 3. Render
+&lt;FeedModalsProvider&gt;
+  &lt;FeedList
+    feeds={feeds}
+    onReact={handleReact}
+    onCommentPress={actions.handleCommentPress}
+    onBookmarkToggle={actions.handleBookmarkToggle}
+    onEdit={actions.handleEdit}
+    onDelete={actions.handleDelete}
+    onAuthorPress={actions.handleAuthorPress}
+    onSpacePress={actions.handleSpacePress}
+  /&gt;
+&lt;/FeedModalsProvider&gt;</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="components">6. Feed Components</h2>
+
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td><code>FeedList</code></td><td><span class="file-path">components/feed/FeedList.tsx</span></td><td>FlashList wrapper with pull-to-refresh. Accepts ~15 callback props for all feed actions.</td></tr>
+  <tr><td><code>FeedCard</code></td><td><span class="file-path">components/feed/FeedCard.tsx</span></td><td>Individual post card — author, content, media grid, reactions, bookmark, 3-dot menu. Two variants: <code>compact</code> (list) and <code>full</code> (detail).</td></tr>
+  <tr><td><code>CommentSheet</code></td><td><span class="file-path">components/feed/CommentSheet.tsx</span></td><td>Full comment panel with list, editor (10tap), reactions, replies, pin.</td></tr>
+  <tr><td><code>CommentItem</code></td><td><span class="file-path">components/feed/CommentItem.tsx</span></td><td>Single comment bubble — author, timestamp, content, reactions, images.</td></tr>
+  <tr><td><code>SurveyCard</code></td><td><span class="file-path">components/feed/SurveyCard.tsx</span></td><td>Poll/survey renderer — options, vote toggle, percentage bars, expiration.</td></tr>
+  <tr><td><code>ReactionPicker</code></td><td><span class="file-path">components/feed/ReactionPicker.tsx</span></td><td>Horizontal emoji picker popover — positioned near the reaction button, flips if near screen top.</td></tr>
+  <tr><td><code>ReactionBreakdownModal</code></td><td><span class="file-path">components/feed/ReactionBreakdownModal.tsx</span></td><td>Bottom sheet showing who reacted with what — "All" tab + per-reaction tabs with user list.</td></tr>
+  <tr><td><code>ReactionIcon</code></td><td><span class="file-path">components/feed/ReactionIcon.tsx</span></td><td>Renders a reaction icon (custom image URL or emoji fallback).</td></tr>
+</table>
+
+<h3>FeedCard Anatomy</h3>
+<pre><code>┌─────────────────────────────────────────────┐
+│ [Pin Badge]                                 │
+│ [Avatar] Author · Space · Time     [⋯ Menu] │
+│                                             │
+│ Post Title (if present)                     │
+│ Post content (collapsed at 132px, "More")   │
+│                                             │
+│ ┌─────────┐ ┌─────────┐                    │
+│ │  Image  │ │  Image  │  (grid: 1/2/2x2)   │
+│ └─────────┘ └─────────┘                    │
+│                                             │
+│ [Survey Card] (if content_type = 'survey')  │
+│                                             │
+│ [🔖 Bookmark]                               │
+│ [👍 React] [💬 Comment]    [😍❤️👍 Breakdown]│
+└─────────────────────────────────────────────┘</code></pre>
+
+<ul>
+  <li><strong>Compact mode:</strong> Content truncated at 132px height with "Show more" toggle</li>
+  <li><strong>Full mode:</strong> Content always expanded (used in post detail screen)</li>
+  <li><strong>Reaction button:</strong> Tap = default like, long-press = open picker</li>
+  <li><strong>Breakdown:</strong> Tappable emoji summary in footer → opens <code>ReactionBreakdownModal</code></li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="reactions">7. Multi-Reaction System</h2>
+
+<p>Powered by the <code>tbc-multi-reactions</code> companion plugin. Fluent Community core only understands "like" — the plugin adds type tracking, custom emoji, and breakdown data.</p>
+
+<h3>Reaction Config</h3>
+<p><span class="file-path">hooks/useReactionConfig.ts</span> fetches <code>GET TBC_MR_URL/config</code> once per session. Shared via module-level cache (not Context).</p>
+
+<pre><code>interface ReactionConfig {
+  id: string;              // 'like', 'love', 'laugh', 'wow', 'sad', 'angry', 'custom_123'
+  name: string;            // Display name
+  emoji: string;           // '👍', '❤️', etc.
+  icon_url: string | null; // Custom icon URL (null = use emoji)
+  color: string;           // Hex color
+  order: number;           // Sort order in picker
+}
+
+interface DisplayConfig {
+  count: number;           // How many emoji to show in summary (default 5)
+  overlap: number;         // Negative margin px for stacked icons
+  stroke: number;          // Border width on summary icons
+}</code></pre>
+
+<h3>Reaction Flow</h3>
+<ol>
+  <li><strong>Tap reaction button</strong> — toggles the default reaction (like). If already reacted with the same type, removes it.</li>
+  <li><strong>Long-press reaction button</strong> — opens <code>ReactionPicker</code> popover with all configured types.</li>
+  <li><strong>Pick a type</strong> — if same type as current, removes. If different type, calls <code>swapReactionType()</code>. If no existing reaction, calls <code>reactToFeed()</code>.</li>
+  <li><strong>Optimistic update</strong> — <code>useFeedReactions</code> immediately updates the feed state (count, breakdown, user reaction).</li>
+  <li><strong>API call</strong> — fires in background via <code>optimisticUpdate()</code>. On failure, reverts to snapshot.</li>
+  <li><strong>Reconciliation</strong> — after successful API call, <code>reconcileReactionBreakdown()</code> fetches server-accurate counts and silently updates state.</li>
+</ol>
+
+<div class="callout">
+  <strong>How the header trick works:</strong> Feed reactions always send <code>react_type: 'like'</code> to Fluent Community (it only understands "like"). The actual type is sent in the <code>X-TBC-Reaction-Type</code> header, which the <code>tbc-multi-reactions</code> plugin intercepts and stores.
+</div>
+
+<h3>useFeedReactions Hook</h3>
+<p><span class="file-path">hooks/useFeedReactions.ts</span> — shared across all feed screens.</p>
+
+<pre><code>const handleReact = useFeedReactions(feeds, setFeeds);
+
+// Usage: handleReact(feedId, 'love');
+// Determines add/remove/swap automatically from current state</code></pre>
+
+<h3>Optimistic Breakdown Updates</h3>
+<p><span class="file-path">utils/reactionHelpers.ts</span> provides two functions:</p>
+
+<table>
+  <tr><th>Function</th><th>Purpose</th></tr>
+  <tr><td><code>updateBreakdownOptimistically(breakdown, type, action, oldType, getReaction)</code></td><td>Returns a new <code>reaction_breakdown[]</code> reflecting add/remove/swap. Increments/decrements counts, adds new entries from config, removes entries at count 0.</td></tr>
+  <tr><td><code>reconcileReactionBreakdown(objectType, objectId, setState)</code></td><td>Non-blocking fetch of server-accurate breakdown. Silently merges into state. Failure is ignored (optimistic UI is already correct).</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="comments">8. Comments</h2>
+
+<h3>Loading Comments</h3>
+<p><code>getComments(postId)</code> returns a flat array of all comments plus an optional <code>sticky_comment</code>. Comments with non-null <code>parent_id</code> are replies.</p>
+
+<h3>Nested Replies</h3>
+<p>Comments use <code>parent_id</code> to indicate hierarchy. The UI renders replies with left-border indentation under their parent. Only one level of nesting is supported in the UI (replies to replies appear at the same indent level).</p>
+
+<h3>Comment Editor</h3>
+<p><code>CommentSheet</code> uses a 10tap rich text editor with toolbar for formatting, media attachment, and GIF picker. When editing an existing comment, the HTML content is converted to markdown via <code>htmlToMarkdown()</code> utility for the editor input.</p>
+
+<h3>Comment Actions</h3>
+<ul>
+  <li><strong>Create:</strong> <code>createComment(postId, { comment, content_type?, parent_id?, media_images? })</code></li>
+  <li><strong>Edit:</strong> <code>updateComment(postId, commentId, { comment, content_type? })</code></li>
+  <li><strong>Delete:</strong> <code>deleteComment(postId, commentId)</code> with confirmation dialog</li>
+  <li><strong>React:</strong> <code>reactToComment(postId, commentId, hasReacted, type)</code> — state toggle format</li>
+  <li><strong>Pin:</strong> <code>pinComment(postId, commentId, pin)</code> — top-level only, auto-unpins previous (FC 2.2.01+)</li>
+</ul>
+
+<h3>Comment Images</h3>
+<p>Images can appear in multiple locations within the comment <code>meta</code> object:</p>
+<ul>
+  <li><code>meta.media_images[]</code> — dedicated array</li>
+  <li><code>meta.media_items[]</code> — generic media array</li>
+  <li><code>meta.media_preview.image</code> — single preview image</li>
+</ul>
+<p>The UI checks all three locations and displays any found images below the comment text.</p>
+
+<!-- ================================================================== -->
+<h2 id="sticky">9. Sticky / Pinned Posts</h2>
+
+<p>Pinned posts appear at the top of the feed, above regular posts.</p>
+
+<h3>API</h3>
+<pre><code>// Pin a post
+feedsApi.toggleSticky(feedId, true);
+// → PATCH /feeds/{id} with { is_sticky: 1, query_timestamp: Date.now() }
+
+// Unpin a post
+feedsApi.toggleSticky(feedId, false);
+// → PATCH /feeds/{id} with { is_sticky: 0, query_timestamp: Date.now() }</code></pre>
+
+<h3>Response Handling</h3>
+<p><code>getFeeds()</code> returns sticky posts in a separate <code>sticky</code> field (not mixed into <code>feeds.data</code>). Feed screens merge them at the front of the array:</p>
+
+<pre><code>// Activity screen merges sticky + regular feeds
+const allFeeds = [...(sticky || []), ...feeds.data];</code></pre>
+
+<h3>UI</h3>
+<ul>
+  <li>Pinned posts show a blue badge with pin icon and "Pinned" text</li>
+  <li>Activity screen: users can pin their own posts</li>
+  <li>Space screen: moderators/admins can pin any post (if <code>canPin</code> callback is provided)</li>
+</ul>
+
+<h3>Pinned Comments</h3>
+<p>Comments also support pinning via <code>pinComment()</code>. The pinned comment appears at the top of the comment list with a pin icon. Only one comment per post can be pinned (pinning a new one auto-unpins the previous).</p>
+
+<!-- ================================================================== -->
+<h2 id="surveys">10. Surveys &amp; Polls</h2>
+
+<p>Surveys are posts with <code>content_type: 'survey'</code> and config in <code>meta.survey_config</code>.</p>
+
+<h3>Creating a Survey</h3>
+<pre><code>feedsApi.createFeed({
+  message: 'What should we study next?',
+  content_type: 'survey',
+  space: 'book-club',
+  survey: {
+    type: 'single_choice',       // or 'multi_choice'
+    options: [
+      { label: 'Romans', slug: 'opt_1' },
+      { label: 'Psalms', slug: 'opt_2' },
+      { label: 'Genesis', slug: 'opt_3' },
+    ],
+    end_date: '2026-04-01',      // or '' for no expiration
+  },
+});</code></pre>
+
+<h3>Voting</h3>
+<pre><code>// Cast a vote (send option slugs, not indices)
+feedsApi.castSurveyVote(feedId, ['opt_2']);
+
+// Multi-choice: send multiple slugs
+feedsApi.castSurveyVote(feedId, ['opt_1', 'opt_3']);</code></pre>
+
+<h3>SurveyCard Behavior</h3>
+<ul>
+  <li>Options always show results inline (percentage bars + vote counts)</li>
+  <li><strong>Single choice:</strong> tap same option = unvote, tap different = switch</li>
+  <li><strong>Multi-choice:</strong> tap toggles each option independently</li>
+  <li>Optimistic update with server reconciliation (returns updated <code>survey_config</code>)</li>
+  <li>Expired surveys (end_date in past) are read-only</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="bookmarks">11. Bookmarks</h2>
+
+<p>Bookmarks use the same <code>/feeds/{id}/react</code> endpoint as reactions, with <code>react_type: 'bookmark'</code>.</p>
+
+<pre><code>// Bookmark a post
+feedsApi.toggleBookmark(feedId, false);
+// → POST /feeds/{id}/react with { react_type: 'bookmark' }
+
+// Unbookmark
+feedsApi.toggleBookmark(feedId, true);
+// → POST /feeds/{id}/react with { react_type: 'bookmark', remove: true }</code></pre>
+
+<p>The bookmark icon appears in <code>FeedCard</code>. Toggling emits <code>CACHE_EVENTS.BOOKMARKS</code> so the bookmarks screen refreshes.</p>
+
+<div class="callout callout-warn">
+  <strong>Bookmarks response shape varies.</strong> The <code>getBookmarks()</code> response structure differs between Fluent Community versions — the app normalizes it before use. Always access feeds via the normalized array.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="media">12. Media in Posts</h2>
+
+<p>Media data lives in <code>feed.meta</code>. The type of media determines the rendering strategy.</p>
+
+<h3>Images</h3>
+
+<table>
+  <tr><th>Source</th><th>Field</th><th>Rendering</th></tr>
+  <tr><td>Single image</td><td><code>meta.media_preview.image</code></td><td>Full-width image, tappable → MediaViewer</td></tr>
+  <tr><td>Multiple images</td><td><code>meta.media_items[]</code></td><td>Grid layout: 1, 2, or 2×2. 4+ images show "+N" overlay on last cell.</td></tr>
+  <tr><td>Featured image</td><td><code>featured_image</code></td><td>Fallback if no media_preview/items</td></tr>
+</table>
+
+<h3>YouTube Videos</h3>
+<p>Detected via <code>meta.media_preview.provider === 'youtube'</code> and <code>content_type === 'video'</code>. Rendered as thumbnail + play button initially. Tapping mounts an in-place <code>YouTubeEmbed</code> component.</p>
+
+<h3>Direct Video</h3>
+<p>Detected via <code>meta.media_preview.content_type === 'video'</code> (non-YouTube). Rendered with a black background and play button overlay. Tapping mounts the native <code>VideoPlayer</code> (ExoPlayer on Android, AVPlayer on iOS).</p>
+
+<h3>GIFs</h3>
+<p>Attached via <code>meta.media_preview</code> with <code>provider: 'giphy'</code>. Rendered as an auto-playing image.</p>
+
+<!-- ================================================================== -->
+<h2 id="caching">13. Feed Caching</h2>
+
+<p>All feed screens use <code>useCachedData</code> for stale-while-revalidate caching. See <a href="caching-system.html">Data Fetching &amp; Caching</a> for the full caching system reference.</p>
+
+<table>
+  <tr><th>Cache Key</th><th>Screen</th><th>Invalidation Event</th></tr>
+  <tr><td><code>tbc_activity_feeds</code></td><td>Activity</td><td><code>CACHE_EVENTS.FEEDS</code></td></tr>
+  <tr><td><code>tbc_space_feeds_{slug}</code></td><td>Space Feed</td><td><code>CACHE_EVENTS.FEEDS</code></td></tr>
+  <tr><td><code>tbc_bookmarks</code></td><td>Bookmarks</td><td><code>CACHE_EVENTS.BOOKMARKS</code></td></tr>
+  <tr><td><code>tbc_feed_{id}</code></td><td>Post Detail</td><td><code>CACHE_EVENTS.FEEDS</code></td></tr>
+</table>
+
+<p>When a post is created, edited, deleted, or has a comment added, the screen emits <code>CACHE_EVENTS.FEEDS</code> which triggers all subscribed screens to refetch.</p>
+
+<!-- ================================================================== -->
+<h2 id="modals">14. Hoisted Modals Pattern</h2>
+
+<p><span class="file-path">contexts/FeedModalsContext.tsx</span> solves the "N modals per card" problem.</p>
+
+<p><strong>Problem:</strong> Each <code>FeedCard</code> in a FlashList would render its own menu, reaction picker, breakdown modal, media viewer, and report modal — that's 5 modal components × N visible cards.</p>
+
+<p><strong>Solution:</strong> <code>FeedModalsProvider</code> renders exactly one instance of each modal at the screen level. Cards call <code>useFeedModals()</code> to open them with parameters.</p>
+
+<pre><code>// Inside FeedCard:
+const { openMenu, openReactionPicker, openReactionBreakdown, openMediaViewer, openReport } = useFeedModals();
+
+// Open menu from 3-dot button
+openMenu({
+  feed,
+  anchor: { top: buttonY, right: buttonX },
+  isOwner: feed.user_id === currentUser.id,
+  canEditOrDelete: true,
+  canPin: false,
+  isSticky: !!feed.is_sticky,
+  onEdit: () => handleEdit(feed),
+  onDelete: () => handleDelete(feed),
+});</code></pre>
+
+<p>The five hoisted modals:</p>
+<ol>
+  <li><code>DropdownMenu</code> — post options (copy link, pin, edit, delete, report)</li>
+  <li><code>ReactionPicker</code> — emoji reaction selector</li>
+  <li><code>ReactionBreakdownModal</code> — who reacted with what</li>
+  <li><code>MediaViewer</code> — full-screen image gallery with swipe</li>
+  <li><code>ReportModal</code> — report post/comment with reason picker</li>
+</ol>
+
+<!-- ================================================================== -->
+<h2 id="ticker">15. Ticker Polling</h2>
+
+<p><span class="file-path">hooks/useTickerPolling.ts</span> — keeps the user marked as "active" so the Fluent Community server doesn't skip Pusher broadcasts.</p>
+
+<ul>
+  <li>Polls <code>GET /feeds/ticker</code> every ~4 minutes (randomized 3.5–4.5 min to avoid thundering herd)</li>
+  <li>Server skips Pusher message broadcasts to users inactive &gt;5 minutes</li>
+  <li>Fires immediately on mount and on app foreground</li>
+  <li>Pauses when app is backgrounded</li>
+  <li>Only runs when user is authenticated</li>
+</ul>
+
+<pre><code>// In the main layout (authenticated area):
+useTickerPolling(isAuthenticated);</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="hooks">16. Shared Hooks Reference</h2>
+
+<table>
+  <tr><th>Hook</th><th>File</th><th>Purpose</th></tr>
+  <tr><td><code>useFeedReactions(feeds, setFeeds)</code></td><td><span class="file-path">hooks/useFeedReactions.ts</span></td><td>Returns <code>handleReact(feedId, type)</code>. Handles optimistic add/remove/swap with server reconciliation.</td></tr>
+  <tr><td><code>useFeedActions({ setFeeds, refresh, defaultSpace? })</code></td><td><span class="file-path">hooks/useFeedActions.ts</span></td><td>Returns navigation handlers (comment, author, space, composer), bookmark toggle, and delete with confirmation. Used by activity, bookmarks, and space screens.</td></tr>
+  <tr><td><code>useReactionConfig()</code></td><td><span class="file-path">hooks/useReactionConfig.ts</span></td><td>Returns <code>{ reactions, display, loading, getReaction }</code>. Fetches config once from <code>TBC_MR_URL/config</code>, caches in memory. All components share the same cached result.</td></tr>
+  <tr><td><code>useTickerPolling(enabled)</code></td><td><span class="file-path">hooks/useTickerPolling.ts</span></td><td>Background polling to keep user active for Pusher. See <a href="#ticker">Ticker Polling</a>.</td></tr>
+  <tr><td><code>useFeedModals()</code></td><td><span class="file-path">contexts/FeedModalsContext.tsx</span></td><td>Returns openers for all 5 hoisted modals. Must be inside <code>FeedModalsProvider</code>.</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="rules">17. Rules</h2>
+
+<ol>
+  <li><strong>Always send <code>space</code> (slug), never <code>space_id</code>.</strong> The Fluent Community API expects the space slug string, not the numeric ID. Using <code>space_id</code> silently fails.</li>
+  <li><strong>Comment field is <code>comment</code>, not <code>message</code>.</strong> Both create and update comment endpoints use the <code>comment</code> field name. This matches the web app payload.</li>
+  <li><strong>Use <code>useFeedReactions</code> and <code>useFeedActions</code></strong> for all feed screens. Don't implement reaction or action handling inline — these hooks handle optimistic updates, error recovery, and cache invalidation.</li>
+  <li><strong>Wrap feed screens in <code>FeedModalsProvider</code>.</strong> Never render modals inside <code>FeedCard</code> — that creates N modal instances in a FlashList. Use the hoisted modals pattern.</li>
+  <li><strong>Send <code>X-TBC-Reaction-Type</code> header</strong> with all reaction API calls. Without it, the <code>tbc-multi-reactions</code> plugin can't track the actual reaction type.</li>
+  <li><strong>Feed reactions send <code>react_type: 'like'</code>.</strong> Fluent Community core only understands "like". The header carries the real type. Comment reactions use <code>{ state: 0|1 }</code> instead.</li>
+  <li><strong>Reconcile after mutation.</strong> After any successful reaction API call, call <code>reconcileReactionBreakdown()</code> to fetch server-accurate counts. This is non-blocking and silently updates state.</li>
+  <li><strong>Handle sticky post shape variance.</strong> The <code>sticky</code> field in <code>FeedsResponse</code> can be <code>null</code>, empty array, or populated array. Always handle all cases when merging.</li>
+  <li><strong>Survey votes use option slugs, not indices.</strong> Send <code>vote_indexes: ['opt_1', 'opt_2']</code> — these are slug strings from <code>SurveyOption.slug</code>, not numeric indices.</li>
+  <li><strong>Emit cache events after mutations.</strong> After creating/editing/deleting a post, emit <code>CACHE_EVENTS.FEEDS</code>. After toggling a bookmark, emit <code>CACHE_EVENTS.BOOKMARKS</code>.</li>
+  <li><strong>Check <code>FEATURES.MULTI_REACTIONS</code></strong> before showing reaction picker and breakdown. If the multi-reactions plugin isn't installed, only simple like/unlike is available.</li>
+  <li><strong>Use <code>message_rendered</code> for display, <code>message</code> for editing.</strong> The server returns pre-rendered HTML in <code>message_rendered</code> — render it with <code>HtmlContent</code>. When editing, use <code>htmlToMarkdown(message_rendered)</code> to convert back for the editor.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  <a href="companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  Feed System &middot;
+  <a href="logging.html">Logging</a> &middot;
+  <a href="messaging.html">Messaging &amp; Chat</a> &middot;
+  <a href="module-system.html">Module System</a> &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="state-management.html">State Management</a> &middot;
+  <a href="theme-system.html">Theme System</a>
+</p>
+
+</body>
+</html>
