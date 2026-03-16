@@ -152,7 +152,7 @@ echo "[2/9] Replacing site-specific values..."
 
 # --- constants/config.ts ---
 sed -i \
-  -e "s|export const APP_NAME = 'Two Birds';|export const APP_NAME = 'My Community';|" \
+  -e "s|export const APP_NAME = 'Two Birds Community';|export const APP_NAME = 'My Community';|" \
   -e "s|export const APP_USER_AGENT = 'TBCCommunityApp/1.0';|export const APP_USER_AGENT = 'CommunityApp/1.0';|" \
   -e "/export const TBC_YT_URL/d" \
   "$TARGET_DIR/constants/config.ts"
