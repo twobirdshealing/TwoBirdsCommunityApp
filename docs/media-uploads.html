@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — Media & Uploads</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .required { background: rgba(248, 81, 73, 0.15); color: var(--error); }
+  .auto { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn {
+    border-left-color: var(--warning);
+  }
+  .callout-error {
+    border-left-color: var(--error);
+  }
+  .callout-success {
+    border-left-color: var(--success);
+  }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+  .output-example {
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0 16px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85em;
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+
+<h1>Media &amp; Uploads</h1>
+<p class="subtitle">Image picking, upload pipeline, gallery viewer, video playback, GIF picker, and YouTube embeds</p>
+
+<div class="callout">
+  <strong>Key files:</strong> <span class="file-path">services/api/media.ts</span> (upload API), <span class="file-path">utils/avatarPicker.ts</span> (image picker), <span class="file-path">components/media/</span> (display components)<br>
+  All media uploads go through a single <code>uploadMedia()</code> function. Display uses <code>expo-image</code> with memory-disk caching. Gallery viewing provides pinch-to-zoom with save/share.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Upload Pipeline Overview</a></li>
+    <li><a href="#picking">Image &amp; Video Picking</a></li>
+    <li><a href="#upload-api">Upload API</a></li>
+    <li><a href="#feed-media">Media in Feed Posts</a></li>
+    <li><a href="#image-grid">Image Grid Layout</a></li>
+    <li><a href="#gallery">Gallery Viewer (Lightbox)</a></li>
+    <li><a href="#video">Video Playback</a></li>
+    <li><a href="#youtube">YouTube Embeds</a></li>
+    <li><a href="#gifs">GIF Picker &amp; Display</a></li>
+    <li><a href="#avatars">Avatar &amp; Cover Photos</a></li>
+    <li><a href="#link-preview">Link Previews</a></li>
+    <li><a href="#files">File Reference</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="overview">1. Upload Pipeline Overview</h2>
+
+<p>The complete pipeline from user action to display:</p>
+
+<pre><code>User taps image icon
+  → ImagePicker.launchImageLibraryAsync() [quality 0.8, max 4]
+  → For each asset:
+      uploadMedia(uri, mimeType, fileName, 'feed')
+        → FormData { file, object_source }
+        → POST /feeds/media-upload (rawBody: true)
+        → Returns { media: { url, width, height, type, media_id } }
+      Add to attachments[] with dimensions
+  → Show MediaPreview thumbnails
+  → User submits post
+  → Serialize as media_images: [{ url, type, width, height, provider: 'uploader' }]
+  → POST /feeds with media_images
+  → Feed renders responsive image grid
+  → Tap image → MediaViewer (pinch zoom, save, share)</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="picking">2. Image &amp; Video Picking</h2>
+
+<h3>Avatar Picker Utility</h3>
+<p><span class="file-path">utils/avatarPicker.ts</span> provides platform-aware image picking:</p>
+
+<pre><code>import { showAvatarPicker, showCoverPicker, showImagePicker } from '@/utils/avatarPicker';
+
+// Avatar (1:1 aspect ratio)
+showAvatarPicker({
+  onImageSelected: (uri, type, fileName) => { /* upload */ },
+  onError: (msg) => Alert.alert('Error', msg),
+});
+
+// Cover photo (16:9 aspect ratio)
+showCoverPicker({
+  onImageSelected: (uri, type, fileName) => { /* upload */ },
+  onError: (msg) => Alert.alert('Error', msg),
+});</code></pre>
+
+<ul>
+  <li><strong>iOS:</strong> Shows <code>ActionSheetIOS</code> with Camera / Photo Library options</li>
+  <li><strong>Android:</strong> Shows <code>Alert</code> with the same options</li>
+  <li><strong>Permissions:</strong> Requests camera or media library permission before launching</li>
+  <li><strong>Quality:</strong> 0.8 (80% JPEG compression) by default</li>
+  <li><strong>Editing:</strong> <code>allowsEditing: true</code> — lets the user crop before confirming</li>
+</ul>
+
+<h3>Multi-Image Picking (Post Composer)</h3>
+<p>In <span class="file-path">components/composer/CreatePostContent.tsx</span>, the composer uses <code>expo-image-picker</code> directly for multi-selection:</p>
+
+<pre><code>const result = await ImagePicker.launchImageLibraryAsync({
+  mediaTypes: ['images'],
+  allowsMultipleSelection: true,
+  selectionLimit: 4 - attachments.length,  // Max 4 total
+  quality: 0.8,
+});</code></pre>
+
+<div class="callout callout-warn">
+  <strong>Max 4 images per post.</strong> The selection limit is dynamic &mdash; if 2 images are already attached, the picker allows selecting 2 more. This matches the Fluent Community web limit.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="upload-api">3. Upload API</h2>
+
+<p><span class="file-path">services/api/media.ts</span> contains the single upload function:</p>
+
+<pre><code>export async function uploadMedia(
+  uri: string,
+  type: string,         // e.g. 'image/jpeg'
+  fileName: string,
+  objectSource: string  // 'feed' | 'profile' | 'comment'
+): Promise&lt;MediaUploadResponse&gt;</code></pre>
+
+<h3>How It Works</h3>
+<ol>
+  <li>Creates a <code>FormData</code> with the file in React Native format: <code>{ uri, type, name }</code></li>
+  <li>Appends <code>object_source</code> to identify the upload context</li>
+  <li>Sends <code>POST /feeds/media-upload</code> with <code>rawBody: true</code></li>
+  <li>The <code>rawBody</code> flag tells the HTTP client to send FormData as-is (not JSON-stringified) and let FormData set its own <code>Content-Type</code> with boundary</li>
+</ol>
+
+<h3>Response Type</h3>
+<pre><code>interface MediaUploadResponse {
+  success: boolean;
+  data?: {
+    media_id: number;
+    url: string;
+    type: string;
+    width?: number;
+    height?: number;
+    mime_type?: string;
+  };
+  error?: { code: string; message: string };
+}</code></pre>
+
+<div class="callout callout-error">
+  <strong>Never set Content-Type manually for uploads.</strong> The HTTP client skips the <code>Content-Type</code> header when <code>rawBody</code> is <code>true</code>. FormData must set its own boundary. Manually setting <code>'multipart/form-data'</code> breaks the upload.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="feed-media">4. Media in Feed Posts</h2>
+
+<p><span class="file-path">components/feed/FeedCard.tsx</span> detects media type from the feed object using a priority chain:</p>
+
+<table>
+  <tr><th>Priority</th><th>Check</th><th>Media Type</th></tr>
+  <tr><td>1</td><td><code>meta.media_items</code> array exists</td><td>Multi-image or video items</td></tr>
+  <tr><td>2</td><td><code>meta.media_preview?.provider === 'youtube'</code></td><td>YouTube embed</td></tr>
+  <tr><td>3</td><td><code>meta.media_preview?.content_type === 'video'</code></td><td>Direct video file</td></tr>
+  <tr><td>4</td><td><code>meta.media_preview?.image</code></td><td>Single image (from preview)</td></tr>
+  <tr><td>5</td><td><code>feed.featured_image</code></td><td>Legacy featured image</td></tr>
+  <tr><td>6</td><td>YouTube link in message text</td><td>YouTube fallback</td></tr>
+</table>
+
+<h3>Submission Format</h3>
+<p>When creating a post with images:</p>
+<pre><code>// Images
+submitData.media_images = attachments.map(item => ({
+  url: item.url,
+  type: item.type,
+  width: item.width,
+  height: item.height,
+  provider: 'uploader',
+}));
+
+// Video embed (YouTube, Vimeo, etc.)
+submitData.media = { type: 'oembed', url: videoUrl };
+
+// GIF
+submitData.meta = {
+  media_preview: {
+    image: gifUrl,
+    type: 'image',
+    provider: 'inline',  // Server converts to 'giphy'
+    width: gifWidth,
+    height: gifHeight,
+  },
+};</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="image-grid">5. Image Grid Layout</h2>
+
+<p>FeedCard renders images in responsive grid layouts based on count:</p>
+
+<table>
+  <tr><th>Count</th><th>Layout</th><th>Description</th></tr>
+  <tr><td>1</td><td>Full width</td><td>Single image, max 400px height, maintains aspect ratio</td></tr>
+  <tr><td>2</td><td>Side-by-side</td><td>Two equal columns, horizontal split</td></tr>
+  <tr><td>3</td><td>1 + 2 grid</td><td>Left image full height, right column stacked pair</td></tr>
+  <tr><td>4+</td><td>2&times;2 grid</td><td>2&times;2 grid, 4th cell shows <code>+N</code> overlay if more than 4</td></tr>
+</table>
+
+<ul>
+  <li>Grid gap: 3px between images</li>
+  <li>All images have rounded corners</li>
+  <li>Uses <code>expo-image</code> with <code>cachePolicy="memory-disk"</code></li>
+  <li>Each image is tappable &mdash; opens MediaViewer at that index</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="gallery">6. Gallery Viewer (Lightbox)</h2>
+
+<p><span class="file-path">components/media/MediaViewer.tsx</span> provides a fullscreen image viewer:</p>
+
+<h3>Features</h3>
+<ul>
+  <li><strong>Horizontal paging</strong> &mdash; FlatList with <code>pagingEnabled</code> for swipe between images</li>
+  <li><strong>Pinch-to-zoom</strong> &mdash; react-native-reanimated gesture handler</li>
+  <li><strong>Double-tap to zoom</strong> &mdash; Toggles between 1x and 2.5x scale</li>
+  <li><strong>Pan when zoomed</strong> &mdash; Two-finger pan gesture for zoomed images</li>
+  <li><strong>Image counter</strong> &mdash; Shows "3/10" when multiple images</li>
+  <li><strong>Thumbnail strip</strong> &mdash; 48x48 thumbnail row at bottom for quick navigation</li>
+  <li><strong>Auto zoom reset</strong> &mdash; Resets to 1x when swiping to next image</li>
+</ul>
+
+<h3>Top Bar Actions</h3>
+<table>
+  <tr><th>Action</th><th>Implementation</th></tr>
+  <tr><td>Close</td><td>Top-left X button, dismisses modal</td></tr>
+  <tr><td>Save to Gallery</td><td>Downloads via <code>expo-file-system</code>, saves via <code>expo-media-library</code></td></tr>
+  <tr><td>Share</td><td>Downloads to cache, opens native share sheet via <code>expo-sharing</code></td></tr>
+</table>
+
+<h3>Usage</h3>
+<pre><code>&lt;MediaViewer
+  visible={showViewer}
+  images={imageUrls}         // string[] of image URLs
+  initialIndex={tappedIndex} // Start at the image user tapped
+  onClose={() => setShowViewer(false)}
+/&gt;</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="video">7. Video Playback</h2>
+
+<p><span class="file-path">components/media/VideoPlayer.tsx</span> handles direct video files using <code>expo-video</code>:</p>
+
+<pre><code>const player = useVideoPlayer(url, (p) => {
+  p.loop = false;
+});</code></pre>
+
+<ul>
+  <li>Shows poster image until first frame renders</li>
+  <li>Native video controls enabled</li>
+  <li>Fixed 16:9 aspect ratio</li>
+  <li>Loading indicator overlay while buffering</li>
+  <li>Callbacks: <code>onPlay</code>, <code>onEnd</code></li>
+</ul>
+
+<h3>Video in Feed Posts</h3>
+<p>Videos are lazy-loaded in FeedCard. Initially shows a black background with a play button overlay. Tapping mounts the VideoPlayer component. This avoids loading heavy video components for every post in the feed.</p>
+
+<!-- ================================================================== -->
+<h2 id="youtube">8. YouTube Embeds</h2>
+
+<p><span class="file-path">components/media/YouTubeEmbed.tsx</span> uses <code>react-native-youtube-iframe</code> for embedded playback:</p>
+
+<ul>
+  <li>Video ID extracted via <code>extractYouTubeId(url)</code> from <span class="file-path">utils/youtube.ts</span></li>
+  <li>Supports URL formats: <code>youtube.com/watch?v=</code>, <code>youtu.be/</code>, <code>youtube.com/embed/</code></li>
+  <li>Loading overlay with spinner while iframe loads</li>
+  <li>Parent controls play state via <code>playing</code> prop</li>
+</ul>
+
+<h3>Play Button Overlay</h3>
+<p><span class="file-path">components/media/PlayButtonOverlay.tsx</span> renders on top of video thumbnails:</p>
+
+<table>
+  <tr><th>Variant</th><th>Style</th></tr>
+  <tr><td><code>'youtube'</code></td><td>Red 48&times;34px pill with YouTube badge (top-left)</td></tr>
+  <tr><td><code>'video'</code></td><td>White 48&times;48px circle with play icon</td></tr>
+</table>
+
+<div class="callout">
+  <strong>Optional dependency:</strong> <code>react-native-youtube-iframe</code> is listed in <code>package.json</code> but the component gracefully handles its absence. If not installed, tapping the YouTube thumbnail opens the video in the browser via <code>Linking.openURL()</code>.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="gifs">9. GIF Picker &amp; Display</h2>
+
+<h3>GIF Picker Modal</h3>
+<p><span class="file-path">components/composer/GifPickerModal.tsx</span> provides a searchable GIF browser powered by the Giphy API:</p>
+
+<ul>
+  <li><strong>Data source:</strong> Server-proxied Giphy API via <span class="file-path">services/api/giphy.ts</span></li>
+  <li><strong>Search:</strong> Text input with 400ms debounce; empty query shows trending</li>
+  <li><strong>Layout:</strong> 2-column masonry grid</li>
+  <li><strong>Pagination:</strong> Infinite scroll, 20 GIFs per page</li>
+  <li><strong>Selection:</strong> Tap selects a GIF, uses <code>downsized_medium</code> URL for submission and <code>preview_gif</code> for thumbnails</li>
+</ul>
+
+<h3>GIF Types</h3>
+<pre><code>// types/gif.ts
+interface GifAttachment {
+  image: string;       // downsized_medium URL (for submission)
+  width: number;
+  height: number;
+  previewUrl: string;  // preview_gif URL (for display)
+}</code></pre>
+
+<h3>GIF API</h3>
+<pre><code>// services/api/giphy.ts
+searchGifs(query?: string, offset?: number)
+// Empty query → trending GIFs
+// Returns: { gifs: GiphyGif[] }</code></pre>
+
+<div class="callout callout-warn">
+  <strong>GIF provider naming.</strong> GIFs are submitted with <code>provider: 'inline'</code> but the server converts this to <code>'giphy'</code> on save. When reading feed data, check for <code>provider === 'giphy'</code>, not <code>'inline'</code>.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="avatars">10. Avatar &amp; Cover Photos</h2>
+
+<h3>ProfilePhotoPicker Component</h3>
+<p><span class="file-path">components/common/ProfilePhotoPicker.tsx</span> displays the cover photo with overlapping avatar, both tappable:</p>
+
+<ul>
+  <li>Cover photo: full-width banner with camera icon overlay</li>
+  <li>Avatar: circular image overlapping the cover bottom edge, with camera icon</li>
+  <li>Both show loading spinners during upload</li>
+  <li>Uses <code>expo-image</code> with <code>cachePolicy="memory-disk"</code></li>
+</ul>
+
+<h3>Upload Flow</h3>
+<ol>
+  <li>User taps avatar/cover &rarr; <code>showAvatarPicker()</code> or <code>showCoverPicker()</code></li>
+  <li>Camera or library picker opens with appropriate aspect ratio (1:1 or 16:9)</li>
+  <li>User crops and confirms</li>
+  <li><code>uploadMedia(uri, type, fileName, 'profile')</code> sends to server</li>
+  <li>On success &rarr; callback returns remote URL</li>
+  <li>Caller stores URL with <code>PUT /profile/{id}</code></li>
+</ol>
+
+<h3>Avatar Display Component</h3>
+<p><span class="file-path">components/common/Avatar.tsx</span> renders user avatars throughout the app with a text fallback (first letter of name) when no image is available.</p>
+
+<!-- ================================================================== -->
+<h2 id="link-preview">11. Link Previews</h2>
+
+<p><span class="file-path">components/media/LinkPreview.tsx</span> renders cards for non-video oembed content:</p>
+
+<ul>
+  <li>Two modes: compact (no thumbnail) and full (with thumbnail image)</li>
+  <li>Provider detection from domain (Instagram, TikTok, Twitter, etc.)</li>
+  <li>Provider icons shown as emoji identifiers</li>
+  <li>Tapping opens URL in browser via <code>Linking.openURL()</code></li>
+</ul>
+
+<h3>Video Embed Modal</h3>
+<p><span class="file-path">components/composer/VideoAttachModal.tsx</span> lets users paste a URL to embed:</p>
+
+<ol>
+  <li>User enters URL in text input</li>
+  <li>App fetches oembed data via <code>GET /feeds/oembed?url={url}</code></li>
+  <li>Shows preview card with title and provider</li>
+  <li>On submit, video attachment is included as <code>media: { type: 'oembed', url }</code></li>
+</ol>
+
+<!-- ================================================================== -->
+<h2 id="files">12. File Reference</h2>
+
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">services/api/media.ts</span></td><td><code>uploadMedia()</code> &mdash; single upload function for all media</td></tr>
+  <tr><td><span class="file-path">services/api/giphy.ts</span></td><td><code>searchGifs()</code> &mdash; Giphy API search and trending</td></tr>
+  <tr><td><span class="file-path">services/api/feeds.ts</span></td><td>OEmbed endpoint (<code>/feeds/oembed</code>)</td></tr>
+  <tr><td><span class="file-path">utils/avatarPicker.ts</span></td><td>Platform-aware image picker (camera + library, with aspect ratio)</td></tr>
+  <tr><td><span class="file-path">utils/youtube.ts</span></td><td><code>extractYouTubeId()</code> &mdash; parses video ID from YouTube URLs</td></tr>
+  <tr><td><span class="file-path">components/media/ImageMedia.tsx</span></td><td>Single image display with responsive sizing (max 400px height)</td></tr>
+  <tr><td><span class="file-path">components/media/MediaViewer.tsx</span></td><td>Fullscreen gallery with pinch-zoom, save, share</td></tr>
+  <tr><td><span class="file-path">components/media/VideoPlayer.tsx</span></td><td>Native video playback via <code>expo-video</code></td></tr>
+  <tr><td><span class="file-path">components/media/YouTubeEmbed.tsx</span></td><td>YouTube iframe embed (optional dep)</td></tr>
+  <tr><td><span class="file-path">components/media/PlayButtonOverlay.tsx</span></td><td>Play button variants (YouTube red pill, video white circle)</td></tr>
+  <tr><td><span class="file-path">components/media/LinkPreview.tsx</span></td><td>Link preview cards with provider detection</td></tr>
+  <tr><td><span class="file-path">components/composer/CreatePostContent.tsx</span></td><td>Post composer with image, video, GIF attachment</td></tr>
+  <tr><td><span class="file-path">components/composer/MediaPreview.tsx</span></td><td>Horizontal thumbnail strip for attached images</td></tr>
+  <tr><td><span class="file-path">components/composer/VideoAttachModal.tsx</span></td><td>URL input for video embeds</td></tr>
+  <tr><td><span class="file-path">components/composer/GifPickerModal.tsx</span></td><td>Giphy search grid with infinite scroll</td></tr>
+  <tr><td><span class="file-path">components/composer/GifPreview.tsx</span></td><td>GIF preview card in composer</td></tr>
+  <tr><td><span class="file-path">components/composer/VideoPreview.tsx</span></td><td>Video preview card in composer</td></tr>
+  <tr><td><span class="file-path">components/common/ProfilePhotoPicker.tsx</span></td><td>Avatar + cover photo picker with upload</td></tr>
+  <tr><td><span class="file-path">components/common/Avatar.tsx</span></td><td>Avatar display with text fallback</td></tr>
+  <tr><td><span class="file-path">components/feed/FeedCard.tsx</span></td><td>Feed post with media detection and grid rendering</td></tr>
+  <tr><td><span class="file-path">types/gif.ts</span></td><td><code>GifAttachment</code> interface</td></tr>
+  <tr><td><span class="file-path">types/feed.ts</span></td><td><code>Feed.meta.media_items</code>, <code>media_preview</code> types</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="rules">13. Rules</h2>
+
+<ol>
+  <li><strong>All uploads go through <code>uploadMedia()</code>.</strong> Never construct FormData or call the upload endpoint directly. The function handles the correct React Native file format, <code>rawBody</code> flag, and error response parsing.</li>
+
+  <li><strong>Never set Content-Type for uploads.</strong> The HTTP client skips Content-Type when <code>rawBody: true</code>. FormData sets its own multipart boundary. Manually setting the header breaks the upload.</li>
+
+  <li><strong>Use <code>expo-image</code> with <code>cachePolicy="memory-disk"</code> for display.</strong> All image rendering uses this for consistent caching. Don't use React Native's built-in <code>Image</code> component for remote images.</li>
+
+  <li><strong>Max 4 images per post.</strong> The picker's <code>selectionLimit</code> is dynamic: <code>4 - attachments.length</code>. Don't increase this limit &mdash; it matches the Fluent Community web UI.</li>
+
+  <li><strong>Use <code>showAvatarPicker()</code> / <code>showCoverPicker()</code> for profile images.</strong> These handle platform-specific UI (ActionSheetIOS vs Alert), permissions, and aspect ratio locking. Don't call <code>ImagePicker</code> directly for avatar/cover.</li>
+
+  <li><strong>Videos are lazy-loaded in feed.</strong> FeedCard shows a thumbnail with play overlay. The actual VideoPlayer or YouTubeEmbed mounts only on tap. Don't pre-mount video components in list items.</li>
+
+  <li><strong>GIFs use <code>downsized_medium</code> for submission, <code>preview_gif</code> for display.</strong> The downsized version is what gets stored on the server. The preview version is used in the picker grid and composer preview.</li>
+
+  <li><strong>YouTube embed is an optional dependency.</strong> <code>react-native-youtube-iframe</code> has a graceful fallback to browser. Don't make it a hard requirement. Check for its presence before importing.</li>
+
+  <li><strong>Pass <code>initialIndex</code> to MediaViewer.</strong> When opening the gallery from a grid, pass the index of the tapped image so the viewer starts at the correct position.</li>
+
+  <li><strong>Always pass <code>object_source</code> to <code>uploadMedia()</code>.</strong> Use <code>'feed'</code> for post images, <code>'profile'</code> for avatars/covers, <code>'comment'</code> for comment media. The server uses this for organization and cleanup.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  <a href="companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="deep-linking.html">Deep Linking &amp; URL Routing</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="feed-system.html">Feed System</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  Media &amp; Uploads &middot;
+  <a href="messaging.html">Messaging &amp; Chat</a> &middot;
+  <a href="module-system.html">Module System</a> &middot;
+  <a href="notifications.html">Notifications</a> &middot;
+  <a href="profile-system.html">Profile System</a> &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="registration.html">Registration &amp; Onboarding</a> &middot;
+  <a href="state-management.html">State Management</a> &middot;
+  <a href="theme-system.html">Theme System</a>
+</p>
+
+</body>
+</html>
