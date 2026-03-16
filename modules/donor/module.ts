@@ -12,6 +12,10 @@ export const donorModule: ModuleManifest = {
   id: 'donor',
   name: 'Donor Dashboard',
   version: '1.0.0',
+  description: 'Donor Dashboard menu item (WebView)',
+  author: 'Two Birds Code',
+  authorUrl: 'https://twobirdscode.com',
+  license: 'Proprietary',
 
   menuItems: [
     {

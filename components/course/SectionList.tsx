@@ -19,6 +19,7 @@ interface SectionListProps {
   completedLessons: (string | number)[];
   onLessonPress: (lesson: CourseLesson) => void;
   defaultExpanded?: boolean;
+  isEnrolled?: boolean;
 }
 
 export function SectionList({
@@ -26,6 +27,7 @@ export function SectionList({
   completedLessons,
   onLessonPress,
   defaultExpanded = true,
+  isEnrolled = true,
 }: SectionListProps) {
   const { colors: themeColors } = useTheme();
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -54,6 +56,7 @@ export function SectionList({
             </Text>
             <Text style={[styles.sectionMeta, { color: themeColors.textTertiary }]}>
               {completedCount}/{totalCount} lessons
+              {section.is_locked && section.unlock_date ? ` · Unlocks ${formatUnlockDate(section.unlock_date)}` : ''}
             </Text>
           </View>
         </View>
@@ -78,6 +81,7 @@ export function SectionList({
                 lesson={lesson}
                 index={index}
                 isCompleted={isCompleted}
+                isEnrolled={isEnrolled}
                 onPress={() => onLessonPress(lesson)}
               />
             );
@@ -86,6 +90,15 @@ export function SectionList({
       )}
     </View>
   );
+}
+
+function formatUnlockDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
 }
 
 const styles = StyleSheet.create({

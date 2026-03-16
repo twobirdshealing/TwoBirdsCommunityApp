@@ -90,6 +90,14 @@ export async function toggleLessonCompletion(
 }
 
 // -----------------------------------------------------------------------------
+// Request to Join Course (private courses)
+// -----------------------------------------------------------------------------
+
+export async function requestCourseAccess(courseId: number) {
+  return post<{ message: string }>(ENDPOINTS.COURSE_JOIN(courseId));
+}
+
+// -----------------------------------------------------------------------------
 // Export as object
 // -----------------------------------------------------------------------------
 
@@ -99,6 +107,7 @@ export const coursesApi = {
   getLessonBySlug,
   enrollInCourse,
   toggleLessonCompletion,
+  requestCourseAccess,
 };
 
 export default coursesApi;

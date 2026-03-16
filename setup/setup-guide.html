@@ -430,19 +430,17 @@ eas init</code></pre>
 <table>
   <tr><th>File</th><th>Purpose</th><th>Notes</th></tr>
   <tr><td><code>app_icon_ios.png</code></td><td>iOS app icon</td><td>1024x1024, no transparency</td></tr>
-  <tr><td><code>app_icon_android.png</code></td><td>Android legacy icon</td><td>512x512</td></tr>
-  <tr><td><code>app_icon_android_adaptive_fg.png</code></td><td>Android adaptive icon foreground</td><td>Must work with <code>adaptiveIcon.backgroundColor</code> in app.json</td></tr>
+  <tr><td><code>app_icon_android_adaptive_fg.png</code></td><td>Android adaptive icon foreground</td><td>Must work with <code>adaptiveIcon.backgroundColor</code> in app.json. Also used as Play Store listing icon.</td></tr>
   <tr><td><code>app_icon_android_adaptive_bg.png</code></td><td>Android adaptive icon background</td><td>Optional — use solid color in app.json instead</td></tr>
   <tr><td><code>app_icon_android_notification.png</code></td><td>Android notification icon</td><td>Monochrome, transparent background</td></tr>
   <tr><td><code>splash_screen_img.png</code></td><td>Splash screen logo</td><td>Centered on splash backgroundColor</td></tr>
   <tr><td><code>login_background_img.png</code></td><td>Login screen background</td><td>Full-screen background image</td></tr>
   <tr><td><code>login_logo.png</code></td><td>Login screen logo (fallback)</td><td>Overridden by server-synced logo if available</td></tr>
-  <tr><td><code>logo.png</code></td><td>Header logo (fallback)</td><td>Wide format. Overridden by server-synced logo.</td></tr>
 </table>
 
 <div class="callout">
-  <strong>Server-synced branding:</strong> The login logo and header logo are automatically pulled from your Fluent Community site.
-  The static images in <code>assets/images/</code> are fallbacks for first launch or when the server is unreachable.
+  <strong>Server-synced branding:</strong> The login logo is automatically pulled from your Fluent Community site at login.
+  The static <code>login_logo.png</code> is a fallback for first launch before server branding is cached.
 </div>
 
 <!-- ====================================================================== -->
@@ -887,25 +885,25 @@ git merge upstream/main</code></pre>
 <p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
   Setup Guide &middot;
   Setup Dashboard (<code>npm run dashboard</code>) &middot;
-  <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
-  <a href="architecture.html">Architecture</a> &middot;
-  <a href="components.html">Components</a> &middot;
-  <a href="content-creation.html">Content Creation &amp; Composer</a> &middot;
-  <a href="deep-linking.html">Deep Linking &amp; URL Routing</a> &middot;
-  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
-  <a href="companion-plugins.html">Companion Plugins</a> &middot;
-  <a href="features.html">Features</a> &middot;
-  <a href="feed-system.html">Feed System</a> &middot;
-  <a href="logging.html">Logging</a> &middot;
-  <a href="media-uploads.html">Media &amp; Uploads</a> &middot;
-  <a href="messaging.html">Messaging &amp; Chat</a> &middot;
-  <a href="module-system.html">Module System</a> &middot;
-  <a href="notifications.html">Notifications</a> &middot;
-  <a href="profile-system.html">Profile System</a> &middot;
-  <a href="pusher.html">Pusher</a> &middot;
-  <a href="registration.html">Registration &amp; Onboarding</a> &middot;
-  <a href="state-management.html">State Management</a> &middot;
-  <a href="theme-system.html">Theme System</a>
+  <a href="../docs/api-client.html">API Client &amp; HTTP Layer</a> &middot;
+  <a href="../docs/architecture.html">Architecture</a> &middot;
+  <a href="../docs/components.html">Components</a> &middot;
+  <a href="../docs/content-creation.html">Content Creation &amp; Composer</a> &middot;
+  <a href="../docs/deep-linking.html">Deep Linking &amp; URL Routing</a> &middot;
+  <a href="../docs/caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  <a href="../docs/companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="../docs/features.html">Features</a> &middot;
+  <a href="../docs/feed-system.html">Feed System</a> &middot;
+  <a href="../docs/logging.html">Logging</a> &middot;
+  <a href="../docs/media-uploads.html">Media &amp; Uploads</a> &middot;
+  <a href="../docs/messaging.html">Messaging &amp; Chat</a> &middot;
+  <a href="../docs/module-system.html">Module System</a> &middot;
+  <a href="../docs/notifications.html">Notifications</a> &middot;
+  <a href="../docs/profile-system.html">Profile System</a> &middot;
+  <a href="../docs/pusher.html">Pusher</a> &middot;
+  <a href="../docs/registration.html">Registration &amp; Onboarding</a> &middot;
+  <a href="../docs/state-management.html">State Management</a> &middot;
+  <a href="../docs/theme-system.html">Theme System</a>
 </p>
 
 </body>

@@ -8,7 +8,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "dashboard": "node setup/dashboard.js"
   },
   "dependencies": {
     "@10play/tentap-editor": "^1.0.1",

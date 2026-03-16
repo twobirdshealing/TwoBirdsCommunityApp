@@ -14,6 +14,10 @@ export const bookclubModule: ModuleManifest = {
   id: 'bookclub',
   name: 'Book Club',
   version: '1.0.0',
+  description: 'Audiobook player with bookmarks and meetings',
+  author: 'Two Birds Code',
+  authorUrl: 'https://twobirdscode.com',
+  license: 'Proprietary',
 
   // No bottom tab — accessed via home widget and /bookclub routes
 

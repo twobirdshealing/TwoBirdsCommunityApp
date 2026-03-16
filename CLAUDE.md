@@ -9,7 +9,7 @@ Dev brand: Two Birds Code (twobirdscode.com) — TBC
 
 **Architecture goal:** Keep core clean, fast, and stable — only update it for Fluent Community compatibility. New features go in as modules so they don't interfere with core code.
 
-> **Buyer-facing setup documentation lives in `docs/setup-guide.html`.**
+> **Buyer-facing setup documentation lives in `setup/setup-guide.html`.**
 > When making changes to config files, module system, or plugin structure, keep docs in sync.
 
 ## White-Label Setup
@@ -56,7 +56,7 @@ donate module - this is not part of core. This is custom to our site two birds c
 
 donor module - this is not part of core. This is custom to our site two birds church only specific to our needs not an addon that is public.
 
-Full documentation: `docs/setup-guide.html` (Module System section)
+Full documentation: `setup/setup-guide.html` (Module System section)
 
 ## Import Rules — Direct Imports Only
 

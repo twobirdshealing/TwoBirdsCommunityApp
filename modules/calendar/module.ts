@@ -14,6 +14,10 @@ export const calendarModule: ModuleManifest = {
   id: 'calendar',
   name: 'Calendar',
   version: '1.0.0',
+  description: 'Events calendar with WooCommerce integration',
+  author: 'Two Birds Code',
+  authorUrl: 'https://twobirdscode.com',
+  license: 'Proprietary',
 
   tab: {
     name: 'calendar',

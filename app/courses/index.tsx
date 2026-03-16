@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -32,7 +33,7 @@ import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { coursesApi } from '@/services/api/courses';
-import { Course } from '@/types/course';
+import { Course, CourseCategory } from '@/types/course';
 
 // -----------------------------------------------------------------------------
 // Tab type
@@ -58,10 +59,12 @@ export default function CoursesListScreen() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  // Tab & Search
+  // Tab, Search & Categories
   const [activeTab, setActiveTab] = useState<CourseTab>('all');
   const [search, setSearch] = useState('');
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [categories, setCategories] = useState<CourseCategory[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Fetch Courses
@@ -81,8 +84,10 @@ export default function CoursesListScreen() {
         page: pageNum,
         per_page: 15,
         sort_by: 'alphabetical',
+        with_categories: pageNum === 1,
         ...(activeTab === 'enrolled' && { type: 'enrolled' }),
         ...(search.trim() && { search: search.trim() }),
+        ...(activeCategory && { topic_slug: activeCategory }),
       });
 
       if (!response.success) {
@@ -90,8 +95,13 @@ export default function CoursesListScreen() {
         return;
       }
 
-      const { courses: paginatedCourses } = response.data;
+      const { courses: paginatedCourses, course_categories } = response.data;
       const newCourses = paginatedCourses.data;
+
+      // Store categories from first page fetch
+      if (course_categories && course_categories.length > 0 && pageNum === 1) {
+        setCategories(course_categories);
+      }
 
       if (shouldAppend) {
         setCourses((prev) => [...prev, ...newCourses]);
@@ -106,15 +116,15 @@ export default function CoursesListScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeTab, search]);
+  }, [activeTab, search, activeCategory]);
 
-  // Initial fetch & refetch on tab change
+  // Initial fetch & refetch on tab/category change
   useEffect(() => {
     setPage(1);
     setHasMore(true);
     setCourses([]);
     fetchCourses(1, false);
-  }, [activeTab, fetchCourses]);
+  }, [activeTab, activeCategory, fetchCourses]);
 
   // Debounced search
   const handleSearchChange = (text: string) => {
@@ -208,6 +218,48 @@ export default function CoursesListScreen() {
             )}
           </View>
         </View>
+
+        {/* Category Chips */}
+        {categories.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryChips}
+            style={[styles.categoryBar, { borderBottomColor: themeColors.border }]}
+          >
+            <Pressable
+              style={[
+                styles.categoryChip,
+                { backgroundColor: !activeCategory ? themeColors.primary : themeColors.backgroundSecondary },
+              ]}
+              onPress={() => setActiveCategory(null)}
+            >
+              <Text style={[
+                styles.categoryChipText,
+                { color: !activeCategory ? themeColors.textInverse : themeColors.textSecondary },
+              ]}>
+                All
+              </Text>
+            </Pressable>
+            {categories.map((cat) => (
+              <Pressable
+                key={cat.id}
+                style={[
+                  styles.categoryChip,
+                  { backgroundColor: activeCategory === cat.slug ? themeColors.primary : themeColors.backgroundSecondary },
+                ]}
+                onPress={() => setActiveCategory(activeCategory === cat.slug ? null : cat.slug)}
+              >
+                <Text style={[
+                  styles.categoryChipText,
+                  { color: activeCategory === cat.slug ? themeColors.textInverse : themeColors.textSecondary },
+                ]}>
+                  {cat.title}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
 
         {/* Error State */}
         {error && !loading && courses.length === 0 && (
@@ -310,6 +362,28 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.size.md,
     paddingVertical: 0,
+  },
+
+  // Category chips
+  categoryBar: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+
+  categoryChips: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
+  },
+
+  categoryChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: sizing.borderRadius.full,
+  },
+
+  categoryChipText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
   },
 
   // Footer

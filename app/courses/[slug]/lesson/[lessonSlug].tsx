@@ -41,6 +41,7 @@ import { extractYouTubeId } from '@/utils/youtube';
 import { hapticMedium, hapticLight } from '@/utils/haptics';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Button } from '@/components/common/Button';
+import { CompletionCelebration } from '@/components/course/CompletionCelebration';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -70,8 +71,10 @@ export default function LessonViewScreen() {
   const [sections, setSections] = useState<CourseSection[]>([]);
   const [track, setTrack] = useState<CourseTrack | null>(null);
   const [courseId, setCourseId] = useState<number | null>(null);
+  const [courseTitle, setCourseTitle] = useState('');
   const [courseCommentsDisabled, setCourseCommentsDisabled] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showCelebration, setShowCelebration] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
   const [justCompleted, setJustCompleted] = useState(false);
@@ -113,6 +116,7 @@ export default function LessonViewScreen() {
 
       const { course, sections: courseSections, track: courseTrack } = response.data;
       setCourseId(course.id);
+      setCourseTitle(course.title);
       setCourseCommentsDisabled(course.settings?.disable_comments === 'yes');
       setSections(courseSections);
       setTrack(courseTrack);
@@ -231,7 +235,7 @@ export default function LessonViewScreen() {
 
       if (response.data.is_completed) {
         setTimeout(() => {
-          Alert.alert('Congratulations!', 'You have completed this course!');
+          setShowCelebration(true);
         }, 1400);
       }
     } catch (err) {
@@ -365,9 +369,15 @@ export default function LessonViewScreen() {
           <View style={styles.centerContainer}>
             <Ionicons name="lock-closed" size={64} color={themeColors.textTertiary} />
             <Text style={[styles.lockedTitle, { color: themeColors.text }]}>This lesson is locked</Text>
-            <Text style={[styles.lockedMessage, { color: themeColors.textSecondary }]}>
-              Please enroll in this course to access this lesson
-            </Text>
+            {lesson.access_message ? (
+              <View style={styles.accessMessageContainer}>
+                <HtmlContent html={lesson.access_message} contentWidth={SCREEN_WIDTH - spacing.xl * 2} />
+              </View>
+            ) : (
+              <Text style={[styles.lockedMessage, { color: themeColors.textSecondary }]}>
+                Please enroll in this course to access this lesson
+              </Text>
+            )}
             <Button
               title="Back to Course"
               onPress={() => router.back()}
@@ -449,7 +459,10 @@ export default function LessonViewScreen() {
               <Text style={[styles.lessonTitle, { color: themeColors.text }]}>{lesson.title}</Text>
             )}
             {cleanedHtml && cleanedHtml.trim() !== '' ? (
-              <HtmlContent html={cleanedHtml} contentWidth={contentWidth} />
+              <HtmlContent
+                html={lesson.inline_css ? `<style>${lesson.inline_css}</style>${cleanedHtml}` : cleanedHtml}
+                contentWidth={contentWidth}
+              />
             ) : (
               <Text style={[styles.noContent, { color: themeColors.textTertiary }]}>
                 No content available for this lesson.
@@ -602,6 +615,13 @@ export default function LessonViewScreen() {
             </Animated.View>
           )}
         </View>
+
+        {/* Course Completion Celebration */}
+        <CompletionCelebration
+          visible={showCelebration}
+          courseTitle={courseTitle}
+          onDismiss={() => setShowCelebration(false)}
+        />
       </View>
     </>
   );
@@ -651,6 +671,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.sm,
     marginBottom: spacing.xxl,
+  },
+
+  accessMessageContainer: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.xxl,
+    paddingHorizontal: spacing.md,
   },
 
   // Hero

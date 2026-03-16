@@ -12,6 +12,10 @@ export const blogModule: ModuleManifest = {
   id: 'blog',
   name: 'Blog',
   version: '1.0.0',
+  description: 'WordPress blog posts and comments',
+  author: 'Two Birds Code',
+  authorUrl: 'https://twobirdscode.com',
+  license: 'Proprietary',
 
   // No bottom tab — accessed via home widget "See All" and menu item
 

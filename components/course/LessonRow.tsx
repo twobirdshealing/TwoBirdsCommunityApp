@@ -16,12 +16,14 @@ interface LessonRowProps {
   lesson: CourseLesson;
   index: number;
   isCompleted: boolean;
+  isEnrolled?: boolean;
   onPress: () => void;
 }
 
-export const LessonRow = React.memo(function LessonRow({ lesson, index, isCompleted, onPress }: LessonRowProps) {
+export const LessonRow = React.memo(function LessonRow({ lesson, index, isCompleted, isEnrolled = true, onPress }: LessonRowProps) {
   const { colors: themeColors } = useTheme();
-  const isLocked = lesson.is_locked || !lesson.can_view;
+  const isFreePreview = !isEnrolled && lesson.meta?.free_preview_lesson === 'yes';
+  const isLocked = (lesson.is_locked || !lesson.can_view) && !isFreePreview;
 
   return (
     <AnimatedPressable
@@ -62,6 +64,12 @@ export const LessonRow = React.memo(function LessonRow({ lesson, index, isComple
 
         {/* Subtitle row */}
         <View style={styles.subtitleRow}>
+          {isFreePreview && (
+            <View style={styles.badge}>
+              <Ionicons name="eye-outline" size={12} color={themeColors.primary} />
+              <Text style={[styles.badgeText, { color: themeColors.primary }]}>Preview</Text>
+            </View>
+          )}
           {lesson.content_type === 'quiz' && (
             <View style={styles.badge}>
               <Ionicons name="help-circle-outline" size={12} color={themeColors.textTertiary} />
@@ -76,6 +84,14 @@ export const LessonRow = React.memo(function LessonRow({ lesson, index, isComple
               </Text>
             </View>
           ) : null}
+          {isLocked && lesson.unclock_date && (
+            <View style={styles.badge}>
+              <Ionicons name="time-outline" size={12} color={themeColors.textTertiary} />
+              <Text style={[styles.badgeText, { color: themeColors.textTertiary }]}>
+                Unlocks {formatUnlockDate(lesson.unclock_date)}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -86,6 +102,15 @@ export const LessonRow = React.memo(function LessonRow({ lesson, index, isComple
     </AnimatedPressable>
   );
 });
+
+function formatUnlockDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);

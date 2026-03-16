@@ -130,6 +130,16 @@ export interface ModuleManifest {
   name: string;
   /** Module version (semver) */
   version: string;
+  /** Short description of what this module does */
+  description?: string;
+  /** Module author or company name */
+  author?: string;
+  /** Author or module website URL */
+  authorUrl?: string;
+  /** Software license (e.g. 'MIT', 'Proprietary') */
+  license?: string;
+  /** Minimum app version required (semver, e.g. '3.0.0') */
+  minAppVersion?: string;
   /** Tab registration — adds a bottom tab for this module */
   tab?: TabRegistration;
   /** Widget registrations — adds home screen widgets */

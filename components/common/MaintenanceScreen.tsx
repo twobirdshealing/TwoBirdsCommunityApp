@@ -52,18 +52,21 @@ export function MaintenanceScreen({
     };
   }, [onRetry]);
 
+  const logoSource = getHeaderLogoSource(branding, isDark);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.content}>
         {/* Logo */}
-        <Image
-          source={getHeaderLogoSource(branding, isDark)}
-          placeholder={require('@/assets/images/logo.png')}
-          style={styles.logo}
-          contentFit="contain"
-          cachePolicy="memory-disk"
-          transition={200}
-        />
+        {logoSource && (
+          <Image
+            source={logoSource}
+            style={styles.logo}
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            transition={200}
+          />
+        )}
 
         {/* Icon */}
         <Ionicons name="construct-outline" size={56} color={colors.textSecondary} style={styles.icon} />

@@ -38,6 +38,7 @@ import { coursesApi } from '@/services/api/courses';
 import { Course, CourseLesson, CourseSection, CourseTrack } from '@/types/course';
 import { hapticMedium } from '@/utils/haptics';
 import { Button } from '@/components/common/Button';
+import { CourseLockScreen } from '@/components/course/CourseLockScreen';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -76,6 +77,33 @@ export default function CourseDetailScreen() {
   const track = data?.track || null;
   const error = fetchError?.message || null;
   const [enrolling, setEnrolling] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Request Access (private courses)
+  // ---------------------------------------------------------------------------
+
+  const handleRequestAccess = async () => {
+    if (!course) return;
+    hapticMedium();
+    setRequesting(true);
+
+    try {
+      const response = await coursesApi.requestCourseAccess(course.id);
+
+      if (!response.success) {
+        Alert.alert('Error', response.error?.message || 'Failed to send request');
+        return;
+      }
+
+      setIsPending(true);
+    } catch (err) {
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setRequesting(false);
+    }
+  };
 
   // ---------------------------------------------------------------------------
   // Enroll
@@ -113,7 +141,8 @@ export default function CourseDetailScreen() {
   // ---------------------------------------------------------------------------
 
   const handleLessonPress = (lesson: CourseLesson) => {
-    if (lesson.is_locked || !lesson.can_view) return;
+    const isFreePreview = !isEnrolled && lesson.meta?.free_preview_lesson === 'yes';
+    if ((lesson.is_locked || !lesson.can_view) && !isFreePreview) return;
 
     router.push({
       pathname: '/courses/[slug]/lesson/[lessonSlug]',
@@ -291,29 +320,57 @@ export default function CourseDetailScreen() {
                 <Text style={[styles.instructorName, { color: themeColors.text }]}>
                   {course.creator.display_name}
                 </Text>
+                {course.creator.short_description ? (
+                  <Text style={[styles.instructorBio, { color: themeColors.textSecondary }]} numberOfLines={2}>
+                    {course.creator.short_description}
+                  </Text>
+                ) : null}
+                {(course.creator.total_courses || (course.settings?.show_instructor_students_count === 'yes' && course.creator.total_students)) ? (
+                  <View style={styles.instructorStats}>
+                    {course.creator.total_courses ? (
+                      <Text style={[styles.instructorStatText, { color: themeColors.textTertiary }]}>
+                        {course.creator.total_courses} {course.creator.total_courses === 1 ? 'Course' : 'Courses'}
+                      </Text>
+                    ) : null}
+                    {course.settings?.show_instructor_students_count === 'yes' && course.creator.total_students ? (
+                      <Text style={[styles.instructorStatText, { color: themeColors.textTertiary }]}>
+                        {course.creator.total_students} {course.creator.total_students === 1 ? 'Student' : 'Students'}
+                      </Text>
+                    ) : null}
+                  </View>
+                ) : null}
               </View>
               <Ionicons name="chevron-forward" size={18} color={themeColors.textTertiary} />
             </AnimatedPressable>
           )}
 
-          {/* Progress + Action Button */}
-          <View style={styles.actionSection}>
-            {isEnrolled ? (
-              <>
-                <View style={styles.progressSection}>
-                  <ProgressBar progress={progress} height={8} />
-                  <Text style={[styles.progressText, { color: themeColors.textSecondary }]}>
-                    {isComplete ? 'Course Complete!' : `${Math.round(progress)}% Complete`}
-                  </Text>
-                </View>
-                <Button
-                  title={isComplete ? 'Review Course' : 'Continue Learning'}
-                  icon={isComplete ? 'refresh-outline' : 'play-outline'}
-                  onPress={handleContinueLearning}
-                  style={styles.actionButton}
-                />
-              </>
-            ) : (
+          {/* Progress + Action Button / Lock Screen */}
+          {isEnrolled ? (
+            <View style={styles.actionSection}>
+              <View style={styles.progressSection}>
+                <ProgressBar progress={progress} height={8} />
+                <Text style={[styles.progressText, { color: themeColors.textSecondary }]}>
+                  {isComplete ? 'Course Complete!' : `${Math.round(progress)}% Complete`}
+                </Text>
+              </View>
+              <Button
+                title={isComplete ? 'Review Course' : 'Continue Learning'}
+                icon={isComplete ? 'refresh-outline' : 'play-outline'}
+                onPress={handleContinueLearning}
+                style={styles.actionButton}
+              />
+            </View>
+          ) : course.lockscreen_config ? (
+            <CourseLockScreen
+              config={course.lockscreen_config}
+              onEnroll={handleEnroll}
+              onRequestAccess={course.lockscreen_config.canSendRequest ? handleRequestAccess : undefined}
+              isEnrolling={enrolling}
+              isRequesting={requesting}
+              isPending={isPending}
+            />
+          ) : (
+            <View style={styles.actionSection}>
               <Button
                 title="Enroll in Course"
                 icon="add-circle-outline"
@@ -321,8 +378,8 @@ export default function CourseDetailScreen() {
                 loading={enrolling}
                 style={styles.actionButton}
               />
-            )}
-          </View>
+            </View>
+          )}
 
           {/* Course Details (if any) */}
           {courseDetails && courseDetails.trim() !== '' && (
@@ -359,6 +416,7 @@ export default function CourseDetailScreen() {
                 completedLessons={completedLessons}
                 onLessonPress={handleLessonPress}
                 defaultExpanded={sections.length <= 3}
+                isEnrolled={isEnrolled}
               />
             ))}
           </View>
@@ -478,6 +536,23 @@ const styles = StyleSheet.create({
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
     marginTop: 2,
+  },
+
+  instructorBio: {
+    fontSize: typography.size.sm,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+
+  instructorStats: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: 4,
+  },
+
+  instructorStatText: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.medium,
   },
 
   // Action

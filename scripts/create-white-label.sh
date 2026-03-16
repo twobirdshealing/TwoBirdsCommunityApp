@@ -74,7 +74,7 @@ tar -cf - \
   --exclude='android' \
   --exclude='.kotlin' \
   --exclude='app-example' \
-  --exclude='scripts/create-white-label.sh' \
+  --exclude='scripts' \
   --exclude='companion plugins' \
   --exclude='modules' \
   -C "$SOURCE_DIR" . | tar -xf - -C "$TARGET_DIR"
@@ -209,8 +209,17 @@ echo "  Done."
 
 echo "[5/7] Cleaning up..."
 
-# Remove the scripts folder from white-label (snapshot script is not for buyers)
-rm -rf "$TARGET_DIR/scripts"
+# scripts/ excluded from tar — only setup/ ships to buyers
+
+# Remove branded assets (buyers replace via dashboard — empty = dashboard shows what's needed)
+rm -f "$TARGET_DIR/assets/images/app_icon_ios.png"
+rm -f "$TARGET_DIR/assets/images/app_icon_android.png"
+rm -f "$TARGET_DIR/assets/images/app_icon_android_adaptive_fg.png"
+rm -f "$TARGET_DIR/assets/images/app_icon_android_adaptive_bg.png"
+rm -f "$TARGET_DIR/assets/images/app_icon_android_notification.png"
+rm -f "$TARGET_DIR/assets/images/splash_screen_img.png"
+rm -f "$TARGET_DIR/assets/images/login_logo.png"
+rm -f "$TARGET_DIR/assets/images/login_background_img.png"
 
 # Remove CLAUDE.md (dev-specific, not for buyers)
 rm -f "$TARGET_DIR/CLAUDE.md"

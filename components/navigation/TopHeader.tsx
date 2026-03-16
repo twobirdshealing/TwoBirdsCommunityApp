@@ -167,16 +167,16 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   const displayName = user?.displayName || user?.username || 'User';
   const username = user?.username || 'user';
   const email = user?.email;
+  const logoSource = getHeaderLogoSource(branding, isDark);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
       <View style={styles.content}>
         {/* Left: Logo or Title */}
         <View style={styles.leftSection}>
-          {showLogo ? (
+          {showLogo && logoSource ? (
             <Image
-              source={getHeaderLogoSource(branding, isDark)}
-              placeholder={require('@/assets/images/logo.png')}
+              source={logoSource}
               style={styles.logo}
               contentFit="contain"
               transition={200}

@@ -12,6 +12,10 @@ export const youtubeModule: ModuleManifest = {
   id: 'youtube',
   name: 'YouTube',
   version: '1.0.0',
+  description: 'Channel videos and playlists via YouTube Data API v3',
+  author: 'Two Birds Code',
+  authorUrl: 'https://twobirdscode.com',
+  license: 'Proprietary',
 
   // No bottom tab — accessed via home widget "See All" link
 
