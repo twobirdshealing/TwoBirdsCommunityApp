@@ -1342,10 +1342,11 @@ function applyUpdateFromTar(tarGzBuffer) {
   let newVersion = null;
 
   // Check for an embedded manifest in the update
-  const updateManifest = files.find((f) => f.path === 'manifest.json' || f.path.endsWith('/manifest.json'));
+  const normPath = (p) => p.replace(/\\/g, '/').replace(/^\.\//, '');
+  const updateManifest = files.find((f) => normPath(f.path) === 'manifest.json');
 
   // Check for package-deps.json (dependency changes)
-  const packageDeps = files.find((f) => f.path === 'package-deps.json' || f.path.endsWith('/package-deps.json'));
+  const packageDeps = files.find((f) => normPath(f.path) === 'package-deps.json');
 
   for (const file of files) {
     // Normalize path — strip leading ./ or first directory component if present
