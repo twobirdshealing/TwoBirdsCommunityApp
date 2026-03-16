@@ -144,7 +144,7 @@
     <li><a href="#display-components">Display Components</a> &mdash; Avatar, UserDisplayName, HtmlContent, etc.</li>
     <li><a href="#feedback-components">Feedback &amp; State</a> &mdash; LoadingSpinner, EmptyState, ErrorMessage, etc.</li>
     <li><a href="#form-components">Form Components</a> &mdash; DynamicFormField, SelectModal, SocialLinksForm</li>
-    <li><a href="#media-components">Media Components</a> &mdash; YouTubeEmbed, VideoPlayer, MediaViewer</li>
+    <li><a href="#media-components">Media Components</a> &mdash; YouTubeEmbed, VideoPlayer, MediaViewer, OEmbedPlayer</li>
     <li><a href="#feature-components">Feature Components</a> &mdash; Feed, Composer, Profile, Space, Course, Member, Message, Register</li>
     <li><a href="#import-rules">Import Rules &amp; Conventions</a></li>
   </ol>
@@ -857,6 +857,18 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
   </table>
 </div>
 
+<!-- OEmbedPlayer -->
+<div class="component-card">
+  <h4>OEmbedPlayer <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/media/OEmbedPlayer.tsx</span>
+  <p>WebView-based player for non-YouTube oEmbed HTML (Vimeo, Wistia, etc.). Wraps HTML in a responsive viewport with 16:9 aspect ratio. Black background (intentionally static for video players). Loading indicator while WebView initializes.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>html</td><td>string</td><td>&mdash;</td><td>oEmbed HTML from <code>lesson.meta.media.html</code></td></tr>
+  </table>
+</div>
+
 <!-- ================================================================== -->
 <h2 id="feature-components">9. Feature Components</h2>
 <!-- ================================================================== -->
@@ -912,6 +924,9 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
   <tr><td>ProgressBar</td><td><span class="file-path">components/course/ProgressBar.tsx</span></td><td>Horizontal progress bar</td></tr>
   <tr><td>SectionList</td><td><span class="file-path">components/course/SectionList.tsx</span></td><td>Expandable section with lesson rows</td></tr>
   <tr><td>LessonRow</td><td><span class="file-path">components/course/LessonRow.tsx</span></td><td>Lesson item with completion status</td></tr>
+  <tr><td>QuizView</td><td><span class="file-path">components/course/QuizView.tsx</span></td><td>Quiz-taking UI: radio/checkbox questions, haptic feedback, score display, per-question breakdown, retake support</td></tr>
+  <tr><td>CompletionCelebration</td><td><span class="file-path">components/course/CompletionCelebration.tsx</span></td><td>Modal with confetti animation shown on course completion (Reanimated particles, trophy icon, stats)</td></tr>
+  <tr><td>CourseLockScreen</td><td><span class="file-path">components/course/CourseLockScreen.tsx</span></td><td>Lock screen for restricted/private courses: custom HTML content, request access button, pending state</td></tr>
 </table>
 
 <h3>Member</h3>

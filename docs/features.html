@@ -1119,6 +1119,12 @@
     <td>Full lesson detail screen with HTML content rendering</td>
   </tr>
   <tr>
+    <td>Video lessons (YouTube + oEmbed)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td><span class="check">&#10003;</span></td>
+    <td>YouTube embeds plus oEmbed support for Vimeo, Wistia, and other providers</td>
+  </tr>
+  <tr>
     <td>Lesson completion toggle</td>
     <td><span class="tag tag-free">FREE</span></td>
     <td><span class="check">&#10003;</span></td>
@@ -1134,19 +1140,19 @@
     <td>Course lockscreen / paywall</td>
     <td><span class="tag tag-pro">PRO</span></td>
     <td><span class="check">&#10003;</span></td>
-    <td>Gated enrollment with lock screen</td>
+    <td>CourseLockScreen component with custom HTML lock content, join-request flow, and pending state. Follows SpaceLockScreen pattern.</td>
   </tr>
   <tr>
     <td>Quiz lesson type</td>
     <td><span class="tag tag-pro">PRO</span></td>
-    <td><span class="cross">&#10005;</span></td>
-    <td><span class="tag tag-roadmap">ROADMAP</span> Multiple choice quizzes with passing score</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Full quiz support &mdash; single/multiple choice questions, scoring with pass/fail, enforce passing score, hide results, retake. Server-side enforcement via QuizModule.</td>
   </tr>
   <tr>
     <td>Course free preview</td>
     <td><span class="tag tag-pro">PRO</span></td>
-    <td><span class="cross">&#10005;</span></td>
-    <td><span class="tag tag-roadmap">ROADMAP</span> Allow preview of first N lessons</td>
+    <td><span class="check">&#10003;</span></td>
+    <td>Free preview lessons viewable by non-enrolled users. Preview badge on LessonRow.</td>
   </tr>
   <tr class="row-app">
     <td>My Courses home widget <span class="tag tag-app">APP EXTRA</span></td>
@@ -1916,7 +1922,7 @@
   </tr>
   <tr>
     <td><strong>Courses / LMS</strong></td>
-    <td><span class="check">&#10003;</span> Course listing, enrollment, lesson viewing + completion tracking, section-based structure, progress visualization, video lessons</td>
+    <td><span class="check">&#10003;</span> Course listing, enrollment, lesson viewing + completion tracking, section-based structure, progress visualization, video lessons (YouTube + oEmbed), quizzes with scoring, lock screens, category filtering, completion celebrations, resource links, free preview, drip content</td>
     <td><span class="partial">&#9679;</span> Courses mentioned in Fluent Community context, depth unclear</td>
   </tr>
   <tr>
@@ -2125,10 +2131,10 @@
     <td><span class="tag tag-pro">PRO</span></td>
     <td>Key for large communities &mdash; shows only posts from followed users.</td>
   </tr>
-  <tr class="row-roadmap">
-    <td>Quiz lesson type in courses</td>
+  <tr class="row-done">
+    <td><s>Quiz lesson type in courses</s></td>
     <td><span class="tag tag-pro">PRO</span></td>
-    <td>Essential for LMS-focused communities. Multiple choice with passing score.</td>
+    <td><span class="check">&#10003;</span> Implemented &mdash; full quiz support with single/multiple choice, scoring, pass/fail, retake.</td>
   </tr>
 </table>
 
@@ -2159,10 +2165,10 @@
     <td><span class="tag tag-free">FREE</span></td>
     <td>Display space-associated links on the space detail screen.</td>
   </tr>
-  <tr class="row-roadmap">
-    <td>Course free preview</td>
+  <tr class="row-done">
+    <td><s>Course free preview</s></td>
     <td><span class="tag tag-pro">PRO</span></td>
-    <td>Preview first N lessons before enrollment/payment.</td>
+    <td><span class="check">&#10003;</span> Implemented &mdash; free preview lessons with preview badge on LessonRow.</td>
   </tr>
   <tr class="row-roadmap">
     <td>Document library</td>
