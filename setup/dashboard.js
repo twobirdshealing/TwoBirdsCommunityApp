@@ -3531,7 +3531,11 @@ async function loadUpdatesTab() {
     if (coreEl) coreEl.textContent = 'v' + (state.config.coreVersion || '?');
     if (appEl) appEl.textContent = 'v' + (state.config.version || '?');
   } catch {}
-  await Promise.all([loadLicenseStatus(), loadBackups()]);
+  const [licenseData] = await Promise.all([loadLicenseStatus(), loadBackups()]);
+  // Auto-check for updates if a valid license exists
+  if (licenseData && licenseData.valid) {
+    checkForUpdates();
+  }
 }
 
 async function loadLicenseStatus() {
@@ -3554,7 +3558,7 @@ async function loadLicenseStatus() {
       keyInput.style.display = '';
       activateBtn.style.display = '';
       removeBtn.style.display = 'none';
-      return;
+      return data;
     }
 
     keyInput.value = data.key || '';
@@ -3571,9 +3575,11 @@ async function loadLicenseStatus() {
       statusEl.className = 'license-status invalid';
       statusEl.textContent = data.error || 'License is not valid';
     }
+    return data;
   } catch (err) {
     statusEl.className = 'license-status invalid';
     statusEl.textContent = 'Could not check license: ' + err.message;
+    return null;
   }
 }
 
@@ -3713,7 +3719,7 @@ async function applyLicenseUpdate(downloadUrl, version) {
     document.getElementById('update-step-download').className = 'step done';
     document.getElementById('update-step-download').textContent = '\\u2713 Downloaded';
     document.getElementById('update-step-apply').className = 'step done';
-    document.getElementById('update-step-apply').textContent = '\\u2713 Applied (' + data.filesWritten + ' files updated, ' + data.filesSkipped + ' protected)';
+    document.getElementById('update-step-apply').textContent = '\\u2713 Applied (' + data.filesWritten + ' files updated, config preserved)';
 
     let resultHtml = '<div class="update-result success">';
     resultHtml += '<strong>Update applied successfully!</strong><br>';
@@ -3776,7 +3782,7 @@ async function uploadManualUpdate(file) {
 
     let html = '<div class="update-result success">';
     html += '<strong>Update applied successfully!</strong><br>';
-    html += data.filesWritten + ' files updated, ' + data.filesSkipped + ' protected files preserved.<br>';
+    html += data.filesWritten + ' files updated, config preserved.<br>';
     html += 'Backup saved as: ' + data.backup;
     if (data.newVersion) html += '<br>Updated to version ' + data.newVersion;
     if (data.depsChanged) html += '<br><br>&#x26A0; Dependencies changed. Run <code>npm install</code> to update them.';
