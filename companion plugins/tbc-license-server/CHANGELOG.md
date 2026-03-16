@@ -2,6 +2,11 @@
 
 All notable changes to TBC License Server.
 
+## [2.1.0] — 2026-03-16
+
+- Add `tar.gz` and `gz` to WordPress allowed upload MIME types so FluentCart can accept update packages
+- Fix `wp_check_filetype_and_ext` for `.tar.gz` double extension detection
+
 ## [2.0.0] — 2026-03-16
 
 **Breaking: Rebuilt as FluentCart Pro bridge plugin.**
