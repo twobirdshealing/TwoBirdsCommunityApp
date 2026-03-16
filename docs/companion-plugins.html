@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — Companion Plugins</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .required { background: rgba(248, 81, 73, 0.15); color: var(--error); }
+  .auto { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+  .optional { background: rgba(210, 153, 34, 0.15); color: var(--warning); }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn { border-left-color: var(--warning); }
+  .callout-error { border-left-color: var(--error); }
+  .callout-success { border-left-color: var(--success); }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Companion Plugins</h1>
+<p class="subtitle">WordPress plugins and theme that power the app&rsquo;s backend &mdash; REST endpoints, auth, push notifications, and more</p>
+
+<div class="callout">
+  <strong>Location:</strong> <span class="file-path">companion plugins/</span><br>
+  These plugins are installed on the WordPress site alongside <a href="https://fluentcommunity.com" target="_blank">Fluent Community</a>. The app communicates with them via REST API. Core plugins ship with the white-label product; addon plugins are sold separately.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Overview &amp; Classification</a></li>
+    <li><a href="#tbc-community-app">TBC Community App</a> <span class="tag required">Core</span></li>
+    <li><a href="#tbc-fluent-profiles">TBC Fluent Profiles</a> <span class="tag required">Core</span></li>
+    <li><a href="#tbc-multi-reactions">TBC Multi Reactions</a> <span class="tag required">Core</span></li>
+    <li><a href="#tbc-starter-theme">TBC Starter Theme</a> <span class="tag required">Core</span></li>
+    <li><a href="#tbc-youtube">TBC YouTube</a> <span class="tag optional">Addon</span></li>
+    <li><a href="#tbc-book-club">TBC Book Club</a> <span class="tag optional">Addon</span></li>
+    <li><a href="#app-constants">App-Side URL Constants</a></li>
+    <li><a href="#installation">Installation</a></li>
+  </ol>
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="overview">1. Overview &amp; Classification</h2>
+
+<table>
+  <tr><th>Plugin</th><th>REST Namespace</th><th>Type</th><th>Purpose</th></tr>
+  <tr>
+    <td><strong>tbc-community-app</strong></td>
+    <td><code>tbc-ca/v1</code></td>
+    <td><span class="tag required">Core</span></td>
+    <td>Auth, batch API, push notifications, app config, WebView sessions</td>
+  </tr>
+  <tr>
+    <td><strong>tbc-fluent-profiles</strong></td>
+    <td><code>tbc-fp/v1</code></td>
+    <td><span class="tag required">Core</span></td>
+    <td>Registration, OTP verification, custom profile fields</td>
+  </tr>
+  <tr>
+    <td><strong>tbc-multi-reactions</strong></td>
+    <td><code>tbc-multi-reactions/v1</code></td>
+    <td><span class="tag required">Core</span></td>
+    <td>Multi-emoji reactions on posts, comments, and chat messages</td>
+  </tr>
+  <tr>
+    <td><strong>tbc-starter-theme</strong></td>
+    <td>&mdash;</td>
+    <td><span class="tag required">Core</span></td>
+    <td>Lightweight WordPress theme optimized for Fluent Community</td>
+  </tr>
+  <tr>
+    <td><strong>tbc-youtube</strong></td>
+    <td><code>tbc-yt/v1</code></td>
+    <td><span class="tag optional">Addon</span></td>
+    <td>YouTube channel integration with server-side caching</td>
+  </tr>
+  <tr>
+    <td><strong>tbc-book-club</strong></td>
+    <td><code>tbc-bc/v1</code></td>
+    <td><span class="tag optional">Addon</span></td>
+    <td>Audiobook player with chapters, bookmarks, and progress</td>
+  </tr>
+</table>
+
+<div class="callout callout-success">
+  <strong>White-label product includes:</strong> All 4 core items (tbc-community-app, tbc-fluent-profiles, tbc-multi-reactions, tbc-starter-theme). Addon plugins are purchased separately and come with their matching app module.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="tbc-community-app">2. TBC Community App</h2>
+
+<p><span class="file-path">companion plugins/tbc-community-app/</span> <span class="tag required">Core</span></p>
+
+<p>The main bridge plugin. Every app installation requires this. It provides JWT authentication, the batch API, push notifications, app configuration delivery, and authenticated WebView sessions.</p>
+
+<h3>Authentication Endpoints</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
+  <tr><td>POST</td><td><code>/auth/login</code></td><td>No</td><td>Login &rarr; returns access + refresh tokens + user profile</td></tr>
+  <tr><td>POST</td><td><code>/auth/refresh</code></td><td>No</td><td>Exchange refresh token for new access token</td></tr>
+  <tr><td>POST</td><td><code>/auth/logout</code></td><td>Yes</td><td>Revoke server session</td></tr>
+  <tr><td>POST</td><td><code>/password/forgot</code></td><td>No</td><td>Send password reset email/OTP</td></tr>
+  <tr><td>POST</td><td><code>/password/reset</code></td><td>No</td><td>Set new password with reset token</td></tr>
+</table>
+
+<h3>App Configuration</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
+  <tr><td>GET</td><td><code>/app-config</code></td><td>Optional</td><td>Theme colors, branding, visibility flags, socket config, maintenance, update info, social providers</td></tr>
+  <tr><td>GET</td><td><code>/badge-definitions</code></td><td>Yes</td><td>Achievement badge definitions (slugs, labels, icons)</td></tr>
+</table>
+
+<h3>Batch API</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
+  <tr><td>POST</td><td><code>/batch</code></td><td>Yes</td><td>Combine multiple REST requests into a single HTTP call</td></tr>
+</table>
+<p>See <a href="caching-system.html#batch-startup">Caching System &rarr; Batch Startup</a> for how the app uses this.</p>
+
+<h3>Push Notifications</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
+  <tr><td>POST</td><td><code>/push/device</code></td><td>Yes</td><td>Register device token (FCM/APNs)</td></tr>
+  <tr><td>DELETE</td><td><code>/push/device</code></td><td>Yes</td><td>Unregister device token</td></tr>
+  <tr><td>GET</td><td><code>/push/settings</code></td><td>Yes</td><td>Get user&rsquo;s notification preferences</td></tr>
+  <tr><td>POST</td><td><code>/push/settings</code></td><td>Yes</td><td>Update notification preferences</td></tr>
+</table>
+
+<h3>Account &amp; WebView</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
+  <tr><td>POST</td><td><code>/account/deactivate</code></td><td>Yes</td><td>Deactivate user account</td></tr>
+  <tr><td>DELETE</td><td><code>/account/delete</code></td><td>Yes</td><td>Permanently delete user account</td></tr>
+  <tr><td>POST</td><td><code>/create-web-session</code></td><td>Yes</td><td>Create authenticated session for in-app WebView</td></tr>
+  <tr><td>GET</td><td><code>/cart/count</code></td><td>Yes</td><td>WooCommerce cart item count</td></tr>
+</table>
+
+<h3>Deep Link Files</h3>
+<table>
+  <tr><th>Method</th><th>Path</th><th>Purpose</th></tr>
+  <tr><td>GET</td><td><code>/.well-known/apple-app-site-association</code></td><td>iOS Universal Links configuration</td></tr>
+  <tr><td>GET</td><td><code>/.well-known/assetlinks.json</code></td><td>Android App Links configuration</td></tr>
+</table>
+
+<h3>Response Headers</h3>
+<p>The plugin injects custom headers into every authenticated Fluent Community API response. See <a href="api-client.html#response-headers">API Client &rarr; Response Headers</a> for the full list (<code>X-TBC-Unread-Notifications</code>, <code>X-TBC-Cart-Count</code>, etc.).</p>
+
+<!-- ====================================================================== -->
+<h2 id="tbc-fluent-profiles">3. TBC Fluent Profiles</h2>
+
+<p><span class="file-path">companion plugins/tbc-fluent-profiles/</span> <span class="tag required">Core</span></p>
+
+<p>Handles user registration, OTP verification (via Twilio SMS or email), custom profile fields, and profile completion tracking. This is a unified plugin that replaced three older separate plugins.</p>
+
+<h3>Registration Endpoints</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
+  <tr><td>GET</td><td><code>/register/fields</code></td><td>No</td><td>Get registration form field definitions</td></tr>
+  <tr><td>POST</td><td><code>/register</code></td><td>No</td><td>Create user account (returns JWT for mobile)</td></tr>
+  <tr><td>POST</td><td><code>/register/complete</code></td><td>Yes</td><td>Mark registration as complete (after avatar step)</td></tr>
+  <tr><td>GET</td><td><code>/register/status</code></td><td>Yes</td><td>Check registration completion status</td></tr>
+</table>
+
+<h3>OTP Verification Endpoints</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
+  <tr><td>POST</td><td><code>/otp/verify</code></td><td>No</td><td>Verify OTP code (SMS or email)</td></tr>
+  <tr><td>POST</td><td><code>/otp/resend</code></td><td>No</td><td>Resend OTP via SMS or email</td></tr>
+  <tr><td>POST</td><td><code>/otp/voice</code></td><td>No</td><td>Resend OTP as voice call (Twilio fallback)</td></tr>
+</table>
+
+<h3>Key Features</h3>
+<ul>
+  <li><strong>Twilio SMS integration</strong> &mdash; configurable in WP admin (API key, phone number)</li>
+  <li><strong>Email fallback</strong> &mdash; if Twilio isn&rsquo;t configured, OTP is sent via email</li>
+  <li><strong>Custom profile fields</strong> &mdash; admin-defined fields integrated into Fluent Community profiles</li>
+  <li><strong>Profile completion tracking</strong> &mdash; drives the &ldquo;complete your profile&rdquo; prompt in the app</li>
+  <li><strong>Web registration form</strong> &mdash; <code>[tbc_registration]</code> shortcode for the website (multi-step form)</li>
+  <li><strong>JWT hook</strong> &mdash; hooks into <code>tbc-community-app</code>&rsquo;s auth system to return JWT tokens on mobile registration</li>
+</ul>
+
+<div class="callout">
+  <strong>Twilio setup is optional.</strong> Without Twilio credentials, the plugin uses email-based verification instead. The app adapts automatically &mdash; no code changes needed.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="tbc-multi-reactions">4. TBC Multi Reactions</h2>
+
+<p><span class="file-path">companion plugins/tbc-multi-reactions/</span> <span class="tag required">Core</span></p>
+
+<p>Replaces Fluent Community&rsquo;s default single-heart reaction with a multi-emoji reaction system. Supports posts, comments, and chat messages. Reaction icons can be customized in WP admin (PNG, SVG, GIF, WEBP).</p>
+
+<h3>Endpoints</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
+  <tr><td>GET</td><td><code>/config</code></td><td>No</td><td>Get enabled reaction types and icon URLs</td></tr>
+  <tr><td>POST</td><td><code>/swap</code></td><td>Yes</td><td>Swap reaction type on an existing reaction</td></tr>
+  <tr><td>GET</td><td><code>/breakdown/{type}/{id}</code></td><td>No</td><td>Get reaction counts by type for a post/comment</td></tr>
+  <tr><td>GET</td><td><code>/breakdown/{type}/{id}/users</code></td><td>No</td><td>Get reaction breakdown with user details</td></tr>
+</table>
+
+<h3>How It Works</h3>
+<ul>
+  <li>Injects reaction data into Fluent Community&rsquo;s standard feed/comment API responses (no extra API calls needed for basic display)</li>
+  <li>The <code>/config</code> endpoint provides icon URLs so the app can display custom reaction graphics</li>
+  <li>The <code>/swap</code> endpoint lets users change their reaction type without removing and re-adding</li>
+  <li>Controlled by <code>FEATURES.MULTI_REACTIONS</code> in the app &mdash; falls back to default heart if disabled</li>
+</ul>
+
+<!-- ====================================================================== -->
+<h2 id="tbc-starter-theme">5. TBC Starter Theme</h2>
+
+<p><span class="file-path">companion plugins/tbc-starter-theme/</span> <span class="tag required">Core</span></p>
+
+<p>A lightweight WordPress theme designed for sites running Fluent Community. It stays out of the way on community portal pages (Fluent Community renders its own Vue.js SPA) while providing clean styling for regular WordPress pages.</p>
+
+<h3>Key Features</h3>
+<ul>
+  <li><strong>Zero interference</strong> with Fluent Community&rsquo;s SPA rendering</li>
+  <li><strong>Dark/light mode</strong> sync via CSS variables (bridges WordPress theme to Fluent Community colors)</li>
+  <li><strong>Minimal chrome</strong> &mdash; blank-canvas approach with minimal header/footer</li>
+  <li><strong>Block editor support</strong> for regular WordPress pages</li>
+  <li>Lightweight styling for blog posts and WooCommerce pages</li>
+</ul>
+
+<div class="callout callout-warn">
+  <strong>This theme has no REST endpoints.</strong> It&rsquo;s a visual WordPress theme only &mdash; the app doesn&rsquo;t communicate with it directly. Install it on the site so non-community pages (blog, shop, etc.) look decent.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="tbc-youtube">6. TBC YouTube</h2>
+
+<p><span class="file-path">companion plugins/tbc-youtube/</span> <span class="tag optional">Addon</span></p>
+
+<p>YouTube channel integration. Fetches videos and playlists via the YouTube Data API v3, caches results server-side (6 hours), and serves them to the app. Paired with the <code>youtube</code> app module.</p>
+
+<h3>Endpoints</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
+  <tr><td>GET</td><td><code>/latest</code></td><td>Yes</td><td>Latest uploads from channel (param: <code>limit=1-15</code>)</td></tr>
+  <tr><td>GET</td><td><code>/playlists</code></td><td>Yes</td><td>All channel playlists</td></tr>
+  <tr><td>GET</td><td><code>/playlists/{id}/videos</code></td><td>Yes</td><td>Videos in a playlist (params: <code>limit</code>, <code>pageToken</code>)</td></tr>
+  <tr><td>GET</td><td><code>/config</code></td><td>Yes</td><td>Module config (channel URL)</td></tr>
+</table>
+
+<h3>Setup</h3>
+<ol>
+  <li>Install the plugin on WordPress</li>
+  <li>In WP admin &rarr; Settings &rarr; TBC YouTube: enter your YouTube Data API v3 key and channel ID</li>
+  <li>Enable the <code>youtube</code> module in the app&rsquo;s <span class="file-path">modules/_registry.ts</span></li>
+</ol>
+
+<h3>Caching</h3>
+<p>All YouTube API responses are cached via WordPress transients (6-hour TTL). The cache warms automatically when admin settings change. This keeps YouTube API quota usage low.</p>
+
+<!-- ====================================================================== -->
+<h2 id="tbc-book-club">7. TBC Book Club</h2>
+
+<p><span class="file-path">companion plugins/tbc-book-club/</span> <span class="tag optional">Addon</span></p>
+
+<p>Audiobook player backend. Manages books with chapters, audio URLs, and per-user bookmarks. Paired with the <code>bookclub</code> app module which provides the audio player UI.</p>
+
+<h3>Endpoints</h3>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
+  <tr><td>GET</td><td><code>/books</code></td><td>Yes</td><td>List all books (param: <code>current=1</code> for current book only)</td></tr>
+  <tr><td>GET</td><td><code>/books/{id}</code></td><td>Yes</td><td>Get single book with chapters and audio URL</td></tr>
+  <tr><td>POST</td><td><code>/books/{id}/bookmarks</code></td><td>Yes</td><td>Create bookmark (params: <code>timestamp</code>, <code>title</code>)</td></tr>
+  <tr><td>DELETE</td><td><code>/books/{id}/bookmarks/{bid}</code></td><td>Yes</td><td>Delete a bookmark</td></tr>
+</table>
+
+<h3>Setup</h3>
+<ol>
+  <li>Install the plugin on WordPress</li>
+  <li>In WP admin &rarr; Book Club: add books with chapters and audio file URLs</li>
+  <li>Enable the <code>bookclub</code> module in the app&rsquo;s <span class="file-path">modules/_registry.ts</span></li>
+</ol>
+
+<!-- ====================================================================== -->
+<h2 id="app-constants">8. App-Side URL Constants</h2>
+
+<p>The app references plugin APIs via URL constants defined in <span class="file-path">constants/config.ts</span>. All are derived from <code>SITE_URL</code>.</p>
+
+<pre><code>// Core plugin APIs
+export const TBC_CA_URL = `${SITE_URL}/wp-json/tbc-ca/v1`;
+export const TBC_FP_URL = `${SITE_URL}/wp-json/tbc-fp/v1`;
+export const TBC_MR_URL = `${SITE_URL}/wp-json/tbc-multi-reactions/v1`;
+
+// Addon plugin APIs
+export const TBC_YT_URL = `${SITE_URL}/wp-json/tbc-yt/v1`;
+
+// Also used:
+export const API_URL    = `${SITE_URL}/wp-json/fluent-community/v2`;
+export const WP_REST_URL = `${SITE_URL}/wp-json/wp/v2`;</code></pre>
+
+<p>Service files pass these as <code>baseUrl</code> to the <a href="api-client.html">HTTP client</a>:</p>
+<pre><code>// services/api/registration.ts
+const response = await fetch(`${TBC_FP_URL}/register`, { ... });
+
+// services/api/reactions.ts
+const response = await get('/breakdown/feed/42', { baseUrl: TBC_MR_URL });</code></pre>
+
+<!-- ====================================================================== -->
+<h2 id="installation">9. Installation</h2>
+
+<h3>For Buyers (White-Label Setup)</h3>
+<ol>
+  <li>Upload all 3 core plugins + theme to <code>wp-content/plugins/</code> and <code>wp-content/themes/</code></li>
+  <li>Activate all plugins and the theme in WordPress admin</li>
+  <li>No configuration needed for tbc-community-app &mdash; it auto-detects Fluent Community</li>
+  <li>Configure tbc-fluent-profiles in WP admin if you want OTP verification (Twilio credentials)</li>
+  <li>Configure tbc-multi-reactions in WP admin to customize reaction icons (optional)</li>
+</ol>
+
+<h3>For Addon Plugins</h3>
+<ol>
+  <li>Upload the plugin to <code>wp-content/plugins/</code> and activate</li>
+  <li>Configure in WP admin (API keys, content, etc.)</li>
+  <li>Enable the matching app module in <span class="file-path">modules/_registry.ts</span></li>
+  <li>Rebuild the app</li>
+</ol>
+
+<h3>Plugin Updates</h3>
+<p>Plugins are updated manually (upload new version via FTP or WP admin). After updating a plugin:</p>
+<ul>
+  <li>Bump the plugin version number in the main PHP file header</li>
+  <li>Update the changelog in the plugin</li>
+  <li>Clear any relevant caches on the server</li>
+</ul>
+
+<div class="callout callout-error">
+  <strong>Always update the plugin version number</strong> &mdash; even for small changes. WordPress caches plugin metadata, and unchanged versions may not clear old cached responses.
+</div>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  Companion Plugins &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  <a href="messaging.html">Messaging &amp; Chat</a> &middot;
+  <a href="module-system.html">Module System</a> &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="state-management.html">State Management</a> &middot;
+  <a href="theme-system.html">Theme System</a>
+</p>
+
+</body>
+</html>
