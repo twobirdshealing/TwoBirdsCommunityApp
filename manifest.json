@@ -1,8 +1,8 @@
 {
   "product": "tbc-community-app",
-  "version": "3.0.6",
+  "version": "3.1.0",
   "dashboardVersion": 1,
-  "updateUrl": "https://twobirdscode.com/wp-json/tbc-license/v1/check",
+  "updateUrl": "https://www.twobirdscode.com/wp-json/tbc-license/v1/check",
   "protectedPaths": [
     "constants/config.ts",
     "app.json",

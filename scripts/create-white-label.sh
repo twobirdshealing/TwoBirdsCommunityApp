@@ -59,7 +59,7 @@ generate_manifest() {
   "product": "tbc-community-app",
   "version": "${version}",
   "dashboardVersion": 1,
-  "updateUrl": "https://twobirdscode.com/wp-json/tbc-license/v1/check",
+  "updateUrl": "https://www.twobirdscode.com/wp-json/tbc-license/v1/check",
   "protectedPaths": [
 $(generate_protected_paths_json "    ")
   ],

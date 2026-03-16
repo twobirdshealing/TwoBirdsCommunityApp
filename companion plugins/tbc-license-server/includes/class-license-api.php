@@ -24,7 +24,7 @@ class TBC_License_API {
      *
      * To find it: WP Admin → FluentCart → Products → click product → ID is in the URL.
      */
-    const PRODUCT_ID = 0; // TODO: Set this after creating the product in FluentCart
+    const PRODUCT_ID = 12;
 
     /**
      * Register REST routes.
