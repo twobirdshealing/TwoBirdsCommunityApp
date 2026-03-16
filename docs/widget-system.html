@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — Widget System</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn { border-left-color: var(--warning); }
+  .callout-error { border-left-color: var(--error); }
+  .callout-success { border-left-color: var(--success); }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Widget System</h1>
+<p class="subtitle">Home screen widgets with drag-and-drop reordering, show/hide toggles, and module registration</p>
+
+<div class="callout">
+  <strong>Key files:</strong> <span class="file-path">components/home/widgetRegistry.ts</span> (registry), <span class="file-path">hooks/useWidgetPreferences.ts</span> (preferences), <span class="file-path">app/(tabs)/index.tsx</span> (home screen)<br>
+  Widgets are customizable content blocks on the home screen. Core and module widgets register in a unified registry. Users can reorder via drag-and-drop and toggle visibility. Preferences persist in AsyncStorage.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#registration">Widget Registration</a></li>
+    <li><a href="#registry">Registry &amp; Merging</a></li>
+    <li><a href="#preferences">User Preferences</a></li>
+    <li><a href="#rendering">Rendering Pipeline</a></li>
+    <li><a href="#edit-mode">Edit Mode &amp; Drag-and-Drop</a></li>
+    <li><a href="#refresh">Data Refresh</a></li>
+    <li><a href="#widget-list">Widget List</a></li>
+    <li><a href="#welcome-banner">Welcome Banner</a></li>
+    <li><a href="#files">File Reference</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="overview">1. Overview</h2>
+
+<pre><code>Home Screen (app/(tabs)/index.tsx)
+  ├── Welcome Banner (pinned, not in registry)
+  ├── Widget List (FlashList or DraggableFlatList)
+  │     ├── HomeWidget wrapper (header, icon, "See all")
+  │     │     └── Widget Component (receives refreshKey)
+  │     └── ... more widgets
+  └── Edit Mode Bar (Reset / Done)
+
+Widget Registry (core + modules)
+  └── User Preferences (AsyncStorage)
+        └── Order + enabled/disabled state</code></pre>
+
+<p>Two rendering modes:</p>
+<ul>
+  <li><strong>Normal mode:</strong> FlashList with pull-to-refresh. Long-press a widget header to enter edit mode.</li>
+  <li><strong>Edit mode:</strong> DraggableFlatList with drag handles and toggle switches. Separate list component because DraggableFlatList conflicts with RefreshControl.</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="registration">2. Widget Registration</h2>
+
+<p>The <code>WidgetRegistration</code> interface in <span class="file-path">modules/_types.ts</span>:</p>
+
+<pre><code>interface WidgetRegistration {
+  id: string;                    // Stable unique ID (AsyncStorage key)
+  title: string;                 // Display title in header
+  icon?: keyof typeof Ionicons.glyphMap;  // Header icon
+  seeAllRoute?: string;          // Navigation route for "See all"
+  featureFlag?: keyof typeof FEATURES;    // Conditional inclusion
+  defaultEnabled: boolean;       // Default state for new users
+  canDisable: boolean;           // Whether user can toggle
+  externalWrapper: boolean;      // true = wrapped in HomeWidget
+  component: React.ComponentType&lt;{ refreshKey: number }&gt;;
+}</code></pre>
+
+<h3>Key Fields</h3>
+<table>
+  <tr><th>Field</th><th>Description</th></tr>
+  <tr><td><code>id</code></td><td>Must be stable across app updates. Used as AsyncStorage preference key. Never change once shipped.</td></tr>
+  <tr><td><code>featureFlag</code></td><td>If set, widget only included when <code>FEATURES[flag] === true</code>. Excluded entirely when flag is off.</td></tr>
+  <tr><td><code>externalWrapper</code></td><td>When <code>true</code>, HomeWidget provides header, icon, and "See all" link. When <code>false</code>, widget handles its own layout.</td></tr>
+  <tr><td><code>seeAllRoute</code></td><td>Tapping "See all" navigates to this route. If undefined, no link shown.</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="registry">3. Registry &amp; Merging</h2>
+
+<p><span class="file-path">components/home/widgetRegistry.ts</span> combines core and module widgets:</p>
+
+<pre><code>const CORE_WIDGETS: WidgetRegistration[] = [
+  {
+    id: 'my-courses',
+    title: 'My Courses',
+    icon: 'school-outline',
+    seeAllRoute: '/courses',
+    featureFlag: 'COURSES',
+    defaultEnabled: true,
+    canDisable: true,
+    externalWrapper: true,
+    component: CoursesWidget,
+  },
+];
+
+export const WIDGET_REGISTRY: WidgetRegistration[] = [
+  ...CORE_WIDGETS,
+  ...getModuleWidgets(),  // From modules/_registry.ts
+];</code></pre>
+
+<h3>Module Widget Registration</h3>
+<p>Modules register widgets in their manifest:</p>
+<pre><code>// modules/blog/module.ts
+export const blogModule: ModuleManifest = {
+  id: 'blog',
+  widgets: [{
+    id: 'latest-blog',
+    title: 'Latest Blog',
+    icon: 'newspaper-outline',
+    seeAllRoute: '/blog',
+    defaultEnabled: true,
+    canDisable: true,
+    externalWrapper: true,
+    component: BlogWidget,
+  }],
+};</code></pre>
+
+<div class="callout callout-warn">
+  <strong>Dev-mode duplicate detection.</strong> In <code>__DEV__</code> mode, <span class="file-path">modules/_registry.ts</span> checks for duplicate widget IDs across all modules and warns. Production skips this check.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="preferences">4. User Preferences</h2>
+
+<p><span class="file-path">hooks/useWidgetPreferences.ts</span> manages widget order and visibility in AsyncStorage:</p>
+
+<h3>Storage Format</h3>
+<pre><code>// AsyncStorage key: tbc_widget_preferences
+{
+  "version": 1,
+  "order": [
+    { "id": "my-courses", "enabled": true },
+    { "id": "latest-blog", "enabled": true },
+    { "id": "latest-youtube", "enabled": false }
+  ]
+}</code></pre>
+
+<h3>Operations</h3>
+<table>
+  <tr><th>Function</th><th>Description</th></tr>
+  <tr><td><code>reorder(newOrder)</code></td><td>Save new order after drag-and-drop</td></tr>
+  <tr><td><code>toggleWidget(id)</code></td><td>Flip enabled/disabled state</td></tr>
+  <tr><td><code>resetToDefaults()</code></td><td>Restore all widgets to default order and enabled state</td></tr>
+</table>
+
+<h3>Forward Compatibility</h3>
+<p>When loading saved preferences, the hook merges them with the current widget registry:</p>
+<ul>
+  <li><strong>New widgets</strong> (added since last save) are appended to the end with their <code>defaultEnabled</code> state</li>
+  <li><strong>Removed widgets</strong> (no longer in registry) are silently dropped</li>
+  <li><strong>Disabled feature flags</strong> exclude widgets entirely</li>
+  <li><strong>Existing order</strong> is preserved across app updates</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="rendering">5. Rendering Pipeline</h2>
+
+<ol>
+  <li>Load preferences from AsyncStorage via <code>useWidgetPreferences()</code></li>
+  <li>Merge with current <code>WIDGET_REGISTRY</code> (forward compatibility)</li>
+  <li>Build <code>WidgetItem[]</code> list (preference + registration config)</li>
+  <li>Filter: only enabled widgets in normal mode, all widgets in edit mode</li>
+  <li>Render each widget through <code>HomeWidget</code> wrapper (or raw if <code>externalWrapper: false</code>)</li>
+</ol>
+
+<h3>HomeWidget Wrapper</h3>
+<p><span class="file-path">components/home/HomeWidget.tsx</span> provides consistent UI for each widget:</p>
+<ul>
+  <li>Header row with icon + title + "See all" link</li>
+  <li>In edit mode: drag handle (left) + toggle switch (right)</li>
+  <li>Disabled widgets show at 0.4 opacity in edit mode</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="edit-mode">6. Edit Mode &amp; Drag-and-Drop</h2>
+
+<h3>Entering Edit Mode</h3>
+<p>Long-press (400ms) on any widget header enters edit mode. Medium haptic feedback fires on entry.</p>
+
+<h3>Drag-and-Drop</h3>
+<table>
+  <tr><th>Aspect</th><th>Details</th></tr>
+  <tr><td>Library</td><td><code>react-native-draggable-flatlist</code></td></tr>
+  <tr><td>Visual feedback</td><td><code>ScaleDecorator</code> (1.02x scale + shadow when dragging)</td></tr>
+  <tr><td>Persist</td><td><code>onDragEnd</code> &rarr; <code>reorder()</code> &rarr; AsyncStorage</td></tr>
+</table>
+
+<h3>Edit Mode Bar</h3>
+<p><span class="file-path">components/home/EditModeBar.tsx</span> shows at the top:</p>
+<ul>
+  <li><strong>Reset</strong> (left) &mdash; restores default order and visibility</li>
+  <li><strong>"Edit Widgets"</strong> (center) &mdash; title</li>
+  <li><strong>Done</strong> (right) &mdash; exits edit mode</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="refresh">7. Data Refresh</h2>
+
+<p>All widgets receive a <code>refreshKey</code> prop from the home screen. When it increments, widgets re-fetch data.</p>
+
+<h3>Widget Data Pattern</h3>
+<pre><code>function MyWidget({ refreshKey }: { refreshKey: number }) {
+  const { data } = useCachedData({
+    cacheKey: 'tbc_widget_my_data',
+    fetcher: () => api.getMyData(),
+    refreshKey,
+    refreshOnFocus: false,          // Widgets don't refresh on app focus
+    staleTime: WIDGET_STALE_TIME,   // 120 seconds
+  });
+  // render...
+}</code></pre>
+
+<h3>Refresh Triggers</h3>
+<table>
+  <tr><th>Trigger</th><th>Mechanism</th></tr>
+  <tr><td>Pull-to-refresh</td><td><code>setRefreshKey(prev + 1)</code> &mdash; all widgets update</td></tr>
+  <tr><td>App returns from background</td><td><code>useAppFocus</code> increments refreshKey</td></tr>
+  <tr><td>Cache event</td><td>Specific widgets listen for events like <code>CACHE_EVENTS.FEEDS</code></td></tr>
+</table>
+
+<div class="callout">
+  <strong>120-second stale time.</strong> <code>WIDGET_STALE_TIME</code> (120s) prevents redundant network calls. Rapid pull-to-refresh within 120s uses cached data. Widgets stay mounted on the home screen, so this cooldown avoids unnecessary re-fetches.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="widget-list">8. Widget List</h2>
+
+<h3>Core Widgets</h3>
+<table>
+  <tr><th>ID</th><th>Title</th><th>Feature Flag</th><th>See All</th></tr>
+  <tr><td><code>my-courses</code></td><td>My Courses</td><td><code>COURSES</code></td><td><code>/courses</code></td></tr>
+</table>
+
+<h3>Module Widgets</h3>
+<table>
+  <tr><th>ID</th><th>Title</th><th>Module</th><th>See All</th></tr>
+  <tr><td><code>upcoming-booking</code></td><td>Upcoming Booking</td><td>Calendar</td><td><code>/(tabs)/calendar</code></td></tr>
+  <tr><td><code>featured-events</code></td><td>Featured Events</td><td>Calendar</td><td><code>/(tabs)/calendar</code></td></tr>
+  <tr><td><code>latest-blog</code></td><td>Latest Blog</td><td>Blog</td><td><code>/blog</code></td></tr>
+  <tr><td><code>latest-youtube</code></td><td>YouTube</td><td>YouTube</td><td><code>/youtube</code></td></tr>
+  <tr><td><code>book-club</code></td><td>Book Club</td><td>Book Club</td><td><code>/bookclub</code></td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="welcome-banner">9. Welcome Banner</h2>
+
+<p><span class="file-path">components/home/WelcomeBannerWidget.tsx</span> is a special widget pinned at the top of the home screen:</p>
+
+<ul>
+  <li><strong>Not in the widget registry</strong> &mdash; always shown first, not reorderable or toggleable</li>
+  <li><strong>Server-driven:</strong> Fetches from <code>/feeds/welcome-banner</code> REST endpoint</li>
+  <li><strong>Dismissible:</strong> Users can dismiss for 7 days (or until content changes)</li>
+  <li><strong>Fingerprint-based:</strong> Content hash detects changes; changed banner re-shows after dismissal</li>
+  <li><strong>Returns null</strong> if disabled by admin or already dismissed within expiry</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="files">10. File Reference</h2>
+
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">components/home/widgetRegistry.ts</span></td><td>Core widget definitions + registry merging with modules</td></tr>
+  <tr><td><span class="file-path">hooks/useWidgetPreferences.ts</span></td><td>AsyncStorage preferences (order, enabled/disabled, merge logic)</td></tr>
+  <tr><td><span class="file-path">app/(tabs)/index.tsx</span></td><td>Home screen: renders widgets, manages edit mode, refresh</td></tr>
+  <tr><td><span class="file-path">components/home/HomeWidget.tsx</span></td><td>Widget wrapper (header, icon, "See all", drag handle, toggle)</td></tr>
+  <tr><td><span class="file-path">components/home/EditModeBar.tsx</span></td><td>Top bar in edit mode (Reset / Done buttons)</td></tr>
+  <tr><td><span class="file-path">components/home/EditableWidgetWrapper.tsx</span></td><td>Minimal edit overlay for headerless widgets</td></tr>
+  <tr><td><span class="file-path">components/home/WelcomeBannerWidget.tsx</span></td><td>Pinned welcome banner with server-driven content</td></tr>
+  <tr><td><span class="file-path">components/home/CoursesWidget.tsx</span></td><td>My Courses carousel (core widget)</td></tr>
+  <tr><td><span class="file-path">modules/_types.ts</span></td><td><code>WidgetRegistration</code> interface</td></tr>
+  <tr><td><span class="file-path">modules/_registry.ts</span></td><td><code>getModuleWidgets()</code> collector + dev duplicate detection</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="rules">11. Rules</h2>
+
+<ol>
+  <li><strong>Widget IDs must be stable.</strong> The <code>id</code> field is used as an AsyncStorage key for user preferences. Changing it after release resets user preferences for that widget. Never rename a shipped widget ID.</li>
+
+  <li><strong>All widgets must accept <code>refreshKey</code> prop.</strong> The home screen controls refresh for all widgets through this prop. Use <code>useCachedData</code> with <code>refreshKey</code> and <code>staleTime: WIDGET_STALE_TIME</code> (120s).</li>
+
+  <li><strong>Set <code>refreshOnFocus: false</code> in widget data hooks.</strong> The home screen manages focus-based refresh via <code>useAppFocus</code>. If widgets also refresh on focus, you get double fetches.</li>
+
+  <li><strong>Use <code>featureFlag</code> for conditional widgets.</strong> When a feature flag is off, the widget is excluded from the registry entirely &mdash; not just hidden. It won't appear in preferences or edit mode.</li>
+
+  <li><strong>Module widgets go in the module manifest, not the core registry.</strong> Register via <code>widgets: [...]</code> in your <code>ModuleManifest</code>. The registry merges them automatically via <code>getModuleWidgets()</code>.</li>
+
+  <li><strong>New widgets auto-append with defaults.</strong> When a user updates the app and a new widget exists, it appends to their saved order with <code>defaultEnabled</code> state. No user action needed.</li>
+
+  <li><strong>Don't use DraggableFlatList in normal mode.</strong> It conflicts with RefreshControl (steals the vertical pan gesture). The home screen uses FlashList for normal mode and only switches to DraggableFlatList in edit mode.</li>
+
+  <li><strong>The welcome banner is NOT in the registry.</strong> It's hardcoded as the first item in the home screen list. Don't try to register it as a widget &mdash; it has special dismissal and fingerprint logic that the registry doesn't support.</li>
+
+  <li><strong>Widgets should return null when empty.</strong> If a widget has no data to show (e.g., no enrolled courses), return <code>null</code>. The HomeWidget wrapper handles the absence gracefully.</li>
+
+  <li><strong>Use <code>WIDGET_STALE_TIME</code> (120s) for all widget fetches.</strong> This prevents rapid pull-to-refresh from hammering the API. Don't use shorter intervals for widgets &mdash; they stay mounted on the home screen.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  <a href="companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="content-creation.html">Content Creation &amp; Composer</a> &middot;
+  <a href="courses.html">Courses &amp; LMS</a> &middot;
+  <a href="deep-linking.html">Deep Linking &amp; URL Routing</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="feed-system.html">Feed System</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  <a href="media-uploads.html">Media &amp; Uploads</a> &middot;
+  <a href="messaging.html">Messaging &amp; Chat</a> &middot;
+  <a href="module-system.html">Module System</a> &middot;
+  <a href="notifications.html">Notifications</a> &middot;
+  <a href="profile-system.html">Profile System</a> &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="registration.html">Registration &amp; Onboarding</a> &middot;
+  <a href="spaces.html">Spaces (Groups)</a> &middot;
+  <a href="state-management.html">State Management</a> &middot;
+  <a href="theme-system.html">Theme System</a> &middot;
+  Widget System
+</p>
+
+</body>
+</html>
