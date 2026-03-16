@@ -97,6 +97,9 @@
   .callout-error {
     border-left-color: var(--error);
   }
+  .callout-success {
+    border-left-color: var(--success);
+  }
   .step-number {
     display: inline-flex;
     align-items: center;
@@ -143,6 +146,7 @@
     <li><a href="#theming">Theme System</a></li>
     <li><a href="#build-deploy">Build &amp; Deploy</a></li>
     <li><a href="#checklist">Pre-Launch Checklist</a></li>
+    <li><a href="#updating">Updating from Upstream</a></li>
     <li><a href="#troubleshooting">Troubleshooting</a></li>
   </ol>
 </div>
@@ -729,7 +733,80 @@ eas submit --platform android</code></pre>
 </table>
 
 <!-- ====================================================================== -->
-<h2 id="troubleshooting">10. Troubleshooting</h2>
+<h2 id="updating">10. Updating from Upstream</h2>
+
+<p>When a new version of the base product is released, you can merge it into your app using standard git. Your modules, branding, and config stay intact &mdash; only core code gets updated.</p>
+
+<h3>One-time setup</h3>
+<p>Add the upstream repo as a remote (you only do this once):</p>
+<pre><code>git remote add upstream https://github.com/UPSTREAM_ORG/UPSTREAM_REPO.git</code></pre>
+
+<h3>Merging an update</h3>
+<pre><code># Fetch the latest tags
+git fetch upstream --tags
+
+# Merge a specific release (check CHANGELOG.md for what changed)
+git merge v3.1.0
+
+# Or merge the latest
+git merge upstream/main</code></pre>
+
+<h3>What conflicts to expect</h3>
+<p>Conflicts only happen in files you've customized. They're predictable and always the same files:</p>
+
+<table>
+  <tr><th>File</th><th>Why it conflicts</th><th>Resolution</th></tr>
+  <tr>
+    <td><code>modules/_registry.ts</code></td>
+    <td>You added your module imports; upstream ships an empty array</td>
+    <td>Keep your imports and array entries</td>
+  </tr>
+  <tr>
+    <td><code>constants/config.ts</code></td>
+    <td>You set your APP_NAME, Pusher keys; upstream has placeholders</td>
+    <td>Keep your values</td>
+  </tr>
+  <tr>
+    <td><code>app.json</code></td>
+    <td>You set your bundle IDs, name, scheme; upstream has placeholders</td>
+    <td>Keep your values</td>
+  </tr>
+  <tr>
+    <td><code>eas.json</code></td>
+    <td>You set your SITE_URL, Apple IDs; upstream has placeholders</td>
+    <td>Keep your values</td>
+  </tr>
+  <tr>
+    <td><code>package.json</code></td>
+    <td>You may have added npm packages; upstream has base deps</td>
+    <td>Keep both &mdash; accept upstream dep updates, keep your additions</td>
+  </tr>
+</table>
+
+<div class="callout callout-success">
+  <strong>The rule of thumb:</strong> for files marked <code>// SETUP</code>, keep your values. For everything else (components, services, hooks, screens), accept the upstream changes &mdash; you shouldn't have edited those.
+</div>
+
+<h3>What merges cleanly (no conflicts)</h3>
+<ul>
+  <li><strong>Your modules</strong> in <code>modules/</code> &mdash; upstream doesn't ship module folders</li>
+  <li><strong>Your route stubs</strong> in <code>app/</code> &mdash; upstream doesn't ship module routes</li>
+  <li><strong>Your <code>modules/_shared/</code></strong> &mdash; upstream doesn't touch this</li>
+  <li><strong>Core code updates</strong> (components, services, hooks, screens) &mdash; you didn't edit these</li>
+  <li><strong>Companion plugins</strong> &mdash; upstream ships updated versions, you haven't edited them</li>
+  <li><strong>Docs</strong> &mdash; new or updated documentation merges cleanly</li>
+</ul>
+
+<h3>After merging</h3>
+<ol>
+  <li>Check <code>CHANGELOG.md</code> for what changed and whether any new setup steps are needed</li>
+  <li>Run <code>npm install</code> in case dependencies were added or updated</li>
+  <li>If native packages changed, rebuild your dev client: <code>eas build --profile development</code></li>
+  <li>Test locally: <code>npx expo start</code></li>
+</ol>
+
+<!-- ====================================================================== -->
+<h2 id="troubleshooting">11. Troubleshooting</h2>
 
 <h3>App Won't Connect to Server</h3>
 <ul>

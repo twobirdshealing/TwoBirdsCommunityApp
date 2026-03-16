@@ -18,9 +18,10 @@ import type {
   HeaderIconRegistration,
 } from './_types';
 
-// -----------------------------------------------------------------------------
-// Module Imports — add/remove modules here
-// -----------------------------------------------------------------------------
+// =============================================================================
+// YOUR MODULES — Import and register your modules below.
+// This section is yours to edit. Core updates won't touch it.
+// =============================================================================
 
 import { calendarModule } from './calendar/module';
 import { bookclubModule } from './bookclub/module';
@@ -28,10 +29,6 @@ import { donateModule } from './donate/module';
 import { donorModule } from './donor/module';
 import { youtubeModule } from './youtube/module';
 import { blogModule } from './blog/module';
-
-// -----------------------------------------------------------------------------
-// Active Modules — add/remove from this array
-// -----------------------------------------------------------------------------
 
 export const MODULES: ModuleManifest[] = [
   calendarModule,
@@ -41,6 +38,10 @@ export const MODULES: ModuleManifest[] = [
   youtubeModule,
   blogModule,
 ];
+
+// =============================================================================
+// END YOUR MODULES — Everything below is core. Do not edit.
+// =============================================================================
 
 // -----------------------------------------------------------------------------
 // Dev-mode validation — catches common setup mistakes

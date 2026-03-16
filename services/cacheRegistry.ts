@@ -25,6 +25,7 @@ const log = createLogger('CacheRegistry');
 const PERSIST_ACROSS_LOGOUT: string[] = [
   'tbc_app_config_cache',      // Site maintenance, update config, branding
   'tbc_app_visibility_cache',  // Site-level menu visibility (hide_menu[])
+  'tbc_socket_config_cache',   // Socket provider config (Pusher/Soketi) — site-level, not user-specific
 ];
 
 // -----------------------------------------------------------------------------

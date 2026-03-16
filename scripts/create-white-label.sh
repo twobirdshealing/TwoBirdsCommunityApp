@@ -21,13 +21,17 @@ TARGET_DIR="$(cd "$SOURCE_DIR/.." && pwd)/TBC-Community-App (White Lable)"
 # Allowlist: only these companion plugins ship with the base product
 CORE_PLUGINS=("tbc-community-app" "tbc-fluent-profiles" "tbc-multi-reactions" "tbc-starter-theme")
 
+# Read version from source package.json
+SOURCE_VERSION=$(grep -o '"version": "[^"]*"' "$SOURCE_DIR/package.json" | head -1 | cut -d'"' -f4)
+
 echo ""
 echo "========================================"
 echo "  White-Label Snapshot Creator"
 echo "========================================"
 echo ""
-echo "Source: $SOURCE_DIR"
-echo "Target: $TARGET_DIR"
+echo "Source:  $SOURCE_DIR"
+echo "Target:  $TARGET_DIR"
+echo "Version: $SOURCE_VERSION"
 echo ""
 
 # ---------------------------------------------------------------------------
@@ -57,7 +61,7 @@ mkdir -p "$TARGET_DIR"
 # Step 1: Copy project (excluding build artifacts, deps, git, plugins, etc.)
 # ---------------------------------------------------------------------------
 
-echo "[1/6] Copying project files..."
+echo "[1/7] Copying project files..."
 
 tar -cf - \
   --exclude='node_modules' \
@@ -92,7 +96,7 @@ echo "  Done."
 # Step 2: Replace site-specific values in config files
 # ---------------------------------------------------------------------------
 
-echo "[2/6] Replacing site-specific values..."
+echo "[2/7] Replacing site-specific values..."
 
 # --- constants/config.ts ---
 sed -i \
@@ -146,7 +150,7 @@ echo "  Done."
 # Step 3: Remove modules (all are either site-specific or paid add-ons)
 # ---------------------------------------------------------------------------
 
-echo "[3/6] Cleaning module system..."
+echo "[3/7] Cleaning module system..."
 
 # Remove module tab stubs from app/(tabs)/
 rm -f "$TARGET_DIR/app/(tabs)/calendar.tsx"
@@ -175,7 +179,7 @@ echo "  Done."
 # Step 4: Handle Firebase config files
 # ---------------------------------------------------------------------------
 
-echo "[4/6] Replacing Firebase configs with placeholders..."
+echo "[4/7] Replacing Firebase configs with placeholders..."
 
 rm -f "$TARGET_DIR/google-services.json"
 rm -f "$TARGET_DIR/GoogleService-Info.plist"
@@ -205,7 +209,7 @@ echo "  Done."
 # Step 5: Clean up extras
 # ---------------------------------------------------------------------------
 
-echo "[5/6] Cleaning up..."
+echo "[5/7] Cleaning up..."
 
 # Remove the scripts folder from white-label (snapshot script is not for buyers)
 rm -rf "$TARGET_DIR/scripts"
@@ -222,7 +226,7 @@ echo "  Done."
 # Step 6: Verify — check for leftover site-specific references
 # ---------------------------------------------------------------------------
 
-echo "[6/6] Verifying no site-specific references remain..."
+echo "[6/7] Verifying no site-specific references remain..."
 echo ""
 
 ISSUES=0
@@ -246,16 +250,81 @@ if [ $ISSUES -eq 0 ]; then
   echo "  All clean — no site-specific references found."
 fi
 
+# ---------------------------------------------------------------------------
+# Step 7: Generate / update CHANGELOG.md
+# ---------------------------------------------------------------------------
+
+echo "[7/7] Updating CHANGELOG..."
+
+CHANGELOG="$TARGET_DIR/CHANGELOG.md"
+DATE=$(date +%Y-%m-%d)
+
+if [ ! -f "$CHANGELOG" ]; then
+  # First snapshot — create the file
+  cat > "$CHANGELOG" << CHANGELOG_EOF
+# Changelog
+
+All notable changes to the TBC Community App white-label product.
+
+## [$SOURCE_VERSION] — $DATE
+
+- Initial white-label release
+CHANGELOG_EOF
+else
+  # Subsequent snapshot — prepend new version entry after the header
+  # Create temp file with new entry inserted after "All notable changes..." line
+  # Skip if this version already has an entry
+  if grep -q "## \[$SOURCE_VERSION\]" "$CHANGELOG"; then
+    echo "  Version $SOURCE_VERSION already in CHANGELOG, skipping."
+  else
+    TEMP_CL=$(mktemp)
+    awk -v ver="$SOURCE_VERSION" -v dt="$DATE" '
+      /^All notable changes/ { print; print ""; print "## [" ver "] — " dt; print ""; print "- Update from upstream"; next }
+      { print }
+    ' "$CHANGELOG" > "$TEMP_CL"
+    mv "$TEMP_CL" "$CHANGELOG"
+  fi
+fi
+
+echo "  Done."
+
+# ---------------------------------------------------------------------------
+# Git tag (if target is a git repo)
+# ---------------------------------------------------------------------------
+
+if [ -d "$TARGET_DIR/.git" ]; then
+  echo ""
+  read -p "Tag this release as v${SOURCE_VERSION}? (y/N) " tag_confirm
+  if [[ "$tag_confirm" =~ ^[Yy]$ ]]; then
+    cd "$TARGET_DIR"
+    git add -A
+    git commit -m "Update to v${SOURCE_VERSION}" --allow-empty
+    if git tag -a "v${SOURCE_VERSION}" -m "Release v${SOURCE_VERSION}" 2>/dev/null; then
+      echo "  Tagged v${SOURCE_VERSION}"
+    else
+      echo "  Tag v${SOURCE_VERSION} already exists, skipping."
+    fi
+    cd "$SOURCE_DIR"
+  fi
+fi
+
 echo ""
 echo "========================================"
 echo "  White-Label Snapshot Complete!"
 echo "========================================"
 echo ""
-echo "Output: $TARGET_DIR"
+echo "Output:  $TARGET_DIR"
+echo "Version: $SOURCE_VERSION"
 echo ""
 echo "Next steps:"
-echo "  1. Open the folder in VS Code and review"
-echo "  2. cd into it, run: git init && git add . && git commit -m 'Initial white-label release v1.0.0'"
-echo "  3. Create a private GitHub repo and push"
-echo "  4. Test: npm install && npx expo start"
+if [ -d "$TARGET_DIR/.git" ]; then
+  echo "  1. Review the changes: cd \"$TARGET_DIR\" && git diff HEAD~1"
+  echo "  2. Push: git push && git push --tags"
+  echo "  3. Subscribers merge: git fetch upstream && git merge v${SOURCE_VERSION}"
+else
+  echo "  1. Open the folder in VS Code and review"
+  echo "  2. cd into it, run: git init && git add . && git commit -m 'Initial white-label release v${SOURCE_VERSION}'"
+  echo "  3. Create a private GitHub repo and push"
+  echo "  4. Test: npm install && npx expo start"
+fi
 echo ""

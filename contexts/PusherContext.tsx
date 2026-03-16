@@ -59,6 +59,11 @@ export function PusherProvider({ children }: { children: React.ReactNode }) {
   // Connect/Disconnect based on auth state
   // Uses server-driven socket config from AppConfigContext when available.
   // Falls back to static PUSHER_CONFIG on first-ever launch before app-config loads.
+  //
+  // socketConfig is intentionally NOT in deps — we don't want to reconnect
+  // when config refreshes mid-session. New config is picked up on next login.
+  // On cold start, cached socketConfig loads from AsyncStorage before auth
+  // completes, so it's available for the initial connection.
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
