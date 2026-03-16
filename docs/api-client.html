@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — API Client &amp; HTTP Layer</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .required { background: rgba(248, 81, 73, 0.15); color: var(--error); }
+  .auto { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn {
+    border-left-color: var(--warning);
+  }
+  .callout-error {
+    border-left-color: var(--error);
+  }
+  .callout-success {
+    border-left-color: var(--success);
+  }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+  .flow-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85em;
+    line-height: 1.8;
+    white-space: pre;
+    overflow-x: auto;
+  }
+</style>
+</head>
+<body>
+
+<h1>API Client &amp; HTTP Layer</h1>
+<p class="subtitle">JWT authentication, automatic token refresh, error normalization, response headers, and batch requests</p>
+
+<div class="callout">
+  <strong>Source files:</strong>
+  <span class="file-path">services/api/client.ts</span> &middot;
+  <span class="file-path">services/auth.ts</span> &middot;
+  <span class="file-path">services/api/batch.ts</span> &middot;
+  <span class="file-path">constants/config.ts</span> &middot;
+  <span class="file-path">types/api.ts</span><br>
+  All authenticated API calls go through the HTTP client in <code>client.ts</code>. It handles JWT headers, token refresh on 401/403, request timeouts, connectivity checks, error normalization, and custom response header extraction.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">How It Works</a></li>
+    <li><a href="#endpoints">API Endpoints &amp; Base URLs</a></li>
+    <li><a href="#client">HTTP Client</a></li>
+    <li><a href="#response-type">ApiResponse Type</a></li>
+    <li><a href="#auth">JWT Authentication</a></li>
+    <li><a href="#silent-refresh">Silent Token Refresh</a></li>
+    <li><a href="#error-handling">Error Handling</a></li>
+    <li><a href="#response-headers">Response Headers</a></li>
+    <li><a href="#batch-api">Batch API</a></li>
+    <li><a href="#service-pattern">Writing API Services</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="overview">1. How It Works</h2>
+
+<p>Every authenticated API call flows through a single <code>request()</code> function in <span class="file-path">services/api/client.ts</span>. This function handles the full request lifecycle:</p>
+
+<div class="flow-diagram">request(endpoint, config)
+  &darr;
+  NetInfo connectivity check (fail fast if offline)
+  &darr;
+  Get JWT from SecureStore &rarr; add Authorization header
+  &darr;
+  fetch() with AbortController timeout (20s default)
+  &darr;
+  Parse JSON (fallback to text on parse failure)
+  &darr;
+  Extract X-TBC-* response headers &rarr; callback to React
+  &darr;
+  Response OK? &rarr; return { success: true, data }
+  &darr;
+  401/403 JWT error? &rarr; silentRefresh() &rarr; retry once
+  &darr;
+  Still failing? &rarr; clearAuth() &rarr; return { success: false, error }</div>
+
+<p>API services (feeds, spaces, profiles, etc.) are thin wrappers around the client&rsquo;s convenience methods (<code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, <code>del</code>). They handle request building and response transformation but don&rsquo;t deal with auth, retries, or error normalization.</p>
+
+<!-- ====================================================================== -->
+<h2 id="endpoints">2. API Endpoints &amp; Base URLs</h2>
+
+<p>All API URLs are derived from <code>SITE_URL</code> in <span class="file-path">constants/config.ts</span>. The site URL comes from <code>eas.json</code> environment variables via <code>app.config.ts</code>.</p>
+
+<h3>Base URLs</h3>
+<table>
+  <tr><th>Constant</th><th>Path</th><th>Used For</th></tr>
+  <tr><td><code>API_URL</code></td><td><code>/wp-json/fluent-community/v2</code></td><td>Core Fluent Community API (feeds, spaces, profiles, chat, courses, notifications)</td></tr>
+  <tr><td><code>TBC_CA_URL</code></td><td><code>/wp-json/tbc-ca/v1</code></td><td>TBC Community App plugin (auth, batch, config, push, cart, account)</td></tr>
+  <tr><td><code>TBC_FP_URL</code></td><td><code>/wp-json/tbc-fp/v1</code></td><td>TBC Fluent Profiles plugin (registration, OTP, profile fields)</td></tr>
+  <tr><td><code>TBC_MR_URL</code></td><td><code>/wp-json/tbc-multi-reactions/v1</code></td><td>TBC Multi-Reactions plugin (reaction breakdowns)</td></tr>
+  <tr><td><code>TBC_YT_URL</code></td><td><code>/wp-json/tbc-yt/v1</code></td><td>TBC YouTube plugin (channel videos, playlists)</td></tr>
+  <tr><td><code>WP_REST_URL</code></td><td><code>/wp-json/wp/v2</code></td><td>WordPress core REST (blog posts, comments)</td></tr>
+</table>
+
+<p>The HTTP client defaults to <code>API_URL</code> (Fluent Community). Services targeting other endpoints pass <code>baseUrl</code> in the request config:</p>
+<pre><code>// Default — hits Fluent Community API
+get&lt;Feed[]&gt;('/feeds');
+
+// Override — hits TBC-CA plugin
+request&lt;BatchPayload&gt;('/batch', { method: 'POST', body, baseUrl: TBC_CA_URL });</code></pre>
+
+<h3>Endpoint Constants</h3>
+<p>All REST paths are centralized in the <code>ENDPOINTS</code> object in <span class="file-path">constants/config.ts</span>. Dynamic segments use functions:</p>
+<pre><code>import { ENDPOINTS } from '@/constants/config';
+
+ENDPOINTS.FEEDS                    // '/feeds'
+ENDPOINTS.FEED_BY_ID(42)           // '/feeds/42/by-id'
+ENDPOINTS.SPACE_BY_SLUG('general') // '/spaces/general/by-slug'
+ENDPOINTS.POST_COMMENTS(42)        // '/feeds/42/comments'</code></pre>
+
+<!-- ====================================================================== -->
+<h2 id="client">3. HTTP Client</h2>
+
+<h3>Convenience Methods</h3>
+<p>For most API calls, use the convenience methods:</p>
+<pre><code>import { get, post, put, patch, del } from '@/services/api/client';
+
+// GET with query params
+const feeds = await get&lt;FeedsResponse&gt;('/feeds', { per_page: 20, page: 1 });
+
+// POST with JSON body
+const result = await post&lt;CreateResult&gt;('/feeds', { message: 'Hello', type: 'text' });
+
+// PUT with body
+const updated = await put&lt;Feed&gt;('/feeds/42', { message: 'Updated' });
+
+// PATCH with body
+const patched = await patch&lt;Profile&gt;('/profile/john', { bio: 'New bio' });
+
+// DELETE
+const deleted = await del&lt;void&gt;('/feeds/42');</code></pre>
+
+<h3>Direct <code>request()</code> for Advanced Use</h3>
+<p>When you need <code>baseUrl</code>, <code>rawBody</code>, <code>timeout</code>, or <code>includeHeaders</code>, use <code>request()</code> directly:</p>
+<pre><code>import { request } from '@/services/api/client';
+
+// FormData upload (rawBody skips JSON.stringify, omits Content-Type)
+const formData = new FormData();
+formData.append('media', { uri, name, type });
+const result = await request&lt;UploadResult&gt;('/media/upload', {
+  method: 'POST',
+  body: formData,
+  rawBody: true,
+});
+
+// Custom timeout (e.g., slow upload)
+const result = await request&lt;ImportResult&gt;('/import', {
+  method: 'POST',
+  body: payload,
+  timeout: 60_000, // 60 seconds
+});
+
+// Different base URL
+const config = await request&lt;AppConfig&gt;('/app-config', {
+  baseUrl: TBC_CA_URL,
+});</code></pre>
+
+<h3>RequestConfig Options</h3>
+<table>
+  <tr><th>Option</th><th>Type</th><th>Default</th><th>Purpose</th></tr>
+  <tr><td><code>method</code></td><td><code>'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'</code></td><td><code>'GET'</code></td><td>HTTP method</td></tr>
+  <tr><td><code>body</code></td><td><code>any</code></td><td>&mdash;</td><td>Request body (auto JSON.stringify unless rawBody)</td></tr>
+  <tr><td><code>params</code></td><td><code>Record&lt;string, any&gt;</code></td><td>&mdash;</td><td>Query parameters (appended to URL)</td></tr>
+  <tr><td><code>headers</code></td><td><code>Record&lt;string, string&gt;</code></td><td>&mdash;</td><td>Additional headers (merged with defaults)</td></tr>
+  <tr><td><code>baseUrl</code></td><td><code>string</code></td><td><code>API_URL</code></td><td>Override the base URL for this request</td></tr>
+  <tr><td><code>rawBody</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Send body as-is (e.g., FormData). Skips JSON.stringify and Content-Type header.</td></tr>
+  <tr><td><code>includeHeaders</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Include response <code>Headers</code> object in success result</td></tr>
+  <tr><td><code>timeout</code></td><td><code>number</code> (ms)</td><td><code>20000</code></td><td>Request timeout via AbortController</td></tr>
+</table>
+
+<!-- ====================================================================== -->
+<h2 id="response-type">4. ApiResponse Type</h2>
+
+<p>Every API call returns a discriminated union. Check <code>success</code> first, then access <code>data</code> or <code>error</code>:</p>
+
+<pre><code>// Type definition (services/api/client.ts)
+type ApiResponse&lt;T&gt; =
+  | { success: true; data: T }
+  | { success: false; error: ApiError };
+
+// ApiError shape (types/api.ts)
+interface ApiError {
+  code: string;       // e.g. 'rest_forbidden', 'tbc_auth_expired_token'
+  message: string;    // Human-readable error message
+  data: {
+    status: number;   // HTTP status code (0 for network/timeout errors)
+  };
+}</code></pre>
+
+<h3>Usage Pattern</h3>
+<pre><code>const response = await get&lt;FeedsResponse&gt;('/feeds');
+
+// Early-return pattern (recommended — TypeScript narrows correctly)
+if (!response.success) {
+  throw new Error(response.error.message);
+}
+
+// Now TypeScript knows response.data exists
+const feeds = response.data.feeds;</code></pre>
+
+<div class="callout callout-error">
+  <strong>Always use early-return for error checking.</strong> TypeScript can narrow <code>ApiResponse</code> through <code>if (!response.success) { return/throw }</code> but <strong>cannot narrow through else branches</strong>. This pattern is used consistently throughout the codebase.
+</div>
+
+<h3>Special Status Codes</h3>
+<table>
+  <tr><th>Code</th><th>Meaning</th></tr>
+  <tr><td><code>0</code></td><td>Network error or timeout (no HTTP response received)</td></tr>
+  <tr><td><code>'network_error'</code></td><td>NetInfo reported offline, or fetch threw a network error</td></tr>
+  <tr><td><code>'timeout'</code></td><td>Request exceeded timeout (AbortController fired)</td></tr>
+  <tr><td><code>'parse_error'</code></td><td>Server returned non-JSON (e.g., HTML from 502 proxy error)</td></tr>
+</table>
+
+<!-- ====================================================================== -->
+<h2 id="auth">5. JWT Authentication</h2>
+
+<p>Auth is managed by <span class="file-path">services/auth.ts</span>, completely self-contained with no React dependencies. The HTTP client calls <code>getAuthToken()</code> to read the JWT from SecureStore on every request.</p>
+
+<h3>Token Storage</h3>
+<table>
+  <tr><th>SecureStore Key</th><th>Contents</th><th>Lifetime</th></tr>
+  <tr><td><code>tbc_auth_jwt</code></td><td>Access token (JWT)</td><td>~1 day (server-configured)</td></tr>
+  <tr><td><code>tbc_auth_refresh</code></td><td>Refresh token</td><td>~6 months (server-configured)</td></tr>
+  <tr><td><code>tbc_user_info</code></td><td>Serialized <code>AuthUser</code> object</td><td>Until logout or update</td></tr>
+</table>
+
+<h3>Auth Endpoints</h3>
+<table>
+  <tr><th>Endpoint</th><th>Method</th><th>Purpose</th></tr>
+  <tr><td><code>/tbc-ca/v1/auth/login</code></td><td>POST</td><td>Login &rarr; returns access + refresh tokens + user profile</td></tr>
+  <tr><td><code>/tbc-ca/v1/auth/refresh</code></td><td>POST</td><td>Exchange refresh token &rarr; new access token</td></tr>
+  <tr><td><code>/tbc-ca/v1/auth/logout</code></td><td>POST</td><td>Revoke server session (best-effort, non-blocking)</td></tr>
+</table>
+
+<h3>Auth Functions</h3>
+<table>
+  <tr><th>Function</th><th>Purpose</th></tr>
+  <tr><td><code>login(username, password)</code></td><td>Full login flow: authenticate, store tokens + user, register push token</td></tr>
+  <tr><td><code>logout()</code></td><td>Unregister push, clear badge, revoke server session, clear stored auth</td></tr>
+  <tr><td><code>getAuthToken()</code></td><td>Read JWT from SecureStore (called by HTTP client on every request)</td></tr>
+  <tr><td><code>getStoredUser()</code></td><td>Read cached user profile from SecureStore</td></tr>
+  <tr><td><code>hasStoredAuth()</code></td><td>Check if a JWT exists (used for initial auth state)</td></tr>
+  <tr><td><code>silentRefresh()</code></td><td>Exchange refresh token for new access token (see <a href="#silent-refresh">section 6</a>)</td></tr>
+  <tr><td><code>storeAuthDirect(access, refresh, user)</code></td><td>Store tokens directly (used by registration auto-login)</td></tr>
+  <tr><td><code>updateStoredUser(updates)</code></td><td>Merge partial updates into stored user data</td></tr>
+  <tr><td><code>clearAuth()</code></td><td>Delete all SecureStore keys + fire <code>onAuthCleared</code> callback</td></tr>
+</table>
+
+<h3>Auth &rarr; React Bridge</h3>
+<p>Since <code>auth.ts</code> is a plain service (not React), it uses a callback pattern to notify <code>AuthContext</code> when auth is cleared:</p>
+<pre><code>// auth.ts — registers callback
+export function setOnAuthCleared(callback: (() =&gt; void) | null): void { ... }
+
+// AuthContext.tsx — sets the callback on mount
+useEffect(() =&gt; {
+  setOnAuthCleared(() =&gt; {
+    setUser(null);
+    setIsAuthenticated(false);
+  });
+  return () =&gt; setOnAuthCleared(null);
+}, []);</code></pre>
+
+<!-- ====================================================================== -->
+<h2 id="silent-refresh">6. Silent Token Refresh</h2>
+
+<p>When the server returns a 401 or a 403 with a JWT error code, the client automatically attempts to refresh the token and retry the original request.</p>
+
+<h3>Flow</h3>
+<div class="flow-diagram">Server returns 401 or 403 with JWT code
+  &darr;
+  Is this a retry (_isRetry)? &rarr; Yes: clearAuth(), return error
+  &darr;
+  No: call silentRefresh()
+  &darr;
+  Read refresh token from SecureStore
+  &darr;
+  POST /tbc-ca/v1/auth/refresh (direct fetch, NOT through client)
+  &darr;
+  Success? &rarr; Store new access token, retry original request with _isRetry=true
+  &darr;
+  Failed? &rarr; clearAuth() (triggers logout via onAuthCleared callback)</div>
+
+<h3>Key Design Decisions</h3>
+<ul>
+  <li><strong>Direct <code>fetch()</code> for refresh</strong> &mdash; The refresh call bypasses the HTTP client entirely. Using the client would create an infinite loop (refresh fails &rarr; tries to refresh again &rarr; ...).</li>
+  <li><strong><code>_isRetry</code> flag</strong> &mdash; Prevents infinite retry loops. The retry gets one chance; if it also fails with a JWT error, auth is cleared.</li>
+  <li><strong>Concurrent refresh prevention</strong> &mdash; If multiple requests fail at the same time, only one refresh happens. Others wait on the same <code>refreshInProgress</code> promise.</li>
+</ul>
+
+<pre><code>// Concurrent refresh prevention (auth.ts)
+let refreshInProgress: Promise&lt;boolean&gt; | null = null;
+
+export async function silentRefresh(): Promise&lt;boolean&gt; {
+  if (refreshInProgress) {
+    return refreshInProgress; // Wait for the in-flight refresh
+  }
+  refreshInProgress = (async () =&gt; {
+    // ... do refresh ...
+  })();
+  return refreshInProgress;
+}</code></pre>
+
+<h3>JWT Error Codes</h3>
+<p>The client treats these as "token expired" and triggers refresh:</p>
+<table>
+  <tr><th>HTTP Status</th><th>Code</th><th>Meaning</th></tr>
+  <tr><td>401</td><td>(any)</td><td>Unauthorized &mdash; token missing, malformed, or expired</td></tr>
+  <tr><td>403</td><td><code>tbc_auth_expired_token</code></td><td>JWT has expired</td></tr>
+  <tr><td>403</td><td><code>tbc_auth_revoked_session</code></td><td>Server revoked the session</td></tr>
+  <tr><td>403</td><td><code>tbc_auth_bad_token</code></td><td>Token is malformed or invalid</td></tr>
+  <tr><td>403</td><td><code>rest_forbidden</code></td><td>WordPress REST permission denied (may be auth-related)</td></tr>
+</table>
+
+<!-- ====================================================================== -->
+<h2 id="error-handling">7. Error Handling</h2>
+
+<h3>Error Normalization</h3>
+<p>WordPress and Fluent Community return errors in several different shapes. The client normalizes all of them into a consistent <code>ApiError</code>:</p>
+
+<table>
+  <tr><th>Server Returns</th><th>Normalized To</th></tr>
+  <tr><td><code>{ message: "string" }</code></td><td><code>{ message: "string" }</code></td></tr>
+  <tr><td><code>{ message: ["err1", "err2"] }</code></td><td><code>{ message: "err1. err2" }</code></td></tr>
+  <tr><td><code>{ message: { field: ["err"] } }</code></td><td><code>{ message: "err" }</code> (flattened)</td></tr>
+  <tr><td><code>{ code: "x", message: "y", data: { status: 403 } }</code></td><td><code>{ code: "x", message: "y", data: { status: 403 } }</code> (passthrough)</td></tr>
+  <tr><td><code>"plain string"</code> or <code>null</code></td><td><code>{ code: "error", message: "string" | "An unknown error occurred" }</code></td></tr>
+</table>
+
+<h3>Network &amp; Timeout Errors</h3>
+<p>These never reach the server, so they get synthetic error codes:</p>
+<pre><code>// No connectivity (NetInfo check)
+{ code: 'network_error', message: 'No internet connection', data: { status: 0 } }
+
+// Request timed out (AbortController)
+{ code: 'timeout', message: 'Request timed out — ...', data: { status: 0 } }
+
+// Fetch threw (DNS failure, etc.)
+{ code: 'network_error', message: error.message, data: { status: 0 } }
+
+// Non-JSON response (e.g., 502 proxy HTML page)
+{ code: 'parse_error', message: 'Server returned invalid JSON (HTTP 502)', data: { status: 502 } }</code></pre>
+
+<h3>Readable Error Messages (Auth)</h3>
+<p><span class="file-path">services/auth.ts</span> has its own <code>getReadableErrorMessage()</code> that maps error codes and HTTP statuses to user-friendly messages for the login screen. These are separate from the client's error normalization because login happens before the client is available.</p>
+
+<!-- ====================================================================== -->
+<h2 id="response-headers">8. Response Headers</h2>
+
+<p>The TBC Community App plugin sends live counts and status flags in custom response headers on every authenticated response. The HTTP client extracts these and forwards them to React via a callback.</p>
+
+<h3>Custom Headers</h3>
+<table>
+  <tr><th>Header</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>X-TBC-Unread-Notifications</code></td><td>number</td><td>Unread notification count &rarr; badge on bell icon</td></tr>
+  <tr><td><code>X-TBC-Unread-Messages</code></td><td>number</td><td>Unread message thread count &rarr; badge on chat icon</td></tr>
+  <tr><td><code>X-TBC-Cart-Count</code></td><td>number</td><td>Cart item count &rarr; badge on cart icon</td></tr>
+  <tr><td><code>X-TBC-Maintenance</code></td><td><code>'1'</code> or <code>'0'</code></td><td>Site in maintenance mode &rarr; show maintenance screen</td></tr>
+  <tr><td><code>X-TBC-Profile-Incomplete</code></td><td><code>'1'</code> or <code>'0'</code></td><td>User profile is incomplete &rarr; prompt to complete</td></tr>
+  <tr><td><code>X-TBC-Min-App-Version</code></td><td>string</td><td>Minimum app version required &rarr; force update screen</td></tr>
+</table>
+
+<h3>How It Works</h3>
+<p>The callback is registered by <code>_layout.tsx</code> on mount using the same service &rarr; React bridge pattern as auth:</p>
+<pre><code>// client.ts — callback registration
+export function setOnResponseHeaders(
+  callback: ((data: ResponseHeaderData) =&gt; void) | null
+): void { ... }
+
+// _layout.tsx — registers the callback
+useEffect(() =&gt; {
+  setOnResponseHeaders((data) =&gt; {
+    if (data.unreadNotifications !== undefined) setNotifCount(data.unreadNotifications);
+    if (data.unreadMessages !== undefined) setMessageCount(data.unreadMessages);
+    if (data.maintenance !== undefined) setMaintenanceMode(data.maintenance);
+    // etc.
+  });
+  return () =&gt; setOnResponseHeaders(null);
+}, []);</code></pre>
+
+<div class="callout callout-success">
+  <strong>Badges stay live without polling.</strong> Every API response piggybacks the latest counts, so badges update on every screen transition or data fetch &mdash; no dedicated polling or WebSocket channel needed for counts.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="batch-api">9. Batch API</h2>
+
+<p><span class="file-path">services/api/batch.ts</span> combines multiple REST requests into a single HTTP call. The TBC Community App WordPress plugin dispatches each request internally and returns all responses at once.</p>
+
+<h3>Usage</h3>
+<pre><code>import { batchRequest, findBatchResponse } from '@/services/api/batch';
+
+const responses = await batchRequest([
+  { path: '/tbc-ca/v1/app-config' },
+  { path: '/fluent-community/v2/notifications/unread' },
+  { path: '/fluent-community/v2/courses?type=enrolled&amp;per_page=5' },
+]);
+
+// Find a specific response by path prefix
+const config = findBatchResponse&lt;AppConfigResponse&gt;(responses, '/tbc-ca/v1/app-config');
+const courses = findBatchResponse&lt;CoursesResponse&gt;(responses, '/fluent-community/v2/courses');</code></pre>
+
+<h3>Response Shape</h3>
+<pre><code>interface BatchResponseItem {
+  path: string;                     // The requested path
+  status: number;                   // HTTP status (200, 404, etc.)
+  body: unknown;                    // Response body (parsed JSON)
+  headers: Record&lt;string, string&gt;; // Response headers
+}</code></pre>
+
+<p><code>findBatchResponse()</code> returns the body if status is 2xx, or <code>null</code> otherwise. It matches by path <strong>prefix</strong>, so <code>'/fluent-community/v2/courses'</code> matches both <code>/courses</code> and <code>/courses?type=enrolled</code>.</p>
+
+<div class="callout">
+  <strong>The batch is used once per session</strong> &mdash; on startup, by <span class="file-path">hooks/useStartupData.ts</span>. See the <a href="caching-system.html#batch-startup">Caching System doc</a> for details on how it coordinates with <code>useCachedData</code>.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="service-pattern">10. Writing API Services</h2>
+
+<p>API services are organized by domain in <span class="file-path">services/api/</span>. Each file exports a named object with methods.</p>
+
+<h3>Template</h3>
+<pre><code>// services/api/myFeature.ts
+
+import { ENDPOINTS } from '@/constants/config';
+import { get, post, del } from './client';
+import type { ApiResponse } from './client';
+
+interface MyItem {
+  id: number;
+  title: string;
+}
+
+interface MyListResponse {
+  items: { data: MyItem[] };
+}
+
+export const myFeatureApi = {
+  /** Get items with optional pagination */
+  getItems(options: { page?: number; per_page?: number } = {}): Promise&lt;ApiResponse&lt;MyListResponse&gt;&gt; {
+    return get&lt;MyListResponse&gt;(ENDPOINTS.MY_ITEMS, {
+      page: options.page || 1,
+      per_page: options.per_page || 20,
+    });
+  },
+
+  /** Create a new item */
+  createItem(data: { title: string }): Promise&lt;ApiResponse&lt;MyItem&gt;&gt; {
+    return post&lt;MyItem&gt;(ENDPOINTS.MY_ITEMS, data);
+  },
+
+  /** Delete an item */
+  deleteItem(id: number): Promise&lt;ApiResponse&lt;void&gt;&gt; {
+    return del&lt;void&gt;(`${ENDPOINTS.MY_ITEMS}/${id}`);
+  },
+};</code></pre>
+
+<h3>Existing Services</h3>
+<table>
+  <tr><th>File</th><th>Export</th><th>Base URL</th></tr>
+  <tr><td><span class="file-path">services/api/feeds.ts</span></td><td><code>feedsApi</code></td><td><code>API_URL</code> (default)</td></tr>
+  <tr><td><span class="file-path">services/api/spaces.ts</span></td><td><code>spacesApi</code></td><td><code>API_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/profiles.ts</span></td><td><code>profilesApi</code></td><td><code>API_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/messaging.ts</span></td><td><code>messagingApi</code></td><td><code>API_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/notifications.ts</span></td><td><code>notificationsApi</code></td><td><code>API_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/courses.ts</span></td><td><code>coursesApi</code></td><td><code>API_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/members.ts</span></td><td><code>membersApi</code></td><td><code>API_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/comments.ts</span></td><td><code>commentsApi</code></td><td><code>API_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/reactions.ts</span></td><td><code>reactionsApi</code></td><td><code>TBC_MR_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/appConfig.ts</span></td><td><code>getAppConfig()</code></td><td><code>TBC_CA_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/registration.ts</span></td><td><code>registrationApi</code></td><td><code>TBC_FP_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/otp.ts</span></td><td><code>otpApi</code></td><td><code>TBC_FP_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/batch.ts</span></td><td><code>batchRequest()</code></td><td><code>TBC_CA_URL</code></td></tr>
+  <tr><td><span class="file-path">services/push.ts</span></td><td><code>registerDeviceToken()</code></td><td><code>TBC_CA_URL</code></td></tr>
+</table>
+
+<div class="callout callout-warn">
+  <strong>Some services bypass the HTTP client.</strong> Registration, OTP, app config, and push use their own <code>fetch()</code> wrappers because they handle unauthenticated requests or receive tokens as parameters (before auth state is established). These are the only exceptions &mdash; all other services use the standard client.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="rules">11. Rules</h2>
+
+<ol>
+  <li><strong>Use the HTTP client for all authenticated requests.</strong> Import <code>get</code>, <code>post</code>, <code>put</code>, <code>patch</code>, <code>del</code> from <code>@/services/api/client</code>. Don&rsquo;t use <code>fetch()</code> directly unless the request is unauthenticated.</li>
+  <li><strong>Use early-return for error handling.</strong> Check <code>if (!response.success)</code> first, then work with <code>response.data</code>. TypeScript can&rsquo;t narrow through else branches on discriminated unions.</li>
+  <li><strong>Use <code>ENDPOINTS</code> constants for paths.</strong> Don&rsquo;t hardcode REST paths in service files. Add new paths to <code>constants/config.ts</code>.</li>
+  <li><strong>Use <code>baseUrl</code> to target non-default APIs.</strong> Pass <code>baseUrl: TBC_CA_URL</code> (or other URL constant) in the request config. Don&rsquo;t construct full URLs manually.</li>
+  <li><strong>Let the client handle auth and retries.</strong> Don&rsquo;t read tokens or implement retry logic in service files. The client does this automatically.</li>
+  <li><strong>Use <code>rawBody: true</code> for FormData.</strong> Don&rsquo;t manually set Content-Type for file uploads &mdash; <code>rawBody</code> tells the client to skip JSON.stringify and let the browser set the multipart boundary.</li>
+  <li><strong>Don&rsquo;t guess API response shapes.</strong> Check the actual server response (via curl or dev tools) before writing types. WordPress/Fluent returns different shapes for different endpoints.</li>
+  <li><strong>Export services as named objects.</strong> Use <code>export const myApi = { ... }</code> pattern. This makes imports explicit and tree-shakeable.</li>
+  <li><strong>Don&rsquo;t add new custom fetch wrappers.</strong> If you need unauthenticated access, check if one of the existing wrappers (<code>tbcPublicRequest</code> in registration.ts, etc.) works. Don&rsquo;t duplicate the pattern.</li>
+  <li><strong>Handle <code>status: 0</code> as "no server response."</strong> It means network error, timeout, or offline. Don&rsquo;t retry automatically &mdash; the user likely needs to check their connection.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  API Client &amp; HTTP Layer &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  <a href="module-system.html">Module System</a> &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="theme-system.html">Theme System</a>
+</p>
+
+</body>
+</html>
