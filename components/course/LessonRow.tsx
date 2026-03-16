@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CourseLesson } from '@/types/course';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { formatMediumDate } from '@/utils/formatDate';
 
 interface LessonRowProps {
   lesson: CourseLesson;
@@ -88,7 +89,7 @@ export const LessonRow = React.memo(function LessonRow({ lesson, index, isComple
             <View style={styles.badge}>
               <Ionicons name="time-outline" size={12} color={themeColors.textTertiary} />
               <Text style={[styles.badgeText, { color: themeColors.textTertiary }]}>
-                Unlocks {formatUnlockDate(lesson.unclock_date)}
+                Unlocks {formatMediumDate(lesson.unclock_date)}
               </Text>
             </View>
           )}
@@ -103,14 +104,6 @@ export const LessonRow = React.memo(function LessonRow({ lesson, index, isComple
   );
 });
 
-function formatUnlockDate(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch {
-    return dateStr;
-  }
-}
 
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);

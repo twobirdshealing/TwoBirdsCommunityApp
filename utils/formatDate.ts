@@ -103,6 +103,19 @@ export function formatShortDate(dateString: string): string {
 }
 
 // -----------------------------------------------------------------------------
+// Format as Medium Date ("Oct 27, 2025")
+// -----------------------------------------------------------------------------
+
+export function formatMediumDate(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return dateString;
+  }
+}
+
+// -----------------------------------------------------------------------------
 // Format as Full Date ("October 27, 2025")
 // -----------------------------------------------------------------------------
 

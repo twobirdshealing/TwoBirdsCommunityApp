@@ -4,7 +4,7 @@
 // Shows: section header with collapse toggle, list of LessonRow items
 // =============================================================================
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { CourseLesson, CourseSection } from '@/types/course';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
+import { formatMediumDate } from '@/utils/formatDate';
 import { LessonRow } from './LessonRow';
 
 interface SectionListProps {
@@ -32,9 +33,11 @@ export function SectionList({
   const { colors: themeColors } = useTheme();
   const [expanded, setExpanded] = useState(defaultExpanded);
 
-  const completedCount = section.lessons.filter((l) =>
-    completedLessons.some((id) => String(id) === String(l.id))
-  ).length;
+  const completedSet = useMemo(
+    () => new Set(completedLessons.map((id) => String(id))),
+    [completedLessons],
+  );
+  const completedCount = section.lessons.filter((l) => completedSet.has(String(l.id))).length;
   const totalCount = section.lessons.length;
 
   return (
@@ -56,7 +59,7 @@ export function SectionList({
             </Text>
             <Text style={[styles.sectionMeta, { color: themeColors.textTertiary }]}>
               {completedCount}/{totalCount} lessons
-              {section.is_locked && section.unlock_date ? ` · Unlocks ${formatUnlockDate(section.unlock_date)}` : ''}
+              {section.is_locked && section.unlock_date ? ` · Unlocks ${formatMediumDate(section.unlock_date)}` : ''}
             </Text>
           </View>
         </View>
@@ -71,9 +74,7 @@ export function SectionList({
       {expanded && (
         <View>
           {section.lessons.map((lesson, index) => {
-            const isCompleted = completedLessons.some(
-              (id) => String(id) === String(lesson.id)
-            );
+            const isCompleted = completedSet.has(String(lesson.id));
 
             return (
               <LessonRow
@@ -90,15 +91,6 @@ export function SectionList({
       )}
     </View>
   );
-}
-
-function formatUnlockDate(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch {
-    return dateStr;
-  }
 }
 
 const styles = StyleSheet.create({

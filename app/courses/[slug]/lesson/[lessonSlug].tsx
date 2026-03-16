@@ -4,7 +4,7 @@
 // Route: /courses/[slug]/lesson/[lessonSlug]
 // Features:
 // - Lesson content (HTML) via HtmlContent
-// - Embedded video (YouTube) via YouTubeEmbed
+// - Embedded video (YouTube via YouTubeEmbed, Vimeo/Wistia/etc via OEmbedPlayer)
 // - Mark complete / incomplete toggle
 // - Previous / Next lesson navigation
 // =============================================================================
@@ -31,6 +31,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HtmlContent } from '@/components/common/HtmlContent';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
+import { OEmbedPlayer } from '@/components/media/OEmbedPlayer';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
@@ -42,6 +43,7 @@ import { hapticMedium, hapticLight } from '@/utils/haptics';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Button } from '@/components/common/Button';
 import { CompletionCelebration } from '@/components/course/CompletionCelebration';
+import { QuizView } from '@/components/course/QuizView';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -313,6 +315,7 @@ export default function LessonViewScreen() {
 
   const videoUrl = lesson?.meta?.media?.url;
   const youtubeId = videoUrl ? extractYouTubeId(videoUrl) : null;
+  const oEmbedHtml = !youtubeId && lesson?.meta?.media?.html ? lesson.meta.media.html : null;
   const contentWidth = SCREEN_WIDTH - spacing.lg * 2;
 
   // Documents & comments
@@ -452,6 +455,13 @@ export default function LessonViewScreen() {
             </View>
           )}
 
+          {/* oEmbed Player (Vimeo, Wistia, etc.) */}
+          {oEmbedHtml && (
+            <View style={[styles.videoContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+              <OEmbedPlayer html={oEmbedHtml} />
+            </View>
+          )}
+
           {/* Lesson Content */}
           <View style={[styles.contentContainer, hasHeroImage && { paddingTop: spacing.md }]}>
             {/* Title (only when no hero image — hero has title overlay) */}
@@ -463,12 +473,28 @@ export default function LessonViewScreen() {
                 html={lesson.inline_css ? `<style>${lesson.inline_css}</style>${cleanedHtml}` : cleanedHtml}
                 contentWidth={contentWidth}
               />
-            ) : (
+            ) : lesson.content_type !== 'quiz' ? (
               <Text style={[styles.noContent, { color: themeColors.textTertiary }]}>
                 No content available for this lesson.
               </Text>
-            )}
+            ) : null}
           </View>
+
+          {/* Quiz */}
+          {lesson.content_type === 'quiz' && lesson.meta?.quiz_questions && lesson.meta.quiz_questions.length > 0 && courseId && (
+            <View style={styles.quizContainer}>
+              <QuizView
+                questions={lesson.meta.quiz_questions}
+                courseId={courseId}
+                lessonId={lesson.id}
+                passingScore={lesson.meta.passing_score || 0}
+                enablePassingScore={lesson.meta.enable_passing_score === 'yes'}
+                enforcePassingScore={lesson.meta.enforce_passing_score === 'yes'}
+                hideResult={lesson.meta.hide_result === 'yes'}
+                contentWidth={contentWidth}
+              />
+            </View>
+          )}
 
           {/* Documents */}
           {documents.length > 0 && (
@@ -737,6 +763,11 @@ const styles = StyleSheet.create({
   // Content
   contentContainer: {
     padding: spacing.lg,
+  },
+
+  quizContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
   },
 
   lessonTitle: {

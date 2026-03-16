@@ -11,6 +11,9 @@ import {
   CourseEnrollResponse,
   LessonCompletionResponse,
   LessonDetailResponse,
+  QuizAnswers,
+  QuizSubmitResponse,
+  QuizResultResponse,
 } from '@/types/course';
 import { get, post, put } from './client';
 
@@ -90,6 +93,22 @@ export async function toggleLessonCompletion(
 }
 
 // -----------------------------------------------------------------------------
+// Submit Quiz
+// -----------------------------------------------------------------------------
+
+export async function submitQuiz(courseId: number, lessonId: number, answers: QuizAnswers) {
+  return post<QuizSubmitResponse>(ENDPOINTS.COURSE_QUIZ_SUBMIT(courseId, lessonId), { answers });
+}
+
+// -----------------------------------------------------------------------------
+// Get Quiz Result
+// -----------------------------------------------------------------------------
+
+export async function getQuizResult(courseId: number, lessonId: number) {
+  return get<QuizResultResponse>(ENDPOINTS.COURSE_QUIZ_RESULT(courseId, lessonId));
+}
+
+// -----------------------------------------------------------------------------
 // Request to Join Course (private courses)
 // -----------------------------------------------------------------------------
 
@@ -108,6 +127,8 @@ export const coursesApi = {
   enrollInCourse,
   toggleLessonCompletion,
   requestCourseAccess,
+  submitQuiz,
+  getQuizResult,
 };
 
 export default coursesApi;

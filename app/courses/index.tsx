@@ -70,6 +70,10 @@ export default function CoursesListScreen() {
   // Fetch Courses
   // ---------------------------------------------------------------------------
 
+  // Use a ref so fetchCourses always reads the latest search without being recreated
+  const searchRef = useRef(search);
+  searchRef.current = search;
+
   const fetchCourses = useCallback(async (pageNum: number = 1, shouldAppend: boolean = false) => {
     try {
       if (pageNum === 1) {
@@ -80,13 +84,14 @@ export default function CoursesListScreen() {
       }
       setError(null);
 
+      const currentSearch = searchRef.current.trim();
       const response = await coursesApi.getCourses({
         page: pageNum,
         per_page: 15,
         sort_by: 'alphabetical',
         with_categories: pageNum === 1,
         ...(activeTab === 'enrolled' && { type: 'enrolled' }),
-        ...(search.trim() && { search: search.trim() }),
+        ...(currentSearch && { search: currentSearch }),
         ...(activeCategory && { topic_slug: activeCategory }),
       });
 
@@ -116,7 +121,7 @@ export default function CoursesListScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeTab, search, activeCategory]);
+  }, [activeTab, activeCategory]);
 
   // Initial fetch & refetch on tab/category change
   useEffect(() => {
@@ -125,6 +130,11 @@ export default function CoursesListScreen() {
     setCourses([]);
     fetchCourses(1, false);
   }, [activeTab, activeCategory, fetchCourses]);
+
+  // Clean up search timeout on unmount
+  useEffect(() => {
+    return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
+  }, []);
 
   // Debounced search
   const handleSearchChange = (text: string) => {

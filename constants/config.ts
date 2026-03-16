@@ -122,6 +122,10 @@ export const ENDPOINTS = {
   COURSE_LESSON_COMPLETION: (courseId: number, lessonId: number) =>
     `/courses/${courseId}/lessons/${lessonId}/completion`,
   COURSE_JOIN: (courseId: number) => `/courses/${courseId}/join`,
+  COURSE_QUIZ_SUBMIT: (courseId: number, lessonId: number) =>
+    `/courses/${courseId}/lessons/${lessonId}/quiz/submit`,
+  COURSE_QUIZ_RESULT: (courseId: number, lessonId: number) =>
+    `/courses/${courseId}/lessons/${lessonId}/quiz/result`,
 
   // Moderation
   MODERATION_REPORT: '/moderation/report',

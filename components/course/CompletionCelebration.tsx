@@ -167,7 +167,7 @@ export function CompletionCelebration({
       animationType="fade"
       onRequestClose={onDismiss}
     >
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, { backgroundColor: themeColors.overlay }]}>
         {/* Confetti */}
         {particles.map((particle, i) => (
           <ConfettiPiece key={i} particle={particle} />
@@ -182,7 +182,7 @@ export function CompletionCelebration({
           ]}
         >
           <View style={[styles.iconContainer, { backgroundColor: themeColors.success }]}>
-            <Ionicons name="trophy" size={40} color="#fff" />
+            <Ionicons name="trophy" size={40} color={themeColors.textInverse} />
           </View>
 
           <Text style={[styles.title, { color: themeColors.text }]}>
@@ -225,7 +225,7 @@ export function CompletionCelebration({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    // backgroundColor set inline via themeColors.overlay
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,

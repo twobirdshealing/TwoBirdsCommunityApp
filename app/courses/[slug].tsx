@@ -13,6 +13,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
+  Linking,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -25,6 +26,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { stripHtmlTags } from '@/utils/htmlToText';
+import { Avatar } from '@/components/common/Avatar';
+import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { ProgressBar } from '@/components/course/ProgressBar';
 import { SectionList } from '@/components/course/SectionList';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -37,6 +40,7 @@ import { useCachedData } from '@/hooks/useCachedData';
 import { coursesApi } from '@/services/api/courses';
 import { Course, CourseLesson, CourseSection, CourseTrack } from '@/types/course';
 import { hapticMedium } from '@/utils/haptics';
+import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Button } from '@/components/common/Button';
 import { CourseLockScreen } from '@/components/course/CourseLockScreen';
 
@@ -306,20 +310,19 @@ export default function CourseDetailScreen() {
               style={[styles.instructorRow, { backgroundColor: themeColors.surface }]}
               onPress={() => course.creator?.username && router.push(`/profile/${course.creator.username}`)}
             >
-              {course.creator.avatar ? (
-                <Image source={{ uri: course.creator.avatar }} style={styles.instructorAvatar} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-              ) : (
-                <View style={[styles.instructorAvatar, styles.instructorAvatarPlaceholder, { backgroundColor: themeColors.primary }]}>
-                  <Text style={{ color: themeColors.textInverse, fontSize: typography.size.md, fontWeight: typography.weight.semibold }}>
-                    {course.creator.display_name?.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
+              <Avatar
+                source={course.creator.avatar}
+                size="lg"
+                fallback={course.creator.display_name?.charAt(0) || '?'}
+              />
               <View style={styles.instructorInfo}>
                 <Text style={[styles.instructorLabel, { color: themeColors.textTertiary }]}>Instructor</Text>
-                <Text style={[styles.instructorName, { color: themeColors.text }]}>
-                  {course.creator.display_name}
-                </Text>
+                <UserDisplayName
+                  name={course.creator.display_name}
+                  verified={!!course.creator.is_verified}
+                  size="md"
+                  numberOfLines={1}
+                />
                 {course.creator.short_description ? (
                   <Text style={[styles.instructorBio, { color: themeColors.textSecondary }]} numberOfLines={2}>
                     {course.creator.short_description}
@@ -395,11 +398,21 @@ export default function CourseDetailScreen() {
           {course.settings?.links && course.settings.links.length > 0 && (
             <View style={[styles.linksSection, { backgroundColor: themeColors.surface }]}>
               <Text style={[styles.sectionHeading, { color: themeColors.text }]}>Resources</Text>
-              {course.settings.links.map((link, i) => (
-                <View key={i} style={styles.linkRow}>
+              {course.settings.links
+                .filter((link) => link.enabled !== 'no')
+                .map((link) => (
+                <AnimatedPressable
+                  key={link.slug || link.permalink}
+                  style={styles.linkRow}
+                  onPress={() => {
+                    if (!link.permalink) return;
+                    Linking.openURL(link.permalink);
+                  }}
+                >
                   <Ionicons name="link-outline" size={16} color={themeColors.primary} />
-                  <Text style={[styles.linkText, { color: themeColors.primary }]}>{link.title || link.url}</Text>
-                </View>
+                  <Text style={[styles.linkText, { color: themeColors.primary }]}>{link.title || link.permalink}</Text>
+                  <Ionicons name="open-outline" size={14} color={themeColors.textTertiary} />
+                </AnimatedPressable>
               ))}
             </View>
           )}

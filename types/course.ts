@@ -54,7 +54,15 @@ export interface CourseSettings {
   public_lesson_view?: 'yes' | 'no';
   emoji?: string;
   shape_svg?: string;
-  links?: Array<{ title: string; url: string }>;
+  links?: Array<{
+    title: string;
+    permalink: string;
+    enabled: 'yes' | 'no';
+    new_tab?: 'yes' | 'no';
+    emoji?: string;
+    slug?: string;
+    privacy?: string;
+  }>;
 
   // Inherited from BaseSpace settings
   restricted_post_only?: string;
@@ -148,11 +156,65 @@ export interface CourseLessonMeta {
   document_ids?: number[];
   featured_image_id?: number;
   free_preview_lesson?: 'yes' | 'no';
-  quiz_questions?: unknown[]; // Phase 2
+  quiz_questions?: QuizQuestion[];
   enable_passing_score?: 'yes' | 'no';
   enforce_passing_score?: 'yes' | 'no';
   hide_result?: 'yes' | 'no';
   passing_score?: number;
+}
+
+// -----------------------------------------------------------------------------
+// Quiz Types
+// -----------------------------------------------------------------------------
+
+export interface QuizQuestion {
+  slug: string;
+  type: 'single_choice' | 'multiple_choice';
+  label: string;
+  label_rendered?: string;
+  help_text?: string;
+  enabled: boolean;
+  image_enabled: boolean;
+  image_url?: string;
+  options: QuizOption[];
+}
+
+export interface QuizOption {
+  label: string;
+}
+
+// Answers keyed by question slug → selected option label(s)
+export type QuizAnswers = Record<string, string | string[]>;
+
+export interface QuizResultDetail {
+  is_correct: boolean;
+  user_answer: string | string[];
+}
+
+export interface QuizResult {
+  id: number;
+  user_id: number;
+  post_id: number;
+  parent_id: number;
+  score: number;
+  status: 'passed' | 'failed' | 'published';
+  message: Record<string, QuizResultDetail>;
+  meta: {
+    total_questions: number;
+    correct_answers: number;
+    attempts: number;
+  };
+}
+
+// Response from POST /courses/{id}/lessons/{id}/quiz/submit
+export interface QuizSubmitResponse {
+  result: QuizResult;
+  message: string;
+}
+
+// Response from GET /courses/{id}/lessons/{id}/quiz/result
+export interface QuizResultResponse {
+  result: QuizResult | null;
 }
 
 // -----------------------------------------------------------------------------

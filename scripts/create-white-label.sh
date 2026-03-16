@@ -21,6 +21,58 @@ TARGET_DIR="$(cd "$SOURCE_DIR/.." && pwd)/TBC-Community-App (White Lable)"
 # Allowlist: only these companion plugins ship with the base product
 CORE_PLUGINS=("tbc-community-app" "tbc-fluent-profiles" "tbc-multi-reactions" "tbc-starter-theme")
 
+# Protected paths: buyer-customized files that updates must NEVER overwrite
+# Used to generate manifest.json AND find exclusions for core-update tar
+PROTECTED_PATHS=(
+  "constants/config.ts"
+  "app.json"
+  "eas.json"
+  "app.config.ts"
+  "package.json"
+  "assets/images/"
+  "google-services.json"
+  "GoogleService-Info.plist"
+  "modules/"
+  "setup/.license"
+  "setup/.backups/"
+  "setup/dashboard.next.js"
+  "manifest.json"
+)
+
+# Helper: generate JSON array from PROTECTED_PATHS
+generate_protected_paths_json() {
+  local indent="${1:-    }"
+  local last=$(( ${#PROTECTED_PATHS[@]} - 1 ))
+  for i in "${!PROTECTED_PATHS[@]}"; do
+    local comma=","
+    [ "$i" -eq "$last" ] && comma=""
+    echo "${indent}\"${PROTECTED_PATHS[$i]}\"${comma}"
+  done
+}
+
+# Helper: generate manifest.json with a given version
+generate_manifest() {
+  local version="$1"
+  local dest="$2"
+  cat > "$dest" << GENMANIFEST_EOF
+{
+  "product": "tbc-community-app",
+  "version": "${version}",
+  "dashboardVersion": 1,
+  "updateUrl": "https://twobirdscode.com/wp-json/tbc-license/v1/check",
+  "protectedPaths": [
+$(generate_protected_paths_json "    ")
+  ],
+  "corePlugins": [
+    "tbc-community-app",
+    "tbc-fluent-profiles",
+    "tbc-multi-reactions",
+    "tbc-starter-theme"
+  ]
+}
+GENMANIFEST_EOF
+}
+
 # Read version from source package.json
 SOURCE_VERSION=$(grep -o '"version": "[^"]*"' "$SOURCE_DIR/package.json" | head -1 | cut -d'"' -f4)
 
@@ -61,7 +113,7 @@ mkdir -p "$TARGET_DIR"
 # Step 1: Copy project (excluding build artifacts, deps, git, plugins, etc.)
 # ---------------------------------------------------------------------------
 
-echo "[1/7] Copying project files..."
+echo "[1/9] Copying project files..."
 
 tar -cf - \
   --exclude='node_modules' \
@@ -96,7 +148,7 @@ echo "  Done."
 # Step 2: Replace site-specific values in config files
 # ---------------------------------------------------------------------------
 
-echo "[2/7] Replacing site-specific values..."
+echo "[2/9] Replacing site-specific values..."
 
 # --- constants/config.ts ---
 sed -i \
@@ -148,7 +200,7 @@ echo "  Done."
 # Step 3: Remove modules (all are either site-specific or paid add-ons)
 # ---------------------------------------------------------------------------
 
-echo "[3/7] Cleaning module system..."
+echo "[3/9] Cleaning module system..."
 
 # Remove module tab stubs from app/(tabs)/
 rm -f "$TARGET_DIR/app/(tabs)/calendar.tsx"
@@ -177,7 +229,7 @@ echo "  Done."
 # Step 4: Handle Firebase config files
 # ---------------------------------------------------------------------------
 
-echo "[4/7] Replacing Firebase configs with placeholders..."
+echo "[4/9] Replacing Firebase configs with placeholders..."
 
 rm -f "$TARGET_DIR/google-services.json"
 rm -f "$TARGET_DIR/GoogleService-Info.plist"
@@ -207,7 +259,7 @@ echo "  Done."
 # Step 5: Clean up extras
 # ---------------------------------------------------------------------------
 
-echo "[5/7] Cleaning up..."
+echo "[5/9] Cleaning up..."
 
 # scripts/ excluded from tar — only setup/ ships to buyers
 
@@ -233,7 +285,7 @@ echo "  Done."
 # Step 6: Verify — check for leftover site-specific references
 # ---------------------------------------------------------------------------
 
-echo "[6/7] Verifying no site-specific references remain..."
+echo "[6/9] Verifying no site-specific references remain..."
 echo ""
 
 ISSUES=0
@@ -261,7 +313,7 @@ fi
 # Step 7: Generate / update CHANGELOG.md
 # ---------------------------------------------------------------------------
 
-echo "[7/7] Updating CHANGELOG..."
+echo "[7/9] Updating CHANGELOG..."
 
 CHANGELOG="$TARGET_DIR/CHANGELOG.md"
 DATE=$(date +%Y-%m-%d)
@@ -296,6 +348,63 @@ fi
 echo "  Done."
 
 # ---------------------------------------------------------------------------
+# Step 8: Generate manifest.json for the update system
+# ---------------------------------------------------------------------------
+
+echo "[8/9] Generating manifest.json..."
+
+generate_manifest "1.0.0" "$TARGET_DIR/manifest.json"
+
+echo "  Done."
+
+# ---------------------------------------------------------------------------
+# Step 9: Build core-update tar.gz (for dashboard update delivery)
+# ---------------------------------------------------------------------------
+
+echo "[9/9] Building core-update package..."
+
+# The core-update tar.gz contains ONLY files that are safe to overwrite:
+# everything except buyer-customized paths (config, assets, firebase, modules, etc.)
+# This is what the dashboard downloads and applies.
+
+CORE_UPDATE_TAR="$TARGET_DIR/core-update-${SOURCE_VERSION}.tar.gz"
+
+# Build find exclusion flags from PROTECTED_PATHS array
+FIND_EXCLUDES=()
+for p in "${PROTECTED_PATHS[@]}"; do
+  if [[ "$p" == */ ]]; then
+    # Directory: exclude everything under it
+    FIND_EXCLUDES+=( ! -path "./${p}*" )
+  else
+    FIND_EXCLUDES+=( ! -path "./${p}" )
+  fi
+done
+# Always exclude these non-protected build/system paths
+FIND_EXCLUDES+=( ! -path './CHANGELOG.md' ! -path './FIREBASE_SETUP.md' )
+FIND_EXCLUDES+=( ! -path './node_modules/*' ! -path './.git/*' ! -path './core-update-*' )
+FIND_EXCLUDES+=( ! -path './setup/.temp/*' )
+
+# Write the real-version manifest into place for the tar
+cd "$TARGET_DIR"
+generate_manifest "${SOURCE_VERSION}" "$TARGET_DIR/manifest.json"
+
+# Build file list (excluding protected paths) + add manifest back in
+find . -type f "${FIND_EXCLUDES[@]}" > /tmp/tbc-core-files.txt
+echo "manifest.json" >> /tmp/tbc-core-files.txt
+
+tar -czf "$CORE_UPDATE_TAR" -T /tmp/tbc-core-files.txt 2>/dev/null || true
+
+# Restore the placeholder manifest (version "1.0.0") for the buyer's snapshot copy
+generate_manifest "1.0.0" "$TARGET_DIR/manifest.json"
+
+rm -f /tmp/tbc-core-files.txt
+cd "$SOURCE_DIR"
+
+CORE_SIZE=$(du -h "$CORE_UPDATE_TAR" | cut -f1)
+echo "  Core update package: core-update-${SOURCE_VERSION}.tar.gz ($CORE_SIZE)"
+echo "  Done."
+
+# ---------------------------------------------------------------------------
 # Git tag (if target is a git repo)
 # ---------------------------------------------------------------------------
 
@@ -327,11 +436,14 @@ echo "Next steps:"
 if [ -d "$TARGET_DIR/.git" ]; then
   echo "  1. Review the changes: cd \"$TARGET_DIR\" && git diff HEAD~1"
   echo "  2. Push: git push && git push --tags"
-  echo "  3. Subscribers merge: git fetch upstream && git merge v${SOURCE_VERSION}"
+  echo "  3. Upload core-update-${SOURCE_VERSION}.tar.gz to your license server for dashboard updates"
 else
   echo "  1. Open the folder in VS Code and review"
   echo "  2. cd into it, run: git init && git add . && git commit -m 'Initial white-label release v${SOURCE_VERSION}'"
   echo "  3. Create a private GitHub repo and push"
   echo "  4. Test: npm install && npx expo start"
 fi
+echo ""
+echo "Update package: core-update-${SOURCE_VERSION}.tar.gz"
+echo "  Upload this to your license server for buyers to receive dashboard updates."
 echo ""
