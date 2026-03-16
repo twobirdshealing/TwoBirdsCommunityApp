@@ -12,7 +12,7 @@ import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feed } from '@/types/feed';
 import { feedsApi } from '@/services/api/feeds';
-import { cacheEvents } from '@/utils/cacheEvents';
+import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
 import { createLogger } from '@/utils/logger';
 
@@ -109,7 +109,7 @@ export function useFeedActions({
         () => feedsApi.toggleBookmark(feed.id, !isBookmarked),
       );
       if (response.success) {
-        cacheEvents.emit('bookmarks');
+        cacheEvents.emit(CACHE_EVENTS.BOOKMARKS);
       }
     } catch (err) {
       log.error('Bookmark error:', err);

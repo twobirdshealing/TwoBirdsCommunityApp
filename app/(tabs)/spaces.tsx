@@ -31,7 +31,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useTabBar } from '@/contexts/TabBarContext';
 import { spacesApi } from '@/services/api/spaces';
 import { useCachedData } from '@/hooks/useCachedData';
-import { cacheEvents } from '@/utils/cacheEvents';
+import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { Space, SpaceGroupOption } from '@/types/space';
 import { createLogger } from '@/utils/logger';
 
@@ -70,7 +70,7 @@ export default function SpacesScreen() {
     refresh,
   } = useCachedData<SpacesData>({
     cacheKey: 'tbc_spaces_all',
-    invalidateOn: 'spaces',
+    invalidateOn: CACHE_EVENTS.SPACES,
     fetcher: async () => {
       const [groupsRes, spacesRes] = await Promise.all([
         spacesApi.getSpaceGroups({ options_only: true }),
@@ -175,7 +175,7 @@ export default function SpacesScreen() {
     try {
       const response = await spacesApi.joinSpace(space.slug);
       if (response.success) {
-        cacheEvents.emit('spaces');
+        cacheEvents.emit(CACHE_EVENTS.SPACES);
         refresh();
       } else {
         Alert.alert('Error', response.error?.message || 'Failed to join space');

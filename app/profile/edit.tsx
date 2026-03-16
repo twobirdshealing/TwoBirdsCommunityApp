@@ -29,7 +29,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { profilesApi, patchProfileMedia } from '@/services/api/profiles';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
-import { cacheEvents } from '@/utils/cacheEvents';
+import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { Profile, CustomFieldConfig } from '@/types/user';
 import { SocialLinksForm } from '@/components/common/SocialLinksForm';
 import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
@@ -228,7 +228,7 @@ export default function EditProfileScreen() {
           setProfile({ ...profile, avatar: remoteUrl });
         }
         await updateUser({ avatar: remoteUrl });
-        cacheEvents.emit('profile');
+        cacheEvents.emit(CACHE_EVENTS.PROFILE);
       },
       onError: (message) => {
         setAvatarUploading(false);
@@ -257,7 +257,7 @@ export default function EditProfileScreen() {
         if (profile) {
           setProfile({ ...profile, cover_photo: remoteUrl });
         }
-        cacheEvents.emit('profile');
+        cacheEvents.emit(CACHE_EVENTS.PROFILE);
       },
       onError: (message) => {
         setCoverUploading(false);
@@ -337,7 +337,7 @@ export default function EditProfileScreen() {
         const displayName = [formData.first_name.trim(), formData.last_name.trim()].filter(Boolean).join(' ');
         await updateUser({ displayName });
         setShowOtp(false);
-        cacheEvents.emit('profile');
+        cacheEvents.emit(CACHE_EVENTS.PROFILE);
         router.back();
       } else {
         const errorData = response.error as any;

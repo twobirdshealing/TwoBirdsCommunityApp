@@ -53,7 +53,9 @@ interface UseCachedDataOptions<T> {
   /** Auto-refresh when this cache event fires (cross-screen invalidation). */
   invalidateOn?: CacheEvent;
   /** Skip network fetch if data was fetched within this many ms. Does NOT apply
-      to imperative refresh() or cache event invalidation. Default: 0 (always fetch). */
+      to imperative refresh() or cache event invalidation.
+      Default: 0 (always fetch on focus — best for screens).
+      Widgets should use WIDGET_STALE_TIME (120s) to avoid redundant fetches. */
   staleTime?: number;
 }
 
@@ -72,8 +74,12 @@ interface UseCachedDataResult<T> {
   mutate: (updater: T | ((prev: T | null) => T | null)) => void;
 }
 
-// Min ms between focus-triggered refreshes
-const FOCUS_COOLDOWN_MS = 5000;
+// Min ms between focus-triggered refreshes (screens with staleTime=0)
+const FOCUS_COOLDOWN_MS = 5_000;
+
+/** Default staleTime for widgets (2 min). Prevents redundant fetches while widget stays mounted.
+ *  Screens should keep the default (0) for live data — focus cooldown handles rapid refetches. */
+export const WIDGET_STALE_TIME = 120_000;
 
 // -----------------------------------------------------------------------------
 // Hook
@@ -223,4 +229,33 @@ export function useCachedData<T>({
   );
 
   return { data, isLoading, isRefreshing, error, refresh, mutate };
+}
+
+// -----------------------------------------------------------------------------
+// Adapter: wraps useCachedData's mutate into a SetStateAction<T[]> dispatcher
+// -----------------------------------------------------------------------------
+// Feed screens need React.Dispatch<SetStateAction<Feed[]>> for useFeedActions
+// and useFeedReactions. This eliminates the boilerplate adapter in every screen.
+//
+// Usage:
+//   const { data, mutate, ...rest } = useCachedData<Feed[]>({ ... });
+//   const setFeeds = useArrayMutate(mutate);
+//   // setFeeds is now React.Dispatch<SetStateAction<Feed[]>>
+
+/**
+ * Adapts useCachedData's mutate (which accepts T | null) into a standard
+ * React.Dispatch<SetStateAction<T[]>> that treats null as empty array.
+ */
+export function useArrayMutate<T>(
+  mutate: (updater: T[] | ((prev: T[] | null) => T[] | null)) => void,
+): React.Dispatch<React.SetStateAction<T[]>> {
+  return useCallback(
+    (action: React.SetStateAction<T[]>) => {
+      mutate(prev => {
+        const current = prev || [];
+        return typeof action === 'function' ? action(current) : action;
+      });
+    },
+    [mutate],
+  );
 }

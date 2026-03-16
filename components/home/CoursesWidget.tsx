@@ -25,7 +25,7 @@ import { withOpacity } from '@/constants/colors';
 import { coursesApi } from '@/services/api/courses';
 import { Course } from '@/types/course';
 import { ProgressBar } from '@/components/course/ProgressBar';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
@@ -61,7 +61,7 @@ export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
     },
     refreshKey,
     refreshOnFocus: false,
-    staleTime: 120_000,
+    staleTime: WIDGET_STALE_TIME,
   });
 
   // Loading state on first load only (no cache yet)

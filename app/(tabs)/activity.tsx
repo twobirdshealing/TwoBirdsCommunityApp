@@ -3,7 +3,7 @@
 // =============================================================================
 // =============================================================================
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Feed } from '@/types/feed';
@@ -16,9 +16,10 @@ import { createLogger } from '@/utils/logger';
 
 const log = createLogger('Activity');
 import { useFeedReactions } from '@/hooks/useFeedReactions';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useCachedData, useArrayMutate } from '@/hooks/useCachedData';
 import { useFeedActions } from '@/hooks/useFeedActions';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
+import { CACHE_EVENTS } from '@/utils/cacheEvents';
 import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
 
 // -----------------------------------------------------------------------------
@@ -43,7 +44,7 @@ export default function ActivityScreen() {
     mutate,
   } = useCachedData<Feed[]>({
     cacheKey: 'tbc_activity_feeds',
-    invalidateOn: 'feeds',
+    invalidateOn: CACHE_EVENTS.FEEDS,
     fetcher: async () => {
       const response = await feedsApi.getFeeds({ per_page: 20 });
 
@@ -91,17 +92,7 @@ export default function ActivityScreen() {
 
   const feeds = feedsData || [];
   const error = fetchError?.message || null;
-
-  // Adapter: wraps mutate to match React.Dispatch<SetStateAction<Feed[]>> signature
-  const setFeeds: React.Dispatch<React.SetStateAction<Feed[]>> = useCallback(
-    (action) => {
-      mutate(prev => {
-        const current = prev || [];
-        return typeof action === 'function' ? action(current) : action;
-      });
-    },
-    [mutate],
-  );
+  const setFeeds = useArrayMutate(mutate);
   
   // Shared feed actions (navigation to composer/comments, bookmark, delete)
   const {

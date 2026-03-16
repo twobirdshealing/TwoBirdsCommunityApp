@@ -28,6 +28,7 @@ import { FEATURES } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCachedData } from '@/hooks/useCachedData';
+import { CACHE_EVENTS } from '@/utils/cacheEvents';
 import { useFeedActions } from '@/hooks/useFeedActions';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { profilesApi, patchProfileMedia } from '@/services/api/profiles';
@@ -100,7 +101,7 @@ export default function UserProfileScreen() {
   // Fetch Profile (refreshOnFocus replaces useFocusEffect)
   const { data: profile, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh, mutate } = useCachedData<Profile>({
     cacheKey: `tbc_profile_${username}`,
-    invalidateOn: 'profile',
+    invalidateOn: CACHE_EVENTS.PROFILE,
     fetcher: async () => {
       const response = await profilesApi.getProfile(username!);
       if (response.success && response.data.profile) {

@@ -18,7 +18,7 @@ import { spacing, sizing, shadows, typography } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { spacesApi } from '@/services/api/spaces';
 import bookclubApi from '@/modules/bookclub/services/bookclubApi';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
 import type { BookSummary } from '@/modules/bookclub/types/bookclub';
 
 // -----------------------------------------------------------------------------
@@ -63,7 +63,7 @@ export function BookClubWidget({ refreshKey }: BookClubWidgetProps) {
     },
     refreshKey,
     refreshOnFocus: false,
-    staleTime: 120_000,
+    staleTime: WIDGET_STALE_TIME,
   });
 
   // Don't render anything (including header) if not a member or no books

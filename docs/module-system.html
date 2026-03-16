@@ -550,7 +550,7 @@ export async function getUpcomingEvent() {
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
 import { getUpcomingEvent } from '../services/eventsApi';
 
 interface Props {
@@ -559,7 +559,13 @@ interface Props {
 
 export function EventsWidget({ refreshKey }: Props) {
   const { colors } = useTheme();
-  const { data } = useCachedData('tbc_widget_events', getUpcomingEvent, { refreshKey });
+  const { data } = useCachedData({
+    cacheKey: 'tbc_widget_events',
+    fetcher: getUpcomingEvent,
+    refreshKey,
+    refreshOnFocus: false,
+    staleTime: WIDGET_STALE_TIME,
+  });
 
   // Return null if no data &mdash; never render an empty card
   if (!data?.events?.length) return null;
@@ -589,7 +595,10 @@ import { getEvents } from '../services/eventsApi';
 
 export default function EventsScreen() {
   const { colors } = useTheme();
-  const { data, loading, refetch } = useCachedData('tbc_events_list', getEvents);
+  const { data, isLoading: loading, refresh: refetch } = useCachedData({
+    cacheKey: 'tbc_events_list',
+    fetcher: getEvents,
+  });
 
   return (
     &lt;View style={{ flex: 1, backgroundColor: colors.background }}&gt;
@@ -829,7 +838,7 @@ export const dailyVerseModule: ModuleManifest = {
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
 import { SITE_URL } from '@/constants/config';
 import { request } from '@/services/api/client';
 
@@ -843,7 +852,11 @@ async function fetchVerse() {
 
 export function DailyVerseWidget({ refreshKey }: { refreshKey: number }) {
   const { colors } = useTheme();
-  const { data } = useCachedData('tbc_widget_daily_verse', fetchVerse, { refreshKey });
+  const { data } = useCachedData({
+    cacheKey: 'tbc_widget_daily_verse',
+    fetcher: fetchVerse,
+    staleTime: WIDGET_STALE_TIME,
+  });
 
   if (!data) return null;
 

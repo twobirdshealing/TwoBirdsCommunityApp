@@ -15,7 +15,7 @@ import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 import { PlayButtonOverlay } from '@/components/media/PlayButtonOverlay';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { youtubeApi } from '../services/youtubeApi';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
 import { formatSmartDate } from '@/utils/formatDate';
 import type { YouTubeVideo } from '../types/youtube';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
@@ -44,7 +44,7 @@ export function YouTubeWidget({ refreshKey }: YouTubeWidgetProps) {
     },
     refreshKey,
     refreshOnFocus: false,
-    staleTime: 120_000,
+    staleTime: WIDGET_STALE_TIME,
   });
 
   const [isPlaying, setIsPlaying] = useState(false);

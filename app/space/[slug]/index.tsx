@@ -29,7 +29,8 @@ import { SpaceLockScreen } from '@/components/space/SpaceLockScreen';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useFeedActions } from '@/hooks/useFeedActions';
-import { cacheEvents } from '@/utils/cacheEvents';
+import { useCachedData, useArrayMutate } from '@/hooks/useCachedData';
+import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
 import { createLogger } from '@/utils/logger';
 
@@ -44,23 +45,19 @@ export default function SpacePage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
-  // Space state
+  // Space metadata (manual state — has redirects, lock screen, permission side effects)
   const [space, setSpace] = useState<Space | null>(null);
-  const [feeds, setFeeds] = useState<Feed[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [lockscreenConfig, setLockscreenConfig] = useState<LockScreenConfig | null>(null);
   const [isRequesting, setIsRequesting] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  
+
   // ---------------------------------------------------------------------------
-  // Fetch Space Data
+  // Fetch Space Data (manual — side effects don't fit useCachedData)
   // ---------------------------------------------------------------------------
-  
+
   const fetchSpace = useCallback(async () => {
     if (!slug) return;
-    
+
     try {
       const response = await spacesApi.getSpaceBySlug(slug);
 
@@ -79,72 +76,65 @@ export default function SpacePage() {
         }
         setLockscreenConfig(lsConfig);
         if (lsConfig.is_pending) setIsPending(true);
-        setLoading(false);
         return;
       }
 
       // Clear lock screen if user is now a member (e.g. after approval)
       setLockscreenConfig(null);
       setIsPending(false);
-      
+
     } catch (err) {
       log.error('Failed to load space:', err);
     }
   }, [slug]);
-  
+
   // ---------------------------------------------------------------------------
-  // Fetch Feeds - Merges sticky posts at top
+  // Fetch Feeds (useCachedData — consistent with all other feed screens)
   // ---------------------------------------------------------------------------
-  
-  const fetchFeeds = useCallback(async (isRefresh = false) => {
-    if (!slug) return;
-    
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-        setError(null);
-      }
-      
+
+  const {
+    data: feedsData,
+    isLoading: loading,
+    isRefreshing: refreshing,
+    error: fetchError,
+    refresh: refreshFeeds,
+    mutate,
+  } = useCachedData<Feed[]>({
+    cacheKey: `tbc_space_feeds_${slug}`,
+    invalidateOn: CACHE_EVENTS.FEEDS,
+    fetcher: async () => {
       const response = await feedsApi.getFeeds({ space: slug, per_page: 20 });
 
-      if (response.success && response.data) {
-        // Handle the response structure
-        let feedsData: Feed[] = [];
-        
-        if (response.data.feeds?.data) {
-          feedsData = response.data.feeds.data;
-        } else if (Array.isArray(response.data.feeds)) {
-          feedsData = response.data.feeds;
-        } else if (Array.isArray(response.data)) {
-          feedsData = response.data;
-        }
-        
-        // Sort: sticky first, then by date
-        const sortedFeeds = [...feedsData].sort((a, b) => {
-          if (a.is_sticky && !b.is_sticky) return -1;
-          if (!a.is_sticky && b.is_sticky) return 1;
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        });
-        
-        setFeeds(sortedFeeds);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to load feeds');
       }
-    } catch (err) {
-      log.error('Fetch feeds error:', err);
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [slug]);
-  
-  // Initial load
-  useEffect(() => {
-    fetchSpace();
-    fetchFeeds();
-  }, [fetchSpace, fetchFeeds]);
 
-  // Cross-screen cache invalidation (e.g. post created from composer)
-  useEffect(() => cacheEvents.subscribe('feeds', () => fetchFeeds(true)), [fetchFeeds]);
+      // Handle the response structure
+      let rawFeeds: Feed[] = [];
+      if (response.data.feeds?.data) {
+        rawFeeds = response.data.feeds.data;
+      } else if (Array.isArray(response.data.feeds)) {
+        rawFeeds = response.data.feeds;
+      } else if (Array.isArray(response.data)) {
+        rawFeeds = response.data;
+      }
+
+      // Sort: sticky first, then by date
+      return [...rawFeeds].sort((a, b) => {
+        if (a.is_sticky && !b.is_sticky) return -1;
+        if (!a.is_sticky && b.is_sticky) return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+    },
+    enabled: !!slug,
+  });
+
+  const feeds = feedsData || [];
+  const error = fetchError?.message || null;
+  const setFeeds = useArrayMutate(mutate);
+
+  // Initial space load
+  useEffect(() => { fetchSpace(); }, [fetchSpace]);
   
   // ---------------------------------------------------------------------------
   // Shared Feed Actions
@@ -154,13 +144,13 @@ export default function SpacePage() {
     handleCommentPress, openComposer, handleEdit,
     handleBookmarkToggle, handleDelete,
     handleAuthorPress,
-  } = useFeedActions({ setFeeds, refresh: () => fetchFeeds(true), defaultSpace: slug, defaultSpaceName: space?.title });
+  } = useFeedActions({ setFeeds, refresh: refreshFeeds, defaultSpace: slug, defaultSpaceName: space?.title });
 
   const handleReact = useFeedReactions(feeds, setFeeds);
 
   const handleRefresh = () => {
     fetchSpace();
-    fetchFeeds(true);
+    refreshFeeds();
   };
 
   // ---------------------------------------------------------------------------
@@ -255,9 +245,9 @@ export default function SpacePage() {
         } else {
           // Auto-approved — refresh to get full member data
           fetchSpace();
-          fetchFeeds();
+          refreshFeeds();
         }
-        cacheEvents.emit('spaces');
+        cacheEvents.emit(CACHE_EVENTS.SPACES);
       } else {
         // Revert optimistic update on error
         if (isPublic) fetchSpace();

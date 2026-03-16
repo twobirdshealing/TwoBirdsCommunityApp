@@ -16,7 +16,7 @@ import { DropdownMenu } from '@/components/common/DropdownMenu';
 import { sizing } from '@/constants/layout';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { spacesApi } from '@/services/api/spaces';
-import { cacheEvents } from '@/utils/cacheEvents';
+import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('SpaceMenu');
@@ -47,7 +47,7 @@ export function SpaceMenu({ slug, role, onLeaveSuccess }: SpaceMenuProps) {
           try {
             setIsLeaving(true);
             await spacesApi.leaveSpace(slug);
-            cacheEvents.emit('spaces');
+            cacheEvents.emit(CACHE_EVENTS.SPACES);
             router.back();
             onLeaveSuccess?.();
           } catch (error) {

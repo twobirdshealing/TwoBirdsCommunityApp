@@ -375,7 +375,7 @@ Cross-Screen Invalidation:
   fetcher: () =&gt; getSpaceMembers('general'),
   refreshOnFocus: true,
   staleTime: 30000,  // skip network if fetched within 30s
-  invalidateOn: 'space_members_changed',  // cross-screen refresh
+  invalidateOn: CACHE_EVENTS.SPACES,  // cross-screen refresh
 });</code></pre>
 
 <h3>Batch Fresh Skip</h3>
@@ -644,13 +644,13 @@ backgroundColor: withOpacity(colors.primary, 0.12)  // light brand tint</code></
 <p>When one screen mutates data, other screens listening on the same cache event key automatically refresh:</p>
 <pre><code>// Screen A: create a post
 await createFeed(data);
-emitCacheEvent('feeds_changed');  // tell other screens
+cacheEvents.emit(CACHE_EVENTS.FEEDS);  // tell other screens
 
 // Screen B: useCachedData with invalidateOn
 useCachedData({
-  cacheKey: 'space_feed_general',
+  cacheKey: 'tbc_space_feeds_general',
   fetcher: () =&gt; getSpaceFeeds('general'),
-  invalidateOn: 'feeds_changed',  // auto-refetch when event fires
+  invalidateOn: CACHE_EVENTS.FEEDS,  // auto-refetch when event fires
 });</code></pre>
 
 <div class="callout callout-success">

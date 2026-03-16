@@ -8,7 +8,15 @@
 // Used internally by useCachedData via the `invalidateOn` option.
 // =============================================================================
 
-export type CacheEvent = 'feeds' | 'bookmarks' | 'spaces' | 'profile';
+/** Type-safe cache event keys — use CACHE_EVENTS.FEEDS instead of raw strings */
+export const CACHE_EVENTS = {
+  FEEDS: 'feeds',
+  BOOKMARKS: 'bookmarks',
+  SPACES: 'spaces',
+  PROFILE: 'profile',
+} as const;
+
+export type CacheEvent = (typeof CACHE_EVENTS)[keyof typeof CACHE_EVENTS];
 
 type Listener = () => void;
 

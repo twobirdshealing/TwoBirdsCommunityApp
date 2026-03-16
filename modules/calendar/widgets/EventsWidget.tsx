@@ -14,7 +14,7 @@ import calendarApi from '@/modules/calendar/services/calendarApi';
 import { CalendarEvent } from '@/modules/calendar/types/calendar';
 import { FeaturedEvents } from '@/modules/calendar/components/FeaturedEvents';
 import { useEventWebView } from '@/modules/calendar/hooks/useEventWebView';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -41,7 +41,7 @@ export function EventsWidget({ refreshKey }: EventsWidgetProps) {
     },
     refreshKey,
     refreshOnFocus: false,
-    staleTime: 120_000,
+    staleTime: WIDGET_STALE_TIME,
   });
 
   // Loading state on first load only (no cache yet)

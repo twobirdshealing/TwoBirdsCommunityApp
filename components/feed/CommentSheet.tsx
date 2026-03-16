@@ -45,7 +45,7 @@ import { GifPickerModal } from '@/components/composer/GifPickerModal';
 import { GifAttachment } from '@/types/gif';
 import { MediaViewer } from '@/components/media/MediaViewer';
 import { ReactionPicker } from './ReactionPicker';
-import { cacheEvents } from '@/utils/cacheEvents';
+import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { ReactionBreakdownModal } from './ReactionBreakdownModal';
 import { ReactionIcon } from './ReactionIcon';
 import { HtmlContent } from '@/components/common/HtmlContent';
@@ -323,7 +323,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         setReplyingTo(null);
         // Refresh comments
         fetchComments();
-        cacheEvents.emit('feeds');
+        cacheEvents.emit(CACHE_EVENTS.FEEDS);
       } else {
         throw new Error(response.error?.message || 'Failed to post comment');
       }
@@ -547,7 +547,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
               if (response.success) {
                 // Remove from local state
                 setComments(prev => prev.filter(c => c.id !== comment.id));
-                cacheEvents.emit('feeds');
+                cacheEvents.emit(CACHE_EVENTS.FEEDS);
               } else {
                 Alert.alert('Error', response.error?.message || 'Failed to delete');
               }

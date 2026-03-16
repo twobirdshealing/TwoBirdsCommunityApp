@@ -6,7 +6,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Feed } from '@/types/feed';
 import { feedsApi } from '@/services/api/feeds';
-import { cacheEvents } from '@/utils/cacheEvents';
+import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 
 export default function CreatePostScreen() {
   const { spaceSlug, spaceName, editId } = useLocalSearchParams<{
@@ -63,7 +63,7 @@ export default function CreatePostScreen() {
         throw new Error(response.error?.message || 'Failed to create post');
       }
     }
-    cacheEvents.emit('feeds');
+    cacheEvents.emit(CACHE_EVENTS.FEEDS);
   };
 
   if (loading) {

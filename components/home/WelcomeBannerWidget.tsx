@@ -14,7 +14,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { feedsApi } from '@/services/api/feeds';
 import { WelcomeBanner as WelcomeBannerType } from '@/types/feed';
 import { WelcomeBanner } from '@/components/feed/WelcomeBanner';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -98,7 +98,7 @@ export function WelcomeBannerWidget({ refreshKey }: WelcomeBannerWidgetProps) {
     },
     refreshKey,
     refreshOnFocus: false,
-    staleTime: 120_000,
+    staleTime: WIDGET_STALE_TIME,
   });
 
   // ---------------------------------------------------------------------------

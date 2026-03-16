@@ -14,7 +14,7 @@ import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { spacing, sizing, shadows, typography } from '@/constants/layout';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
 import { useEventWebView } from '@/modules/calendar/hooks/useEventWebView';
 import calendarApi from '@/modules/calendar/services/calendarApi';
 import type { CalendarEvent } from '@/modules/calendar/types/calendar';
@@ -93,7 +93,7 @@ export function CeremonyWidget({ refreshKey }: CeremonyWidgetProps) {
     },
     refreshKey,
     refreshOnFocus: false,
-    staleTime: 120_000,
+    staleTime: WIDGET_STALE_TIME,
   });
 
   // Live countdown — update every 60s
