@@ -113,7 +113,9 @@
   <span class="file-path">contexts/PusherContext.tsx</span> &mdash; React provider, lifecycle hooks, convenience subscription hooks<br>
   <span class="file-path">hooks/useTickerPolling.ts</span> &mdash; Activity keepalive (server skips broadcasts to inactive users)<br>
   <span class="file-path">hooks/useAppFocus.ts</span> &mdash; App foreground detection for reconnection<br>
-  <span class="file-path">constants/config.ts</span> &mdash; Pusher app key, cluster, auth endpoint
+  <span class="file-path">contexts/AppConfigContext.tsx</span> &mdash; Stores + caches socket config from server<br>
+  <span class="file-path">services/api/appConfig.ts</span> &mdash; SocketConfig type definition<br>
+  <span class="file-path">constants/config.ts</span> &mdash; Fallback Pusher credentials (first-ever launch only)
 </div>
 
 <div class="toc">
@@ -205,50 +207,88 @@ userChannel.bind('message', (data: PusherMessage) =&gt; {
 <!-- ================================================================== -->
 <h2 id="config">3. Configuration</h2>
 
-<p>Pusher credentials live in <span class="file-path">constants/config.ts</span>:</p>
+<p>Socket config is <strong>server-driven</strong>. The buyer configures their socket provider once in WordPress admin (Fluent Community &rarr; Settings &rarr; Messaging), and the app picks it up automatically via the <code>/tbc-ca/v1/app-config</code> endpoint. No app-side Pusher configuration needed.</p>
 
-<pre><code>// constants/config.ts
-export const PUSHER_CONFIG = {
-  APP_KEY: 'YOUR_PUSHER_APP_KEY',     // SETUP: From Pusher dashboard or Fluent settings
-  CLUSTER: 'YOUR_PUSHER_CLUSTER',     // SETUP: e.g. 'us3', 'eu', 'ap1'
-  AUTH_ENDPOINT: `${API_URL}/chat/broadcast/auth`,  // Fluent Messaging's auth endpoint
-};</code></pre>
+<h3>How it works</h3>
+<ol>
+  <li>The <code>tbc-community-app</code> PHP plugin reads socket settings from Fluent Messaging's <code>PusherHelper::getSocketConfig()</code></li>
+  <li>It returns a <code>socket</code> section in the <code>/app-config</code> response (public keys only &mdash; no secrets)</li>
+  <li><code>AppConfigContext</code> stores and caches the config in AsyncStorage</li>
+  <li><code>PusherContext</code> passes it to <code>initializePusher()</code> on connect</li>
+</ol>
+
+<h3>Supported providers</h3>
+<p>The app automatically adapts to whatever socket provider the buyer configures in WordPress admin:</p>
 
 <table>
-  <tr><th>Value</th><th>Where to find it</th></tr>
+  <tr><th>Provider</th><th>Description</th><th>How app detects it</th></tr>
   <tr>
-    <td><code>APP_KEY</code></td>
-    <td>WordPress admin &rarr; Fluent Community &rarr; Settings &rarr; Messaging &rarr; Real-time config. Or <code>wp-config.php</code> constant <code>FLUENT_SOCKET_APP_KEY</code>.</td>
+    <td>Pusher Cloud</td>
+    <td>Standard <a href="https://pusher.com">pusher.com</a> Channels</td>
+    <td>No <code>wsHost</code> in config &mdash; uses default Pusher protocol</td>
   </tr>
   <tr>
-    <td><code>CLUSTER</code></td>
-    <td>Same location. Common values: <code>mt1</code> (default Soketi), <code>us2</code>, <code>us3</code>, <code>eu</code>, <code>ap1</code>.</td>
+    <td>Fluent Socket</td>
+    <td>Fluent's hosted Soketi at <code>ws.fluentsocket.com</code></td>
+    <td><code>wsHost</code> present &mdash; connects to custom host</td>
   </tr>
   <tr>
-    <td><code>AUTH_ENDPOINT</code></td>
-    <td>Auto-derived from <code>API_URL</code>. Don't change unless using a custom auth proxy.</td>
+    <td>Custom Soketi</td>
+    <td>Self-hosted Soketi with custom host/port</td>
+    <td><code>wsHost</code> present &mdash; connects to custom host</td>
   </tr>
 </table>
 
+<h3>SocketConfig type</h3>
+<pre><code>// services/api/appConfig.ts
+interface SocketConfig {
+  enabled: boolean;
+  api_key: string;
+  auth_endpoint: string;
+  options: {
+    cluster: string;
+    wsHost?: string;      // Present for Fluent Socket / custom Soketi
+    wsPort?: number;
+    wssPort?: number;
+    forceTLS?: boolean;
+    enabledTransports?: string[];
+  };
+}</code></pre>
+
+<h3>Fallback config</h3>
+<p>On <strong>first-ever launch</strong> (before the server's <code>/app-config</code> response arrives), the app uses static fallback values from <span class="file-path">constants/config.ts</span>:</p>
+
+<pre><code>// constants/config.ts — fallback only, overridden by server config
+export const PUSHER_CONFIG = {
+  APP_KEY: 'your-fallback-key',       // SETUP: Fallback Pusher app key
+  CLUSTER: 'us3',                      // SETUP: Fallback Pusher cluster
+  AUTH_ENDPOINT: `${API_URL}/chat/broadcast/auth`,
+};</code></pre>
+
+<p>After the first successful <code>/app-config</code> fetch, the socket config is cached in AsyncStorage and available instantly on subsequent launches. The fallback is rarely used.</p>
+
 <div class="callout callout-warn">
-  <strong>Fluent Messaging required.</strong> Real-time messaging requires the <strong>Fluent Messaging</strong> add-on (part of Fluent Community Pro). Without it, there's no Pusher config, no channels, and no chat. The app's messaging features gracefully degrade &mdash; the Messages tab just won't appear if the <code>FEATURES.MESSAGING</code> flag is off.
+  <strong>Fluent Messaging required.</strong> Real-time messaging requires the <strong>Fluent Messaging</strong> add-on (part of Fluent Community Pro). Without it, the server returns <code>socket: null</code>, no channels exist, and no chat. The app's messaging features gracefully degrade &mdash; the Messages tab just won't appear if the <code>FEATURES.MESSAGING</code> flag is off.
 </div>
 
 <!-- ================================================================== -->
 <h2 id="connection-flow">4. Connection Flow</h2>
 
 <div class="diagram">1. User logs in &rarr; AuthContext sets isAuthenticated = true
-2. PusherContext effect fires &rarr; calls initializePusher(user.id)
-3. initializePusher:
-   a. Fetches JWT from SecureStore
-   b. Creates Pusher client with custom authorizer
-   c. Subscribes to private-chat_user_{userId}
-   d. Pusher calls authorizer &rarr; POST /chat/broadcast/auth
-   e. Server validates JWT + channel access &rarr; returns auth signature
-   f. Channel subscription succeeds
-   g. Binds 'message' + 'reaction' event listeners
-4. Ticker polling starts (keeps last_activity fresh)
-5. App is now receiving real-time events</div>
+2. AppConfigContext loads socketConfig (cached or from /app-config)
+3. PusherContext effect fires &rarr; calls initializePusher(user.id, socketConfig)
+4. initializePusher:
+   a. Uses server socketConfig if available, else falls back to PUSHER_CONFIG
+   b. Detects provider: wsHost present = Soketi/Fluent Socket, absent = Pusher Cloud
+   c. Fetches JWT from SecureStore
+   d. Creates Pusher client with custom authorizer + provider-specific options
+   e. Subscribes to private-chat_user_{userId}
+   f. Pusher calls authorizer &rarr; POST /chat/broadcast/auth
+   g. Server validates JWT + channel access &rarr; returns auth signature
+   h. Channel subscription succeeds
+   i. Binds 'message' + 'reaction' event listeners
+5. Ticker polling starts (keeps last_activity fresh)
+6. App is now receiving real-time events</div>
 
 <h3>Auth token handling</h3>
 <p>The authorizer fetches a <strong>fresh JWT on every channel auth request</strong>, not the token captured at init time. This handles the case where the token was silently refreshed between init and the actual channel subscription:</p>
@@ -396,7 +436,7 @@ export function useNewMessageListener(handler: MessageHandler) {
   <tr><th>Event</th><th>What happens</th><th>Handlers cleared?</th></tr>
   <tr>
     <td>Auth confirmed</td>
-    <td><code>initializePusher(userId)</code> &mdash; creates client, subscribes to channel</td>
+    <td><code>initializePusher(userId, socketConfig)</code> &mdash; creates client with server config, subscribes to channel</td>
     <td>No (fresh start)</td>
   </tr>
   <tr>
@@ -533,13 +573,13 @@ if (current_time('timestamp') - strtotime($xprofile-&gt;last_activity) &lt; 300)
 }</code></pre>
 
 <h3>Socket providers</h3>
-<p>Fluent Messaging supports three socket providers. The app works with all of them &mdash; the Pusher JS client handles protocol compatibility:</p>
+<p>Fluent Messaging supports three socket providers. The app works with all of them automatically &mdash; the <code>tbc-community-app</code> plugin reads the active provider config from Fluent Messaging and serves it via <code>/app-config</code>. The Pusher JS client handles Soketi protocol compatibility natively.</p>
 
 <table>
-  <tr><th>Provider</th><th>Description</th><th>Config</th></tr>
-  <tr><td><code>fluent-socket</code></td><td>Default &mdash; Fluent's hosted Soketi instance at <code>ws.fluentsocket.com</code></td><td><code>wp-config.php</code> constants or Fluent admin</td></tr>
-  <tr><td><code>pusher</code></td><td>Pusher Cloud (pusher.com)</td><td>Pusher dashboard credentials</td></tr>
-  <tr><td><code>custom</code></td><td>Self-hosted Soketi with custom host/port</td><td>Custom host, port, scheme in settings</td></tr>
+  <tr><th>Provider</th><th>Description</th><th>App behavior</th></tr>
+  <tr><td>Pusher Cloud</td><td>Standard <a href="https://pusher.com">pusher.com</a> Channels</td><td>Connects with app key + cluster (standard Pusher protocol)</td></tr>
+  <tr><td>Fluent Socket</td><td>Fluent's hosted Soketi at <code>ws.fluentsocket.com</code></td><td>Adds <code>wsHost</code>, <code>wsPort</code>, <code>wssPort</code>, <code>forceTLS</code>, <code>enabledTransports</code> to Pusher options</td></tr>
+  <tr><td>Custom Soketi</td><td>Self-hosted Soketi with custom host/port</td><td>Same as Fluent Socket &mdash; uses custom host params from server config</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -592,21 +632,24 @@ useNewMessageListener((data) =&gt; {
 
 <ol>
   <li>Install <strong>Fluent Community Pro</strong> + <strong>Fluent Messaging</strong> add-on on WordPress</li>
-  <li>Go to Fluent Community &rarr; Settings &rarr; Messaging &rarr; enable real-time</li>
-  <li>Note the <strong>App Key</strong> and <strong>Cluster</strong> from the real-time config section</li>
-  <li>Update <span class="file-path">constants/config.ts</span>:
-    <pre><code>export const PUSHER_CONFIG = {
-  APP_KEY: 'your_app_key_here',
-  CLUSTER: 'your_cluster_here',
-  AUTH_ENDPOINT: `${API_URL}/chat/broadcast/auth`,
-};</code></pre>
+  <li>Go to <strong>Fluent Community &rarr; Settings &rarr; Messaging</strong> &rarr; enable real-time</li>
+  <li>Choose your socket provider:
+    <ul>
+      <li><strong>Pusher Cloud</strong> &mdash; create an app at <a href="https://pusher.com">pusher.com</a>, enter credentials in Fluent settings</li>
+      <li><strong>Fluent Socket</strong> &mdash; Fluent's built-in service, credentials auto-configured</li>
+      <li><strong>Custom Soketi</strong> &mdash; enter your self-hosted Soketi host, port, and credentials</li>
+    </ul>
   </li>
-  <li>Ensure <code>FEATURES.MESSAGING</code> is <code>true</code> in the same file</li>
-  <li>Build and test &mdash; messages should arrive in real-time</li>
+  <li>Ensure <code>FEATURES.MESSAGING</code> is <code>true</code> in <span class="file-path">constants/config.ts</span></li>
+  <li>Build and test &mdash; the app reads socket config from the server automatically</li>
 </ol>
 
+<div class="callout callout-success">
+  <strong>No app-side Pusher config needed.</strong> The app reads socket configuration from your WordPress site via the <code>/app-config</code> endpoint. Configure once in WordPress admin &mdash; the app picks it up automatically. Switching providers (e.g., from Pusher Cloud to Fluent Socket) doesn't require a new app build.
+</div>
+
 <div class="callout">
-  <strong>Where do the credentials come from?</strong> Fluent Community can use Pusher Cloud (you create an app at <a href="https://pusher.com">pusher.com</a>) or Fluent's built-in Soketi service (credentials appear in Fluent admin). Either way, the app key and cluster go in <code>PUSHER_CONFIG</code>.
+  <strong>Fallback credentials:</strong> The static <code>PUSHER_CONFIG</code> in <span class="file-path">constants/config.ts</span> is only used on first-ever launch before the server config arrives. After that, server config is cached and used automatically. You can update the fallback values to match your defaults, but it's optional.
 </div>
 
 <!-- ================================================================== -->
@@ -617,7 +660,7 @@ useNewMessageListener((data) =&gt; {
   <li><strong>Filter by <code>thread_id</code></strong> in your handler. All DM events arrive on a single channel &mdash; without filtering, you'll process events for unrelated threads.</li>
   <li><strong>Don't remove the ticker polling.</strong> Without it, the server stops broadcasting to the app after 5 minutes.</li>
   <li><strong>Don't clear handlers on reconnect.</strong> Handlers are React-lifecycle-managed. Only <code>clearHandlers()</code> on logout.</li>
-  <li><strong>Auth endpoint is fixed.</strong> It's always <code>{API_URL}/chat/broadcast/auth</code> &mdash; provided by Fluent Messaging. Don't create a custom endpoint.</li>
+  <li><strong>Auth endpoint is fixed.</strong> It's always <code>{API_URL}/chat/broadcast/auth</code> &mdash; provided by Fluent Messaging. Don't create a custom endpoint. The server's <code>auth_endpoint</code> field is informational only.</li>
   <li><strong>Fresh token per auth.</strong> The authorizer fetches a new JWT each time, not the one captured at init. This handles silent token refresh.</li>
   <li><strong>Dev logging:</strong> <code>Pusher.logToConsole = true</code> is enabled in <code>__DEV__</code> mode for raw WebSocket traffic. Zero-cost in production.</li>
   <li><strong>No new events.</strong> If you need to add a new real-time event type, add a new handler Set in <code>pusher.ts</code>, bind it to the channel event, create a convenience hook in <code>PusherContext.tsx</code>, and update this doc.</li>

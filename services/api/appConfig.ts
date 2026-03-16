@@ -80,6 +80,20 @@ export interface BrandingConfig {
   logo_dark: string;  // Logo for dark mode (Fluent's white_logo)
 }
 
+export interface SocketConfig {
+  enabled: boolean;
+  api_key: string;
+  auth_endpoint: string;
+  options: {
+    cluster: string;
+    wsHost?: string;
+    wsPort?: number;
+    wssPort?: number;
+    forceTLS?: boolean;
+    enabledTransports?: string[];
+  };
+}
+
 export interface AppConfigResponse {
   success: boolean;
   theme: ThemeData;
@@ -89,6 +103,7 @@ export interface AppConfigResponse {
   maintenance?: MaintenanceConfig;
   visibility?: VisibilityConfig;
   branding?: BrandingConfig;
+  socket?: SocketConfig | null;
 }
 
 // -----------------------------------------------------------------------------

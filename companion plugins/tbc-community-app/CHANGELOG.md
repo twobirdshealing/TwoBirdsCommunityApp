@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.40.0
+- **Server-driven socket config**: New `socket` section in `/app-config` response returns Pusher/Fluent Socket/Soketi connection config from Fluent Messaging settings. Mobile app auto-detects the socket provider — buyers configure once in WordPress admin, no app-side config needed. Mirrors the approach used by Fluent Messaging's web frontend (`ChatAppHandler`). Returns `null` when Fluent Messaging is not active.
+
 ## v3.39.0
 - Removed deprecated registration API (`tbc-ca/v1/register/*`) and OTP API (`tbc-ca/v1/otp/*`) — all registration and OTP now handled by tbc-fluent-profiles (`tbc-fp/v1`)
 - Removed autoloader entries and class file loading for `class-registration-api.php` and `class-otp-api.php`

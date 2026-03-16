@@ -6,7 +6,7 @@
 // Does NOT fetch on its own — all fetching is orchestrated by _layout.tsx.
 // =============================================================================
 
-import { AppConfigResponse, VisibilityConfig } from '@/services/api/appConfig';
+import { AppConfigResponse, SocketConfig, VisibilityConfig } from '@/services/api/appConfig';
 import { createLogger } from '@/utils/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useMemo, useEffect, useState } from 'react';
@@ -21,6 +21,8 @@ interface AppConfigContextType {
   visibility: VisibilityConfig | null;
   /** Fluent Community portal slug (for deep link URL mapping) */
   portalSlug: string;
+  /** Socket config from server (Pusher/Fluent Socket/Soketi) — null until app-config loads */
+  socketConfig: SocketConfig | null;
   /** Accept pre-fetched data from the startup batch or _layout refresh */
   setFromBatch: (data: AppConfigResponse) => void;
 }
@@ -30,6 +32,7 @@ interface AppConfigContextType {
 // -----------------------------------------------------------------------------
 
 const VISIBILITY_CACHE_KEY = 'tbc_app_visibility_cache';
+const SOCKET_CACHE_KEY = 'tbc_socket_config_cache';
 
 // -----------------------------------------------------------------------------
 // Context
@@ -44,6 +47,7 @@ const AppConfigContext = createContext<AppConfigContextType | undefined>(undefin
 export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   const [visibility, setVisibility] = useState<VisibilityConfig | null>(null);
   const [portalSlug, setPortalSlug] = useState('');
+  const [socketConfig, setSocketConfig] = useState<SocketConfig | null>(null);
 
   const applyConfig = useCallback((data: AppConfigResponse) => {
     if (data.visibility) {
@@ -52,6 +56,10 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
     }
     if (data.portal_slug !== undefined) {
       setPortalSlug(data.portal_slug);
+    }
+    if (data.socket) {
+      setSocketConfig(data.socket);
+      AsyncStorage.setItem(SOCKET_CACHE_KEY, JSON.stringify(data.socket)).catch((e) => log.warn('Socket config cache write failed:', e));
     }
   }, []);
 
@@ -64,8 +72,12 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const cached = await AsyncStorage.getItem(VISIBILITY_CACHE_KEY);
+        const [cached, cachedSocket] = await Promise.all([
+          AsyncStorage.getItem(VISIBILITY_CACHE_KEY),
+          AsyncStorage.getItem(SOCKET_CACHE_KEY),
+        ]);
         if (cached) setVisibility(JSON.parse(cached));
+        if (cachedSocket) setSocketConfig(JSON.parse(cachedSocket));
       } catch {}
     })();
   }, []);
@@ -73,8 +85,9 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo(() => ({
     visibility,
     portalSlug,
+    socketConfig,
     setFromBatch,
-  }), [visibility, portalSlug, setFromBatch]);
+  }), [visibility, portalSlug, socketConfig, setFromBatch]);
 
   return (
     <AppConfigContext.Provider value={value}>

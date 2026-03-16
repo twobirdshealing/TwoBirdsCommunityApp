@@ -65,6 +65,9 @@ class TBC_CA_App_Config {
         // ─── Maintenance mode (public — always returned) ─────────────────
         $response['maintenance'] = $this->get_maintenance_status();
 
+        // ─── Socket config (real-time messaging) ─────────────────────────
+        $response['socket'] = $this->get_socket_config();
+
         // ─── Auth-aware: bypass + visibility (only when JWT is present) ──
         $user_id = get_current_user_id();
         if ($user_id) {
@@ -265,6 +268,52 @@ class TBC_CA_App_Config {
         }
 
         return $result;
+    }
+
+    // =========================================================================
+    // Socket Config (real-time messaging via Pusher / Fluent Socket / Soketi)
+    // =========================================================================
+
+    /**
+     * Get public socket config for the mobile app.
+     * Mirrors the approach in Fluent Messaging's ChatAppHandler::loadChatComponents()
+     * which builds window.fcomChatVars.socket for the web frontend.
+     *
+     * Returns null if Fluent Messaging is not active.
+     * Never exposes the app secret — only the public key and connection options.
+     */
+    private function get_socket_config() {
+        if (!class_exists('FluentMessaging\App\Services\PusherHelper')) {
+            return null;
+        }
+
+        $config = \FluentMessaging\App\Services\PusherHelper::getSocketConfig(); // $public=true (default)
+
+        if (!$config || empty($config['key'])) {
+            return null;
+        }
+
+        $isCustomHost = ($config['provider'] ?? 'pusher') !== 'pusher';
+
+        $options = [
+            'cluster' => $config['cluster'] ?? 'mt1',
+        ];
+
+        // Fluent Socket / custom Soketi need explicit WebSocket host options
+        if ($isCustomHost && !empty($config['options']['host'])) {
+            $options['wsHost']            = $config['options']['host'];
+            $options['wsPort']            = (int) ($config['options']['port'] ?? 443);
+            $options['wssPort']           = (int) ($config['options']['port'] ?? 443);
+            $options['forceTLS']          = false;
+            $options['enabledTransports'] = ['ws', 'wss'];
+        }
+
+        return [
+            'enabled'       => true,
+            'api_key'       => $config['key'],
+            'auth_endpoint' => '/chat/broadcast/auth',
+            'options'       => $options,
+        ];
     }
 
     // =========================================================================

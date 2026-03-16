@@ -420,11 +420,13 @@ markBatchFresh(['tbc_widget_enrolled_courses']);
 <h2 id="realtime">8. Real-Time (Pusher)</h2>
 <!-- ================================================================== -->
 
-<p>The app uses <strong>Pusher WebSockets</strong> for real-time chat. Config in <span class="file-path">constants/config.ts</span>, client in <span class="file-path">services/pusher.ts</span>, React context in <span class="file-path">contexts/PusherContext.tsx</span>.</p>
+<p>The app uses <strong>Pusher WebSockets</strong> for real-time chat. Socket config is <strong>server-driven</strong> &mdash; read from <code>/app-config</code> at startup and cached in <span class="file-path">contexts/AppConfigContext.tsx</span>. Supports Pusher Cloud, Fluent Socket, and custom Soketi &mdash; the buyer configures once in WordPress admin, the app auto-detects the provider.</p>
 
 <h3>Connection Flow</h3>
-<div class="diagram">Auth confirmed &rarr; initializePusher(userId)
-  &rarr; Create Pusher client with custom authorizer
+<div class="diagram">Auth confirmed &rarr; AppConfigContext provides socketConfig (cached or from /app-config)
+  &rarr; PusherContext calls initializePusher(userId, socketConfig)
+  &rarr; Detects provider: wsHost present = Soketi, absent = Pusher Cloud
+  &rarr; Creates Pusher client with provider-specific options
   &rarr; Subscribe to private-chat_user_{userId}
   &rarr; Listen for 'message' + 'reaction' events
 
@@ -683,7 +685,7 @@ useCachedData({
   <tr><th>File</th><th>State</th></tr>
   <tr><td><span class="file-path">contexts/AuthContext.tsx</span></td><td>User, isAuthenticated, login/logout/register</td></tr>
   <tr><td><span class="file-path">contexts/ThemeContext.tsx</span></td><td>Colors, dark mode, branding, maintenance, force update</td></tr>
-  <tr><td><span class="file-path">contexts/AppConfigContext.tsx</span></td><td>Feature flags, visibility config</td></tr>
+  <tr><td><span class="file-path">contexts/AppConfigContext.tsx</span></td><td>Feature flags, visibility config, socket config</td></tr>
   <tr><td><span class="file-path">contexts/UnreadCountsContext.tsx</span></td><td>Badge counts: notifications, messages, cart</td></tr>
   <tr><td><span class="file-path">contexts/PusherContext.tsx</span></td><td>WebSocket connection, event subscriptions</td></tr>
   <tr><td><span class="file-path">contexts/FeedModalsContext.tsx</span></td><td>Shared feed modals: menu, reaction picker, breakdown, media viewer, report (1 instance per provider, not per card)</td></tr>
@@ -703,7 +705,7 @@ useCachedData({
 <h3>Constants &amp; Config</h3>
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
-  <tr><td><span class="file-path">constants/config.ts</span></td><td>Site URL, API endpoints, Pusher keys, feature flags</td></tr>
+  <tr><td><span class="file-path">constants/config.ts</span></td><td>Site URL, API endpoints, fallback Pusher keys, feature flags</td></tr>
   <tr><td><span class="file-path">constants/layout.ts</span></td><td>Design tokens: spacing, sizing, typography, shadows</td></tr>
   <tr><td><span class="file-path">constants/colors.ts</span></td><td>Color definitions, Fluent-to-app token map, withOpacity()</td></tr>
 </table>

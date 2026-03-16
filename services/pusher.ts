@@ -10,6 +10,7 @@
 
 import { PUSHER_CONFIG } from '@/constants/config';
 import { getAuthToken } from '@/services/auth';
+import type { SocketConfig } from '@/services/api/appConfig';
 import type { ChatMessage } from '@/types/message';
 import Pusher from 'pusher-js/react-native';
 import type { Channel } from 'pusher-js';
@@ -47,6 +48,7 @@ export type ReactionHandler = (data: PusherReaction) => void;
 let pusherClient: Pusher | null = null;
 let userChannel: Channel | null = null;
 let currentUserId: number | null = null;
+let currentSocketConfig: SocketConfig | undefined;
 let connectedAt: number = 0;
 
 // Event handlers registry
@@ -57,7 +59,7 @@ const reactionHandlers: Set<ReactionHandler> = new Set();
 // Initialize Pusher Connection
 // -----------------------------------------------------------------------------
 
-export async function initializePusher(userId: number): Promise<boolean> {
+export async function initializePusher(userId: number, socketConfig?: SocketConfig): Promise<boolean> {
   // Don't reinitialize if already connected for same user
   if (pusherClient && currentUserId === userId) {
     log('Already connected for user', userId);
@@ -71,7 +73,12 @@ export async function initializePusher(userId: number): Promise<boolean> {
   }
 
   try {
-    log('Initializing Pusher for user', userId);
+    // Use server-driven config when available, fall back to static PUSHER_CONFIG
+    const appKey = socketConfig?.api_key || PUSHER_CONFIG.APP_KEY;
+    const cluster = socketConfig?.options?.cluster || PUSHER_CONFIG.CLUSTER;
+    const provider = socketConfig ? (socketConfig.options?.wsHost ? 'soketi' : 'pusher') : 'fallback';
+
+    log('Initializing Pusher for user', userId, '| provider:', provider);
 
     // Get auth token for private channel authentication
     const token = await getAuthToken();
@@ -80,10 +87,10 @@ export async function initializePusher(userId: number): Promise<boolean> {
       return false;
     }
 
-    // Create Pusher client with custom authorizer
-    pusherClient = new Pusher(PUSHER_CONFIG.APP_KEY, {
-      cluster: PUSHER_CONFIG.CLUSTER,
-      authorizer: (channel) => ({
+    // Build Pusher options — add custom host params for Fluent Socket / Soketi
+    const pusherOptions: Record<string, unknown> = {
+      cluster,
+      authorizer: (channel: { name: string }) => ({
         authorize: async (socketId, callback) => {
           try {
             log('Authorizing channel:', channel.name);
@@ -123,7 +130,19 @@ export async function initializePusher(userId: number): Promise<boolean> {
           }
         },
       }),
-    });
+    };
+
+    // Fluent Socket / custom Soketi: add explicit WebSocket host options
+    if (socketConfig?.options?.wsHost) {
+      pusherOptions.wsHost = socketConfig.options.wsHost;
+      pusherOptions.wsPort = socketConfig.options.wsPort ?? 443;
+      pusherOptions.wssPort = socketConfig.options.wssPort ?? 443;
+      pusherOptions.forceTLS = socketConfig.options.forceTLS ?? false;
+      pusherOptions.enabledTransports = socketConfig.options.enabledTransports ?? ['ws', 'wss'];
+    }
+
+    // Create Pusher client
+    pusherClient = new Pusher(appKey, pusherOptions);
 
     // Connection event handlers
     pusherClient.connection.bind('connected', () => {
@@ -174,6 +193,7 @@ export async function initializePusher(userId: number): Promise<boolean> {
     });
 
     currentUserId = userId;
+    currentSocketConfig = socketConfig;
     return true;
   } catch (error) {
     log('Initialize error:', error);
@@ -239,6 +259,7 @@ export async function reconnectPusher(): Promise<boolean> {
   }
 
   const userId = currentUserId;
+  const savedSocketConfig = currentSocketConfig;
   log('Reconnecting Pusher for user', userId);
 
   // Disconnect client and channel WITHOUT clearing handler Sets
@@ -255,7 +276,7 @@ export async function reconnectPusher(): Promise<boolean> {
   currentUserId = null;
   // DO NOT clear handlers — keep existing subscriptions
 
-  return initializePusher(userId);
+  return initializePusher(userId, savedSocketConfig);
 }
 
 // -----------------------------------------------------------------------------

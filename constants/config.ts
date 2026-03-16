@@ -94,12 +94,17 @@ export const ENDPOINTS = {
 };
 
 // -----------------------------------------------------------------------------
-// SETUP: Pusher Configuration (Real-time messaging)
+// SETUP: Pusher Fallback Configuration (Real-time messaging)
 // -----------------------------------------------------------------------------
+// Socket config is served dynamically from your WordPress site's Fluent
+// Messaging settings via /app-config. These values are only used on
+// first-ever launch before server config arrives. After that, the app
+// uses whatever provider you configured in WordPress admin (Pusher Cloud,
+// Fluent Socket, or custom Soketi).
 
 export const PUSHER_CONFIG = {
-  APP_KEY: '2ee0dcc0255ee7f9a996',                     // SETUP: Your Pusher app key
-  CLUSTER: 'us3',                                       // SETUP: Your Pusher cluster
+  APP_KEY: '2ee0dcc0255ee7f9a996',                     // SETUP: Fallback Pusher app key
+  CLUSTER: 'us3',                                       // SETUP: Fallback Pusher cluster
   AUTH_ENDPOINT: `${API_URL}/chat/broadcast/auth`,
 };
 

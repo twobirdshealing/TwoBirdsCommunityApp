@@ -190,7 +190,7 @@
   <tr>
     <td><a href="https://pusher.com">Pusher Channels</a></td>
     <td>Real-time updates — live message delivery, typing indicators, instant feed updates.</td>
-    <td>Only needed with Fluent Community Pro + Fluent Messaging. Skip if you don't use the chat/messaging feature.</td>
+    <td>Only needed if using <strong>Pusher Cloud</strong> as your socket provider. Skip if using Fluent Socket (built-in) or custom Soketi, or if you don't use chat/messaging. Socket config is read from the server automatically.</td>
     <td>Free tier (200k msgs/day)</td>
   </tr>
   <tr>
@@ -261,8 +261,8 @@ eas init</code></pre>
   <tr><td><code>APP_NAME</code></td><td>Display name used in UI where server branding isn't available</td><td><code>'My Community'</code></td></tr>
   <tr><td><code>APP_USER_AGENT</code></td><td>User-Agent header sent with API requests</td><td><code>'MyCommunityApp/1.0'</code></td></tr>
   <tr><td><code>SITE_URL</code></td><td>Derived from eas.json (no fallback — build fails if missing)</td><td><code>'https://community.example.com'</code></td></tr>
-  <tr><td><code>PUSHER_CONFIG.APP_KEY</code></td><td>Your Pusher app key for real-time messaging</td><td><code>'abc123def456'</code></td></tr>
-  <tr><td><code>PUSHER_CONFIG.CLUSTER</code></td><td>Your Pusher cluster region</td><td><code>'us2'</code></td></tr>
+  <tr><td><code>PUSHER_CONFIG.APP_KEY</code></td><td>Fallback Pusher app key (used only on first-ever launch before server config arrives)</td><td><code>'abc123def456'</code></td></tr>
+  <tr><td><code>PUSHER_CONFIG.CLUSTER</code></td><td>Fallback Pusher cluster (same caveat as above)</td><td><code>'us2'</code></td></tr>
   <tr><td><code>FEATURES.DARK_MODE</code></td><td>Dark mode synced from Fluent Community theme</td><td><code>true</code></td></tr>
   <tr><td><code>FEATURES.PUSH_NOTIFICATIONS</code></td><td>Push notifications via TBC-CA plugin</td><td><code>true</code></td></tr>
   <tr><td><code>FEATURES.MESSAGING</code></td><td>Fluent Messaging (direct chat)</td><td><code>true</code></td></tr>
@@ -372,22 +372,25 @@ eas init</code></pre>
 <p>Default fallback colors used before the server theme syncs. The app automatically pulls your Fluent Community theme colors — these are just the initial defaults on first launch.</p>
 
 <!-- Pusher Setup -->
-<h3>Pusher Setup <span class="tag optional">Optional — Real-Time Messaging</span></h3>
+<h3>Real-Time Messaging Setup <span class="tag optional">Optional — Requires Fluent Messaging</span></h3>
 <p>Only needed if you use Fluent Community Pro with the Fluent Messaging add-on and want real-time message delivery.</p>
 
+<p>Socket configuration is <strong>server-driven</strong>. The app reads socket settings from your WordPress site automatically &mdash; no app-side Pusher configuration needed.</p>
+
 <ol>
-  <li>Create an account at <a href="https://pusher.com">pusher.com</a> and create a new <strong>Channels</strong> app</li>
-  <li>Choose the cluster closest to your server (e.g. <code>us2</code>, <code>eu</code>, <code>ap1</code>)</li>
-  <li>Copy the <strong>App Key</strong> and <strong>Cluster</strong> from your Channels dashboard</li>
-  <li>Set them in <code>constants/config.ts</code>:
-    <pre><code>PUSHER_CONFIG.APP_KEY = 'your-app-key';
-PUSHER_CONFIG.CLUSTER = 'your-cluster';</code></pre>
+  <li>In your WordPress admin, go to <strong>Fluent Community &rarr; Settings &rarr; Messaging</strong></li>
+  <li>Enable real-time and choose your socket provider:
+    <ul>
+      <li><strong>Pusher Cloud</strong> &mdash; create an app at <a href="https://pusher.com">pusher.com</a>, enter credentials</li>
+      <li><strong>Fluent Socket</strong> &mdash; Fluent's hosted service, auto-configured</li>
+      <li><strong>Custom Soketi</strong> &mdash; enter your self-hosted Soketi host and port</li>
+    </ul>
   </li>
-  <li>In your WordPress admin, go to <strong>Fluent Community → Settings → Pusher</strong> and enter the same App ID, Key, Secret, and Cluster</li>
+  <li>That's it &mdash; the <code>tbc-community-app</code> plugin serves the socket config to the app via <code>/app-config</code></li>
 </ol>
 
-<div class="callout callout-warn">
-  <strong>Credentials must match.</strong> The Pusher App Key and Cluster in the app must be identical to what's configured in Fluent Community on your WordPress site. The server handles Pusher authentication via the <code>tbc-community-app</code> plugin.
+<div class="callout">
+  <strong>No app-side credentials needed.</strong> The app reads socket config from the server at startup and caches it. Switching providers in WordPress admin takes effect on the next app launch &mdash; no rebuild required. The fallback <code>PUSHER_CONFIG</code> in <code>constants/config.ts</code> is only used on first-ever launch before server config arrives.
 </div>
 
 <!-- ====================================================================== -->
@@ -498,7 +501,7 @@ PUSHER_CONFIG.CLUSTER = 'your-cluster';</code></pre>
   <tr><td>Cart / E-commerce</td><td>WooCommerce</td></tr>
   <tr><td>Blog</td><td>WordPress posts (built-in, uses standard WP REST API)</td></tr>
   <tr><td>Push notifications</td><td>Firebase project + <code>tbc-community-app</code> (see <a href="#firebase-setup">Firebase Setup</a>)</td></tr>
-  <tr><td>Real-time updates</td><td><a href="https://pusher.com">Pusher</a> Channels account — only needed with Fluent Community Pro messaging</td></tr>
+  <tr><td>Real-time updates</td><td>Fluent Messaging add-on &mdash; supports Pusher Cloud, Fluent Socket, or custom Soketi (configured in WordPress admin, app reads config automatically)</td></tr>
   <tr><td>OTP verification</td><td><a href="https://twilio.com">Twilio</a> account — configured in <code>tbc-fluent-profiles</code> plugin settings. Optional.</td></tr>
 </table>
 
@@ -705,7 +708,7 @@ eas submit --platform android</code></pre>
   <tr><td>6</td><td>SITE_URL set in all eas.json profiles (required — build fails without it)</td><td><code>eas.json</code></td><td></td></tr>
   <tr><td>7</td><td>Apple ID and App Store Connect ID set for iOS submissions</td><td><code>eas.json</code> (submit.production.ios)</td><td></td></tr>
   <tr><td>8</td><td>APP_NAME and APP_USER_AGENT updated</td><td><code>constants/config.ts</code></td><td></td></tr>
-  <tr><td>9</td><td>Pusher credentials set (if using real-time messaging)</td><td><code>constants/config.ts</code></td><td></td></tr>
+  <tr><td>9</td><td>Real-time messaging configured in WordPress admin (if using Fluent Messaging)</td><td>WP Admin &rarr; Fluent Community &rarr; Settings &rarr; Messaging</td><td></td></tr>
   <tr><td>10</td><td>Feature flags reviewed (disable features you don't use)</td><td><code>constants/config.ts</code></td><td></td></tr>
   <tr><td>11</td><td>Module registry reviewed (only needed modules enabled)</td><td><code>modules/_registry.ts</code></td><td></td></tr>
   <tr><td>12</td><td>All branding images replaced</td><td><code>assets/images/</code></td><td></td></tr>
@@ -716,7 +719,7 @@ eas submit --platform android</code></pre>
   <tr><td>17</td><td>Default fallback colors reviewed</td><td><code>constants/colors.ts</code></td><td></td></tr>
   <tr><td>18</td><td>Required companion plugins installed in correct order</td><td>See <a href="#plugins">Plugin section</a></td><td></td></tr>
   <tr><td>19</td><td>Fluent Community theme colors configured</td><td>WP Admin → Fluent Community → Settings → Design</td><td></td></tr>
-  <tr><td>20</td><td>Pusher credentials match between app and WordPress (if applicable)</td><td><code>constants/config.ts</code>, WP Fluent Community settings</td><td></td></tr>
+  <tr><td>20</td><td>Real-time messaging working (socket config is server-driven, no app-side match needed)</td><td>WP Admin &rarr; Fluent Community &rarr; Settings &rarr; Messaging</td><td></td></tr>
   <tr><td>21</td><td>(Add-on) YouTube API key configured in <code>tbc-youtube</code> plugin (if purchased)</td><td>WP Admin → YouTube plugin settings</td><td></td></tr>
   <tr><td>22</td><td>package.json name updated</td><td><code>package.json</code></td><td></td></tr>
   <tr><td>23</td><td>app.config.ts fallback values updated (name, slug, SITE_URL)</td><td><code>app.config.ts</code></td><td></td></tr>
@@ -764,10 +767,12 @@ eas submit --platform android</code></pre>
 
 <h3>Real-Time Messaging Not Working</h3>
 <ul>
-  <li>Verify Pusher credentials in <code>constants/config.ts</code> match your <a href="https://dashboard.pusher.com">Pusher dashboard</a></li>
-  <li>Verify the <strong>same credentials</strong> are set in WordPress: <strong>Fluent Community → Settings → Pusher</strong></li>
-  <li>Check Pusher dashboard → Debug Console for connection attempts and errors</li>
   <li>Ensure <strong>Fluent Community Pro</strong> + <strong>Fluent Messaging</strong> add-on are both installed and active</li>
+  <li>Verify socket provider is configured in WordPress: <strong>Fluent Community &rarr; Settings &rarr; Messaging</strong></li>
+  <li>Socket config is server-driven &mdash; the app reads it from <code>/app-config</code>. No app-side Pusher credentials to match.</li>
+  <li>If using Pusher Cloud, check <a href="https://dashboard.pusher.com">Pusher dashboard</a> &rarr; Debug Console for connection attempts and errors</li>
+  <li>Verify the <code>tbc-community-app</code> plugin is updated to v3.40.0+ (required for server-driven socket config)</li>
+  <li>Force-quit and reopen the app to clear cached socket config</li>
 </ul>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">

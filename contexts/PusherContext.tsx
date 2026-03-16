@@ -6,6 +6,7 @@
 // Reconnects when app returns from background (v2.2.0).
 // =============================================================================
 
+import { useAppConfig } from '@/contexts/AppConfigContext';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   clearHandlers,
@@ -51,16 +52,19 @@ const PusherContext = createContext<PusherContextType | undefined>(undefined);
 
 export function PusherProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuth();
+  const { socketConfig } = useAppConfig();
   const [isConnected, setIsConnected] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Connect/Disconnect based on auth state
+  // Uses server-driven socket config from AppConfigContext when available.
+  // Falls back to static PUSHER_CONFIG on first-ever launch before app-config loads.
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
     if (isAuthenticated && user?.id) {
-      // Connect to Pusher
-      initializePusher(user.id).then(success => {
+      // Connect to Pusher — pass server config (may be null on first launch)
+      initializePusher(user.id, socketConfig ?? undefined).then(success => {
         setIsConnected(success);
       });
     } else {
