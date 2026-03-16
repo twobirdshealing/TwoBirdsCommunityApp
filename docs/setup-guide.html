@@ -221,11 +221,11 @@
 <!-- ====================================================================== -->
 <h2 id="quick-start">2. Quick Start</h2>
 
-<p>There are two ways to configure your app: the <strong>setup form</strong> (recommended) or <strong>manual editing</strong>. Both achieve the same result.</p>
+<p>Two ways to configure your app: the <strong>setup dashboard</strong> (recommended) or <strong>manual editing</strong>. Both achieve the same result.</p>
 
-<h3 id="setup-form">Option A: Setup Form (Recommended)</h3>
+<h3 id="setup-dashboard">Option A: Setup Dashboard (Recommended)</h3>
 
-<p>The <a href="setup-form.html">interactive setup form</a> lets you fill in your values at your own pace &mdash; no need to have everything ready at once. Fill in what you know, run the script, and come back later for the rest.</p>
+<p>The setup dashboard is a local web app that reads your actual config files, lets you edit values in a browser UI, and shows live validation &mdash; all in one place. It also handles branding assets, Firebase configs, and plugin status.</p>
 
 <ol>
   <li><strong>Install dependencies:</strong> <code>npm install</code></li>
@@ -233,33 +233,24 @@
     <pre><code>npm install -g eas-cli
 eas login
 eas init</code></pre>
-    <code>eas init</code> generates a project ID &mdash; you'll put this in the setup form.
+    <code>eas init</code> generates a project ID &mdash; you'll enter this in the dashboard.
   </li>
-  <li><strong>Open <code>setup.config</code></strong> in your editor and fill in your values. Each field has a comment explaining what it is. Leave blank any fields you don't have yet &mdash; the script will skip them.</li>
-  <li><strong>Run the setup script:</strong>
-    <pre><code>bash scripts/setup-app.sh</code></pre>
-    This reads your form, applies all filled-in values to the config files (<code>app.json</code>, <code>eas.json</code>, <code>config.ts</code>, <code>app.config.ts</code>, <code>package.json</code>), and then runs the validator to show what's done and what's still missing. Safe to run multiple times.
+  <li><strong>Launch the dashboard:</strong>
+    <pre><code>node scripts/setup-dashboard.js</code></pre>
+    Opens <code>http://localhost:3456</code> in your browser automatically.
   </li>
-  <li><strong>Handle the manual steps</strong> the script can't automate:
-    <ul>
-      <li>Replace <a href="#branding-assets">branding images</a> in <code>assets/images/</code></li>
-      <li>Add <a href="#firebase-setup">Firebase config files</a> (<code>google-services.json</code> + <code>GoogleService-Info.plist</code>)</li>
-      <li>Install <a href="#plugins">companion plugins</a> on your WordPress site</li>
-      <li>Configure <a href="#modules">modules</a> in <code>modules/_registry.ts</code></li>
-    </ul>
-  </li>
-  <li><strong>Re-run the validator</strong> any time to check your progress:
-    <pre><code>bash scripts/validate-setup.sh</code></pre>
-    Every failure links to the relevant section of this guide. When all checks pass, you're ready to build.
-  </li>
-  <li><strong>Create a dev build</strong> (first build takes ~15 minutes):
+  <li><strong>Config tab:</strong> All your setup values loaded from the actual files. Edit and click <strong>Save Changes</strong> &mdash; writes directly to <code>app.json</code>, <code>eas.json</code>, <code>config.ts</code>, <code>app.config.ts</code>, and <code>package.json</code>.</li>
+  <li><strong>Assets tab:</strong> See which branding images exist with thumbnails. Click any asset to upload a replacement.</li>
+  <li><strong>Plugins &amp; Firebase tab:</strong> Check companion plugin status and drag-drop your Firebase config files.</li>
+  <li><strong>Status tab:</strong> Live validation with pass/fail/warn for every check. Click <strong>Check Connectivity</strong> to test your site URL and API endpoints.</li>
+  <li><strong>Create a dev build</strong> when all checks pass (first build takes ~15 minutes):
     <pre><code>eas build --profile development --platform all</code></pre>
     When the build finishes, install it on your device via the QR code or download link EAS provides.
   </li>
 </ol>
 
 <div class="callout">
-  <strong>Tip:</strong> If you're using an AI coding assistant (Claude Code, Cursor, etc.), the validator's machine-readable issue log at the bottom of its output includes doc references it can follow to fix issues automatically.
+  <strong>Tip:</strong> If you're using an AI coding assistant (Claude Code, Cursor, etc.), the validator's machine-readable issue log at the bottom of its output includes doc references it can follow to fix issues automatically. Run <code>bash scripts/validate-setup.sh</code> for the terminal version.
 </div>
 
 <h3>Option B: Manual Editing</h3>
@@ -897,16 +888,20 @@ git merge upstream/main</code></pre>
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
 <p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
   Setup Guide &middot;
+  Setup Dashboard (<code>node scripts/setup-dashboard.js</code>) &middot;
   <a href="setup-form.html">Setup Form</a> &middot;
   <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
   <a href="architecture.html">Architecture</a> &middot;
   <a href="components.html">Components</a> &middot;
   <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  <a href="companion-plugins.html">Companion Plugins</a> &middot;
   <a href="features.html">Features</a> &middot;
+  <a href="feed-system.html">Feed System</a> &middot;
   <a href="logging.html">Logging</a> &middot;
   <a href="messaging.html">Messaging &amp; Chat</a> &middot;
   <a href="module-system.html">Module System</a> &middot;
   <a href="pusher.html">Pusher</a> &middot;
+  <a href="registration.html">Registration &amp; Onboarding</a> &middot;
   <a href="state-management.html">State Management</a> &middot;
   <a href="theme-system.html">Theme System</a>
 </p>
