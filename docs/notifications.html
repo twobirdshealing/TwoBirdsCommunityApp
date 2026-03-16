@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — Notifications</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn { border-left-color: var(--warning); }
+  .callout-error { border-left-color: var(--error); }
+  .callout-success { border-left-color: var(--success); }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Notifications</h1>
+<p class="subtitle">Push notifications, in-app notification list, badge counts, unified preferences, and deep linking from notifications.</p>
+
+<div class="callout">
+  <strong>Key files:</strong>
+  <span class="file-path">services/push.ts</span> (token registration + badge sync),
+  <span class="file-path">services/api/push.ts</span> (TBC-CA push settings),
+  <span class="file-path">services/api/notifications.ts</span> (notification CRUD),
+  <span class="file-path">services/api/emailPrefs.ts</span> (email preferences),
+  <span class="file-path">types/notification.ts</span> (types + transform),
+  <span class="file-path">contexts/UnreadCountsContext.tsx</span> (badge counts),
+  <span class="file-path">app/notifications.tsx</span> &amp; <span class="file-path">app/notification-settings.tsx</span> (screens).
+  <br><br>
+  Server-side: <span class="file-path">companion plugins/tbc-community-app/includes/push/</span> — device management, event hooks, Expo Push API integration.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Architecture Overview</a></li>
+    <li><a href="#types">Notification Types</a></li>
+    <li><a href="#push-setup">Push Notification Setup</a></li>
+    <li><a href="#token-registration">Token Registration</a></li>
+    <li><a href="#notifications-api">Notifications API</a></li>
+    <li><a href="#badge-counts">Badge Counts</a></li>
+    <li><a href="#preferences">Notification Preferences</a></li>
+    <li><a href="#deep-linking">Deep Linking from Notifications</a></li>
+    <li><a href="#screens">Notification Screens</a></li>
+    <li><a href="#server-side">Server-Side Push Sending</a></li>
+    <li><a href="#files">File Reference</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="overview">1. Architecture Overview</h2>
+
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│                      Server Side                             │
+│                                                              │
+│  Fluent Community hooks ──► TBC-CA Push Hooks                │
+│  (feed created, comment,     (class-hooks.php)               │
+│   reaction, follow, etc.)         │                          │
+│                                   ▼                          │
+│                           Action Scheduler                    │
+│                           (async batch)                      │
+│                                   │                          │
+│                                   ▼                          │
+│                       Expo Push API send                      │
+│                       (class-firebase.php)                    │
+│                                   │                          │
+│                    Badge count attached ◄── FC unread count   │
+└───────────────────────────┬─────────────────────────────────┘
+                            │ Push notification
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      Mobile App                              │
+│                                                              │
+│  Notification Handler (foreground: banner + sound)            │
+│  Tap Listener (deep links to route)                          │
+│                                                              │
+│  ┌─────────────────┐  ┌────────────────────┐                │
+│  │ notifications.tsx│  │notification-settings│                │
+│  │ (list + swipe)  │  │(push + email prefs) │                │
+│  └────────┬────────┘  └────────────────────┘                │
+│           │                                                  │
+│  ┌────────▼────────┐  ┌────────────────────┐                │
+│  │ UnreadCounts    │◄─┤ X-TBC-Unread-*     │                │
+│  │ Context         │  │ response headers    │                │
+│  └────────┬────────┘  └────────────────────┘                │
+│           │                                                  │
+│           ▼                                                  │
+│  syncBadgeCount() ──► OS app icon badge                      │
+└─────────────────────────────────────────────────────────────┘</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="types">2. Notification Types</h2>
+
+<p>Defined in <span class="file-path">types/notification.ts</span>.</p>
+
+<h3>AppNotification</h3>
+<pre><code>interface AppNotification {
+  // Content
+  content: string;                   // HTML from server
+  action: NotificationAction;        // e.g. 'feed/mentioned', 'feed/commented'
+
+  // Navigation
+  route?: NotificationRoute;         // { name, params } for app navigation
+
+  // Metadata
+  subscriber: NotificationSubscriber; // { id, object_id, user_id, is_read, timestamps }
+  xprofile?: XProfile;               // Actor who triggered the notification
+
+  // Computed (added by transformNotification)
+  id: number;                        // From subscriber.id
+  is_read: boolean;                  // Parsed from subscriber.is_read ("0"/"1")
+  created_at: string;                // From subscriber.created_at
+  type: NotificationAction;          // Alias for action
+
+  // Multi-reaction data (injected by tbc-multi-reactions plugin)
+  tbc_reaction_type?: string;
+  tbc_reaction_emoji?: string;
+  tbc_reaction_icon_url?: string;
+
+  // Legacy/convenience
+  message?: string;                  // HTML-stripped version of content
+  title?: string;                    // First line of message
+}</code></pre>
+
+<h3>NotificationAction Types</h3>
+<table>
+  <tr><th>Action</th><th>Trigger</th></tr>
+  <tr><td><code>feed/mentioned</code></td><td>User mentioned in a post</td></tr>
+  <tr><td><code>feed/commented</code></td><td>Comment on user's post</td></tr>
+  <tr><td><code>feed/replied</code></td><td>Reply to user's comment</td></tr>
+  <tr><td><code>feed/reacted</code></td><td>Reaction on user's post or comment</td></tr>
+  <tr><td><code>profile/followed</code></td><td>User was followed</td></tr>
+  <tr><td><code>space/invited</code></td><td>Invited to a space</td></tr>
+  <tr><td><code>space/joined</code></td><td>User joined a space</td></tr>
+  <tr><td><code>course/enrolled</code></td><td>Enrolled in a course</td></tr>
+  <tr><td><code>lesson/completed</code></td><td>Completed a lesson</td></tr>
+</table>
+
+<h3>transformNotification()</h3>
+<p>Raw API data is transformed via <code>transformNotification()</code> which parses <code>is_read</code> strings, strips HTML for message previews, and maps reaction metadata. All notifications pass through this transform before reaching the UI.</p>
+
+<!-- ================================================================== -->
+<h2 id="push-setup">3. Push Notification Setup</h2>
+
+<h3>Prerequisites</h3>
+<ul>
+  <li><strong>Firebase:</strong> <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS) in project root</li>
+  <li><strong>EAS Project ID:</strong> Set in <code>app.json</code> → <code>expo.extra.eas.projectId</code></li>
+  <li><strong>Physical device required:</strong> Push tokens can't be obtained on simulators</li>
+</ul>
+
+<h3>Foreground Handler</h3>
+<p><span class="file-path">services/push.ts</span> configures how notifications appear when the app is in the foreground:</p>
+
+<pre><code>Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: false,    // App handles badge manually
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});</code></pre>
+
+<h3>Android Notification Channel</h3>
+<p>Created at runtime during token registration:</p>
+<pre><code>Notifications.setNotificationChannelAsync('default', {
+  name: 'Default',
+  importance: AndroidImportance.MAX,
+  vibrationPattern: [0, 250, 250, 250],
+  lightColor: '#6366F1',
+});</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="token-registration">4. Token Registration</h2>
+
+<p><span class="file-path">services/push.ts</span> handles the full lifecycle.</p>
+
+<h3>Registration Flow</h3>
+<ol>
+  <li>Check <code>Device.isDevice</code> (simulators can't get push tokens)</li>
+  <li>Check/request notification permissions</li>
+  <li>Get Expo push token via <code>Notifications.getExpoPushTokenAsync({ projectId })</code></li>
+  <li>Create Android notification channel (if Android)</li>
+  <li>Send token to backend: <code>POST tbc-ca/v1/push/device</code> with <code>{ token, platform }</code></li>
+</ol>
+
+<h3>When Registration Happens</h3>
+<ul>
+  <li><strong>On login:</strong> <code>AuthContext</code> calls <code>registerDeviceToken(authToken)</code></li>
+  <li><strong>On every app startup:</strong> Re-registers to ensure fresh token even if device state changed</li>
+  <li><strong>On logout:</strong> Calls <code>unregisterDeviceToken()</code> → <code>DELETE tbc-ca/v1/push/device</code></li>
+</ul>
+
+<h3>Push API Endpoints</h3>
+<p><span class="file-path">services/api/push.ts</span> — TBC-CA plugin endpoints (not Fluent Community).</p>
+
+<table>
+  <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
+  <tr><td><code>registerDevice(auth, token, platform)</code></td><td>POST</td><td><code>tbc-ca/v1/push/device</code></td><td>Register Expo push token</td></tr>
+  <tr><td><code>unregisterDevice(auth, token)</code></td><td>DELETE</td><td><code>tbc-ca/v1/push/device</code></td><td>Remove device token on logout</td></tr>
+  <tr><td><code>getPushSettings(auth)</code></td><td>GET</td><td><code>tbc-ca/v1/push/settings</code></td><td>Get push notification preferences</td></tr>
+  <tr><td><code>updatePushSettings(auth, prefs)</code></td><td>POST</td><td><code>tbc-ca/v1/push/settings</code></td><td>Update push preferences</td></tr>
+</table>
+
+<div class="callout callout-warn">
+  <strong>Push API uses raw <code>fetch()</code>, not the authenticated client.</strong> The <code>push.ts</code> service receives the auth token as a parameter to avoid circular dependency with <code>auth.ts</code>. Don't import from <code>services/auth.ts</code> in push-related files.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="notifications-api">5. Notifications API</h2>
+
+<p><span class="file-path">services/api/notifications.ts</span> — Fluent Community notification endpoints.</p>
+
+<table>
+  <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
+  <tr><td><code>getNotifications(options)</code></td><td>GET</td><td><code>/notifications</code></td><td>Paginated list with filters (is_read, type, orderby, order)</td></tr>
+  <tr><td><code>getUnreadNotifications()</code></td><td>GET</td><td><code>/notifications/unread</code></td><td>Unread list + total unread count</td></tr>
+  <tr><td><code>getNotificationUnreadCount()</code></td><td>GET</td><td><code>/notifications/unread</code></td><td>Convenience — just the count number</td></tr>
+  <tr><td><code>markAsRead(id)</code></td><td>POST</td><td><code>/notifications/mark-read/{id}</code></td><td>Mark single notification read, returns new unread count</td></tr>
+  <tr><td><code>markAllAsRead()</code></td><td>POST</td><td><code>/notifications/mark-all-read</code></td><td>Mark all as read</td></tr>
+</table>
+
+<h3>GetNotificationsOptions</h3>
+<pre><code>interface GetNotificationsOptions {
+  page?: number;
+  per_page?: number;
+  is_read?: boolean;           // Filter by read status
+  type?: NotificationAction;   // Filter by action type
+  orderby?: 'created_at' | 'read_at';
+  order?: 'asc' | 'desc';
+}</code></pre>
+
+<h3>Response Transform</h3>
+<p>Raw API responses are automatically transformed via <code>transformNotificationsResponse()</code> which applies <code>transformNotification()</code> to each notification before returning to the caller.</p>
+
+<!-- ================================================================== -->
+<h2 id="badge-counts">6. Badge Counts</h2>
+
+<h3>UnreadCountsContext</h3>
+<p><span class="file-path">contexts/UnreadCountsContext.tsx</span> — single source of truth for all badge counts.</p>
+
+<pre><code>const {
+  unreadNotifications,         // number
+  unreadMessages,              // number
+  cartCount,                   // number
+  setUnreadNotifications,      // setter
+  setUnreadMessages,           // setter
+  setCartCount,                // setter
+  resetCounts,                 // clear all on logout
+} = useUnreadCounts();</code></pre>
+
+<h3>How Counts Are Updated</h3>
+
+<table>
+  <tr><th>Source</th><th>When</th><th>Mechanism</th></tr>
+  <tr><td>Startup batch</td><td>App launch (authenticated)</td><td><code>useStartupData</code> populates initial counts from batch API</td></tr>
+  <tr><td>Response headers</td><td>Every authenticated API response</td><td><code>X-TBC-Unread-Notifications</code>, <code>X-TBC-Unread-Messages</code>, <code>X-TBC-Cart-Count</code></td></tr>
+  <tr><td>Mark as read</td><td>User marks notification read</td><td>API returns new <code>unread_count</code></td></tr>
+  <tr><td>Mark all read</td><td>User marks all read</td><td>Sets count to 0</td></tr>
+</table>
+
+<h3>OS Badge Sync</h3>
+<pre><code>// Set app icon badge count
+await syncBadgeCount(count);   // Deduplicates (skips if same as last)
+
+// Clear badge on logout
+await clearBadgeCount();       // Sets to 0</code></pre>
+
+<p><code>syncBadgeCount()</code> in <span class="file-path">services/push.ts</span> calls <code>Notifications.setBadgeCountAsync(count)</code>. It deduplicates — if the count hasn't changed since the last call, it's a no-op.</p>
+
+<!-- ================================================================== -->
+<h2 id="preferences">7. Notification Preferences</h2>
+
+<p>The app has a unified settings screen that combines push preferences (TBC-CA plugin) and email preferences (Fluent Community) into one UI.</p>
+
+<h3>Two Systems, One UI</h3>
+
+<table>
+  <tr><th>Channel</th><th>Source</th><th>Endpoint</th></tr>
+  <tr><td>Push</td><td>TBC-CA plugin</td><td><code>GET/POST tbc-ca/v1/push/settings</code></td></tr>
+  <tr><td>Email</td><td>Fluent Community</td><td><code>GET/POST /profile/{username}/notification-preferences</code></td></tr>
+</table>
+
+<h3>Push Preferences</h3>
+<p><span class="file-path">services/api/push.ts</span></p>
+
+<pre><code>interface PushPreference {
+  id: string;              // e.g. 'feed_comment', 'feed_reaction'
+  label: string;           // Display name
+  description: string;
+  category: string;        // Group: 'Posts', 'Comments', etc.
+  enabled: boolean;        // Current state
+  email_key?: string;      // Matching email pref key (for unified UI)
+  group?: string;          // Sub-group within category
+  group_label?: string;
+  push_label?: string;     // Override label for push channel
+  note?: string;           // Contextual note to display
+}</code></pre>
+
+<h3>Email Preferences</h3>
+<p><span class="file-path">services/api/emailPrefs.ts</span></p>
+
+<pre><code>interface EmailUserGlobals {
+  com_my_post_mail: 'yes' | 'no';       // Comments on my posts
+  reply_my_com_mail: 'yes' | 'no';      // Replies to my comments
+  mention_mail: 'yes' | 'no';           // Mentions
+  digest_mail: 'yes' | 'no';            // Weekly digest
+  message_email_frequency: 'default' | 'disabled' | 'hourly' | 'daily' | 'weekly';
+}
+
+// Per-space email notification level
+type SpacePref = '' | 'admin_only_posts' | 'all_member_posts';</code></pre>
+
+<div class="callout callout-error">
+  <strong>Email prefs are full replacement.</strong> <code>POST /notification-preferences</code> replaces ALL preferences, not just the changed ones. Always send the complete <code>user_globals</code> + <code>space_prefs</code> object. Missing keys will be reset to defaults.
+</div>
+
+<h3>Unified Settings Model</h3>
+<p><span class="file-path">hooks/useNotificationSettings.ts</span> builds a unified model by matching push preferences to email preferences via the <code>email_key</code> field:</p>
+
+<pre><code>interface UnifiedItem {
+  key: string;
+  label: string;
+  description: string;
+  channels: ChannelInfo[];  // [{ type: 'push', enabled }, { type: 'email', enabled }]
+  note?: string;
+}
+
+interface UnifiedSection {
+  category: string;         // e.g. 'Posts', 'Comments'
+  title: string;
+  items: UnifiedItem[];
+}</code></pre>
+
+<h3>DM Email Frequency</h3>
+<p>Special setting with picker options:</p>
+<table>
+  <tr><th>Value</th><th>Label</th></tr>
+  <tr><td><code>hourly</code></td><td>Hourly</td></tr>
+  <tr><td><code>daily</code></td><td>Daily</td></tr>
+  <tr><td><code>weekly</code></td><td>Weekly</td></tr>
+  <tr><td><code>disabled</code></td><td>Off</td></tr>
+  <tr><td><code>default</code></td><td>Use admin default</td></tr>
+</table>
+
+<h3>Space Email Preferences</h3>
+<p>Per-space notification levels:</p>
+<table>
+  <tr><th>Value</th><th>Label</th><th>Behavior</th></tr>
+  <tr><td><code>''</code></td><td>Off</td><td>No emails for this space</td></tr>
+  <tr><td><code>admin_only_posts</code></td><td>Admin Posts</td><td>Only admin/mod posts</td></tr>
+  <tr><td><code>all_member_posts</code></td><td>All Posts</td><td>All posts in space</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="deep-linking">8. Deep Linking from Notifications</h2>
+
+<p><span class="file-path">app/_layout.tsx</span> handles notification taps via <code>Notifications.addNotificationResponseReceivedListener</code>.</p>
+
+<h3>Route Resolution Priority</h3>
+<ol>
+  <li><strong><code>data.route</code></strong> — server-provided route string (highest priority)</li>
+  <li><strong>Module handler</strong> — <code>handleModuleNotification(data, router)</code> for module-specific routes</li>
+  <li><strong>Legacy fields</strong> — <code>feed_id</code>, <code>space_slug</code>, <code>course_slug</code>, <code>profile_username</code></li>
+  <li><strong>Default</strong> — navigate to <code>/notifications</code> screen</li>
+</ol>
+
+<h3>Common Route Mappings</h3>
+<table>
+  <tr><th>Route Name</th><th>App Path</th></tr>
+  <tr><td><code>space_feed</code>, <code>feed</code>, <code>feed_detail</code></td><td><code>/feed/{id}</code></td></tr>
+  <tr><td><code>space</code>, <code>space_detail</code></td><td><code>/space/{slug}</code></td></tr>
+  <tr><td><code>profile</code>, <code>user_profile</code></td><td><code>/profile/{username}</code></td></tr>
+  <tr><td><code>course</code>, <code>course_detail</code></td><td><code>/courses/{slug}</code></td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="screens">9. Notification Screens</h2>
+
+<h3>Notification List</h3>
+<p><span class="file-path">app/notifications.tsx</span></p>
+<ul>
+  <li>Paginated FlashList (20 items per page)</li>
+  <li>Filter toggle: "All" vs "Unread" (dynamic cache key)</li>
+  <li>Swipe right on notification → mark as read (green checkmark, haptic feedback)</li>
+  <li>"Mark all as read" button in header</li>
+  <li>Tap notification → navigate to related content + mark as read</li>
+  <li>Uses <code>useCachedData</code> for SWR caching</li>
+  <li>Empty state when no notifications</li>
+</ul>
+
+<h3>Notification Settings</h3>
+<p><span class="file-path">app/notification-settings.tsx</span></p>
+<ul>
+  <li>Unified push + email preferences in one screen</li>
+  <li>Per-notification-type toggle with push and email channels</li>
+  <li>Weekly digest toggle</li>
+  <li>DM email frequency selector</li>
+  <li>Per-space email notification level</li>
+  <li>Status banners: permission denied, undetermined, feature disabled</li>
+  <li>Optimistic updates with rollback on failure</li>
+  <li>Pull-to-refresh to reload all settings</li>
+</ul>
+
+<h3>Components</h3>
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td><code>NotificationCard</code></td><td><span class="file-path">components/notification/NotificationCard.tsx</span></td><td>List item with unread indicator, actor avatar + type icon, message, timestamp, swipe-to-read</td></tr>
+  <tr><td><code>NotificationTypeIcon</code></td><td><span class="file-path">components/notification/NotificationTypeIcon.tsx</span></td><td>Maps notification action to icon (comment, reaction with emoji, follow, etc.)</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="server-side">10. Server-Side Push Sending</h2>
+
+<p>The TBC-CA companion plugin handles all push notification sending via the <span class="file-path">companion plugins/tbc-community-app/includes/push/</span> directory.</p>
+
+<h3>Push Infrastructure Files</h3>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><code>class-api.php</code></td><td>REST endpoints (device registration, settings)</td></tr>
+  <tr><td><code>class-devices.php</code></td><td>Device token storage (wp_tbc_ca_device_tokens table)</td></tr>
+  <tr><td><code>class-preferences.php</code></td><td>User preference storage (wp_usermeta)</td></tr>
+  <tr><td><code>class-hooks.php</code></td><td>Event hooks — listens to Fluent Community actions</td></tr>
+  <tr><td><code>class-firebase.php</code></td><td>Expo Push API integration (sends notifications)</td></tr>
+  <tr><td><code>class-registry.php</code></td><td>Notification type registration (defines all types + defaults)</td></tr>
+  <tr><td><code>class-log.php</code></td><td>Push delivery logging</td></tr>
+  <tr><td><code>class-manual.php</code></td><td>Admin UI for manual push notifications</td></tr>
+</table>
+
+<h3>Sending Flow</h3>
+<ol>
+  <li>Fluent Community hook fires (e.g., <code>fluent_community/feed/created</code>)</li>
+  <li>Hook handler in <code>class-hooks.php</code> determines recipients and builds notification data</li>
+  <li><code>as_enqueue_async_action()</code> schedules async batch job via Action Scheduler</li>
+  <li>Async job calls <code>TBC_CA_Push_Firebase::send()</code> for each recipient</li>
+  <li>Fetches user's device tokens from database</li>
+  <li>Sends to Expo Push API: <code>POST https://exp.host/--/api/v2/push/send</code></li>
+  <li>Invalid tokens (401 from Expo) are automatically removed</li>
+</ol>
+
+<h3>Expo Push Payload</h3>
+<pre><code>{
+  "to": "ExponentPushToken[...]",
+  "title": "Jane commented on your post",
+  "body": "Great article! I really enjoyed...",
+  "sound": "default",
+  "badge": 5,                    // Unread count for app icon
+  "data": {
+    "feed_id": 123,
+    "space_slug": "general",
+    "route": "feed_detail",      // For deep linking
+    ...
+  },
+  "channelId": "default",        // Android only
+  "priority": "high"             // Android only
+}</code></pre>
+
+<h3>Event Hooks</h3>
+<p>The plugin listens to these Fluent Community events:</p>
+<ul>
+  <li><strong>Feed:</strong> created, space feed created, reaction, mention</li>
+  <li><strong>Comments:</strong> author notification, mention notification, thread notification</li>
+  <li><strong>Reactions:</strong> comment reaction</li>
+  <li><strong>Spaces:</strong> joined, join requested, role updated</li>
+  <li><strong>Invitations:</strong> invitation created</li>
+  <li><strong>Messaging:</strong> new message</li>
+  <li><strong>Pro features:</strong> followers, leaderboard, course quizzes (if enabled)</li>
+</ul>
+
+<h3>Device Token Management</h3>
+<ul>
+  <li>Stored in <code>wp_tbc_ca_device_tokens</code> table (user_id, token, platform, timestamps)</li>
+  <li>Multi-device: one user can have multiple tokens (phone + tablet)</li>
+  <li>Deduplication: existing token updates user_id (handles account switching)</li>
+  <li>Cleanup: tokens older than 90 days automatically removed</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="files">11. File Reference</h2>
+
+<h3>Mobile App</h3>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">services/push.ts</span></td><td>Token registration, badge sync, permission handling, foreground config</td></tr>
+  <tr><td><span class="file-path">services/api/push.ts</span></td><td>TBC-CA push settings + device registration endpoints</td></tr>
+  <tr><td><span class="file-path">services/api/notifications.ts</span></td><td>Notification CRUD (get, mark-read, mark-all-read)</td></tr>
+  <tr><td><span class="file-path">services/api/emailPrefs.ts</span></td><td>Fluent Community email preference sync</td></tr>
+  <tr><td><span class="file-path">types/notification.ts</span></td><td>AppNotification type + transformNotification helper</td></tr>
+  <tr><td><span class="file-path">constants/notificationMap.ts</span></td><td>Unified model types + frequency/space-pref option constants</td></tr>
+  <tr><td><span class="file-path">contexts/UnreadCountsContext.tsx</span></td><td>Shared badge count state (notifications, messages, cart)</td></tr>
+  <tr><td><span class="file-path">hooks/useNotificationSettings.ts</span></td><td>Unified settings state + handlers (merges push + email)</td></tr>
+  <tr><td><span class="file-path">app/notifications.tsx</span></td><td>Notification list screen with filter + swipe</td></tr>
+  <tr><td><span class="file-path">app/notification-settings.tsx</span></td><td>Unified push + email settings screen</td></tr>
+  <tr><td><span class="file-path">components/notification/NotificationCard.tsx</span></td><td>List item with actor avatar, type icon, swipe action</td></tr>
+  <tr><td><span class="file-path">components/notification/NotificationTypeIcon.tsx</span></td><td>Maps action → icon (supports multi-reaction emoji)</td></tr>
+</table>
+
+<h3>WordPress Backend</h3>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">tbc-community-app/includes/push/class-api.php</span></td><td>REST endpoints (device, settings)</td></tr>
+  <tr><td><span class="file-path">tbc-community-app/includes/push/class-hooks.php</span></td><td>Event hooks (listens to FC actions)</td></tr>
+  <tr><td><span class="file-path">tbc-community-app/includes/push/class-firebase.php</span></td><td>Expo Push API sender</td></tr>
+  <tr><td><span class="file-path">tbc-community-app/includes/push/class-devices.php</span></td><td>Device token database table</td></tr>
+  <tr><td><span class="file-path">tbc-community-app/includes/push/class-preferences.php</span></td><td>User push preference storage</td></tr>
+  <tr><td><span class="file-path">tbc-community-app/includes/push/class-registry.php</span></td><td>Notification type definitions + defaults</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="rules">12. Rules</h2>
+
+<ol>
+  <li><strong>Check <code>FEATURES.PUSH_NOTIFICATIONS</code> before any push operations.</strong> When disabled, skip token registration, hide push toggles in settings, and don't show push-related UI.</li>
+  <li><strong>Always pass auth token as parameter to push functions.</strong> The <code>services/push.ts</code> and <code>services/api/push.ts</code> files use raw <code>fetch()</code> to avoid circular dependency with <code>auth.ts</code>. Never import from <code>services/auth.ts</code> in push code.</li>
+  <li><strong>Email prefs are full replacement.</strong> When updating email preferences, always send the complete <code>user_globals</code> + <code>space_prefs</code> object. Omitting keys resets them to defaults.</li>
+  <li><strong>Use <code>UnreadCountsContext</code> for all badge counts.</strong> Don't maintain separate unread state — all screens and components read from this single context. It's updated by response headers, startup batch, and mark-as-read APIs.</li>
+  <li><strong>Sync OS badge after count changes.</strong> After updating <code>unreadNotifications</code> in context, call <code>syncBadgeCount(count)</code> to update the app icon badge. It deduplicates automatically.</li>
+  <li><strong>Transform notifications before use.</strong> All raw API notification data must pass through <code>transformNotification()</code>. The API service functions do this automatically — don't transform again in UI code.</li>
+  <li><strong>Deep link via <code>route</code> field, not legacy fields.</strong> Use <code>notification.route</code> (server-provided) for navigation. Legacy fields (<code>feed_id</code>, <code>space_slug</code>) are fallbacks only.</li>
+  <li><strong>Register device token on every app startup.</strong> Don't skip registration if a token was previously obtained — device tokens can change. Re-registering ensures the backend always has the current token.</li>
+  <li><strong>Push requires physical device.</strong> Check <code>Device.isDevice</code> before requesting permissions or tokens. Simulators will always return null.</li>
+  <li><strong>Use the unified settings hook for the settings screen.</strong> <code>useNotificationSettings</code> merges push and email prefs into <code>UnifiedSection[]</code>. Don't build the settings UI directly from the raw APIs.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  <a href="companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="feed-system.html">Feed System</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  <a href="messaging.html">Messaging &amp; Chat</a> &middot;
+  <a href="module-system.html">Module System</a> &middot;
+  Notifications &middot;
+  <a href="profile-system.html">Profile System</a> &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="registration.html">Registration &amp; Onboarding</a> &middot;
+  <a href="state-management.html">State Management</a> &middot;
+  <a href="theme-system.html">Theme System</a>
+</p>
+
+</body>
+</html>
