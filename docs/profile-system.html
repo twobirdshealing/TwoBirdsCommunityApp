@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — Profile System</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn { border-left-color: var(--warning); }
+  .callout-error { border-left-color: var(--error); }
+  .callout-success { border-left-color: var(--success); }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Profile System</h1>
+<p class="subtitle">User profiles, badges, connections, custom fields, avatars, and profile editing.</p>
+
+<div class="callout">
+  <strong>Key files:</strong>
+  <span class="file-path">app/profile/[username]/index.tsx</span> (profile screen),
+  <span class="file-path">app/profile/edit.tsx</span> (edit screen),
+  <span class="file-path">services/api/profiles.ts</span> (profile API),
+  <span class="file-path">services/api/badges.ts</span> (badge definitions),
+  <span class="file-path">types/user.ts</span> (all profile types),
+  <span class="file-path">components/profile/</span> (profile UI),
+  <span class="file-path">hooks/useFollowToggle.ts</span> &amp; <span class="file-path">hooks/useBadgeDefinitions.ts</span> (shared logic).
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#types">Data Types</a></li>
+    <li><a href="#api">Profile API</a></li>
+    <li><a href="#screens">Profile Screens</a></li>
+    <li><a href="#components">Profile Components</a></li>
+    <li><a href="#badges">Badge System</a></li>
+    <li><a href="#connections">Connections &amp; Following</a></li>
+    <li><a href="#editing">Profile Editing</a></li>
+    <li><a href="#custom-fields">Custom Profile Fields</a></li>
+    <li><a href="#tabs">Profile Tabs</a></li>
+    <li><a href="#avatars">Avatars</a></li>
+    <li><a href="#privacy">Privacy &amp; Blocking</a></li>
+    <li><a href="#files">File Reference</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="types">1. Data Types</h2>
+
+<p>All profile types in <span class="file-path">types/user.ts</span>.</p>
+
+<h3>XProfile (Lightweight)</h3>
+<p>Embedded in feeds, comments, messages — anywhere a user reference appears.</p>
+
+<pre><code>interface XProfile {
+  user_id: number;
+  username: string;
+  display_name: string;
+  avatar: string | null;
+  short_description: string | null;
+  total_points: number;
+  is_verified: number;           // 0 or 1
+  status: 'active' | 'suspended' | 'banned';
+  created_at: string;
+  meta?: {
+    website?: string;
+    cover_photo?: string;
+    bio?: string;
+    social_links?: Record&lt;string, string&gt;;
+    badge_slug?: string[];       // Badge slugs for this user
+  };
+  badge?: Badge | null;          // Primary badge if assigned
+}</code></pre>
+
+<h3>Profile (Full)</h3>
+<p>Returned by <code>GET /profile/{username}</code>. Extends XProfile with stats, follow state, permissions, and custom fields.</p>
+
+<table>
+  <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+  <tr><td><code>first_name</code>, <code>last_name</code></td><td><code>string</code></td><td>Editable name fields</td></tr>
+  <tr><td><code>email</code></td><td><code>string</code></td><td>Only if <code>can_change_email</code> is true</td></tr>
+  <tr><td><code>cover_photo</code></td><td><code>string</code></td><td>Cover image URL (top-level on profile endpoint)</td></tr>
+  <tr><td><code>followers_count</code>, <code>followings_count</code></td><td><code>number</code></td><td>Stats displayed in header</td></tr>
+  <tr><td><code>follow</code></td><td><code>0 | 1 | 2</code></td><td>Current user's follow level (0=no, 1=follow, 2=follow+notify)</td></tr>
+  <tr><td><code>is_blocked_by_you</code></td><td><code>boolean</code></td><td>Whether current user has blocked this profile</td></tr>
+  <tr><td><code>is_restricted</code></td><td><code>boolean</code></td><td>Profile privacy (FC 2.2.01+) — only About tab visible</td></tr>
+  <tr><td><code>can_change_username</code></td><td><code>boolean</code></td><td>Permission to edit username</td></tr>
+  <tr><td><code>can_change_email</code></td><td><code>boolean</code></td><td>Permission to edit email</td></tr>
+  <tr><td><code>profile_navs</code></td><td><code>ProfileNav[]</code></td><td>Server-defined tab config (slug, title)</td></tr>
+  <tr><td><code>social_links</code></td><td><code>Record&lt;string, string&gt;</code></td><td>At top level (not in meta) on profile endpoint</td></tr>
+  <tr><td><code>badge_slugs</code></td><td><code>string[]</code></td><td>At top level on profile endpoint</td></tr>
+  <tr><td><code>custom_fields</code></td><td><code>Record&lt;string, CustomFieldValue&gt;</code></td><td>Injected by tbc-fluent-profiles plugin</td></tr>
+  <tr><td><code>custom_field_configs</code></td><td><code>Record&lt;string, CustomFieldConfig&gt;</code></td><td>Field definitions for the edit form</td></tr>
+</table>
+
+<h3>Badge</h3>
+<pre><code>interface Badge {
+  slug: string;
+  title: string;
+  color?: string;              // Text color
+  background_color?: string;   // Pill background
+  show_label?: string;         // 'yes' or 'no' — controls pill vs icon-only
+  config?: {
+    shape_svg?: string;
+    emoji?: string;            // Emoji fallback
+    logo?: string;             // Custom icon URL
+  };
+}</code></pre>
+
+<h3>AuthUser</h3>
+<p>Stored in SecureStore, available via <code>useAuth().user</code>. Minimal set of fields for auth state.</p>
+
+<pre><code>interface AuthUser {
+  id: number;
+  username: string;
+  displayName: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  avatar?: string;
+  isVerified?: number;
+  status?: string;
+}</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="api">2. Profile API</h2>
+
+<p>All endpoints in <span class="file-path">services/api/profiles.ts</span>. Base path: <code>/fluent-community/v2/profile/{username}</code>.</p>
+
+<table>
+  <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
+  <tr><td><code>getProfile(username)</code></td><td>GET</td><td><code>/profile/{username}</code></td><td>Full profile with stats, follow state, custom fields</td></tr>
+  <tr><td><code>updateProfile(username, data)</code></td><td>POST</td><td><code>/profile/{username}</code></td><td>Save profile changes (wraps data in <code>{ data }</code> envelope)</td></tr>
+  <tr><td><code>patchProfileMedia(username, data)</code></td><td>PUT</td><td><code>/profile/{username}</code></td><td>Upload avatar and/or cover photo</td></tr>
+  <tr><td><code>getUserFeeds(userId, page, perPage)</code></td><td>GET</td><td><code>/feeds?user_id={id}</code></td><td>User's posts (paginated)</td></tr>
+  <tr><td><code>getUserSpaces(username)</code></td><td>GET</td><td><code>/profile/{username}/spaces</code></td><td>User's joined spaces</td></tr>
+  <tr><td><code>getUserComments(username, page, perPage)</code></td><td>GET</td><td><code>/profile/{username}/comments</code></td><td>User's comments with parent post info (paginated)</td></tr>
+  <tr><td><code>followUser(username)</code></td><td>POST</td><td><code>/profile/{username}/follow</code></td><td>Follow user (sets level 1)</td></tr>
+  <tr><td><code>unfollowUser(username)</code></td><td>POST</td><td><code>/profile/{username}/unfollow</code></td><td>Unfollow user (sets level 0)</td></tr>
+  <tr><td><code>toggleFollowNotification(username)</code></td><td>POST</td><td><code>/profile/{username}/notification</code></td><td>Toggle email notifications (level 1 ↔ 2)</td></tr>
+  <tr><td><code>getFollowers(username, page, perPage)</code></td><td>GET</td><td><code>/profile/{username}/followers</code></td><td>Paginated followers list</td></tr>
+  <tr><td><code>getFollowing(username, page, perPage)</code></td><td>GET</td><td><code>/profile/{username}/followings</code></td><td>Paginated following list</td></tr>
+  <tr><td><code>blockUser(username)</code></td><td>POST</td><td><code>/profile/{username}/block</code></td><td>Block user (hides posts, rejects DMs)</td></tr>
+  <tr><td><code>unblockUser(username)</code></td><td>POST</td><td><code>/profile/{username}/unblock</code></td><td>Unblock user</td></tr>
+</table>
+
+<div class="callout callout-warn">
+  <strong>Update profile wraps data in an envelope.</strong> The <code>updateProfile</code> function sends <code>{ data: { first_name, ... } }</code> — the fields are nested inside a <code>data</code> key, matching the Fluent Community API format.
+</div>
+
+<h3>Follow Levels</h3>
+<table>
+  <tr><th>Level</th><th>Meaning</th></tr>
+  <tr><td><code>0</code></td><td>Not following</td></tr>
+  <tr><td><code>1</code></td><td>Following (no email notifications)</td></tr>
+  <tr><td><code>2</code></td><td>Following with email notifications</td></tr>
+</table>
+
+<h3>Followers/Following Response</h3>
+<pre><code>// Followers: data[].follower is the XProfile
+{ followers: { data: [{ follower: XProfile &amp; { follow?: string } }], next_page_url: string | null } }
+
+// Following: data[].followed is the XProfile
+{ followings: { data: [{ followed: XProfile &amp; { follow?: string } }], next_page_url: string | null } }</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="screens">3. Profile Screens</h2>
+
+<table>
+  <tr><th>Screen</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>Profile View</td><td><span class="file-path">app/profile/[username]/index.tsx</span></td><td>Unified view for own and other profiles — header, tabs, actions</td></tr>
+  <tr><td>Profile Edit</td><td><span class="file-path">app/profile/edit.tsx</span></td><td>Full profile editor with all fields, media upload, OTP for phone</td></tr>
+  <tr><td>Profile Complete</td><td><span class="file-path">app/profile-complete.tsx</span></td><td>Login-time gate for incomplete profiles (see <a href="registration.html">Registration</a>)</td></tr>
+  <tr><td>Connections</td><td><span class="file-path">app/profile/[username]/connections.tsx</span></td><td>Followers/following lists with follow/notify/message actions</td></tr>
+</table>
+
+<h3>Profile View Screen</h3>
+<p>The profile view screen handles both own and other users' profiles:</p>
+<ul>
+  <li><strong>Own profile:</strong> Shows edit button, 3-dot menu (Edit Profile, Deactivate, Delete Account)</li>
+  <li><strong>Other profile:</strong> Shows Follow/Unfollow, Notify toggle, Message, Block buttons</li>
+  <li><strong>Restricted profile:</strong> Only About tab visible, other tabs hidden</li>
+  <li><strong>Tabs:</strong> About (always), Posts, Spaces, Comments (configurable)</li>
+  <li>Tab data is <strong>lazy-loaded</strong> on first visit and paginated on scroll</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="components">4. Profile Components</h2>
+
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td><code>ProfileHeader</code></td><td><span class="file-path">components/profile/ProfileHeader.tsx</span></td><td>Cover photo, avatar (editable for own), name, verified badge, profile badges, social icons, follower/following counts</td></tr>
+  <tr><td><code>AboutTab</code></td><td><span class="file-path">components/profile/AboutTab.tsx</span></td><td>Bio, joined date, last activity, custom fields (with type-specific rendering), website</td></tr>
+  <tr><td><code>ProfileMenu</code></td><td><span class="file-path">components/profile/ProfileMenu.tsx</span></td><td>Own profile dropdown: Edit, Deactivate, Delete (with "type DELETE" confirmation)</td></tr>
+  <tr><td><code>CommentCard</code></td><td><span class="file-path">components/profile/CommentCard.tsx</span></td><td>Timeline-style comment card with dashed line, post title, space name, rendered content</td></tr>
+  <tr><td><code>ProfileCompletionSteps</code></td><td><span class="file-path">components/profile/ProfileCompletionSteps.tsx</span></td><td>Bio + avatar upload steps (shared by registration and profile-complete gate)</td></tr>
+  <tr><td><code>Avatar</code></td><td><span class="file-path">components/common/Avatar.tsx</span></td><td>User avatar with fallback initials, online indicator, size presets</td></tr>
+  <tr><td><code>UserDisplayName</code></td><td><span class="file-path">components/common/UserDisplayName.tsx</span></td><td>Name + verified badge + profile badges (used everywhere)</td></tr>
+  <tr><td><code>VerifiedBadge</code></td><td><span class="file-path">components/common/VerifiedBadge.tsx</span></td><td>Checkmark icon inline with name</td></tr>
+  <tr><td><code>ProfileBadge</code></td><td><span class="file-path">components/common/ProfileBadge.tsx</span></td><td>Badge pill (colored background + icon/emoji + label) or icon-only mode</td></tr>
+</table>
+
+<h3>ProfileHeader Anatomy</h3>
+<pre><code>┌─────────────────────────────────────────────────┐
+│            Cover Photo (tappable for own)        │
+│  ┌──────┐                                       │
+│  │Avatar│  (editable overlay for own profile)    │
+│  └──────┘                                       │
+│  Jane Doe ✓  [🎖 Badge] [🏆 Badge]              │
+│  @janedoe                                       │
+│  [🐦] [📷] [🔗]  (social links)                 │
+│  42 Following · 128 Followers  (tappable)        │
+└─────────────────────────────────────────────────┘</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="badges">5. Badge System</h2>
+
+<p>Badges are assigned by admins and displayed next to user names throughout the app.</p>
+
+<h3>Badge Definitions API</h3>
+<p><span class="file-path">services/api/badges.ts</span> — public endpoint, no auth required.</p>
+
+<pre><code>// GET tbc-ca/v1/badge-definitions
+// Returns: { success: true, badges: { [slug]: { title, color, background_color, show_label, config } } }</code></pre>
+
+<h3>Two-Layer Cache</h3>
+<ol>
+  <li><strong>AsyncStorage</strong> — persists across app restarts, loaded instantly on launch</li>
+  <li><strong>In-memory</strong> — module-level variable, background-refreshed from API</li>
+</ol>
+<p>Self-registers with <code>cacheRegistry</code> so logout clears the in-memory cache.</p>
+
+<h3>Badge Hooks</h3>
+<pre><code>// Load definitions + get resolver function
+const { resolveBadges } = useBadgeDefinitions();
+const badges: Badge[] = resolveBadges(['moderator', 'founding_member']);
+
+// Convenience: resolve directly from slugs
+const badges = useProfileBadges(xprofile.meta?.badge_slug);</code></pre>
+
+<p>Both hooks share the same cache. First call triggers AsyncStorage load + API refresh. All subsequent calls use the cached result. Listeners are notified when the cache updates.</p>
+
+<h3>Badge Display</h3>
+<ul>
+  <li><strong>Pill mode</strong> (<code>show_label='yes'</code> or default): Colored background + icon/emoji + label text</li>
+  <li><strong>Icon-only mode</strong> (<code>show_label='no'</code>): No background, larger icon, no label</li>
+  <li>Supports custom logo images or emoji fallback</li>
+</ul>
+
+<h3>Verified Badge</h3>
+<p>Separate from profile badges. <code>is_verified: 1</code> shows a checkmark (✓) icon inline with the display name. Set by admins, not editable by users.</p>
+
+<!-- ================================================================== -->
+<h2 id="connections">6. Connections &amp; Following</h2>
+
+<h3>Follow Actions</h3>
+<pre><code>// Follow a user (level 0 → 1)
+await profilesApi.followUser('janedoe');
+
+// Unfollow (level 1/2 → 0)
+await profilesApi.unfollowUser('janedoe');
+
+// Toggle email notifications (level 1 ↔ 2)
+await profilesApi.toggleFollowNotification('janedoe');</code></pre>
+
+<h3>useFollowToggle Hook</h3>
+<p><span class="file-path">hooks/useFollowToggle.ts</span> — shared across directory, members list, and connections screen.</p>
+
+<pre><code>const {
+  followMap,             // Record&lt;userId, followLevel&gt;
+  setFollowMap,          // Initialize from server data
+  handleFollowPress,     // Toggle follow with optimistic update
+  handleNotifyPress,     // Toggle notification level (1 ↔ 2)
+  isFollowing,           // (userId) → boolean
+  isNotifyOn,            // (userId) → boolean (level === 2)
+  isFollowLoading,       // (userId) → boolean
+} = useFollowToggle();</code></pre>
+
+<h3>Connections Screen</h3>
+<p><span class="file-path">app/profile/[username]/connections.tsx</span> — two tabs (Followers / Following).</p>
+<ul>
+  <li>Infinite scroll with pagination</li>
+  <li>Each item rendered as <code>MemberCard</code> with follow/notify/message actions</li>
+  <li>Pull-to-refresh on both tabs</li>
+  <li>Followers response nests profile in <code>data[].follower</code>, following in <code>data[].followed</code></li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="editing">7. Profile Editing</h2>
+
+<p><span class="file-path">app/profile/edit.tsx</span> — full profile editor.</p>
+
+<h3>Editable Fields</h3>
+<table>
+  <tr><th>Field</th><th>Notes</th></tr>
+  <tr><td>First name</td><td>Required</td></tr>
+  <tr><td>Last name</td><td>Optional</td></tr>
+  <tr><td>Email</td><td>Only if <code>can_change_email: true</code></td></tr>
+  <tr><td>Username</td><td>Only if <code>can_change_username: true</code></td></tr>
+  <tr><td>Bio</td><td>Textarea, 500 char limit</td></tr>
+  <tr><td>Website</td><td>URL field</td></tr>
+  <tr><td>Social links</td><td>Dynamic providers from <code>useSocialProviders()</code></td></tr>
+  <tr><td>Custom fields</td><td>From <code>custom_field_configs</code>, rendered via <code>DynamicFormField</code></td></tr>
+  <tr><td>Avatar</td><td>Image picker + upload via <code>patchProfileMedia</code></td></tr>
+  <tr><td>Cover photo</td><td>Image picker + upload via <code>patchProfileMedia</code></td></tr>
+</table>
+
+<h3>Save Flow</h3>
+<pre><code>// Single POST saves all field changes
+await updateProfile(username, {
+  first_name: 'Jane',
+  short_description: 'Community member',
+  social_links: { twitter: 'janedoe' },
+  custom_fields: { phone: '+15551234567' },
+  // Preserve admin-managed fields
+  is_verified: profile.is_verified,
+  badge_slugs: profile.badge_slugs,
+  status: profile.status,
+});</code></pre>
+
+<div class="callout callout-error">
+  <strong>Always preserve admin fields on save.</strong> Include <code>is_verified</code>, <code>badge_slugs</code>, and <code>status</code> in the update payload with their current values. Otherwise, the Fluent Community API may clear them.
+</div>
+
+<h3>Phone Number Change → OTP</h3>
+<p>If the profile update includes a phone number change and OTP is enabled, the server returns <code>otp_required: true</code>. The edit screen opens an OTP modal (same <code>useOtpVerification</code> hook as registration), verifies the code, then retries the save with <code>tbc_fp_session_key</code> in the payload.</p>
+
+<!-- ================================================================== -->
+<h2 id="custom-fields">8. Custom Profile Fields</h2>
+
+<p>Custom fields are defined in the WordPress admin (tbc-fluent-profiles) and injected into the profile response.</p>
+
+<h3>CustomFieldValue (Display)</h3>
+<pre><code>interface CustomFieldValue {
+  value: string;
+  label: string;
+  type: string;          // text, phone, url, date, checkbox, multiselect, etc.
+  visibility: string;    // public, members, friends, admins
+}</code></pre>
+
+<h3>CustomFieldConfig (Editing)</h3>
+<pre><code>interface CustomFieldConfig {
+  label: string;
+  type: string;
+  placeholder: string;
+  instructions: string;
+  required: boolean;
+  options: string[];            // For select/radio/checkbox/multiselect
+  visibility: string;           // Default visibility
+  allow_user_override: boolean; // Can user change visibility?
+}</code></pre>
+
+<h3>Display Rendering (AboutTab)</h3>
+<p>Custom fields are rendered with type-specific formatting:</p>
+<ul>
+  <li><strong>Phone:</strong> Clickable <code>tel:</code> links</li>
+  <li><strong>URL:</strong> Clickable links (auto-prepends <code>https://</code> if missing)</li>
+  <li><strong>Date:</strong> Formatted to "Month Day, Year"</li>
+  <li><strong>Checkbox/Multiselect:</strong> Rendered as tag pills</li>
+  <li><strong>Other:</strong> Plain text</li>
+</ul>
+
+<h3>Visibility Control</h3>
+<p>Each field has a visibility setting. If <code>allow_user_override: true</code>, the edit form shows visibility chips (Everyone, Members, Friends, Admins) next to the field. Stored as <code>{key}_visibility</code> in custom_fields.</p>
+
+<!-- ================================================================== -->
+<h2 id="tabs">9. Profile Tabs</h2>
+
+<p>Profile tabs are controlled by both client-side feature flags and server-side navigation config.</p>
+
+<h3>Tab Visibility Logic</h3>
+<pre><code>// A tab is shown if BOTH conditions are met:
+// 1. Feature flag is enabled: FEATURES.PROFILE_TABS.POSTS = true
+// 2. Server nav includes the slug: profile_navs contains 'user_profile_feeds'
+
+// If server returns no profile_navs, feature flag alone determines visibility</code></pre>
+
+<table>
+  <tr><th>Tab</th><th>Feature Flag</th><th>Server Nav Slug</th><th>Default</th></tr>
+  <tr><td>About</td><td>(always shown)</td><td>—</td><td>Always</td></tr>
+  <tr><td>Posts</td><td><code>FEATURES.PROFILE_TABS.POSTS</code></td><td><code>user_profile_feeds</code></td><td><code>false</code></td></tr>
+  <tr><td>Spaces</td><td><code>FEATURES.PROFILE_TABS.SPACES</code></td><td><code>user_spaces</code></td><td><code>false</code></td></tr>
+  <tr><td>Comments</td><td><code>FEATURES.PROFILE_TABS.COMMENTS</code></td><td><code>user_comments</code></td><td><code>false</code></td></tr>
+</table>
+
+<p>When <code>is_restricted: true</code>, only the About tab is shown regardless of flags.</p>
+
+<h3>Tab Data Loading</h3>
+<ul>
+  <li>Tabs are <strong>lazy-loaded</strong> — data fetched only when the tab is first selected</li>
+  <li>Posts and Comments support <strong>pagination</strong> (load more on scroll)</li>
+  <li>Spaces are loaded all at once (no pagination)</li>
+  <li>All tabs support pull-to-refresh</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="avatars">10. Avatars</h2>
+
+<p><span class="file-path">components/common/Avatar.tsx</span> — used everywhere a user image appears.</p>
+
+<h3>Size Presets</h3>
+<table>
+  <tr><th>Size</th><th>Usage</th></tr>
+  <tr><td><code>xs</code></td><td>Tiny indicators</td></tr>
+  <tr><td><code>sm</code></td><td>Compact lists</td></tr>
+  <tr><td><code>md</code></td><td>Feed cards, member lists, conversations</td></tr>
+  <tr><td><code>lg</code></td><td>Larger displays</td></tr>
+  <tr><td><code>xl</code></td><td>Profile headers</td></tr>
+  <tr><td><code>xxl</code></td><td>Full profile view</td></tr>
+</table>
+
+<h3>Fallback</h3>
+<p>When <code>avatar</code> is <code>null</code> or the image fails to load, the component renders 2-letter initials (e.g., "JD" for "Jane Doe") in a colored circle using the primary theme color.</p>
+
+<h3>Online Indicator</h3>
+<p>Optional green dot in the bottom-right corner. Shown when the <code>online</code> prop is true.</p>
+
+<h3>Caching</h3>
+<p>Uses <code>expo-image</code> with <code>cachePolicy="memory-disk"</code> for fast loading across screens.</p>
+
+<!-- ================================================================== -->
+<h2 id="privacy">11. Privacy &amp; Blocking</h2>
+
+<h3>Profile Privacy</h3>
+<p><code>is_restricted: true</code> (Fluent Community 2.2.01+) limits what non-connected users can see:</p>
+<ul>
+  <li>Only the About tab is visible</li>
+  <li>Posts, Spaces, and Comments tabs are hidden</li>
+  <li>A "Profile is Private" message may be shown</li>
+</ul>
+
+<h3>Blocking</h3>
+<pre><code>// Block a user
+await profilesApi.blockUser('spammer');
+// → Their posts are hidden from your feed, DMs are rejected
+
+// Unblock
+await profilesApi.unblockUser('spammer');</code></pre>
+
+<ul>
+  <li>Block button appears in the profile screen's action buttons (other users only)</li>
+  <li>Confirmation alert before blocking</li>
+  <li><code>is_blocked_by_you: true</code> on the profile response</li>
+  <li>Cannot block yourself</li>
+</ul>
+
+<h3>Account Management</h3>
+<p>From the own-profile menu (<code>ProfileMenu</code>):</p>
+<ul>
+  <li><strong>Deactivate Account:</strong> Soft delete, reversible via web admin</li>
+  <li><strong>Delete Account:</strong> Two-step confirmation — user must type "DELETE" in a text input before the button becomes active. Permanent.</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="files">12. File Reference</h2>
+
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">app/profile/[username]/index.tsx</span></td><td>Profile view screen (own + other)</td></tr>
+  <tr><td><span class="file-path">app/profile/edit.tsx</span></td><td>Profile editor with all fields + media upload</td></tr>
+  <tr><td><span class="file-path">app/profile-complete.tsx</span></td><td>Login-time profile completion gate</td></tr>
+  <tr><td><span class="file-path">app/profile/[username]/connections.tsx</span></td><td>Followers/following lists</td></tr>
+  <tr><td><span class="file-path">services/api/profiles.ts</span></td><td>All profile API endpoints</td></tr>
+  <tr><td><span class="file-path">services/api/badges.ts</span></td><td>Badge definitions (fetch, cache, resolve)</td></tr>
+  <tr><td><span class="file-path">types/user.ts</span></td><td>XProfile, Profile, Badge, CustomField types</td></tr>
+  <tr><td><span class="file-path">hooks/useFollowToggle.ts</span></td><td>Follow/unfollow with optimistic updates</td></tr>
+  <tr><td><span class="file-path">hooks/useBadgeDefinitions.ts</span></td><td>Badge definitions hook (two-layer cache)</td></tr>
+  <tr><td><span class="file-path">components/profile/ProfileHeader.tsx</span></td><td>Cover, avatar, name, badges, social icons, stats</td></tr>
+  <tr><td><span class="file-path">components/profile/AboutTab.tsx</span></td><td>Bio, joined date, custom fields, website</td></tr>
+  <tr><td><span class="file-path">components/profile/ProfileMenu.tsx</span></td><td>Own profile actions (edit, deactivate, delete)</td></tr>
+  <tr><td><span class="file-path">components/profile/CommentCard.tsx</span></td><td>Timeline-style comment with post context</td></tr>
+  <tr><td><span class="file-path">components/common/Avatar.tsx</span></td><td>Avatar with initials fallback and online indicator</td></tr>
+  <tr><td><span class="file-path">components/common/UserDisplayName.tsx</span></td><td>Name + verified + badges (used everywhere)</td></tr>
+  <tr><td><span class="file-path">components/common/VerifiedBadge.tsx</span></td><td>Checkmark icon component</td></tr>
+  <tr><td><span class="file-path">components/common/ProfileBadge.tsx</span></td><td>Badge pill / icon-only display</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="rules">13. Rules</h2>
+
+<ol>
+  <li><strong>Always use <code>UserDisplayName</code> for rendering user names.</strong> It handles the verified badge and profile badges automatically. Don't manually render name + badge combinations.</li>
+  <li><strong>Always use <code>Avatar</code> for user images.</strong> It handles null avatars (fallback initials), sizing, caching, and online indicators. Don't render avatar images manually.</li>
+  <li><strong>Preserve admin fields on profile update.</strong> Include <code>is_verified</code>, <code>badge_slugs</code>, and <code>status</code> in the payload with their current values. The FC API may clear them otherwise.</li>
+  <li><strong>Use <code>useFollowToggle</code> for follow actions.</strong> It handles optimistic updates, loading state, and notification toggling. Don't call follow/unfollow APIs directly from components.</li>
+  <li><strong>Use <code>useProfileBadges</code> or <code>useBadgeDefinitions</code> for badge resolution.</strong> Don't fetch badge definitions yourself — the hooks share a two-layer cache.</li>
+  <li><strong>Check both feature flag AND server navs for profile tabs.</strong> A tab should only be shown if <code>FEATURES.PROFILE_TABS.X</code> is true AND the server's <code>profile_navs</code> includes the corresponding slug (or <code>profile_navs</code> is not provided).</li>
+  <li><strong>Handle <code>is_restricted</code> profiles.</strong> When true, only show the About tab. Don't fetch posts/comments/spaces for restricted profiles.</li>
+  <li><strong>Social links location differs between XProfile and Profile.</strong> On XProfile, social links are in <code>meta.social_links</code>. On the full Profile endpoint, they're at the top level: <code>profile.social_links</code>. Same for <code>badge_slugs</code> vs <code>meta.badge_slug</code>.</li>
+  <li><strong>Navigate to profiles by username.</strong> Always use <code>router.push('/profile/{username}')</code> — never by user ID. The API uses username as the path parameter.</li>
+  <li><strong>Custom fields are server-defined.</strong> Don't hardcode field keys or types. Render all fields dynamically via <code>DynamicFormField</code> based on <code>custom_field_configs</code>.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  <a href="companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="feed-system.html">Feed System</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  <a href="messaging.html">Messaging &amp; Chat</a> &middot;
+  <a href="module-system.html">Module System</a> &middot;
+  Profile System &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="registration.html">Registration &amp; Onboarding</a> &middot;
+  <a href="state-management.html">State Management</a> &middot;
+  <a href="theme-system.html">Theme System</a>
+</p>
+
+</body>
+</html>

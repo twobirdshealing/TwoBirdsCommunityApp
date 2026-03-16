@@ -236,7 +236,7 @@ eas init</code></pre>
     <code>eas init</code> generates a project ID &mdash; you'll enter this in the dashboard.
   </li>
   <li><strong>Launch the dashboard:</strong>
-    <pre><code>node scripts/setup-dashboard.js</code></pre>
+    <pre><code>npm run dashboard</code></pre>
     Opens <code>http://localhost:3456</code> in your browser automatically.
   </li>
   <li><strong>Config tab:</strong> All your setup values loaded from the actual files. Edit and click <strong>Save Changes</strong> &mdash; writes directly to <code>app.json</code>, <code>eas.json</code>, <code>config.ts</code>, <code>app.config.ts</code>, and <code>package.json</code>.</li>
@@ -250,7 +250,7 @@ eas init</code></pre>
 </ol>
 
 <div class="callout">
-  <strong>Tip:</strong> If you're using an AI coding assistant (Claude Code, Cursor, etc.), the validator's machine-readable issue log at the bottom of its output includes doc references it can follow to fix issues automatically. Run <code>bash scripts/validate-setup.sh</code> for the terminal version.
+  <strong>Tip:</strong> If you're using an AI coding assistant (Claude Code, Cursor, etc.), the dashboard's Status tab includes doc references it can follow to fix issues automatically.
 </div>
 
 <h3>Option B: Manual Editing</h3>
@@ -268,9 +268,7 @@ eas init</code></pre>
   <li><strong>Replace Firebase configs</strong> &mdash; <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS). See <a href="#firebase-setup">Firebase Setup</a>.</li>
   <li><strong>Install companion plugins</strong> on your WordPress site (see <a href="#plugins">Companion Plugins</a>)</li>
   <li><strong>Configure modules</strong> in <code>modules/_registry.ts</code></li>
-  <li><strong>Run the validator</strong> to catch anything you missed:
-    <pre><code>bash scripts/validate-setup.sh</code></pre>
-  </li>
+  <li><strong>Run the dashboard</strong> to catch anything you missed: <code>npm run dashboard</code> — check the Status tab</li>
   <li><strong>Create a dev build:</strong> <code>eas build --profile development --platform all</code></li>
 </ol>
 
@@ -754,7 +752,7 @@ eas submit --platform android</code></pre>
   <tr><td>21</td><td>(Add-on) YouTube API key configured in <code>tbc-youtube</code> plugin (if purchased)</td><td>WP Admin → YouTube plugin settings</td><td></td></tr>
   <tr><td>22</td><td>package.json name updated</td><td><code>package.json</code></td><td></td></tr>
   <tr><td>23</td><td>app.config.ts YOUR CONFIG section updated (name, slug, SITE_URL fallback, module deep link paths)</td><td><code>app.config.ts</code></td><td></td></tr>
-  <tr><td>24</td><td>Setup validator passes — <code>bash scripts/validate-setup.sh</code> shows 0 failures</td><td><code>scripts/validate-setup.sh</code></td><td></td></tr>
+  <tr><td>24</td><td>Dashboard Status tab shows all checks passing — <code>npm run dashboard</code></td><td>Setup Dashboard → Status</td><td></td></tr>
   <tr><td>25</td><td>Production build tested on real device — install via <code>eas build --profile preview</code>, test login, feed, profile</td><td>—</td><td></td></tr>
   <tr><td>26</td><td>Push notifications tested — trigger from WordPress, verify delivery on both platforms</td><td>—</td><td></td></tr>
   <tr><td>27</td><td>Deep links tested — open <code>https://yoursite.com/spaces/general</code> in mobile browser, should open app</td><td>—</td><td></td></tr>
@@ -888,8 +886,7 @@ git merge upstream/main</code></pre>
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
 <p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
   Setup Guide &middot;
-  Setup Dashboard (<code>node scripts/setup-dashboard.js</code>) &middot;
-  <a href="setup-form.html">Setup Form</a> &middot;
+  Setup Dashboard (<code>npm run dashboard</code>) &middot;
   <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
   <a href="architecture.html">Architecture</a> &middot;
   <a href="components.html">Components</a> &middot;
@@ -900,6 +897,7 @@ git merge upstream/main</code></pre>
   <a href="logging.html">Logging</a> &middot;
   <a href="messaging.html">Messaging &amp; Chat</a> &middot;
   <a href="module-system.html">Module System</a> &middot;
+  <a href="profile-system.html">Profile System</a> &middot;
   <a href="pusher.html">Pusher</a> &middot;
   <a href="registration.html">Registration &amp; Onboarding</a> &middot;
   <a href="state-management.html">State Management</a> &middot;
