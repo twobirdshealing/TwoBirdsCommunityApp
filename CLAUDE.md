@@ -25,7 +25,7 @@ Files a buyer edits to make the app theirs:
 | Permission dialog strings | `app.json` | Replace app name in camera/photos/media permission text |
 | Notification & icon colors | `app.json` | `expo-notifications` color, `adaptiveIcon.backgroundColor` |
 | Build profiles + submit config | `eas.json` | `SITE_URL` per profile, Apple ID + ascAppId for iOS submissions |
-| Fallback values | `app.config.ts` | SITE_URL fallback, name/slug fallbacks for local dev |
+| Fallback values + deep links | `app.config.ts` | SITE_URL fallback, name/slug fallbacks, module deep link paths |
 | Branding assets | `assets/images/` | App icon, splash screen, login background/logo |
 | Default colors | `constants/colors.ts` | Fallback colors (overridden by Fluent Community theme sync) |
 | Firebase (Android) | `google-services.json` | Replace with your Firebase project config |

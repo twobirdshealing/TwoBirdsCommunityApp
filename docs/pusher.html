@@ -115,7 +115,7 @@
   <span class="file-path">hooks/useAppFocus.ts</span> &mdash; App foreground detection for reconnection<br>
   <span class="file-path">contexts/AppConfigContext.tsx</span> &mdash; Stores + caches socket config from server<br>
   <span class="file-path">services/api/appConfig.ts</span> &mdash; SocketConfig type definition<br>
-  <span class="file-path">constants/config.ts</span> &mdash; Fallback Pusher credentials (first-ever launch only)
+  <span class="file-path">constants/config.ts</span> &mdash; Pusher auth endpoint (<code>PUSHER_CONFIG.AUTH_ENDPOINT</code>)
 </div>
 
 <div class="toc">
@@ -255,30 +255,24 @@ interface SocketConfig {
   };
 }</code></pre>
 
-<h3>Fallback config</h3>
-<p>On <strong>first-ever launch</strong> (before the server's <code>/app-config</code> response arrives), the app uses static fallback values from <span class="file-path">constants/config.ts</span>:</p>
+<h3>When socket config is absent</h3>
+<p>If the server returns <code>socket: null</code> (Fluent Messaging not active, or no socket provider configured), the app <strong>does not attempt a Pusher connection</strong>. Messaging still works via polling &mdash; just without live real-time delivery. No errors, no wasted connections.</p>
 
-<pre><code>// constants/config.ts — fallback only, overridden by server config
-export const PUSHER_CONFIG = {
-  APP_KEY: 'your-fallback-key',       // SETUP: Fallback Pusher app key
-  CLUSTER: 'us3',                      // SETUP: Fallback Pusher cluster
-  AUTH_ENDPOINT: `${API_URL}/chat/broadcast/auth`,
-};</code></pre>
-
-<p>After the first successful <code>/app-config</code> fetch, the socket config is cached in AsyncStorage and available instantly on subsequent launches. The fallback is rarely used.</p>
+<p>On first-ever launch, the startup batch fetches <code>/app-config</code> and provides socket config to PusherContext. There is no static fallback &mdash; the app waits for the server's answer.</p>
 
 <div class="callout callout-warn">
-  <strong>Fluent Messaging required.</strong> Real-time messaging requires the <strong>Fluent Messaging</strong> add-on (part of Fluent Community Pro). Without it, the server returns <code>socket: null</code>, no channels exist, and no chat. The app's messaging features gracefully degrade &mdash; the Messages tab just won't appear if the <code>FEATURES.MESSAGING</code> flag is off.
+  <strong>Fluent Messaging required for real-time.</strong> Without the <strong>Fluent Messaging</strong> add-on (part of Fluent Community Pro), the server returns <code>socket: null</code> and real-time is disabled. Messaging features still work via polling if <code>FEATURES.MESSAGING</code> is enabled. The Messages tab won't appear at all if <code>FEATURES.MESSAGING</code> is off.
 </div>
 
 <!-- ================================================================== -->
 <h2 id="connection-flow">4. Connection Flow</h2>
 
 <div class="diagram">1. User logs in &rarr; AuthContext sets isAuthenticated = true
-2. AppConfigContext loads socketConfig (cached or from /app-config)
-3. PusherContext effect fires &rarr; calls initializePusher(user.id, socketConfig)
+2. AppConfigContext loads socketConfig (cached from AsyncStorage or from startup batch)
+3. PusherContext effect fires &rarr; if socketConfig exists, calls initializePusher(user.id, socketConfig)
+   (If socketConfig is null &mdash; server has no Pusher &mdash; effect skips, messaging uses polling)
 4. initializePusher:
-   a. Uses server socketConfig if available, else falls back to PUSHER_CONFIG
+   a. Reads app key + cluster from server-provided socketConfig
    b. Detects provider: wsHost present = Soketi/Fluent Socket, absent = Pusher Cloud
    c. Fetches JWT from SecureStore
    d. Creates Pusher client with custom authorizer + provider-specific options
@@ -649,7 +643,7 @@ useNewMessageListener((data) =&gt; {
 </div>
 
 <div class="callout">
-  <strong>Fallback credentials:</strong> The static <code>PUSHER_CONFIG</code> in <span class="file-path">constants/config.ts</span> is only used on first-ever launch before the server config arrives. After that, server config is cached and used automatically. You can update the fallback values to match your defaults, but it's optional.
+  <strong>No fallback keys.</strong> Socket config is entirely server-driven via <code>/app-config</code>. The only Pusher-related constant in <span class="file-path">constants/config.ts</span> is <code>PUSHER_CONFIG.AUTH_ENDPOINT</code> (the private channel auth URL). If the server returns <code>socket: null</code>, the app does not attempt a Pusher connection at all.
 </div>
 
 <!-- ================================================================== -->

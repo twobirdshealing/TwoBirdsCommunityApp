@@ -59,7 +59,7 @@ const reactionHandlers: Set<ReactionHandler> = new Set();
 // Initialize Pusher Connection
 // -----------------------------------------------------------------------------
 
-export async function initializePusher(userId: number, socketConfig?: SocketConfig): Promise<boolean> {
+export async function initializePusher(userId: number, socketConfig: SocketConfig): Promise<boolean> {
   // Don't reinitialize if already connected for same user
   if (pusherClient && currentUserId === userId) {
     log('Already connected for user', userId);
@@ -73,10 +73,10 @@ export async function initializePusher(userId: number, socketConfig?: SocketConf
   }
 
   try {
-    // Use server-driven config when available, fall back to static PUSHER_CONFIG
-    const appKey = socketConfig?.api_key || PUSHER_CONFIG.APP_KEY;
-    const cluster = socketConfig?.options?.cluster || PUSHER_CONFIG.CLUSTER;
-    const provider = socketConfig ? (socketConfig.options?.wsHost ? 'soketi' : 'pusher') : 'fallback';
+    // Server-driven config — no fallback (if server returns socket: null, caller shouldn't call us)
+    const appKey = socketConfig.api_key;
+    const cluster = socketConfig.options?.cluster || 'mt1';
+    const provider = socketConfig.options?.wsHost ? 'soketi' : 'pusher';
 
     log('Initializing Pusher for user', userId, '| provider:', provider);
 
@@ -220,6 +220,7 @@ export function disconnectPusher(): void {
   }
 
   currentUserId = null;
+  currentSocketConfig = null;
   connectedAt = 0;
   // Don't clear handlers here — they're managed by React component lifecycle.
   // Only clearHandlers() on logout (called from PusherContext).
@@ -260,6 +261,12 @@ export async function reconnectPusher(): Promise<boolean> {
 
   const userId = currentUserId;
   const savedSocketConfig = currentSocketConfig;
+
+  if (!savedSocketConfig) {
+    log('Cannot reconnect — no socket config');
+    return false;
+  }
+
   log('Reconnecting Pusher for user', userId);
 
   // Disconnect client and channel WITHOUT clearing handler Sets

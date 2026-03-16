@@ -102,8 +102,6 @@ echo "[2/7] Replacing site-specific values..."
 sed -i \
   -e "s|export const APP_NAME = 'Two Birds';|export const APP_NAME = 'My Community';|" \
   -e "s|export const APP_USER_AGENT = 'TBCCommunityApp/1.0';|export const APP_USER_AGENT = 'CommunityApp/1.0';|" \
-  -e "s|APP_KEY: '2ee0dcc0255ee7f9a996',|APP_KEY: 'YOUR_PUSHER_APP_KEY',|" \
-  -e "s|CLUSTER: 'us3',|CLUSTER: 'YOUR_PUSHER_CLUSTER',|" \
   -e "/export const TBC_YT_URL/d" \
   "$TARGET_DIR/constants/config.ts"
 
@@ -132,10 +130,10 @@ sed -i \
 # --- app.config.ts ---
 sed -i \
   -e "s|'https://community.twobirdschurch.com'|'https://community.yoursite.com'|" \
-  -e "s|name: config.name ?? 'Two Birds'|name: config.name ?? 'My Community'|" \
-  -e "s|slug: config.slug ?? 'twobirdscommunityapp'|slug: config.slug ?? 'mycommunityapp'|" \
-  -e "/pathPrefix: '\/blog\/'/d" \
-  -e "/pathPrefix: '\/bookclub\/'/d" \
+  -e "s|config.name ?? 'Two Birds'|config.name ?? 'My Community'|" \
+  -e "s|config.slug ?? 'twobirdscommunityapp'|config.slug ?? 'mycommunityapp'|" \
+  -e "/'\\/blog\\//d" \
+  -e "/'\\/bookclub\\//d" \
   "$TARGET_DIR/app.config.ts"
 
 # --- package.json ---

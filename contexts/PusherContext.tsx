@@ -56,54 +56,51 @@ export function PusherProvider({ children }: { children: React.ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
 
   // ---------------------------------------------------------------------------
-  // Connect/Disconnect based on auth state
-  // Uses server-driven socket config from AppConfigContext when available.
-  // Falls back to static PUSHER_CONFIG on first-ever launch before app-config loads.
-  //
-  // socketConfig is intentionally NOT in deps — we don't want to reconnect
-  // when config refreshes mid-session. New config is picked up on next login.
-  // On cold start, cached socketConfig loads from AsyncStorage before auth
-  // completes, so it's available for the initial connection.
+  // Connect/Disconnect based on auth + server socket config
+  // Only connects when the server provides socket config (socket !== null).
+  // If server has no Pusher/Soketi configured, messaging still works via polling.
+  // On first-ever launch, socketConfig arrives from the startup batch — the
+  // effect re-fires when it does.
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    if (isAuthenticated && user?.id) {
-      // Connect to Pusher — pass server config (may be null on first launch)
-      initializePusher(user.id, socketConfig ?? undefined).then(success => {
+    if (isAuthenticated && user?.id && socketConfig) {
+      // Server provided socket config — connect
+      initializePusher(user.id, socketConfig).then(success => {
         setIsConnected(success);
       });
-    } else {
-      // Disconnect and clear handlers on logout
+    } else if (!isAuthenticated) {
+      // Logout — disconnect and clear
       disconnectPusher();
       clearHandlers();
       setIsConnected(false);
     }
 
     return () => {
-      // Cleanup on unmount — disconnect but keep handlers
-      // (they're managed by component lifecycle, not connection lifecycle)
       disconnectPusher();
     };
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, socketConfig]);
 
   // ---------------------------------------------------------------------------
   // Ticker polling — keeps xprofile.last_activity fresh so the server
   // actually broadcasts Pusher events (it skips users inactive >5 min).
   // Same endpoint the web SPA polls every ~60s.
+  // Only active when socket is configured (no point polling without real-time).
   // ---------------------------------------------------------------------------
 
-  useTickerPolling(isAuthenticated && !!user?.id);
+  useTickerPolling(isAuthenticated && !!user?.id && !!socketConfig);
 
   // ---------------------------------------------------------------------------
   // Reconnect on app foreground
   // The server's 5-minute activity gate means backgrounded apps miss pushes.
+  // Only active when socket is configured.
   // ---------------------------------------------------------------------------
 
   useAppFocus(
     useCallback(() => {
       reconnectPusher().then(success => setIsConnected(success));
     }, []),
-    isAuthenticated && !!user?.id,
+    isAuthenticated && !!user?.id && !!socketConfig,
   );
 
   // ---------------------------------------------------------------------------

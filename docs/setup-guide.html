@@ -235,7 +235,7 @@ eas init</code></pre>
   <li><strong>Set your site URL</strong> in <code>eas.json</code> — replace the <code>SITE_URL</code> value in all build profiles</li>
   <li><strong>Set your app name &amp; branding</strong> in <code>constants/config.ts</code> — update <code>APP_NAME</code> and <code>APP_USER_AGENT</code></li>
   <li><strong>Update <code>app.json</code></strong> — app name, slug, scheme, bundle IDs, permission strings</li>
-  <li><strong>Update <code>app.config.ts</code></strong> — replace fallback values for SITE_URL, app name, and slug</li>
+  <li><strong>Update <code>app.config.ts</code></strong> — edit the YOUR CONFIG section: fallback URL, name, slug, and module deep link paths</li>
   <li><strong>Replace branding images</strong> in <code>assets/images/</code></li>
   <li><strong>Replace Firebase configs</strong> — <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS). See <a href="#firebase-setup">Firebase Setup</a>.</li>
   <li><strong>Install companion plugins</strong> on your WordPress site (see <a href="#plugins">Companion Plugins</a>)</li>
@@ -258,15 +258,13 @@ eas init</code></pre>
 
 <!-- constants/config.ts -->
 <h3>constants/config.ts <span class="tag required">Required</span></h3>
-<p>All buyer-editable values are marked with <code>// SETUP</code> comments.</p>
+<p>Buyer-editable values are in the <strong>YOUR CONFIG</strong> section at the top of the file (above the <code>END YOUR CONFIG</code> marker). Everything below that line is core &mdash; don't edit it.</p>
 
 <table>
   <tr><th>Value</th><th>What It Does</th><th>Example</th></tr>
   <tr><td><code>APP_NAME</code></td><td>Display name used in UI where server branding isn't available</td><td><code>'My Community'</code></td></tr>
   <tr><td><code>APP_USER_AGENT</code></td><td>User-Agent header sent with API requests</td><td><code>'MyCommunityApp/1.0'</code></td></tr>
   <tr><td><code>SITE_URL</code></td><td>Derived from eas.json (no fallback — build fails if missing)</td><td><code>'https://community.example.com'</code></td></tr>
-  <tr><td><code>PUSHER_CONFIG.APP_KEY</code></td><td>Fallback Pusher app key (used only on first-ever launch before server config arrives)</td><td><code>'abc123def456'</code></td></tr>
-  <tr><td><code>PUSHER_CONFIG.CLUSTER</code></td><td>Fallback Pusher cluster (same caveat as above)</td><td><code>'us2'</code></td></tr>
   <tr><td><code>FEATURES.DARK_MODE</code></td><td>Dark mode synced from Fluent Community theme</td><td><code>true</code></td></tr>
   <tr><td><code>FEATURES.PUSH_NOTIFICATIONS</code></td><td>Push notifications via TBC-CA plugin</td><td><code>true</code></td></tr>
   <tr><td><code>FEATURES.MESSAGING</code></td><td>Fluent Messaging (direct chat)</td><td><code>true</code></td></tr>
@@ -306,12 +304,13 @@ eas init</code></pre>
 
 <!-- app.config.ts -->
 <h3>app.config.ts <span class="tag required">Required</span></h3>
-<p>Reads <code>SITE_URL</code> from the environment (set in <code>eas.json</code>) and wires up deep links automatically. <strong>The build will fail if <code>SITE_URL</code> is not set</strong> — there is no fallback.</p>
+<p>Reads <code>SITE_URL</code> from the environment (set in <code>eas.json</code>) and wires up deep links automatically. Has its own <strong>YOUR CONFIG</strong> section with three things to edit:</p>
 
 <table>
-  <tr><th>Line</th><th>Value</th><th>What to Change</th></tr>
-  <tr><td>~18</td><td><code>config.name ?? '...'</code></td><td>Replace fallback app name</td></tr>
-  <tr><td>~19</td><td><code>config.slug ?? '...'</code></td><td>Replace fallback slug</td></tr>
+  <tr><th>Value</th><th>What to Change</th></tr>
+  <tr><td><code>siteUrl</code> fallback</td><td>Replace with your site URL (only used for local dev &mdash; EAS builds use <code>eas.json</code>)</td></tr>
+  <tr><td><code>name</code> / <code>slug</code> fallbacks</td><td>Replace with your app name and slug</td></tr>
+  <tr><td><code>moduleDeepLinkPaths</code></td><td>Add/remove path prefixes for any add-on modules that need deep linking (e.g. <code>'/blog/'</code>)</td></tr>
 </table>
 
 <!-- eas.json -->
@@ -726,7 +725,7 @@ eas submit --platform android</code></pre>
   <tr><td>20</td><td>Real-time messaging working (socket config is server-driven, no app-side match needed)</td><td>WP Admin &rarr; Fluent Community &rarr; Settings &rarr; Messaging</td><td></td></tr>
   <tr><td>21</td><td>(Add-on) YouTube API key configured in <code>tbc-youtube</code> plugin (if purchased)</td><td>WP Admin → YouTube plugin settings</td><td></td></tr>
   <tr><td>22</td><td>package.json name updated</td><td><code>package.json</code></td><td></td></tr>
-  <tr><td>23</td><td>app.config.ts fallback values updated (name, slug, SITE_URL)</td><td><code>app.config.ts</code></td><td></td></tr>
+  <tr><td>23</td><td>app.config.ts YOUR CONFIG section updated (name, slug, SITE_URL fallback, module deep link paths)</td><td><code>app.config.ts</code></td><td></td></tr>
   <tr><td>24</td><td>Production build tested on real device — install via <code>eas build --profile preview</code>, test login, feed, profile</td><td>—</td><td></td></tr>
   <tr><td>25</td><td>Push notifications tested — trigger from WordPress, verify delivery on both platforms</td><td>—</td><td></td></tr>
   <tr><td>26</td><td>Deep links tested — open <code>https://yoursite.com/spaces/general</code> in mobile browser, should open app</td><td>—</td><td></td></tr>
@@ -763,8 +762,13 @@ git merge upstream/main</code></pre>
   </tr>
   <tr>
     <td><code>constants/config.ts</code></td>
-    <td>You set your APP_NAME, Pusher keys; upstream has placeholders</td>
-    <td>Keep your values</td>
+    <td>You set your APP_NAME, feature flags; upstream has placeholders</td>
+    <td>Keep your values in the YOUR CONFIG section; accept upstream changes below END YOUR CONFIG</td>
+  </tr>
+  <tr>
+    <td><code>app.config.ts</code></td>
+    <td>You set your site URL fallback, name, slug, module deep link paths; upstream has placeholders</td>
+    <td>Keep your values in the YOUR CONFIG section; accept upstream changes below END YOUR CONFIG</td>
   </tr>
   <tr>
     <td><code>app.json</code></td>
@@ -784,7 +788,7 @@ git merge upstream/main</code></pre>
 </table>
 
 <div class="callout callout-success">
-  <strong>The rule of thumb:</strong> for files marked <code>// SETUP</code>, keep your values. For everything else (components, services, hooks, screens), accept the upstream changes &mdash; you shouldn't have edited those.
+  <strong>The rule of thumb:</strong> for the <strong>YOUR CONFIG</strong> sections in config files, keep your values. For everything else (components, services, hooks, screens, and anything below <code>END YOUR CONFIG</code>), accept the upstream changes &mdash; you shouldn't have edited those.
 </div>
 
 <h3>What merges cleanly (no conflicts)</h3>

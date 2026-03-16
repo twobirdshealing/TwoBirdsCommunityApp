@@ -143,7 +143,7 @@
 <p>The module system lets you add features to the app &mdash; bottom tabs, home screen widgets, menu items, header icons, context providers, and persistent UI above the tab bar &mdash; without editing any core files. Each module is a self-contained folder under <code>modules/</code> with a manifest that declares what it registers.</p>
 
 <div class="callout callout-success">
-  <strong>Zero core changes.</strong> Adding or removing a module requires exactly two edits: one import line and one array entry in <code>modules/_registry.ts</code>. Core code reads from the registry at build time &mdash; no runtime discovery, no config files, no dynamic imports.
+  <strong>Zero core changes.</strong> Adding or removing a module requires exactly two edits: one import line and one array entry in <code>modules/_registry.ts</code>. If the module needs deep linking, also add its path prefix to <code>moduleDeepLinkPaths</code> in <code>app.config.ts</code>. Core code reads from the registry at build time &mdash; no runtime discovery, no dynamic imports.
 </div>
 
 <p>The system is static by design. All modules are resolved at import time, producing a flat list of registrations that core code maps over. This keeps the bundle predictable, startup fast, and debugging simple.</p>
@@ -656,6 +656,18 @@ export const MODULES: ModuleManifest[] = [
   // ...existing modules
   eventsModule,   // Add to array
 ];</code></pre>
+
+<h3>Step 9: Add deep link path (if needed)</h3>
+<p>If your module handles deep links from your website (e.g. <code>https://yoursite.com/events/my-event</code>), add the path prefix to the <code>moduleDeepLinkPaths</code> array in <span class="file-path">app.config.ts</span>:</p>
+
+<pre><code>// app.config.ts — YOUR CONFIG section
+const moduleDeepLinkPaths: string[] = [
+  '/blog/',
+  '/bookclub/',
+  '/events/',    // Add your module's path
+];</code></pre>
+
+<p>Also set <code>routePrefixes</code> in your module manifest so push notification taps route correctly.</p>
 
 <p>That's it. Your widget appears on the home screen, your menu item appears in the avatar dropdown, and <code>/events</code> routes to your screen.</p>
 

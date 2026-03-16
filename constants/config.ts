@@ -1,8 +1,6 @@
 // =============================================================================
 // CONFIG - App configuration and API settings
 // =============================================================================
-// SETUP: Values marked with "// SETUP" are buyer-editable.
-// Everything else is derived automatically — don't change it.
 // For modules (calendar, blog, etc.), edit modules/_registry.ts
 // =============================================================================
 
@@ -10,28 +8,63 @@ import Constants from 'expo-constants';
 import type { ImageSource } from 'expo-image';
 import type { BrandingConfig } from '@/services/api/appConfig';
 
+// =============================================================================
+// YOUR CONFIG — Edit these values to match your site.
+// This section is yours to edit. Core updates won't touch it.
+// =============================================================================
+
+// --- App Info ----------------------------------------------------------------
+
+export const APP_NAME = 'Two Birds';                   // Your app name
+export const APP_USER_AGENT = 'TBCCommunityApp/1.0';   // User agent for API requests
+
+// --- Site URL ----------------------------------------------------------------
+// Set your WordPress site URL in eas.json (env.SITE_URL).
+// app.config.ts reads it and passes it via expo.extra.siteUrl.
+
+export const SITE_URL: string = Constants.expoConfig?.extra?.siteUrl;
+
+// --- Feature Flags -----------------------------------------------------------
+
+export const FEATURES = {
+  DARK_MODE: true,          // Dark mode synced from Fluent Community theme
+  PUSH_NOTIFICATIONS: true, // Push notifications via TBC-CA plugin
+  MESSAGING: true,          // Fluent Messaging (direct chat)
+  COURSES: true,            // Fluent LMS courses
+  CART: true,               // WooCommerce cart icon in header (disable if no WooCommerce)
+  MULTI_REACTIONS: true,    // Multi-reaction support via TBC Multi-Reactions plugin (disable if plugin not installed)
+  PROFILE_TABS: {           // Which tabs appear on user profiles (About is always on)
+    POSTS: false,           // User's posts feed
+    SPACES: false,          // User's joined spaces
+    COMMENTS: false,        // User's comments
+  },
+};
+
+// --- Links -------------------------------------------------------------------
+
+export const PRIVACY_POLICY_URL = `${SITE_URL}/privacy-policy/`;
+
+// =============================================================================
+// END YOUR CONFIG — Everything below is core. Do not edit.
+// =============================================================================
+
 // -----------------------------------------------------------------------------
-// SETUP: App Info
+// Derived Constants
 // -----------------------------------------------------------------------------
 
-export const APP_NAME = 'Two Birds';                   // SETUP: Your app name
-export const APP_USER_AGENT = 'TBCCommunityApp/1.0';   // SETUP: User agent for API requests
 export const APP_VERSION = Constants.expoConfig?.version || '1.0.0';
 const rawScheme = Constants.expoConfig?.scheme;
-export const APP_SCHEME: string = Array.isArray(rawScheme) ? rawScheme[0] : rawScheme || 'app'; // Derived from app.json "scheme"
-
-// -----------------------------------------------------------------------------
-// SETUP: Site URL
-// -----------------------------------------------------------------------------
-
-// SETUP: Set your WordPress site URL in eas.json (env.SITE_URL).
-// app.config.ts reads it and passes it via expo.extra.siteUrl.
-export const SITE_URL: string = Constants.expoConfig?.extra?.siteUrl; // SETUP: Your WordPress site URL
+export const APP_SCHEME: string = Array.isArray(rawScheme) ? rawScheme[0] : rawScheme || 'app';
 
 export const API_URL = `${SITE_URL}/wp-json/fluent-community/v2`;
-
-// Default pagination
 export const DEFAULT_PER_PAGE = 20;
+
+// Pusher channel auth endpoint (Fluent Messaging's built-in endpoint).
+// Socket provider config (app key, cluster, host) is served dynamically
+// from the server via /app-config — no app-side keys needed.
+export const PUSHER_CONFIG = {
+  AUTH_ENDPOINT: `${API_URL}/chat/broadcast/auth`,
+};
 
 // -----------------------------------------------------------------------------
 // API Endpoints
@@ -94,39 +127,6 @@ export const ENDPOINTS = {
 };
 
 // -----------------------------------------------------------------------------
-// SETUP: Pusher Fallback Configuration (Real-time messaging)
-// -----------------------------------------------------------------------------
-// Socket config is served dynamically from your WordPress site's Fluent
-// Messaging settings via /app-config. These values are only used on
-// first-ever launch before server config arrives. After that, the app
-// uses whatever provider you configured in WordPress admin (Pusher Cloud,
-// Fluent Socket, or custom Soketi).
-
-export const PUSHER_CONFIG = {
-  APP_KEY: '2ee0dcc0255ee7f9a996',                     // SETUP: Fallback Pusher app key
-  CLUSTER: 'us3',                                       // SETUP: Fallback Pusher cluster
-  AUTH_ENDPOINT: `${API_URL}/chat/broadcast/auth`,
-};
-
-// -----------------------------------------------------------------------------
-// SETUP: Feature Flags
-// -----------------------------------------------------------------------------
-
-export const FEATURES = {
-  DARK_MODE: true,          // SETUP: Dark mode synced from Fluent Community theme
-  PUSH_NOTIFICATIONS: true, // SETUP: Push notifications via TBC-CA plugin
-  MESSAGING: true,          // SETUP: Fluent Messaging (direct chat)
-  COURSES: true,            // SETUP: Fluent LMS courses
-  CART: true,               // SETUP: WooCommerce cart icon in header (disable if no WooCommerce)
-  MULTI_REACTIONS: true,    // SETUP: Multi-reaction support via TBC Multi-Reactions plugin (disable if plugin not installed)
-  PROFILE_TABS: {           // SETUP: Which tabs appear on user profiles (About is always on)
-    POSTS: false,           // User's posts feed
-    SPACES: false,          // User's joined spaces
-    COMMENTS: false,        // User's comments
-  },
-};
-
-// -----------------------------------------------------------------------------
 // Plugin API URLs (derived from SITE_URL)
 // -----------------------------------------------------------------------------
 
@@ -141,12 +141,6 @@ export const WP_ENDPOINTS = {
   POST_BY_ID: (id: number) => `/posts/${id}`,
   COMMENTS: '/comments',
 };
-
-// -----------------------------------------------------------------------------
-// SETUP: Links
-// -----------------------------------------------------------------------------
-
-export const PRIVACY_POLICY_URL = `${SITE_URL}/privacy-policy/`;                           // SETUP: Privacy policy URL
 
 // -----------------------------------------------------------------------------
 // Branding Helpers (server-synced logo with static fallback)

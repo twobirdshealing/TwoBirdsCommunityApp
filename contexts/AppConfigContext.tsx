@@ -58,7 +58,16 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
       setPortalSlug(data.portal_slug);
     }
     if (data.socket) {
-      setSocketConfig(data.socket);
+      // Shallow-compare key fields to avoid new reference → unnecessary Pusher reconnect
+      setSocketConfig(prev => {
+        if (prev
+          && prev.api_key === data.socket!.api_key
+          && prev.options?.cluster === data.socket!.options?.cluster
+          && prev.options?.wsHost === data.socket!.options?.wsHost) {
+          return prev;
+        }
+        return data.socket!;
+      });
       AsyncStorage.setItem(SOCKET_CACHE_KEY, JSON.stringify(data.socket)).catch((e) => log.warn('Socket config cache write failed:', e));
     }
   }, []);
