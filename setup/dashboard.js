@@ -1627,12 +1627,13 @@ const server = http.createServer(async (req, res) => {
     // --- Updates: License ---
     if (pathname === '/api/updates/license' && req.method === 'GET') {
       const key = readLicense();
-      if (!key) { jsonResponse(res, { hasLicense: false }); return; }
+      const manifest = readManifest();
+      if (!key) { jsonResponse(res, { hasLicense: false, currentVersion: manifest.version }); return; }
       try {
         const result = await validateLicense(key);
-        jsonResponse(res, { hasLicense: true, key: key.substring(0, 4) + '...' + key.slice(-4), ...result });
+        jsonResponse(res, { hasLicense: true, key: key.substring(0, 4) + '...' + key.slice(-4), currentVersion: manifest.version, ...result });
       } catch (err) {
-        jsonResponse(res, { hasLicense: true, key: key.substring(0, 4) + '...' + key.slice(-4), valid: false, error: err.message });
+        jsonResponse(res, { hasLicense: true, key: key.substring(0, 4) + '...' + key.slice(-4), currentVersion: manifest.version, valid: false, error: err.message });
       }
       return;
     }
@@ -3532,9 +3533,9 @@ async function loadUpdatesTab() {
     if (appEl) appEl.textContent = 'v' + (state.config.version || '?');
   } catch {}
   const [licenseData] = await Promise.all([loadLicenseStatus(), loadBackups()]);
-  // Auto-check for updates if a valid license exists
-  if (licenseData && licenseData.valid) {
-    checkForUpdates();
+  // Auto-show update status from license check (avoids second API call)
+  if (licenseData && licenseData.valid && licenseData.latest) {
+    showUpdateStatus(licenseData);
   }
 }
 
@@ -3624,6 +3625,31 @@ async function removeLicense() {
   } catch (err) { showToast('Error: ' + err.message, 'error'); }
 }
 
+function showUpdateStatus(data) {
+  const statusEl = document.getElementById('update-status');
+  if (!data.valid) {
+    statusEl.innerHTML = '<div class="update-result error"><strong>License Error:</strong> ' + (data.error || 'Invalid license') + '</div>';
+    return;
+  }
+  if (!data.latest) {
+    statusEl.innerHTML = '<div class="update-up-to-date">&#10003; You are on the latest version (v' + (data.currentVersion || '?') + ')</div>';
+    return;
+  }
+  const latest = data.latest;
+  let html = '<div class="update-available">';
+  html += '<h4>Update Available: v' + latest.version + '</h4>';
+  html += '<div class="update-meta">Released ' + (latest.date || 'recently');
+  if (latest.size) html += ' · ' + (latest.size / 1024 / 1024).toFixed(1) + ' MB';
+  html += ' · Current: v' + (data.currentVersion || '?') + '</div>';
+  if (latest.changelog) {
+    html += '<div class="update-changelog">' + sanitizeHtml(latest.changelog) + '</div>';
+  }
+  html += '<div class="update-actions">';
+  html += '<button class="btn btn-primary" onclick="applyLicenseUpdate(\\'' + escapeHtml(latest.downloadUrl) + '\\', \\'' + escapeHtml(latest.version) + '\\')">Backup &amp; Update to v' + escapeHtml(latest.version) + '</button>';
+  html += '</div></div>';
+  statusEl.innerHTML = html;
+}
+
 async function checkForUpdates() {
   const statusEl = document.getElementById('update-status');
   const checkBtn = document.getElementById('check-updates-btn');
@@ -3637,40 +3663,9 @@ async function checkForUpdates() {
 
     if (!data.hasLicense && data.hasLicense !== undefined) {
       statusEl.innerHTML = '<p style="color:var(--text-secondary)">Enter your license key to check for updates.</p>';
-      checkBtn.disabled = false;
-      checkBtn.textContent = 'Check Now';
-      return;
+    } else {
+      showUpdateStatus(data);
     }
-
-    if (!data.valid) {
-      statusEl.innerHTML = '<div class="update-result error"><strong>License Error:</strong> ' + (data.error || 'Invalid license') + '</div>';
-      checkBtn.disabled = false;
-      checkBtn.textContent = 'Check Now';
-      return;
-    }
-
-    if (!data.latest) {
-      statusEl.innerHTML = '<div class="update-up-to-date">&#10003; You are on the latest version (v' + (data.currentVersion || '?') + ')</div>';
-      checkBtn.disabled = false;
-      checkBtn.textContent = 'Check Now';
-      return;
-    }
-
-    // Update available!
-    const latest = data.latest;
-    let html = '<div class="update-available">';
-    html += '<h4>Update Available: v' + latest.version + '</h4>';
-    html += '<div class="update-meta">Released ' + (latest.date || 'recently');
-    if (latest.size) html += ' · ' + (latest.size / 1024 / 1024).toFixed(1) + ' MB';
-    html += ' · Current: v' + (data.currentVersion || '?') + '</div>';
-    if (latest.changelog) {
-      html += '<div class="update-changelog">' + sanitizeHtml(latest.changelog) + '</div>';
-    }
-    html += '<div class="update-actions">';
-    html += '<button class="btn btn-primary" onclick="applyLicenseUpdate(\\'' + escapeHtml(latest.downloadUrl) + '\\', \\'' + escapeHtml(latest.version) + '\\')">Backup &amp; Update to v' + escapeHtml(latest.version) + '</button>';
-    html += '</div></div>';
-
-    statusEl.innerHTML = html;
   } catch (err) {
     statusEl.innerHTML = '<div class="update-result error">Error checking for updates: ' + err.message + '</div>';
   }
@@ -3693,7 +3688,7 @@ function sanitizeHtml(str) {
 }
 
 async function applyLicenseUpdate(downloadUrl, version) {
-  if (!confirm('This will:\\n\\n1. Backup your current project\\n2. Download v' + version + '\\n3. Apply the update (your config, assets, and modules are preserved)\\n\\nProceed?')) return;
+  if (!confirm('This will:\\n\\n1. Backup your current project\\n2. Download v' + version + '\\n3. Apply the update\\n\\nProtected (NOT overwritten):\\n  • Config (config.ts, app.json, eas.json, package.json)\\n  • Assets (icons, splash screens)\\n  • Modules\\n  • Firebase configs\\n\\nOverwritten:\\n  • All other source files (components, screens, services, etc.)\\n\\nIf you\\'ve edited core source files, those changes will be lost.\\nA full backup is created first — you can restore if needed.\\n\\nProceed?')) return;
 
   const statusEl = document.getElementById('update-status');
   statusEl.innerHTML = '<div class="update-progress">' +
@@ -3763,7 +3758,7 @@ async function uploadManualUpdate(file) {
     return;
   }
 
-  if (!confirm('Apply update from "' + file.name + '"?\\n\\nYour current project will be backed up first. Config, assets, and modules are preserved.')) return;
+  if (!confirm('Apply update from "' + file.name + '"?\\n\\nCore source files will be overwritten. Config, assets, and modules are preserved.\\nIf you\\'ve edited core files, those changes will be lost.\\nA backup is created first — you can restore if needed.')) return;
 
   zone.style.display = 'none';
   statusEl.style.display = 'block';
