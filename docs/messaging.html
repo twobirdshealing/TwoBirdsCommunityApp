@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — Messaging &amp; Chat</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn { border-left-color: var(--warning); }
+  .callout-error { border-left-color: var(--error); }
+  .callout-success { border-left-color: var(--success); }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+  .flow-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85em;
+    line-height: 1.8;
+    white-space: pre;
+    overflow-x: auto;
+  }
+</style>
+</head>
+<body>
+
+<h1>Messaging &amp; Chat</h1>
+<p class="subtitle">Direct messages, real-time Pusher events, thread resolution, reactions, and blocking</p>
+
+<div class="callout">
+  <strong>Source files:</strong>
+  <span class="file-path">services/api/messages.ts</span> &middot;
+  <span class="file-path">hooks/useChatMessages.ts</span> &middot;
+  <span class="file-path">hooks/useChatReactions.tsx</span> &middot;
+  <span class="file-path">hooks/useMessageMenu.ts</span> &middot;
+  <span class="file-path">types/message.ts</span> &middot;
+  <span class="file-path">app/messages/</span><br>
+  Messaging requires the <strong>Fluent Messaging</strong> add-on on the WordPress site. The app feature is gated by <code>FEATURES.MESSAGING</code> in <span class="file-path">constants/config.ts</span>.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">How It Works</a></li>
+    <li><a href="#screens">Screens &amp; Navigation</a></li>
+    <li><a href="#thread-resolution">Thread Resolution</a></li>
+    <li><a href="#messages-api">Messages API</a></li>
+    <li><a href="#pagination">Cursor-Based Pagination</a></li>
+    <li><a href="#sending">Sending Messages</a></li>
+    <li><a href="#realtime">Real-Time (Pusher)</a></li>
+    <li><a href="#reactions">Message Reactions</a></li>
+    <li><a href="#blocking">Block &amp; Unblock</a></li>
+    <li><a href="#types">Data Types</a></li>
+    <li><a href="#helpers">Helper Functions</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="overview">1. How It Works</h2>
+
+<div class="flow-diagram">Thread List (/messages)
+  &boxvr;&boxh; Fetches all threads + unread IDs in parallel
+  &boxvr;&boxh; Client-side search (name, username, preview)
+  &boxvr;&boxh; Swipe-to-delete threads
+  &boxvr;&boxh; Pusher updates thread previews in real-time
+  &boxur;&boxh; Tap thread &rarr; Chat screen
+
+Chat Screen (/messages/user/[userId])
+  &boxvr;&boxh; Thread resolution: find existing thread or show "new conversation"
+  &boxvr;&boxh; Cursor-based message pagination (load older by scrolling up)
+  &boxvr;&boxh; Send text + image attachments + reply quotes
+  &boxvr;&boxh; Real-time: Pusher appends new messages instantly
+  &boxvr;&boxh; Reactions: emoji picker, optimistic toggle, Pusher sync
+  &boxur;&boxh; Block/unblock thread participants</div>
+
+<p>The messaging system is built on Fluent Community&rsquo;s Chat API (v2.2.0). Threads represent conversations between users. Messages are loaded via cursor-based pagination and updated in real-time via Pusher.</p>
+
+<!-- ====================================================================== -->
+<h2 id="screens">2. Screens &amp; Navigation</h2>
+
+<table>
+  <tr><th>Route</th><th>Screen</th><th>File</th></tr>
+  <tr><td><code>/messages</code></td><td>Thread list (all conversations)</td><td><span class="file-path">app/messages/index.tsx</span></td></tr>
+  <tr><td><code>/messages/user/[userId]</code></td><td>Chat screen (single conversation)</td><td><span class="file-path">app/messages/user/[userId].tsx</span></td></tr>
+</table>
+
+<h3>Navigation Into Chat</h3>
+<p>The chat screen is always navigated to by <strong>user ID</strong>, not thread ID. This supports both:</p>
+<ul>
+  <li><strong>Existing conversations</strong> &mdash; the hook resolves the user ID to an existing thread</li>
+  <li><strong>New conversations</strong> &mdash; when tapping &ldquo;Message&rdquo; on a profile, no thread exists yet. The hook shows the user&rsquo;s info and creates a thread on first message send.</li>
+</ul>
+
+<pre><code>// Navigate to chat with a user
+router.push(`/messages/user/${userId}`);
+
+// From thread list (also uses userId from thread info)
+const userId = getThreadUserId(thread);
+router.push(`/messages/user/${userId}`);</code></pre>
+
+<!-- ====================================================================== -->
+<h2 id="thread-resolution">3. Thread Resolution</h2>
+
+<p>The <code>useChatMessages</code> hook handles finding the right thread for a given user ID. This is the most complex part of the messaging system.</p>
+
+<div class="flow-diagram">useChatMessages({ targetUserId, knownThreadId })
+  &darr;
+  knownThreadId provided?
+  &boxvr;&boxh; Yes: getMessages(threadId) directly
+  &boxur;&boxh; No: getThreadsForUser(userId)
+         &darr;
+         selected_thread returned? (existing conversation)
+         &boxvr;&boxh; Yes: load messages from that thread
+         &boxur;&boxh; No: intended_object returned (user info, no thread yet)
+                &darr;
+                Show user info + empty chat
+                Thread created on first message send</div>
+
+<h3>Response Fields</h3>
+<table>
+  <tr><th>Field</th><th>Meaning</th></tr>
+  <tr><td><code>selected_thread</code></td><td>Existing thread with this user &mdash; load its messages</td></tr>
+  <tr><td><code>intended_object</code></td><td>Target user info (id, title, photo) &mdash; no thread exists yet</td></tr>
+</table>
+
+<!-- ====================================================================== -->
+<h2 id="messages-api">4. Messages API</h2>
+
+<p><span class="file-path">services/api/messages.ts</span> &mdash; exported as <code>messagesApi</code></p>
+
+<table>
+  <tr><th>Function</th><th>Endpoint</th><th>Purpose</th></tr>
+  <tr><td><code>getThreads()</code></td><td><code>GET /chat/threads</code></td><td>Get all conversation threads</td></tr>
+  <tr><td><code>getThreadsForUser(userId)</code></td><td><code>GET /chat/threads?user_id=</code></td><td>Resolve thread for a specific user</td></tr>
+  <tr><td><code>getThread(threadId)</code></td><td><code>GET /chat/threads/{id}</code></td><td>Get single thread by ID</td></tr>
+  <tr><td><code>getMessages(threadId, beforeId?)</code></td><td><code>GET /chat/messages/{id}</code></td><td>Get messages (cursor pagination)</td></tr>
+  <tr><td><code>getNewMessages(threadId, lastId)</code></td><td><code>GET /chat/messages/{id}/new</code></td><td>Poll for new messages after an ID</td></tr>
+  <tr><td><code>sendMessage(threadId, text, attachments?, reply?)</code></td><td><code>POST /chat/messages/{id}</code></td><td>Send a message (text + optional images + reply)</td></tr>
+  <tr><td><code>startChatWithUser(userId, message)</code></td><td><code>POST /chat/threads</code></td><td>Create thread + first message in one call</td></tr>
+  <tr><td><code>deleteMessage(messageId)</code></td><td><code>POST /chat/messages/delete/{id}</code></td><td>Delete own message</td></tr>
+  <tr><td><code>deleteThread(threadId)</code></td><td><code>POST /chat/threads/delete/{id}</code></td><td>Delete entire thread (DMs only)</td></tr>
+  <tr><td><code>toggleReaction(messageId, emoji)</code></td><td><code>POST /chat/messages/{id}/react</code></td><td>Add or remove an emoji reaction</td></tr>
+  <tr><td><code>blockThread(threadId)</code></td><td><code>POST /chat/threads/block/{id}</code></td><td>Block a conversation</td></tr>
+  <tr><td><code>unblockThread(threadId)</code></td><td><code>POST /chat/threads/unblock/{id}</code></td><td>Unblock a conversation</td></tr>
+  <tr><td><code>markThreadsRead(threadIds)</code></td><td><code>POST /chat/read-threads</code></td><td>Mark threads as read</td></tr>
+  <tr><td><code>getUnreadThreadIds()</code></td><td><code>GET /chat/unread_threads</code></td><td>Get IDs of threads with unread messages</td></tr>
+</table>
+
+<!-- ====================================================================== -->
+<h2 id="pagination">5. Cursor-Based Pagination</h2>
+
+<p>Messages use cursor-based pagination (not page numbers). The cursor is the <code>id</code> of the oldest loaded message.</p>
+
+<pre><code>// First load — newest messages
+const response = await messagesApi.getMessages(threadId);
+// response.data.messages = [newest, ..., oldest]
+// response.data.has_more = true/false
+
+// Load older messages
+const oldestId = messages[0].id;
+const older = await messagesApi.getMessages(threadId, oldestId);
+// Prepend older.data.messages to existing array</code></pre>
+
+<h3>Message Order</h3>
+<p>The API returns messages in <strong>descending order</strong> (newest first). The hook reverses them to ascending (oldest first) for chronological display in a bottom-anchored FlashList.</p>
+
+<!-- ====================================================================== -->
+<h2 id="sending">6. Sending Messages</h2>
+
+<h3>Existing Thread</h3>
+<pre><code>await messagesApi.sendMessage(threadId, text, attachments, replyData);</code></pre>
+
+<h3>New Conversation (No Thread Yet)</h3>
+<pre><code>// Creates thread + sends first message in a single API call
+const response = await messagesApi.startChatWithUser(userId, text);
+// response.data.thread — the new thread
+// response.data.message — the sent message</code></pre>
+
+<h3>Attachments</h3>
+<p>Image attachments are uploaded separately first (via media upload), then their URLs are passed in the <code>mediaItems</code> array:</p>
+<pre><code>await messagesApi.sendMessage(threadId, text, [
+  { url: 'https://...uploaded-image.jpg', type: 'image' },
+]);</code></pre>
+
+<h3>Reply Quotes</h3>
+<p>To reply to a specific message, pass <code>reply_to</code> (message ID) and <code>reply_text</code> (quoted text):</p>
+<pre><code>await messagesApi.sendMessage(threadId, text, undefined, {
+  reply_to: originalMessageId,
+  reply_text: 'The text being replied to',
+});</code></pre>
+
+<!-- ====================================================================== -->
+<h2 id="realtime">7. Real-Time (Pusher)</h2>
+
+<p>New messages and reactions arrive via Pusher on the user&rsquo;s private channel (<code>private-chat_user_{id}</code>). See <a href="pusher.html">Pusher doc</a> for connection details.</p>
+
+<h3>Hooks</h3>
+<table>
+  <tr><th>Hook</th><th>Source</th><th>Purpose</th></tr>
+  <tr><td><code>useNewMessageListener(handler)</code></td><td><span class="file-path">contexts/PusherContext.tsx</span></td><td>Subscribe to incoming messages</td></tr>
+  <tr><td><code>useReactionListener(handler)</code></td><td><span class="file-path">contexts/PusherContext.tsx</span></td><td>Subscribe to reaction events</td></tr>
+</table>
+
+<h3>Message Events</h3>
+<pre><code>// In useChatMessages.ts
+useNewMessageListener((pusherMessage: PusherMessage) =&gt; {
+  // Append new message to the list if it's for our thread
+  if (pusherMessage.thread_id === thread?.id) {
+    setMessages(prev =&gt; [...prev, newMessage]);
+    // Auto-scroll to bottom
+  }
+});
+
+useReactionListener((reaction: PusherReaction) =&gt; {
+  // Update reactions on the target message
+  setMessages(prev =&gt; prev.map(m =&gt;
+    m.id === reaction.message_id
+      ? { ...m, meta: { ...m.meta, reactions: reaction.reactions } }
+      : m
+  ));
+});</code></pre>
+
+<h3>Thread List Updates</h3>
+<p>The thread list screen also subscribes to <code>useNewMessageListener</code>. When a new message arrives, it updates the thread&rsquo;s preview message and moves it to the top of the list.</p>
+
+<h3>Badge Counts</h3>
+<p>Unread message counts are tracked in <a href="state-management.html#unread">UnreadCountsContext</a>. The count updates via:</p>
+<ul>
+  <li><strong>Startup batch</strong> &mdash; initial count</li>
+  <li><strong>Response headers</strong> &mdash; <code>X-TBC-Unread-Messages</code> on every API call</li>
+  <li><strong>Pusher</strong> &mdash; bumps count on incoming message event</li>
+</ul>
+
+<!-- ====================================================================== -->
+<h2 id="reactions">8. Message Reactions</h2>
+
+<p><span class="file-path">hooks/useChatReactions.tsx</span></p>
+
+<p>Chat message reactions use the same emoji set as feed reactions but with a different API endpoint. Reactions are stored in the message&rsquo;s <code>meta.reactions</code> field.</p>
+
+<h3>Data Shape</h3>
+<pre><code>// meta.reactions is a map of emoji → array of user IDs
+{
+  "reactions": {
+    "&#x1f44d;": [1, 42],     // user IDs who reacted with thumbs up
+    "&#x2764;&#xfe0f;": [1],         // user IDs who reacted with heart
+  }
+}</code></pre>
+
+<h3>Optimistic Updates</h3>
+<p>When a user taps a reaction, the UI updates immediately (optimistic). If the API call fails, the change is reverted. Pusher also delivers the update, which reconciles the server state.</p>
+
+<h3>API</h3>
+<pre><code>// Toggle reaction (add if not present, remove if present)
+await messagesApi.toggleReaction(messageId, '&#x1f44d;');</code></pre>
+
+<!-- ====================================================================== -->
+<h2 id="blocking">9. Block &amp; Unblock</h2>
+
+<p>Users can block conversations to prevent receiving messages from a specific user.</p>
+
+<pre><code>// Block
+await messagesApi.blockThread(threadId);
+
+// Unblock
+await messagesApi.unblockThread(threadId);</code></pre>
+
+<p>When a thread is blocked:</p>
+<ul>
+  <li>The chat input is disabled</li>
+  <li>A &ldquo;You blocked messages&rdquo; indicator is shown</li>
+  <li>The user can unblock from the chat menu or the blocked state UI</li>
+</ul>
+
+<p>Block state is read from <code>threadDetails.blocked_thread</code> in the messages response.</p>
+
+<!-- ====================================================================== -->
+<h2 id="types">10. Data Types</h2>
+
+<p><span class="file-path">types/message.ts</span></p>
+
+<h3>ChatThread</h3>
+<pre><code>interface ChatThread {
+  id: number;
+  title: string;
+  message_count: string | number;
+  status: 'active' | 'inactive' | 'disabled';
+  created_at: string;
+  updated_at: string;
+  info?: ThreadInfo;     // Other participant (v2.2.0)
+  type?: 'user' | 'community';
+  messages: ChatMessage[]; // Recent messages (preview)
+  space_id?: number | null;
+}</code></pre>
+
+<h3>ChatMessage</h3>
+<pre><code>interface ChatMessage {
+  id: number;
+  thread_id: string | number;
+  user_id: string | number;
+  text: string;              // HTML content
+  created_at: string;
+  xprofile?: XProfile;       // Sender (on individual messages, not previews)
+  meta?: {
+    reactions?: Record&lt;string, number[]&gt;;  // emoji → user IDs
+    reply_to?: number;                      // ID of quoted message
+    reply_text?: string;                    // Text of quoted message
+  } | null;
+  attachments?: ChatAttachment[];
+}</code></pre>
+
+<h3>ThreadInfo (v2.2.0)</h3>
+<pre><code>interface ThreadInfo {
+  id: string | number;
+  title: string;       // Display name
+  photo: string;       // Avatar URL
+  username: string;
+  is_verified: number | boolean;
+  badge: string | null;
+}</code></pre>
+
+<div class="callout callout-warn">
+  <strong>Message text is HTML.</strong> The <code>text</code> field contains HTML like <code>&lt;div class="chat_text"&gt;&lt;p&gt;Hello&lt;/p&gt;&lt;/div&gt;</code>. Use <code>getMessageText()</code> or <code>getMessagePreview()</code> from <span class="file-path">types/message.ts</span> to extract plain text.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="helpers">11. Helper Functions</h2>
+
+<p>All helpers are in <span class="file-path">types/message.ts</span> and extract info from the v2.2.0 <code>ThreadInfo</code> structure:</p>
+
+<table>
+  <tr><th>Function</th><th>Returns</th><th>Purpose</th></tr>
+  <tr><td><code>getThreadDisplayName(thread)</code></td><td><code>string</code></td><td>Other participant&rsquo;s name</td></tr>
+  <tr><td><code>getThreadAvatar(thread)</code></td><td><code>string | null</code></td><td>Other participant&rsquo;s avatar URL</td></tr>
+  <tr><td><code>getThreadUserId(thread)</code></td><td><code>number | null</code></td><td>Other participant&rsquo;s user ID</td></tr>
+  <tr><td><code>getThreadUsername(thread)</code></td><td><code>string | null</code></td><td>Other participant&rsquo;s username</td></tr>
+  <tr><td><code>isThreadVerified(thread)</code></td><td><code>boolean</code></td><td>Whether participant has verified badge</td></tr>
+  <tr><td><code>getThreadBadgeSlugs(thread)</code></td><td><code>string[]</code></td><td>Badge slugs for participant</td></tr>
+  <tr><td><code>getLastMessage(thread)</code></td><td><code>ChatMessage | null</code></td><td>Most recent message for preview</td></tr>
+  <tr><td><code>getMessagePreview(text, maxLen)</code></td><td><code>string</code></td><td>Strip HTML + truncate for list preview</td></tr>
+  <tr><td><code>getMessageText(text)</code></td><td><code>string</code></td><td>Strip HTML, preserve newlines</td></tr>
+</table>
+
+<!-- ====================================================================== -->
+<h2 id="rules">12. Rules</h2>
+
+<ol>
+  <li><strong>Navigate to chat by user ID, not thread ID.</strong> The <code>useChatMessages</code> hook handles thread resolution. This supports both existing and new conversations.</li>
+  <li><strong>Use <code>messagesApi</code> for all chat API calls.</strong> Don&rsquo;t call endpoints directly. The service handles request building and type safety.</li>
+  <li><strong>Use the helper functions for thread data.</strong> Don&rsquo;t access <code>thread.info.title</code> directly &mdash; use <code>getThreadDisplayName(thread)</code>. The helpers handle null checks and fallbacks.</li>
+  <li><strong>Strip HTML from message text before display.</strong> Use <code>getMessageText()</code> for full text or <code>getMessagePreview()</code> for truncated previews. Never render raw <code>message.text</code> as plain text.</li>
+  <li><strong>Use <code>useNewMessageListener</code> and <code>useReactionListener</code></strong> for real-time updates. Don&rsquo;t subscribe to Pusher channels directly for messaging.</li>
+  <li><strong>Mark threads read on screen mount.</strong> Call <code>messagesApi.markThreadsRead([threadId])</code> when the chat screen loads so badge counts stay accurate.</li>
+  <li><strong>Check <code>FEATURES.MESSAGING</code> before showing chat UI.</strong> Sites without Fluent Messaging installed should hide all messaging UI.</li>
+  <li><strong>Reactions use the same <code>meta.reactions</code> shape as feeds</strong> &mdash; a map of emoji string to array of user IDs. Toggle (not add/remove) is the API contract.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  Messaging &amp; Chat &middot;
+  <a href="module-system.html">Module System</a> &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="state-management.html">State Management</a> &middot;
+  <a href="theme-system.html">Theme System</a>
+</p>
+
+</body>
+</html>
