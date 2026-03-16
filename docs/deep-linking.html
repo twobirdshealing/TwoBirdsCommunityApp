@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App — Deep Linking & URL Routing</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #79c0ff;
+    --success: #3fb950;
+    --warning: #d29922;
+    --error: #f85149;
+    --code-bg: #0d1117;
+    --tag-bg: #1f2937;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; }
+  h2 {
+    font-size: 1.5rem;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+  p, li { margin-bottom: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  code {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 16px;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 24px;
+    font-size: 0.95em;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+  }
+  th { background: var(--surface); font-weight: 600; }
+  tr:hover td { background: rgba(88, 166, 255, 0.04); }
+  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .required { background: rgba(248, 81, 73, 0.15); color: var(--error); }
+  .auto { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--surface);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+  }
+  .callout-warn {
+    border-left-color: var(--warning);
+  }
+  .callout-error {
+    border-left-color: var(--error);
+  }
+  .callout-success {
+    border-left-color: var(--success);
+  }
+  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 4px; }
+  ul { padding-left: 24px; }
+  ol { padding-left: 24px; }
+  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
+  .output-example {
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0 16px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85em;
+    line-height: 1.8;
+  }
+  .output-example .log { color: #e6edf3; }
+  .output-example .warn { color: var(--warning); }
+  .output-example .error { color: var(--error); }
+  .output-example .tag { background: none; padding: 0; margin: 0; color: var(--accent); font-size: 1em; }
+</style>
+</head>
+<body>
+
+<h1>Deep Linking &amp; URL Routing</h1>
+<p class="subtitle">Universal links, custom scheme, in-app URL routing, and push notification navigation</p>
+
+<div class="callout">
+  <strong>Key file:</strong> <span class="file-path">utils/deepLinkMapper.ts</span><br>
+  Central URL-to-route mapper used by the deep link listener, push notification handler, and in-app HTML link taps. All three entry points funnel through <code>mapUrlToRoute()</code>.
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">How It Works</a></li>
+    <li><a href="#config">Configuration</a></li>
+    <li><a href="#route-tree">Route Tree</a></li>
+    <li><a href="#deep-link-mapper">Deep Link Mapper</a></li>
+    <li><a href="#url-listener">URL Listener (Cold &amp; Warm Start)</a></li>
+    <li><a href="#push-routing">Push Notification Routing</a></li>
+    <li><a href="#in-app-links">In-App Link Interception</a></li>
+    <li><a href="#module-routes">Module Routes</a></li>
+    <li><a href="#auth-guard">Auth Guard &amp; Navigation</a></li>
+    <li><a href="#webview">WebView Routes</a></li>
+    <li><a href="#portal-slug">Portal Slug Handling</a></li>
+    <li><a href="#files">File Reference</a></li>
+    <li><a href="#rules">Rules</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="overview">1. How It Works</h2>
+
+<p>Three entry points funnel web URLs into Expo Router navigation:</p>
+
+<table>
+  <tr>
+    <th>Entry Point</th>
+    <th>Trigger</th>
+    <th>Handler</th>
+  </tr>
+  <tr>
+    <td>Universal / App Links</td>
+    <td>User taps a <code>https://site.com/spaces/general</code> link externally</td>
+    <td><code>Linking.getInitialURL()</code> + <code>addEventListener('url')</code></td>
+  </tr>
+  <tr>
+    <td>Push Notification Tap</td>
+    <td>User taps a notification with routing data</td>
+    <td><code>Notifications.addNotificationResponseReceivedListener()</code></td>
+  </tr>
+  <tr>
+    <td>In-App Link Tap</td>
+    <td>User taps a link inside rendered HTML (posts, comments)</td>
+    <td><code>HtmlContent.tsx</code> onPress handler</td>
+  </tr>
+</table>
+
+<p>All three use <code>mapUrlToRoute(url, portalSlug)</code> from <span class="file-path">utils/deepLinkMapper.ts</span> to convert a web URL into an Expo Router route object. If the URL doesn't match any known route, it opens externally in the browser.</p>
+
+<!-- ================================================================== -->
+<h2 id="config">2. Configuration</h2>
+
+<h3>Custom Scheme</h3>
+<p>Defined in <span class="file-path">app.json</span>:</p>
+<pre><code>"scheme": "twobirdscommunity"</code></pre>
+<p>Allows links like <code>twobirdscommunity://spaces/general</code>. Used mainly for web-to-app redirects. The constant <code>APP_SCHEME</code> in <span class="file-path">constants/config.ts</span> mirrors this value.</p>
+
+<h3>iOS Universal Links</h3>
+<p>Generated dynamically in <span class="file-path">app.config.ts</span>:</p>
+<pre><code>ios: {
+  associatedDomains: [`applinks:${hostname}`],
+}</code></pre>
+<p>The hostname is extracted from <code>SITE_URL</code>. Requires an <code>apple-app-site-association</code> file on the server (served by WordPress).</p>
+
+<h3>Android App Links</h3>
+<p>Also generated in <span class="file-path">app.config.ts</span> as intent filters:</p>
+<pre><code>android: {
+  intentFilters: [{
+    action: 'VIEW',
+    autoVerify: true,
+    data: [
+      // Core deep links
+      { scheme: 'https', host: hostname, pathPrefix: '/spaces/' },
+      { scheme: 'https', host: hostname, pathPrefix: '/u/' },
+      { scheme: 'https', host: hostname, pathPrefix: '/courses/' },
+      { scheme: 'https', host: hostname, pathPrefix: '/notifications' },
+      { scheme: 'https', host: hostname, pathPrefix: '/leaderboard' },
+      { scheme: 'https', host: hostname, pathPrefix: '/chat/' },
+      // Module deep links (from moduleDeepLinkPaths array)
+      ...moduleDeepLinkPaths.map(p => ({ scheme: 'https', host: hostname, pathPrefix: p })),
+    ],
+    category: ['BROWSABLE', 'DEFAULT'],
+  }],
+}</code></pre>
+
+<div class="callout callout-success">
+  <strong>Buyer setup:</strong> Buyers configure <code>moduleDeepLinkPaths</code> in <span class="file-path">app.config.ts</span> to add deep link support for their active modules. The core paths are always included.
+</div>
+
+<h3>Typed Routes</h3>
+<p>Expo Router's typed routes experiment is enabled in <span class="file-path">app.json</span>:</p>
+<pre><code>"experiments": {
+  "typedRoutes": true
+}</code></pre>
+<p>This gives TypeScript autocomplete for route paths when using <code>router.push()</code>.</p>
+
+<!-- ================================================================== -->
+<h2 id="route-tree">3. Route Tree</h2>
+
+<p>All routes are file-based in the <span class="file-path">app/</span> directory. Expo Router auto-discovers them.</p>
+
+<h3>Tab Routes (Bottom Navigation)</h3>
+<table>
+  <tr><th>File</th><th>Route</th><th>Source</th></tr>
+  <tr><td><code>app/(tabs)/index.tsx</code></td><td><code>/(tabs)</code></td><td>Core (Home)</td></tr>
+  <tr><td><code>app/(tabs)/activity.tsx</code></td><td><code>/(tabs)/activity</code></td><td>Core (Feed)</td></tr>
+  <tr><td><code>app/(tabs)/spaces.tsx</code></td><td><code>/(tabs)/spaces</code></td><td>Core (Spaces)</td></tr>
+  <tr><td><code>app/(tabs)/calendar.tsx</code></td><td><code>/(tabs)/calendar</code></td><td>Module (Calendar)</td></tr>
+  <tr><td><code>app/(tabs)/donate.tsx</code></td><td><code>/(tabs)/donate</code></td><td>Module (Donate &mdash; intercepted)</td></tr>
+</table>
+
+<h3>Stack Routes</h3>
+<table>
+  <tr><th>Route</th><th>Presentation</th><th>Description</th></tr>
+  <tr><td><code>/feed/[id]</code></td><td>Card (with header)</td><td>Single post view</td></tr>
+  <tr><td><code>/create-post</code></td><td>Full-screen modal</td><td>Post composer</td></tr>
+  <tr><td><code>/comments/[postId]</code></td><td>Full-screen modal</td><td>Post comments</td></tr>
+  <tr><td><code>/blog-comments/[postId]</code></td><td>Full-screen modal</td><td>Blog comments</td></tr>
+  <tr><td><code>/webview</code></td><td>Full-screen modal</td><td>Authenticated WebView</td></tr>
+  <tr><td><code>/profile/[username]</code></td><td>Card</td><td>User profile</td></tr>
+  <tr><td><code>/profile/[username]/connections</code></td><td>Card</td><td>User connections</td></tr>
+  <tr><td><code>/profile/edit</code></td><td>Card</td><td>Edit own profile</td></tr>
+  <tr><td><code>/space/[slug]</code></td><td>Card</td><td>Space detail</td></tr>
+  <tr><td><code>/space/[slug]/members</code></td><td>Card</td><td>Space member list</td></tr>
+  <tr><td><code>/messages</code></td><td>Card</td><td>Message list</td></tr>
+  <tr><td><code>/messages/user/[userId]</code></td><td>Card</td><td>Conversation</td></tr>
+  <tr><td><code>/courses</code></td><td>Card</td><td>Course list</td></tr>
+  <tr><td><code>/courses/[slug]</code></td><td>Card</td><td>Course detail</td></tr>
+  <tr><td><code>/courses/[slug]/lesson/[lessonSlug]</code></td><td>Card</td><td>Lesson</td></tr>
+  <tr><td><code>/directory</code></td><td>Card</td><td>Member directory</td></tr>
+  <tr><td><code>/bookmarks</code></td><td>Card</td><td>Saved posts</td></tr>
+  <tr><td><code>/notifications</code></td><td>Card</td><td>Notification list</td></tr>
+  <tr><td><code>/notification-settings</code></td><td>Card</td><td>Push preferences</td></tr>
+</table>
+
+<h3>Auth Routes</h3>
+<table>
+  <tr><th>Route</th><th>Description</th></tr>
+  <tr><td><code>/login</code></td><td>Login screen</td></tr>
+  <tr><td><code>/register</code></td><td>Registration wizard</td></tr>
+  <tr><td><code>/forgot-password</code></td><td>Password recovery</td></tr>
+  <tr><td><code>/profile-complete</code></td><td>Post-login profile completion gate</td></tr>
+</table>
+
+<h3>Module Routes</h3>
+<table>
+  <tr><th>Route</th><th>Module</th></tr>
+  <tr><td><code>/blog</code></td><td>Blog</td></tr>
+  <tr><td><code>/blog/[id]</code></td><td>Blog</td></tr>
+  <tr><td><code>/blog-comments/[postId]</code></td><td>Blog</td></tr>
+  <tr><td><code>/bookclub</code></td><td>Book Club</td></tr>
+  <tr><td><code>/bookclub/[id]</code></td><td>Book Club</td></tr>
+  <tr><td><code>/youtube</code></td><td>YouTube</td></tr>
+  <tr><td><code>/youtube/playlist/[id]</code></td><td>YouTube</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="deep-link-mapper">4. Deep Link Mapper</h2>
+
+<p>The mapper in <span class="file-path">utils/deepLinkMapper.ts</span> converts web URLs to app routes in three steps:</p>
+
+<ol>
+  <li><strong>Extract path</strong> &mdash; strips the site origin, handles custom scheme (<code>twobirdscommunity://</code>), and relative paths</li>
+  <li><strong>Strip portal prefix</strong> &mdash; removes the Fluent Community portal slug (e.g., <code>/community</code>) to get the community-relative path</li>
+  <li><strong>Match route</strong> &mdash; pattern-matches against known app routes</li>
+</ol>
+
+<h3>URL-to-Route Mapping Table</h3>
+<table>
+  <tr><th>Web URL Pattern</th><th>App Route</th></tr>
+  <tr><td><code>/</code></td><td><code>/(tabs)</code> (home)</td></tr>
+  <tr><td><code>/spaces</code></td><td><code>/(tabs)/spaces</code></td></tr>
+  <tr><td><code>/spaces/{slug}</code></td><td><code>/space/[slug]</code></td></tr>
+  <tr><td><code>/spaces/{slug}/{title}~{id}</code></td><td><code>/feed/[id]</code></td></tr>
+  <tr><td><code>/u/{username}</code></td><td><code>/profile/[username]</code></td></tr>
+  <tr><td><code>/courses</code></td><td><code>/courses/index</code></td></tr>
+  <tr><td><code>/courses/{slug}</code></td><td><code>/courses/[slug]</code></td></tr>
+  <tr><td><code>/courses/{slug}/lessons/{lessonSlug}</code></td><td><code>/courses/[slug]/lesson/[lessonSlug]</code></td></tr>
+  <tr><td><code>/notifications</code></td><td><code>/notifications</code></td></tr>
+  <tr><td><code>/leaderboard</code></td><td><code>/(tabs)</code> (fallback &mdash; web-only feature)</td></tr>
+</table>
+
+<div class="callout callout-warn">
+  <strong>Post IDs use tilde format.</strong> Fluent Community URLs encode the post ID after a tilde: <code>/spaces/general/my-post-title~123</code>. The mapper extracts <code>123</code> using <code>extractPostId()</code> which finds the last <code>~</code> and verifies the remainder is numeric.
+</div>
+
+<h3>Return Type</h3>
+<pre><code>type AppRoute = {
+  pathname: string;
+  params?: Record&lt;string, string&gt;;
+} | null;</code></pre>
+<p>Returns <code>null</code> when no route matches, signaling the caller to open the URL externally.</p>
+
+<!-- ================================================================== -->
+<h2 id="url-listener">5. URL Listener (Cold &amp; Warm Start)</h2>
+
+<p>In <span class="file-path">app/_layout.tsx</span>, two listeners handle universal links:</p>
+
+<pre><code>// Cold start — URL that launched the app
+Linking.getInitialURL().then((url) => {
+  if (url) handleDeepLink(url);
+});
+
+// Warm start — URL while app is open
+const sub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+return () => sub.remove();</code></pre>
+
+<h3>Auth-Aware Queueing</h3>
+<p>If the user isn't authenticated when a deep link arrives, it's queued in a <code>pendingDeepLink</code> ref and replayed after login:</p>
+
+<pre><code>const handleDeepLink = useCallback((url: string) => {
+  const route = mapUrlToRoute(url, portalSlug);
+  if (!route) return;
+
+  if (isAuthenticated) {
+    router.push(route);
+  } else {
+    pendingDeepLink.current = route;  // Queue for after login
+  }
+}, [portalSlug, isAuthenticated, router]);
+
+// Replay after auth
+useEffect(() => {
+  if (isAuthenticated && pendingDeepLink.current) {
+    const route = pendingDeepLink.current;
+    pendingDeepLink.current = null;
+    setTimeout(() => router.push(route), 300);
+  }
+}, [isAuthenticated, router]);</code></pre>
+
+<div class="callout">
+  <strong>300ms delay:</strong> The timeout gives Expo Router time to mount the tab navigator before pushing a deep link route. Without it, navigation can silently fail on cold start.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="push-routing">6. Push Notification Routing</h2>
+
+<p>Push notification taps are handled in <span class="file-path">app/_layout.tsx</span> with a priority chain:</p>
+
+<ol>
+  <li><strong>Server-specified route</strong> (highest priority) &mdash; if <code>data.route</code> is a valid string matching <code>VALID_ROUTE_PREFIXES</code></li>
+  <li><strong>Module notification handler</strong> &mdash; calls <code>handleModuleNotification(data, router)</code>; returns <code>true</code> if handled</li>
+  <li><strong>Fallback parameters</strong>:
+    <ul>
+      <li><code>data.feed_id</code> &rarr; <code>/feed/[id]</code></li>
+      <li><code>data.space_slug</code> &rarr; <code>/space/[slug]</code></li>
+      <li><code>data.course_slug</code> &rarr; <code>/courses/[slug]</code></li>
+      <li><code>data.profile_username</code> &rarr; <code>/profile/[username]</code></li>
+    </ul>
+  </li>
+  <li><strong>Default</strong> &rarr; <code>/notifications</code> screen</li>
+</ol>
+
+<h3>Route Validation</h3>
+<p>Server-specified routes are validated against a prefix allowlist before navigation:</p>
+
+<pre><code>const CORE_ROUTE_PREFIXES = [
+  '/(tabs)', '/feed/', '/profile/', '/space/', '/messages',
+  '/notifications', '/courses', '/directory', '/bookmarks',
+  '/notification-settings', '/webview', '/create-post', '/comments/',
+];
+
+const VALID_ROUTE_PREFIXES = [
+  ...CORE_ROUTE_PREFIXES,
+  ...getModuleRoutePrefixes(),  // e.g. ['/blog', '/bookclub', '/youtube']
+];</code></pre>
+
+<div class="callout callout-error">
+  <strong>Always sanitize notification params.</strong> All values from push notification data are sanitized via <code>sanitizeParam()</code> which strips everything except <code>a-zA-Z0-9_-</code>. Never pass raw notification data to the router.
+</div>
+
+<h3>Parameter Sanitization</h3>
+<pre><code>function sanitizeParam(value: unknown): string {
+  return String(value ?? '').replace(/[^a-zA-Z0-9_\-]/g, '');
+}</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="in-app-links">7. In-App Link Interception</h2>
+
+<p><span class="file-path">components/common/HtmlContent.tsx</span> renders HTML from feed posts, comments, and blogs. Links are intercepted and routed in-app when they match:</p>
+
+<pre><code>const renderersProps = useMemo(() => ({
+  a: {
+    onPress: (_event, href) => {
+      const route = mapUrlToRoute(href, portalSlug);
+      if (route) {
+        onLinkNavigate?.();   // Close bottom sheet if open
+        router.push(route);
+      } else {
+        Linking.openURL(href);  // External link
+      }
+    },
+  },
+}), [onLinkNavigate, router, portalSlug]);</code></pre>
+
+<p>The <code>onLinkNavigate</code> callback is used by bottom sheets to dismiss themselves before navigation (e.g., tapping a profile link in a comment sheet).</p>
+
+<!-- ================================================================== -->
+<h2 id="module-routes">8. Module Routes</h2>
+
+<p>Modules register routes through two mechanisms:</p>
+
+<h3>Route Stubs</h3>
+<p>Each module route needs a thin file stub in <span class="file-path">app/</span> that re-exports the module's screen component. Expo Router discovers routes from the file system, so the stub must exist:</p>
+
+<pre><code>// app/bookclub/index.tsx — one-line re-export
+export { default } from '@/modules/bookclub/screens/BookListScreen';</code></pre>
+
+<h3>Route Prefixes for Validation</h3>
+<p>Modules register their route prefixes in the manifest for push notification validation:</p>
+<pre><code>// modules/bookclub/module.ts
+export const bookclubModule: ModuleManifest = {
+  id: 'bookclub',
+  name: 'Book Club',
+  routePrefixes: ['/bookclub'],  // Added to VALID_ROUTE_PREFIXES
+  // ...
+};</code></pre>
+
+<p>These prefixes are collected by <code>getModuleRoutePrefixes()</code> and merged into the route validation allowlist at load time.</p>
+
+<h3>Tab Press Interception</h3>
+<p>Some modules intercept their tab press to open a WebView instead of navigating to a screen:</p>
+<pre><code>// Donate module — tab press opens external payment page in WebView
+tab: {
+  name: 'donate',
+  interceptPress: (router) => {
+    router.push({
+      pathname: '/webview',
+      params: { url: DONATE_URL, title: 'Give' },
+    });
+  },
+}</code></pre>
+<p>The <code>app/(tabs)/donate.tsx</code> file exists as a placeholder (never renders) but is required for Expo Router to register the route.</p>
+
+<!-- ================================================================== -->
+<h2 id="auth-guard">9. Auth Guard &amp; Navigation</h2>
+
+<p>The root layout in <span class="file-path">app/_layout.tsx</span> enforces auth-based redirects:</p>
+
+<table>
+  <tr><th>Condition</th><th>Action</th></tr>
+  <tr><td>Not authenticated &amp; not on auth route</td><td>Redirect to <code>/login</code></td></tr>
+  <tr><td>Authenticated &amp; profile incomplete</td><td>Redirect to <code>/profile-complete</code></td></tr>
+  <tr><td>Authenticated &amp; on login screen</td><td>Redirect to <code>/(tabs)</code></td></tr>
+</table>
+
+<p>Auth routes are: <code>login</code>, <code>register</code>, <code>forgot-password</code>, <code>webview</code>, <code>profile-complete</code>. These are accessible without authentication.</p>
+
+<div class="callout">
+  <strong>Maintenance gate:</strong> During maintenance mode, auth redirects are suppressed unless the user explicitly initiated login from the maintenance screen (via <code>maintenanceLoginMode</code> flag).
+</div>
+
+<!-- ================================================================== -->
+<h2 id="webview">10. WebView Routes</h2>
+
+<p>The <span class="file-path">app/webview.tsx</span> screen provides an authenticated WebView for external content:</p>
+
+<pre><code>router.push({
+  pathname: '/webview',
+  params: {
+    url: 'https://example.com/checkout',
+    title: 'Checkout',
+    rightIcon: 'cart-outline',     // Optional Ionicons name
+    rightAction: 'cart',           // Optional action type
+    noAuth: 'true',                // Optional: skip session creation
+  },
+});</code></pre>
+
+<table>
+  <tr><th>Parameter</th><th>Required</th><th>Description</th></tr>
+  <tr><td><code>url</code></td><td>Yes</td><td>URL to load</td></tr>
+  <tr><td><code>title</code></td><td>Yes</td><td>Header title text</td></tr>
+  <tr><td><code>rightIcon</code></td><td>No</td><td>Ionicons name for header right button</td></tr>
+  <tr><td><code>rightAction</code></td><td>No</td><td>Action type (e.g., <code>'cart'</code> navigates to cart)</td></tr>
+  <tr><td><code>noAuth</code></td><td>No</td><td>Skip authenticated session creation for public pages</td></tr>
+</table>
+
+<p>The WebView creates an authenticated session via <code>appApi.createWebSession()</code> and injects theme-matching CSS for dark mode. Links inside the WebView load within the WebView itself (no in-app routing interception).</p>
+
+<!-- ================================================================== -->
+<h2 id="portal-slug">11. Portal Slug Handling</h2>
+
+<p>Fluent Community can run at a sub-path (e.g., <code>/community</code>) or at the site root. The mapper handles both:</p>
+
+<table>
+  <tr><th>Portal Slug</th><th>Example URL</th><th>Community Path</th></tr>
+  <tr><td><code>''</code> (empty &mdash; root)</td><td><code>/spaces/general</code></td><td><code>/spaces/general</code></td></tr>
+  <tr><td><code>'community'</code></td><td><code>/community/spaces/general</code></td><td><code>/spaces/general</code></td></tr>
+  <tr><td><code>'community'</code></td><td><code>/portal/spaces/general</code></td><td><code>/spaces/general</code> (fallback)</td></tr>
+</table>
+
+<p>The <code>portalSlug</code> value comes from <code>useAppConfig()</code> which reads it from the server's startup batch response. A fallback to <code>/portal</code> handles legacy URLs from before a slug rename.</p>
+
+<div class="callout callout-warn">
+  <strong>Non-community paths return null.</strong> If the URL doesn't start with the portal slug (or the fallback), <code>stripPortalPrefix()</code> returns <code>null</code> and the URL is treated as external. This prevents the app from trying to route non-community pages (e.g., <code>/about-us</code>).
+</div>
+
+<!-- ================================================================== -->
+<h2 id="files">12. File Reference</h2>
+
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><span class="file-path">utils/deepLinkMapper.ts</span></td><td>Central URL-to-route mapper (<code>mapUrlToRoute</code>, <code>extractPath</code>, <code>stripPortalPrefix</code>, <code>matchRoute</code>)</td></tr>
+  <tr><td><span class="file-path">app/_layout.tsx</span></td><td>Deep link listener, push notification tap handler, auth guard, route validation</td></tr>
+  <tr><td><span class="file-path">app/(tabs)/_layout.tsx</span></td><td>Tab navigator with module tab registration and press interception</td></tr>
+  <tr><td><span class="file-path">app.config.ts</span></td><td>iOS associated domains, Android intent filters, module deep link paths</td></tr>
+  <tr><td><span class="file-path">app.json</span></td><td>Custom scheme, bundle IDs, typed routes experiment</td></tr>
+  <tr><td><span class="file-path">constants/config.ts</span></td><td><code>APP_SCHEME</code>, <code>SITE_URL</code> constants</td></tr>
+  <tr><td><span class="file-path">components/common/HtmlContent.tsx</span></td><td>In-app link interception for rendered HTML content</td></tr>
+  <tr><td><span class="file-path">modules/_types.ts</span></td><td><code>ModuleManifest.routePrefixes</code> and <code>notificationHandler</code> definitions</td></tr>
+  <tr><td><span class="file-path">modules/_registry.ts</span></td><td><code>getModuleRoutePrefixes()</code>, <code>handleModuleNotification()</code></td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="rules">13. Rules</h2>
+
+<ol>
+  <li><strong>All URL-to-route conversion goes through <code>mapUrlToRoute()</code>.</strong> Never parse URLs manually in screens or components. The centralized mapper ensures consistent portal slug handling and route matching.</li>
+
+  <li><strong>Module routes need both a file stub and a prefix registration.</strong> The stub in <code>app/</code> makes the route exist for Expo Router. The <code>routePrefixes</code> in the module manifest makes it valid for push notification routing.</li>
+
+  <li><strong>Never trust push notification data.</strong> Always validate routes against <code>VALID_ROUTE_PREFIXES</code> and sanitize parameters with <code>sanitizeParam()</code>. Raw notification data could contain arbitrary strings.</li>
+
+  <li><strong>Deep links before auth are queued, not dropped.</strong> The <code>pendingDeepLink</code> ref stores the route and replays it after login completes. Don't add a second queueing mechanism.</li>
+
+  <li><strong>Post IDs use tilde extraction, not URL segment parsing.</strong> Fluent Community encodes IDs as <code>title~123</code>. Use <code>extractPostId()</code> which handles this format. Don't split on <code>/</code> or <code>-</code> to find the ID.</li>
+
+  <li><strong>Only same-origin URLs are routed in-app.</strong> <code>extractPath()</code> compares the URL's origin against <code>SITE_URL</code>'s origin. Links to other domains always open externally.</li>
+
+  <li><strong>Add new core deep links in two places.</strong> Add the path pattern to <code>matchRoute()</code> in <span class="file-path">deepLinkMapper.ts</span> AND add the prefix to <code>CORE_ROUTE_PREFIXES</code> in <span class="file-path">_layout.tsx</span>.</li>
+
+  <li><strong>Add new Android deep link paths in <code>app.config.ts</code>.</strong> Core paths go in the <code>data</code> array directly. Module paths go in <code>moduleDeepLinkPaths</code> (buyer-configurable). iOS universal links work at the domain level &mdash; no per-path config needed.</li>
+
+  <li><strong>Use <code>router.push()</code> for deep link navigation, not <code>replace()</code>.</strong> Push preserves back navigation so users can return to where they were. Only the auth guard uses <code>replace()</code> (login redirects shouldn't be in the back stack).</li>
+
+  <li><strong>The WebView doesn't intercept internal links.</strong> Links tapped inside the WebView load within the WebView. If you need in-app routing from WebView content, you'd need to add <code>onNavigationStateChange</code> handling &mdash; but currently this isn't needed.</li>
+</ol>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
+<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
+  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  <a href="companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  Deep Linking &amp; URL Routing &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="feed-system.html">Feed System</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  <a href="messaging.html">Messaging &amp; Chat</a> &middot;
+  <a href="module-system.html">Module System</a> &middot;
+  <a href="notifications.html">Notifications</a> &middot;
+  <a href="profile-system.html">Profile System</a> &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="registration.html">Registration &amp; Onboarding</a> &middot;
+  <a href="state-management.html">State Management</a> &middot;
+  <a href="theme-system.html">Theme System</a>
+</p>
+
+</body>
+</html>
