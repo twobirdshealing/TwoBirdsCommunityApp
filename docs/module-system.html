@@ -199,6 +199,13 @@ export interface ModuleManifest {
   name: string;            // Human-readable name
   version: string;         // Semver version
 
+  // Module metadata (WordPress-style headers)
+  description?: string;       // What the module does
+  author?: string;            // Author name
+  authorUrl?: string;         // Author website
+  license?: string;           // License type (e.g. 'Proprietary', 'MIT')
+  minAppVersion?: string;     // Minimum app version required
+
   // Registration slots (all optional)
   tab?: TabRegistration;
   widgets?: WidgetRegistration[];
@@ -230,6 +237,11 @@ export interface ModuleManifest {
     <tr><td><code>id</code> <span class="tag required">required</span></td><td>string</td><td>Unique ID. Used in dev validation. Never change after shipping.</td></tr>
     <tr><td><code>name</code> <span class="tag required">required</span></td><td>string</td><td>Human-readable name (for documentation, not displayed in UI).</td></tr>
     <tr><td><code>version</code> <span class="tag required">required</span></td><td>string</td><td>Semver version string.</td></tr>
+    <tr><td><code>description</code></td><td>string</td><td>What the module does. Shown in the setup dashboard.</td></tr>
+    <tr><td><code>author</code></td><td>string</td><td>Author name. Shown in the setup dashboard module cards.</td></tr>
+    <tr><td><code>authorUrl</code></td><td>string</td><td>Author website URL. Links the author name in the dashboard.</td></tr>
+    <tr><td><code>license</code></td><td>string</td><td>License type (e.g. <code>'Proprietary'</code>, <code>'MIT'</code>).</td></tr>
+    <tr><td><code>minAppVersion</code></td><td>string</td><td>Minimum app version required for this module.</td></tr>
     <tr><td><code>tab</code></td><td>TabRegistration</td><td>Bottom tab &mdash; one per module maximum.</td></tr>
     <tr><td><code>widgets</code></td><td>WidgetRegistration[]</td><td>Home screen widgets. A module can register multiple.</td></tr>
     <tr><td><code>providers</code></td><td>ProviderRegistration[]</td><td>Context providers injected into the app tree.</td></tr>
@@ -618,6 +630,10 @@ export const eventsModule: ModuleManifest = {
   id: 'events',
   name: 'Events',
   version: '1.0.0',
+  description: 'Community events calendar with RSVP',
+  author: 'Your Name',
+  authorUrl: 'https://yoursite.com',
+  license: 'Proprietary',
 
   widgets: [
     {
@@ -792,6 +808,9 @@ export const resourcesModule: ModuleManifest = {
   id: 'resources',
   name: 'Resources',
   version: '1.0.0',
+  description: 'Resource library page via WebView',
+  author: 'Your Name',
+  license: 'Proprietary',
 
   menuItems: [{
     id: 'resources',
@@ -821,6 +840,9 @@ export const dailyVerseModule: ModuleManifest = {
   id: 'daily-verse',
   name: 'Daily Verse',
   version: '1.0.0',
+  description: 'Daily Bible verse widget from API',
+  author: 'Your Name',
+  license: 'Proprietary',
 
   widgets: [{
     id: 'daily-verse',
@@ -890,6 +912,9 @@ export const shopModule: ModuleManifest = {
   id: 'shop',
   name: 'Shop',
   version: '1.0.0',
+  description: 'WooCommerce storefront tab',
+  author: 'Your Name',
+  license: 'Proprietary',
 
   tab: {
     name: 'shop',
@@ -945,6 +970,9 @@ export const giveModule: ModuleManifest = {
   id: 'give',
   name: 'Give',
   version: '1.0.0',
+  description: 'Donation tab linking to external giving page',
+  author: 'Your Name',
+  license: 'Proprietary',
 
   tab: {
     name: 'give',
@@ -979,6 +1007,9 @@ export const announcementModule: ModuleManifest = {
   id: 'announcement',
   name: 'Announcement Bar',
   version: '1.0.0',
+  description: 'Dismissible announcement banner above the tab bar',
+  author: 'Your Name',
+  license: 'Proprietary',
 
   tabBarAddon: AnnouncementBar,
 };</code></pre>
@@ -1048,13 +1079,14 @@ const styles = StyleSheet.create({
   <li><strong>Use <code>createLogger()</code> for logging.</strong> Tag pattern: <code>{Module}API</code> for services, <code>{Module}{Name}</code> for components. See <a href="logging.html">Logging docs</a>.</li>
   <li><strong>Use <code>useCachedData()</code> for data fetching.</strong> The centralized hook handles caching, loading states, and refresh. Prefix cache keys with <code>tbc_{module}_</code>.</li>
   <li><strong>Widgets return <code>null</code> when empty.</strong> Never render an empty card or placeholder. The home screen skips null widgets cleanly.</li>
+  <li><strong>Include metadata fields.</strong> Set <code>description</code>, <code>author</code>, <code>authorUrl</code>, and <code>license</code> in every manifest. The setup dashboard displays these on module cards &mdash; they help buyers understand what each module does and where it came from.</li>
   <li><strong>Register companion plugin and apiBase.</strong> Even though they're informational, they make the manifest self-documenting for other developers.</li>
   <li><strong>Don't create new dependencies without checking.</strong> The core already has centralized utilities for HTTP, caching, theming, logging, haptics, and date formatting. Check before adding.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
 <p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
-  <a href="setup-guide.html">Setup Guide</a> &middot;
+  <a href="../setup/setup-guide.html">Setup Guide</a> &middot;
   <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
   <a href="architecture.html">Architecture</a> &middot;
   <a href="components.html">Components</a> &middot;
@@ -1072,6 +1104,7 @@ const styles = StyleSheet.create({
   <a href="profile-system.html">Profile System</a> &middot;
   <a href="pusher.html">Pusher</a> &middot;
   <a href="registration.html">Registration &amp; Onboarding</a> &middot;
+  <a href="spaces.html">Spaces (Groups)</a> &middot;
   <a href="state-management.html">State Management</a> &middot;
   <a href="theme-system.html">Theme System</a>
 </p>
