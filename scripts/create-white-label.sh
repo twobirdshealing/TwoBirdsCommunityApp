@@ -16,7 +16,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-TARGET_DIR="$(cd "$SOURCE_DIR/.." && pwd)/TBC-Community-App (White Lable)"
+WHITE_LABEL_ROOT="$(cd "$SOURCE_DIR/.." && pwd)/TBC-Community-App (White Lable)"
 
 # Allowlist: only these companion plugins ship with the base product
 CORE_PLUGINS=("tbc-community-app" "tbc-fluent-profiles" "tbc-multi-reactions" "tbc-starter-theme")
@@ -75,6 +75,7 @@ GENMANIFEST_EOF
 
 # Read version from source package.json
 SOURCE_VERSION=$(grep -o '"version": "[^"]*"' "$SOURCE_DIR/package.json" | head -1 | cut -d'"' -f4)
+TARGET_DIR="$WHITE_LABEL_ROOT/$SOURCE_VERSION"
 
 echo ""
 echo "========================================"
@@ -439,7 +440,7 @@ if [ -d "$TARGET_DIR/.git" ]; then
   echo "  3. Upload core-update-${SOURCE_VERSION}.tar.gz to your license server for dashboard updates"
 else
   echo "  1. Open the folder in VS Code and review"
-  echo "  2. cd into it, run: git init && git add . && git commit -m 'Initial white-label release v${SOURCE_VERSION}'"
+  echo "  2. cd into it, run: git init && git add . && git commit -m 'White-label release v${SOURCE_VERSION}'"
   echo "  3. Create a private GitHub repo and push"
   echo "  4. Test: npm install && npx expo start"
 fi
