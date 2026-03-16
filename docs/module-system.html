@@ -756,206 +756,254 @@ export async function createEvent(data) {
 }</code></pre>
 
 <!-- ================================================================== -->
-<h2 id="examples">12. Real Module Examples</h2>
+<h2 id="examples">12. Examples</h2>
 
-<p>The codebase includes modules covering every registration type. Use these as templates.</p>
+<p>Practical examples of things a client might actually want. Each shows just the manifest and any required files &mdash; copy, adapt, register.</p>
 
-<h3>Widget + Menu only (Blog)</h3>
-<p>Simplest pattern &mdash; no tab, no providers. Shows a widget on the home screen and a menu item in the avatar dropdown.</p>
-<pre><code>// modules/blog/module.ts
+<h3>Example A: Menu item that opens a WordPress page</h3>
+<p>The simplest possible module. No tab, no widget &mdash; just a link in the avatar dropdown that opens a WordPress page in the in-app browser.</p>
+<pre><code>// modules/resources/module.ts
 
-export const blogModule: ModuleManifest = {
-  id: 'blog',
-  name: 'Blog',
+import type { ModuleManifest } from '@/modules/_types';
+import { SITE_URL } from '@/constants/config';
+
+export const resourcesModule: ModuleManifest = {
+  id: 'resources',
+  name: 'Resources',
   version: '1.0.0',
-
-  widgets: [{
-    id: 'latest-blog',
-    title: 'Latest Blog',
-    icon: 'newspaper-outline',
-    seeAllRoute: '/blog',
-    defaultEnabled: true,
-    canDisable: true,
-    externalWrapper: true,
-    component: BlogWidget,
-  }],
 
   menuItems: [{
-    id: 'blog',
-    label: 'Blog',
-    icon: 'newspaper-outline',
-    route: '/blog',
-    order: 60,
-    hideMenuKey: 'blog',
+    id: 'resources',
+    label: 'Resources',
+    icon: 'document-text-outline',
+    route: {
+      pathname: '/webview',
+      params: {
+        url: `${SITE_URL}/resources/`,
+        title: 'Resources',
+      },
+    },
+    order: 50,
+    hideMenuKey: 'resources',
   }],
-
-  routePrefixes: ['/blog', '/blog-comments'],
 };</code></pre>
-<p><strong>Route stubs:</strong> <code>app/blog/index.tsx</code>, <code>app/blog/[id].tsx</code></p>
+<p><strong>Files needed:</strong> Just <code>modules/resources/module.ts</code> and the registry entry. No route stubs, no screens, no components.</p>
 
-<h3>Widget only (YouTube)</h3>
-<p>Even simpler &mdash; just a widget, no menu item. Users access the full screen via the widget's "See All" link.</p>
-<pre><code>// modules/youtube/module.ts
+<h3>Example B: Home screen widget</h3>
+<p>A widget that shows a daily verse or announcement on the home screen. Fetches from a simple REST endpoint on your WordPress site.</p>
+<pre><code>// modules/daily-verse/module.ts
 
-export const youtubeModule: ModuleManifest = {
-  id: 'youtube',
-  name: 'YouTube',
+import type { ModuleManifest } from '@/modules/_types';
+import { DailyVerseWidget } from './widgets/DailyVerseWidget';
+
+export const dailyVerseModule: ModuleManifest = {
+  id: 'daily-verse',
+  name: 'Daily Verse',
   version: '1.0.0',
 
   widgets: [{
-    id: 'latest-youtube',
-    title: 'YouTube',
-    icon: 'logo-youtube',
-    seeAllRoute: '/youtube',
+    id: 'daily-verse',
+    title: 'Daily Verse',
+    icon: 'book-outline',
     defaultEnabled: true,
     canDisable: true,
     externalWrapper: true,
-    component: YouTubeWidget,
+    component: DailyVerseWidget,
   }],
-
-  routePrefixes: ['/youtube'],
-  companionPlugin: 'tbc-youtube',
 };</code></pre>
 
-<h3>Tab + Widgets (Calendar)</h3>
-<p>Has its own bottom tab and multiple home widgets.</p>
-<pre><code>// modules/calendar/module.ts
+<pre><code>// modules/daily-verse/widgets/DailyVerseWidget.tsx
 
-export const calendarModule: ModuleManifest = {
-  id: 'calendar',
-  name: 'Calendar',
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useCachedData } from '@/hooks/useCachedData';
+import { SITE_URL } from '@/constants/config';
+import { request } from '@/services/api/client';
+
+const API_BASE = `${SITE_URL}/wp-json/my-plugin/v1`;
+
+async function fetchVerse() {
+  return request&lt;{ verse: string; reference: string }&gt;('/daily-verse', {
+    baseUrl: API_BASE,
+  });
+}
+
+export function DailyVerseWidget({ refreshKey }: { refreshKey: number }) {
+  const { colors } = useTheme();
+  const { data } = useCachedData('tbc_widget_daily_verse', fetchVerse, { refreshKey });
+
+  if (!data) return null;
+
+  return (
+    &lt;View style={[styles.card, { backgroundColor: colors.surface }]}&gt;
+      &lt;Text style={[styles.verse, { color: colors.text }]}&gt;
+        &ldquo;{data.verse}&rdquo;
+      &lt;/Text&gt;
+      &lt;Text style={[styles.ref, { color: colors.textSecondary }]}&gt;
+        {data.reference}
+      &lt;/Text&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  card: { padding: 20, borderRadius: 12, alignItems: 'center' },
+  verse: { fontSize: 16, fontStyle: 'italic', textAlign: 'center', lineHeight: 24 },
+  ref: { fontSize: 13, marginTop: 8 },
+});</code></pre>
+<p><strong>Files needed:</strong> <code>module.ts</code> + <code>widgets/DailyVerseWidget.tsx</code> + registry entry.</p>
+
+<h3>Example C: Bottom tab with a screen</h3>
+<p>Adds a "Shop" tab that shows a full-screen WebView of your WooCommerce store.</p>
+<pre><code>// modules/shop/module.ts
+
+import type { ModuleManifest } from '@/modules/_types';
+import ShopTab from './screens/ShopTab';
+
+export const shopModule: ModuleManifest = {
+  id: 'shop',
+  name: 'Shop',
   version: '1.0.0',
 
   tab: {
-    name: 'calendar',
-    title: 'Calendar',
-    icon: 'calendar',
-    iconOutline: 'calendar-outline',
-    order: 40,
-    component: CalendarTab,
+    name: 'shop',
+    title: 'Shop',
+    icon: 'storefront',
+    iconOutline: 'storefront-outline',
+    order: 50,           // After Spaces (30), before any order-100 tabs
+    component: ShopTab,
+    hideMenuKey: 'shop',
   },
 
-  widgets: [
-    { id: 'upcoming-booking', title: 'Upcoming Booking', icon: 'flame-outline',
-      seeAllRoute: '/(tabs)/calendar', defaultEnabled: true, canDisable: true,
-      externalWrapper: true, component: CeremonyWidget },
-    { id: 'featured-events', title: 'Featured Events', icon: 'calendar-outline',
-      seeAllRoute: '/(tabs)/calendar', defaultEnabled: true, canDisable: true,
-      externalWrapper: true, component: EventsWidget },
-  ],
-
-  hideMenuKey: 'calendar',
-  companionPlugin: 'tbc-calendar-fluent',
-  apiBase: '/wp-json/tbc-wc/v1',
-};</code></pre>
-<p><strong>Route stub:</strong> <code>app/(tabs)/calendar.tsx</code> &rarr; <code>export { default } from '@/modules/calendar/screens/CalendarTab'</code></p>
-
-<h3>Provider + Tab Bar Addon (Book Club)</h3>
-<p>The most complex pattern. Registers a context provider for global audio state and a mini player that sits above the tab bar.</p>
-<pre><code>// modules/bookclub/module.ts
-
-export const bookclubModule: ModuleManifest = {
-  id: 'bookclub',
-  name: 'Book Club',
-  version: '1.0.0',
-
-  providers: [{
-    id: 'bookclub-audio',
-    order: 50,
-    component: AudioPlayerProvider,
-  }],
-
-  tabBarAddon: MiniPlayer,   // Renders above tab buttons when audio is playing
-
-  widgets: [{
-    id: 'book-club',
-    title: 'Book Club',
-    icon: 'book-outline',
-    seeAllRoute: '/bookclub',
-    defaultEnabled: true,
-    canDisable: true,
-    externalWrapper: true,
-    component: BookClubWidget,
-  }],
-
-  menuItems: [{
-    id: 'bookclub',
-    label: 'Book Club',
-    icon: 'book-outline',
-    route: '/bookclub',
-    order: 55,
-    hideMenuKey: 'bookclub',
-  }],
-
-  routePrefixes: ['/bookclub'],
-  hideMenuKey: 'bookclub',
-  companionPlugin: 'tbc-book-club',
-  apiBase: '/wp-json/tbc-bc/v1',
+  hideMenuKey: 'shop',
 };</code></pre>
 
-<h3>Tab intercept (Donate)</h3>
-<p>A tab that never renders its screen &mdash; instead, pressing it opens a WebView. Demonstrates <code>interceptPress</code>, custom <code>tabBarIcon</code>, and <code>tabColor</code> override.</p>
-<pre><code>// modules/donate/module.tsx
+<pre><code>// modules/shop/screens/ShopTab.tsx
 
-const DONATE_ROUTE_PARAMS = {
-  url: `${SITE_URL}/calendar/donate/`,
-  title: 'Donate',
-  rightIcon: 'cart-outline',
-  rightAction: 'cart',
-};
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { WebView } from 'react-native-webview';
+import { useTheme } from '@/contexts/ThemeContext';
+import { SITE_URL } from '@/constants/config';
 
-export const donateModule: ModuleManifest = {
-  id: 'donate',
-  name: 'Donate',
+export default function ShopTab() {
+  const { colors } = useTheme();
+
+  return (
+    &lt;View style={[styles.container, { backgroundColor: colors.background }]}&gt;
+      &lt;WebView
+        source={{ uri: `${SITE_URL}/shop/` }}
+        style={{ flex: 1 }}
+      /&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+});</code></pre>
+
+<pre><code>// app/(tabs)/shop.tsx  &larr; Route stub (required for tab modules)
+
+export { default } from '@/modules/shop/screens/ShopTab';</code></pre>
+<p><strong>Files needed:</strong> <code>module.ts</code> + <code>screens/ShopTab.tsx</code> + <code>app/(tabs)/shop.tsx</code> route stub + registry entry.</p>
+
+<h3>Example D: Tab that opens a WebView on press (no screen)</h3>
+<p>A tab icon that doesn't navigate to a screen &mdash; tapping it opens a URL in the in-app browser. Useful for external links like giving pages, signup forms, or third-party tools.</p>
+<pre><code>// modules/give/module.ts
+
+import type { ModuleManifest } from '@/modules/_types';
+import { SITE_URL } from '@/constants/config';
+
+export const giveModule: ModuleManifest = {
+  id: 'give',
+  name: 'Give',
   version: '1.0.0',
 
   tab: {
-    name: 'donate',
-    title: 'Donate',
+    name: 'give',
+    title: 'Give',
     icon: 'heart',
     iconOutline: 'heart-outline',
     order: 100,
-    component: () =&gt; null,       // Never renders
-    hideMenuKey: 'donate',
-    tabColor: 'error',            // Red instead of default active/inactive
-    tabBarIcon: ({ focused, color }) =&gt; &lt;DonateTabIcon focused={focused} color={color} /&gt;,
+    component: () =&gt; null,   // Never renders &mdash; interceptPress handles it
+    hideMenuKey: 'give',
     interceptPress: (router) =&gt; {
-      router.push({ pathname: '/webview', params: DONATE_ROUTE_PARAMS });
+      router.push({
+        pathname: '/webview',
+        params: { url: `${SITE_URL}/give/`, title: 'Give' },
+      });
     },
   },
-
-  menuItems: [{
-    id: 'donate',
-    label: 'Donate',
-    icon: 'heart-outline',
-    route: { pathname: '/webview', params: DONATE_ROUTE_PARAMS },
-    order: 60,
-    hideMenuKey: 'donate',
-    iconColor: 'error',
-  }],
 };</code></pre>
+<pre><code>// app/(tabs)/give.tsx  &larr; Route stub (still required even though it never renders)
 
-<h3>Menu-only (Donor)</h3>
-<p>The simplest possible module &mdash; just a menu item, no tab, no widget.</p>
-<pre><code>// modules/donor/module.ts
+import { View } from 'react-native';
+export default () =&gt; &lt;View /&gt;;</code></pre>
+<p><strong>Files needed:</strong> <code>module.ts</code> + <code>app/(tabs)/give.tsx</code> stub + registry entry. The stub returns an empty view since <code>interceptPress</code> prevents navigation.</p>
 
-export const donorModule: ModuleManifest = {
-  id: 'donor',
-  name: 'Donor Dashboard',
+<h3>Example E: Tab bar addon (persistent banner above tabs)</h3>
+<p>A component that renders above the tab bar &mdash; visible on every screen. Useful for announcements, now-playing bars, active timers, or checkout prompts.</p>
+<pre><code>// modules/announcement/module.ts
+
+import type { ModuleManifest } from '@/modules/_types';
+import { AnnouncementBar } from './components/AnnouncementBar';
+
+export const announcementModule: ModuleManifest = {
+  id: 'announcement',
+  name: 'Announcement Bar',
   version: '1.0.0',
 
-  menuItems: [{
-    id: 'donor-dashboard',
-    label: 'Donor Dashboard',
-    icon: 'wallet-outline',
-    route: {
-      pathname: '/webview',
-      params: { url: `${SITE_URL}/donor-dashboard/`, title: 'Donor Dashboard' },
-    },
-    order: 65,
-    hideMenuKey: 'donor_dashboard',
-  }],
+  tabBarAddon: AnnouncementBar,
 };</code></pre>
+
+<pre><code>// modules/announcement/components/AnnouncementBar.tsx
+
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/contexts/ThemeContext';
+
+export function AnnouncementBar() {
+  const { colors } = useTheme();
+  const [visible, setVisible] = useState(false);
+  const [message, setMessage] = useState('');
+
+  useEffect(() =&gt; {
+    // Fetch announcement from your API, set visible + message
+    // Return null-equivalent by keeping visible=false if nothing to show
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    &lt;View style={[styles.bar, { backgroundColor: colors.primary }]}&gt;
+      &lt;Text style={[styles.text, { color: colors.textInverse }]}&gt;
+        {message}
+      &lt;/Text&gt;
+      &lt;TouchableOpacity onPress={() =&gt; setVisible(false)}&gt;
+        &lt;Ionicons name="close" size={18} color={colors.textInverse} /&gt;
+      &lt;/TouchableOpacity&gt;
+    &lt;/View&gt;
+  );
+}
+
+const styles = StyleSheet.create({
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  text: { fontSize: 13, fontWeight: '600', flex: 1, marginRight: 8 },
+});</code></pre>
+<p><strong>Files needed:</strong> <code>module.ts</code> + <code>components/AnnouncementBar.tsx</code> + registry entry. No route stubs needed.</p>
+
+<div class="callout callout-success">
+  <strong>Mix and match.</strong> A single module can combine any of these patterns. Want a tab with a widget and a menu item and a tab bar addon? Just fill in the relevant manifest fields. The registry handles the rest.
+</div>
 
 <!-- ================================================================== -->
 <h2 id="rules">13. Rules</h2>
