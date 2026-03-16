@@ -1036,10 +1036,10 @@ function parseTar(buffer) {
     // Check for end-of-archive (first byte zero means null header)
     if (header[0] === 0) break;
 
-    // Extract name
+    // Extract name (normalize: strip leading ./ and backslashes)
     let name = '';
     for (let i = 0; i < 100 && header[i] !== 0; i++) name += String.fromCharCode(header[i]);
-    name = name.trim();
+    name = name.trim().replace(/\\/g, '/').replace(/^\.\//, '');
 
     // Extract size (octal, 12 bytes at offset 124)
     const sizeStr = header.slice(124, 136).toString('ascii').trim().replace(/\0/g, '');
@@ -1341,19 +1341,15 @@ function applyUpdateFromTar(tarGzBuffer) {
   let depsChanged = false;
   let newVersion = null;
 
-  // Check for an embedded manifest in the update
-  const normPath = (p) => p.replace(/\\/g, '/').replace(/^\.\//, '');
-  const updateManifest = files.find((f) => normPath(f.path) === 'manifest.json');
+  // Check for an embedded manifest in the update (paths already normalized by parseTar)
+  const updateManifest = files.find((f) => f.path === 'manifest.json');
 
   // Check for package-deps.json (dependency changes)
-  const packageDeps = files.find((f) => normPath(f.path) === 'package-deps.json');
+  const packageDeps = files.find((f) => f.path === 'package-deps.json');
 
   for (const file of files) {
-    // Normalize path — strip leading ./ or first directory component if present
-    let relPath = file.path.replace(/\\/g, '/').replace(/^\.\//, '');
-    // If all files share a common root directory, strip it (like GitHub release archives)
-    // We detect this by checking if the first component is the same for all files
-    // For simplicity, we just handle direct paths
+    // Paths already normalized by parseTar (no ./ prefix, forward slashes)
+    const relPath = file.path;
 
     // Skip directories (path ends with /)
     if (relPath.endsWith('/')) continue;
