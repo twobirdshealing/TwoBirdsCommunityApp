@@ -1816,6 +1816,18 @@ function readBody(req) {
 // Cache HTML once at startup (it's a constant template string)
 const dashboardHTML = getDashboardHTML();
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n  ERROR: Port ${PORT} is already in use.`);
+    console.error('  Another dashboard instance may be running.');
+    console.error('  Fix: close the other terminal, or run:');
+    console.error('    taskkill /F /IM node.exe  (Windows)');
+    console.error('    kill $(lsof -ti :' + PORT + ')   (Mac/Linux)\n');
+    process.exit(1);
+  }
+  throw err;
+});
+
 server.listen(PORT, () => {
   const url = `http://localhost:${PORT}`;
   console.log('');
@@ -2051,7 +2063,10 @@ function getDashboardHTML() {
   .update-available { padding: 16px; background: rgba(187,128,9,0.08); border: 1px solid var(--yellow); border-radius: var(--radius); }
   .update-available h4 { margin: 0 0 8px 0; color: var(--yellow); font-size: 15px; }
   .update-up-to-date { padding: 16px; background: rgba(63,185,80,0.08); border: 1px solid var(--green); border-radius: var(--radius); color: var(--green); }
-  .update-changelog { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin: 12px 0; font-size: 13px; line-height: 1.6; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+  .update-changelog { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin: 12px 0; font-size: 13px; line-height: 1.6; max-height: 200px; overflow-y: auto; }
+  .update-changelog ul { margin: 8px 0; padding-left: 20px; }
+  .update-changelog li { margin: 4px 0; }
+  .update-changelog h3 { margin: 0 0 8px 0; font-size: 15px; }
   .update-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
   .update-actions { display: flex; gap: 8px; margin-top: 12px; align-items: center; }
   .update-progress { padding: 16px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); }
@@ -3646,7 +3661,7 @@ async function checkForUpdates() {
     if (latest.size) html += ' · ' + (latest.size / 1024 / 1024).toFixed(1) + ' MB';
     html += ' · Current: v' + (data.currentVersion || '?') + '</div>';
     if (latest.changelog) {
-      html += '<div class="update-changelog">' + escapeHtml(latest.changelog) + '</div>';
+      html += '<div class="update-changelog">' + sanitizeHtml(latest.changelog) + '</div>';
     }
     html += '<div class="update-actions">';
     html += '<button class="btn btn-primary" onclick="applyLicenseUpdate(\\'' + escapeHtml(latest.downloadUrl) + '\\', \\'' + escapeHtml(latest.version) + '\\')">Backup &amp; Update to v' + escapeHtml(latest.version) + '</button>';
@@ -3664,6 +3679,14 @@ async function checkForUpdates() {
 function escapeHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function sanitizeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/<\\/?([a-zA-Z][a-zA-Z0-9]*)\\b[^>]*>/g, function(tag, name) {
+    var allowed = ['h3','h4','ul','ol','li','p','strong','em','code','br'];
+    return allowed.indexOf(name.toLowerCase()) !== -1 ? tag : escapeHtml(tag);
+  });
 }
 
 async function applyLicenseUpdate(downloadUrl, version) {

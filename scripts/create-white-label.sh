@@ -349,20 +349,12 @@ fi
 echo "  Done."
 
 # ---------------------------------------------------------------------------
-# Step 8: Generate manifest.json for the update system
+# Step 8: Generate manifest.json & build core-update tar.gz
 # ---------------------------------------------------------------------------
 
-echo "[8/9] Generating manifest.json..."
+echo "[8/9] Generating manifest.json & core-update package..."
 
-generate_manifest "1.0.0" "$TARGET_DIR/manifest.json"
-
-echo "  Done."
-
-# ---------------------------------------------------------------------------
-# Step 9: Build core-update tar.gz (for dashboard update delivery)
-# ---------------------------------------------------------------------------
-
-echo "[9/9] Building core-update package..."
+generate_manifest "$SOURCE_VERSION" "$TARGET_DIR/manifest.json"
 
 # The core-update tar.gz contains ONLY files that are safe to overwrite:
 # everything except buyer-customized paths (config, assets, firebase, modules, etc.)
@@ -385,18 +377,13 @@ FIND_EXCLUDES+=( ! -path './CHANGELOG.md' ! -path './FIREBASE_SETUP.md' )
 FIND_EXCLUDES+=( ! -path './node_modules/*' ! -path './.git/*' ! -path './core-update-*' )
 FIND_EXCLUDES+=( ! -path './setup/.temp/*' )
 
-# Write the real-version manifest into place for the tar
 cd "$TARGET_DIR"
-generate_manifest "${SOURCE_VERSION}" "$TARGET_DIR/manifest.json"
 
 # Build file list (excluding protected paths) + add manifest back in
 find . -type f "${FIND_EXCLUDES[@]}" > /tmp/tbc-core-files.txt
 echo "manifest.json" >> /tmp/tbc-core-files.txt
 
 tar -czf "$CORE_UPDATE_TAR" -T /tmp/tbc-core-files.txt 2>/dev/null || true
-
-# Restore the placeholder manifest (version "1.0.0") for the buyer's snapshot copy
-generate_manifest "1.0.0" "$TARGET_DIR/manifest.json"
 
 rm -f /tmp/tbc-core-files.txt
 cd "$SOURCE_DIR"
