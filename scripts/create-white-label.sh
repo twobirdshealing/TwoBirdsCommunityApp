@@ -274,8 +274,11 @@ rm -f "$TARGET_DIR/assets/images/splash_screen_img.png"
 rm -f "$TARGET_DIR/assets/images/login_logo.png"
 rm -f "$TARGET_DIR/assets/images/login_background_img.png"
 
-# Remove CLAUDE.md (dev-specific, not for buyers)
-rm -f "$TARGET_DIR/CLAUDE.md"
+# Strip site-specific section from CLAUDE.md (keep generic buyer-facing content)
+if [ -f "$TARGET_DIR/CLAUDE.md" ]; then
+  sed -i '/<!-- SNAPSHOT_STRIP_BELOW -->/,$d' "$TARGET_DIR/CLAUDE.md"
+  echo "" >> "$TARGET_DIR/CLAUDE.md"
+fi
 
 # Remove any backup or temp files (single find traversal)
 find "$TARGET_DIR" \( -name "*.orig" -o -name ".DS_Store" -o -name "nul" \) -delete 2>/dev/null || true
@@ -356,32 +359,20 @@ echo "[8/9] Generating manifest.json & core-update package..."
 
 generate_manifest "$SOURCE_VERSION" "$TARGET_DIR/manifest.json"
 
-# The core-update tar.gz contains ONLY files that are safe to overwrite:
-# everything except buyer-customized paths (config, assets, firebase, modules, etc.)
-# This is what the dashboard downloads and applies.
+# The core-update tar.gz contains the FULL snapshot — everything a buyer needs.
+# On first install, they extract the whole thing. On updates, the dashboard
+# reads PROTECTED_PATHS from manifest.json and skips buyer-customized files.
 
 CORE_UPDATE_TAR="$TARGET_DIR/core-update-${SOURCE_VERSION}.tar.gz"
 
-# Build find exclusion flags from PROTECTED_PATHS array
+# Exclude only build/system paths that should never ship
 FIND_EXCLUDES=()
-for p in "${PROTECTED_PATHS[@]}"; do
-  if [[ "$p" == */ ]]; then
-    # Directory: exclude everything under it
-    FIND_EXCLUDES+=( ! -path "./${p}*" )
-  else
-    FIND_EXCLUDES+=( ! -path "./${p}" )
-  fi
-done
-# Always exclude these non-protected build/system paths
-FIND_EXCLUDES+=( ! -path './CHANGELOG.md' ! -path './FIREBASE_SETUP.md' )
 FIND_EXCLUDES+=( ! -path './node_modules/*' ! -path './.git/*' ! -path './core-update-*' )
-FIND_EXCLUDES+=( ! -path './setup/.temp/*' )
+FIND_EXCLUDES+=( ! -path './setup/.temp/*' ! -path './setup/.backups/*' ! -path './setup/.license' )
 
 cd "$TARGET_DIR"
 
-# Build file list (excluding protected paths) + add manifest back in
 find . -type f "${FIND_EXCLUDES[@]}" > /tmp/tbc-core-files.txt
-echo "manifest.json" >> /tmp/tbc-core-files.txt
 
 tar -czf "$CORE_UPDATE_TAR" -T /tmp/tbc-core-files.txt 2>/dev/null || true
 

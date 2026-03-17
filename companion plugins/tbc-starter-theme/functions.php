@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 /**
  * Theme Constants
  */
-define('FLUENT_STARTER_VERSION', '1.0.50');
+define('FLUENT_STARTER_VERSION', '1.0.51');
 define('FLUENT_STARTER_DIR', get_template_directory());
 define('FLUENT_STARTER_URI', get_template_directory_uri());
 
@@ -95,6 +95,7 @@ require_once FLUENT_STARTER_DIR . '/inc/customizer.php';
 require_once FLUENT_STARTER_DIR . '/inc/maintenance-mode.php';
 require_once FLUENT_STARTER_DIR . '/inc/fluent-integration.php';
 require_once FLUENT_STARTER_DIR . '/inc/blog-shortcode.php';
+require_once FLUENT_STARTER_DIR . '/inc/docs-viewer.php';
 
 /**
  * Load WooCommerce integration if WooCommerce is active

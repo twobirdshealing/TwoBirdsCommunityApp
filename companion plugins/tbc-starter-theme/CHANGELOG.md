@@ -2,6 +2,13 @@
 
 All notable changes to the Fluent Starter theme.
 
+## 1.0.51
+
+- Added docs viewer: serve static HTML docs inside Fluent Community frame
+- Upload HTML files to `wp-content/tbc-docs/` and access at `/docs/{filename}`
+- Auto-inherits Fluent Community dark mode, sidebar, and header
+- Docs CSS `--fcom-*` variable fallbacks provide seamless theme integration
+
 ## 1.0.50
 
 - Fixed memory exhaustion crash (256MB) when activating theme on sites without Fluent Community or WooCommerce

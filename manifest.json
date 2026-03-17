@@ -16,7 +16,8 @@
     "setup/.license",
     "setup/.backups/",
     "setup/dashboard.next.js",
-    "manifest.json"
+    "manifest.json",
+    "CLAUDE.md"
   ],
   "corePlugins": [
     "tbc-community-app",

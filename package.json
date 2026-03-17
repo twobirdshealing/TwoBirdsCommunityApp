@@ -9,7 +9,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "dashboard": "node setup/dashboard.js"
+    "dashboard": "node setup/dashboard.js",
+    "snapshot": "bash scripts/create-white-label.sh"
   },
   "dependencies": {
     "@10play/tentap-editor": "^1.0.1",

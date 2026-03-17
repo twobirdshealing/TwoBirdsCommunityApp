@@ -170,6 +170,23 @@ function getPluginVersion(pluginFolder) {
 }
 
 // ---------------------------------------------------------------------------
+// Placeholders — values that ship in the white-label snapshot for manual editors.
+// The dashboard treats these as empty so fields show as "not yet configured".
+// ---------------------------------------------------------------------------
+const PLACEHOLDERS = [
+  'My Community App', 'MyCommunityApp', 'mycommunityapp', 'My Community',
+  'com.yourcompany.communityapp', 'CommunityApp/1.0', 'community-app',
+  'your-expo-account', 'YOUR_EAS_PROJECT_ID',
+  'https://community.yoursite.com', 'community.yoursite.com',
+  'your-apple-id@example.com', 'YOUR_ASC_APP_ID',
+];
+
+function isPlaceholder(val) {
+  if (!val) return true;
+  return PLACEHOLDERS.some(p => val === p);
+}
+
+// ---------------------------------------------------------------------------
 // State Reader
 // ---------------------------------------------------------------------------
 
@@ -274,7 +291,14 @@ function readProjectState() {
     nodeModules: fileExists(path.join(PROJECT_DIR, 'node_modules')),
   };
 
-  // --- Validation ---
+  // --- Sanitize: replace placeholder values with '' so dashboard shows empty fields ---
+  for (const key of Object.keys(state.config)) {
+    if (typeof state.config[key] === 'string' && isPlaceholder(state.config[key])) {
+      state.config[key] = '';
+    }
+  }
+
+  // --- Validation (runs on raw values, but after sanitize placeholders read as empty = fail) ---
   runValidation(state);
 
   return state;
@@ -293,19 +317,6 @@ function runValidation(state) {
   }
   function checkWarn(warn, label, category, ref) {
     checks.push({ pass: warn ? 'warn' : 'pass', label, category, ref });
-  }
-
-  const PLACEHOLDERS = [
-    'My Community App', 'MyCommunityApp', 'mycommunityapp', 'My Community',
-    'com.yourcompany.communityapp', 'CommunityApp/1.0', 'community-app',
-    'your-expo-account', 'YOUR_EAS_PROJECT_ID',
-    'https://community.yoursite.com', 'community.yoursite.com',
-    'your-apple-id@example.com', 'YOUR_ASC_APP_ID',
-  ];
-
-  function isPlaceholder(val) {
-    if (!val) return true;
-    return PLACEHOLDERS.some(p => val === p);
   }
 
   // app.json
@@ -581,7 +592,7 @@ let installProcess = { status: 'idle', output: '', exitCode: null };
 /** Run a command asynchronously (doesn't block the server) */
 function runCommand(args, timeout = 30000) {
   return new Promise((resolve, reject) => {
-    const child = spawn(args[0], args.slice(1), {
+    const child = spawn(args.join(' '), [], {
       cwd: PROJECT_DIR,
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout,
@@ -1541,7 +1552,7 @@ const server = http.createServer(async (req, res) => {
       else if (fileExists(path.join(PROJECT_DIR, 'pnpm-lock.yaml'))) { cmd = 'pnpm'; }
 
       installProcess = { status: 'running', output: '', exitCode: null };
-      var child = spawn(cmd, cmdArgs, { cwd: PROJECT_DIR, shell: true, timeout: 300000 });
+      var child = spawn(cmd + ' ' + cmdArgs.join(' '), [], { cwd: PROJECT_DIR, shell: true, timeout: 300000 });
       child.stdout.on('data', function(d) { installProcess.output += d.toString(); });
       child.stderr.on('data', function(d) { installProcess.output += d.toString(); });
       child.on('close', function(code) {
@@ -1558,6 +1569,81 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/install-deps/status' && req.method === 'GET') {
       jsonResponse(res, { status: installProcess.status, output: installProcess.output, exitCode: installProcess.exitCode });
+      return;
+    }
+
+    // --- EAS CLI API Routes ---
+    if (pathname === '/api/eas/status' && req.method === 'GET') {
+      let easVersion = '', easUser = '', easLoggedIn = false, easInstalled = false;
+      try {
+        easVersion = (await runCommand(['eas', '--version'], 10000)).trim();
+        easInstalled = true;
+      } catch (e) { /* not installed */ }
+      if (easInstalled) {
+        try {
+          easUser = (await runCommand(['eas', 'whoami'], 10000)).trim().split('\n')[0].trim();
+          easLoggedIn = true;
+        } catch (e) { /* not logged in */ }
+      }
+      jsonResponse(res, { ok: true, installed: easInstalled, version: easVersion, loggedIn: easLoggedIn, user: easUser });
+      return;
+    }
+
+    if (pathname === '/api/eas/install-cli' && req.method === 'POST') {
+      try {
+        await runCommand(['npm', 'install', '-g', 'eas-cli'], 120000);
+        jsonResponse(res, { ok: true });
+      } catch (e) {
+        jsonResponse(res, { ok: false, error: e.stderr || e.message });
+      }
+      return;
+    }
+
+    if (pathname === '/api/eas/login' && req.method === 'POST') {
+      try {
+        spawn('eas login --browser', [], { cwd: PROJECT_DIR, shell: true, stdio: 'ignore', detached: true }).unref();
+        jsonResponse(res, { ok: true, message: 'Login opened in your browser. Complete login there, then click Check Status.' });
+      } catch (e) {
+        jsonResponse(res, { ok: false, error: e.message });
+      }
+      return;
+    }
+
+    if (pathname === '/api/eas/logout' && req.method === 'POST') {
+      try {
+        await runCommand(['eas', 'logout'], 10000);
+        jsonResponse(res, { ok: true });
+      } catch (e) {
+        jsonResponse(res, { ok: false, error: e.stderr || e.message });
+      }
+      return;
+    }
+
+    if (pathname === '/api/eas/init' && req.method === 'POST') {
+      try {
+        // Clear placeholder projectId so eas init creates a fresh project
+        const appJsonPath = path.join(PROJECT_DIR, 'app.json');
+        const preInit = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
+        const currentPid = preInit.expo?.extra?.eas?.projectId || '';
+        const currentOwner = preInit.expo?.owner || '';
+        if (isPlaceholder(currentPid) || isPlaceholder(currentOwner)) {
+          if (isPlaceholder(currentPid) && preInit.expo?.extra?.eas) {
+            delete preInit.expo.extra.eas.projectId;
+          }
+          if (isPlaceholder(currentOwner) && preInit.expo) {
+            delete preInit.expo.owner;
+          }
+          fs.writeFileSync(appJsonPath, JSON.stringify(preInit, null, 2) + '\n');
+        }
+        const initOutput = await runCommand(['eas', 'init', '--non-interactive', '--force'], 30000);
+        // Re-read app.json to get the newly written projectId and owner
+        const freshExpo = JSON.parse(fs.readFileSync(path.join(PROJECT_DIR, 'app.json'), 'utf8'));
+        const newOwner = (freshExpo.expo && freshExpo.expo.owner) || '';
+        const newProjectId = (freshExpo.expo && freshExpo.expo.extra && freshExpo.expo.extra.eas && freshExpo.expo.extra.eas.projectId) || '';
+        jsonResponse(res, { ok: true, owner: newOwner, projectId: newProjectId, output: initOutput });
+      } catch (e) {
+        jsonResponse(res, { ok: false, error: e.stderr || e.message });
+      }
       return;
     }
 
@@ -2005,6 +2091,12 @@ function getDashboardHTML() {
   .field input, .field select { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-primary); font-size: 14px; font-family: var(--font-sans); transition: border-color 0.15s; }
   .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
   .field .derive-hint { font-size: 11px; color: var(--text-muted); font-style: italic; }
+  .field .input-lock-wrap { position: relative; display: flex; align-items: center; }
+  .field .input-lock-wrap input { flex: 1; padding-right: 36px; }
+  .field .lock-btn { position: absolute; right: 8px; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; display: flex; align-items: center; transition: color 0.15s; }
+  .field .lock-btn:hover { color: var(--accent); }
+  .field .lock-btn svg { width: 16px; height: 16px; }
+  .field input.locked { color: var(--text-muted); background: var(--bg-tertiary); }
   .field-help { font-size: 12px; line-height: 1.5; color: var(--text-secondary); background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; margin-top: 4px; overflow: hidden; transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease, margin 0.25s ease; }
   .field-help.collapsed { max-height: 0; opacity: 0; padding: 0 12px; margin: 0; border-color: transparent; }
   .field-help.expanded { max-height: 200px; opacity: 1; }
@@ -2305,6 +2397,19 @@ function getDashboardHTML() {
   <div class="card">
     <div class="card-header"><h3>EAS (Expo) Config</h3><span class="badge" style="color:var(--text-muted)">app.json</span></div>
     <div class="card-body">
+      <div id="eas-setup-panel" style="background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span id="eas-status-dot" style="width:10px;height:10px;border-radius:50%;background:var(--text-muted);display:inline-block"></span>
+          <span id="eas-status-text" style="font-size:14px;color:var(--text-muted)">Checking EAS status...</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <button class="btn btn-sm" id="eas-install-btn" onclick="easInstallCli()" style="display:none">Install EAS CLI</button>
+          <button class="btn btn-sm" id="eas-login-btn" onclick="easLogin()" style="display:none">Log In to EAS</button>
+          <button class="btn btn-sm" id="eas-logout-btn" onclick="easLogout()" style="display:none">Log Out</button>
+          <button class="btn btn-sm btn-primary" id="eas-init-btn" onclick="easInit()" style="display:none">Link Project</button>
+          <button class="btn btn-sm" id="eas-check-btn" onclick="easCheckStatus()">Check Status</button>
+        </div>
+      </div>
       <div class="field-group">
         <div class="field">
           <label>EAS Owner <span class="file-hint">expo.owner</span></label>
@@ -2421,8 +2526,8 @@ function getDashboardHTML() {
       <div id="features-changed-notice" class="features-notice" style="display:none">
         <span>\u26A0</span> Feature flag changes require a <strong>dev server restart</strong> (<code>npx expo start</code>) or a <strong>new build</strong> to take effect.
       </div>
-      <div style="margin-top:16px">
-        <button class="btn btn-primary" id="save-features-btn" onclick="saveFeatures()">Save Feature Flags</button>
+      <div style="margin-top:16px;font-size:13px;color:var(--text-secondary)">
+        Feature flag changes are included when you click <strong>Save Changes</strong> below.
       </div>
     </div>
   </div>
@@ -2740,13 +2845,13 @@ const FIELD_HELP = {
     rebuild: true,
   },
   easOwner: {
-    text: 'Your Expo account username. Run <code>eas login</code> in terminal if you have not already.',
+    text: 'Your Expo account username. Use the <strong>Log In to EAS</strong> button above to connect your account — the owner will auto-fill.',
     link: 'https://expo.dev/settings',
     linkLabel: 'Expo Settings',
     rebuild: true,
   },
   easProjectId: {
-    text: 'Your EAS project ID (UUID format). Run <code>eas init</code> in your project to create one, or find it under your project settings.',
+    text: 'Your EAS project ID (UUID format). Use the <strong>Link Project</strong> button above to create one — it will auto-fill this field.',
     link: 'https://expo.dev',
     linkLabel: 'Expo Dashboard',
     rebuild: true,
@@ -2841,6 +2946,58 @@ document.querySelectorAll('#tab-config select[data-key]').forEach(sel => {
   sel.addEventListener('change', markDirty);
 });
 
+// ---------- Derived-field lock ----------
+const LOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+const UNLOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
+const DERIVABLE_FIELDS = ['slug', 'scheme', 'appNameConfig', 'userAgent', 'packageName', 'androidPackage'];
+
+function setupFieldLock(input) {
+  if (!input || input.closest('.input-lock-wrap')) return; // already wrapped
+  const field = input.closest('.field');
+  if (!field) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'input-lock-wrap';
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'lock-btn';
+  btn.title = 'Click to edit (auto-derived field)';
+  wrap.appendChild(btn);
+
+  function setLocked(locked) {
+    input.readOnly = locked;
+    if (locked) { input.classList.add('locked'); btn.innerHTML = LOCK_SVG; btn.title = 'Click to edit'; }
+    else { input.classList.remove('locked'); btn.innerHTML = UNLOCK_SVG; btn.title = 'Click to lock'; input.focus(); }
+  }
+  btn.addEventListener('click', () => { setLocked(!input.readOnly); if (!input.readOnly) markDirty(); });
+  // Lock if field has a value
+  setLocked(!!input.value);
+  input._setLocked = setLocked;
+}
+
+function lockDerivedFields() {
+  for (const key of DERIVABLE_FIELDS) {
+    const el = document.getElementById('cfg-' + key);
+    if (el && el.value) setupFieldLock(el);
+  }
+}
+
+// Re-lock derived targets after auto-fill from source field typing
+document.querySelectorAll('#tab-config input[data-key]').forEach(input => {
+  const key = input.dataset.key;
+  if (deriveMap[key]) {
+    input.addEventListener('input', () => {
+      // After derive fires, re-lock any derived targets that got updated
+      const derived = deriveMap[key](input.value);
+      for (const dk of Object.keys(derived)) {
+        const target = document.getElementById('cfg-' + dk);
+        if (target && target._setLocked && target.value) target._setLocked(true);
+      }
+    });
+  }
+});
+
 // ---------- Load state ----------
 async function loadState() {
   try {
@@ -2857,6 +3014,14 @@ async function loadState() {
     showDepsBanner(state.dependencies && !state.dependencies.nodeModules);
     dirty = false;
     document.getElementById('save-config-btn').textContent = 'Save Changes';
+    // Personalize header with app name
+    var appName = (state.config.appName || '').trim();
+    var isDefault = !appName || PLACEHOLDERS.indexOf(appName) !== -1;
+    var headerTitle = document.querySelector('.header h1');
+    if (headerTitle) {
+      headerTitle.textContent = isDefault ? 'Setup Dashboard' : appName + ' — Setup Dashboard';
+    }
+    document.title = isDefault ? 'Setup Dashboard' : appName + ' — Setup Dashboard';
   } catch (err) {
     showToast('Failed to load state: ' + err.message, 'error');
   }
@@ -2871,6 +3036,19 @@ function populateConfig(config) {
       injectFieldHelp(el, key, config[key]);
     }
   }
+  // Auto-derive empty fields from their source (reuses deriveMap)
+  for (const [sourceKey, deriveFn] of Object.entries(deriveMap)) {
+    if (!config[sourceKey]) continue;
+    const derived = deriveFn(config[sourceKey]);
+    for (const [dk, dv] of Object.entries(derived)) {
+      const el = document.getElementById('cfg-' + dk);
+      if (el && !el.value) {
+        el.value = dv;
+        originalValues[dk] = dv;
+        injectFieldHelp(el, dk, dv);
+      }
+    }
+  }
   // Google Play track
   const trackEl = document.getElementById('cfg-googlePlayTrack');
   if (trackEl && config.googlePlayTrack) {
@@ -2880,6 +3058,8 @@ function populateConfig(config) {
   injectFieldHelp(trackEl, 'googlePlayTrack', config.googlePlayTrack);
   // Sync version to Builds tab
   syncBuildVersion();
+  // Lock auto-derived fields
+  lockDerivedFields();
 }
 
 /** Inject or update the help element for a field */
@@ -3145,12 +3325,45 @@ async function saveConfig() {
   if (changes.appName !== undefined) changes.fallbackName = changes.appName;
   if (changes.slug !== undefined) changes.fallbackSlug = changes.slug.toLowerCase();
 
-  if (Object.keys(changes).length === 0) { showToast('No changes to save', 'error'); return; }
+  // Also collect feature flag changes
+  const featureChanges = {};
+  for (const flag of BOOL_FLAGS) {
+    const el = document.getElementById('flag-' + flag);
+    if (el && el.checked !== (originalFeatures[flag] === true)) {
+      featureChanges[flag] = el.checked;
+    }
+  }
+  const profileChanges = {};
+  let hasProfileChanges = false;
+  for (const sub of PROFILE_TAB_KEYS) {
+    const el = document.getElementById('flag-PROFILE_' + sub);
+    const orig = originalFeatures.PROFILE_TABS && originalFeatures.PROFILE_TABS[sub] === true;
+    if (el && el.checked !== orig) {
+      profileChanges[sub] = el.checked;
+      hasProfileChanges = true;
+    }
+  }
+  if (hasProfileChanges) featureChanges.PROFILE_TABS = profileChanges;
+  const hasFeatureChanges = Object.keys(featureChanges).length > 0;
+  const hasConfigChanges = Object.keys(changes).length > 0;
+
+  if (!hasConfigChanges && !hasFeatureChanges) { showToast('No changes to save', 'error'); return; }
+  const results = [];
   try {
-    const res = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) });
-    const data = await res.json();
-    if (data.ok) { showToast('Saved: ' + data.results.join(', '), 'success'); await loadState(); }
-    else showToast('Save failed: ' + JSON.stringify(data), 'error');
+    if (hasConfigChanges) {
+      const res = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) });
+      const data = await res.json();
+      if (data.ok) results.push(...data.results);
+      else { showToast('Save failed: ' + JSON.stringify(data), 'error'); return; }
+    }
+    if (hasFeatureChanges) {
+      const res = await fetch('/api/features', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(featureChanges) });
+      const data = await res.json();
+      if (data.ok) results.push(...data.results);
+      else { showToast('Feature save failed: ' + JSON.stringify(data), 'error'); return; }
+    }
+    showToast('Saved: ' + results.join(', '), 'success');
+    await loadState();
   } catch (err) { showToast('Save error: ' + err.message, 'error'); }
 }
 
@@ -3246,35 +3459,6 @@ function checkFeatureChanges() {
     if (changed) anyChanged = true;
   }
   document.getElementById('features-changed-notice').style.display = anyChanged ? 'block' : 'none';
-}
-
-async function saveFeatures() {
-  const changes = {};
-  for (const flag of BOOL_FLAGS) {
-    const el = document.getElementById('flag-' + flag);
-    if (el && el.checked !== (originalFeatures[flag] === true)) {
-      changes[flag] = el.checked;
-    }
-  }
-  const profileChanges = {};
-  let hasProfileChanges = false;
-  for (const sub of PROFILE_TAB_KEYS) {
-    const el = document.getElementById('flag-PROFILE_' + sub);
-    const orig = originalFeatures.PROFILE_TABS && originalFeatures.PROFILE_TABS[sub] === true;
-    if (el && el.checked !== orig) {
-      profileChanges[sub] = el.checked;
-      hasProfileChanges = true;
-    }
-  }
-  if (hasProfileChanges) changes.PROFILE_TABS = profileChanges;
-
-  if (Object.keys(changes).length === 0) { showToast('No feature flag changes', 'error'); return; }
-  try {
-    const res = await fetch('/api/features', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) });
-    const data = await res.json();
-    if (data.ok) { showToast(data.results.join(', '), 'success'); await loadState(); }
-    else showToast('Save failed: ' + JSON.stringify(data), 'error');
-  } catch (err) { showToast('Save error: ' + err.message, 'error'); }
 }
 
 // ---------- File uploads ----------
@@ -3616,6 +3800,174 @@ function showToast(msg, type) {
   toast.textContent = msg;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
+}
+
+// ---------- EAS Setup ----------
+async function easCheckStatus() {
+  var dot = document.getElementById('eas-status-dot');
+  var text = document.getElementById('eas-status-text');
+  var installBtn = document.getElementById('eas-install-btn');
+  var loginBtn = document.getElementById('eas-login-btn');
+  var logoutBtn = document.getElementById('eas-logout-btn');
+  var initBtn = document.getElementById('eas-init-btn');
+  text.textContent = 'Checking EAS status...';
+  dot.style.background = 'var(--text-muted)';
+  try {
+    var res = await fetch('/api/eas/status');
+    var data = await res.json();
+    if (!data.installed) {
+      dot.style.background = 'var(--red)';
+      text.textContent = 'EAS CLI not installed';
+      installBtn.style.display = '';
+      loginBtn.style.display = 'none';
+      logoutBtn.style.display = 'none';
+      initBtn.style.display = 'none';
+    } else if (!data.loggedIn) {
+      dot.style.background = 'var(--yellow)';
+      text.textContent = 'EAS CLI v' + data.version + ' — not logged in';
+      installBtn.style.display = 'none';
+      loginBtn.style.display = '';
+      logoutBtn.style.display = 'none';
+      initBtn.style.display = 'none';
+    } else {
+      dot.style.background = 'var(--green)';
+      text.textContent = 'EAS CLI v' + data.version + ' — logged in as ' + data.user;
+      installBtn.style.display = 'none';
+      loginBtn.style.display = 'none';
+      logoutBtn.style.display = '';
+      // Show Link Project button if owner/projectId not set
+      var ownerField = document.getElementById('cfg-easOwner');
+      var pidField = document.getElementById('cfg-easProjectId');
+      var needsInit = PLACEHOLDERS.indexOf(ownerField.value) !== -1 || !ownerField.value || PLACEHOLDERS.indexOf(pidField.value) !== -1 || !pidField.value;
+      initBtn.style.display = needsInit ? '' : 'none';
+      // Auto-fill owner from EAS user if still placeholder
+      if (!ownerField.value || PLACEHOLDERS.indexOf(ownerField.value) !== -1) {
+        ownerField.value = data.user;
+        ownerField.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }
+  } catch (err) {
+    dot.style.background = 'var(--red)';
+    text.textContent = 'Could not check EAS status';
+  }
+}
+
+async function easInstallCli() {
+  var btn = document.getElementById('eas-install-btn');
+  btn.disabled = true;
+  btn.textContent = 'Installing...';
+  try {
+    var res = await fetch('/api/eas/install-cli', { method: 'POST' });
+    var data = await res.json();
+    if (data.ok) {
+      showToast('EAS CLI installed successfully', 'success');
+      easCheckStatus();
+    } else {
+      showToast('Install failed: ' + data.error, 'error');
+    }
+  } catch (err) {
+    showToast('Install error: ' + err.message, 'error');
+  }
+  btn.disabled = false;
+  btn.textContent = 'Install EAS CLI';
+}
+
+var _easLoginPoll = null; // guard against stacking intervals
+async function easLogin() {
+  if (_easLoginPoll) { clearInterval(_easLoginPoll); _easLoginPoll = null; }
+  var btn = document.getElementById('eas-login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Opening browser...';
+  try {
+    var res = await fetch('/api/eas/login', { method: 'POST' });
+    var data = await res.json();
+    if (data.ok) {
+      showToast(data.message, 'success');
+      btn.textContent = 'Waiting for login...';
+      // Poll for login completion every 3s for up to 2 minutes
+      var attempts = 0;
+      _easLoginPoll = setInterval(async function() {
+        var poll = _easLoginPoll;
+        attempts++;
+        try {
+          var check = await fetch('/api/eas/status');
+          var status = await check.json();
+          if (status.loggedIn) {
+            clearInterval(poll);
+            showToast('Logged in as ' + status.user, 'success');
+            easCheckStatus();
+          } else if (attempts >= 40) {
+            clearInterval(poll);
+            btn.disabled = false;
+            btn.textContent = 'Log In to EAS';
+          }
+        } catch (e) {
+          clearInterval(poll);
+          btn.disabled = false;
+          btn.textContent = 'Log In to EAS';
+        }
+      }, 3000);
+    } else {
+      showToast('Login failed: ' + data.error, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Log In to EAS';
+    }
+  } catch (err) {
+    showToast('Login error: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Log In to EAS';
+  }
+}
+
+async function easLogout() {
+  var btn = document.getElementById('eas-logout-btn');
+  btn.disabled = true;
+  btn.textContent = 'Logging out...';
+  try {
+    var res = await fetch('/api/eas/logout', { method: 'POST' });
+    var data = await res.json();
+    if (data.ok) {
+      showToast('Logged out of EAS', 'success');
+      easCheckStatus();
+    } else {
+      showToast('Logout failed: ' + data.error, 'error');
+    }
+  } catch (err) {
+    showToast('Logout error: ' + err.message, 'error');
+  }
+  btn.disabled = false;
+  btn.textContent = 'Log Out';
+}
+
+async function easInit() {
+  var btn = document.getElementById('eas-init-btn');
+  btn.disabled = true;
+  btn.textContent = 'Linking...';
+  try {
+    var res = await fetch('/api/eas/init', { method: 'POST' });
+    var data = await res.json();
+    if (data.ok) {
+      showToast('Project linked to EAS!', 'success');
+      // Auto-fill the fields
+      var ownerField = document.getElementById('cfg-easOwner');
+      var pidField = document.getElementById('cfg-easProjectId');
+      if (data.owner) {
+        ownerField.value = data.owner;
+        ownerField.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      if (data.projectId) {
+        pidField.value = data.projectId;
+        pidField.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      easCheckStatus();
+    } else {
+      showToast('Link failed: ' + data.error, 'error');
+    }
+  } catch (err) {
+    showToast('Link error: ' + err.message, 'error');
+  }
+  btn.disabled = false;
+  btn.textContent = 'Link Project';
 }
 
 // ---------- Install Dependencies ----------
@@ -4042,7 +4394,7 @@ function toggleTheme() {
 
 // ---------- Init ----------
 setupManualUploadZone();
-loadState();
+loadState().then(function() { easCheckStatus(); });
 
 // Heartbeat — connection status + auto-shutdown when browser closes
 function updateStatus(connected) {

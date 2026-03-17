@@ -8,34 +8,75 @@
   :root {
     --bg: #0d1117;
     --surface: #161b22;
+    --surface-hover: #1c2333;
     --border: #30363d;
     --text: #e6edf3;
     --text-secondary: #8b949e;
     --accent: #58a6ff;
     --accent-hover: #79c0ff;
+    --accent-glow: rgba(88, 166, 255, 0.15);
     --success: #3fb950;
     --warning: #d29922;
     --error: #f85149;
     --code-bg: #0d1117;
     --tag-bg: #1f2937;
+    --gradient-start: #58a6ff;
+    --gradient-end: #a371f7;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
     background: var(--bg);
     color: var(--text);
-    line-height: 1.6;
-    max-width: 960px;
+    line-height: 1.7;
+    max-width: 860px;
     margin: 0 auto;
     padding: 40px 24px 80px;
   }
+
+  /* Hero */
+  .hero {
+    text-align: center;
+    padding: 60px 20px 48px;
+    margin-bottom: 40px;
+  }
+  .hero h1 {
+    font-size: 2.6rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+  }
+  .hero .subtitle {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .hero .hero-tagline {
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 24px;
+    background: var(--accent-glow);
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 1px solid rgba(88, 166, 255, 0.25);
+  }
+
   h1 { font-size: 2rem; margin-bottom: 8px; }
   h2 {
-    font-size: 1.5rem;
-    margin-top: 48px;
-    margin-bottom: 16px;
+    font-size: 1.6rem;
+    margin-top: 56px;
+    margin-bottom: 20px;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
+    font-weight: 700;
   }
   h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
   p, li { margin-bottom: 8px; }
@@ -100,55 +141,119 @@
   .callout-success {
     border-left-color: var(--success);
   }
+
+  /* Step cards */
+  .step-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 28px 24px;
+    margin: 24px 0;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+  .step-card:hover {
+    border-color: rgba(88, 166, 255, 0.3);
+  }
+  .step-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+    gap: 12px;
+  }
   .step-number {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background: var(--accent);
-    color: var(--bg);
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    color: #fff;
     font-weight: 700;
-    font-size: 0.85rem;
-    margin-right: 8px;
+    font-size: 1rem;
     flex-shrink: 0;
   }
-  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
+  .step-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .step-body {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+  .step-body strong { color: var(--text); }
+  .step-img {
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .toc { background: var(--surface); border-radius: 12px; padding: 24px 28px; margin: 24px 0 40px; border: 1px solid var(--border); }
   .toc ol { padding-left: 20px; }
-  .toc li { margin-bottom: 4px; }
+  .toc li { margin-bottom: 6px; }
+  .toc li a { font-size: 1rem; }
   ul { padding-left: 24px; }
   ol { padding-left: 24px; }
   .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
   nav { position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 10; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
   nav a { margin-right: 16px; font-size: 0.9rem; }
+
+  /* Collapsible sections */
+  details { margin: 16px 0; }
+  details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--accent);
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "\25B6"; font-size: 0.7em; transition: transform 0.2s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  details[open] summary { border-radius: 8px 8px 0 0; }
+  details .details-content {
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    background: var(--surface);
+  }
 </style>
 </head>
 <body>
 
-<h1>White-Label Community App</h1>
-<p class="subtitle">Setup Guide for Developers &amp; Agencies</p>
-
-<div class="callout">
-  This guide covers everything you need to rebrand, configure, and ship this app for your client.
-  Follow the sections in order for a clean first-time setup. Module development is covered in the <a href="#modules">Module System</a> section.
+<div class="hero">
+  <h1>Community App Setup</h1>
+  <p class="subtitle">Your white-label community app is ready to go. Let's get it branded, configured, and live.</p>
+  <span class="hero-tagline">Follow the steps below &mdash; you'll have a running app in minutes</span>
 </div>
 
 <div class="toc">
-  <strong>Contents</strong>
+  <strong>What's in this guide</strong>
   <ol>
-    <li><a href="#prerequisites">Prerequisites</a></li>
-    <li><a href="#quick-start">Quick Start</a></li>
-    <li><a href="#config-reference">Configuration Reference</a></li>
-    <li><a href="#branding-assets">Branding Assets</a></li>
-    <li><a href="#plugins">Companion Plugins</a></li>
-    <li><a href="#modules">Module System</a></li>
-    <li><a href="#theming">Theme System</a></li>
-    <li><a href="#build-deploy">Build &amp; Deploy</a></li>
-    <li><a href="#checklist">Pre-Launch Checklist</a></li>
-    <li><a href="#updates-tab">Updates &amp; Licensing</a></li>
-    <li><a href="#updating">Updating from Upstream (Git)</a></li>
-    <li><a href="#troubleshooting">Troubleshooting</a></li>
+    <li><a href="#prerequisites">Before You Start</a> &mdash; accounts &amp; tools you'll need</li>
+    <li><a href="#setup">Setup Walkthrough</a> &mdash; the main event, step by step</li>
+    <li><a href="#config-reference">Configuration Reference</a> &mdash; every config file explained</li>
+    <li><a href="#branding-assets">Branding Assets</a> &mdash; icons, splash screens, logos</li>
+    <li><a href="#plugins">Companion Plugins</a> &mdash; WordPress plugins that power the backend</li>
+    <li><a href="#modules">Module System</a> &mdash; add-on features you can toggle on/off</li>
+    <li><a href="#theming">Theme System</a> &mdash; automatic color sync from your site</li>
+    <li><a href="#build-deploy">Build &amp; Deploy</a> &mdash; ship to App Store &amp; Play Store</li>
+    <li><a href="#checklist">Pre-Launch Checklist</a> &mdash; make sure nothing's missed</li>
+    <li><a href="#updates-tab">Updates &amp; Licensing</a> &mdash; stay current with one click</li>
+    <li><a href="#updating">Updating from Upstream (Git)</a> &mdash; for git-based workflows</li>
+    <li><a href="#troubleshooting">Troubleshooting</a> &mdash; common issues &amp; fixes</li>
   </ol>
 </div>
 
@@ -213,73 +318,403 @@
   <tr><td>npm</td><td>Comes with Node.js</td><td><code>npm -v</code></td></tr>
   <tr><td>EAS CLI</td><td>Latest</td><td><code>npm install -g eas-cli</code></td></tr>
   <tr><td>Git</td><td>Any recent version</td><td><code>git --version</code></td></tr>
+  <tr><td><a href="https://code.visualstudio.com">VS Code</a></td><td>Latest</td><td>Recommended editor &mdash; our dashboard and docs are built around it</td></tr>
+  <tr><td><a href="https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code">Claude Code for VS Code</a></td><td>Latest</td><td>AI assistant that understands your project. Free tier is plenty for setup &amp; configuration</td></tr>
 </table>
 
 <div class="callout">
   <strong>No Xcode or Android Studio needed.</strong> EAS builds happen in the cloud. You only need local IDEs if you want to run builds on the iOS Simulator or do native debugging.
 </div>
 
-<!-- ====================================================================== -->
-<h2 id="quick-start">2. Quick Start</h2>
-
-<p>Two ways to configure your app: the <strong>setup dashboard</strong> (recommended) or <strong>manual editing</strong>. Both achieve the same result.</p>
-
-<h3 id="setup-dashboard">Option A: Setup Dashboard (Recommended)</h3>
-
-<p>The setup dashboard is a local web app that reads your actual config files, lets you edit values in a browser UI, and shows live validation &mdash; all in one place. It also handles branding assets, Firebase configs, and plugin status.</p>
-
-<ol>
-  <li><strong>Install dependencies:</strong> <code>npm install</code></li>
-  <li><strong>Set up EAS CLI</strong> (if first time):
-    <pre><code>npm install -g eas-cli
-eas login
-eas init</code></pre>
-    <code>eas init</code> generates a project ID &mdash; you'll enter this in the dashboard.
-  </li>
-  <li><strong>Launch the dashboard:</strong>
-    <pre><code>npm run dashboard</code></pre>
-    Opens <code>http://localhost:3456</code> in your browser automatically.
-  </li>
-  <li><strong>Config tab:</strong> All your setup values loaded from the actual files. Edit and click <strong>Save Changes</strong> &mdash; writes directly to <code>app.json</code>, <code>eas.json</code>, <code>config.ts</code>, <code>app.config.ts</code>, and <code>package.json</code>.</li>
-  <li><strong>Assets tab:</strong> See which branding images exist with thumbnails. Click any asset to upload a replacement.</li>
-  <li><strong>Plugins &amp; Firebase tab:</strong> Check companion plugin status and drag-drop your Firebase config files.</li>
-  <li><strong>Modules tab:</strong> Enable or disable add-on modules. Shows available modules with descriptions and toggles &mdash; writes to <code>modules/_registry.ts</code>.</li>
-  <li><strong>Builds tab:</strong> Build your app for iOS and Android via EAS. Select platform and profile, then kick off a build directly from the dashboard.</li>
-  <li><strong>Updates tab:</strong> Activate your license, check for new versions, and apply updates with automatic backup. See <a href="#updates-tab">Updates &amp; Licensing</a> for full details.</li>
-  <li><strong>Status tab:</strong> Live validation with pass/fail/warn for every check. Click <strong>Check Connectivity</strong> to test your site URL and API endpoints.</li>
-  <li><strong>Create a dev build</strong> when all checks pass (first build takes ~15 minutes):
-    <pre><code>eas build --profile development --platform all</code></pre>
-    When the build finishes, install it on your device via the QR code or download link EAS provides.
-  </li>
-</ol>
-
-<div class="callout">
-  <strong>Tip:</strong> If you're using an AI coding assistant (Claude Code, Cursor, etc.), the dashboard's Status tab includes doc references it can follow to fix issues automatically.
+<div class="callout callout-info">
+  <strong>Claude Code is free to get started.</strong> All the code is already written &mdash; you don't need an expensive AI plan. A <a href="https://claude.ai/signup" target="_blank">free Claude account</a> is plenty to answer questions about the app, help with setup, and guide you through customizations. We include a <code>CLAUDE.md</code> file that teaches Claude your entire project, so it can help right out of the box.
 </div>
 
-<h3>Option B: Manual Editing</h3>
+<!-- ====================================================================== -->
+<h2 id="setup">2. Setup Walkthrough</h2>
 
-<p>If you prefer to edit config files directly, here are the minimum steps. See <a href="#config-reference">Configuration Reference</a> for details on each file.</p>
+<p>This is the main event. Follow these steps in order and you'll have a branded, running app on your device. The <strong>setup dashboard</strong> handles most of the heavy lifting &mdash; it reads your config files, lets you edit everything in a browser UI, and validates your setup live.</p>
 
-<ol>
-  <li><strong>Install dependencies:</strong> <code>npm install</code></li>
-  <li><strong>Set up EAS CLI:</strong> <code>npm install -g eas-cli && eas login && eas init</code></li>
-  <li><strong>Set your site URL</strong> in <code>eas.json</code> &mdash; replace the <code>SITE_URL</code> value in all build profiles</li>
-  <li><strong>Set your app name &amp; branding</strong> in <code>constants/config.ts</code> &mdash; update <code>APP_NAME</code> and <code>APP_USER_AGENT</code></li>
-  <li><strong>Update <code>app.json</code></strong> &mdash; app name, slug, scheme, bundle IDs, EAS project ID, owner, permission strings</li>
-  <li><strong>Update <code>app.config.ts</code></strong> &mdash; edit the YOUR CONFIG section: fallback URL, name, slug</li>
-  <li><strong>Replace branding images</strong> in <code>assets/images/</code></li>
-  <li><strong>Replace Firebase configs</strong> &mdash; <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS). See <a href="#firebase-setup">Firebase Setup</a>.</li>
-  <li><strong>Install companion plugins</strong> on your WordPress site (see <a href="#plugins">Companion Plugins</a>)</li>
-  <li><strong>Configure modules</strong> in <code>modules/_registry.ts</code></li>
-  <li><strong>Run the dashboard</strong> to catch anything you missed: <code>npm run dashboard</code> — check the Status tab</li>
-  <li><strong>Create a dev build:</strong> <code>eas build --profile development --platform all</code></li>
-</ol>
+<!-- Step 1: Download & Extract -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">1</span>
+    <span class="step-title">Download &amp; Extract</span>
+  </div>
+  <div class="step-body">
+    After purchasing, you'll receive a <code>.tar.gz</code> archive (e.g. <code>core-update-3.1.0.tar.gz</code>).
+    Extract it to a folder on your computer and <strong>name it after your community</strong> &mdash; something like <code>MyCommunityApp</code> or <code>FitnessTribeApp</code>. This is your project root. Inside you'll see everything you need: app code, companion plugins, setup dashboard, and docs.
+    <br><br>
+    <img class="step-img" src="images/step1-extract.webp" alt="Extracted app archive showing project files and folders">
+
+    <h5 style="margin-top: 20px;">Open in VS Code</h5>
+    <p>
+      Open VS Code, click <strong>File &rarr; Open Folder</strong>, and navigate to the folder you just extracted. This gives you a full project workspace with the terminal built in.
+    </p>
+    <img class="step-img" src="images/step1-vscode.webp" alt="Project open in VS Code with file explorer">
+
+    <h5 style="margin-top: 20px;">Claude Code &mdash; your AI co-pilot</h5>
+    <p>
+      We ship a <code>CLAUDE.md</code> file with your project. This tells <a href="https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code" target="_blank">Claude Code</a> everything about your app &mdash; how the module system works, where the docs live, what files are safe to edit, and what's core. Install the Claude Code extension for VS Code and you get an AI assistant that actually understands your project.
+    </p>
+    <p>
+      Ask it to launch your dashboard, configure settings, build custom modules, debug issues, or explain how any part of the app works. It has access to our full documentation and knows the entire project structure. All the code is already written &mdash; a free Claude account is plenty to help answer questions about the app, walk you through setup, and guide you through customizations.
+    </p>
+    <img class="step-img" src="images/step1-claude.webp" alt="Claude Code extension open in VS Code ready to assist">
+    <div class="callout callout-info" style="margin-top: 12px;">
+      <strong>Make it yours.</strong> The <code>CLAUDE.md</code> file includes a <em>Your Instructions</em> section at the bottom where you can add your own preferences, project notes, and rules. This file is protected during core updates &mdash; your customizations won't be overwritten.
+    </div>
+  </div>
+</div>
+
+<!-- Step 2: Launch the Dashboard -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">2</span>
+    <span class="step-title">Launch the Dashboard</span>
+  </div>
+  <div class="step-body">
+    <p>If you're using Claude Code, just ask it to <em>"launch the dashboard"</em> &mdash; it knows what to do. Otherwise, open a terminal in your project folder and run:</p>
+    <pre><code>npm run dashboard</code></pre>
+    <p>You'll see output like this:</p>
+    <pre><code>========================================
+  Setup Dashboard
+========================================
+
+  Project: C:\Users\YourName\Projects\MyCommunityApp
+  Dashboard: http://localhost:3456
+
+  Press Ctrl+C to stop.</code></pre>
+    <p>
+      The dashboard automatically opens <a href="http://localhost:3456" target="_blank">http://localhost:3456</a> in your browser. This is your setup command center &mdash; it reads your actual config files, lets you edit everything in a browser UI, and validates your setup live. You'll work through each tab from left to right.
+    </p>
+    <img class="step-img" src="images/step2-dashboard.webp" alt="Setup dashboard running in the browser">
+    <div class="callout callout-info" style="margin-top: 12px;">
+      <strong>Keep the dashboard running</strong> while you work through setup. When you're done, click the <strong>stop button</strong> <img src="images/stopdashboard.webp" alt="Stop dashboard button" style="height:22px;vertical-align:middle;margin:0 4px;border-radius:4px;"> in the dashboard header, or press <code>Ctrl+C</code> in the terminal.
+    </div>
+  </div>
+</div>
+
+<!-- Step 3: Install Dependencies -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">3</span>
+    <span class="step-title">Install Dependencies</span>
+  </div>
+  <div class="step-body">
+    If the dashboard detects that <code>node_modules</code> is missing, it will show a yellow banner at the top with an <strong>Install Dependencies</strong> button. Click it &mdash; this runs <code>npm install</code> for you. Once complete, the banner disappears and you're ready to configure.
+    <br><br>
+    <img class="step-img" src="images/step3-dependencies.webp" alt="Dashboard showing install dependencies banner">
+  </div>
+</div>
+
+<!-- Config Tab heading -->
+<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Config Tab</h3>
+<p style="margin-bottom: 24px;">The Config tab is the big one &mdash; this is where you make the app yours. Work through each card from top to bottom. When you're done, hit <strong>Save Changes</strong> at the bottom and everything gets written to the right files automatically.</p>
+
+<!-- Step 4: App Identity -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">4</span>
+    <span class="step-title">App Identity</span>
+  </div>
+  <div class="step-body">
+    <p>
+      Set your <strong>App Name</strong> (what users see on their home screen), and the dashboard auto-derives the <strong>Slug</strong> (URL-safe project ID) and <strong>Scheme</strong> (deep link prefix like <code>myapp://</code>) from it. You can override these if needed, but the auto-derived values are usually fine.
+    </p>
+    <p>
+      <strong>Version</strong> starts at <code>1.0.0</code> &mdash; this is <em>your</em> app version that you control. Use the bump buttons (Major, Minor, Patch) or type directly. The dashboard writes it to all 4 required places at once (<code>app.json</code> version + buildNumber + versionCode + <code>package.json</code>). There's also a quick version bump section on the Builds tab for convenience. The <strong>core version</strong> is separate and locked &mdash; it tracks which version of the product you're running and is used by the Updates tab to check for new releases.
+    </p>
+    <img class="step-img" src="images/step4-appIdentity.webp" alt="App Identity card showing name, slug, scheme, and version fields">
+  </div>
+</div>
+
+<!-- Step 5: Bundle IDs -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">5</span>
+    <span class="step-title">Bundle IDs</span>
+  </div>
+  <div class="step-body">
+    <p>
+      Your <strong>iOS Bundle ID</strong> and <strong>Android Package</strong> uniquely identify your app in the App Store and Play Store. These <strong>cannot be changed</strong> after your first store submission, so choose carefully.
+    </p>
+
+    <h5 style="margin-top: 16px;">iOS Bundle ID</h5>
+    <p>
+      Format: <code>com.yourcompany.communityapp</code> &mdash; reverse domain style. You'll need to register this in the <a href="https://developer.apple.com/account/resources/identifiers/list" target="_blank">Apple Developer Portal &rarr; Identifiers</a>:
+    </p>
+    <ol style="margin-top: 8px;">
+      <li>Click the <strong>+</strong> button to register a new App ID</li>
+      <li>Select <strong>App IDs</strong>, then <strong>App</strong></li>
+      <li>Enter a description and your <strong>Bundle ID</strong> (explicit, not wildcard)</li>
+      <li>Enable <strong>Push Notifications</strong> under Capabilities (required for the app to send notifications)</li>
+      <li>Click <strong>Continue</strong> &rarr; <strong>Register</strong></li>
+    </ol>
+    <p style="margin-top: 8px;">
+      Enter this same bundle ID in the dashboard. It must match exactly &mdash; if it doesn't, builds will fail and push notifications won't work.
+    </p>
+    <img class="step-img" src="images/step5-bundleids.webp" alt="Bundle IDs card showing iOS and Android package fields">
+    <img class="step-img" src="images/step5-bundleids-ios.webp" alt="iOS bundle ID in Apple Developer Portal">
+
+    <h5 style="margin-top: 16px;">Android Package</h5>
+    <p>
+      Let this <strong>auto-fill from your iOS Bundle ID</strong> &mdash; no need to type anything here. Using the same identifier on both platforms is recommended because Firebase (used for push notifications) requires the package name to match exactly. Keeping them the same means one Firebase project covers both iOS and Android cleanly. If you do need a different Android package name, type it in manually &mdash; just make sure your Firebase project has separate apps configured for each.
+    </p>
+    <p>
+      You'll create your app in the <a href="https://play.google.com/console" target="_blank">Google Play Console</a> later when you're ready to submit. The package name is set during your first upload &mdash; just make sure it matches what you entered here.
+    </p>
+  </div>
+</div>
+
+<!-- Step 6: Site URL -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">6</span>
+    <span class="step-title">Site URL</span>
+  </div>
+  <div class="step-body">
+    <p>
+      Your WordPress + Fluent Community site URL (<strong>no trailing slash</strong>). This is the server your app talks to for everything &mdash; login, feed, profiles, messaging. It must have the <code>tbc-community-app</code> companion plugin installed.
+    </p>
+    <img class="step-img" src="images/step6-siteurl.webp" alt="Site URL card showing URL input field">
+  </div>
+</div>
+
+<!-- Step 7: EAS (Expo) Config -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">7</span>
+    <span class="step-title">EAS (Expo) Config</span>
+  </div>
+  <div class="step-body">
+    <p>
+      EAS is the cloud build service that compiles your app for iOS and Android &mdash; no Xcode or Android Studio needed on your machine. The dashboard handles the entire setup.
+    </p>
+
+    <h5 style="margin-top: 16px;">Sign up or log in</h5>
+    <p>
+      If you don't have an Expo account yet, <a href="https://expo.dev/signup" target="_blank">create one for free</a> &mdash; it only takes a minute.
+      Then find the <strong>EAS (Expo) Config</strong> card and click <strong>Log In to EAS</strong>.
+      This opens your browser where you sign in. Once complete, the dashboard automatically detects the login and updates.
+    </p>
+    <img class="step-img" src="images/step7-eas1.webp" alt="EAS panel showing not logged in state with Log In button">
+    <div class="callout callout-info" style="margin-top: 12px;">
+      <strong>Good to know:</strong> EAS login is <em>per machine</em>, not per project. Once you log in, every project on this computer uses that Expo account. If you work with multiple Expo accounts, use the <strong>Log Out</strong> button to switch, or manually type a different owner name in the field.
+    </div>
+
+    <h5 style="margin-top: 16px;">Link your project</h5>
+    <p>
+      After logging in, click <strong>Link Project</strong>.
+      This creates a new project on your Expo account using your app's slug as the project name, and fills in the <strong>EAS Owner</strong> and <strong>EAS Project ID</strong> automatically.
+    </p>
+    <img class="step-img" src="images/step7-eas2.webp" alt="EAS panel showing logged in state with Link Project button">
+    <p style="margin-top: 12px;">
+      If a project with the same slug already exists on your account, it links to that one instead of creating a duplicate. The slug comes from your app name &mdash; so <strong>set your app name first</strong> (step 4) before linking.
+    </p>
+
+    <h5 style="margin-top: 16px;">You're linked!</h5>
+    <p>
+      Once linked, both fields fill in and the Link Project button disappears. EAS is configured &mdash; on to the next step.
+    </p>
+    <img class="step-img" src="images/step7-eas3.webp" alt="EAS panel showing linked state with owner and project ID filled in">
+  </div>
+</div>
+
+<!-- Step 8: App Branding (Code) -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">8</span>
+    <span class="step-title">App Branding (Code)</span>
+  </div>
+  <div class="step-body">
+    <p>
+      These fields control how your app identifies itself in code. <strong>App Name (Config)</strong> is what appears in headers, notifications, and other in-app text. <strong>User Agent</strong> identifies your app in HTTP requests to your WordPress site.
+    </p>
+    <p>
+      Both auto-fill from your App Name in step 4 &mdash; just verify they look right. You can edit them if you want the code-level name to differ from the store name (e.g. a shorter name for headers).
+    </p>
+  </div>
+</div>
+
+<!-- Step 9: Feature Flags -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">9</span>
+    <span class="step-title">Feature Flags</span>
+  </div>
+  <div class="step-body">
+    <p>
+      Toggle core features on or off. Disabled features are completely hidden from users. This is where you choose which parts of the app to enable &mdash; feed, spaces, profiles, messaging, courses, blog, YouTube, cart, and more. Changes are included when you click <strong>Save Changes</strong>.
+    </p>
+  </div>
+</div>
+
+<!-- Step 10: Profile Tabs -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">10</span>
+    <span class="step-title">Profile Tabs</span>
+  </div>
+  <div class="step-body">
+    <p>
+      Control which tabs appear on user profile screens &mdash; posts, comments, reactions, courses, badges, etc. Toggle each one independently.
+    </p>
+  </div>
+</div>
+
+<!-- Step 11: iOS App Store Submit -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">11</span>
+    <span class="step-title">iOS App Store Submit</span>
+  </div>
+  <div class="step-body">
+    <p>
+      Your <strong>Apple ID</strong> (email) and <strong>ASC App ID</strong> (numeric, from App Store Connect &rarr; General &rarr; App Information &rarr; Apple ID). These are needed for automated iOS submissions via EAS Submit.
+    </p>
+  </div>
+</div>
+
+<!-- Step 12: Google Play Submit -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">12</span>
+    <span class="step-title">Google Play Submit</span>
+  </div>
+  <div class="step-body">
+    <p>
+      Choose your <strong>submission track</strong> (internal for testing, production for release) and upload your <strong>Google Play Service Account Key</strong> (JSON). This enables automated Android submissions via EAS Submit.
+    </p>
+  </div>
+</div>
+
+<!-- Step 13: Package -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">13</span>
+    <span class="step-title">Package</span>
+  </div>
+  <div class="step-body">
+    <p>
+      The npm package name in <code>package.json</code>. Not user-visible &mdash; just for repo cleanliness. Auto-derived from your slug.
+    </p>
+  </div>
+</div>
+
+<div class="callout callout-success">
+  <strong>When you're done with all the Config tab fields, click Save Changes.</strong> The dashboard writes everything to the correct config files (<code>app.json</code>, <code>eas.json</code>, <code>app.config.ts</code>, <code>constants/config.ts</code>, <code>package.json</code>) in one go.
+</div>
+
+<!-- Assets Tab heading -->
+<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Assets Tab</h3>
+
+<!-- Step 14: Assets -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">14</span>
+    <span class="step-title">Branding Assets</span>
+  </div>
+  <div class="step-body">
+    Replace app icons, splash screen, and login branding with your own images. Details coming as we walk through this step.
+  </div>
+</div>
+
+<!-- Plugins & Firebase Tab heading -->
+<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Plugins &amp; Firebase Tab</h3>
+
+<!-- Step 15: Plugins & Firebase -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">15</span>
+    <span class="step-title">Plugins &amp; Firebase</span>
+  </div>
+  <div class="step-body">
+    Check companion plugin status and drop in your Firebase config files. Details coming as we walk through this step.
+  </div>
+</div>
+
+<!-- Modules Tab heading -->
+<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Modules Tab</h3>
+
+<!-- Step 16: Modules -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">16</span>
+    <span class="step-title">Modules</span>
+  </div>
+  <div class="step-body">
+    Toggle add-on features on or off with a single click. Details coming as we walk through this step.
+  </div>
+</div>
+
+<!-- Builds Tab heading -->
+<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Builds Tab</h3>
+
+<!-- Step 17: Builds -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">17</span>
+    <span class="step-title">Builds</span>
+  </div>
+  <div class="step-body">
+    Build for iOS and Android right from the dashboard. Details coming as we walk through this step.
+  </div>
+</div>
+
+<!-- Updates Tab heading -->
+<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Updates Tab</h3>
+
+<!-- Step 18: Updates -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">18</span>
+    <span class="step-title">Updates &amp; Licensing</span>
+  </div>
+  <div class="step-body">
+    Activate your license and apply future updates with automatic backup. Details coming as we walk through this step.
+  </div>
+</div>
+
+<!-- Status Tab heading -->
+<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Status Tab</h3>
+
+<!-- Step 19: Status -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">19</span>
+    <span class="step-title">Status</span>
+  </div>
+  <div class="step-body">
+    Live validation &mdash; shows pass/fail for every check. Green across the board means you're ready to build and ship.
+  </div>
+</div>
 
 <div class="callout callout-warn">
-  <strong>Important:</strong> This app requires a WordPress site with <a href="https://fluentcommunity.co">Fluent Community</a> installed.
-  The <code>tbc-community-app</code> companion plugin is required for the app to function.
+  <strong>Requirement:</strong> Your app needs a WordPress site with <a href="https://fluentcommunity.co">Fluent Community</a> installed, plus the <code>tbc-community-app</code> companion plugin. See the <a href="#plugins">Companion Plugins</a> section for install instructions.
 </div>
+
+<!-- Manual editing for devs who prefer it -->
+<details>
+  <summary>Prefer manual editing? Click here for the file-by-file checklist</summary>
+  <div class="details-content">
+    <p>If you'd rather edit config files directly instead of using the dashboard, here's the quick version. See <a href="#config-reference">Configuration Reference</a> for details on each file.</p>
+    <ol>
+      <li><strong>Install dependencies:</strong> <code>npm install</code></li>
+      <li><strong>Set up EAS CLI:</strong> <code>npm install -g eas-cli && eas login && eas init</code></li>
+      <li><strong>Set your site URL</strong> in <code>eas.json</code> &mdash; replace the <code>SITE_URL</code> value in all build profiles</li>
+      <li><strong>Set your app name &amp; branding</strong> in <code>constants/config.ts</code> &mdash; update <code>APP_NAME</code> and <code>APP_USER_AGENT</code></li>
+      <li><strong>Update <code>app.json</code></strong> &mdash; app name, slug, scheme, bundle IDs, EAS project ID, owner, permission strings</li>
+      <li><strong>Update <code>app.config.ts</code></strong> &mdash; edit the YOUR CONFIG section: fallback URL, name, slug</li>
+      <li><strong>Replace branding images</strong> in <code>assets/images/</code></li>
+      <li><strong>Replace Firebase configs</strong> &mdash; <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS)</li>
+      <li><strong>Install companion plugins</strong> on your WordPress site (see <a href="#plugins">Companion Plugins</a>)</li>
+      <li><strong>Configure modules</strong> in <code>modules/_registry.ts</code></li>
+      <li><strong>Run the dashboard</strong> to catch anything you missed: <code>npm run dashboard</code> &mdash; check the Status tab</li>
+      <li><strong>Create a dev build:</strong> <code>eas build --profile development --platform all</code></li>
+    </ol>
+  </div>
+</details>
 
 <!-- ====================================================================== -->
 <h2 id="config-reference">3. Configuration Reference</h2>
