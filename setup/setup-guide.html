@@ -341,13 +341,14 @@
   </div>
   <p class="prereq-card-desc">Cloud build service (EAS) for compiling iOS and Android binaries. Also handles push notification tokens.</p>
   <details>
-    <summary>Walkthrough: Create an Expo account &amp; install EAS CLI</summary>
+    <summary>Walkthrough: Create an Expo account</summary>
     <div class="details-content">
       <ol>
-        <li>Go to <a href="https://expo.dev/signup" target="_blank">expo.dev/signup</a> and create a free account.</li>
-        <li><strong>EAS CLI install + login is handled in the dashboard</strong> (Step 7 &mdash; EAS Config card). It detects whether EAS CLI is installed and lets you install, log in, and link your project with one click each.</li>
-        <li>Or do it manually from terminal: <code>npm install -g eas-cli</code> then <code>eas login</code>.</li>
+        <li>Go to <a href="https://expo.dev/signup" target="_blank">expo.dev/signup</a> and create a free account (email + password).</li>
+        <li>Choose the <strong>Free</strong> plan &mdash; 30 builds/month is more than enough for setup and ongoing updates.</li>
+        <li>Remember your credentials &mdash; you'll use them to log in to EAS later.</li>
       </ol>
+      <p style="margin-top: 8px; font-size: 0.9em; color: var(--text-secondary);">Already have an Expo account? You're good &mdash; skip ahead.</p>
       <div class="callout" style="margin-top: 12px;">
         <strong>Free tier is plenty.</strong> The free plan gives you 30 builds per month &mdash; more than enough for setup and ongoing updates. You only need a paid plan if you're building very frequently.
       </div>
@@ -391,11 +392,12 @@
             <li><strong>Primary Language</strong> &mdash; your app's main language</li>
             <li><strong>Bundle ID</strong> &mdash; select the bundle ID you registered in the Apple Developer Portal (from Step 5). If you haven't registered one yet, do that first and come back here.</li>
             <li><strong>SKU</strong> &mdash; an internal reference ID (not visible to users). Use something like your app slug, e.g. <code>mycommunityapp</code></li>
-            <li><strong>User Access</strong> &mdash; <strong>Full Access</strong> unless you have specific team restrictions</li>
+            <li><strong>User Access</strong> &mdash; select <strong>Full Access</strong> unless you have specific team restrictions</li>
           </ul>
+          <img class="step-img" src="images/newappsetup.webp" alt="New App form in App Store Connect with all fields filled in">
         </li>
         <li>
-          Click <strong>Create</strong>. Your app now exists in App Store Connect. You'll come back in Step 11 to grab the <strong>ASC App ID</strong> (found under General &rarr; App Information &rarr; Apple ID).
+          Click <strong>Create</strong>. Your app now exists in App Store Connect. You'll need the <strong>ASC App ID</strong> later (found under General &rarr; App Information &rarr; Apple ID).
         </li>
       </ol>
       <div class="callout" style="margin-top: 12px;">
@@ -564,11 +566,10 @@
   <details>
     <summary>Walkthrough: Install EAS CLI</summary>
     <div class="details-content">
-      <ol>
-        <li>Open a terminal and run: <code>npm install -g eas-cli</code></li>
-        <li>Verify: <code>eas --version</code> should print a version number.</li>
-        <li>Log in to your Expo account: <code>eas login</code></li>
-      </ol>
+      <p>The <strong>setup dashboard handles this automatically</strong> &mdash; in Step 7 (EAS Config card), it detects whether EAS CLI is installed and lets you install, log in, and link your project with one click each.</p>
+      <div class="callout" style="margin-top: 12px;">
+        <strong>Manual alternative:</strong> <code>npm install -g eas-cli</code> then <code>eas login</code> from your terminal.
+      </div>
     </div>
   </details>
 </div>
