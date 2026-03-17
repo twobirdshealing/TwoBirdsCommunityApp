@@ -46,6 +46,7 @@ class TBC_License_API {
     public function check_license($request) {
         $license_key     = sanitize_text_field($request->get_param('licenseKey') ?? '');
         $current_version = sanitize_text_field($request->get_param('currentVersion') ?? '0.0.0');
+        $site_url        = sanitize_text_field($request->get_param('siteUrl') ?? '');
 
         if (empty($license_key)) {
             return new WP_REST_Response(['valid' => false, 'error' => 'License key is required'], 400);
@@ -77,10 +78,16 @@ class TBC_License_API {
             ], 200);
         }
 
+        // Auto-activate on first use via FluentCart's site activation system
+        if ($site_url && $license->status === 'inactive' && $license->hasActivationLeft()) {
+            $this->activate_site($license, $site_url);
+            $license->refresh();
+        }
+
         if (!$license->isActive()) {
             return new WP_REST_Response([
                 'valid' => false,
-                'error' => 'This license has been disabled. Contact support.',
+                'error' => 'This license has been disabled or all activations are used. Contact support.',
             ], 200);
         }
 
@@ -105,6 +112,55 @@ class TBC_License_API {
         }
 
         return new WP_REST_Response($response, 200);
+    }
+
+    /**
+     * Activate a license for a site using FluentCart's models.
+     * Creates records in fct_license_sites and fct_license_activations.
+     */
+    private function activate_site($license, $site_url) {
+        $LicenseSite = '\FluentCartPro\App\Modules\Licensing\Models\LicenseSite';
+        $LicenseActivation = '\FluentCartPro\App\Modules\Licensing\Models\LicenseActivation';
+
+        if (!class_exists($LicenseSite) || !class_exists($LicenseActivation)) {
+            // Cannot activate without FluentCart models — skip silently
+            return;
+        }
+
+        // Sanitize URL (strip protocol, trailing slash)
+        $clean_url = preg_replace('#^https?://#', '', rtrim($site_url, '/'));
+
+        // Find or create the site record
+        $site = $LicenseSite::where('site_url', $clean_url)->first();
+        if (!$site) {
+            $site = $LicenseSite::create([
+                'site_url'         => $clean_url,
+                'server_version'   => '',
+                'platform_version' => '',
+            ]);
+        }
+
+        // Check if activation already exists for this license+site
+        $existing = $LicenseActivation::where('license_id', $license->id)
+            ->where('site_id', $site->id)
+            ->first();
+
+        if (!$existing) {
+            $LicenseActivation::create([
+                'site_id'             => $site->id,
+                'license_id'          => $license->id,
+                'status'              => 'active',
+                'is_local'            => 0,
+                'product_id'          => $license->product_id,
+                'variation_id'        => $license->variation_id ?: 0,
+                'activation_method'   => 'key_based',
+                'activation_hash'     => md5($license->license_key . $site->id . time() . wp_generate_uuid4()),
+                'last_update_version' => '',
+            ]);
+
+            // Let FluentCart recount — this sets status to active and saves
+            $license->recountActivations();
+        }
     }
 
     /**

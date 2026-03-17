@@ -2,6 +2,13 @@
 
 All notable changes to TBC License Server.
 
+## [2.2.0] — 2026-03-16
+
+- Auto-activate license on first validation using FluentCart's site activation system
+- Creates proper records in `fct_license_sites` and `fct_license_activations` tables
+- License shows as Active with site URL in FluentCart admin
+- Dashboard now sends buyer's site URL with license validation requests
+
 ## [2.1.0] — 2026-03-16
 
 - Add `tar.gz` and `gz` to WordPress allowed upload MIME types so FluentCart can accept update packages
