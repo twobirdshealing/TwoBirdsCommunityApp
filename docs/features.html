@@ -3,171 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TBC Community App — Feature Audit & Comparison</title>
-<style>
-  :root {
-    --bg: #0d1117;
-    --surface: #161b22;
-    --border: #30363d;
-    --text: #e6edf3;
-    --text-secondary: #8b949e;
-    --accent: #58a6ff;
-    --accent-hover: #79c0ff;
-    --success: #3fb950;
-    --warning: #d29922;
-    --error: #f85149;
-    --code-bg: #0d1117;
-    --tag-bg: #1f2937;
-    --pro: #a371f7;
-    --msg: #f778ba;
-    --app-extra: #3fb950;
-    --roadmap: #d29922;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.6;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
-  }
-  h1 { font-size: 2rem; margin-bottom: 8px; }
-  h2 {
-    font-size: 1.5rem;
-    margin-top: 48px;
-    margin-bottom: 16px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
-  h4 { font-size: 1rem; margin-top: 20px; margin-bottom: 8px; color: var(--text-secondary); }
-  p, li { margin-bottom: 8px; }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { color: var(--accent-hover); text-decoration: underline; }
-  code {
-    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.9em;
-  }
-  pre {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-    overflow-x: auto;
-    margin: 12px 0 16px;
-  }
-  pre code { background: none; border: none; padding: 0; }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 12px 0 24px;
-    font-size: 0.9em;
-  }
-  th, td {
-    text-align: left;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-  }
-  th { background: var(--surface); font-weight: 600; }
-  tr:hover td { background: rgba(88, 166, 255, 0.04); }
-  .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 32px; }
-  .tag {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.75em;
-    font-weight: 600;
-    margin-left: 4px;
-    vertical-align: middle;
-  }
-  .tag-free { background: rgba(88, 166, 255, 0.15); color: var(--accent); }
-  .tag-pro { background: rgba(163, 113, 247, 0.15); color: var(--pro); }
-  .tag-msg { background: rgba(247, 120, 186, 0.15); color: var(--msg); }
-  .tag-app { background: rgba(63, 185, 80, 0.15); color: var(--app-extra); }
-  .tag-roadmap { background: rgba(210, 153, 34, 0.15); color: var(--roadmap); }
-  .tag-addon { background: rgba(210, 153, 34, 0.15); color: var(--warning); }
-  .callout {
-    border-left: 4px solid var(--accent);
-    background: var(--surface);
-    padding: 16px 20px;
-    border-radius: 0 8px 8px 0;
-    margin: 16px 0;
-  }
-  .callout-warn { border-left-color: var(--warning); }
-  .callout-error { border-left-color: var(--error); }
-  .callout-success { border-left-color: var(--success); }
-  .callout-pro { border-left-color: var(--pro); }
-  .toc { background: var(--surface); border-radius: 8px; padding: 20px 24px; margin: 24px 0 40px; }
-  .toc ol { padding-left: 20px; }
-  .toc li { margin-bottom: 4px; }
-  ul { padding-left: 24px; }
-  ol { padding-left: 24px; }
-  .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
-
-  /* Feature comparison table styles */
-  .check { color: var(--success); font-weight: bold; font-size: 1.1em; }
-  .cross { color: var(--error); font-size: 1.1em; }
-  .partial { color: var(--warning); font-size: 1.1em; }
-  .na { color: var(--text-secondary); font-size: 0.85em; }
-
-  /* Legend box */
-  .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px 20px;
-    margin: 16px 0 24px;
-    font-size: 0.9em;
-  }
-  .legend-item { display: flex; align-items: center; gap: 6px; }
-
-  /* Stats grid */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    margin: 24px 0;
-  }
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 20px;
-    text-align: center;
-  }
-  .stat-number {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--accent);
-    display: block;
-  }
-  .stat-label {
-    color: var(--text-secondary);
-    font-size: 0.85em;
-    margin-top: 4px;
-  }
-
-  /* Highlight rows */
-  .row-app td { background: rgba(63, 185, 80, 0.04); }
-  .row-roadmap td { background: rgba(210, 153, 34, 0.04); }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    table { font-size: 0.8em; }
-    th, td { padding: 6px 8px; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .legend { gap: 10px; }
-  }
-</style>
+<title>TBC Community App — Features</title>
+<link rel="stylesheet" href="docs-theme.css">
+<script src="docs-theme.js"></script>
 </head>
 <body>
 
@@ -217,9 +55,8 @@
     <li><a href="#admin">Admin &amp; Settings</a></li>
     <li><a href="#ux-polish">UX &amp; App Polish</a></li>
     <li><a href="#modules">Module Ecosystem</a></li>
-    <li><a href="#competitive">Competitive Landscape</a></li>
-    <li><a href="#roadmap">Roadmap &amp; Gaps</a></li>
   </ol>
+  <p style="margin-top: 12px;"><strong>See also:</strong> <a href="competitive.html">Competitive Landscape</a> &middot; <a href="roadmap.html">Roadmap &amp; Gaps</a></p>
 </div>
 
 <!-- ================================================================ -->
@@ -394,10 +231,78 @@
   </tr>
   <tr class="row-app">
     <td>Setup Dashboard &amp; Update System <span class="tag tag-app">APP EXTRA</span></td>
-    <td>Local web-based dashboard (<code>setup/dashboard.js</code>) for buyer onboarding and ongoing maintenance. Config editor, asset management, feature flags, EAS build management, module import, and an Updates tab with license activation, one-click core updates, automatic backup/restore, and manual upload. Zero npm dependencies &mdash; runs on Node built-ins only. Self-updates via <code>dashboard.next.js</code> swap pattern.</td>
+    <td>Full-featured local web dashboard for buyer onboarding, configuration, builds, updates, and module management. Seven tabs covering the entire app lifecycle. Zero npm dependencies. One-click updates with automatic backup/restore. See <a href="#setup-dashboard">dedicated section below</a>.</td>
     <td>Operations</td>
   </tr>
 </table>
+
+<!-- ================================================================ -->
+<h3 id="setup-dashboard">Setup Dashboard &mdash; Deep Dive</h3>
+
+<p>The setup dashboard (<code>npm run dashboard</code>) is a zero-dependency local web app that handles the entire app lifecycle &mdash; from initial setup to ongoing maintenance. It runs on Node built-ins only (no npm install required) and launches at <code>localhost:3456</code>.</p>
+
+<div class="callout-success callout">
+  <strong>This is a major differentiator.</strong> No competitor offers a local dashboard for app configuration, builds, and updates. Buyers get a polished GUI instead of editing JSON files by hand or learning git workflows. Non-technical team members can manage updates and configuration without touching the terminal.
+</div>
+
+<h4>Seven Tabs</h4>
+
+<table>
+  <tr>
+    <th>Tab</th>
+    <th>What It Does</th>
+  </tr>
+  <tr>
+    <td><strong>Config</strong></td>
+    <td>Visual editor for all buyer-editable values: app name, site URL, bundle IDs, EAS project ID, Apple ID, Pusher keys, feature flags. Changes write directly to <code>config.ts</code>, <code>app.json</code>, <code>eas.json</code>, and <code>app.config.ts</code>. Linked fields auto-sync (e.g., setting site URL updates both <code>eas.json</code> and <code>app.config.ts</code>).</td>
+  </tr>
+  <tr>
+    <td><strong>Assets</strong></td>
+    <td>Visual checklist of all required branding assets (iOS icon, Android adaptive icons, splash screen, login logo, notification icon) with thumbnail previews and exact size requirements. Shows which assets are missing vs. configured.</td>
+  </tr>
+  <tr>
+    <td><strong>Plugins &amp; Firebase</strong></td>
+    <td>Companion plugin status (installed version, latest version, update needed). Firebase configuration status for both iOS and Android. Direct links to plugin setup instructions.</td>
+  </tr>
+  <tr>
+    <td><strong>Modules</strong></td>
+    <td>Browse installed modules and their registration status. Import new modules from <code>.tar.gz</code> packages &mdash; the dashboard extracts the module, registers it, and creates route stubs automatically.</td>
+  </tr>
+  <tr>
+    <td><strong>Builds</strong></td>
+    <td>EAS build management: trigger iOS and Android builds, view build history, download artifacts, submit iOS builds to App Store Connect, download Android <code>.aab</code> files for Google Play Console upload.</td>
+  </tr>
+  <tr>
+    <td><strong>Updates</strong></td>
+    <td>License activation, update checking, one-click core updates with automatic backup, manual package upload, and backup management. <a href="#update-system">See full details below.</a></td>
+  </tr>
+  <tr>
+    <td><strong>Status</strong></td>
+    <td>Live validation of all configuration: checks every config value, asset, plugin, and Firebase file. Connectivity tests to the buyer's WordPress site, REST API, Fluent Community API, and companion plugin endpoints. Color-coded pass/warn/fail with fix suggestions.</td>
+  </tr>
+</table>
+
+<h4 id="update-system">Update System</h4>
+
+<p>The Updates tab provides a complete update lifecycle that requires zero git knowledge:</p>
+
+<ol>
+  <li><strong>License activation</strong> &mdash; buyer enters their license key (received on purchase). The dashboard validates it against the license server and activates it, linking it to their site URL. License key stored locally in <code>setup/.license</code>.</li>
+  <li><strong>Update checking</strong> &mdash; automatically checks for new versions when the tab opens. Shows current version vs. latest, with full changelog. Manual "Check Now" button.</li>
+  <li><strong>One-click update</strong> &mdash; "Backup &amp; Update" downloads the update package, creates a full backup of the current state, and applies only core files. Buyer customizations (config, assets, bundle IDs, modules, Firebase configs) are <strong>never overwritten</strong>. A confirmation dialog lists exactly which files will be updated and which are protected.</li>
+  <li><strong>Dependency merging</strong> &mdash; if the update includes new npm dependencies, they're merged into the buyer's <code>package.json</code> (preserving their name, version, and scripts). Dashboard prompts to run <code>npm install</code> after.</li>
+  <li><strong>Dashboard self-update</strong> &mdash; if the update includes a new dashboard version, it's written as <code>dashboard.next.js</code>. On next launch, the dashboard swaps itself and restarts automatically.</li>
+  <li><strong>Manual upload</strong> &mdash; buyers can also apply updates from a <code>.tar.gz</code> or <code>.zip</code> file (for air-gapped environments or manual delivery).</li>
+  <li><strong>Backup &amp; restore</strong> &mdash; automatic backup before every update in <code>setup/.backups/</code>. Dashboard lists all backups with dates and sizes. One-click restore to roll back. Auto-prunes to keep only the last 3 backups.</li>
+</ol>
+
+<h4>Technical Details</h4>
+<ul>
+  <li><strong>Zero dependencies</strong> &mdash; built entirely on Node.js built-ins (<code>http</code>, <code>fs</code>, <code>path</code>, <code>https</code>, <code>zlib</code>). No npm install, no framework, no bundler. Single file: <code>setup/dashboard.js</code>.</li>
+  <li><strong>Custom tar parser</strong> &mdash; reads <code>.tar.gz</code> packages using built-in <code>zlib</code> and a hand-written tar header parser. No third-party archive libraries.</li>
+  <li><strong>Protected paths</strong> &mdash; defined in <code>manifest.json</code>. The update system checks this list before writing any file. Includes: <code>config.ts</code>, <code>app.json</code>, <code>eas.json</code>, <code>app.config.ts</code>, <code>package.json</code>, <code>assets/images/</code>, Firebase configs, <code>modules/</code>, and the license/backup files.</li>
+  <li><strong>Manifest-driven</strong> &mdash; <code>manifest.json</code> contains the product version, update server URL, protected paths list, and core plugin list. Updated automatically when an update is applied.</li>
+</ul>
 
 <!-- ================================================================ -->
 <h2 id="feed-posts">3. Feed &amp; Posts</h2>
@@ -1783,481 +1688,31 @@
 </ul>
 
 <!-- ================================================================ -->
-<h2 id="competitive">23. Competitive Landscape</h2>
 
-<p>As of March 2025, there is one known competing mobile app product for Fluent Community. This section provides a factual comparison based on publicly available information. No product names are used &mdash; just an honest look at capabilities.</p>
-
-<div class="callout">
-  <strong>Why this matters:</strong> Agencies and site owners evaluating a Fluent Community mobile app need to understand the real differences &mdash; not marketing claims. This comparison is based on the competitor's public product page, App Store listing, and documentation (or lack thereof).
-</div>
-
-<h3>Pricing at a Glance</h3>
-
-<div class="stats-grid">
-  <div class="stat-card">
-    <div class="stat-number">$499</div>
-    <div class="stat-label">Core App</div>
-    <p style="font-size: 0.85em; color: var(--text-secondary); margin-top: 8px;">Full source code. Companion plugins. Setup docs. Updates included. No domain limits.</p>
-  </div>
-  <div class="stat-card">
-    <div class="stat-number">$99</div>
-    <div class="stat-label">Per Module</div>
-    <p style="font-size: 0.85em; color: var(--text-secondary); margin-top: 8px;">Blog, YouTube, Book Club. Each includes app module + WordPress companion plugin.</p>
-  </div>
-  <div class="stat-card">
-    <div class="stat-number">$0</div>
-    <div class="stat-label">Subscriptions</div>
-    <p style="font-size: 0.85em; color: var(--text-secondary); margin-top: 8px;">No recurring fees. No renewals. No per-domain licensing. Buy once, own forever.</p>
-  </div>
-</div>
-
-<div class="callout-success callout">
-  <strong>Built for developers and agencies.</strong> You get source code and documentation &mdash; not a managed service. You build it, configure it, publish it to your own App Store and Play Store accounts, and charge your clients whatever you want. We don't offer done-for-you setup or tech support &mdash; the docs cover everything you need.
-</div>
-
-<h3>Business Model</h3>
-<table>
-  <tr>
-    <th style="width: 30%">Factor</th>
-    <th style="width: 35%">TBC Community App</th>
-    <th style="width: 35%">Competitor</th>
-  </tr>
-  <tr>
-    <td><strong>What you get</strong></td>
-    <td class="check">Full React Native (Expo) source code snapshot. Companion WordPress plugins. Setup documentation. You own it, modify it, deploy it.</td>
-    <td class="cross">No source code access disclosed. Appears to be a managed/hosted build. You depend on the vendor for every change.</td>
-  </tr>
-  <tr>
-    <td><strong>Pricing model</strong></td>
-    <td>
-      <strong>Core app: $499 one-time.</strong> Full source code, companion WordPress plugins, setup documentation. It's yours &mdash; use it for yourself or build it for a client. One purchase, no domain limits, no seat counts.<br><br>
-      <strong>Modules: $99 each.</strong> Blog, YouTube, Book Club &mdash; each includes the app module + companion WordPress plugin. Buy only what you need. More modules added over time.<br><br>
-      Updates are included &mdash; when we release a new snapshot, past buyers get access. No subscription required.
-    </td>
-    <td>$149&ndash;$419/year or $199&ndash;$499 lifetime. Domain-licensed (1, 5, or 25 sites). Builds and updates tied to active license.</td>
-  </tr>
-  <tr>
-    <td><strong>Target buyer</strong></td>
-    <td>Developers and agencies building for clients. People comfortable with React Native, Expo, and WordPress. We provide comprehensive setup documentation &mdash; not a done-for-you service.</td>
-    <td>Appears to target non-technical site owners. Vendor handles builds and deployment. No code to manage.</td>
-  </tr>
-  <tr>
-    <td><strong>Support model</strong></td>
-    <td>Self-service with detailed docs (setup guide, architecture, theme system, module system, component reference). Built for developers who can read code and follow documentation. No managed service or tech support hotline.</td>
-    <td>"24/7 priority support" included. Lifetime support on lifetime tier. Implies ongoing managed relationship.</td>
-  </tr>
-  <tr>
-    <td><strong>App Store publishing</strong></td>
-    <td>You publish to your own App Store / Play Store accounts. Full control over listing, screenshots, updates, and release schedule.</td>
-    <td>Vendor handles builds and deploys. "Unlimited builds for 1 year" on annual plan. You depend on them for every release.</td>
-  </tr>
-  <tr>
-    <td><strong>Customization depth</strong></td>
-    <td>Unlimited &mdash; it's your codebase. Add screens, modify layouts, integrate any API, write custom native modules. Hire any React Native developer to extend it.</td>
-    <td>Branding (colors, logo, app name). No evidence of layout, screen, or behavioral customization beyond branding.</td>
-  </tr>
-  <tr>
-    <td><strong>Technology stack</strong></td>
-    <td>React Native (Expo) &mdash; industry-standard, massive ecosystem, easy to hire developers for. Full stack disclosed.</td>
-    <td>Not disclosed. Possibly connected to their no-code app builder platform. Framework unknown.</td>
-  </tr>
-  <tr>
-    <td><strong>Staying current</strong></td>
-    <td>Updates included with purchase. One-click updates via the built-in setup dashboard &mdash; enter your license key, click "Update", done. Automatic backup before every update. When we release new versions (Fluent Community compatibility, new features, Expo SDK upgrades), past buyers get them immediately. No subscription, no upgrade fees. Your code always works independently regardless.</td>
-    <td>Updates tied to active license. Annual plan = 1 year of updates. Lifetime = lifetime updates. No code access to self-update.</td>
-  </tr>
-  <tr>
-    <td><strong>Extensibility</strong></td>
-    <td>Module system with companion WordPress plugins. Add-on marketplace (Blog, YouTube, Book Club). Build your own modules &mdash; documented architecture.</td>
-    <td>No module or extension system documented.</td>
-  </tr>
-  <tr>
-    <td><strong>Vendor dependency</strong></td>
-    <td>None. If we disappear tomorrow, your code still runs. You can maintain it yourself or hire anyone.</td>
-    <td>Full dependency. If the vendor stops operating, stops supporting Fluent Community, or changes pricing, you have no fallback.</td>
-  </tr>
-</table>
-
-<h3>Feature Comparison</h3>
-<table>
-  <tr>
-    <th style="width: 30%">Feature</th>
-    <th style="width: 35%">TBC Community App</th>
-    <th style="width: 35%">Competitor</th>
-  </tr>
-  <tr>
-    <td><strong>Activity feed</strong></td>
-    <td><span class="check">&#10003;</span> Full feed with create post, media, GIFs (GIPHY), polls/surveys, OEmbed previews, bookmarks</td>
-    <td><span class="check">&#10003;</span> Activity feeds and posts (detail level unknown)</td>
-  </tr>
-  <tr>
-    <td><strong>Rich text editor</strong></td>
-    <td><span class="check">&#10003;</span> Native markdown editor (10tap) with toolbar &mdash; bold, italic, links, images, code blocks, lists</td>
-    <td><span class="na">Unknown</span></td>
-  </tr>
-  <tr>
-    <td><strong>Reactions</strong></td>
-    <td><span class="check">&#10003;</span> Multi-reaction system with custom emoji types (companion plugin). Reaction breakdown view.</td>
-    <td><span class="na">Unknown</span></td>
-  </tr>
-  <tr>
-    <td><strong>Spaces / Groups</strong></td>
-    <td><span class="check">&#10003;</span> Full space support &mdash; join/leave, space feeds, member lists, role display, lock states, cover images</td>
-    <td><span class="check">&#10003;</span> Community discussions/forums listed</td>
-  </tr>
-  <tr>
-    <td><strong>Profiles</strong></td>
-    <td><span class="check">&#10003;</span> Full profiles &mdash; avatar, cover, bio, custom fields, social links (7 platforms), badges, profile tabs (posts/spaces/comments), follow/block</td>
-    <td><span class="check">&#10003;</span> Personal profiles with achievement tracking</td>
-  </tr>
-  <tr>
-    <td><strong>Direct messaging</strong></td>
-    <td><span class="check">&#10003;</span> Real-time via Pusher WebSocket. Message reactions, deletion, attachments (images/video), blocking, unread tracking with badge counts.</td>
-    <td><span class="check">&#10003;</span> Private direct messaging and group messaging listed</td>
-  </tr>
-  <tr>
-    <td><strong>Group messaging</strong></td>
-    <td><span class="tag tag-roadmap">ROADMAP</span> Community threads planned</td>
-    <td><span class="check">&#10003;</span> Group messaging listed as a feature</td>
-  </tr>
-  <tr>
-    <td><strong>Push notifications</strong></td>
-    <td><span class="check">&#10003;</span> Firebase (FCM + APNs). Deep linking from notification tap to exact screen. Per-space notification settings. Badge sync.</td>
-    <td><span class="check">&#10003;</span> Real-time notifications listed</td>
-  </tr>
-  <tr>
-    <td><strong>Courses / LMS</strong></td>
-    <td><span class="check">&#10003;</span> Course listing, enrollment, lesson viewing + completion tracking, section-based structure, progress visualization, video lessons (YouTube + oEmbed), quizzes with scoring, lock screens, category filtering, completion celebrations, resource links, free preview, drip content</td>
-    <td><span class="partial">&#9679;</span> Courses mentioned in Fluent Community context, depth unclear</td>
-  </tr>
-  <tr>
-    <td><strong>Registration flow</strong></td>
-    <td><span class="check">&#10003;</span> Native multi-step wizard &mdash; email, OTP verification (SMS via Twilio + voice call fallback), password with strength meter, profile completion. All native screens, not a WebView.</td>
-    <td><span class="na">Unknown</span> &mdash; no registration details documented</td>
-  </tr>
-  <tr>
-    <td><strong>Authentication</strong></td>
-    <td><span class="check">&#10003;</span> JWT with silent refresh. Tokens in OS secure storage (Keychain / Keystore). Credential-based re-auth on expiry. Password reset via OTP.</td>
-    <td><span class="na">Unknown</span></td>
-  </tr>
-  <tr>
-    <td><strong>Theme sync</strong></td>
-    <td><span class="check">&#10003;</span> Automatic color sync from Fluent Community theme settings. Full light/dark mode. Semantic token system (30+ tokens mapped from server CSS variables).</td>
-    <td><span class="partial">&#9679;</span> Custom branding (colors, logos) &mdash; unclear if it syncs from Fluent settings or requires manual configuration</td>
-  </tr>
-  <tr>
-    <td><strong>Leaderboard / Gamification</strong></td>
-    <td><span class="tag tag-roadmap">ROADMAP</span></td>
-    <td><span class="check">&#10003;</span> Leaderboards and engagement tracking listed</td>
-  </tr>
-  <tr>
-    <td><strong>Member directory</strong></td>
-    <td><span class="check">&#10003;</span> Search, filter, paginated list with direct profile access</td>
-    <td><span class="check">&#10003;</span> Unlimited members listed</td>
-  </tr>
-  <tr>
-    <td><strong>Media sharing</strong></td>
-    <td><span class="check">&#10003;</span> Camera capture, photo library, video attachment, image gallery with pinch-to-zoom, save to device, share to other apps</td>
-    <td><span class="check">&#10003;</span> Media sharing (images, videos, files) listed</td>
-  </tr>
-  <tr>
-    <td><strong>Offline access</strong></td>
-    <td><span class="partial">&#9679;</span> Multi-layer caching (in-memory + AsyncStorage). Graceful error handling. Not full offline-first.</td>
-    <td><span class="check">&#10003;</span> Offline access listed as a feature</td>
-  </tr>
-  <tr>
-    <td><strong>Bookmarks</strong></td>
-    <td><span class="check">&#10003;</span> Save and browse bookmarked posts</td>
-    <td><span class="check">&#10003;</span> Content bookmarking listed</td>
-  </tr>
-  <tr>
-    <td><strong>Moderation</strong></td>
-    <td><span class="check">&#10003;</span> Report posts/comments, pin/unpin, hide, delete, role-based visibility</td>
-    <td><span class="check">&#10003;</span> Advanced moderation tools listed</td>
-  </tr>
-  <tr>
-    <td><strong>Global search</strong></td>
-    <td><span class="cross">&#10005;</span> Not yet &mdash; search within spaces/members only</td>
-    <td><span class="check">&#10003;</span> Global search listed</td>
-  </tr>
-  <tr>
-    <td><strong>GIF integration</strong></td>
-    <td><span class="check">&#10003;</span> GIPHY-powered search and embed in posts and comments</td>
-    <td><span class="na">Unknown</span></td>
-  </tr>
-  <tr>
-    <td><strong>Polls / Surveys</strong></td>
-    <td><span class="check">&#10003;</span> Create polls, vote, view breakdowns</td>
-    <td><span class="na">Unknown</span></td>
-  </tr>
-  <tr>
-    <td><strong>Deep linking</strong></td>
-    <td><span class="check">&#10003;</span> Custom URL scheme. Web URL &rarr; app route mapping. Push notification &rarr; exact screen. Module routes supported.</td>
-    <td><span class="na">Unknown</span></td>
-  </tr>
-  <tr>
-    <td><strong>Account management</strong></td>
-    <td><span class="check">&#10003;</span> Change password, deactivate (reversible), delete account (permanent with confirmation)</td>
-    <td><span class="na">Unknown</span></td>
-  </tr>
-  <tr>
-    <td><strong>WooCommerce / Cart</strong></td>
-    <td><span class="check">&#10003;</span> Cart icon with count, deep link to checkout in authenticated WebView</td>
-    <td><span class="na">Unknown</span> &mdash; parent company has WooCommerce products, unclear if integrated in community app</td>
-  </tr>
-</table>
-
-<h3>What They Have That We Don't (Yet)</h3>
-<p>Being honest about gaps. These are features the competitor lists that we should consider for our roadmap.</p>
-<table>
-  <tr>
-    <th>Feature</th>
-    <th>Status</th>
-    <th>Notes</th>
-  </tr>
-  <tr>
-    <td><strong>Group messaging / community threads</strong></td>
-    <td><span class="tag tag-roadmap">ROADMAP</span></td>
-    <td>Already on our high-priority roadmap. Fluent Messages supports it server-side.</td>
-  </tr>
-  <tr>
-    <td><strong>Leaderboard &amp; gamification display</strong></td>
-    <td><span class="tag tag-roadmap">ROADMAP</span></td>
-    <td>Already on our medium-priority roadmap. Fluent Pro has the backend.</td>
-  </tr>
-  <tr>
-    <td><strong>Global search</strong></td>
-    <td><span class="tag tag-roadmap">ROADMAP</span></td>
-    <td>We have space/member search. Full cross-content search is a reasonable addition.</td>
-  </tr>
-  <tr>
-    <td><strong>Offline access (full)</strong></td>
-    <td><span class="partial">&#9679;</span> Partial</td>
-    <td>We cache aggressively but aren't offline-first. Their claim of offline access needs verification &mdash; true offline with sync is complex.</td>
-  </tr>
-</table>
-
-<h3>Key Differentiators (Our Advantages)</h3>
-
-<div class="callout-success callout">
-  <strong>You own the code.</strong> This is the single biggest difference. With our app, you receive the full React Native (Expo) source code. You can modify any screen, add any feature, integrate any third-party service, or hire any React Native developer to extend it. With the competitor, you get a managed service &mdash; your app is built and deployed by their platform. If they shut down, raise prices, or don't add a feature you need, you're stuck.
-</div>
-
-<h4>Architecture &amp; Ownership</h4>
-<ul>
-  <li><strong>Full source code</strong> &mdash; React Native (Expo), one of the most widely-used mobile frameworks. Massive developer ecosystem. Any React Native developer can work on it.</li>
-  <li><strong>$499 one-time, updates included</strong> &mdash; buy once, own the code, get future snapshots. No subscription, no renewal fees, no domain limits.</li>
-  <li><strong>Self-publishing</strong> &mdash; you publish to your own App Store and Play Store accounts. Full control over release timing, listing content, and update schedule. No waiting on a vendor to push your build.</li>
-  <li><strong>No vendor lock-in</strong> &mdash; if we stop existing, your code still runs. You can maintain and extend it independently.</li>
-  <li><strong>Companion WordPress plugins included</strong> &mdash; server-side code ships with the app. You control both sides of the stack.</li>
-  <li><strong>Add-on module ecosystem</strong> &mdash; buy only the features you need. Blog, YouTube, Book Club available separately with companion WordPress plugins.</li>
-</ul>
-
-<h4>Native App Quality</h4>
-<ul>
-  <li><strong>Native multi-step registration</strong> &mdash; OTP verification via SMS (Twilio) with voice call fallback. Password strength meter. Profile completion wizard. Not a WebView form.</li>
-  <li><strong>JWT with silent refresh</strong> &mdash; tokens in OS secure storage (Keychain / Keystore). Automatic re-authentication on expiry. No login prompts during normal use.</li>
-  <li><strong>Real-time WebSocket messaging</strong> &mdash; Pusher integration with private channels. Messages appear instantly, not on a polling interval.</li>
-  <li><strong>Deep linking throughout</strong> &mdash; push notifications route to the exact screen. Web URLs map to app routes. Custom URL scheme for cross-app linking.</li>
-  <li><strong>Rich text editor</strong> &mdash; native markdown toolbar (bold, italic, links, images, code blocks), not a basic text input.</li>
-  <li><strong>Multi-reaction system</strong> &mdash; custom emoji reactions with breakdown view. Companion plugin handles server-side. Not just a like button.</li>
-  <li><strong>Haptic feedback</strong> &mdash; tactile response on interactions. Small detail, big polish.</li>
-</ul>
-
-<h4>Extensibility</h4>
-<ul>
-  <li><strong>Module system</strong> &mdash; add features without touching core code. Each module can register tabs, widgets, menu items, header icons, context providers, and tab bar addons.</li>
-  <li><strong>Add-on marketplace</strong> &mdash; Blog, YouTube channel integration (with server-side caching plugin), Book Club (audiobook player with chapters, bookmarks, mini player).</li>
-  <li><strong>Build your own modules</strong> &mdash; the module system is documented and designed for third-party development.</li>
-  <li><strong>Companion plugin architecture</strong> &mdash; each feature has matching WordPress plugin(s). You control server and client.</li>
-</ul>
-
-<h4>Developer Experience</h4>
-<ul>
-  <li><strong>Expo + EAS</strong> &mdash; industry-standard build pipeline. Over-the-air updates possible. No CI/CD setup needed.</li>
-  <li><strong>Tagged logger system</strong> &mdash; zero-cost in production, structured debug output in development.</li>
-  <li><strong>Batch API</strong> &mdash; single startup request replaces ~11 individual calls. Fast cold start.</li>
-  <li><strong>Comprehensive developer documentation</strong> &mdash; architecture, components, theme system, module system, setup guide, all in structured HTML docs.</li>
-</ul>
-
-<h3>Who Is This For</h3>
-
-<div class="callout">
-  <strong>Our ideal buyer is a developer or agency</strong> who has a client (or their own site) running Fluent Community and wants a real native mobile app &mdash; not a WebView wrapper, not a managed service they can't control. They're comfortable with React Native and WordPress, or they can hire someone who is. They want to own the code, publish on their own accounts, and charge their clients whatever they want for the build.
-</div>
-
-<h4>This product is for you if:</h4>
-<ul>
-  <li>You're a <strong>developer or agency</strong> building mobile apps for WordPress/Fluent Community clients</li>
-  <li>You want <strong>full source code</strong> you can read, modify, and extend &mdash; not a black box</li>
-  <li>You want to <strong>publish on your own</strong> App Store and Play Store accounts</li>
-  <li>You're comfortable following <strong>setup documentation</strong> rather than needing hand-holding</li>
-  <li>You want a <strong>one-time purchase</strong> with no recurring fees, domain limits, or vendor lock-in</li>
-  <li>You want to <strong>add value for your clients</strong> &mdash; buy the app for $499, customize it, charge them $5k&ndash;$20k for a "custom" community app</li>
-</ul>
-
-<h4>The competitor may be a better fit if:</h4>
-<ul>
-  <li>You're a <strong>non-technical site owner</strong> who doesn't want to touch code</li>
-  <li>You need someone else to <strong>handle builds and deployment</strong> for you</li>
-  <li>You're comfortable with <strong>ongoing vendor dependency</strong> and per-domain licensing</li>
-  <li>You prefer a <strong>managed service</strong> with 24/7 support over owning the code yourself</li>
-</ul>
-
-<h4>The bottom line</h4>
-<p>We're not a SaaS platform. We're a product for people who build things. $499 for the core app, $99 per module, updates included forever. No subscriptions, no tiers, no domain counting. Your code, your clients, your business.</p>
-
-<p>Where the competitor lists features we don't have yet (group messaging, leaderboard, global search), those are already on our roadmap &mdash; and because you have the source code, you could build them yourself or wait for the next snapshot.</p>
-
-<!-- ================================================================ -->
-<h2 id="roadmap">24. Roadmap &amp; Gaps</h2>
-
-<p>Features from Fluent Community Pro/Messages that we don't yet support, plus improvements we want to make. Grouped by priority.</p>
-
-<h3>High Priority</h3>
-<table>
-  <tr>
-    <th>Feature</th>
-    <th>Source</th>
-    <th>Impact</th>
-  </tr>
-  <tr class="row-done">
-    <td><s>Report content (posts &amp; comments)</s></td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td><span class="check">&#10003;</span> Implemented &mdash; ReportModal in post &amp; comment action menus.</td>
-  </tr>
-  <tr class="row-roadmap">
-    <td>Community threads (space group chat)</td>
-    <td><span class="tag tag-msg">MSG</span></td>
-    <td>High engagement feature. Spaces with group chat are more active.</td>
-  </tr>
-  <tr class="row-roadmap">
-    <td>"Following" feed filter</td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td>Key for large communities &mdash; shows only posts from followed users.</td>
-  </tr>
-  <tr class="row-done">
-    <td><s>Quiz lesson type in courses</s></td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td><span class="check">&#10003;</span> Implemented &mdash; full quiz support with single/multiple choice, scoring, pass/fail, retake.</td>
-  </tr>
-</table>
-
-<h3>Medium Priority</h3>
-<table>
-  <tr>
-    <th>Feature</th>
-    <th>Source</th>
-    <th>Impact</th>
-  </tr>
-  <tr class="row-roadmap">
-    <td>Scheduled posts</td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td>Admin/mod convenience for content planning.</td>
-  </tr>
-  <tr class="row-roadmap">
-    <td>Leaderboard &amp; points display</td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td>Gamification drives engagement. Show levels, points, and rankings.</td>
-  </tr>
-  <tr class="row-roadmap">
-    <td>Invitation system (share invite links)</td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td>Growth feature &mdash; viral sharing from within the app.</td>
-  </tr>
-  <tr class="row-roadmap">
-    <td>Space links (custom links per space)</td>
-    <td><span class="tag tag-free">FREE</span></td>
-    <td>Display space-associated links on the space detail screen.</td>
-  </tr>
-  <tr class="row-done">
-    <td><s>Course free preview</s></td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td><span class="check">&#10003;</span> Implemented &mdash; free preview lessons with preview badge on LessonRow.</td>
-  </tr>
-  <tr class="row-roadmap">
-    <td>Document library</td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td>Browse and download shared documents / resources.</td>
-  </tr>
-</table>
-
-<h3>Low Priority / Nice to Have</h3>
-<table>
-  <tr>
-    <th>Feature</th>
-    <th>Source</th>
-    <th>Impact</th>
-  </tr>
-  <tr class="row-roadmap">
-    <td>RTL language support</td>
-    <td><span class="tag tag-free">FREE</span></td>
-    <td>Needed for Arabic, Hebrew communities. Moderate implementation effort.</td>
-  </tr>
-  <tr class="row-roadmap">
-    <td>Email auto-login (magic link)</td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td>Convenience feature, deep link from email directly into authenticated app.</td>
-  </tr>
-  <tr class="row-roadmap">
-    <td>Member analytics (top posters, commenters)</td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td>Could surface as a home widget or in member directory.</td>
-  </tr>
-  <tr class="row-roadmap">
-    <td>Space analytics (popular spaces)</td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td>Could enhance space discovery with popularity indicators.</td>
-  </tr>
-  <tr class="row-roadmap">
-    <td>Moderation queue (in-app for mods)</td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td>Nice for active moderators who live in the app.</td>
-  </tr>
-  <tr class="row-roadmap">
-    <td>Topics admin management</td>
-    <td><span class="tag tag-pro">PRO</span></td>
-    <td>Admin CRUD for topics &mdash; currently requires WordPress dashboard.</td>
-  </tr>
-</table>
-
-<h3>Not Applicable to Mobile</h3>
-<p>These Fluent Community features are web-specific and intentionally not implemented in the native app:</p>
-<ul>
-  <li><strong>Custom CSS / JS injection</strong> &mdash; web portal only</li>
-  <li><strong>Sidebar links</strong> &mdash; mobile has no sidebar (uses tab bar + menu)</li>
-  <li><strong>Rich post layout toggle</strong> &mdash; mobile uses native card layout</li>
-  <li><strong>Member list layout toggle</strong> &mdash; mobile uses native list layout</li>
-  <li><strong>"Powered by" branding</strong> &mdash; not present in native app</li>
-  <li><strong>SEO sitemap</strong> &mdash; web indexing, not relevant for app</li>
-  <li><strong>Portal slug configuration</strong> &mdash; web URL path, app uses deep link mapping</li>
-</ul>
-
-<!-- ================================================================ -->
-
-<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
-<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
-  <a href="../setup/setup-guide.html">Setup Guide</a> &middot;
-  <a href="api-client.html">API Client &amp; HTTP Layer</a> &middot;
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">
+<p style="margin-top: 16px; color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary)); font-size: 0.9em;">
+  <a href="api-client.html">API Client</a> &middot;
   <a href="architecture.html">Architecture</a> &middot;
-  <a href="caching-system.html">Data Fetching &amp; Caching</a> &middot;
+  <a href="caching-system.html">Caching</a> &middot;
   <a href="companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="competitive.html">Competitive</a> &middot;
   <a href="components.html">Components</a> &middot;
-  <a href="content-creation.html">Content Creation &amp; Composer</a> &middot;
-  <a href="courses.html">Courses &amp; LMS</a> &middot;
-  <a href="deep-linking.html">Deep Linking &amp; URL Routing</a> &middot;
+  <a href="content-creation.html">Content Creation</a> &middot;
+  <a href="courses.html">Courses</a> &middot;
+  <a href="deep-linking.html">Deep Linking</a> &middot;
   Features &middot;
   <a href="feed-system.html">Feed System</a> &middot;
-  <a href="forms-validation.html">Forms &amp; Field Validation</a> &middot;
+  <a href="forms-validation.html">Forms</a> &middot;
   <a href="logging.html">Logging</a> &middot;
-  <a href="media-uploads.html">Media &amp; Uploads</a> &middot;
-  <a href="messaging.html">Messaging &amp; Chat</a> &middot;
+  <a href="media-uploads.html">Media</a> &middot;
+  <a href="messaging.html">Messaging</a> &middot;
   <a href="module-system.html">Module System</a> &middot;
   <a href="notifications.html">Notifications</a> &middot;
-  <a href="profile-system.html">Profile System</a> &middot;
+  <a href="profile-system.html">Profiles</a> &middot;
   <a href="pusher.html">Pusher</a> &middot;
-  <a href="registration.html">Registration &amp; Onboarding</a> &middot;
-  <a href="spaces.html">Spaces (Groups)</a> &middot;
+  <a href="registration.html">Registration</a> &middot;
+  <a href="roadmap.html">Roadmap</a> &middot;
+  <a href="spaces.html">Spaces</a> &middot;
   <a href="state-management.html">State Management</a> &middot;
   <a href="theme-system.html">Theme System</a> &middot;
   <a href="widget-system.html">Widget System</a>

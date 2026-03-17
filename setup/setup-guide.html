@@ -146,7 +146,8 @@
     <li><a href="#theming">Theme System</a></li>
     <li><a href="#build-deploy">Build &amp; Deploy</a></li>
     <li><a href="#checklist">Pre-Launch Checklist</a></li>
-    <li><a href="#updating">Updating from Upstream</a></li>
+    <li><a href="#updates-tab">Updates &amp; Licensing</a></li>
+    <li><a href="#updating">Updating from Upstream (Git)</a></li>
     <li><a href="#troubleshooting">Troubleshooting</a></li>
   </ol>
 </div>
@@ -242,6 +243,9 @@ eas init</code></pre>
   <li><strong>Config tab:</strong> All your setup values loaded from the actual files. Edit and click <strong>Save Changes</strong> &mdash; writes directly to <code>app.json</code>, <code>eas.json</code>, <code>config.ts</code>, <code>app.config.ts</code>, and <code>package.json</code>.</li>
   <li><strong>Assets tab:</strong> See which branding images exist with thumbnails. Click any asset to upload a replacement.</li>
   <li><strong>Plugins &amp; Firebase tab:</strong> Check companion plugin status and drag-drop your Firebase config files.</li>
+  <li><strong>Modules tab:</strong> Enable or disable add-on modules. Shows available modules with descriptions and toggles &mdash; writes to <code>modules/_registry.ts</code>.</li>
+  <li><strong>Builds tab:</strong> Build your app for iOS and Android via EAS. Select platform and profile, then kick off a build directly from the dashboard.</li>
+  <li><strong>Updates tab:</strong> Activate your license, check for new versions, and apply updates with automatic backup. See <a href="#updates-tab">Updates &amp; Licensing</a> for full details.</li>
   <li><strong>Status tab:</strong> Live validation with pass/fail/warn for every check. Click <strong>Check Connectivity</strong> to test your site URL and API endpoints.</li>
   <li><strong>Create a dev build</strong> when all checks pass (first build takes ~15 minutes):
     <pre><code>eas build --profile development --platform all</code></pre>
@@ -757,9 +761,85 @@ eas submit --platform android</code></pre>
 </table>
 
 <!-- ====================================================================== -->
-<h2 id="updating">10. Updating from Upstream</h2>
+<h2 id="updates-tab">10. Updates &amp; Licensing</h2>
 
-<p>When a new version of the base product is released, you can merge it into your app using standard git. Your modules, branding, and config stay intact &mdash; only core code gets updated.</p>
+<p>The <strong>Updates</strong> tab in the setup dashboard handles license activation, version checking, applying updates, and backup/restore. This is the recommended way to keep your app up to date.</p>
+
+<h3>License Activation</h3>
+<p>When you purchase the app from <a href="https://twobirdscode.com">twobirdscode.com</a>, you receive a license key.</p>
+<ul>
+  <li>Open the <strong>Updates</strong> tab in the dashboard</li>
+  <li>Enter your license key and click <strong>Activate</strong></li>
+  <li>The license is automatically activated and linked to your site URL</li>
+  <li>Once activated, the tab displays your plan type and expiration date</li>
+  <li>Your license key is stored in <code>setup/.license</code> (gitignored &mdash; never committed to your repo)</li>
+</ul>
+
+<h3>Checking for Updates</h3>
+<ul>
+  <li>The Updates tab automatically checks for available updates when opened (requires an active license)</li>
+  <li>Shows your <strong>current version</strong> vs the <strong>latest available version</strong></li>
+  <li>Displays the changelog for the new version so you can see what changed</li>
+  <li>Click <strong>Check Now</strong> to manually recheck at any time</li>
+</ul>
+
+<h3>Applying Updates</h3>
+<ol>
+  <li>Click <strong>Backup &amp; Update</strong> when an update is available</li>
+  <li>The dashboard automatically creates a backup of your current state before applying anything</li>
+  <li>The update package is downloaded from the license server and applied</li>
+  <li>Only <strong>core files</strong> are updated &mdash; your customizations are never overwritten</li>
+</ol>
+
+<p>Protected files that are <strong>never overwritten</strong> by an update:</p>
+<ul>
+  <li><code>constants/config.ts</code> &mdash; your app name, site URL, feature flags</li>
+  <li><code>app.json</code> &mdash; your bundle IDs, app name, icons, EAS config</li>
+  <li><code>eas.json</code> &mdash; your build profiles and site URL</li>
+  <li><code>app.config.ts</code> &mdash; your fallback values and deep link paths</li>
+  <li><code>package.json</code> &mdash; your package name and any added dependencies</li>
+  <li><code>assets/images/</code> &mdash; your branding assets</li>
+  <li><code>modules/</code> &mdash; your custom modules</li>
+  <li><code>google-services.json</code> / <code>GoogleService-Info.plist</code> &mdash; your Firebase configs</li>
+</ul>
+
+<div class="callout">
+  <strong>After updating:</strong> Run <code>npm install</code> to pick up any new or updated dependencies. If the dashboard itself was updated, restart it with <code>npm run dashboard</code>.
+</div>
+
+<h3>Manual Upload</h3>
+<p>If you received an update package directly (e.g., via email or download), you can apply it manually:</p>
+<ul>
+  <li>Click <strong>Upload Package</strong> in the Updates tab</li>
+  <li>Select a <code>.tar.gz</code> or <code>.zip</code> update file</li>
+  <li>The same backup and protected-file logic applies &mdash; your customizations are safe</li>
+</ul>
+
+<h3>Backup &amp; Restore</h3>
+<ul>
+  <li>An automatic backup is created before every update, stored in <code>setup/.backups/</code></li>
+  <li>The dashboard lists available backups with dates and sizes</li>
+  <li>Click <strong>Restore</strong> on any backup to roll back to that state</li>
+  <li>The last 3 backups are kept; older ones are auto-pruned</li>
+</ul>
+
+<h3>manifest.json</h3>
+<p>The <code>manifest.json</code> file in the project root contains metadata used by the update system:</p>
+<ul>
+  <li>Product version number</li>
+  <li>Update server URL</li>
+  <li>List of protected paths (files that are never overwritten)</li>
+  <li>Core companion plugins list</li>
+</ul>
+
+<div class="callout callout-warn">
+  <strong>Do not edit <code>manifest.json</code> manually.</strong> It is updated automatically when an update is applied. Editing it could break the update process.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="updating">11. Updating from Upstream (Git)</h2>
+
+<p>If you prefer git-based updates over the <a href="#updates-tab">dashboard Updates tab</a>, you can merge upstream releases using standard git. Your modules, branding, and config stay intact &mdash; only core code gets updated.</p>
 
 <h3>One-time setup</h3>
 <p>Add the upstream repo as a remote (you only do this once):</p>
@@ -835,7 +915,7 @@ git merge upstream/main</code></pre>
 </ol>
 
 <!-- ====================================================================== -->
-<h2 id="troubleshooting">11. Troubleshooting</h2>
+<h2 id="troubleshooting">12. Troubleshooting</h2>
 
 <h3>App Won't Connect to Server</h3>
 <ul>

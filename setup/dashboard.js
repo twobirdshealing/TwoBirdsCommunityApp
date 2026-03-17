@@ -107,10 +107,10 @@ const REQUIRED_ASSETS = [
 // ---------------------------------------------------------------------------
 
 const CORE_PLUGINS = [
-  { folder: 'tbc-community-app', label: 'TBC Community App', required: true, description: 'Main bridge plugin — REST endpoints, auth, push notifications' },
-  { folder: 'tbc-fluent-profiles', label: 'TBC Fluent Profiles', required: true, description: 'Custom profile fields, OTP verification, registration' },
-  { folder: 'tbc-multi-reactions', label: 'TBC Multi Reactions', required: false, description: 'Multi-reaction support for Fluent Community' },
-  { folder: 'tbc-starter-theme', label: 'TBC Starter Theme', required: false, description: 'Custom WordPress theme' },
+  { folder: 'tbc-community-app', label: 'TBC Community App', required: true, description: 'Main bridge plugin — upload to WordPress and activate' },
+  { folder: 'tbc-fluent-profiles', label: 'TBC Fluent Profiles', required: true, description: 'Custom profile fields — upload to WordPress and activate' },
+  { folder: 'tbc-multi-reactions', label: 'TBC Multi Reactions', required: false, description: 'Multi-reaction support — upload to WordPress if desired' },
+  { folder: 'tbc-starter-theme', label: 'TBC Starter Theme', required: false, description: 'Custom WordPress theme — upload and activate' },
 ];
 
 const ADDON_PLUGINS = [
@@ -272,10 +272,6 @@ function readProjectState() {
   // --- Dependencies ---
   state.dependencies = {
     nodeModules: fileExists(path.join(PROJECT_DIR, 'node_modules')),
-    lockfile: fileExists(path.join(PROJECT_DIR, 'package-lock.json')) ? 'package-lock.json'
-      : fileExists(path.join(PROJECT_DIR, 'yarn.lock')) ? 'yarn.lock'
-      : fileExists(path.join(PROJECT_DIR, 'pnpm-lock.yaml')) ? 'pnpm-lock.yaml'
-      : null,
   };
 
   // --- Validation ---
@@ -299,9 +295,13 @@ function runValidation(state) {
     checks.push({ pass: warn ? 'warn' : 'pass', label, category, ref });
   }
 
-  const PLACEHOLDERS = ['MyCommunityApp', 'mycommunityapp', 'My Community', 'com.yourcompany.communityapp',
-    'CommunityApp/1.0', 'your-eas-owner', 'your-eas-project-id', 'your@apple.id', '0000000000',
-    'your-community-site.com', 'https://your-community-site.com', 'my-community-app'];
+  const PLACEHOLDERS = [
+    'My Community App', 'MyCommunityApp', 'mycommunityapp', 'My Community',
+    'com.yourcompany.communityapp', 'CommunityApp/1.0', 'community-app',
+    'your-expo-account', 'YOUR_EAS_PROJECT_ID',
+    'https://community.yoursite.com', 'community.yoursite.com',
+    'your-apple-id@example.com', 'YOUR_ASC_APP_ID',
+  ];
 
   function isPlaceholder(val) {
     if (!val) return true;
@@ -349,16 +349,8 @@ function runValidation(state) {
   check(state.firebase.android.exists, 'google-services.json exists', 'firebase', 'firebase-setup');
   check(state.firebase.ios.exists, 'GoogleService-Info.plist exists', 'firebase', 'firebase-setup');
 
-  // Plugins
-  for (const plugin of state.plugins.core) {
-    if (plugin.required) {
-      check(plugin.exists, `${plugin.label} plugin installed`, 'plugins', 'plugins');
-    }
-  }
-
   // Dependencies
   check(state.dependencies.nodeModules, 'node_modules exists (npm install done)', 'dependencies', 'quick-start');
-  checkWarn(!state.dependencies.lockfile, 'No lockfile found', 'dependencies', 'quick-start');
 
   // package.json
   check(!isPlaceholder(c.packageName), 'Package name is set', 'package.json', 'package-name');
@@ -582,6 +574,9 @@ function httpGet(url, timeout) {
 const VALID_PLATFORMS = ['ios', 'android'];
 const VALID_PROFILES = ['development', 'preview', 'simulator', 'production'];
 const BUILD_ID_PATTERN = /^[0-9a-f-]{36}$/i;
+
+/** Track npm install process state */
+let installProcess = { status: 'idle', output: '', exitCode: null };
 
 /** Run a command asynchronously (doesn't block the server) */
 function runCommand(args, timeout = 30000) {
@@ -1179,6 +1174,7 @@ async function validateLicense(key) {
         licenseKey: key,
         currentVersion: manifest.version,
         product: manifest.product || 'tbc-community-app',
+        siteUrl: getSiteUrl(readJsonSafe(PATHS.easJson)) || '',
       }),
       timeout: 15000,
     });
@@ -1470,6 +1466,16 @@ async function downloadUpdate(url, licenseKey) {
 // HTTP Server
 // ---------------------------------------------------------------------------
 
+// Auto-shutdown: stop the server if no browser heartbeat for 2 minutes
+let lastHeartbeat = Date.now();
+const HEARTBEAT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const heartbeatCheck = setInterval(() => {
+  if (Date.now() - lastHeartbeat > HEARTBEAT_TIMEOUT) {
+    console.log('\\n  No browser connection for 5 minutes — shutting down.');
+    process.exit(0);
+  }
+}, 30000);
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const pathname = url.pathname;
@@ -1481,7 +1487,21 @@ const server = http.createServer(async (req, res) => {
 
   try {
     // --- API Routes ---
+    if (pathname === '/api/heartbeat' && req.method === 'GET') {
+      lastHeartbeat = Date.now();
+      jsonResponse(res, { ok: true });
+      return;
+    }
+
+    if (pathname === '/api/shutdown' && req.method === 'POST') {
+      jsonResponse(res, { ok: true });
+      console.log('\\n  Dashboard stopped via browser.');
+      setTimeout(() => process.exit(0), 500);
+      return;
+    }
+
     if (pathname === '/api/state' && req.method === 'GET') {
+      lastHeartbeat = Date.now();
       jsonResponse(res, readProjectState());
       return;
     }
@@ -1506,6 +1526,38 @@ const server = http.createServer(async (req, res) => {
       const siteUrl = getSiteUrl(readJsonSafe(PATHS.easJson));
       const results = await checkConnectivity(siteUrl);
       jsonResponse(res, results);
+      return;
+    }
+
+    // --- Install Dependencies ---
+    if (pathname === '/api/install-deps' && req.method === 'POST') {
+      if (installProcess.status === 'running') {
+        jsonResponse(res, { ok: false, error: 'Install already in progress' });
+        return;
+      }
+      // Detect package manager from lockfile
+      let cmd = 'npm', cmdArgs = ['install'];
+      if (fileExists(path.join(PROJECT_DIR, 'yarn.lock'))) { cmd = 'yarn'; }
+      else if (fileExists(path.join(PROJECT_DIR, 'pnpm-lock.yaml'))) { cmd = 'pnpm'; }
+
+      installProcess = { status: 'running', output: '', exitCode: null };
+      var child = spawn(cmd, cmdArgs, { cwd: PROJECT_DIR, shell: true, timeout: 300000 });
+      child.stdout.on('data', function(d) { installProcess.output += d.toString(); });
+      child.stderr.on('data', function(d) { installProcess.output += d.toString(); });
+      child.on('close', function(code) {
+        installProcess.status = code === 0 ? 'done' : 'error';
+        installProcess.exitCode = code;
+      });
+      child.on('error', function(err) {
+        installProcess.status = 'error';
+        installProcess.output += '\n' + err.message;
+      });
+      jsonResponse(res, { ok: true, status: 'running' });
+      return;
+    }
+
+    if (pathname === '/api/install-deps/status' && req.method === 'GET') {
+      jsonResponse(res, { status: installProcess.status, output: installProcess.output, exitCode: installProcess.exitCode });
       return;
     }
 
@@ -1856,13 +1908,40 @@ process.on('SIGTERM', () => { process.exit(0); });
 
 function getDashboardHTML() {
   return `<!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Setup Dashboard</title>
+<script>
+(function(){var t=localStorage.getItem('dashboard-theme');if(!t)t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();
+</script>
 <style>
   :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f6f8fa;
+    --bg-tertiary: #eaeef2;
+    --bg-hover: #d0d7de;
+    --border: #d0d7de;
+    --border-light: #afb8c1;
+    --text-primary: #1f2328;
+    --text-secondary: #656d76;
+    --text-muted: #8c959f;
+    --accent: #0969da;
+    --accent-hover: #0550ae;
+    --green: #1a7f37;
+    --green-bg: rgba(26, 127, 55, 0.1);
+    --red: #cf222e;
+    --red-bg: rgba(207, 34, 46, 0.1);
+    --yellow: #9a6700;
+    --yellow-bg: rgba(154, 103, 0, 0.1);
+    --purple: #8250df;
+    --purple-bg: rgba(130, 80, 223, 0.1);
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --radius: 6px;
+  }
+  [data-theme="dark"] {
     --bg-primary: #0d1117;
     --bg-secondary: #161b22;
     --bg-tertiary: #21262d;
@@ -1882,9 +1961,6 @@ function getDashboardHTML() {
     --yellow-bg: rgba(210, 153, 34, 0.1);
     --purple: #bc8cff;
     --purple-bg: rgba(188, 140, 255, 0.1);
-    --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
-    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-    --radius: 6px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; min-height: 100vh; }
@@ -1893,6 +1969,14 @@ function getDashboardHTML() {
   .header h1 { font-size: 20px; font-weight: 600; }
   .header .subtitle { color: var(--text-secondary); font-size: 13px; margin-left: 12px; }
   .header-right { display: flex; align-items: center; gap: 12px; }
+  .server-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .status-dot.connected { background: var(--green); box-shadow: 0 0 4px var(--green); }
+  .status-dot.disconnected { background: var(--red, #ef4444); }
+  .btn-icon { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 20px; padding: 6px 10px; cursor: pointer; font-size: 12px; line-height: 1; transition: background 0.15s; color: var(--text-secondary); }
+  .btn-icon:hover { background: var(--red-bg, #fef2f2); color: var(--red, #ef4444); border-color: var(--red, #ef4444); }
+  .theme-toggle { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 20px; padding: 6px 10px; cursor: pointer; font-size: 16px; line-height: 1; transition: background 0.15s; }
+  .theme-toggle:hover { background: var(--bg-hover); }
   .progress-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
   .progress-badge.good { background: var(--green-bg); color: var(--green); }
   .progress-badge.partial { background: var(--yellow-bg); color: var(--yellow); }
@@ -2038,6 +2122,11 @@ function getDashboardHTML() {
 
   .loading { text-align: center; padding: 40px; color: var(--text-secondary); }
   .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; vertical-align: middle; }
+  .deps-banner { background: var(--yellow-bg); border: 1px solid var(--yellow); border-radius: var(--radius); margin: 16px 24px 0; padding: 16px 20px; }
+  .deps-banner-content { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .deps-banner-content p { margin: 4px 0 0; font-size: 13px; color: var(--text-secondary); }
+  .deps-banner-content code { background: var(--bg-tertiary); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+  .deps-output { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-top: 12px; max-height: 200px; overflow-y: auto; font-size: 12px; font-family: var(--font-mono); white-space: pre-wrap; word-break: break-all; color: var(--text-secondary); }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* Updates Tab */
@@ -2108,6 +2197,29 @@ function getDashboardHTML() {
   </div>
   <div class="header-right">
     <span class="progress-badge" id="progress-badge"></span>
+    <span class="server-status" id="server-status" title="Server connected">
+      <span class="status-dot connected" id="status-dot"></span>
+      <span class="status-label" id="status-label">Connected</span>
+    </span>
+    <button class="btn-icon" id="stop-server-btn" onclick="stopServer()" title="Stop dashboard server">&#9724;</button>
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode">&#9790;</button>
+  </div>
+</div>
+
+<div id="deps-banner" class="deps-banner" style="display:none">
+  <div class="deps-banner-content">
+    <div>
+      <strong>Step 1: Install Dependencies</strong>
+      <p>Run <code>npm install</code> to download required packages. This usually takes 1&ndash;3 minutes.</p>
+    </div>
+    <button class="btn btn-primary" id="deps-install-btn" onclick="installDeps()">Install Dependencies</button>
+  </div>
+  <div id="deps-progress" style="display:none">
+    <div style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--text-secondary)">
+      <span class="spinner"></span>
+      <span id="deps-status-text">Installing dependencies...</span>
+    </div>
+    <pre id="deps-output" class="deps-output"></pre>
   </div>
 </div>
 
@@ -2713,7 +2825,8 @@ document.querySelectorAll('#tab-config input[data-key]').forEach(input => {
       for (const [dk, dv] of Object.entries(derived)) {
         const target = document.getElementById('cfg-' + dk);
         if (!target) continue;
-        if (!target.value || target.value === lastDerived[dk] || target.value === deriveField(dk, originalValues[key])) {
+        var origDerived = deriveMap[key] ? deriveMap[key](originalValues[key] || '') : {};
+        if (!target.value || target.value === lastDerived[dk] || target.value === (origDerived[dk] || '')) {
           target.value = dv;
           lastDerived[dk] = dv;
           updateFieldHelp(target);
@@ -2728,20 +2841,6 @@ document.querySelectorAll('#tab-config select[data-key]').forEach(sel => {
   sel.addEventListener('change', markDirty);
 });
 
-function deriveField(targetKey, sourceVal) {
-  if (!sourceVal) return '';
-  if (targetKey === 'slug') return sourceVal.replace(/[^a-zA-Z0-9]/g, '');
-  if (targetKey === 'scheme') return sourceVal.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-  if (targetKey === 'appNameConfig') return sourceVal;
-  if (targetKey === 'userAgent') { const b = sourceVal.replace(/[^a-zA-Z0-9]/g, ''); return b.toLowerCase().endsWith('app') ? b + '/1.0' : b + 'App/1.0'; }
-  if (targetKey === 'packageName') return sourceVal.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase().replace(/^-|-$/g, '');
-  if (targetKey === 'fallbackName') return sourceVal;
-  if (targetKey === 'fallbackSlug') return sourceVal.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-  if (targetKey === 'androidPackage') return sourceVal;
-  if (targetKey === 'fallbackSiteUrl') return sourceVal;
-  return '';
-}
-
 // ---------- Load state ----------
 async function loadState() {
   try {
@@ -2755,6 +2854,7 @@ async function loadState() {
     updateProgress(state.validation);
     populateGooglePlayKey(state.config);
     populateFeatures(state.features);
+    showDepsBanner(state.dependencies && !state.dependencies.nodeModules);
     dirty = false;
     document.getElementById('save-config-btn').textContent = 'Save Changes';
   } catch (err) {
@@ -2991,7 +3091,7 @@ function createPluginItem(plugin) {
       '<div class="plugin-name">' + plugin.label + (plugin.required ? ' <span style="color:var(--red);font-size:11px">(required)</span>' : '') + '</div>' +
       '<div class="plugin-desc">' + plugin.description + '</div>' +
     '</div>' +
-    (plugin.exists ? '<span class="plugin-version">v' + plugin.version + '</span>' : '<span style="font-size:12px;color:var(--text-muted)">Not installed</span>');
+    (plugin.exists ? '<span class="plugin-version">v' + plugin.version + '</span>' : '<span style="font-size:12px;color:var(--text-muted)">Not bundled</span>');
   return div;
 }
 
@@ -3518,20 +3618,91 @@ function showToast(msg, type) {
   setTimeout(() => toast.remove(), 4000);
 }
 
+// ---------- Install Dependencies ----------
+var depsPolling = null;
+
+function showDepsBanner(show) {
+  var banner = document.getElementById('deps-banner');
+  if (banner) banner.style.display = show ? 'block' : 'none';
+}
+
+async function installDeps() {
+  var btn = document.getElementById('deps-install-btn');
+  var progress = document.getElementById('deps-progress');
+  var statusText = document.getElementById('deps-status-text');
+  var output = document.getElementById('deps-output');
+
+  btn.disabled = true;
+  btn.textContent = 'Installing...';
+  progress.style.display = 'block';
+  output.textContent = '';
+  statusText.textContent = 'Installing dependencies... this may take a few minutes';
+
+  try {
+    var res = await fetch('/api/install-deps', { method: 'POST' });
+    var data = await res.json();
+    if (!data.ok) {
+      showToast('Install failed: ' + data.error, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Install Dependencies';
+      progress.style.display = 'none';
+      return;
+    }
+    depsPolling = setInterval(pollInstallStatus, 2000);
+  } catch (err) {
+    showToast('Install error: ' + err.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Install Dependencies';
+    progress.style.display = 'none';
+  }
+}
+
+async function pollInstallStatus() {
+  try {
+    var res = await fetch('/api/install-deps/status');
+    var data = await res.json();
+    var output = document.getElementById('deps-output');
+    var statusText = document.getElementById('deps-status-text');
+
+    // Show last 80 lines of output
+    var lines = data.output.split('\\n');
+    output.textContent = lines.slice(-80).join('\\n');
+    output.scrollTop = output.scrollHeight;
+
+    if (data.status === 'done') {
+      clearInterval(depsPolling);
+      depsPolling = null;
+      statusText.textContent = 'Dependencies installed successfully!';
+      showToast('Dependencies installed successfully!', 'success');
+      await loadState();
+    } else if (data.status === 'error') {
+      clearInterval(depsPolling);
+      depsPolling = null;
+      statusText.textContent = 'Installation failed (exit code ' + data.exitCode + ')';
+      showToast('npm install failed — check output below', 'error');
+      var btn = document.getElementById('deps-install-btn');
+      btn.disabled = false;
+      btn.textContent = 'Retry Install';
+    }
+  } catch (err) {
+    clearInterval(depsPolling);
+    depsPolling = null;
+    showToast('Lost connection to dashboard', 'error');
+  }
+}
+
 // ---------- Updates Tab ----------
 let updatesLoaded = false;
 
 async function loadUpdatesTab() {
   updatesLoaded = true;
   // Show versions from the last loaded state
-  try {
-    const stateRes = await fetch('/api/state');
-    const state = await stateRes.json();
-    const coreEl = document.getElementById('core-version-display');
-    const appEl = document.getElementById('app-version-display');
+  var coreEl = document.getElementById('core-version-display');
+  var appEl = document.getElementById('app-version-display');
+  if (state && state.config) {
     if (coreEl) coreEl.textContent = 'v' + (state.config.coreVersion || '?');
     if (appEl) appEl.textContent = 'v' + (state.config.version || '?');
-  } catch {}
+  }
   const [licenseData] = await Promise.all([loadLicenseStatus(), loadBackups()]);
   // Auto-show update status from license check (avoids second API call)
   if (licenseData && licenseData.valid && licenseData.latest) {
@@ -3856,9 +4027,56 @@ async function deleteOneBackup(backupId) {
   } catch (err) { showToast('Error: ' + err.message, 'error'); }
 }
 
+// ---------- Theme Toggle ----------
+function toggleTheme() {
+  var html = document.documentElement;
+  var current = html.getAttribute('data-theme');
+  var next = current === 'dark' ? 'light' : 'dark';
+  if (next === 'dark') html.setAttribute('data-theme', 'dark');
+  else html.removeAttribute('data-theme');
+  localStorage.setItem('dashboard-theme', next);
+  document.getElementById('theme-toggle').innerHTML = next === 'dark' ? '\\u263E' : '\\u2600';
+}
+// Set initial icon
+(function(){ var t = document.documentElement.getAttribute('data-theme'); document.getElementById('theme-toggle').innerHTML = t === 'dark' ? '\\u263E' : '\\u2600'; })();
+
 // ---------- Init ----------
 setupManualUploadZone();
 loadState();
+
+// Heartbeat — connection status + auto-shutdown when browser closes
+function updateStatus(connected) {
+  var dot = document.getElementById('status-dot');
+  var label = document.getElementById('status-label');
+  var status = document.getElementById('server-status');
+  if (!dot) return;
+  if (connected) {
+    dot.className = 'status-dot connected';
+    label.textContent = 'Connected';
+    status.title = 'Server connected';
+    document.getElementById('stop-server-btn').style.display = '';
+  } else {
+    dot.className = 'status-dot disconnected';
+    label.textContent = 'Server stopped — run: npm run dashboard';
+    status.title = 'Server stopped — restart with: npm run dashboard';
+    document.getElementById('stop-server-btn').style.display = 'none';
+  }
+}
+
+setInterval(function() {
+  fetch('/api/heartbeat').then(function(r) {
+    updateStatus(r.ok);
+  }).catch(function() {
+    updateStatus(false);
+  });
+}, 10000);
+
+function stopServer() {
+  if (!confirm('Stop the dashboard server?')) return;
+  fetch('/api/shutdown', { method: 'POST' }).catch(function() {});
+  updateStatus(false);
+  document.getElementById('stop-server-btn').disabled = true;
+}
 </script>
 </body>
 </html>`;

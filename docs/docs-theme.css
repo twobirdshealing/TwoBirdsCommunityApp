@@ -1,0 +1,498 @@
+/**
+ * TBC Docs — Shared Theme
+ *
+ * Dual-mode: works standalone (offline) AND inside Fluent Community (on-site).
+ *
+ * Priority chain:
+ *   1. --fcom-* vars (set by Fluent Community on-site) → auto light/dark
+ *   2. --tbc-doc-* vars (standalone) → manual toggle via data-theme="dark"
+ *   3. Hardcoded fallback (light theme defaults)
+ *
+ * When embedded in a WordPress Custom HTML block, Fluent's --fcom-* vars
+ * exist on the page and automatically override our standalone defaults.
+ * When opened as a standalone .html file, our own vars take over with
+ * a theme toggle button and system preference detection.
+ */
+
+/* ================================================================
+   STANDALONE VARS — Light (default)
+   Matches dashboard GitHub-style theme
+   ================================================================ */
+:root {
+  --tbc-doc-bg: #ffffff;
+  --tbc-doc-bg-secondary: #f6f8fa;
+  --tbc-doc-bg-tertiary: #eaeef2;
+  --tbc-doc-bg-hover: #d0d7de;
+  --tbc-doc-border: #d0d7de;
+  --tbc-doc-border-light: #afb8c1;
+  --tbc-doc-text: #1f2328;
+  --tbc-doc-text-secondary: #656d76;
+  --tbc-doc-text-muted: #8c959f;
+  --tbc-doc-accent: #0969da;
+  --tbc-doc-accent-hover: #0550ae;
+  --tbc-doc-success: #1a7f37;
+  --tbc-doc-success-bg: rgba(26, 127, 55, 0.1);
+  --tbc-doc-error: #cf222e;
+  --tbc-doc-error-bg: rgba(207, 34, 46, 0.1);
+  --tbc-doc-warning: #9a6700;
+  --tbc-doc-warning-bg: rgba(154, 103, 0, 0.1);
+  --tbc-doc-purple: #8250df;
+  --tbc-doc-purple-bg: rgba(130, 80, 223, 0.1);
+  --tbc-doc-code-bg: #f6f8fa;
+}
+
+/* ================================================================
+   STANDALONE VARS — Dark
+   ================================================================ */
+[data-theme="dark"] {
+  --tbc-doc-bg: #0d1117;
+  --tbc-doc-bg-secondary: #161b22;
+  --tbc-doc-bg-tertiary: #21262d;
+  --tbc-doc-bg-hover: #30363d;
+  --tbc-doc-border: #30363d;
+  --tbc-doc-border-light: #484f58;
+  --tbc-doc-text: #e6edf3;
+  --tbc-doc-text-secondary: #8b949e;
+  --tbc-doc-text-muted: #6e7681;
+  --tbc-doc-accent: #58a6ff;
+  --tbc-doc-accent-hover: #79c0ff;
+  --tbc-doc-success: #3fb950;
+  --tbc-doc-success-bg: rgba(63, 185, 80, 0.1);
+  --tbc-doc-error: #f85149;
+  --tbc-doc-error-bg: rgba(248, 81, 73, 0.1);
+  --tbc-doc-warning: #d29922;
+  --tbc-doc-warning-bg: rgba(210, 153, 34, 0.1);
+  --tbc-doc-purple: #bc8cff;
+  --tbc-doc-purple-bg: rgba(188, 140, 255, 0.1);
+  --tbc-doc-code-bg: #161b22;
+}
+
+/* ================================================================
+   BASE STYLES
+   Uses --fcom-* (Fluent) → --tbc-doc-* (standalone) → hardcoded fallback
+   ================================================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+  background: var(--fcom-primary-bg, var(--tbc-doc-bg, #ffffff));
+  color: var(--fcom-primary-text, var(--tbc-doc-text, #1f2328));
+  line-height: 1.6;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+/* ================================================================
+   TYPOGRAPHY
+   ================================================================ */
+h1 {
+  font-size: 2rem;
+  margin-bottom: 8px;
+  color: var(--fcom-primary-text, var(--tbc-doc-text));
+}
+
+h2 {
+  font-size: 1.5rem;
+  margin-top: 48px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  color: var(--fcom-primary-text, var(--tbc-doc-text));
+}
+
+h3 {
+  font-size: 1.15rem;
+  margin-top: 32px;
+  margin-bottom: 12px;
+  color: var(--fcom-text-link, var(--tbc-doc-accent));
+}
+
+h4 {
+  font-size: 1rem;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary));
+}
+
+p, li { margin-bottom: 8px; }
+ul { padding-left: 24px; }
+ol { padding-left: 24px; }
+
+/* ================================================================
+   LINKS
+   ================================================================ */
+a {
+  color: var(--fcom-text-link, var(--tbc-doc-accent));
+  text-decoration: none;
+}
+a:hover {
+  color: var(--fcom-text-link, var(--tbc-doc-accent-hover));
+  text-decoration: underline;
+}
+
+/* ================================================================
+   CODE
+   ================================================================ */
+code {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  background: var(--fcom-secondary-bg, var(--tbc-doc-code-bg));
+  border: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--fcom-secondary-bg, var(--tbc-doc-bg-secondary));
+  border: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  margin: 12px 0 16px;
+}
+pre code { background: none; border: none; padding: 0; }
+
+/* ================================================================
+   TABLES
+   ================================================================ */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 24px;
+  font-size: 0.95em;
+}
+th, td {
+  text-align: left;
+  padding: 10px 14px;
+  border: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+}
+th {
+  background: var(--fcom-secondary-bg, var(--tbc-doc-bg-secondary));
+  font-weight: 600;
+  color: var(--fcom-primary-text, var(--tbc-doc-text));
+}
+tr:hover td {
+  background: var(--fcom-active-bg, var(--tbc-doc-bg-tertiary));
+}
+
+/* ================================================================
+   SUBTITLE
+   ================================================================ */
+.subtitle {
+  color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary));
+  font-size: 1.1rem;
+  margin-bottom: 32px;
+}
+
+/* ================================================================
+   CALLOUTS
+   ================================================================ */
+.callout {
+  border-left: 4px solid var(--fcom-text-link, var(--tbc-doc-accent));
+  background: var(--fcom-secondary-bg, var(--tbc-doc-bg-secondary));
+  padding: 16px 20px;
+  border-radius: 0 8px 8px 0;
+  margin: 16px 0;
+  color: var(--fcom-primary-text, var(--tbc-doc-text));
+}
+.callout-warn {
+  border-left-color: var(--fcom-warning-color, var(--tbc-doc-warning));
+}
+.callout-error {
+  border-left-color: var(--fcom-danger-color, var(--tbc-doc-error));
+}
+.callout-success {
+  border-left-color: var(--fcom-success-color, var(--tbc-doc-success));
+}
+
+/* ================================================================
+   TABLE OF CONTENTS
+   ================================================================ */
+.toc {
+  background: var(--fcom-secondary-bg, var(--tbc-doc-bg-secondary));
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin: 24px 0 40px;
+}
+.toc ol { padding-left: 20px; }
+.toc li { margin-bottom: 4px; }
+
+/* ================================================================
+   FILE PATHS & TAGS
+   ================================================================ */
+.file-path {
+  color: var(--fcom-text-link, var(--tbc-doc-accent));
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 600;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.tag-free { background: rgba(9, 105, 218, 0.12); color: var(--fcom-text-link, var(--tbc-doc-accent)); }
+.tag-pro { background: var(--tbc-doc-purple-bg, rgba(130, 80, 223, 0.1)); color: var(--tbc-doc-purple, #8250df); }
+.tag-msg { background: rgba(247, 120, 186, 0.12); color: #f778ba; }
+.tag-app { background: var(--tbc-doc-success-bg, rgba(26, 127, 55, 0.1)); color: var(--fcom-success-color, var(--tbc-doc-success)); }
+.tag-roadmap { background: var(--tbc-doc-warning-bg, rgba(154, 103, 0, 0.1)); color: var(--fcom-warning-color, var(--tbc-doc-warning)); }
+.tag-addon { background: var(--tbc-doc-warning-bg, rgba(154, 103, 0, 0.1)); color: var(--fcom-warning-color, var(--tbc-doc-warning)); }
+
+/* ================================================================
+   FEATURE COMPARISON (check / cross / partial)
+   ================================================================ */
+.check { color: var(--fcom-success-color, var(--tbc-doc-success)); font-weight: bold; font-size: 1.1em; }
+.cross { color: var(--fcom-danger-color, var(--tbc-doc-error)); font-size: 1.1em; }
+.partial { color: var(--fcom-warning-color, var(--tbc-doc-warning)); font-size: 1.1em; }
+.na { color: var(--fcom-secondary-text, var(--tbc-doc-text-muted)); font-size: 0.85em; }
+
+/* Highlight rows */
+.row-app td { background: var(--tbc-doc-success-bg, rgba(26, 127, 55, 0.04)); }
+.row-roadmap td { background: var(--tbc-doc-warning-bg, rgba(154, 103, 0, 0.04)); }
+.row-done td { background: var(--tbc-doc-bg-secondary); }
+.row-done td s { color: var(--fcom-text-off, var(--tbc-doc-text-muted)); }
+
+/* ================================================================
+   STATS GRID
+   ================================================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+.stat-card {
+  background: var(--fcom-secondary-bg, var(--tbc-doc-bg-secondary));
+  border: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--fcom-text-link, var(--tbc-doc-accent));
+  display: block;
+}
+.stat-label {
+  color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary));
+  font-size: 0.85em;
+  margin-top: 4px;
+}
+
+/* ================================================================
+   LEGEND
+   ================================================================ */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: var(--fcom-secondary-bg, var(--tbc-doc-bg-secondary));
+  border: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 16px 0 24px;
+  font-size: 0.9em;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+
+/* ================================================================
+   COLOR SWATCHES (theme-system.html)
+   ================================================================ */
+.color-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+/* ================================================================
+   THEME TOGGLE BUTTON (standalone only)
+   Hidden when Fluent vars are present (on-site)
+   ================================================================ */
+.docs-theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background: var(--fcom-secondary-bg, var(--tbc-doc-bg-tertiary));
+  border: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  border-radius: 20px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition: background 0.15s;
+  z-index: 1000;
+}
+.docs-theme-toggle:hover {
+  background: var(--fcom-active-bg, var(--tbc-doc-bg-hover));
+}
+
+/* ================================================================
+   NAV BREADCRUMB (links back to other docs)
+   ================================================================ */
+.docs-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  font-size: 0.85rem;
+  color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary));
+}
+.docs-nav a {
+  color: var(--fcom-text-link, var(--tbc-doc-accent));
+}
+.docs-nav ion-icon {
+  font-size: 1rem;
+  color: var(--fcom-text-link, var(--tbc-doc-accent));
+  vertical-align: middle;
+}
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (max-width: 768px) {
+  body { padding: 20px 16px 60px; }
+  table { font-size: 0.8em; }
+  th, td { padding: 6px 8px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .legend { gap: 10px; }
+}
+
+/* ================================================================
+   DOC-SPECIFIC CLASSES
+   Recovered from individual doc files — not part of base theme.
+   Grouped by feature area.
+   ================================================================ */
+
+/* ----------------------------------------------------------------
+   Tag Variants (components, architecture, api-client, logging)
+   ---------------------------------------------------------------- */
+.core { background: rgba(63, 185, 80, 0.15); color: var(--fcom-success-color, var(--tbc-doc-success)); }
+.shared { background: rgba(88, 166, 255, 0.15); color: var(--fcom-text-link, var(--tbc-doc-accent)); }
+.screen { background: rgba(210, 153, 34, 0.15); color: var(--fcom-warning-color, var(--tbc-doc-warning)); }
+.required { background: rgba(248, 81, 73, 0.15); color: var(--fcom-danger-color, var(--tbc-doc-error)); }
+.auto { background: rgba(63, 185, 80, 0.15); color: var(--fcom-success-color, var(--tbc-doc-success)); }
+
+/* ----------------------------------------------------------------
+   Component Cards (components.html)
+   ---------------------------------------------------------------- */
+.component-card {
+  background: var(--fcom-secondary-bg, var(--tbc-doc-bg-secondary));
+  border: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+.component-card h4 { margin-top: 0; }
+.component-card .file-path { display: block; margin-bottom: 8px; }
+
+/* ----------------------------------------------------------------
+   Color Swatches — row layout (components.html)
+   ---------------------------------------------------------------- */
+.swatch-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
+.swatch {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  border: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  font-size: 0.6em;
+  padding-bottom: 2px;
+  color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary));
+}
+
+/* ----------------------------------------------------------------
+   Prop Tables (components.html)
+   ---------------------------------------------------------------- */
+.prop-table td:first-child {
+  font-family: monospace;
+  color: var(--fcom-success-color, var(--tbc-doc-success));
+  white-space: nowrap;
+}
+.prop-table td:nth-child(2) {
+  font-family: monospace;
+  color: var(--tbc-doc-purple, #8250df);
+  white-space: nowrap;
+}
+
+/* ----------------------------------------------------------------
+   Diagrams (architecture.html, pusher.html)
+   ---------------------------------------------------------------- */
+.diagram {
+  background: var(--fcom-secondary-bg, var(--tbc-doc-bg-secondary));
+  border: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.85em;
+  line-height: 1.7;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* ----------------------------------------------------------------
+   Flow Diagrams (messaging, state-management, caching-system,
+   api-client)
+   ---------------------------------------------------------------- */
+.flow-diagram {
+  background: var(--fcom-secondary-bg, var(--tbc-doc-bg-secondary));
+  border: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.85em;
+  line-height: 1.8;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* ----------------------------------------------------------------
+   Output Examples (logging.html)
+   ---------------------------------------------------------------- */
+.output-example {
+  background: #000;
+  border: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0 16px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.85em;
+  line-height: 1.8;
+}
+.output-example .log { color: #e6edf3; }
+.output-example .warn { color: var(--fcom-warning-color, var(--tbc-doc-warning)); }
+.output-example .error { color: var(--fcom-danger-color, var(--tbc-doc-error)); }
+.output-example .tag {
+  background: none;
+  padding: 0;
+  margin: 0;
+  color: var(--fcom-text-link, var(--tbc-doc-accent));
+  font-size: 1em;
+}
+
+/* ----------------------------------------------------------------
+   Sticky Nav — opt-in only (add class="docs-sticky-nav" to use)
+   ---------------------------------------------------------------- */
+.docs-sticky-nav {
+  position: sticky;
+  top: 0;
+  background: var(--fcom-primary-bg, var(--tbc-doc-bg));
+  padding: 8px 0;
+  z-index: 10;
+  border-bottom: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));
+  margin-bottom: 24px;
+}
+.docs-sticky-nav a { margin-right: 16px; font-size: 0.9rem; }

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TBC Community App — Roadmap & Gaps</title>
+<link rel="stylesheet" href="docs-theme.css">
+<script src="docs-theme.js"></script>
+</head>
+<body>
+
+<h1>Roadmap &amp; Gaps</h1>
+<p class="subtitle">Features from Fluent Community Pro/Messages that we don't yet support, plus improvements we want to make</p>
+
+<p>Grouped by priority.</p>
+
+<div class="legend">
+  <div class="legend-item"><span class="check">&#10003;</span> Implemented</div>
+  <div class="legend-item"><span class="tag tag-roadmap">ROADMAP</span> Planned</div>
+  <div class="legend-item"><span class="tag tag-free">FREE</span> Fluent Community</div>
+  <div class="legend-item"><span class="tag tag-pro">PRO</span> Fluent Community Pro</div>
+  <div class="legend-item"><span class="tag tag-msg">MSG</span> Fluent Messages</div>
+</div>
+
+<!-- ================================================================ -->
+<h2 id="high-priority">High Priority</h2>
+
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>Source</th>
+    <th>Impact</th>
+  </tr>
+  <tr class="row-done">
+    <td><s>Report content (posts &amp; comments)</s></td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span> Implemented &mdash; ReportModal in post &amp; comment action menus.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Community threads (space group chat)</td>
+    <td><span class="tag tag-msg">MSG</span></td>
+    <td>High engagement feature. Spaces with group chat are more active.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>"Following" feed filter</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Key for large communities &mdash; shows only posts from followed users.</td>
+  </tr>
+  <tr class="row-done">
+    <td><s>Quiz lesson type in courses</s></td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span> Implemented &mdash; full quiz support with single/multiple choice, scoring, pass/fail, retake.</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="medium-priority">Medium Priority</h2>
+
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>Source</th>
+    <th>Impact</th>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Scheduled posts</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Admin/mod convenience for content planning.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Leaderboard &amp; points display</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Gamification drives engagement. Show levels, points, and rankings.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Invitation system (share invite links)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Growth feature &mdash; viral sharing from within the app.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Space links (custom links per space)</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td>Display space-associated links on the space detail screen.</td>
+  </tr>
+  <tr class="row-done">
+    <td><s>Course free preview</s></td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td><span class="check">&#10003;</span> Implemented &mdash; free preview lessons with preview badge on LessonRow.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Document library</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Browse and download shared documents / resources.</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="low-priority">Low Priority / Nice to Have</h2>
+
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>Source</th>
+    <th>Impact</th>
+  </tr>
+  <tr class="row-roadmap">
+    <td>RTL language support</td>
+    <td><span class="tag tag-free">FREE</span></td>
+    <td>Needed for Arabic, Hebrew communities. Moderate implementation effort.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Email auto-login (magic link)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Convenience feature, deep link from email directly into authenticated app.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Member analytics (top posters, commenters)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Could surface as a home widget or in member directory.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Space analytics (popular spaces)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Could enhance space discovery with popularity indicators.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Moderation queue (in-app for mods)</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Nice for active moderators who live in the app.</td>
+  </tr>
+  <tr class="row-roadmap">
+    <td>Topics admin management</td>
+    <td><span class="tag tag-pro">PRO</span></td>
+    <td>Admin CRUD for topics &mdash; currently requires WordPress dashboard.</td>
+  </tr>
+</table>
+
+<!-- ================================================================ -->
+<h2 id="not-applicable">Not Applicable to Mobile</h2>
+
+<p>These Fluent Community features are web-specific and intentionally not implemented in the native app:</p>
+
+<ul>
+  <li><strong>Custom CSS / JS injection</strong> &mdash; web portal only</li>
+  <li><strong>Sidebar links</strong> &mdash; mobile has no sidebar (uses tab bar + menu)</li>
+  <li><strong>Rich post layout toggle</strong> &mdash; mobile uses native card layout</li>
+  <li><strong>Member list layout toggle</strong> &mdash; mobile uses native list layout</li>
+  <li><strong>"Powered by" branding</strong> &mdash; not present in native app</li>
+  <li><strong>SEO sitemap</strong> &mdash; web indexing, not relevant for app</li>
+  <li><strong>Portal slug configuration</strong> &mdash; web URL path, app uses deep link mapping</li>
+</ul>
+
+<!-- ================================================================ -->
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">
+<p style="margin-top: 16px; color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary)); font-size: 0.9em;">
+  <a href="api-client.html">API Client</a> &middot;
+  <a href="architecture.html">Architecture</a> &middot;
+  <a href="caching-system.html">Caching</a> &middot;
+  <a href="companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="competitive.html">Competitive</a> &middot;
+  <a href="components.html">Components</a> &middot;
+  <a href="content-creation.html">Content Creation</a> &middot;
+  <a href="courses.html">Courses</a> &middot;
+  <a href="deep-linking.html">Deep Linking</a> &middot;
+  <a href="features.html">Features</a> &middot;
+  <a href="feed-system.html">Feed System</a> &middot;
+  <a href="forms-validation.html">Forms</a> &middot;
+  <a href="logging.html">Logging</a> &middot;
+  <a href="media-uploads.html">Media</a> &middot;
+  <a href="messaging.html">Messaging</a> &middot;
+  <a href="module-system.html">Module System</a> &middot;
+  <a href="notifications.html">Notifications</a> &middot;
+  <a href="profile-system.html">Profiles</a> &middot;
+  <a href="pusher.html">Pusher</a> &middot;
+  <a href="registration.html">Registration</a> &middot;
+  Roadmap &middot;
+  <a href="spaces.html">Spaces</a> &middot;
+  <a href="state-management.html">State Management</a> &middot;
+  <a href="theme-system.html">Theme System</a> &middot;
+  <a href="widget-system.html">Widget System</a>
+</p>
+
+</body>
+</html>
