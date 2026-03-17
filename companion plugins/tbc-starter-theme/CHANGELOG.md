@@ -2,6 +2,13 @@
 
 All notable changes to the Fluent Starter theme.
 
+## 1.0.50
+
+- Fixed memory exhaustion crash (256MB) when activating theme on sites without Fluent Community or WooCommerce
+- Added recursion guard to `get_avatar_url` filter — prevents infinite loop if FC's User model internally triggers avatar resolution
+- Added recursion guard to profile data/badge lookup for the same reason
+- `fluent-integration.php` now bails early if Fluent Community plugin is not active — avoids registering dozens of hooks that can never fire and prevents any FC model calls on bare sites
+
 ## 1.0.48
 
 - Rewrote GamiPress partial payments CSS based on actual plugin HTML structure (plugin has no CSS of its own)

@@ -12,6 +12,15 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// ==========================================================================
+// Skip all Fluent Community hooks if the plugin is not active.
+// This prevents unnecessary filter registrations and potential issues
+// on sites without Fluent Community installed.
+// ==========================================================================
+if (!fluent_starter_has_fluent_community()) {
+    return;
+}
+
 /**
  * Register theme as a supported Fluent Community theme
  *
@@ -69,11 +78,21 @@ add_filter('fluent_community/general_portal_vars', function($vars) {
  *
  * Hooks into WordPress's get_avatar_url filter so every get_avatar() call
  * throughout the theme automatically uses the FC xprofile avatar.
+ *
+ * Includes a recursion guard: if FC's User model internally triggers
+ * get_avatar_url (e.g. through relationship loading), we bail out to
+ * prevent infinite recursion and memory exhaustion.
  */
 add_filter('get_avatar_url', 'fluent_starter_fcom_avatar_url', 10, 3);
 
 function fluent_starter_fcom_avatar_url($url, $id_or_email, $args) {
     if (!class_exists('FluentCommunity\App\Models\User')) {
+        return $url;
+    }
+
+    // Recursion guard — prevent infinite loop if FC model triggers get_avatar_url
+    static $resolving = false;
+    if ($resolving) {
         return $url;
     }
 
@@ -99,12 +118,14 @@ function fluent_starter_fcom_avatar_url($url, $id_or_email, $args) {
     // Use FC's native xprofile avatar accessor (handles all fallback logic)
     static $cache = [];
     if (!isset($cache[$user_id])) {
+        $resolving = true;
         try {
             $fc_user = \FluentCommunity\App\Models\User::find($user_id);
             $cache[$user_id] = ($fc_user && $fc_user->xprofile) ? $fc_user->xprofile->avatar : null;
         } catch (\Exception $e) {
             $cache[$user_id] = null;
         }
+        $resolving = false;
     }
 
     return $cache[$user_id] ?: $url;
@@ -116,10 +137,14 @@ function fluent_starter_fcom_avatar_url($url, $id_or_email, $args) {
  */
 function fluent_starter_get_profile_data($user_id) {
     static $cache = [];
-    if (!$user_id || !class_exists('FluentCommunity\App\Models\User')) {
-        return ['badge_slugs' => [], 'is_verified' => 0];
+    static $resolving = false;
+    $default = ['badge_slugs' => [], 'is_verified' => 0];
+
+    if (!$user_id || !class_exists('FluentCommunity\App\Models\User') || $resolving) {
+        return $default;
     }
     if (!isset($cache[$user_id])) {
+        $resolving = true;
         try {
             $fc_user = \FluentCommunity\App\Models\User::find($user_id);
             $xprofile = ($fc_user && $fc_user->xprofile) ? $fc_user->xprofile : null;
@@ -129,8 +154,9 @@ function fluent_starter_get_profile_data($user_id) {
                 'is_verified' => (int) ($xprofile->is_verified ?? 0),
             ];
         } catch (\Exception $e) {
-            $cache[$user_id] = ['badge_slugs' => [], 'is_verified' => 0];
+            $cache[$user_id] = $default;
         }
+        $resolving = false;
     }
     return $cache[$user_id];
 }
