@@ -40,6 +40,11 @@ export const FEATURES = {
   },
 };
 
+// --- Bot Protection ----------------------------------------------------------
+// Shared secret matching tbc_fp_app_token in WordPress.
+// Sent as X-App-Token header on registration — bypasses Turnstile for the app.
+export const APP_TOKEN = 'REPLACE_WITH_YOUR_APP_TOKEN';
+
 // --- Links -------------------------------------------------------------------
 
 export const PRIVACY_POLICY_URL = `${SITE_URL}/privacy-policy/`;

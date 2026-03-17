@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.41.0
+- **REST API index hidden**: Unauthenticated requests to `/wp-json/` now return 403 — prevents bots from discovering custom endpoints via the REST API index. All specific endpoints still work normally for both authenticated and unauthenticated requests.
+
 ## v3.40.0
 - **Server-driven socket config**: New `socket` section in `/app-config` response returns Pusher/Fluent Socket/Soketi connection config from Fluent Messaging settings. Mobile app auto-detects the socket provider — buyers configure once in WordPress admin, no app-side config needed. Mirrors the approach used by Fluent Messaging's web frontend (`ChatAppHandler`). Returns `null` when Fluent Messaging is not active.
 

@@ -3,7 +3,7 @@
  * Plugin Name: TBC Fluent Profiles
  * Plugin URI:  https://twobirdscode.com
  * Description: Custom profile fields, OTP verification (Twilio), and multi-step registration for Fluent Community. Unified profiles, verification, and registration in one plugin.
- * Version:     2.6.1
+ * Version:     2.7.1
  * Author: Two Birds Code
  * Author URI:  https://twobirdscode.com
  * Text Domain: tbc-fluent-profiles
@@ -20,7 +20,7 @@
 defined('ABSPATH') or die('No direct script access allowed');
 
 // Core plugin constants
-define('TBC_FP_VERSION', '2.6.1');
+define('TBC_FP_VERSION', '2.7.1');
 define('TBC_FP_FILE', __FILE__);
 define('TBC_FP_DIR', plugin_dir_path(__FILE__));
 define('TBC_FP_URL', plugin_dir_url(__FILE__));
@@ -108,6 +108,23 @@ register_activation_hook(__FILE__, function () {
     ];
 
     foreach ($sms_defaults as $key => $value) {
+        $option_name = 'tbc_fp_' . $key;
+        if (false === get_option($option_name)) {
+            add_option($option_name, $value);
+        }
+    }
+
+    // Bot protection default options
+    $bot_defaults = [
+        'turnstile_enabled'       => false,
+        'turnstile_site_key'      => '',
+        'turnstile_secret_key'    => '',
+        'app_token'               => wp_generate_password(48, false),
+        'block_disposable_emails' => true,
+        'blocked_emails'          => '',
+    ];
+
+    foreach ($bot_defaults as $key => $value) {
         $option_name = 'tbc_fp_' . $key;
         if (false === get_option($option_name)) {
             add_option($option_name, $value);

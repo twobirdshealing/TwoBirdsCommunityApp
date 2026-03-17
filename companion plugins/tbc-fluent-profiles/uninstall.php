@@ -53,6 +53,20 @@ foreach ($pc_keys as $key) {
     delete_option('tbc_fp_' . $key);
 }
 
+// Remove bot protection settings
+$bot_keys = [
+    'turnstile_enabled',
+    'turnstile_site_key',
+    'turnstile_secret_key',
+    'app_token',
+    'block_disposable_emails',
+    'blocked_emails',
+];
+
+foreach ($bot_keys as $key) {
+    delete_option('tbc_fp_' . $key);
+}
+
 // Remove uninstall pref
 delete_option('tbc_fp_delete_data_on_uninstall');
 

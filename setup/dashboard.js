@@ -179,6 +179,7 @@ const PLACEHOLDERS = [
   'your-expo-account', 'YOUR_EAS_PROJECT_ID',
   'https://community.yoursite.com', 'community.yoursite.com',
   'your-apple-id@example.com', 'YOUR_ASC_APP_ID',
+  'REPLACE_WITH_YOUR_APP_TOKEN',
 ];
 
 function isPlaceholder(val) {
@@ -223,6 +224,7 @@ function readProjectState() {
     const content = fs.readFileSync(PATHS.configTs, 'utf8');
     state.config.appNameConfig = extractTsValue(content, /export const APP_NAME = '([^']*)'/);
     state.config.userAgent = extractTsValue(content, /export const APP_USER_AGENT = '([^']*)'/);
+    state.config.appToken = extractTsValue(content, /export const APP_TOKEN = '([^']*)'/);
     // Feature flags
     state.features = {};
     for (const flag of BOOL_FLAGS) {
@@ -336,6 +338,7 @@ function runValidation(state) {
   // config.ts
   check(!isPlaceholder(c.appNameConfig), 'APP_NAME is set in config.ts', 'config.ts', 'config-ts');
   check(!isPlaceholder(c.userAgent), 'APP_USER_AGENT is set', 'config.ts', 'config-ts');
+  check(!isPlaceholder(c.appToken), 'APP_TOKEN is set (bot protection)', 'config.ts', 'config-ts');
 
   // app.config.ts
   check(!isPlaceholder(c.fallbackSiteUrl), 'Fallback SITE_URL is set', 'app.config.ts', 'site-url');
@@ -460,13 +463,16 @@ function writeConfigValues(changes) {
   }
 
   // --- constants/config.ts ---
-  if (changes.appNameConfig !== undefined || changes.userAgent !== undefined) {
+  if (changes.appNameConfig !== undefined || changes.userAgent !== undefined || changes.appToken !== undefined) {
     let content = fs.readFileSync(PATHS.configTs, 'utf8');
     if (changes.appNameConfig !== undefined) {
       content = content.replace(/export const APP_NAME = '[^']*'/, `export const APP_NAME = '${changes.appNameConfig}'`);
     }
     if (changes.userAgent !== undefined) {
       content = content.replace(/export const APP_USER_AGENT = '[^']*'/, `export const APP_USER_AGENT = '${changes.userAgent}'`);
+    }
+    if (changes.appToken !== undefined) {
+      content = content.replace(/export const APP_TOKEN = '[^']*'/, `export const APP_TOKEN = '${changes.appToken}'`);
     }
     fs.writeFileSync(PATHS.configTs, content);
     results.push('constants/config.ts updated');
@@ -1038,7 +1044,7 @@ function parseTar(buffer) {
   const files = [];
   let offset = 0;
   while (offset < buffer.length - 512) {
-    const header = buffer.slice(offset, offset + 512);
+    const header = buffer.subarray(offset, offset + 512);
     // Check for end-of-archive (first byte zero means null header)
     if (header[0] === 0) break;
 
@@ -1048,7 +1054,7 @@ function parseTar(buffer) {
     name = name.trim().replace(/\\/g, '/').replace(/^\.\//, '');
 
     // Extract size (octal, 12 bytes at offset 124)
-    const sizeStr = header.slice(124, 136).toString('ascii').trim().replace(/\0/g, '');
+    const sizeStr = header.subarray(124, 136).toString('ascii').trim().replace(/\0/g, '');
     const size = parseInt(sizeStr, 8) || 0;
 
     // Type flag
@@ -1057,7 +1063,7 @@ function parseTar(buffer) {
     offset += 512;
 
     if (size > 0 && (typeflag === 0x30 || typeflag === 0)) { // regular file
-      const data = buffer.slice(offset, offset + size);
+      const data = buffer.subarray(offset, offset + size);
       files.push({ path: name, data });
     }
 
@@ -1089,11 +1095,11 @@ function parseMultipart(req) {
       while (true) {
         const nextStart = buffer.indexOf(boundaryBuf, start + boundaryBuf.length);
         if (nextStart === -1) break;
-        const partData = buffer.slice(start + boundaryBuf.length, nextStart);
+        const partData = buffer.subarray(start + boundaryBuf.length, nextStart);
         const headerEnd = partData.indexOf(crlfcrlf, 0);
         if (headerEnd === -1) { start = nextStart; continue; }
-        const headerStr = partData.slice(0, headerEnd).toString('utf8');
-        const body = partData.slice(headerEnd + 4, partData.length - 2);
+        const headerStr = partData.subarray(0, headerEnd).toString('utf8');
+        const body = partData.subarray(headerEnd + 4, partData.length - 2);
         const nameMatch = headerStr.match(/name="([^"]+)"/);
         const filenameMatch = headerStr.match(/filename="([^"]+)"/);
         parts.push({ name: nameMatch ? nameMatch[1] : '', filename: filenameMatch ? filenameMatch[1] : '', data: body });
@@ -2442,6 +2448,16 @@ function getDashboardHTML() {
   </div>
 
   <div class="card">
+    <div class="card-header"><h3>Bot Protection</h3><span class="badge" style="color:var(--text-muted)">constants/config.ts</span></div>
+    <div class="card-body">
+      <div class="field">
+        <label>APP_TOKEN <span class="file-hint">constants/config.ts</span></label>
+        <input type="text" id="cfg-appToken" data-key="appToken" placeholder="Paste token from WordPress &rarr; Fluent Profiles &rarr; Bot Protection">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-header"><h3>Feature Flags</h3><span class="badge" style="color:var(--text-muted)">constants/config.ts</span></div>
     <div class="card-body">
       <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Toggle app features on or off. Disabled features are hidden from users. Changes are saved to <code>constants/config.ts</code>.</p>
@@ -2468,7 +2484,7 @@ function getDashboardHTML() {
             <span class="toggle-switch"></span>
             <span class="toggle-text">Messaging</span>
           </label>
-          <span class="flag-desc">Direct messaging via Fluent Community Pro + Fluent Messaging add-on</span>
+          <span class="flag-desc">Direct messaging via Fluent Community Pro with FluentCommunity Chat enabled</span>
         </div>
         <div class="feature-flag">
           <label class="toggle-label">
@@ -2476,7 +2492,7 @@ function getDashboardHTML() {
             <span class="toggle-switch"></span>
             <span class="toggle-text">Courses</span>
           </label>
-          <span class="flag-desc">Course enrollment via Fluent Community Pro + LMS add-on</span>
+          <span class="flag-desc">Course enrollment via Fluent Community Pro with Course module enabled</span>
         </div>
         <div class="feature-flag">
           <label class="toggle-label">
@@ -2804,9 +2820,10 @@ let lastDerived = {};
 let dirty = false;
 const CONFIG_FIELDS = ['appName', 'slug', 'scheme', 'version', 'iosBundleId', 'androidPackage',
   'siteUrl', 'easOwner', 'easProjectId', 'appNameConfig', 'userAgent',
-  'appleId', 'ascAppId', 'packageName'];
+  'appleId', 'ascAppId', 'packageName', 'appToken'];
 const BOOL_FLAGS = ${JSON.stringify(BOOL_FLAGS)};
 const PROFILE_TAB_KEYS = ${JSON.stringify(PROFILE_TAB_KEYS)};
+const PLACEHOLDERS = ${JSON.stringify(PLACEHOLDERS)};
 
 // ---------------------------------------------------------------------------
 // Field help — shown expanded when empty, collapsed with ? when filled
@@ -2861,6 +2878,9 @@ const FIELD_HELP = {
   },
   userAgent: {
     text: 'Identifies your app in HTTP requests to your WordPress site. Auto-derived from app name. Format: <code>YourAppName/1.0</code>.',
+  },
+  appToken: {
+    text: 'Shared secret for bot protection. Copy from WordPress → Fluent Community → Profiles → Bot Protection → Mobile App Token. Lets the app bypass Turnstile on registration.',
   },
   appleId: {
     text: 'The Apple ID email you use for App Store Connect — the email that manages your Apple Developer account.',
@@ -3815,23 +3835,24 @@ async function easCheckStatus() {
   try {
     var res = await fetch('/api/eas/status');
     var data = await res.json();
+    var installedTag = '<span style="display:inline-block;background:rgba(63,185,80,0.15);color:var(--green);font-size:11px;font-weight:600;padding:1px 8px;border-radius:10px;margin-left:6px">Installed</span>';
     if (!data.installed) {
       dot.style.background = 'var(--red)';
-      text.textContent = 'EAS CLI not installed';
+      text.innerHTML = 'EAS CLI not installed';
       installBtn.style.display = '';
       loginBtn.style.display = 'none';
       logoutBtn.style.display = 'none';
       initBtn.style.display = 'none';
     } else if (!data.loggedIn) {
       dot.style.background = 'var(--yellow)';
-      text.textContent = 'EAS CLI v' + data.version + ' — not logged in';
+      text.innerHTML = 'EAS CLI v' + data.version + installedTag + ' — not logged in';
       installBtn.style.display = 'none';
       loginBtn.style.display = '';
       logoutBtn.style.display = 'none';
       initBtn.style.display = 'none';
     } else {
       dot.style.background = 'var(--green)';
-      text.textContent = 'EAS CLI v' + data.version + ' — logged in as ' + data.user;
+      text.innerHTML = 'EAS CLI v' + data.version + installedTag + ' — logged in as ' + data.user;
       installBtn.style.display = 'none';
       loginBtn.style.display = 'none';
       logoutBtn.style.display = '';

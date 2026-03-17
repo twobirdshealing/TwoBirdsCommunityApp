@@ -26,12 +26,14 @@ uasort($fields, function ($a, $b) {
     <?php settings_errors(TBCFluentProfiles\Fields::OPTION_KEY); ?>
     <?php settings_errors('tbc_fp_settings_otp'); ?>
     <?php settings_errors('tbc_fp_settings_profile_completion'); ?>
+    <?php settings_errors('tbc_fp_settings_bot_protection'); ?>
 
     <!-- Tab Navigation -->
     <nav class="nav-tab-wrapper tbc-fp-tabs">
         <a href="#tbc-fp-tab-fields" class="nav-tab nav-tab-active" data-tab="fields"><?php esc_html_e('Profile Fields', 'tbc-fluent-profiles'); ?></a>
         <a href="#tbc-fp-tab-otp" class="nav-tab" data-tab="otp"><?php esc_html_e('OTP / Twilio', 'tbc-fluent-profiles'); ?></a>
         <a href="#tbc-fp-tab-profile-completion" class="nav-tab" data-tab="profile-completion"><?php esc_html_e('Profile Completion', 'tbc-fluent-profiles'); ?></a>
+        <a href="#tbc-fp-tab-bot-protection" class="nav-tab" data-tab="bot-protection"><?php esc_html_e('Bot Protection', 'tbc-fluent-profiles'); ?></a>
     </nav>
 
     <!-- Tab: Profile Fields -->
@@ -376,6 +378,89 @@ uasort($fields, function ($a, $b) {
         <?php submit_button(__('Save Profile Completion Settings', 'tbc-fluent-profiles')); ?>
     </form>
     </div><!-- /tab-profile-completion -->
+
+    <!-- Tab: Bot Protection -->
+    <div id="tbc-fp-tab-bot-protection" class="tbc-fp-tab-panel" style="display:none;">
+    <form method="post" action="options.php">
+        <?php settings_fields('tbc_fp_settings_bot_protection'); ?>
+
+        <h3><?php esc_html_e('Cloudflare Turnstile', 'tbc-fluent-profiles'); ?></h3>
+        <p class="description"><?php esc_html_e('Turnstile is a free, invisible bot protection service from Cloudflare. It runs silently in the background — real users see nothing. Get your keys from', 'tbc-fluent-profiles'); ?> <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank">Cloudflare Dashboard</a>.</p>
+
+        <table class="form-table">
+            <tr>
+                <th scope="row"><?php esc_html_e('Enable Turnstile', 'tbc-fluent-profiles'); ?></th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="tbc_fp_turnstile_enabled" value="1" <?php checked(1, TBCFluentProfiles\Helpers::get_option('turnstile_enabled', false)); ?> />
+                        <?php esc_html_e('Require Turnstile verification on registration.', 'tbc-fluent-profiles'); ?>
+                    </label>
+                    <p class="description"><?php esc_html_e('When enabled, web registration requires a valid Turnstile token. Mobile app uses the App Token below instead.', 'tbc-fluent-profiles'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="tbc_fp_turnstile_site_key"><?php esc_html_e('Site Key', 'tbc-fluent-profiles'); ?></label></th>
+                <td>
+                    <input type="text" id="tbc_fp_turnstile_site_key" name="tbc_fp_turnstile_site_key" value="<?php echo esc_attr((string) TBCFluentProfiles\Helpers::get_option('turnstile_site_key', '')); ?>" class="regular-text" placeholder="0x..." />
+                    <p class="description"><?php esc_html_e('Public key — embedded in the registration form.', 'tbc-fluent-profiles'); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="tbc_fp_turnstile_secret_key"><?php esc_html_e('Secret Key', 'tbc-fluent-profiles'); ?></label></th>
+                <td>
+                    <input type="password" id="tbc_fp_turnstile_secret_key" name="tbc_fp_turnstile_secret_key" value="<?php echo esc_attr((string) TBCFluentProfiles\Helpers::get_option('turnstile_secret_key', '')); ?>" class="regular-text" placeholder="0x..." />
+                    <p class="description"><?php esc_html_e('Secret key — used server-side to verify tokens. Keep this private.', 'tbc-fluent-profiles'); ?></p>
+                </td>
+            </tr>
+        </table>
+
+        <h3><?php esc_html_e('Mobile App Token', 'tbc-fluent-profiles'); ?></h3>
+        <p class="description"><?php esc_html_e('The mobile app sends this token instead of Turnstile. Copy this value into your app\'s constants/config.ts as APP_TOKEN. Auto-generated on first save.', 'tbc-fluent-profiles'); ?></p>
+
+        <table class="form-table">
+            <tr>
+                <th scope="row"><label for="tbc_fp_app_token"><?php esc_html_e('App Token', 'tbc-fluent-profiles'); ?></label></th>
+                <td>
+                    <?php $app_token = (string) TBCFluentProfiles\Helpers::get_option('app_token', ''); ?>
+                    <input type="text" id="tbc_fp_app_token" name="tbc_fp_app_token" value="<?php echo esc_attr($app_token); ?>" class="regular-text code" readonly />
+                    <button type="button" class="button button-secondary" onclick="
+                        var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                        var arr = new Uint8Array(48);
+                        crypto.getRandomValues(arr);
+                        var token = '';
+                        for (var i = 0; i < 48; i++) token += chars.charAt(arr[i] % chars.length);
+                        document.getElementById('tbc_fp_app_token').value = token;
+                        document.getElementById('tbc_fp_app_token').removeAttribute('readonly');
+                    "><?php esc_html_e('Regenerate', 'tbc-fluent-profiles'); ?></button>
+                    <p class="description"><?php esc_html_e('Shared secret between your server and mobile app. Regenerating requires updating the app config and rebuilding.', 'tbc-fluent-profiles'); ?></p>
+                </td>
+            </tr>
+        </table>
+
+        <h3><?php esc_html_e('Email Protection', 'tbc-fluent-profiles'); ?></h3>
+
+        <table class="form-table">
+            <tr>
+                <th scope="row"><?php esc_html_e('Block Disposable Emails', 'tbc-fluent-profiles'); ?></th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="tbc_fp_block_disposable_emails" value="1" <?php checked(1, TBCFluentProfiles\Helpers::get_option('block_disposable_emails', true)); ?> />
+                        <?php esc_html_e('Reject registration with known disposable email providers (~200 built-in domains).', 'tbc-fluent-profiles'); ?>
+                    </label>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><label for="tbc_fp_blocked_emails"><?php esc_html_e('Blocked Emails & Domains', 'tbc-fluent-profiles'); ?></label></th>
+                <td>
+                    <textarea id="tbc_fp_blocked_emails" name="tbc_fp_blocked_emails" rows="5" cols="50" class="large-text"><?php echo esc_textarea((string) TBCFluentProfiles\Helpers::get_option('blocked_emails', '')); ?></textarea>
+                    <p class="description"><?php esc_html_e('One entry per line. Add full emails (spammer@gmail.com) or domains (sketchy.com). Checked in addition to the built-in disposable list.', 'tbc-fluent-profiles'); ?></p>
+                </td>
+            </tr>
+        </table>
+
+        <?php submit_button(__('Save Bot Protection Settings', 'tbc-fluent-profiles')); ?>
+    </form>
+    </div><!-- /tab-bot-protection -->
 
     <!-- Data Management (shown on all tabs) -->
     <div class="tbc-fp-section" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #c3c4c7;">

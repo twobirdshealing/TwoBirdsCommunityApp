@@ -229,6 +229,52 @@
     border-radius: 0 0 8px 8px;
     background: var(--surface);
   }
+
+  /* Prerequisite badges — colored pills linking prereqs ↔ steps */
+  .prereq-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 0.75em; font-weight: 600; cursor: pointer;
+    text-decoration: none; transition: opacity 0.15s; vertical-align: middle;
+  }
+  .prereq-badge:hover { opacity: 0.8; text-decoration: none; }
+  .prereq-badge.fluent  { background: rgba(163,113,247,0.15); color: #a371f7; }
+  .prereq-badge.expo    { background: rgba(88,166,255,0.15);  color: #58a6ff; }
+  .prereq-badge.apple   { background: rgba(248,81,73,0.15);  color: #f85149; }
+  .prereq-badge.google  { background: rgba(63,185,80,0.15);  color: #3fb950; }
+  .prereq-badge.firebase{ background: rgba(210,153,34,0.15);  color: #d29922; }
+  .prereq-badge.pusher  { background: rgba(236,72,153,0.15);  color: #ec4899; }
+  .prereq-badge.twilio  { background: rgba(244,114,96,0.15);  color: #f47260; }
+  .prereq-badge.node    { background: rgba(63,185,80,0.15);   color: #3fb950; }
+  .prereq-badge.eas     { background: rgba(88,166,255,0.15);  color: #58a6ff; }
+  .prereq-badge.git     { background: rgba(248,81,73,0.15);   color: #f85149; }
+  .prereq-badge.vscode  { background: rgba(88,166,255,0.15);  color: #58a6ff; }
+  .prereq-badge.claude  { background: rgba(163,113,247,0.15); color: #a371f7; }
+
+  /* Prerequisite cards — replaces tables for all prerequisite sections */
+  .prereq-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    background: var(--surface);
+  }
+  .prereq-card .prereq-card-header {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .prereq-card .prereq-card-header a,
+  .prereq-card .prereq-card-header strong { font-weight: 600; font-size: 0.95em; }
+  .prereq-card .prereq-card-desc {
+    color: var(--text-secondary); font-size: 0.9em; margin: 4px 0 0; line-height: 1.5;
+  }
+  .prereq-card .prereq-card-cost {
+    display: inline-block; font-size: 0.8em; color: var(--text-secondary);
+    background: var(--tag-bg); padding: 1px 8px; border-radius: 10px; margin-left: auto;
+  }
+  .prereq-card details { margin-top: 10px; margin-bottom: 0; }
+
+  /* Prereq reference line shown at top of steps */
+  .prereq-ref { font-size: 0.88em; color: var(--text-secondary); margin: -8px 0 12px; }
+  .prereq-ref .prereq-badge { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -263,64 +309,327 @@
 <p>Make sure you have these accounts and tools ready before starting setup.</p>
 
 <h3>Required Accounts &amp; Services</h3>
-<table>
-  <tr><th>Service</th><th>What It's For</th><th>Cost</th></tr>
-  <tr>
-    <td><a href="https://fluentcommunity.co">Fluent Community</a></td>
-    <td>WordPress community plugin — powers the feed, spaces, profiles, and all backend content. Must be installed on your WordPress site.</td>
-    <td>Free tier available (Pro for messaging, courses)</td>
-  </tr>
-  <tr>
-    <td><a href="https://expo.dev">Expo Account</a></td>
-    <td>Cloud build service (EAS) for compiling iOS and Android binaries. Also handles push notification tokens.</td>
-    <td>Free tier (30 builds/month)</td>
-  </tr>
-  <tr>
-    <td><a href="https://developer.apple.com">Apple Developer Account</a></td>
-    <td>Required to submit to the iOS App Store and sign builds.</td>
-    <td>$99/year</td>
-  </tr>
-  <tr>
-    <td><a href="https://play.google.com/console">Google Play Console</a></td>
-    <td>Required to submit to the Google Play Store.</td>
-    <td>$25 one-time</td>
-  </tr>
-</table>
+
+<div class="prereq-card" id="prereq-fluent">
+  <div class="prereq-card-header">
+    <a href="https://fluentcommunity.co" target="_blank">Fluent Community</a>
+    <span class="prereq-badge fluent">Fluent</span>
+    <span class="prereq-card-cost">Free tier available (Pro for messaging, courses)</span>
+  </div>
+  <p class="prereq-card-desc">WordPress community plugin &mdash; powers the feed, spaces, profiles, and all backend content. Must be installed on your WordPress site.</p>
+  <details>
+    <summary>Walkthrough: Install Fluent Community on your WordPress site</summary>
+    <div class="details-content">
+      <ol>
+        <li>Go to your WordPress admin &rarr; <strong>Plugins &rarr; Add New</strong>.</li>
+        <li>Search for <strong>"FluentCommunity"</strong> and click <strong>Install Now</strong>, then <strong>Activate</strong>.</li>
+        <li>If you need Pro features (messaging, courses), purchase a license at <a href="https://fluentcommunity.co" target="_blank">fluentcommunity.co</a> and activate it under <strong>FluentCommunity &rarr; Settings &rarr; License</strong>.</li>
+        <li>Once activated, visit <strong>FluentCommunity &rarr; Settings</strong> to configure your community name, spaces, and initial settings.</li>
+      </ol>
+      <div class="callout" style="margin-top: 12px;">
+        <strong>WordPress required.</strong> This app connects to a WordPress site as its backend. You need a WordPress installation (self-hosted or managed) with Fluent Community installed before the app can work.
+      </div>
+    </div>
+  </details>
+</div>
+
+<div class="prereq-card" id="prereq-expo">
+  <div class="prereq-card-header">
+    <a href="https://expo.dev" target="_blank">Expo Account</a>
+    <span class="prereq-badge expo">Expo</span>
+    <span class="prereq-card-cost">Free tier (30 builds/month)</span>
+  </div>
+  <p class="prereq-card-desc">Cloud build service (EAS) for compiling iOS and Android binaries. Also handles push notification tokens.</p>
+  <details>
+    <summary>Walkthrough: Create an Expo account &amp; install EAS CLI</summary>
+    <div class="details-content">
+      <ol>
+        <li>Go to <a href="https://expo.dev/signup" target="_blank">expo.dev/signup</a> and create a free account.</li>
+        <li><strong>EAS CLI install + login is handled in the dashboard</strong> (Step 7 &mdash; EAS Config card). It detects whether EAS CLI is installed and lets you install, log in, and link your project with one click each.</li>
+        <li>Or do it manually from terminal: <code>npm install -g eas-cli</code> then <code>eas login</code>.</li>
+      </ol>
+      <div class="callout" style="margin-top: 12px;">
+        <strong>Free tier is plenty.</strong> The free plan gives you 30 builds per month &mdash; more than enough for setup and ongoing updates. You only need a paid plan if you're building very frequently.
+      </div>
+    </div>
+  </details>
+</div>
+
+<div class="prereq-card" id="prereq-apple">
+  <div class="prereq-card-header">
+    <a href="https://developer.apple.com" target="_blank">Apple Developer Account</a>
+    <span class="prereq-badge apple">Apple</span>
+    <span class="prereq-card-cost">$99/year</span>
+  </div>
+  <p class="prereq-card-desc">Required to submit to the iOS App Store and sign builds.</p>
+  <details>
+    <summary>Walkthrough: Enroll in the Apple Developer Program</summary>
+    <div class="details-content">
+      <ol>
+        <li>Go to <a href="https://developer.apple.com/programs/enroll/" target="_blank">developer.apple.com/programs/enroll</a> and sign in with your Apple ID (or create one).</li>
+        <li>Follow the enrollment steps. You'll need to agree to the Apple Developer Agreement and pay the <strong>$99/year</strong> fee.</li>
+        <li>Enrollment can take <strong>up to 48 hours</strong> to process, so do this early.</li>
+      </ol>
+    </div>
+  </details>
+  <details>
+    <summary>Walkthrough: Create your app in App Store Connect</summary>
+    <div class="details-content">
+      <ol>
+        <li>
+          Go to <a href="https://appstoreconnect.apple.com/apps" target="_blank">appstoreconnect.apple.com/apps</a> and sign in with your Apple Developer account.
+        </li>
+        <li>
+          Click the <strong>blue + button</strong> next to "Apps", then select <strong>New App</strong> (not App Clip or App Bundle).
+          <img class="step-img" src="images/newappbutton.webp" alt="Blue plus button in App Store Connect showing New App option">
+        </li>
+        <li>
+          Fill in the <strong>New App</strong> form:
+          <ul>
+            <li><strong>Platforms</strong> &mdash; check <strong>iOS</strong></li>
+            <li><strong>Name</strong> &mdash; your app's display name on the App Store (you can change this later)</li>
+            <li><strong>Primary Language</strong> &mdash; your app's main language</li>
+            <li><strong>Bundle ID</strong> &mdash; select the bundle ID you registered in the Apple Developer Portal (from Step 5). If you haven't registered one yet, do that first and come back here.</li>
+            <li><strong>SKU</strong> &mdash; an internal reference ID (not visible to users). Use something like your app slug, e.g. <code>mycommunityapp</code></li>
+            <li><strong>User Access</strong> &mdash; <strong>Full Access</strong> unless you have specific team restrictions</li>
+          </ul>
+        </li>
+        <li>
+          Click <strong>Create</strong>. Your app now exists in App Store Connect. You'll come back in Step 11 to grab the <strong>ASC App ID</strong> (found under General &rarr; App Information &rarr; Apple ID).
+        </li>
+      </ol>
+      <div class="callout" style="margin-top: 12px;">
+        <strong>Don't worry about filling in everything now.</strong> You only need the app to <em>exist</em> at this point. Store listing details (screenshots, description, pricing) can wait until you're ready to submit for review.
+      </div>
+    </div>
+  </details>
+</div>
+
+<div class="prereq-card" id="prereq-google">
+  <div class="prereq-card-header">
+    <a href="https://play.google.com/console" target="_blank">Google Play Console</a>
+    <span class="prereq-badge google">Google</span>
+    <span class="prereq-card-cost">$25 one-time</span>
+  </div>
+  <p class="prereq-card-desc">Required to submit to the Google Play Store.</p>
+  <details>
+    <summary>Walkthrough: Register a Google Play Developer account</summary>
+    <div class="details-content">
+      <ol>
+        <li>Go to <a href="https://play.google.com/console/signup" target="_blank">play.google.com/console/signup</a> and sign in with your Google account.</li>
+        <li>Accept the Developer Distribution Agreement and pay the <strong>$25 one-time</strong> registration fee.</li>
+        <li>Complete your developer profile (name, address, contact info). Google may take <strong>a few days</strong> to verify your identity.</li>
+      </ol>
+    </div>
+  </details>
+  <details>
+    <summary>Walkthrough: Create your app in Google Play Console</summary>
+    <div class="details-content">
+      <ol>
+        <li>
+          Go to <a href="https://play.google.com/console" target="_blank">play.google.com/console</a> and sign in with your Google Play Developer account.
+        </li>
+        <li>Click <strong>Create app</strong> on the All Apps page.</li>
+        <li>
+          Fill in the basics:
+          <ul>
+            <li><strong>App name</strong> &mdash; your app's display name on the Play Store</li>
+            <li><strong>Default language</strong> &mdash; your app's main language</li>
+            <li><strong>App or Game</strong> &mdash; select <strong>App</strong></li>
+            <li><strong>Free or Paid</strong> &mdash; select <strong>Free</strong> (this cannot be changed later)</li>
+          </ul>
+        </li>
+        <li>
+          Check the <strong>Developer Program Policies</strong> and <strong>US export laws</strong> declarations, then click <strong>Create app</strong>.
+        </li>
+        <li>
+          Your app now exists in the Play Console. The <strong>package name</strong> gets locked when you upload your first build &mdash; make sure it matches the Android Package you set in Step 5.
+        </li>
+      </ol>
+      <div class="callout" style="margin-top: 12px;">
+        <strong>Package name tip:</strong> Google Play doesn't ask for a package name during app creation &mdash; it's determined by your first uploaded AAB file. The package name comes from the Android Package field in the dashboard. Just make sure you don't change it after your first upload.
+      </div>
+    </div>
+  </details>
+</div>
 
 <h3>Optional Services</h3>
 <p>These are only needed if you use the features they power. The app works fine without them.</p>
-<table>
-  <tr><th>Service</th><th>What It Powers</th><th>When You Can Skip It</th><th>Cost</th></tr>
-  <tr>
-    <td><a href="https://console.firebase.google.com">Firebase</a></td>
-    <td>Push notifications — alerts users about new posts, replies, chat messages, etc.</td>
-    <td>Set <code>FEATURES.PUSH_NOTIFICATIONS = false</code> in <code>constants/config.ts</code> if you don't need push.</td>
-    <td>Free (Spark plan)</td>
-  </tr>
-  <tr>
-    <td><a href="https://pusher.com">Pusher Channels</a></td>
-    <td>Real-time updates — live message delivery, typing indicators, instant feed updates.</td>
-    <td>Only needed if using <strong>Pusher Cloud</strong> as your socket provider. Skip if using Fluent Socket (built-in) or custom Soketi, or if you don't use chat/messaging. Socket config is read from the server automatically.</td>
-    <td>Free tier (200k msgs/day)</td>
-  </tr>
-  <tr>
-    <td><a href="https://twilio.com">Twilio</a></td>
-    <td>OTP phone verification during user registration — sends a code to the user's phone number to verify it. Configured in the <code>tbc-fluent-profiles</code> plugin settings in WordPress admin.</td>
-    <td>Skip if you don't need phone verification on signup. Registration works without it — the phone number field simply won't appear.</td>
-    <td>Pay-as-you-go</td>
-  </tr>
-</table>
+
+<div class="prereq-card" id="prereq-firebase">
+  <div class="prereq-card-header">
+    <a href="https://console.firebase.google.com" target="_blank">Firebase</a>
+    <span class="prereq-badge firebase">Firebase</span>
+    <span class="prereq-card-cost">Free (Spark plan)</span>
+  </div>
+  <p class="prereq-card-desc">Push notifications &mdash; alerts users about new posts, replies, chat messages. Skip if you set <code>FEATURES.PUSH_NOTIFICATIONS = false</code>.</p>
+  <details>
+    <summary>Walkthrough: Create a Firebase project</summary>
+    <div class="details-content">
+      <ol>
+        <li>Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> and sign in with your Google account.</li>
+        <li>Click <strong>Create a project</strong> (or <strong>Add project</strong>). Give it a name like your app name.</li>
+        <li>You can disable Google Analytics if you don't need it &mdash; the app only uses Firebase for push notifications.</li>
+        <li>Once the project is created, click <strong>Add app</strong>:
+          <ul>
+            <li>Add an <strong>Android app</strong> &mdash; use your Android package name (from <code>app.json</code> &rarr; <code>android.package</code>). Download <code>google-services.json</code> and place it in your project root.</li>
+            <li>Add an <strong>iOS app</strong> &mdash; use your iOS bundle identifier (from <code>app.json</code> &rarr; <code>ios.bundleIdentifier</code>). Download <code>GoogleService-Info.plist</code> and place it in your project root.</li>
+          </ul>
+        </li>
+        <li>Enable <strong>Cloud Messaging</strong> under Project Settings &rarr; Cloud Messaging. Make sure the Firebase Cloud Messaging API (V1) is enabled.</li>
+      </ol>
+      <div class="callout" style="margin-top: 12px;">
+        <strong>Both config files are required.</strong> The app needs <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS) in the project root for push notifications to work on both platforms.
+      </div>
+    </div>
+  </details>
+</div>
+
+<div class="prereq-card" id="prereq-pusher">
+  <div class="prereq-card-header">
+    <a href="https://pusher.com" target="_blank">Pusher Channels</a>
+    <span class="prereq-badge pusher">Pusher</span>
+    <span class="prereq-card-cost">Free tier (200k msgs/day)</span>
+  </div>
+  <p class="prereq-card-desc">Real-time updates &mdash; live message delivery, typing indicators, instant feed updates. Only needed if using <strong>Pusher Cloud</strong> as your socket provider. Skip if using Fluent Socket (built-in) or Soketi.</p>
+  <details>
+    <summary>Walkthrough: Create a Pusher Channels app</summary>
+    <div class="details-content">
+      <ol>
+        <li>Go to <a href="https://dashboard.pusher.com/accounts/sign_up" target="_blank">dashboard.pusher.com/accounts/sign_up</a> and create a free account.</li>
+        <li>In the Pusher dashboard, click <strong>Channels</strong> &rarr; <strong>Create app</strong>.</li>
+        <li>Give it a name and select a cluster closest to your server location.</li>
+        <li>Copy the <strong>app_id</strong>, <strong>key</strong>, <strong>secret</strong>, and <strong>cluster</strong> values.</li>
+        <li>In your WordPress admin, go to <strong>FluentCommunity &rarr; Settings &rarr; Features</strong> and configure the Pusher/socket settings with these values.</li>
+      </ol>
+      <div class="callout" style="margin-top: 12px;">
+        <strong>You may not need this.</strong> Fluent Community has a built-in socket provider (Fluent Socket). Pusher is only needed if you prefer Pusher Cloud. The app reads socket config from the server automatically &mdash; no app-side keys needed.
+      </div>
+    </div>
+  </details>
+</div>
+
+<div class="prereq-card" id="prereq-twilio">
+  <div class="prereq-card-header">
+    <a href="https://twilio.com" target="_blank">Twilio</a>
+    <span class="prereq-badge twilio">Twilio</span>
+    <span class="prereq-card-cost">Pay-as-you-go</span>
+  </div>
+  <p class="prereq-card-desc">OTP phone verification during registration &mdash; sends a code to verify the user's phone number. Skip if you don't need phone verification (the field simply won't appear).</p>
+  <details>
+    <summary>Walkthrough: Set up Twilio for phone verification</summary>
+    <div class="details-content">
+      <ol>
+        <li>Go to <a href="https://www.twilio.com/try-twilio" target="_blank">twilio.com/try-twilio</a> and create a free account.</li>
+        <li>In the Twilio Console, note your <strong>Account SID</strong> and <strong>Auth Token</strong> from the dashboard.</li>
+        <li>Go to <strong>Messaging &rarr; Services</strong> and create a new Messaging Service (or use the default).</li>
+        <li>In your WordPress admin, go to the <strong>tbc-fluent-profiles</strong> plugin settings and enter your Twilio Account SID, Auth Token, and phone number or Messaging Service SID.</li>
+      </ol>
+      <div class="callout" style="margin-top: 12px;">
+        <strong>Completely optional.</strong> Registration works without Twilio &mdash; the phone number field simply won't appear on the signup form. Only set this up if phone verification is important for your community.
+      </div>
+    </div>
+  </details>
+</div>
 
 <h3>Development Tools</h3>
-<table>
-  <tr><th>Tool</th><th>Version</th><th>Install / Check</th></tr>
-  <tr><td>Node.js</td><td>18+ (LTS recommended)</td><td><code>node -v</code></td></tr>
-  <tr><td>npm</td><td>Comes with Node.js</td><td><code>npm -v</code></td></tr>
-  <tr><td>EAS CLI</td><td>Latest</td><td><code>npm install -g eas-cli</code></td></tr>
-  <tr><td>Git</td><td>Any recent version</td><td><code>git --version</code></td></tr>
-  <tr><td><a href="https://code.visualstudio.com">VS Code</a></td><td>Latest</td><td>Recommended editor &mdash; our dashboard and docs are built around it</td></tr>
-  <tr><td><a href="https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code">Claude Code for VS Code</a></td><td>Latest</td><td>AI assistant that understands your project. Free tier is plenty for setup &amp; configuration</td></tr>
-</table>
+<p>Install these before starting setup. All are free.</p>
+
+<div class="prereq-card" id="prereq-node">
+  <div class="prereq-card-header">
+    <a href="https://nodejs.org" target="_blank">Node.js</a>
+    <span class="prereq-badge node">Node</span>
+    <span class="prereq-card-cost">Free &mdash; 18+ LTS recommended</span>
+  </div>
+  <p class="prereq-card-desc">JavaScript runtime that powers the app's tooling, Metro bundler, and dashboard. npm comes bundled with it.</p>
+  <details>
+    <summary>Walkthrough: Install Node.js</summary>
+    <div class="details-content">
+      <ol>
+        <li>Go to <a href="https://nodejs.org" target="_blank">nodejs.org</a> and download the <strong>LTS</strong> version (18+).</li>
+        <li>Run the installer with default settings. This installs both Node.js and npm.</li>
+        <li>Verify: open a terminal and run <code>node -v</code> and <code>npm -v</code>. Both should print version numbers.</li>
+      </ol>
+    </div>
+  </details>
+</div>
+
+<div class="prereq-card" id="prereq-eas">
+  <div class="prereq-card-header">
+    <strong>EAS CLI</strong>
+    <span class="prereq-badge eas">EAS</span>
+    <span class="prereq-card-cost">Free</span>
+  </div>
+  <p class="prereq-card-desc">Command-line tool for building and submitting your app via Expo's cloud service. Requires Node.js.</p>
+  <details>
+    <summary>Walkthrough: Install EAS CLI</summary>
+    <div class="details-content">
+      <ol>
+        <li>Open a terminal and run: <code>npm install -g eas-cli</code></li>
+        <li>Verify: <code>eas --version</code> should print a version number.</li>
+        <li>Log in to your Expo account: <code>eas login</code></li>
+      </ol>
+    </div>
+  </details>
+</div>
+
+<div class="prereq-card" id="prereq-git">
+  <div class="prereq-card-header">
+    <a href="https://git-scm.com" target="_blank">Git</a>
+    <span class="prereq-badge git">Git</span>
+    <span class="prereq-card-cost">Free</span>
+  </div>
+  <p class="prereq-card-desc">Version control &mdash; needed for EAS builds and tracking your config changes.</p>
+  <details>
+    <summary>Walkthrough: Install Git</summary>
+    <div class="details-content">
+      <ol>
+        <li>Go to <a href="https://git-scm.com/downloads" target="_blank">git-scm.com/downloads</a> and download for your OS.</li>
+        <li>Run the installer with default settings.</li>
+        <li>Verify: open a terminal and run <code>git --version</code>.</li>
+      </ol>
+    </div>
+  </details>
+</div>
+
+<div class="prereq-card" id="prereq-vscode">
+  <div class="prereq-card-header">
+    <a href="https://code.visualstudio.com" target="_blank">VS Code</a>
+    <span class="prereq-badge vscode">VS Code</span>
+    <span class="prereq-card-cost">Free</span>
+  </div>
+  <p class="prereq-card-desc">Recommended editor &mdash; our dashboard and docs are built around it. Built-in terminal makes running commands easy.</p>
+  <details>
+    <summary>Walkthrough: Install VS Code</summary>
+    <div class="details-content">
+      <ol>
+        <li>Go to <a href="https://code.visualstudio.com" target="_blank">code.visualstudio.com</a> and download for your OS.</li>
+        <li>Install and open it. Go to <strong>File &rarr; Open Folder</strong> and select your project folder.</li>
+        <li>Open the built-in terminal: <strong>Terminal &rarr; New Terminal</strong> (or <code>Ctrl+`</code>).</li>
+      </ol>
+    </div>
+  </details>
+</div>
+
+<div class="prereq-card" id="prereq-claude">
+  <div class="prereq-card-header">
+    <a href="https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code" target="_blank">Claude Code for VS Code</a>
+    <span class="prereq-badge claude">Claude</span>
+    <span class="prereq-card-cost">Free tier available</span>
+  </div>
+  <p class="prereq-card-desc">AI assistant that understands your entire project. Helps with setup, config, building modules, and debugging. Free tier is plenty.</p>
+  <details>
+    <summary>Walkthrough: Install Claude Code</summary>
+    <div class="details-content">
+      <ol>
+        <li>Open VS Code and go to the <strong>Extensions</strong> sidebar (<code>Ctrl+Shift+X</code>).</li>
+        <li>Search for <strong>"Claude Code"</strong> by Anthropic and click <strong>Install</strong>.</li>
+        <li>Sign in with a <a href="https://claude.ai/signup" target="_blank">free Claude account</a> when prompted.</li>
+        <li>Open the Claude Code panel &mdash; it automatically reads your project's <code>CLAUDE.md</code> and understands the full codebase.</li>
+      </ol>
+    </div>
+  </details>
+</div>
 
 <div class="callout">
   <strong>No Xcode or Android Studio needed.</strong> EAS builds happen in the cloud. You only need local IDEs if you want to run builds on the iOS Simulator or do native debugging.
@@ -436,6 +745,7 @@
     <span class="step-title">Bundle IDs</span>
   </div>
   <div class="step-body">
+    <p class="prereq-ref">Requires: <a href="#prereq-apple" class="prereq-badge apple">Apple</a> <a href="#prereq-google" class="prereq-badge google">Google</a></p>
     <p>
       Your <strong>iOS Bundle ID</strong> and <strong>Android Package</strong> uniquely identify your app in the App Store and Play Store. These <strong>cannot be changed</strong> after your first store submission, so choose carefully.
     </p>
@@ -488,36 +798,38 @@
     <span class="step-title">EAS (Expo) Config</span>
   </div>
   <div class="step-body">
+    <p class="prereq-ref">Requires: <a href="#prereq-expo" class="prereq-badge expo">Expo</a></p>
     <p>
-      EAS is the cloud build service that compiles your app for iOS and Android &mdash; no Xcode or Android Studio needed on your machine. The dashboard handles the entire setup.
+      EAS is the cloud build service that compiles your app for iOS and Android &mdash; no Xcode or Android Studio needed on your machine. The dashboard handles the entire setup: install, login, and project linking.
     </p>
 
-    <h5 style="margin-top: 16px;">Sign up or log in</h5>
+    <h5 style="margin-top: 16px;">1. Install EAS CLI</h5>
     <p>
-      If you don't have an Expo account yet, <a href="https://expo.dev/signup" target="_blank">create one for free</a> &mdash; it only takes a minute.
-      Then find the <strong>EAS (Expo) Config</strong> card and click <strong>Log In to EAS</strong>.
-      This opens your browser where you sign in. Once complete, the dashboard automatically detects the login and updates.
+      The dashboard auto-detects whether EAS CLI is installed. If it's not, you'll see a red dot and an <strong>Install EAS CLI</strong> button. Click it &mdash; the dashboard runs <code>npm install -g eas-cli</code> for you and shows a green success toast when it's done.
     </p>
-    <img class="step-img" src="images/step7-eas1.webp" alt="EAS panel showing not logged in state with Log In button">
+    <p>
+      Or install manually from terminal: <code>npm install -g eas-cli</code>
+    </p>
+    <img class="step-img" src="images/easclinotinstalled.webp" alt="EAS Config card showing red dot — EAS CLI not installed, with Install button">
+
+    <h5 style="margin-top: 16px;">2. Log in to EAS</h5>
+    <p>
+      Once installed, the status updates to show the version with a green <strong>Installed</strong> badge. If you don't have an Expo account yet, <a href="https://expo.dev/signup" target="_blank">create one for free</a> first.
+      Then click <strong>Log In to EAS</strong> &mdash; this opens your browser where you sign in. Once complete, the dashboard automatically detects the login.
+    </p>
+    <img class="step-img" src="images/eascliinstallednotloggedin.webp" alt="EAS Config card showing yellow dot — EAS CLI installed but not logged in, with Log In button">
     <div class="callout callout-info" style="margin-top: 12px;">
       <strong>Good to know:</strong> EAS login is <em>per machine</em>, not per project. Once you log in, every project on this computer uses that Expo account. If you work with multiple Expo accounts, use the <strong>Log Out</strong> button to switch, or manually type a different owner name in the field.
     </div>
 
-    <h5 style="margin-top: 16px;">Link your project</h5>
+    <h5 style="margin-top: 16px;">3. Link your project</h5>
     <p>
-      After logging in, click <strong>Link Project</strong>.
-      This creates a new project on your Expo account using your app's slug as the project name, and fills in the <strong>EAS Owner</strong> and <strong>EAS Project ID</strong> automatically.
+      After logging in, the status turns green and shows your username. Click <strong>Link Project</strong> to create a new project on your Expo account using your app's slug. This fills in the <strong>EAS Owner</strong> and <strong>EAS Project ID</strong> automatically.
     </p>
-    <img class="step-img" src="images/step7-eas2.webp" alt="EAS panel showing logged in state with Link Project button">
+    <img class="step-img" src="images/eascliinstalledloggedin.webp" alt="EAS Config card showing green dot — EAS CLI installed and logged in with username">
     <p style="margin-top: 12px;">
       If a project with the same slug already exists on your account, it links to that one instead of creating a duplicate. The slug comes from your app name &mdash; so <strong>set your app name first</strong> (step 4) before linking.
     </p>
-
-    <h5 style="margin-top: 16px;">You're linked!</h5>
-    <p>
-      Once linked, both fields fill in and the Link Project button disappears. EAS is configured &mdash; on to the next step.
-    </p>
-    <img class="step-img" src="images/step7-eas3.webp" alt="EAS panel showing linked state with owner and project ID filled in">
   </div>
 </div>
 
@@ -529,37 +841,101 @@
   </div>
   <div class="step-body">
     <p>
-      These fields control how your app identifies itself in code. <strong>App Name (Config)</strong> is what appears in headers, notifications, and other in-app text. <strong>User Agent</strong> identifies your app in HTTP requests to your WordPress site.
+      These fields control how your app identifies itself in code. <strong>App Name (Config)</strong> is what appears in headers, notifications, and other in-app text. <strong>User Agent</strong> identifies your app in HTTP requests to your WordPress site (format: <code>YourApp/1.0</code>).
     </p>
     <p>
-      Both auto-fill from your App Name in step 4 &mdash; just verify they look right. You can edit them if you want the code-level name to differ from the store name (e.g. a shorter name for headers).
+      Both auto-fill from your App Name in step 4 &mdash; just verify they look right. You'll see a <strong>lock icon</strong> on these fields (and other auto-derived fields like slug, scheme, and Android package). The lock keeps them in sync with the field they derive from. Click the lock to unlock and edit &mdash; for example, if you want a shorter name in headers than your full store name.
     </p>
+    <img class="step-img" src="images/appbranding.webp" alt="App Branding (Code) card showing APP_NAME and APP_USER_AGENT fields with lock icons">
   </div>
 </div>
 
-<!-- Step 9: Feature Flags -->
+<!-- Step 9: Bot Protection -->
 <div class="step-card">
   <div class="step-header">
     <span class="step-number">9</span>
-    <span class="step-title">Feature Flags</span>
+    <span class="step-title">Bot Protection</span>
   </div>
   <div class="step-body">
+    <p class="prereq-ref">Requires: <a href="#prereq-fluent" class="prereq-badge fluent">Fluent</a></p>
     <p>
-      Toggle core features on or off. Disabled features are completely hidden from users. This is where you choose which parts of the app to enable &mdash; feed, spaces, profiles, messaging, courses, blog, YouTube, cart, and more. Changes are included when you click <strong>Save Changes</strong>.
+      The <strong>APP_TOKEN</strong> is a shared secret between your WordPress site and the mobile app. It lets the app bypass Cloudflare Turnstile bot protection during registration &mdash; since Turnstile only works in browsers, the app sends this token instead.
     </p>
+    <p>
+      Copy it from your WordPress admin: <strong>Fluent Community &rarr; Profiles &rarr; Bot Protection &rarr; Mobile App Token</strong>, and paste it here. The token is auto-generated on your server the first time you save bot protection settings.
+    </p>
+    <img class="step-img" src="images/botprotection.webp" alt="Bot Protection card showing APP_TOKEN field">
   </div>
 </div>
 
-<!-- Step 10: Profile Tabs -->
+<!-- Step 10: Feature Flags & Profile Tabs -->
 <div class="step-card">
   <div class="step-header">
     <span class="step-number">10</span>
-    <span class="step-title">Profile Tabs</span>
+    <span class="step-title">Feature Flags &amp; Profile Tabs</span>
   </div>
   <div class="step-body">
+    <p class="prereq-ref">Requires: <a href="#prereq-fluent" class="prereq-badge fluent">Fluent</a></p>
     <p>
-      Control which tabs appear on user profile screens &mdash; posts, comments, reactions, courses, badges, etc. Toggle each one independently.
+      Toggle core features on or off. Disabled features are completely removed from the app &mdash; users never see them. All flags start <strong>off</strong> by default. Enable only the ones your site supports.
     </p>
+
+    <table style="width:100%;font-size:13px;margin:12px 0 16px;border-collapse:collapse">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border);text-align:left">
+          <th style="padding:6px 8px;color:var(--text-secondary)">Flag</th>
+          <th style="padding:6px 8px;color:var(--text-secondary)">What it does</th>
+          <th style="padding:6px 8px;color:var(--text-secondary)">Requires</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 8px;white-space:nowrap"><strong>Dark Mode</strong></td>
+          <td style="padding:6px 8px">Enables dark mode, synced automatically from your Fluent Community theme colors.</td>
+          <td style="padding:6px 8px;color:var(--text-secondary)">&mdash;</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 8px;white-space:nowrap"><strong>Push Notifications</strong></td>
+          <td style="padding:6px 8px">Native push notifications for new posts, replies, messages, and more. Delivered via Firebase Cloud Messaging.</td>
+          <td style="padding:6px 8px;color:var(--text-secondary)"><code>google-services.json</code> + <code>GoogleService-Info.plist</code> (set up in the Plugins &amp; Firebase tab)</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 8px;white-space:nowrap"><strong>Messaging</strong></td>
+          <td style="padding:6px 8px">Direct messaging between users. Shows a Messages tab and chat UI.</td>
+          <td style="padding:6px 8px;color:var(--text-secondary)"><a href="https://fluentcommunity.co" target="_blank">Fluent Community Pro</a> with FluentCommunity Chat enabled from Features page</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 8px;white-space:nowrap"><strong>Courses</strong></td>
+          <td style="padding:6px 8px">Course enrollment, progress tracking, and lesson viewing. Shows a Courses tab.</td>
+          <td style="padding:6px 8px;color:var(--text-secondary)"><a href="https://fluentcommunity.co" target="_blank">Fluent Community Pro</a> with Course module enabled</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 8px;white-space:nowrap"><strong>Cart</strong></td>
+          <td style="padding:6px 8px">Shows a cart icon in the header linking to your WooCommerce store. Disable if you don't use WooCommerce.</td>
+          <td style="padding:6px 8px;color:var(--text-secondary)">WooCommerce on your WordPress site</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 8px;white-space:nowrap"><strong>Multi-Reactions</strong></td>
+          <td style="padding:6px 8px">Emoji reactions (like, love, laugh, etc.) on posts and comments instead of a simple like button.</td>
+          <td style="padding:6px 8px;color:var(--text-secondary)">TBC Multi-Reactions companion plugin installed on your site</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h5 style="margin-top: 20px;">Profile Tabs</h5>
+    <p>
+      Below the feature flags you'll find <strong>Profile Tabs</strong> &mdash; extra tabs shown on user profile pages. The <strong>About</strong> tab is always visible. Toggle each additional tab independently:
+    </p>
+    <ul style="margin-top: 8px;">
+      <li><strong>Posts</strong> &mdash; shows a feed of the user's posts</li>
+      <li><strong>Spaces</strong> &mdash; shows which spaces the user has joined</li>
+      <li><strong>Comments</strong> &mdash; shows the user's comment history</li>
+    </ul>
+
+    <p style="margin-top: 12px;">
+      Changes are included when you click <strong>Save Changes</strong>. After saving, feature flag changes require a <strong>dev server restart</strong> or a <strong>new build</strong> to take effect &mdash; they're compiled into the app bundle, not loaded at runtime.
+    </p>
+    <img class="step-img" src="images/featureflag.webp" alt="Feature Flags card showing toggles for Dark Mode, Push Notifications, Messaging, Courses, Cart, Multi-Reactions, and Profile Tabs">
   </div>
 </div>
 
@@ -570,9 +946,31 @@
     <span class="step-title">iOS App Store Submit</span>
   </div>
   <div class="step-body">
+    <p class="prereq-ref">Requires: <a href="#prereq-apple" class="prereq-badge apple">Apple</a></p>
     <p>
-      Your <strong>Apple ID</strong> (email) and <strong>ASC App ID</strong> (numeric, from App Store Connect &rarr; General &rarr; App Information &rarr; Apple ID). These are needed for automated iOS submissions via EAS Submit.
+      These fields are used by <code>eas submit</code> to automatically upload your iOS builds to App Store Connect. You don't need them for building &mdash; only when you're ready to submit to the App Store. You can skip this step and come back later.
     </p>
+
+    <h5 style="margin-top: 16px;">Apple ID</h5>
+    <p>
+      The email address you use to sign into <a href="https://appstoreconnect.apple.com" target="_blank">App Store Connect</a>. This is your Apple Developer account email. You can find it by logging into App Store Connect and clicking your name in the top-right corner &rarr; Settings &mdash; it's shown under <strong>Apple Account</strong>.
+    </p>
+
+    <h5 style="margin-top: 16px;">ASC App ID</h5>
+    <p>
+      A numeric ID that Apple assigns when you create your app in App Store Connect. To find it:
+    </p>
+    <ol style="margin-top: 8px;">
+      <li>Log into <a href="https://appstoreconnect.apple.com" target="_blank">App Store Connect</a></li>
+      <li>Go to <strong>Apps</strong> and select your app (or create one if you haven't yet &mdash; click the <strong>+</strong> button, select <strong>New App</strong>, and fill in your app name, bundle ID, and SKU)</li>
+      <li>Navigate to <strong>General &rarr; App Information</strong></li>
+      <li>The <strong>Apple ID</strong> field (numeric, e.g. <code>1563113528</code>) is your ASC App ID &mdash; copy it into the dashboard</li>
+    </ol>
+
+    <div class="callout callout-info" style="margin-top: 12px;">
+      <strong>Note:</strong> EAS submit also requires an <strong>App-Specific Password</strong> for authentication. Generate one at <a href="https://appleid.apple.com/account/manage" target="_blank">appleid.apple.com</a> &rarr; Sign-In and Security &rarr; App-Specific Passwords. You'll be prompted for it the first time you run <code>eas submit</code>, or you can set it as the <code>EXPO_APPLE_APP_SPECIFIC_PASSWORD</code> environment variable.
+    </div>
+    <img class="step-img" src="images/iossubmit.webp" alt="iOS App Store Submit card showing Apple ID and ASC App ID fields">
   </div>
 </div>
 
@@ -583,6 +981,7 @@
     <span class="step-title">Google Play Submit</span>
   </div>
   <div class="step-body">
+    <p class="prereq-ref">Requires: <a href="#prereq-google" class="prereq-badge google">Google</a></p>
     <p>
       Choose your <strong>submission track</strong> (internal for testing, production for release) and upload your <strong>Google Play Service Account Key</strong> (JSON). This enables automated Android submissions via EAS Submit.
     </p>
@@ -630,6 +1029,7 @@
     <span class="step-title">Plugins &amp; Firebase</span>
   </div>
   <div class="step-body">
+    <p class="prereq-ref">Requires: <a href="#prereq-firebase" class="prereq-badge firebase">Firebase</a> <a href="#prereq-fluent" class="prereq-badge fluent">Fluent</a></p>
     Check companion plugin status and drop in your Firebase config files. Details coming as we walk through this step.
   </div>
 </div>

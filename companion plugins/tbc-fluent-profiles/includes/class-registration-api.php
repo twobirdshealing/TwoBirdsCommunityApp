@@ -283,6 +283,29 @@ class RegistrationApi {
             $data = $request->get_params();
         }
 
+        // --- Bot protection ---
+
+        if ((bool) Helpers::get_option('turnstile_enabled', false)) {
+            $app_token = $request->get_header('X-App-Token') ?? '';
+
+            if (!empty($app_token) && Helpers::validate_app_token($app_token)) {
+                // Valid app token — skip Turnstile (mobile app request)
+                Helpers::log('Bot protection: valid app token, skipping Turnstile');
+            } else {
+                $turnstile_token = sanitize_text_field($data['turnstile_token'] ?? '');
+                $remote_ip = $request->get_header('X-Forwarded-For') ?: ($_SERVER['REMOTE_ADDR'] ?? '');
+                $turnstile_result = Helpers::validate_turnstile($turnstile_token, $remote_ip);
+
+                if (is_wp_error($turnstile_result)) {
+                    Helpers::log('Bot protection: Turnstile validation failed', 'warn');
+                    return new \WP_REST_Response([
+                        'success' => false,
+                        'message' => $turnstile_result->get_error_message(),
+                    ], 422);
+                }
+            }
+        }
+
         // --- Validate base fields ---
 
         $errors = [];
@@ -299,6 +322,14 @@ class RegistrationApi {
             $errors['email'] = 'A valid email address is required.';
         } elseif (email_exists($email)) {
             $errors['email'] = 'This email is already registered.';
+        }
+
+        // Disposable email blocking
+        if (empty($errors['email']) && (bool) Helpers::get_option('block_disposable_emails', true)) {
+            if (Helpers::is_disposable_email($email)) {
+                $errors['email'] = 'Please use a permanent email address. Temporary email providers are not allowed.';
+                Helpers::log("Disposable email blocked: {$email}", 'warn');
+            }
         }
 
         $username = sanitize_user(strtolower(preg_replace('/[^A-Za-z0-9_]/', '', $data['username'] ?? '')));

@@ -94,6 +94,16 @@ class Admin {
             register_setting('tbc_fp_settings_profile_completion', 'tbc_fp_' . $key);
         }
 
+        // Bot protection settings
+        $bot_options = [
+            'turnstile_enabled', 'turnstile_site_key', 'turnstile_secret_key',
+            'app_token', 'block_disposable_emails', 'blocked_emails',
+        ];
+
+        foreach ($bot_options as $key) {
+            register_setting('tbc_fp_settings_bot_protection', 'tbc_fp_' . $key);
+        }
+
         // Fix unchecked checkboxes: browsers don't send them, so WordPress
         // never updates the option to false. We catch this on save.
         add_action('admin_init', [$this, 'fix_checkbox_saves'], 99);
@@ -145,6 +155,28 @@ class Admin {
                 if (!isset($_POST[$option_name])) {
                     update_option($option_name, '0');
                 }
+            }
+        }
+
+        // Bot protection tab checkboxes
+        if ($option_page === 'tbc_fp_settings_bot_protection') {
+            $bot_checkboxes = [
+                'turnstile_enabled',
+                'block_disposable_emails',
+            ];
+
+            foreach ($bot_checkboxes as $key) {
+                $option_name = 'tbc_fp_' . $key;
+                // phpcs:ignore WordPress.Security.NonceVerification.Missing
+                if (!isset($_POST[$option_name])) {
+                    update_option($option_name, '0');
+                }
+            }
+
+            // Auto-generate app token if empty on first save
+            $app_token = get_option('tbc_fp_app_token', '');
+            if (empty($app_token)) {
+                update_option('tbc_fp_app_token', wp_generate_password(48, false));
             }
         }
     }

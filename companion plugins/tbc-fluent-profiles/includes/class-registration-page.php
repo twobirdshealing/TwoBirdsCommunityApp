@@ -68,6 +68,14 @@ class RegistrationPage {
             'siteLogoUrl'  => $this->get_site_logo_url(),
         ];
 
+        // Turnstile bot protection
+        if ((bool) Helpers::get_option('turnstile_enabled', false)) {
+            $site_key = Helpers::get_option('turnstile_site_key', '');
+            if (!empty($site_key)) {
+                $config['turnstileSiteKey'] = $site_key;
+            }
+        }
+
         // Render container — JS takes over from here
         ob_start();
         echo $inline_assets;

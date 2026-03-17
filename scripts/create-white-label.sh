@@ -156,6 +156,12 @@ sed -i \
   -e "s|export const APP_NAME = 'Two Birds Community';|export const APP_NAME = 'My Community';|" \
   -e "s|export const APP_USER_AGENT = 'TBCCommunityApp/1.0';|export const APP_USER_AGENT = 'CommunityApp/1.0';|" \
   -e "/export const TBC_YT_URL/d" \
+  -e "s|DARK_MODE: true,|DARK_MODE: false,|" \
+  -e "s|PUSH_NOTIFICATIONS: true,|PUSH_NOTIFICATIONS: false,|" \
+  -e "s|MESSAGING: true,|MESSAGING: false,|" \
+  -e "s|COURSES: true,|COURSES: false,|" \
+  -e "s|CART: true,|CART: false,|" \
+  -e "s|MULTI_REACTIONS: true,|MULTI_REACTIONS: false,|" \
   "$TARGET_DIR/constants/config.ts"
 
 # --- app.json ---

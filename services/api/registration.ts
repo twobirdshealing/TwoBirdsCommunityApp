@@ -5,7 +5,7 @@
 // These are PUBLIC endpoints (no auth required).
 // =============================================================================
 
-import { TBC_FP_URL, TBC_CA_URL } from '@/constants/config';
+import { TBC_FP_URL, TBC_CA_URL, APP_TOKEN } from '@/constants/config';
 import { verifyOtp, resendOtp, requestVoiceCall } from './otp';
 import { request, type ApiResponse } from './client';
 import { createLogger } from '@/utils/logger';
@@ -97,6 +97,7 @@ async function tbcPublicRequest<T>(
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
+        ...(APP_TOKEN && APP_TOKEN !== 'REPLACE_WITH_YOUR_APP_TOKEN' ? { 'X-App-Token': APP_TOKEN } : {}),
         ...options.headers,
       },
     });

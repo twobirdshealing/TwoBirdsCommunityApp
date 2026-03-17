@@ -21,6 +21,35 @@ class TBC_CA_API {
     private function __construct() {
         add_action('rest_api_init', [$this, 'setup_cors'], 15);
         add_action('init', [$this, 'handle_preflight']);
+
+        // Hide REST API index from unauthenticated users (prevents endpoint discovery)
+        add_filter('rest_authentication_errors', [$this, 'block_rest_index']);
+    }
+
+    /**
+     * Block unauthenticated access to the REST API index (/wp-json/)
+     * Prevents bots from discovering custom endpoints.
+     */
+    public function block_rest_index($result) {
+        if ($result !== null) {
+            return $result;
+        }
+
+        if (!is_user_logged_in()) {
+            $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+            $path = rtrim(parse_url($request_uri, PHP_URL_PATH), '/');
+
+            // Block /wp-json and /wp-json/ (the index listing)
+            if (preg_match('#/wp-json/?$#', $path)) {
+                return new \WP_Error(
+                    'rest_disabled',
+                    'REST API discovery is not available.',
+                    ['status' => 403]
+                );
+            }
+        }
+
+        return $result;
     }
 
     /**

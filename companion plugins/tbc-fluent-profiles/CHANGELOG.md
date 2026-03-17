@@ -2,6 +2,18 @@
 
 All notable changes to the TBC Fluent Profiles plugin.
 
+## v2.7.1
+- Added "Blocked Emails & Domains" textarea to Bot Protection tab — one entry per line, supports full emails (spammer@gmail.com) and domains (sketchy.com). Checked in addition to the built-in disposable list.
+
+## v2.7.0
+- **Bot Protection**: New "Bot Protection" admin tab with Cloudflare Turnstile, app token bypass, and disposable email blocking
+  - Cloudflare Turnstile (invisible CAPTCHA) on web registration — blocks bots calling the REST API directly
+  - App Token bypass: mobile app sends `X-App-Token` header to skip Turnstile (bots don't have the app binary)
+  - Disposable email blocking: rejects registration with ~200 known throwaway email providers (tempmail, guerrillamail, mailinator, etc.)
+  - Auto-generated 48-character app token on first save
+  - All features individually toggleable from admin UI
+- Registration JS loads Turnstile widget (invisible mode) and includes token in registration payload
+
 ## v2.6.1
 - Added `profile_completion` settings to `/register/fields` REST response — includes `enabled`, `require_bio`, `require_avatar` so the mobile app can adapt the registration flow based on gate configuration
 

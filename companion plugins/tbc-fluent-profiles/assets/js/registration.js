@@ -89,6 +89,69 @@
 
     // (FC API helpers removed — no longer needed after steps 5-6 extraction)
 
+    // ─── Turnstile ─────────────────────────────────────────────────────
+
+    let turnstileToken = '';
+    let turnstileWidgetId = null;
+
+    function loadTurnstile() {
+        if (!config.turnstileSiteKey) return;
+        if (document.getElementById('cf-turnstile-script')) return;
+
+        var script = document.createElement('script');
+        script.id = 'cf-turnstile-script';
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=tbcTurnstileReady';
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+
+        window.tbcTurnstileReady = function () {
+            renderTurnstileWidget();
+        };
+    }
+
+    function renderTurnstileWidget() {
+        var el = document.getElementById('tbc-turnstile-container');
+        if (!el || !window.turnstile || turnstileWidgetId !== null) return;
+
+        turnstileWidgetId = window.turnstile.render(el, {
+            sitekey: config.turnstileSiteKey,
+            size: 'invisible',
+            callback: function (token) {
+                turnstileToken = token;
+            },
+            'expired-callback': function () {
+                turnstileToken = '';
+            },
+            'error-callback': function () {
+                turnstileToken = '';
+            },
+        });
+    }
+
+    function getTurnstileToken() {
+        return new Promise(function (resolve) {
+            if (!config.turnstileSiteKey) { resolve(''); return; }
+            if (turnstileToken) { resolve(turnstileToken); return; }
+
+            // Execute challenge if not yet solved
+            if (window.turnstile && turnstileWidgetId !== null) {
+                window.turnstile.execute(turnstileWidgetId);
+                // Poll for token (invisible widget resolves quickly)
+                var attempts = 0;
+                var poll = setInterval(function () {
+                    attempts++;
+                    if (turnstileToken || attempts > 50) {
+                        clearInterval(poll);
+                        resolve(turnstileToken);
+                    }
+                }, 100);
+            } else {
+                resolve('');
+            }
+        });
+    }
+
     // ─── Init ─────────────────────────────────────────────────────────
 
     async function init() {
@@ -103,6 +166,7 @@
                     '</div>';
                 return;
             }
+            loadTurnstile();
             render();
         } catch (e) {
             container.innerHTML = '<p class="tbc-reg__error">Unable to load registration form. Please refresh.</p>';
@@ -157,7 +221,13 @@
         render();
 
         try {
+            // Get Turnstile token before submission
+            var tsToken = await getTurnstileToken();
+
             var payload = Object.assign({}, formData, { context: 'web' });
+            if (tsToken) {
+                payload.turnstile_token = tsToken;
+            }
 
             if (payload.username) {
                 payload.username = payload.username.toLowerCase().replace(/[^a-z0-9_]/g, '');
@@ -376,7 +446,29 @@
         }
         wrapper += html;
 
+        // Turnstile container lives outside the card so it survives innerHTML rebuilds
+        if (config.turnstileSiteKey) {
+            wrapper += '<div id="tbc-turnstile-container"></div>';
+        }
+
+        // Preserve existing Turnstile widget across re-renders
+        var tsEl = document.getElementById('tbc-turnstile-container');
+        if (tsEl && turnstileWidgetId !== null) {
+            tsEl.remove();
+        }
+
         container.innerHTML = wrapper;
+
+        if (config.turnstileSiteKey) {
+            var tsPlaceholder = document.getElementById('tbc-turnstile-container');
+            if (tsEl && turnstileWidgetId !== null && tsPlaceholder) {
+                // Re-attach preserved widget (keeps Turnstile state)
+                tsPlaceholder.replaceWith(tsEl);
+            } else if (window.turnstile && turnstileWidgetId === null) {
+                renderTurnstileWidget();
+            }
+        }
+
         bindEvents();
     }
 
