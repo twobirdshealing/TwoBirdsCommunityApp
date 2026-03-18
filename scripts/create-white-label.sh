@@ -19,7 +19,7 @@ SOURCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 WHITE_LABEL_ROOT="$(cd "$SOURCE_DIR/.." && pwd)/TBC-Community-App (White Lable)"
 
 # Allowlist: only these companion plugins ship with the base product
-CORE_PLUGINS=("tbc-community-app" "tbc-fluent-profiles" "tbc-multi-reactions" "tbc-starter-theme")
+CORE_PLUGINS=("tbc-community-app" "tbc-multi-reactions" "tbc-starter-theme")
 
 # Protected paths: buyer-customized files that updates must NEVER overwrite
 # Used to generate manifest.json AND find exclusions for core-update tar
@@ -65,7 +65,6 @@ $(generate_protected_paths_json "    ")
   ],
   "corePlugins": [
     "tbc-community-app",
-    "tbc-fluent-profiles",
     "tbc-multi-reactions",
     "tbc-starter-theme"
   ]
@@ -219,7 +218,10 @@ rm -rf "$TARGET_DIR/app/blog-comments"
 rm -rf "$TARGET_DIR/app/bookclub"
 rm -rf "$TARGET_DIR/app/youtube"
 
-# Clean _registry.ts: remove module imports and empty the MODULES array
+# Remove module login gate route stub
+rm -f "$TARGET_DIR/app/profile-complete.tsx"
+
+# Clean _registry.ts: remove module imports and entries from the MODULES array
 sed -i \
   -e "/^import { .*Module } from /d" \
   -e "/^  calendarModule,$/d" \
@@ -228,6 +230,8 @@ sed -i \
   -e "/^  donorModule,$/d" \
   -e "/^  youtubeModule,$/d" \
   -e "/^  blogModule,$/d" \
+  -e "/^  otpModule,$/d" \
+  -e "/^  profileCompletionModule,$/d" \
   "$TARGET_DIR/modules/_registry.ts"
 
 echo "  Done."

@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { Router } from 'expo-router';
 import { FEATURES } from '@/constants/config';
 import type { ColorTheme } from '@/constants/colors';
+import type { RegistrationConfig } from '@/services/api/appConfig';
 
 /** Keys of ColorTheme whose values are strings (excludes nested objects like tabBar) */
 type ColorTokenKey = { [K in keyof ColorTheme]: ColorTheme[K] extends string ? K : never }[keyof ColorTheme];
@@ -120,6 +121,44 @@ export interface HeaderIconRegistration {
 }
 
 // -----------------------------------------------------------------------------
+// Registration Step Registration
+// -----------------------------------------------------------------------------
+
+/** Props passed to every registration step component rendered inline in the register screen */
+export interface RegistrationStepProps {
+  formData: Record<string, any>;
+  submitResponse: Record<string, any>;
+  submitting: boolean;
+  /** Resubmit the registration form with verification extras merged in */
+  onResubmit: (extras: Record<string, any>) => Promise<void>;
+  /** Signal that this step is complete */
+  onComplete: () => void;
+  /** Go back to the previous step */
+  onBack: () => void;
+}
+
+export interface RegistrationStepRegistration {
+  /** Unique step ID (e.g. 'email-verify', 'otp') */
+  id: string;
+  /** Sort order: email=10, OTP=20. Custom steps can use any value. */
+  order: number;
+  /** Step runs before user account creation (all module steps are pre-creation) */
+  phase: 'pre-creation';
+  /** Step title shown in the register screen header */
+  title: string;
+  /** The component to render for this step (rendered inline in the register screen) */
+  component: React.ComponentType<RegistrationStepProps>;
+  /**
+   * Determines if this step is active for the current registration session.
+   * Called after form submission with the server response and app registration config.
+   */
+  shouldActivate: (context: {
+    submitResponse: Record<string, any>;
+    registrationConfig: RegistrationConfig | null;
+  }) => boolean;
+}
+
+// -----------------------------------------------------------------------------
 // Module Manifest
 // -----------------------------------------------------------------------------
 
@@ -160,6 +199,8 @@ export interface ModuleManifest {
   tabBarAddon?: React.ComponentType;
   /** Route prefixes for push notification / deep link validation (e.g. ['/bookclub']) */
   routePrefixes?: string[];
+  /** Registration step registrations — adds steps to the registration flow */
+  registrationSteps?: RegistrationStepRegistration[];
 
   // ---------------------------------------------------------------------------
   // Lifecycle hooks (all optional)

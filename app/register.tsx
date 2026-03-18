@@ -3,12 +3,11 @@
 // =============================================================================
 // Step 1: Basic info (name, email, username, password)
 // Step 2: Custom profile fields + terms
-// Step 3: Email verification (if required)  → EmailVerifyStep
-// Step 4: Phone OTP verification (if required) → PhoneOtpStep
-// Step 5: Profile completion (bio + avatar)  → ProfileCompletionSteps
+// Step 3: Email verification (if required)  → EmailVerifyStep (core)
+// Step 4+: Module steps (OTP, profile completion, etc.) from registry
 // =============================================================================
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -25,16 +24,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { PRIVACY_POLICY_URL, getLogoSource } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppConfig } from '@/contexts/AppConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { Button } from '@/components/common/Button';
 import { DynamicFormField } from '@/components/common/DynamicFormField';
 import { PasswordStrengthMeter } from '@/components/common/PasswordStrengthMeter';
 import { SelectModal } from '@/components/common/SelectModal';
-import { ProfileCompletionSteps } from '@/components/profile/ProfileCompletionSteps';
 import { EmailVerifyStep } from '@/components/register/EmailVerifyStep';
-import { PhoneOtpStep } from '@/components/register/PhoneOtpStep';
-import { useOtpVerification } from '@/hooks/useOtpVerification';
+import { getRegistrationSteps } from '@/modules/_registry';
+import type { RegistrationStepRegistration } from '@/modules/_types';
 import {
   getRegistrationFields,
   submitRegistration,
@@ -47,7 +46,8 @@ import { hapticMedium } from '@/utils/haptics';
 // Types
 // -----------------------------------------------------------------------------
 
-type Step = 1 | 2 | 3 | 4 | 5;
+// Steps 1-2: form fields, step 3: email verify (core), steps 4+: dynamic module steps
+type Step = number;
 
 // -----------------------------------------------------------------------------
 // Component
@@ -56,8 +56,10 @@ type Step = 1 | 2 | 3 | 4 | 5;
 export default function RegisterScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { registerAndLogin, user: currentUser } = useAuth();
+  const { registerAndLogin } = useAuth();
   const { colors: themeColors, branding, isDark } = useTheme();
+
+  const { registration: registrationConfig } = useAppConfig();
 
   // State
   const [step, setStep] = useState<Step>(1);
@@ -70,6 +72,13 @@ export default function RegisterScreen() {
   // Form data (all steps)
   const [formData, setFormData] = useState<Record<string, any>>({});
 
+  // Server response from last submit (used by module steps)
+  const [submitResponse, setSubmitResponse] = useState<Record<string, any>>({});
+
+  // Accumulated verification extras — carried forward across steps so each
+  // resubmit includes all prior verification params (email code + OTP key etc.)
+  const verificationExtrasRef = useRef<Record<string, any>>({});
+
   // Email verification token (set when server requires email verify)
   const [verificationToken, setVerificationToken] = useState('');
 
@@ -77,18 +86,29 @@ export default function RegisterScreen() {
   const [selectModalVisible, setSelectModalVisible] = useState(false);
   const [selectModalField, setSelectModalField] = useState<string | null>(null);
 
-  // OTP verification (step 4 — phone)
-  // We use a ref for handleSubmitRegistration so the hook callback always
-  // sees the latest version without needing to be in its dependency array.
-  const submitRef = useRef<(otpSessionKey?: string) => Promise<void>>(undefined);
+  // -------------------------------------------------------------------------
+  // Module registration steps from registry
+  // -------------------------------------------------------------------------
 
-  const handleOtpVerified = useCallback(async (sessionKey: string) => {
-    await submitRef.current?.(sessionKey);
-  }, []);
+  /** Active module steps, computed after server response */
+  const activeModuleSteps = useMemo(() => {
+    const allSteps = getRegistrationSteps();
+    // Filter out core email-verify (handled directly) and inactive steps
+    return allSteps.filter(
+      (s) =>
+        s.id !== 'email-verify' &&
+        s.shouldActivate({ submitResponse, registrationConfig })
+    );
+  }, [submitResponse, registrationConfig]);
 
-  const otp = useOtpVerification({
-    onVerified: handleOtpVerified,
-  });
+  /**
+   * Step mapping:
+   *   1 = form fields page 1
+   *   2 = form fields page 2 (custom fields + terms)
+   *   3 = email verification (core, if needed)
+   *   4 .. 4+N-1 = pre-creation module steps (OTP, etc.)
+   */
+  const MODULE_STEPS_START = 4;
 
   // ---------------------------------------------------------------------------
   // Fetch fields on mount
@@ -181,59 +201,76 @@ export default function RegisterScreen() {
     setStep((prev) => (prev + 1) as Step);
   }, [step, validateStep]);
 
-  const handleSubmitRegistration = useCallback(async (otpSessionKey?: string, emailCode?: string, emailToken?: string) => {
+  /**
+   * Submit registration to server. Returns an error string if something went
+   * wrong (so callers like email-verify can display it), or null on success.
+   */
+  const handleSubmitRegistration = useCallback(async (extras?: Record<string, any>, emailCode?: string, emailToken?: string): Promise<string | null> => {
     hapticMedium();
     setError(null);
 
-    // Validate form fields (skip if resubmitting after OTP/email verification)
-    if (!otpSessionKey && !emailCode) {
-      if (!validateStep(1)) return;
-      if (!validateStep(2)) return;
+    // Validate form fields (skip if resubmitting after verification step)
+    if (!extras && !emailCode) {
+      if (!validateStep(1)) return null;
+      if (!validateStep(2)) return null;
     }
 
     setSubmitting(true);
 
     try {
-      const payload: Record<string, any> = { ...formData };
+      // Accumulate verification extras from this and prior steps
+      if (extras) {
+        verificationExtrasRef.current = { ...verificationExtrasRef.current, ...extras };
+      }
+      if (emailCode && emailToken) {
+        verificationExtrasRef.current.__two_fa_code = emailCode;
+        verificationExtrasRef.current.__two_fa_signed_token = emailToken;
+      }
+
+      const payload: Record<string, any> = {
+        ...formData,
+        ...verificationExtrasRef.current,
+      };
 
       // Clean username
       if (payload.username) {
         payload.username = payload.username.toLowerCase().replace(/[^a-z0-9_]/g, '');
       }
 
-      // Include email verification params if available
-      if (emailCode && emailToken) {
-        payload.__two_fa_code = emailCode;
-        payload.__two_fa_signed_token = emailToken;
-      }
-
-      // Include OTP session key if verifying
-      if (otpSessionKey) {
-        payload.tbc_fp_session_key = otpSessionKey;
-      }
-
       const result = await submitRegistration(payload);
 
+      // Store response so module steps can check shouldActivate
+      setSubmitResponse(result);
+
       if (result.email_verification_required && result.verification_token) {
-        // Email verification needed — go to step 3
+        // Only go to email verify if we haven't already passed it.
+        // If we're past email (step 4+), the token likely expired — show error instead.
+        if (step < 3 || !verificationExtrasRef.current.__two_fa_code) {
+          setVerificationToken(result.verification_token);
+          setStep(3);
+          return null;
+        }
+        // Email token expired mid-flow — restart
+        verificationExtrasRef.current = {};
         setVerificationToken(result.verification_token);
         setStep(3);
-        return;
+        setError('Your verification session expired. Please verify your email again.');
+        return 'Session expired';
       }
 
-      if (result.otp_required && result.session_key) {
-        // Phone OTP needed — go to step 4
-        otp.start({
-          sessionKey: result.session_key,
-          phoneMasked: result.phone_masked,
-          voiceFallback: fieldsConfig?.voice_fallback,
-        });
-        setStep(4);
-        return;
+      // Check if any pre-creation module step should activate (e.g. OTP)
+      const activePreSteps = getRegistrationSteps().filter(
+        (s) => s.id !== 'email-verify' && s.phase === 'pre-creation' &&
+               s.shouldActivate({ submitResponse: result, registrationConfig })
+      );
+
+      if (activePreSteps.length > 0) {
+        setStep(MODULE_STEPS_START);
+        return null;
       }
 
       if (result.success && result.access_token && result.user) {
-        // Auto-login with token pair
+        // Registration complete — auto-login and go to app
         await registerAndLogin(
           result.access_token,
           result.refresh_token || '',
@@ -245,18 +282,14 @@ export default function RegisterScreen() {
           },
         );
 
-        // Skip profile completion if gate is disabled
-        if (!fieldsConfig?.profile_completion?.enabled) {
-          router.replace('/(tabs)');
-          return;
-        }
-
-        // Go to profile completion step
-        setStep(5);
-        return;
+        verificationExtrasRef.current = {};
+        router.replace('/(tabs)');
+        return null;
       }
 
       // Handle errors
+      const errorMsg = result.message || 'Registration failed. Please try again.';
+
       if (result.errors) {
         setFieldErrors(result.errors);
         // Navigate back to the step with the error
@@ -270,23 +303,28 @@ export default function RegisterScreen() {
         }
       }
 
-      setError(result.message || 'Registration failed. Please try again.');
+      setError(errorMsg);
+      return errorMsg;
     } catch (e) {
-      setError('An unexpected error occurred. Please try again.');
+      const msg = 'An unexpected error occurred. Please try again.';
+      setError(msg);
+      return msg;
     } finally {
       setSubmitting(false);
     }
-  }, [formData, validateStep, registerAndLogin, getFieldsForStep, otp, fieldsConfig]);
+  }, [formData, validateStep, registerAndLogin, getFieldsForStep, registrationConfig]);
 
-  // Keep ref in sync so OTP onVerified always calls latest version
-  submitRef.current = handleSubmitRegistration;
+  /** Called by module steps to resubmit the form with extra data (e.g. OTP session key) */
+  const handleModuleResubmit = useCallback(async (extras: Record<string, any>) => {
+    await handleSubmitRegistration(extras);
+  }, [handleSubmitRegistration]);
 
   // ---------------------------------------------------------------------------
   // Email verification callbacks (passed to EmailVerifyStep)
   // ---------------------------------------------------------------------------
 
-  const handleEmailVerify = useCallback(async (code: string, token: string) => {
-    await handleSubmitRegistration(undefined, code, token);
+  const handleEmailVerify = useCallback(async (code: string, token: string): Promise<string | null> => {
+    return await handleSubmitRegistration(undefined, code, token);
   }, [handleSubmitRegistration]);
 
   const handleEmailResend = useCallback(async () => {
@@ -346,17 +384,19 @@ export default function RegisterScreen() {
 
   const hasCustomFields = getFieldsForStep(2).some(([key]) => key !== 'terms');
   const hasEmailVerify = fieldsConfig?.email_verification_required || false;
-  const hasPhoneOtp = fieldsConfig?.otp_required || false;
-  const totalSteps = (hasCustomFields ? 2 : 1) + (hasEmailVerify ? 1 : 0) + (hasPhoneOtp ? 1 : 0);
+
+  // Total visible steps: form pages + email verify (if needed) + active module steps
+  const totalSteps = (hasCustomFields ? 2 : 1)
+    + (hasEmailVerify ? 1 : 0)
+    + activeModuleSteps.length;
 
   // Map actual step number to visual position (accounting for skipped steps)
   const getVisualStep = useCallback((actualStep: number): number => {
     let visual = actualStep;
     if (!hasCustomFields && actualStep >= 2) visual--;
     if (!hasEmailVerify && actualStep >= 3) visual--;
-    if (!hasPhoneOtp && actualStep >= 4) visual--;
     return visual;
-  }, [hasCustomFields, hasEmailVerify, hasPhoneOtp]);
+  }, [hasCustomFields, hasEmailVerify]);
 
   const renderStepIndicator = () => {
     const visualStep = getVisualStep(step);
@@ -471,12 +511,23 @@ export default function RegisterScreen() {
     </>
   );
 
-  const stepTitles: Record<Step, string> = {
-    1: 'Create Account',
-    2: 'Your Profile',
-    3: 'Verify Email',
-    4: 'Verify Phone',
-    5: '', // Handled by ProfileCompletionSteps
+  /** Get title for current step */
+  const getStepTitle = (s: number): string => {
+    if (s === 1) return 'Create Account';
+    if (s === 2) return 'Your Profile';
+    if (s === 3) return 'Verify Email';
+    if (s >= MODULE_STEPS_START) {
+      return activeModuleSteps[s - MODULE_STEPS_START]?.title || '';
+    }
+    return '';
+  };
+
+  /** Get the module step registration for the current step, if any */
+  const getCurrentModuleStep = (): RegistrationStepRegistration | null => {
+    if (step >= MODULE_STEPS_START) {
+      return activeModuleSteps[step - MODULE_STEPS_START] || null;
+    }
+    return null;
   };
 
   return (
@@ -510,11 +561,11 @@ export default function RegisterScreen() {
 
           {/* Form Card */}
           <View style={[styles.formCard, { backgroundColor: withOpacity(themeColors.surface, 0.95) }]}>
-            {step < 5 && renderStepIndicator()}
+            {renderStepIndicator()}
 
-            {step < 5 && stepTitles[step] ? (
+            {getStepTitle(step) ? (
               <Text style={[styles.formTitle, { color: themeColors.text }]}>
-                {stepTitles[step]}
+                {getStepTitle(step)}
               </Text>
             ) : null}
 
@@ -537,22 +588,30 @@ export default function RegisterScreen() {
                 onBack={() => { setError(null); setStep(hasCustomFields ? 2 : 1); }}
               />
             )}
-            {step === 4 && (
-              <PhoneOtpStep
-                otp={otp}
-                submitting={submitting}
-                onBack={() => { setError(null); otp.setCode(''); setStep(hasEmailVerify ? 3 : hasCustomFields ? 2 : 1); }}
-              />
-            )}
-            {step === 5 && (
-              <ProfileCompletionSteps
-                username={currentUser?.username || formData.username || ''}
-                displayName={currentUser?.displayName || formData.full_name || ''}
-                onComplete={() => router.replace('/(tabs)')}
-                avatarRequired={fieldsConfig?.profile_completion?.require_avatar ?? true}
-                bioRequired={fieldsConfig?.profile_completion?.require_bio ?? true}
-              />
-            )}
+
+            {/* Dynamic module steps — rendered from registry */}
+            {(() => {
+              const moduleStep = getCurrentModuleStep();
+              if (!moduleStep) return null;
+              const StepComponent = moduleStep.component;
+              return (
+                <StepComponent
+                  formData={formData}
+                  submitResponse={submitResponse}
+                  submitting={submitting}
+                  onResubmit={handleModuleResubmit}
+                  onComplete={() => router.replace('/(tabs)')}
+                  onBack={() => {
+                    setError(null);
+                    if (step === MODULE_STEPS_START) {
+                      setStep(hasEmailVerify ? 3 : hasCustomFields ? 2 : 1);
+                    } else {
+                      setStep((step - 1) as Step);
+                    }
+                  }}
+                />
+              );
+            })()}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

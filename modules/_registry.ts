@@ -16,6 +16,7 @@ import type {
   ProviderRegistration,
   MenuItemRegistration,
   HeaderIconRegistration,
+  RegistrationStepRegistration,
 } from './_types';
 
 // =============================================================================
@@ -29,6 +30,8 @@ import { donateModule } from './donate/module';
 import { donorModule } from './donor/module';
 import { youtubeModule } from './youtube/module';
 import { blogModule } from './blog/module';
+import { otpModule } from './otp/module';
+import { profileCompletionModule } from './profile-completion/module';
 
 export const MODULES: ModuleManifest[] = [
   calendarModule,
@@ -37,6 +40,8 @@ export const MODULES: ModuleManifest[] = [
   donorModule,
   youtubeModule,
   blogModule,
+  otpModule,
+  profileCompletionModule,
 ];
 
 // =============================================================================
@@ -117,6 +122,36 @@ export function getTabBarAddons(): React.ComponentType[] {
 /** All module route prefixes for push notification / deep link validation */
 export function getModuleRoutePrefixes(): string[] {
   return MODULES.flatMap((m) => m.routePrefixes ?? []);
+}
+
+// -----------------------------------------------------------------------------
+// Registration steps (core + module)
+// -----------------------------------------------------------------------------
+
+/**
+ * Core registration steps — always available, not from modules.
+ * Email verify is rendered directly by the register screen (it has its own
+ * props interface), but registered here so getRegistrationSteps() includes it
+ * for step counting and shouldActivate checks.
+ */
+const CORE_REGISTRATION_STEPS: RegistrationStepRegistration[] = [
+  {
+    id: 'email-verify',
+    order: 10,
+    phase: 'pre-creation',
+    title: 'Verify Email',
+    component: (() => null) as any, // Rendered directly by register screen, not via this component
+    shouldActivate: ({ submitResponse }) =>
+      !!submitResponse?.email_verification_required && !!submitResponse?.verification_token,
+  },
+];
+
+/** All registration steps (core + module), sorted by order */
+export function getRegistrationSteps(): RegistrationStepRegistration[] {
+  return [
+    ...CORE_REGISTRATION_STEPS,
+    ...MODULES.flatMap((m) => m.registrationSteps ?? []),
+  ].sort((a, b) => a.order - b.order);
 }
 
 // -----------------------------------------------------------------------------

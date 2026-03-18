@@ -22,7 +22,7 @@
   <span class="file-path">components/register/</span> (step components),
   <span class="file-path">components/profile/ProfileCompletionSteps.tsx</span> (bio + avatar).
   <br><br>
-  WordPress backend: <span class="file-path">companion plugins/tbc-fluent-profiles/</span> — registration REST API, OTP/Twilio, custom fields.
+  WordPress backend: <span class="file-path">companion plugins/tbc-registration/</span> — registration REST API, OTP/Twilio, custom fields.
 </div>
 
 <div class="toc">
@@ -139,8 +139,8 @@
 
 <table>
   <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
-  <tr><td><code>getRegistrationFields()</code></td><td>GET</td><td><code>tbc-fp/v1/register/fields</code></td><td>Field definitions + server config (OTP, email verify, profile completion)</td></tr>
-  <tr><td><code>submitRegistration(data)</code></td><td>POST</td><td><code>tbc-fp/v1/register</code></td><td>Submit registration form. Returns tokens OR verification requirement.</td></tr>
+  <tr><td><code>getRegistrationFields()</code></td><td>GET</td><td><code>tbc-reg/v1/register/fields</code></td><td>Field definitions + server config (OTP, email verify, profile completion)</td></tr>
+  <tr><td><code>submitRegistration(data)</code></td><td>POST</td><td><code>tbc-reg/v1/register</code></td><td>Submit registration form. Returns tokens OR verification requirement.</td></tr>
   <tr><td><code>forgotPassword(login)</code></td><td>POST</td><td><code>tbc-ca/v1/password/forgot</code></td><td>Initiate password reset (sends OTP or email)</td></tr>
   <tr><td><code>resetPassword(token, login, pwd)</code></td><td>POST</td><td><code>tbc-ca/v1/password/reset</code></td><td>Set new password with reset token</td></tr>
 </table>
@@ -149,8 +149,8 @@
 
 <table>
   <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
-  <tr><td><code>checkProfileComplete()</code></td><td>GET</td><td><code>tbc-fp/v1/register/status</code></td><td>Check if profile is complete, return missing fields + existing data</td></tr>
-  <tr><td><code>completeRegistration()</code></td><td>POST</td><td><code>tbc-fp/v1/register/complete</code></td><td>Mark profile as complete (sets <code>_tbc_registration_complete = '1'</code>)</td></tr>
+  <tr><td><code>checkProfileComplete()</code></td><td>GET</td><td><code>tbc-reg/v1/register/status</code></td><td>Check if profile is complete, return missing fields + existing data</td></tr>
+  <tr><td><code>completeRegistration()</code></td><td>POST</td><td><code>tbc-reg/v1/register/complete</code></td><td>Mark profile as complete (sets <code>_tbc_registration_complete = '1'</code>)</td></tr>
 </table>
 
 <h3>FieldsResponse</h3>
@@ -206,7 +206,7 @@
 }</code></pre>
 
 <div class="callout callout-warn">
-  <strong>Re-submission pattern:</strong> After email verification or OTP, the app re-calls <code>submitRegistration()</code> with the original form data plus the verification data (<code>__two_fa_code</code> / <code>__two_fa_signed_token</code> for email, or <code>tbc_fp_session_key</code> for OTP). The server validates the verification and creates the user.
+  <strong>Re-submission pattern:</strong> After email verification or OTP, the app re-calls <code>submitRegistration()</code> with the original form data plus the verification data (<code>__two_fa_code</code> / <code>__two_fa_signed_token</code> for email, or <code>tbc_reg_session_key</code> for OTP). The server validates the verification and creates the user.
 </div>
 
 <!-- ================================================================== -->
@@ -218,9 +218,9 @@
 
 <table>
   <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
-  <tr><td><code>verifyOtp(sessionKey, code)</code></td><td>POST</td><td><code>tbc-fp/v1/otp/verify</code></td><td>Verify the code entered by the user</td></tr>
-  <tr><td><code>resendOtp(sessionKey)</code></td><td>POST</td><td><code>tbc-fp/v1/otp/resend</code></td><td>Resend SMS (60-second cooldown)</td></tr>
-  <tr><td><code>requestVoiceCall(sessionKey)</code></td><td>POST</td><td><code>tbc-fp/v1/otp/voice</code></td><td>Request voice call instead of SMS (if enabled)</td></tr>
+  <tr><td><code>verifyOtp(sessionKey, code)</code></td><td>POST</td><td><code>tbc-reg/v1/otp/verify</code></td><td>Verify the code entered by the user</td></tr>
+  <tr><td><code>resendOtp(sessionKey)</code></td><td>POST</td><td><code>tbc-reg/v1/otp/resend</code></td><td>Resend SMS (60-second cooldown)</td></tr>
+  <tr><td><code>requestVoiceCall(sessionKey)</code></td><td>POST</td><td><code>tbc-reg/v1/otp/voice</code></td><td>Request voice call instead of SMS (if enabled)</td></tr>
 </table>
 
 <h3>OTP Flow</h3>
@@ -230,7 +230,7 @@
   <li>App advances to step 4 (<code>PhoneOtpStep</code>), starts 60-second resend timer</li>
   <li>User enters the 4–8 digit code from SMS</li>
   <li>App calls <code>verifyOtp(sessionKey, code)</code></li>
-  <li>On success → app re-submits registration with <code>tbc_fp_session_key</code></li>
+  <li>On success → app re-submits registration with <code>tbc_reg_session_key</code></li>
   <li>Server sees verified session → creates user and returns tokens</li>
 </ol>
 
@@ -365,7 +365,7 @@ if (hProfile !== null) {
 <table>
   <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
   <tr><td><code>forgotPassword(login)</code></td><td>POST</td><td><code>tbc-ca/v1/password/forgot</code></td><td>Send OTP or email reset link</td></tr>
-  <tr><td><code>verifyPasswordOtp(session, code)</code></td><td>POST</td><td><code>tbc-fp/v1/otp/verify</code></td><td>Verify OTP (returns reset_token)</td></tr>
+  <tr><td><code>verifyPasswordOtp(session, code)</code></td><td>POST</td><td><code>tbc-reg/v1/otp/verify</code></td><td>Verify OTP (returns reset_token)</td></tr>
   <tr><td><code>resetPassword(token, login, pwd)</code></td><td>POST</td><td><code>tbc-ca/v1/password/reset</code></td><td>Set new password</td></tr>
 </table>
 
@@ -416,7 +416,7 @@ if (response.success &amp;&amp; response.access_token) {
 <!-- ================================================================== -->
 <h2 id="custom-fields">9. Custom Profile Fields</h2>
 
-<p>Custom fields are defined in the WordPress admin (tbc-fluent-profiles settings) and returned dynamically by <code>GET /register/fields</code>.</p>
+<p>Custom fields are defined in the WordPress admin (tbc-registration settings) and returned dynamically by <code>GET /register/fields</code>.</p>
 
 <h3>RegistrationField Type</h3>
 <pre><code>interface RegistrationField {
@@ -438,8 +438,8 @@ if (response.success &amp;&amp; response.access_token) {
 
 <h3>Field Storage (WordPress)</h3>
 <ul>
-  <li>Definitions stored in <code>wp_options</code> key <code>tbc_fp_fields</code></li>
-  <li>User values stored in <code>wp_usermeta</code> with key prefix <code>_tbc_fp_{field_key}</code></li>
+  <li>Definitions stored in <code>wp_options</code> key <code>tbc_reg_fields</code></li>
+  <li>User values stored in <code>wp_usermeta</code> with key prefix <code>_tbc_reg_{field_key}</code></li>
 </ul>
 
 <!-- ================================================================== -->
@@ -447,11 +447,11 @@ if (response.success &amp;&amp; response.access_token) {
 
 <h3>API URL Constants</h3>
 <pre><code>// constants/config.ts
-TBC_FP_URL = `${SITE_URL}/wp-json/tbc-fp/v1`   // Registration + OTP
+TBC_REG_URL = `${SITE_URL}/wp-json/tbc-reg/v1`   // Registration + OTP
 TBC_CA_URL = `${SITE_URL}/wp-json/tbc-ca/v1`    // Auth + password recovery</code></pre>
 
 <h3>WordPress Admin Settings</h3>
-<p>All controlled from the tbc-fluent-profiles admin page:</p>
+<p>All controlled from the tbc-registration admin page:</p>
 
 <table>
   <tr><th>Setting</th><th>Effect on App</th></tr>
@@ -513,11 +513,11 @@ TBC_CA_URL = `${SITE_URL}/wp-json/tbc-ca/v1`    // Auth + password recovery</cod
 
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
-  <tr><td><span class="file-path">tbc-fluent-profiles/includes/class-registration-api.php</span></td><td>Registration REST API (fields, register, status, complete)</td></tr>
-  <tr><td><span class="file-path">tbc-fluent-profiles/includes/class-otp-api.php</span></td><td>OTP REST API (verify, resend, voice)</td></tr>
-  <tr><td><span class="file-path">tbc-fluent-profiles/includes/class-twilio.php</span></td><td>Twilio integration (SMS + voice verification)</td></tr>
-  <tr><td><span class="file-path">tbc-fluent-profiles/includes/class-fields.php</span></td><td>Custom field definitions and storage</td></tr>
-  <tr><td><span class="file-path">tbc-fluent-profiles/includes/class-registration-page.php</span></td><td>Web registration form + profile completion logic</td></tr>
+  <tr><td><span class="file-path">tbc-registration/includes/class-registration-api.php</span></td><td>Registration REST API (fields, register, status, complete)</td></tr>
+  <tr><td><span class="file-path">tbc-registration/includes/class-otp-api.php</span></td><td>OTP REST API (verify, resend, voice)</td></tr>
+  <tr><td><span class="file-path">tbc-registration/includes/class-twilio.php</span></td><td>Twilio integration (SMS + voice verification)</td></tr>
+  <tr><td><span class="file-path">tbc-registration/includes/class-fields.php</span></td><td>Custom field definitions and storage</td></tr>
+  <tr><td><span class="file-path">tbc-registration/includes/class-registration-page.php</span></td><td>Web registration form + profile completion logic</td></tr>
   <tr><td><span class="file-path">tbc-community-app/includes/class-response-headers.php</span></td><td><code>X-TBC-Profile-Incomplete</code> header injection</td></tr>
 </table>
 

@@ -4,7 +4,7 @@
 // Renders a thin colored bar + label showing password strength as the user types.
 // Purely advisory — does NOT block form submission.
 // Algorithm is kept in sync with the web version in
-// companion plugins/tbc-fluent-profiles/assets/js/registration.js getPasswordStrength()
+// companion plugins/tbc-registration/assets/js/registration.js getPasswordStrength()
 // =============================================================================
 
 import React from 'react';

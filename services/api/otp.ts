@@ -2,10 +2,11 @@
 // UNIVERSAL OTP SERVICE - Single set of OTP functions for all contexts
 // =============================================================================
 // Replaces context-specific OTP functions (registration, password, profile).
-// All contexts use the same /otp/verify, /otp/resend, /otp/voice endpoints.
+// All contexts use the same /otp/verify, /otp/resend, /otp/voice endpoints
+// on the tbc-otp plugin (tbc-otp/v1).
 // =============================================================================
 
-import { TBC_FP_URL } from '@/constants/config';
+import { TBC_OTP_URL } from '@/constants/config';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('OtpAPI');
@@ -37,7 +38,7 @@ async function otpRequest<T>(
   body: Record<string, any>
 ): Promise<{ success: true; data: T } | { success: false; error: string }> {
   try {
-    const response = await fetch(`${TBC_FP_URL}${endpoint}`, {
+    const response = await fetch(`${TBC_OTP_URL}${endpoint}`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',

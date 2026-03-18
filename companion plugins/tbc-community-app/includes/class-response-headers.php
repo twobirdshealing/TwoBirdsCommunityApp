@@ -77,12 +77,12 @@ class TBC_CA_Response_Headers {
 
     /**
      * Check if user has an incomplete profile (needs the profile completion gate).
-     * Reads _tbc_registration_complete meta — set by tbc-fluent-profiles.
-     * Only returns true when the flag is explicitly '0' (gated by tbc-fluent-profiles' re-evaluation hook).
+     * Reads _tbc_registration_complete meta — set by tbc-registration.
+     * Only returns true when the flag is explicitly '0' (gated by tbc-registration's re-evaluation hook).
      */
     private function is_profile_incomplete($user_id) {
         // Cheap check first: meta read is object-cached after first hit
-        $meta_key = defined('TBC_FP_META_REGISTRATION_COMPLETE') ? TBC_FP_META_REGISTRATION_COMPLETE : '_tbc_registration_complete';
+        $meta_key = defined('TBC_REG_META_REGISTRATION_COMPLETE') ? TBC_REG_META_REGISTRATION_COMPLETE : '_tbc_registration_complete';
         $flag = get_user_meta($user_id, $meta_key, true);
         // '' (empty/missing) = legacy user (not gated), '1' = complete — fast exit for 99% of users
         if ($flag !== '0') {
@@ -90,8 +90,8 @@ class TBC_CA_Response_Headers {
         }
 
         // Only check the admin setting when the user IS flagged incomplete
-        if (class_exists('\\TBCFluentProfiles\\Helpers')) {
-            $enabled = \TBCFluentProfiles\Helpers::get_option('profile_completion_enabled', true);
+        if (class_exists('\\TBCRegistration\\Helpers')) {
+            $enabled = \TBCRegistration\Helpers::get_option('profile_completion_enabled', true);
             if (!$enabled) {
                 return false;
             }

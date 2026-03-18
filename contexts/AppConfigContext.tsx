@@ -6,7 +6,7 @@
 // Does NOT fetch on its own — all fetching is orchestrated by _layout.tsx.
 // =============================================================================
 
-import { AppConfigResponse, SocketConfig, VisibilityConfig } from '@/services/api/appConfig';
+import { AppConfigResponse, RegistrationConfig, SocketConfig, VisibilityConfig } from '@/services/api/appConfig';
 import { createLogger } from '@/utils/logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useMemo, useEffect, useState } from 'react';
@@ -23,6 +23,8 @@ interface AppConfigContextType {
   portalSlug: string;
   /** Socket config from server (Pusher/Fluent Socket/Soketi) — null until app-config loads */
   socketConfig: SocketConfig | null;
+  /** Registration capabilities from server — null until app-config loads */
+  registration: RegistrationConfig | null;
   /** Accept pre-fetched data from the startup batch or _layout refresh */
   setFromBatch: (data: AppConfigResponse) => void;
 }
@@ -33,6 +35,7 @@ interface AppConfigContextType {
 
 const VISIBILITY_CACHE_KEY = 'tbc_app_visibility_cache';
 const SOCKET_CACHE_KEY = 'tbc_socket_config_cache';
+const REGISTRATION_CACHE_KEY = 'tbc_registration_config_cache';
 
 // -----------------------------------------------------------------------------
 // Context
@@ -48,6 +51,7 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   const [visibility, setVisibility] = useState<VisibilityConfig | null>(null);
   const [portalSlug, setPortalSlug] = useState('');
   const [socketConfig, setSocketConfig] = useState<SocketConfig | null>(null);
+  const [registration, setRegistration] = useState<RegistrationConfig | null>(null);
 
   const applyConfig = useCallback((data: AppConfigResponse) => {
     if (data.visibility) {
@@ -70,6 +74,10 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
       });
       AsyncStorage.setItem(SOCKET_CACHE_KEY, JSON.stringify(data.socket)).catch((e) => log.warn('Socket config cache write failed:', e));
     }
+    if (data.registration) {
+      setRegistration(data.registration);
+      AsyncStorage.setItem(REGISTRATION_CACHE_KEY, JSON.stringify(data.registration)).catch((e) => log.warn('Registration config cache write failed:', e));
+    }
   }, []);
 
   /** Called by _layout.tsx with batch or refresh data */
@@ -81,12 +89,14 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const [cached, cachedSocket] = await Promise.all([
+        const [cached, cachedSocket, cachedReg] = await Promise.all([
           AsyncStorage.getItem(VISIBILITY_CACHE_KEY),
           AsyncStorage.getItem(SOCKET_CACHE_KEY),
+          AsyncStorage.getItem(REGISTRATION_CACHE_KEY),
         ]);
         if (cached) setVisibility(JSON.parse(cached));
         if (cachedSocket) setSocketConfig(JSON.parse(cachedSocket));
+        if (cachedReg) setRegistration(JSON.parse(cachedReg));
       } catch {}
     })();
   }, []);
@@ -95,8 +105,9 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
     visibility,
     portalSlug,
     socketConfig,
+    registration,
     setFromBatch,
-  }), [visibility, portalSlug, socketConfig, setFromBatch]);
+  }), [visibility, portalSlug, socketConfig, registration, setFromBatch]);
 
   return (
     <AppConfigContext.Provider value={value}>

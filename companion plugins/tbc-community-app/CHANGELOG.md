@@ -2,6 +2,14 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.43.0
+- **Base registration endpoints**: Added `tbc-ca/v1/auth/register/fields`, `tbc-ca/v1/auth/register`, `tbc-ca/v1/auth/register/status`, `tbc-ca/v1/auth/register/complete` — registration now works with FC's native registration without requiring tbc-registration plugin
+- **Registration capabilities in /app-config**: New `registration` object in app-config response with `enabled`, `email_verification`, `otp`, and `profile_completion` fields. Add-on plugins (tbc-otp, tbc-profile-completion) hook `tbc_ca_registration_config` filter to advertise their capabilities
+- **Plugin hook points**: `tbc_ca_pre_register` filter (before user creation), `tbc_ca_post_register` action (after user creation), `tbc_ca_profile_status` and `tbc_ca_complete_registration` filters for add-on extensibility
+
+## v3.42.0
+- **Plugin rename alignment**: Updated `tbc_fp_registration_response` filter → `tbc_reg_registration_response` to match tbc-registration plugin rename. Also updated `TBC_FP_META_REGISTRATION_COMPLETE` → `TBC_REG_META_REGISTRATION_COMPLETE` constant reference and `tbc_fp_recovery_` → `tbc_reg_recovery_` session prefix.
+
 ## v3.41.0
 - **REST API index hidden**: Unauthenticated requests to `/wp-json/` now return 403 — prevents bots from discovering custom endpoints via the REST API index. All specific endpoints still work normally for both authenticated and unauthenticated requests.
 
@@ -9,7 +17,7 @@ All notable changes to the TBC Community App plugin.
 - **Server-driven socket config**: New `socket` section in `/app-config` response returns Pusher/Fluent Socket/Soketi connection config from Fluent Messaging settings. Mobile app auto-detects the socket provider — buyers configure once in WordPress admin, no app-side config needed. Mirrors the approach used by Fluent Messaging's web frontend (`ChatAppHandler`). Returns `null` when Fluent Messaging is not active.
 
 ## v3.39.0
-- Removed deprecated registration API (`tbc-ca/v1/register/*`) and OTP API (`tbc-ca/v1/otp/*`) — all registration and OTP now handled by tbc-fluent-profiles (`tbc-fp/v1`)
+- Removed deprecated registration API (`tbc-ca/v1/register/*`) and OTP API (`tbc-ca/v1/otp/*`) — all registration and OTP now handled by tbc-registration (`tbc-reg/v1`)
 - Removed autoloader entries and class file loading for `class-registration-api.php` and `class-otp-api.php`
 
 ## v3.38.0
@@ -57,11 +65,11 @@ All notable changes to the TBC Community App plugin.
 - Removed `TBC_YOUTUBE_API_KEY` constant support — key is now managed entirely from settings
 
 ## v3.29.1
-- `X-TBC-Profile-Incomplete` header now uses `TBC_FP_META_REGISTRATION_COMPLETE` constant (with string literal fallback when tbc-fluent-profiles is inactive)
+- `X-TBC-Profile-Incomplete` header now uses `TBC_REG_META_REGISTRATION_COMPLETE` constant (with string literal fallback when tbc-registration is inactive)
 
 ## v3.29.0
 - Added `X-TBC-Profile-Incomplete` response header to all authenticated REST responses — app detects profile completion gate mid-session (same pattern as maintenance mode)
-- Reads `_tbc_registration_complete` user meta flag (set by tbc-fluent-profiles) and respects `profile_completion_enabled` admin setting
+- Reads `_tbc_registration_complete` user meta flag (set by tbc-registration) and respects `profile_completion_enabled` admin setting
 
 ## v3.28.0
 - Added `GET /tbc-ca/v1/cart/count` endpoint — returns WooCommerce cart item quantity for authenticated users
@@ -75,11 +83,11 @@ All notable changes to the TBC Community App plugin.
 - Login API: added `first_name`, `last_name`, `is_verified`, `status` to user object in auth response
 
 ## v3.25.0
-- Added `tbc_fp_registration_response` filter hook — attaches JWT tokens to tbc-fluent-profiles registration for mobile clients
-- Registration API and OTP API endpoints deprecated (moved to tbc-fluent-profiles at `tbc-fp/v1`), kept for backward compatibility
+- Added `tbc_reg_registration_response` filter hook — attaches JWT tokens to tbc-registration registration for mobile clients
+- Registration API and OTP API endpoints deprecated (moved to tbc-registration at `tbc-reg/v1`), kept for backward compatibility
 
 ## v3.24.3
-- Registration API: include `instructions` field from tbc-fluent-profiles custom fields in `/register/fields` response
+- Registration API: include `instructions` field from tbc-registration custom fields in `/register/fields` response
 
 ## v3.24.2
 - Added session cap: max 3 sessions per user, oldest auto-evicted on new login
@@ -161,7 +169,7 @@ All notable changes to the TBC Community App plugin.
 
 ## v3.17.0
 - Consolidated admin menu: top-level "TBC Community App" menu replaces Settings submenu
-- Other TBC plugins (Fluent Profiles, Multi Reactions, OTP Verification) nest as submenus
+- Other TBC plugins (Registration, Multi Reactions, OTP Verification) nest as submenus
 - Registers at priority 9 so child plugins can attach at default priority
 
 ## v3.16.0

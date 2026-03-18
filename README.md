@@ -99,7 +99,7 @@ The `companion plugins/` folder contains WordPress plugins and a theme required 
 
 **TBC Plugins (custom backend):**
 - `tbc-community-app` — Main bridge plugin, all custom REST endpoints
-- `tbc-fluent-profiles` — Custom profile fields & registration API
+- `tbc-registration` — Registration flow, OTP verification & custom profile fields
 - `tbc-multi-reactions` — Multi-reaction support
 - `tbc-otp-verification` — OTP verification for registration
 - `tbc-calendar-fluent` — Calendar plugin (WooCommerce-based events)

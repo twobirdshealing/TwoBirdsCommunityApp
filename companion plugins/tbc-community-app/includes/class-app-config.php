@@ -68,6 +68,9 @@ class TBC_CA_App_Config {
         // ─── Socket config (real-time messaging) ─────────────────────────
         $response['socket'] = $this->get_socket_config();
 
+        // ─── Registration capabilities ────────────────────────────────────
+        $response['registration'] = $this->get_registration_config();
+
         // ─── Auth-aware: bypass + visibility (only when JWT is present) ──
         $user_id = get_current_user_id();
         if ($user_id) {
@@ -314,6 +317,45 @@ class TBC_CA_App_Config {
             'auth_endpoint' => '/chat/broadcast/auth',
             'options'       => $options,
         ];
+    }
+
+    // =========================================================================
+    // Registration Capabilities
+    // =========================================================================
+
+    /**
+     * Get registration capabilities — base config from FC, extended by add-on plugins.
+     * Add-on plugins (tbc-otp, tbc-profile-completion) hook tbc_ca_registration_config
+     * to advertise their features.
+     */
+    private function get_registration_config() {
+        $config = [
+            'enabled'            => false,
+            'email_verification' => false,
+            'otp'                => null,
+            'profile_completion' => null,
+        ];
+
+        if (!class_exists('FluentCommunity\Modules\Auth\AuthHelper')) {
+            return $config;
+        }
+
+        $auth_helper = 'FluentCommunity\Modules\Auth\AuthHelper';
+        $config['enabled']            = $auth_helper::isRegistrationEnabled();
+        $config['email_verification'] = (bool) $auth_helper::isTwoFactorEnabled();
+
+        /**
+         * Filter registration capabilities.
+         * Add-on plugins inject their config here:
+         *
+         * tbc-otp sets: $config['otp'] = ['required' => true, 'voice_fallback' => false]
+         * tbc-profile-completion sets: $config['profile_completion'] = ['enabled' => true, ...]
+         *
+         * @param array $config Registration config.
+         */
+        $config = apply_filters('tbc_ca_registration_config', $config);
+
+        return $config;
     }
 
     // =========================================================================

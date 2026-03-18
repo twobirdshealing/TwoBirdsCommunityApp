@@ -18,14 +18,11 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: AuthUser | null;
-  needsProfileCompletion: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   updateUser: (updates: Partial<AuthUser>) => Promise<void>;
   registerAndLogin: (accessToken: string, refreshToken: string, userData: AuthUser) => Promise<void>;
-  markProfileComplete: () => void;
-  markProfileIncomplete: () => void;
 }
 
 // -----------------------------------------------------------------------------
@@ -43,8 +40,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [needsProfileCompletion, setNeedsProfileCompletion] = useState(false);
-
   // Check auth status on mount
   useEffect(() => {
     checkAuthStatus();
@@ -128,12 +123,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setUser(null);
       setIsAuthenticated(false);
-      setNeedsProfileCompletion(false);
     } catch (error) {
       log.error('Logout error:', error);
       setUser(null);
       setIsAuthenticated(false);
-      setNeedsProfileCompletion(false);
     }
   }, []);
 
@@ -144,14 +137,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateUser = useCallback(async (updates: Partial<AuthUser>) => {
     await authService.updateStoredUser(updates);
     setUser(prev => prev ? { ...prev, ...updates } : prev);
-  }, []);
-
-  const markProfileComplete = useCallback(() => {
-    setNeedsProfileCompletion(false);
-  }, []);
-
-  const markProfileIncomplete = useCallback(() => {
-    setNeedsProfileCompletion(true);
   }, []);
 
   const registerAndLogin = useCallback(async (
@@ -173,15 +158,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated,
     isLoading,
     user,
-    needsProfileCompletion,
     login,
     logout,
     refreshAuth,
     updateUser,
     registerAndLogin,
-    markProfileComplete,
-    markProfileIncomplete,
-  }), [isAuthenticated, isLoading, user, needsProfileCompletion, login, logout, refreshAuth, updateUser, registerAndLogin, markProfileComplete, markProfileIncomplete]);
+  }), [isAuthenticated, isLoading, user, login, logout, refreshAuth, updateUser, registerAndLogin]);
 
   return (
     <AuthContext.Provider value={value}>

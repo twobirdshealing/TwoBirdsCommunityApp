@@ -108,7 +108,7 @@ const REQUIRED_ASSETS = [
 
 const CORE_PLUGINS = [
   { folder: 'tbc-community-app', label: 'TBC Community App', required: true, description: 'Main bridge plugin — upload to WordPress and activate' },
-  { folder: 'tbc-fluent-profiles', label: 'TBC Fluent Profiles', required: true, description: 'Custom profile fields — upload to WordPress and activate' },
+  { folder: 'tbc-registration', label: 'TBC Registration', required: true, description: 'Registration, OTP, and custom profile fields — upload to WordPress and activate' },
   { folder: 'tbc-multi-reactions', label: 'TBC Multi Reactions', required: false, description: 'Multi-reaction support — upload to WordPress if desired' },
   { folder: 'tbc-starter-theme', label: 'TBC Starter Theme', required: false, description: 'Custom WordPress theme — upload and activate' },
 ];
@@ -179,7 +179,6 @@ const PLACEHOLDERS = [
   'your-expo-account', 'YOUR_EAS_PROJECT_ID',
   'https://community.yoursite.com', 'community.yoursite.com',
   'your-apple-id@example.com', 'YOUR_ASC_APP_ID',
-  'REPLACE_WITH_YOUR_APP_TOKEN',
 ];
 
 function isPlaceholder(val) {
@@ -224,7 +223,6 @@ function readProjectState() {
     const content = fs.readFileSync(PATHS.configTs, 'utf8');
     state.config.appNameConfig = extractTsValue(content, /export const APP_NAME = '([^']*)'/);
     state.config.userAgent = extractTsValue(content, /export const APP_USER_AGENT = '([^']*)'/);
-    state.config.appToken = extractTsValue(content, /export const APP_TOKEN = '([^']*)'/);
     // Feature flags
     state.features = {};
     for (const flag of BOOL_FLAGS) {
@@ -338,8 +336,6 @@ function runValidation(state) {
   // config.ts
   check(!isPlaceholder(c.appNameConfig), 'APP_NAME is set in config.ts', 'config.ts', 'config-ts');
   check(!isPlaceholder(c.userAgent), 'APP_USER_AGENT is set', 'config.ts', 'config-ts');
-  check(!isPlaceholder(c.appToken), 'APP_TOKEN is set (bot protection)', 'config.ts', 'config-ts');
-
   // app.config.ts
   check(!isPlaceholder(c.fallbackSiteUrl), 'Fallback SITE_URL is set', 'app.config.ts', 'site-url');
 
@@ -471,9 +467,6 @@ function writeConfigValues(changes) {
     if (changes.userAgent !== undefined) {
       content = content.replace(/export const APP_USER_AGENT = '[^']*'/, `export const APP_USER_AGENT = '${changes.userAgent}'`);
     }
-    if (changes.appToken !== undefined) {
-      content = content.replace(/export const APP_TOKEN = '[^']*'/, `export const APP_TOKEN = '${changes.appToken}'`);
-    }
     fs.writeFileSync(PATHS.configTs, content);
     results.push('constants/config.ts updated');
   }
@@ -560,7 +553,7 @@ async function checkConnectivity(siteUrl) {
     { key: 'wpRest', url: `${siteUrl}/wp-json/`, label: 'WP REST API' },
     { key: 'fluentApi', url: `${siteUrl}/wp-json/fluent-community/v2`, label: 'Fluent Community API' },
     { key: 'tbcCa', url: `${siteUrl}/wp-json/tbc-ca/v1`, label: 'TBC Community App plugin' },
-    { key: 'tbcFp', url: `${siteUrl}/wp-json/tbc-fp/v1`, label: 'TBC Fluent Profiles plugin' },
+    { key: 'tbcReg', url: `${siteUrl}/wp-json/tbc-reg/v1`, label: 'TBC Registration plugin' },
   ];
   const checks = await Promise.all(endpoints.map(async (ep) => {
     try {
@@ -2448,16 +2441,6 @@ function getDashboardHTML() {
   </div>
 
   <div class="card">
-    <div class="card-header"><h3>Bot Protection</h3><span class="badge" style="color:var(--text-muted)">constants/config.ts</span></div>
-    <div class="card-body">
-      <div class="field">
-        <label>APP_TOKEN <span class="file-hint">constants/config.ts</span></label>
-        <input type="text" id="cfg-appToken" data-key="appToken" placeholder="Paste token from WordPress &rarr; Fluent Profiles &rarr; Bot Protection">
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
     <div class="card-header"><h3>Feature Flags</h3><span class="badge" style="color:var(--text-muted)">constants/config.ts</span></div>
     <div class="card-body">
       <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Toggle app features on or off. Disabled features are hidden from users. Changes are saved to <code>constants/config.ts</code>.</p>
@@ -2878,9 +2861,6 @@ const FIELD_HELP = {
   },
   userAgent: {
     text: 'Identifies your app in HTTP requests to your WordPress site. Auto-derived from app name. Format: <code>YourAppName/1.0</code>.',
-  },
-  appToken: {
-    text: 'Shared secret for bot protection. Copy from WordPress → Fluent Community → Profiles → Bot Protection → Mobile App Token. Lets the app bypass Turnstile on registration.',
   },
   appleId: {
     text: 'The Apple ID email you use for App Store Connect — the email that manages your Apple Developer account.',

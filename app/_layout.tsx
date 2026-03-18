@@ -17,7 +17,7 @@ import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { UnreadCountsProvider, useUnreadCounts } from '@/contexts/UnreadCountsContext';
 import { useAppFocus } from '@/hooks/useAppFocus';
 import { useStartupData } from '@/hooks/useStartupData';
-import { setOnResponseHeaders } from '@/services/api/client';
+import { addResponseHeaderListener } from '@/services/api/client';
 import { getAppConfig, AppConfigResponse } from '@/services/api/appConfig';
 import { syncBadgeCount } from '@/services/push';
 import { mapUrlToRoute } from '@/utils/deepLinkMapper';
@@ -95,7 +95,7 @@ function sanitizeParam(value: unknown): string {
 // -----------------------------------------------------------------------------
 
 function RootLayoutNav() {
-  const { isAuthenticated, isLoading, user, logout, updateUser, needsProfileCompletion, markProfileComplete, markProfileIncomplete } = useAuth();
+  const { isAuthenticated, isLoading, user, logout, updateUser } = useAuth();
   const { isDark, colors: themeColors, update, maintenance, setFromBatch: setThemeFromBatch } = useTheme();
   const { portalSlug, setFromBatch: setAppConfigFromBatch } = useAppConfig();
   const { setUnreadNotifications, setUnreadMessages, setCartCount } = useUnreadCounts();
@@ -152,7 +152,7 @@ function RootLayoutNav() {
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    setOnResponseHeaders((data) => {
+    return addResponseHeaderListener((data) => {
       if (data.unreadNotifications !== undefined) {
         setUnreadNotifications(data.unreadNotifications);
         syncBadgeCount(data.unreadNotifications);
@@ -163,17 +163,13 @@ function RootLayoutNav() {
       if (data.cartCount !== undefined) {
         setCartCount(data.cartCount);
       }
-      if (data.profileIncomplete !== undefined) {
-        // Idempotent — safe to call on every response without a guard
-        data.profileIncomplete ? markProfileIncomplete() : markProfileComplete();
-      }
+      // profileIncomplete header is handled by the profile-completion module's provider
       if (data.maintenance || (data.minAppVersion && isVersionBelow(APP_VERSION, data.minAppVersion))) {
         // Maintenance or version change detected mid-session — refresh all config
         refreshAllConfig();
       }
     });
-    return () => setOnResponseHeaders(null);
-  }, [setUnreadNotifications, setUnreadMessages, setCartCount, refreshAllConfig, markProfileIncomplete, markProfileComplete]);
+  }, [setUnreadNotifications, setUnreadMessages, setCartCount, refreshAllConfig]);
 
   // ---------------------------------------------------------------------------
   // Deep Link Listener (Universal Links + App Links)
@@ -226,13 +222,11 @@ function RootLayoutNav() {
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/login');
-    } else if (isAuthenticated && needsProfileCompletion && currentSegment !== 'profile-complete' && currentSegment !== 'register') {
-      // Redirect to profile completion if profile is incomplete
-      router.replace('/profile-complete' as any);
-    } else if (isAuthenticated && !needsProfileCompletion && segments[0] === 'login') {
+    } else if (isAuthenticated && segments[0] === 'login') {
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, isLoading, segments, maintenance, needsProfileCompletion, maintenanceLoginMode]);
+    // Profile completion redirect is handled by the profile-completion module's provider
+  }, [isAuthenticated, isLoading, segments, maintenance, maintenanceLoginMode]);
 
   // Reset login mode when bypass check completes: can't bypass → back to maintenance
   useEffect(() => {

@@ -525,7 +525,7 @@
         <li>Go to <a href="https://www.twilio.com/try-twilio" target="_blank">twilio.com/try-twilio</a> and create a free account.</li>
         <li>In the Twilio Console, note your <strong>Account SID</strong> and <strong>Auth Token</strong> from the dashboard.</li>
         <li>Go to <strong>Messaging &rarr; Services</strong> and create a new Messaging Service (or use the default).</li>
-        <li>In your WordPress admin, go to the <strong>tbc-fluent-profiles</strong> plugin settings and enter your Twilio Account SID, Auth Token, and phone number or Messaging Service SID.</li>
+        <li>In your WordPress admin, go to the <strong>tbc-registration</strong> plugin settings and enter your Twilio Account SID, Auth Token, and phone number or Messaging Service SID.</li>
       </ol>
       <div class="callout" style="margin-top: 12px;">
         <strong>Completely optional.</strong> Registration works without Twilio &mdash; the phone number field simply won't appear on the signup form. Only set this up if phone verification is important for your community.
@@ -852,27 +852,10 @@
 </div>
 
 <!-- Step 9: Bot Protection -->
+<!-- Step 9: Feature Flags & Profile Tabs -->
 <div class="step-card">
   <div class="step-header">
     <span class="step-number">9</span>
-    <span class="step-title">Bot Protection</span>
-  </div>
-  <div class="step-body">
-    <p class="prereq-ref">Requires: <a href="#prereq-fluent" class="prereq-badge fluent">Fluent</a></p>
-    <p>
-      The <strong>APP_TOKEN</strong> is a shared secret between your WordPress site and the mobile app. It lets the app bypass Cloudflare Turnstile bot protection during registration &mdash; since Turnstile only works in browsers, the app sends this token instead.
-    </p>
-    <p>
-      Copy it from your WordPress admin: <strong>Fluent Community &rarr; Profiles &rarr; Bot Protection &rarr; Mobile App Token</strong>, and paste it here. The token is auto-generated on your server the first time you save bot protection settings.
-    </p>
-    <img class="step-img" src="images/botprotection.webp" alt="Bot Protection card showing APP_TOKEN field">
-  </div>
-</div>
-
-<!-- Step 10: Feature Flags & Profile Tabs -->
-<div class="step-card">
-  <div class="step-header">
-    <span class="step-number">10</span>
     <span class="step-title">Feature Flags &amp; Profile Tabs</span>
   </div>
   <div class="step-body">
@@ -940,10 +923,10 @@
   </div>
 </div>
 
-<!-- Step 11: iOS App Store Submit -->
+<!-- Step 10: iOS App Store Submit -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">11</span>
+    <span class="step-number">10</span>
     <span class="step-title">iOS App Store Submit</span>
   </div>
   <div class="step-body">
@@ -975,10 +958,10 @@
   </div>
 </div>
 
-<!-- Step 12: Google Play Submit -->
+<!-- Step 11: Google Play Submit -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">12</span>
+    <span class="step-number">11</span>
     <span class="step-title">Google Play Submit</span>
   </div>
   <div class="step-body">
@@ -989,10 +972,10 @@
   </div>
 </div>
 
-<!-- Step 13: Package -->
+<!-- Step 12: Package -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">13</span>
+    <span class="step-number">12</span>
     <span class="step-title">Package</span>
   </div>
   <div class="step-body">
@@ -1009,10 +992,10 @@
 <!-- Assets Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Assets Tab</h3>
 
-<!-- Step 14: Assets -->
+<!-- Step 13: Assets -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">14</span>
+    <span class="step-number">13</span>
     <span class="step-title">Branding Assets</span>
   </div>
   <div class="step-body">
@@ -1023,10 +1006,10 @@
 <!-- Plugins & Firebase Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Plugins &amp; Firebase Tab</h3>
 
-<!-- Step 15: Plugins & Firebase -->
+<!-- Step 14: Plugins & Firebase -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">15</span>
+    <span class="step-number">14</span>
     <span class="step-title">Plugins &amp; Firebase</span>
   </div>
   <div class="step-body">
@@ -1038,10 +1021,10 @@
 <!-- Modules Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Modules Tab</h3>
 
-<!-- Step 16: Modules -->
+<!-- Step 15: Modules -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">16</span>
+    <span class="step-number">15</span>
     <span class="step-title">Modules</span>
   </div>
   <div class="step-body">
@@ -1052,10 +1035,10 @@
 <!-- Builds Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Builds Tab</h3>
 
-<!-- Step 17: Builds -->
+<!-- Step 16: Builds -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">17</span>
+    <span class="step-number">16</span>
     <span class="step-title">Builds</span>
   </div>
   <div class="step-body">
@@ -1066,10 +1049,10 @@
 <!-- Updates Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Updates Tab</h3>
 
-<!-- Step 18: Updates -->
+<!-- Step 17: Updates -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">18</span>
+    <span class="step-number">17</span>
     <span class="step-title">Updates &amp; Licensing</span>
   </div>
   <div class="step-body">
@@ -1080,10 +1063,10 @@
 <!-- Status Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Status Tab</h3>
 
-<!-- Step 19: Status -->
+<!-- Step 18: Status -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">19</span>
+    <span class="step-number">18</span>
     <span class="step-title">Status</span>
   </div>
   <div class="step-body">
@@ -1299,7 +1282,7 @@
 
 <div class="callout callout-warn">
   <strong>Install order matters.</strong> Install <code>tbc-community-app</code> first — other plugins depend on it.
-  Recommended order: <code>tbc-community-app</code> → <code>tbc-fluent-profiles</code> → <code>tbc-multi-reactions</code> → any add-on plugins.
+  Recommended order: <code>tbc-community-app</code> → <code>tbc-registration</code> → <code>tbc-multi-reactions</code> → any add-on plugins.
 </div>
 
 <h3>Required Plugins <span class="tag required">Must Install</span></h3>
@@ -1314,8 +1297,8 @@
     <td><a href="https://fluentcommunity.co">Fluent Community</a> (free or Pro)</td>
   </tr>
   <tr>
-    <td><code>tbc-fluent-profiles</code></td>
-    <td>Custom profile fields, multi-step registration, OTP phone verification (optional, requires <a href="https://twilio.com">Twilio</a> — configured in plugin settings)</td>
+    <td><code>tbc-registration</code></td>
+    <td>Registration flow, OTP phone verification, and custom profile fields (OTP optional, requires <a href="https://twilio.com">Twilio</a> — configured in plugin settings)</td>
     <td>Fluent Community</td>
   </tr>
   <tr>
@@ -1369,7 +1352,7 @@
   <tr><td>Blog</td><td>WordPress posts (built-in, uses standard WP REST API)</td></tr>
   <tr><td>Push notifications</td><td>Firebase project + <code>tbc-community-app</code> (see <a href="#firebase-setup">Firebase Setup</a>)</td></tr>
   <tr><td>Real-time updates</td><td>Fluent Messaging add-on &mdash; supports Pusher Cloud, Fluent Socket, or custom Soketi (configured in WordPress admin, app reads config automatically)</td></tr>
-  <tr><td>OTP verification</td><td><a href="https://twilio.com">Twilio</a> account — configured in <code>tbc-fluent-profiles</code> plugin settings. Optional.</td></tr>
+  <tr><td>OTP verification</td><td><a href="https://twilio.com">Twilio</a> account — configured in <code>tbc-registration</code> plugin settings. Optional.</td></tr>
 </table>
 
 <!-- ====================================================================== -->

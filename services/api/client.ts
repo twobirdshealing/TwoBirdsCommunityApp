@@ -14,10 +14,11 @@ import NetInfo from '@react-native-community/netinfo';
 const log = createLogger('API');
 
 // -----------------------------------------------------------------------------
-// Response Header Callback (non-React → React bridge)
+// Response Header Listeners (non-React → React bridge)
 // -----------------------------------------------------------------------------
-// Registered by _layout.tsx to process custom response headers from every
-// authenticated API response. Same pattern as onAuthCleared in auth.ts.
+// Multiple listeners can subscribe to process custom response headers from
+// every authenticated API response. _layout.tsx registers the core listener;
+// modules can add their own via addResponseHeaderListener.
 
 export interface ResponseHeaderData {
   unreadNotifications?: number;
@@ -28,12 +29,20 @@ export interface ResponseHeaderData {
   minAppVersion?: string;
 }
 
-let responseHeaderCallback: ((data: ResponseHeaderData) => void) | null = null;
+type ResponseHeaderListener = (data: ResponseHeaderData) => void;
+const responseHeaderListeners = new Set<ResponseHeaderListener>();
 
-export function setOnResponseHeaders(
-  callback: ((data: ResponseHeaderData) => void) | null
-): void {
-  responseHeaderCallback = callback;
+/** Subscribe to response header updates. Returns an unsubscribe function. */
+export function addResponseHeaderListener(listener: ResponseHeaderListener): () => void {
+  responseHeaderListeners.add(listener);
+  return () => responseHeaderListeners.delete(listener);
+}
+
+/** @deprecated Use addResponseHeaderListener instead */
+export function setOnResponseHeaders(callback: ResponseHeaderListener | null): void {
+  // Backward compat: clear all and set single if non-null
+  responseHeaderListeners.clear();
+  if (callback) responseHeaderListeners.add(callback);
 }
 
 // -----------------------------------------------------------------------------
@@ -259,7 +268,7 @@ async function request<T>(
     }
 
     // Extract custom response headers (unread counts, cart count, maintenance, min version)
-    if (responseHeaderCallback) {
+    if (responseHeaderListeners.size > 0) {
       const hNotif = response.headers.get('X-TBC-Unread-Notifications');
       const hMsg = response.headers.get('X-TBC-Unread-Messages');
       const hCart = response.headers.get('X-TBC-Cart-Count');
@@ -270,14 +279,17 @@ async function request<T>(
         const nNotif = hNotif !== null ? parseInt(hNotif, 10) : NaN;
         const nMsg = hMsg !== null ? parseInt(hMsg, 10) : NaN;
         const nCart = hCart !== null ? parseInt(hCart, 10) : NaN;
-        responseHeaderCallback({
+        const headerData: ResponseHeaderData = {
           ...(!isNaN(nNotif) && nNotif >= 0 && { unreadNotifications: nNotif }),
           ...(!isNaN(nMsg) && nMsg >= 0 && { unreadMessages: nMsg }),
           ...(!isNaN(nCart) && nCart >= 0 && { cartCount: nCart }),
           ...(hMaint !== null && { maintenance: hMaint === '1' }),
           ...(hProfile !== null && { profileIncomplete: hProfile === '1' }),
           ...(hMinVer !== null && { minAppVersion: hMinVer }),
-        });
+        };
+        for (const listener of responseHeaderListeners) {
+          listener(headerData);
+        }
       }
     }
 

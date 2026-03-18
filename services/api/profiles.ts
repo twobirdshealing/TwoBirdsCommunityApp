@@ -99,7 +99,7 @@ export async function updateProfile(username: string, data: {
   username?: string;
   social_links?: Record<string, string>;
   custom_fields?: Record<string, any>;
-  tbc_fp_session_key?: string;
+  tbc_otp_session_key?: string;
   is_verified?: number;
   badge_slugs?: string[];
   status?: string;

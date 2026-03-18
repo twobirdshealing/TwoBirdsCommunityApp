@@ -94,6 +94,13 @@ export interface SocketConfig {
   };
 }
 
+export interface RegistrationConfig {
+  enabled: boolean;
+  email_verification: boolean;
+  otp: { required: boolean; voice_fallback: boolean } | null;
+  profile_completion: { enabled: boolean; require_bio: boolean; require_avatar: boolean } | null;
+}
+
 export interface AppConfigResponse {
   success: boolean;
   theme: ThemeData;
@@ -104,6 +111,7 @@ export interface AppConfigResponse {
   visibility?: VisibilityConfig;
   branding?: BrandingConfig;
   socket?: SocketConfig | null;
+  registration?: RegistrationConfig;
 }
 
 // -----------------------------------------------------------------------------

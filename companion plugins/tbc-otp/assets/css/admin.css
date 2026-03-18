@@ -1,0 +1,13 @@
+/**
+ * TBC OTP - Admin Styles
+ */
+
+/* ---- Layout ---- */
+.tbc-otp-admin {
+    max-width: 900px;
+}
+
+.tbc-otp-subtitle {
+    color: #646970;
+    margin-top: -8px;
+}

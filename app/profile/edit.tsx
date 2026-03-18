@@ -5,7 +5,7 @@
 // Fetches current profile, renders editable form, saves via single POST
 // =============================================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,7 +20,6 @@ import {
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/common/Button';
 import { hapticLight } from '@/utils/haptics';
 import { spacing, typography, sizing } from '@/constants/layout';
@@ -30,7 +29,7 @@ import { withOpacity } from '@/constants/colors';
 import { profilesApi, patchProfileMedia } from '@/services/api/profiles';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
-import { Profile, CustomFieldConfig } from '@/types/user';
+import { Profile, NativeCustomField } from '@/types/user';
 import { SocialLinksForm } from '@/components/common/SocialLinksForm';
 import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
 import { DynamicFormField } from '@/components/common/DynamicFormField';
@@ -126,15 +125,17 @@ export default function EditProfileScreen() {
           const p = response.data.profile;
           setProfile(p);
 
-          // Pre-populate form
+          // Pre-populate custom fields from FC native custom_field_groups
+          // Note: can't reuse the memoized nativeFieldsMap here — this runs in an async
+          // callback before setProfile, so the memo hasn't updated yet.
           const customValues: Record<string, any> = {};
-          if (p.custom_fields) {
-            Object.entries(p.custom_fields).forEach(([key, field]) => {
-              customValues[key] = field.value || '';
-              if (field.visibility) {
-                customValues[`${key}_visibility`] = field.visibility;
+          if (p.custom_field_groups) {
+            for (const group of p.custom_field_groups) {
+              for (const field of group.fields) {
+                if (!field.is_enabled) continue;
+                customValues[field.slug] = field.value || '';
               }
-            });
+            }
           }
 
           // Build social links from profile data using dynamic provider keys
@@ -172,6 +173,7 @@ export default function EditProfileScreen() {
   const setFieldValue = useCallback((key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
     setFieldErrors(prev => {
+      if (!prev[key]) return prev;
       const next = { ...prev };
       delete next[key];
       return next;
@@ -197,12 +199,6 @@ export default function EditProfileScreen() {
     });
   }, []);
 
-  const setCustomFieldVisibility = useCallback((key: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      custom_fields: { ...prev.custom_fields, [`${key}_visibility`]: value },
-    }));
-  }, []);
 
   // ---------------------------------------------------------------------------
   // Avatar handler
@@ -281,12 +277,14 @@ export default function EditProfileScreen() {
         errors.first_name = 'First name is required';
       }
 
-      if (profile?.custom_field_configs) {
-        Object.entries(profile.custom_field_configs).forEach(([key, config]) => {
-          if (config.required && !formData.custom_fields[key]) {
-            errors[`cf_${key}`] = `${config.label} is required`;
+      if (profile?.custom_field_groups) {
+        for (const group of profile.custom_field_groups) {
+          for (const field of group.fields) {
+            if (field.is_required && field.is_enabled && !formData.custom_fields[field.slug]) {
+              errors[`cf_${field.slug}`] = `${field.label} is required`;
+            }
           }
-        });
+        }
       }
 
       if (Object.keys(errors).length > 0) {
@@ -328,7 +326,7 @@ export default function EditProfileScreen() {
 
       // Include verified OTP session key for resubmit
       if (otpSessionKeyOverride) {
-        payload.tbc_fp_session_key = otpSessionKeyOverride;
+        payload.tbc_otp_session_key = otpSessionKeyOverride;
       }
 
       const response = await profilesApi.updateProfile(username, payload);
@@ -367,67 +365,57 @@ export default function EditProfileScreen() {
   handleSaveRef.current = handleSave;
 
   // ---------------------------------------------------------------------------
-  // Visibility selector (shared across custom field types)
+  // Custom field renderer (FC native format)
   // ---------------------------------------------------------------------------
 
-  const visibilityOptions = [
-    { key: 'public', label: 'Everyone' },
-    { key: 'members', label: 'Members' },
-    { key: 'friends', label: 'Friends' },
-    { key: 'admins', label: 'Admins' },
-  ] as const;
+  // Flatten custom_field_groups into a slug→field map for rendering
+  const nativeFieldsMap = useMemo(() => {
+    const map: Record<string, NativeCustomField> = {};
+    if (profile?.custom_field_groups) {
+      for (const group of profile.custom_field_groups) {
+        for (const field of group.fields) {
+          if (field.is_enabled) {
+            map[field.slug] = field;
+          }
+        }
+      }
+    }
+    return map;
+  }, [profile?.custom_field_groups]);
 
-  const renderVisibilityRow = (key: string, config: CustomFieldConfig) => {
-    if (!config.allow_user_override) return null;
-    const currentVisibility = formData.custom_fields[`${key}_visibility`] || config.visibility || 'public';
+  const renderCustomField = (slug: string, field: NativeCustomField) => {
+    // Adapt NativeCustomField to DynamicFormField's expected config shape
+    const config = {
+      label: field.label,
+      type: field.type === 'radio' ? 'select' : field.type, // radio renders as select in mobile
+      placeholder: field.placeholder || '',
+      instructions: '',
+      required: field.is_required,
+      options: field.options || [],
+    };
+
     return (
-      <View style={styles.visibilityRow}>
-        <Ionicons name="eye-outline" size={14} color={themeColors.textTertiary} />
-        {visibilityOptions.map((vis) => (
-          <Pressable
-            key={vis.key}
-            style={[
-              styles.visibilityChip,
-              {
-                backgroundColor: currentVisibility === vis.key ? themeColors.primary : themeColors.background,
-                borderColor: currentVisibility === vis.key ? themeColors.primary : themeColors.border,
-              },
-            ]}
-            onPress={() => setCustomFieldVisibility(key, vis.key)}
-          >
-            <Text style={[styles.visibilityChipText, {
-              color: currentVisibility === vis.key ? themeColors.textInverse : themeColors.textSecondary,
-            }]}>
-              {vis.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <DynamicFormField
+        key={slug}
+        fieldKey={slug}
+        field={config}
+        value={formData.custom_fields[slug] ?? ''}
+        onChange={(val) => setCustomField(slug, val)}
+        error={fieldErrors[`cf_${slug}`]}
+        onSelectPress={(k) => {
+          setSelectModalField(k);
+          setSelectModalVisible(true);
+        }}
+      />
     );
   };
 
-  // ---------------------------------------------------------------------------
-  // Custom field renderer
-  // ---------------------------------------------------------------------------
-
-  const renderCustomField = (key: string, config: CustomFieldConfig) => (
-    <DynamicFormField
-      key={key}
-      fieldKey={key}
-      field={config}
-      value={formData.custom_fields[key] ?? ''}
-      onChange={(val) => setCustomField(key, val)}
-      error={fieldErrors[`cf_${key}`]}
-      onSelectPress={(k) => {
-        setSelectModalField(k);
-        setSelectModalVisible(true);
-      }}
-      labelExtra={renderVisibilityRow(key, config)}
-    />
-  );
-
-  // Select modal field config
-  const selectConfig = selectModalField ? profile?.custom_field_configs?.[selectModalField] : null;
+  // Select modal field config (adapted from native field)
+  const selectNativeField = selectModalField ? nativeFieldsMap[selectModalField] : null;
+  const selectConfig = selectNativeField ? {
+    label: selectNativeField.label,
+    options: selectNativeField.options || [],
+  } : null;
 
   // ---------------------------------------------------------------------------
   // Render: Loading
@@ -453,8 +441,7 @@ export default function EditProfileScreen() {
   // Render: Form
   // ---------------------------------------------------------------------------
 
-  const customFieldConfigs = profile?.custom_field_configs || {};
-  const hasCustomFields = Object.keys(customFieldConfigs).length > 0;
+  const hasCustomFields = Object.keys(nativeFieldsMap).length > 0;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
@@ -562,14 +549,14 @@ export default function EditProfileScreen() {
                   color: themeColors.text,
                 }]}
                 value={formData.username}
-                onChangeText={(text) => setFieldValue('username', text.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                onChangeText={(text) => setFieldValue('username', text.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                 placeholder="username"
                 placeholderTextColor={themeColors.textTertiary}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <Text style={[styles.fieldInstructions, { color: themeColors.textTertiary, marginTop: spacing.xs, marginBottom: 0 }]}>
-                Lowercase letters, numbers, hyphens, underscores only
+                Lowercase letters, numbers, and underscores only
               </Text>
             </View>
           )}
@@ -623,8 +610,8 @@ export default function EditProfileScreen() {
           {hasCustomFields && (
             <>
               <Text style={[styles.sectionTitle, styles.sectionTitleSpaced, { color: themeColors.text }]}>Additional Info</Text>
-              {Object.entries(customFieldConfigs).map(([key, config]) =>
-                renderCustomField(key, config)
+              {Object.entries(nativeFieldsMap).map(([slug, field]) =>
+                renderCustomField(slug, field)
               )}
             </>
           )}
@@ -800,25 +787,6 @@ const styles = StyleSheet.create({
   fieldInstructions: {
     fontSize: typography.size.xs,
     marginBottom: spacing.xs,
-  },
-
-  visibilityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-
-  visibilityChip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: sizing.borderRadius.md,
-    borderWidth: 1,
-  },
-
-  visibilityChipText: {
-    fontSize: typography.size.xs,
-    fontWeight: typography.weight.medium,
   },
 
   fieldError: {

@@ -50,15 +50,20 @@ The following directories and files are **core** and will be **overwritten when 
 The `companion plugins/` folder contains WordPress plugins and a theme that ship with the app. Install these on your WordPress site.
 
 ### Core Plugins (required)
-- **tbc-community-app** — Main bridge plugin. All custom REST endpoints that the app uses to communicate with WordPress.
-- **tbc-fluent-profiles** — Custom profile fields, OTP phone verification (Twilio), and registration flow for Fluent Community.
+- **tbc-community-app** — Main bridge plugin. All custom REST endpoints that the app uses to communicate with WordPress. Includes base registration endpoints (`tbc-ca/v1/auth/register/*`) that work with FC's native registration.
 - **tbc-multi-reactions** — Multi-reaction support (like, love, laugh, etc.) for Fluent Community posts.
 
 ### Theme
 - **tbc-starter-theme** — WordPress theme that provides the app's web companion views and color sync endpoint.
 
 ### Add-on Plugins (sold separately)
+- **tbc-otp** — Phone OTP verification via Twilio. Hooks into registration to require phone verification before account creation. Endpoints at `tbc-otp/v1`.
+- **tbc-profile-completion** — Profile completion gate. Requires bio and/or avatar after registration before accessing the app. Endpoints at `tbc-pcom/v1`.
+
 Add-on modules may include their own companion plugin. Install the plugin on your WordPress site when you activate the module.
+
+### Deprecated
+- **tbc-registration** — Replaced by tbc-otp + tbc-profile-completion. Base registration moved to tbc-community-app. Keep installed for existing sites until migrated.
 
 ## Module System
 
@@ -188,7 +193,7 @@ The snapshot script copies this app to the white-label folder with all site-spec
 
 **What it does:**
 1. Copies project to `../TBC-Community-App (White Lable)/` (excludes node_modules, .git, modules, companion plugins)
-2. Copies only core companion plugins (allowlist: tbc-community-app, tbc-fluent-profiles, tbc-multi-reactions, tbc-starter-theme)
+2. Copies only core companion plugins (allowlist: tbc-community-app, tbc-multi-reactions, tbc-starter-theme)
 3. Copies only module infrastructure (`_registry.ts`, `_types.ts`) — no module folders
 4. Replaces Two Birds-specific values with placeholders in config.ts, app.json, eas.json, app.config.ts, package.json
 5. Removes Firebase configs, adds FIREBASE_SETUP.md guide
@@ -197,9 +202,10 @@ The snapshot script copies this app to the white-label folder with all site-spec
 
 **What ships in the base white-label product:**
 - Core app (all screens, services, components)
-- Core companion plugins: tbc-community-app, tbc-fluent-profiles, tbc-multi-reactions, tbc-starter-theme
+- Core companion plugins: tbc-community-app, tbc-multi-reactions, tbc-starter-theme
 
 **Sold separately as add-ons (NOT in white-label):**
+- tbc-otp plugin (phone OTP verification), tbc-profile-completion plugin (profile completion gate)
 - Blog module, YouTube module + tbc-youtube plugin, Book Club module + tbc-book-club plugin
 
 **Two Birds site-specific (never sold):**

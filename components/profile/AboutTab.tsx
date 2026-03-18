@@ -2,12 +2,12 @@
 // ABOUT TAB - Clean profile info section (matches web portal style)
 // =============================================================================
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
-import { Profile, CustomFieldValue } from '@/types/user';
+import { Profile, NativeCustomField } from '@/types/user';
 import { formatRelativeTime } from '@/utils/formatDate';
 
 interface AboutTabProps {
@@ -27,20 +27,20 @@ export function AboutTab({ profile }: AboutTabProps) {
   const description = profile.short_description || profile.meta?.bio;
   const website = profile.meta?.website;
 
-  // Custom fields from tbc-fluent-profiles
-  const customFields = profile.custom_fields || {};
-  const visibleFields = Object.entries(customFields).filter(([, field]) => {
-    if (!field.value) return false;
-    if (field.type === 'checkbox' || field.type === 'multiselect') {
-      try {
-        const arr = JSON.parse(field.value);
-        return Array.isArray(arr) && arr.length > 0;
-      } catch {
-        return false;
+  // FC native custom fields from custom_field_groups
+  const allFields = useMemo(() => {
+    const fields: NativeCustomField[] = [];
+    if (profile.custom_field_groups) {
+      for (const group of profile.custom_field_groups) {
+        for (const field of group.fields) {
+          if (!field.is_enabled || !field.value) continue;
+          if (field.type === 'multiselect' && Array.isArray(field.value) && field.value.length === 0) continue;
+          fields.push(field);
+        }
       }
     }
-    return true;
-  });
+    return fields;
+  }, [profile.custom_field_groups]);
 
   // Relative joined date
   const joinedText = profile.created_at
@@ -66,54 +66,50 @@ export function AboutTab({ profile }: AboutTabProps) {
   };
 
   // Render a single custom field value inline
-  const renderFieldValue = (field: CustomFieldValue) => {
+  const renderFieldValue = (field: NativeCustomField) => {
     const { value, type } = field;
-
-    if (type === 'phone') {
-      return (
-        <Pressable onPress={() => handlePhonePress(value)}>
-          <Text style={[styles.infoText, { color: themeColors.primary }]}>{value}</Text>
-        </Pressable>
-      );
-    }
+    const displayValue = Array.isArray(value) ? value.join(', ') : (value || '');
 
     if (type === 'url') {
       return (
-        <Pressable onPress={() => handleOpenLink(value)}>
+        <Pressable onPress={() => handleOpenLink(displayValue)}>
           <Text style={[styles.infoText, { color: themeColors.primary }]} numberOfLines={1}>
-            {value.replace(/^https?:\/\//, '')}
+            {displayValue.replace(/^https?:\/\//, '')}
           </Text>
         </Pressable>
       );
     }
 
     if (type === 'date') {
-      const date = new Date(value);
+      const date = new Date(displayValue);
       const formatted = isNaN(date.getTime())
-        ? value
+        ? displayValue
         : date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
       return <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>{formatted}</Text>;
     }
 
-    if (type === 'checkbox' || type === 'multiselect') {
-      try {
-        const items = JSON.parse(value);
-        if (!Array.isArray(items) || items.length === 0) return null;
-        return (
-          <View style={styles.tagRow}>
-            {items.map((item: string, i: number) => (
-              <View key={i} style={[styles.tag, { backgroundColor: themeColors.backgroundSecondary }]}>
-                <Text style={[styles.tagText, { color: themeColors.text }]}>{item}</Text>
-              </View>
-            ))}
-          </View>
-        );
-      } catch {
-        return <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>{value}</Text>;
-      }
+    if (type === 'multiselect' && Array.isArray(value)) {
+      return (
+        <View style={styles.tagRow}>
+          {value.map((item: string, i: number) => (
+            <View key={i} style={[styles.tag, { backgroundColor: themeColors.backgroundSecondary }]}>
+              <Text style={[styles.tagText, { color: themeColors.text }]}>{item}</Text>
+            </View>
+          ))}
+        </View>
+      );
     }
 
-    return <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>{value}</Text>;
+    // Phone-like field (slug contains "phone") — make tappable
+    if (field.slug.includes('phone') && displayValue) {
+      return (
+        <Pressable onPress={() => handlePhonePress(displayValue)}>
+          <Text style={[styles.infoText, { color: themeColors.primary }]}>{displayValue}</Text>
+        </Pressable>
+      );
+    }
+
+    return <Text style={[styles.infoText, { color: themeColors.textSecondary }]}>{displayValue}</Text>;
   };
 
   return (
@@ -145,13 +141,13 @@ export function AboutTab({ profile }: AboutTabProps) {
       )}
 
       {/* Custom Fields (phone, etc.) */}
-      {visibleFields.map(([key, field]) => {
-        const iconName = fieldTypeIcons[field.type] || 'information-circle-outline';
+      {allFields.map((field) => {
+        const iconName = fieldTypeIcons[field.type] || (field.slug.includes('phone') ? 'call-outline' : 'information-circle-outline');
 
-        // Checkbox/multiselect get their own block layout
-        if (field.type === 'checkbox' || field.type === 'multiselect') {
+        // Multiselect gets its own block layout
+        if (field.type === 'multiselect') {
           return (
-            <View key={key} style={styles.fieldBlock}>
+            <View key={field.slug} style={styles.fieldBlock}>
               <Text style={[styles.fieldLabel, { color: themeColors.textTertiary }]}>{field.label}</Text>
               {renderFieldValue(field)}
             </View>
@@ -159,7 +155,7 @@ export function AboutTab({ profile }: AboutTabProps) {
         }
 
         return (
-          <View key={key} style={styles.infoRow}>
+          <View key={field.slug} style={styles.infoRow}>
             <Ionicons name={iconName} size={16} color={themeColors.textTertiary} style={styles.infoIcon} />
             <Text style={[styles.fieldPrefix, { color: themeColors.textTertiary }]}>{field.label}: </Text>
             {renderFieldValue(field)}

@@ -24,8 +24,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import PhoneInput, { getCountryByPhoneNumber } from 'react-native-international-phone-number';
-import type { ICountry } from 'react-native-international-phone-number';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { hapticLight, hapticSelection } from '@/utils/haptics';
@@ -58,8 +56,6 @@ interface DynamicFormFieldProps {
   disabled?: boolean;
   /** Extra content rendered after the input (e.g. visibility selector) */
   extraContent?: React.ReactNode;
-  /** Content rendered between the label and instructions/input (e.g. visibility selector) */
-  labelExtra?: React.ReactNode;
 }
 
 // -----------------------------------------------------------------------------
@@ -86,7 +82,6 @@ export const DynamicFormField = React.memo(function DynamicFormField({
   onSelectPress,
   disabled,
   extraContent,
-  labelExtra,
 }: DynamicFormFieldProps) {
   const { colors: themeColors, isDark } = useTheme();
   const currentValue = value ?? '';
@@ -96,14 +91,6 @@ export const DynamicFormField = React.memo(function DynamicFormField({
 
   // Date picker visibility
   const [showDatePicker, setShowDatePicker] = useState(false);
-
-  // Phone input country
-  const [phoneCountry, setPhoneCountry] = useState<ICountry | null>(() => {
-    if (field.type === 'phone' && currentValue) {
-      return getCountryByPhoneNumber(currentValue) ?? null;
-    }
-    return null;
-  });
 
   // ---------------------------------------------------------------------------
   // Inline Checkbox
@@ -148,7 +135,6 @@ export const DynamicFormField = React.memo(function DynamicFormField({
         <Text style={[styles.label, { color: themeColors.text }]}>
           {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
         </Text>
-        {labelExtra}
         {field.instructions ? (
           <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
         ) : null}
@@ -196,56 +182,6 @@ export const DynamicFormField = React.memo(function DynamicFormField({
   }
 
   // ---------------------------------------------------------------------------
-  // Phone (international phone input with country picker)
-  // ---------------------------------------------------------------------------
-
-  if (field.type === 'phone') {
-    const phoneStyles = {
-      container: {
-        borderWidth: 1,
-        borderColor: error ? themeColors.error : themeColors.border,
-        borderRadius: sizing.borderRadius.md,
-        backgroundColor: themeColors.background,
-      },
-      input: {
-        fontSize: typography.size.md,
-        color: themeColors.text,
-      },
-      flagContainer: {
-        backgroundColor: themeColors.background,
-        borderTopLeftRadius: sizing.borderRadius.md,
-        borderBottomLeftRadius: sizing.borderRadius.md,
-      },
-    };
-    return (
-      <View key={fieldKey} style={styles.inputContainer}>
-        <Text style={[styles.label, { color: themeColors.text }]}>
-          {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
-        </Text>
-        {labelExtra}
-        {field.instructions ? (
-          <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
-        ) : null}
-        <PhoneInput
-          value={currentValue}
-          onChangePhoneNumber={onChange}
-          selectedCountry={phoneCountry}
-          onChangeSelectedCountry={setPhoneCountry}
-          defaultCountry="US"
-          modalDisabled
-          theme={isDark ? 'dark' : 'light'}
-          placeholder={field.placeholder || 'Phone number'}
-          phoneInputStyles={phoneStyles}
-          phoneInputPlaceholderTextColor={themeColors.textTertiary}
-          disabled={disabled}
-        />
-        {extraContent}
-        {error && <Text style={[styles.fieldError, { color: themeColors.error }]}>{error}</Text>}
-      </View>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
   // Radio (inline single-select options)
   // ---------------------------------------------------------------------------
 
@@ -255,7 +191,6 @@ export const DynamicFormField = React.memo(function DynamicFormField({
         <Text style={[styles.label, { color: themeColors.text }]}>
           {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
         </Text>
-        {labelExtra}
         {field.instructions ? (
           <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
         ) : null}
@@ -297,7 +232,6 @@ export const DynamicFormField = React.memo(function DynamicFormField({
         <Text style={[styles.label, { color: themeColors.text }]}>
           {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
         </Text>
-        {labelExtra}
         {field.instructions ? (
           <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
         ) : null}
@@ -339,7 +273,6 @@ export const DynamicFormField = React.memo(function DynamicFormField({
         <Text style={[styles.label, { color: themeColors.text }]}>
           {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
         </Text>
-        {labelExtra}
         {field.instructions ? (
           <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
         ) : null}
@@ -394,7 +327,6 @@ export const DynamicFormField = React.memo(function DynamicFormField({
         <Text style={[styles.label, { color: themeColors.text }]}>
           {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
         </Text>
-        {labelExtra}
         {field.instructions ? (
           <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
         ) : null}
@@ -437,7 +369,6 @@ export const DynamicFormField = React.memo(function DynamicFormField({
         <Text style={[styles.label, { color: themeColors.text }]}>
           {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
         </Text>
-        {labelExtra}
         <View style={[
           styles.passwordContainer,
           {
@@ -496,6 +427,9 @@ export const DynamicFormField = React.memo(function DynamicFormField({
       if (fieldKey === 'username') {
         autoCapitalize = 'none';
         autoComplete = 'username-new';
+      } else if (fieldKey.includes('phone')) {
+        keyboardType = 'phone-pad';
+        autoComplete = 'tel';
       }
       break;
   }
@@ -505,7 +439,6 @@ export const DynamicFormField = React.memo(function DynamicFormField({
       <Text style={[styles.label, { color: themeColors.text }]}>
         {field.label}{field.required && <Text style={{ color: themeColors.error }}> *</Text>}
       </Text>
-      {labelExtra}
       {field.instructions ? (
         <Text style={[styles.instructions, { color: themeColors.textTertiary }]}>{field.instructions}</Text>
       ) : null}

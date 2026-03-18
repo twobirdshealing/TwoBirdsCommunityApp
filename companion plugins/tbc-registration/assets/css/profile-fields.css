@@ -1,0 +1,280 @@
+/**
+ * TBC Registration - Portal Profile Fields CSS
+ *
+ * Matches native FluentCommunity DOM structure:
+ *   About card:  .about_wrap > .about_body > .about_items > .about_item
+ *   Edit form:   .fcom_update_profile > .fcom_sub_group > .fcom_sub_group_content
+ */
+
+/* =========================================================================
+   PROFILE VIEW - Custom fields inside the About card (.about_wrap)
+   ========================================================================= */
+
+.tbc-reg-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 8px;
+}
+
+.tbc-reg-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--fcom-menu-text, #545861);
+    text-decoration: none;
+}
+
+.tbc-reg-item a {
+    color: var(--fcom-primary-color, #409eff);
+    text-decoration: none;
+}
+
+.tbc-reg-item a:hover {
+    text-decoration: underline;
+}
+
+.tbc-reg-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--fcom-secondary-text, #666666);
+}
+
+.tbc-reg-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* =========================================================================
+   PROFILE EDIT - Custom fields section in the edit form
+   Matches native .fcom_sub_group pattern
+   ========================================================================= */
+
+.tbc-reg-edit-fields .fcom_sub_group_header h5 {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.tbc-reg-edit-fields .fcom_sub_group_content {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.tbc-reg-edit-fields .el-form-item__label {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    color: var(--fcom-primary-text, #19283a);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.tbc-reg-required {
+    color: #d63638;
+    font-weight: 600;
+}
+
+.tbc-reg-instructions {
+    font-size: 12px;
+    color: var(--fcom-secondary-text, #666666);
+    margin-top: 4px;
+    display: block;
+    width: 100%;
+}
+
+/* Signup form instructions (injected below custom fields on registration) */
+.tbc-reg-signup-instructions {
+    font-size: 12px;
+    color: var(--fcom-secondary-text, #666666);
+    margin-top: 4px;
+}
+
+/* Text / Phone / Number / Date / URL inputs */
+.tbc-reg-edit-fields .el-input__wrapper {
+    box-shadow: 0 0 0 .5px var(--fcom-secondary-border) inset;
+    border-radius: 4px;
+    padding: 1px 11px;
+    display: flex;
+    align-items: center;
+    background-color: var(--fcom-primary-bg, white);
+}
+
+.tbc-reg-edit-fields .el-input__inner {
+    width: 100%;
+    height: 32px;
+    font-size: 14px;
+    line-height: 32px;
+    color: var(--fcom-primary-text, #19283a);
+    background: transparent;
+    border: none;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.tbc-reg-edit-fields .el-input__inner::placeholder {
+    color: var(--fcom-secondary-text, #666666);
+}
+
+.tbc-reg-edit-fields .el-input__wrapper:focus-within {
+    box-shadow: 0 0 0 1px var(--el-color-primary, #409eff) inset;
+}
+
+/* Textarea */
+.tbc-reg-edit-fields .el-textarea__inner {
+    width: 100%;
+    font-size: 14px;
+    color: var(--fcom-primary-text, #19283a);
+    background-color: var(--fcom-primary-bg, white);
+    border: none;
+    outline: none;
+    box-sizing: border-box;
+    padding: 8px 11px;
+    border-radius: 4px;
+    box-shadow: 0 0 0 .5px var(--fcom-secondary-border) inset;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.tbc-reg-edit-fields .el-textarea__inner::placeholder {
+    color: var(--fcom-secondary-text, #666666);
+}
+
+.tbc-reg-edit-fields .el-textarea__inner:focus {
+    box-shadow: 0 0 0 1px var(--el-color-primary, #409eff) inset;
+}
+
+/* Select — needs .tbc-reg-edit-fields prefix to beat .el-input__inner:read-only styles */
+.tbc-reg-edit-fields .tbc-reg-select-wrap select {
+    width: 100%;
+    height: 34px;
+    font-size: 14px;
+    color: var(--fcom-primary-text, #19283a);
+    background-color: var(--fcom-primary-bg, white);
+    opacity: 1;
+    border: none;
+    outline: none;
+    box-shadow: 0 0 0 .5px var(--fcom-secondary-border) inset;
+    border-radius: 4px;
+    padding: 0 11px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+}
+
+.tbc-reg-edit-fields .tbc-reg-select-wrap select option {
+    color: var(--fcom-primary-text, #19283a);
+    background-color: var(--fcom-primary-bg, white);
+}
+
+.tbc-reg-edit-fields .tbc-reg-select-wrap select:focus {
+    box-shadow: 0 0 0 1px var(--el-color-primary, #409eff) inset;
+}
+
+/* Multiselect */
+.tbc-reg-edit-fields .tbc-reg-multiselect-wrap select {
+    width: 100%;
+    min-height: 80px;
+    font-size: 14px;
+    color: var(--fcom-primary-text, #19283a);
+    background-color: var(--fcom-primary-bg, white);
+    opacity: 1;
+    border: none;
+    box-shadow: 0 0 0 .5px var(--fcom-secondary-border) inset;
+    border-radius: 4px;
+    padding: 6px;
+}
+
+.tbc-reg-edit-fields .tbc-reg-multiselect-wrap select option {
+    color: var(--fcom-primary-text, #19283a);
+    background-color: var(--fcom-primary-bg, white);
+}
+
+.tbc-reg-edit-fields .tbc-reg-multiselect-wrap select:focus {
+    box-shadow: 0 0 0 1px var(--el-color-primary, #409eff) inset;
+    outline: none;
+}
+
+/* Radio Group */
+.tbc-reg-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.tbc-reg-radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.tbc-reg-radio input[type="radio"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Checkbox Group */
+.tbc-reg-checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.tbc-reg-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.tbc-reg-checkbox input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Visibility Override Dropdown */
+.tbc-reg-visibility-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.tbc-reg-visibility-label {
+    font-size: 12px;
+    color: var(--fcom-secondary-text, #909399);
+    white-space: nowrap;
+}
+
+.tbc-reg-visibility-select {
+    font-size: 12px;
+    color: var(--fcom-secondary-text, #666666);
+    background-color: var(--fcom-primary-bg, white);
+    opacity: 1;
+    border: none;
+    box-shadow: 0 0 0 .5px var(--fcom-secondary-border) inset;
+    border-radius: 4px;
+    padding: 2px 8px;
+    height: 26px;
+    cursor: pointer;
+}
+
+.tbc-reg-visibility-select:focus {
+    box-shadow: 0 0 0 1px var(--el-color-primary, #409eff) inset;
+    outline: none;
+}

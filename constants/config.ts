@@ -40,11 +40,6 @@ export const FEATURES = {
   },
 };
 
-// --- Bot Protection ----------------------------------------------------------
-// Shared secret matching tbc_fp_app_token in WordPress.
-// Sent as X-App-Token header on registration — bypasses Turnstile for the app.
-export const APP_TOKEN = 'REPLACE_WITH_YOUR_APP_TOKEN';
-
 // --- Links -------------------------------------------------------------------
 
 export const PRIVACY_POLICY_URL = `${SITE_URL}/privacy-policy/`;
@@ -141,7 +136,8 @@ export const ENDPOINTS = {
 // -----------------------------------------------------------------------------
 
 export const TBC_CA_URL = `${SITE_URL}/wp-json/tbc-ca/v1`;
-export const TBC_FP_URL = `${SITE_URL}/wp-json/tbc-fp/v1`;
+export const TBC_REG_URL = `${SITE_URL}/wp-json/tbc-reg/v1`; // Legacy — kept for backward compat with tbc-registration
+export const TBC_OTP_URL = `${SITE_URL}/wp-json/tbc-otp/v1`;
 export const TBC_MR_URL = `${SITE_URL}/wp-json/tbc-multi-reactions/v1`;
 export const TBC_YT_URL = `${SITE_URL}/wp-json/tbc-yt/v1`;
 export const WP_REST_URL = `${SITE_URL}/wp-json/wp/v2`;

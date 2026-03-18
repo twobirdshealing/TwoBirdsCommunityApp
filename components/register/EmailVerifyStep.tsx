@@ -23,8 +23,8 @@ interface EmailVerifyStepProps {
   email: string;
   verificationToken: string;
   submitting: boolean;
-  /** Called with (code, token) when user taps Verify */
-  onVerify: (code: string, token: string) => Promise<void>;
+  /** Called with (code, token) when user taps Verify. Returns error string or null. */
+  onVerify: (code: string, token: string) => Promise<string | null>;
   /** Called to resend — should return a new token (or null on failure) */
   onResend: () => Promise<{ token?: string; error?: string } | void>;
   onBack: () => void;
@@ -65,7 +65,10 @@ export function EmailVerifyStep({
       return;
     }
 
-    await onVerify(code, verificationToken);
+    const errorMsg = await onVerify(code, verificationToken);
+    if (errorMsg) {
+      setError(errorMsg);
+    }
   }, [code, verificationToken, onVerify]);
 
   const handleResend = useCallback(async () => {

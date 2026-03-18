@@ -41,6 +41,7 @@ class TBC_CA_Core {
         require_once TBC_CA_PLUGIN_DIR . 'includes/push/class-manual.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-account-api.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-app-config.php';
+        require_once TBC_CA_PLUGIN_DIR . 'includes/class-registration-api.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-badge-definitions.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-rest-fields.php';
 
@@ -63,8 +64,8 @@ class TBC_CA_Core {
         TBC_CA_Auth::get_instance();
         TBC_CA_Auth_API::get_instance();
 
-        // Hook into tbc-fluent-profiles registration to attach JWT tokens for mobile clients
-        add_filter('tbc_fp_registration_response', [$this, 'attach_jwt_to_registration'], 10, 3);
+        // Hook into tbc-registration registration to attach JWT tokens for mobile clients
+        add_filter('tbc_reg_registration_response', [$this, 'attach_jwt_to_registration'], 10, 3);
 
         // Initialize REST API
         TBC_CA_API::get_instance();
@@ -89,6 +90,9 @@ class TBC_CA_Core {
 
         // Initialize App Config (theme colors + social providers)
         TBC_CA_App_Config::get_instance();
+
+        // Initialize Registration API (base registration — extended by add-on plugins)
+        TBC_CA_Registration_API::get_instance();
 
         // Initialize Badge Definitions
         TBC_CA_Badge_Definitions::get_instance();
@@ -124,7 +128,7 @@ class TBC_CA_Core {
     }
 
     /**
-     * Attach JWT tokens to tbc-fluent-profiles registration response.
+     * Attach JWT tokens to tbc-registration registration response.
      * Only attaches tokens for mobile (non-web) contexts — web uses wp_set_auth_cookie.
      *
      * @param array            $response_data Registration response data.

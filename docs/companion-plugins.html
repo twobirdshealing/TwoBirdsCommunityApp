@@ -22,7 +22,7 @@
   <ol>
     <li><a href="#overview">Overview &amp; Classification</a></li>
     <li><a href="#tbc-community-app">TBC Community App</a> <span class="tag required">Core</span></li>
-    <li><a href="#tbc-fluent-profiles">TBC Fluent Profiles</a> <span class="tag required">Core</span></li>
+    <li><a href="#tbc-registration">TBC Registration</a> <span class="tag required">Core</span></li>
     <li><a href="#tbc-multi-reactions">TBC Multi Reactions</a> <span class="tag required">Core</span></li>
     <li><a href="#tbc-starter-theme">TBC Starter Theme</a> <span class="tag required">Core</span></li>
     <li><a href="#tbc-youtube">TBC YouTube</a> <span class="tag optional">Addon</span></li>
@@ -45,8 +45,8 @@
     <td>Auth, batch API, push notifications, app config, WebView sessions</td>
   </tr>
   <tr>
-    <td><strong>tbc-fluent-profiles</strong></td>
-    <td><code>tbc-fp/v1</code></td>
+    <td><strong>tbc-registration</strong></td>
+    <td><code>tbc-reg/v1</code></td>
     <td><span class="tag required">Core</span></td>
     <td>Registration, OTP verification, custom profile fields</td>
   </tr>
@@ -83,7 +83,7 @@
 </table>
 
 <div class="callout callout-success">
-  <strong>White-label product includes:</strong> All 4 core items (tbc-community-app, tbc-fluent-profiles, tbc-multi-reactions, tbc-starter-theme). Addon plugins are purchased separately and come with their matching app module.
+  <strong>White-label product includes:</strong> All 4 core items (tbc-community-app, tbc-registration, tbc-multi-reactions, tbc-starter-theme). Addon plugins are purchased separately and come with their matching app module.
 </div>
 
 <!-- ====================================================================== -->
@@ -146,9 +146,9 @@
 <p>The plugin injects custom headers into every authenticated Fluent Community API response. See <a href="api-client.html#response-headers">API Client &rarr; Response Headers</a> for the full list (<code>X-TBC-Unread-Notifications</code>, <code>X-TBC-Cart-Count</code>, etc.).</p>
 
 <!-- ====================================================================== -->
-<h2 id="tbc-fluent-profiles">3. TBC Fluent Profiles</h2>
+<h2 id="tbc-registration">3. TBC Registration</h2>
 
-<p><span class="file-path">companion plugins/tbc-fluent-profiles/</span> <span class="tag required">Core</span></p>
+<p><span class="file-path">companion plugins/tbc-registration/</span> <span class="tag required">Core</span></p>
 
 <p>Handles user registration, OTP verification (via Twilio SMS or email), custom profile fields, and profile completion tracking. This is a unified plugin that replaced three older separate plugins.</p>
 
@@ -346,7 +346,7 @@
 
 <pre><code>// Core plugin APIs
 export const TBC_CA_URL = `${SITE_URL}/wp-json/tbc-ca/v1`;
-export const TBC_FP_URL = `${SITE_URL}/wp-json/tbc-fp/v1`;
+export const TBC_REG_URL = `${SITE_URL}/wp-json/tbc-reg/v1`;
 export const TBC_MR_URL = `${SITE_URL}/wp-json/tbc-multi-reactions/v1`;
 
 // Addon plugin APIs
@@ -358,7 +358,7 @@ export const WP_REST_URL = `${SITE_URL}/wp-json/wp/v2`;</code></pre>
 
 <p>Service files pass these as <code>baseUrl</code> to the <a href="api-client.html">HTTP client</a>:</p>
 <pre><code>// services/api/registration.ts
-const response = await fetch(`${TBC_FP_URL}/register`, { ... });
+const response = await fetch(`${TBC_REG_URL}/register`, { ... });
 
 // services/api/reactions.ts
 const response = await get('/breakdown/feed/42', { baseUrl: TBC_MR_URL });</code></pre>
@@ -371,7 +371,7 @@ const response = await get('/breakdown/feed/42', { baseUrl: TBC_MR_URL });</code
   <li>Upload all 3 core plugins + theme to <code>wp-content/plugins/</code> and <code>wp-content/themes/</code></li>
   <li>Activate all plugins and the theme in WordPress admin</li>
   <li>No configuration needed for tbc-community-app &mdash; it auto-detects Fluent Community</li>
-  <li>Configure tbc-fluent-profiles in WP admin if you want OTP verification (Twilio credentials)</li>
+  <li>Configure tbc-registration in WP admin if you want OTP verification (Twilio credentials)</li>
   <li>Configure tbc-multi-reactions in WP admin to customize reaction icons (optional)</li>
 </ol>
 

@@ -34,9 +34,33 @@ export interface XProfile {
 }
 
 // -----------------------------------------------------------------------------
-// Custom Profile Fields (injected by tbc-fluent-profiles plugin)
+// Custom Profile Fields — FC Native (custom_field_groups)
 // -----------------------------------------------------------------------------
 
+/** A single field within a custom_field_groups group */
+export interface NativeCustomField {
+  slug: string;
+  label: string;
+  type: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'radio' | 'url' | 'multiselect';
+  placeholder: string;
+  options: string[];
+  is_required: boolean;
+  is_enabled: boolean;
+  privacy: 'public' | 'logged_in' | 'private' | 'internal';
+  group: string;
+  value?: string | string[];
+}
+
+/** A group of custom fields returned by FC Pro */
+export interface CustomFieldGroup {
+  slug: string;
+  label: string;
+  edit_description?: string;
+  is_system?: boolean;
+  fields: NativeCustomField[];
+}
+
+// Legacy types (kept for backwards compatibility with old API responses)
 export interface CustomFieldValue {
   value: string;
   label: string;
@@ -98,7 +122,10 @@ export interface Profile extends XProfile {
   // Badge slugs (top-level on profile endpoint, vs meta.badge_slug on xprofile)
   badge_slugs?: string[];
 
-  // Custom profile fields (injected by tbc-fluent-profiles plugin)
+  // FC native custom profile fields (2.3.0+)
+  custom_field_groups?: CustomFieldGroup[];
+
+  // Legacy custom profile fields (pre-3.0 tbc-registration — kept for backwards compat)
   custom_fields?: Record<string, CustomFieldValue>;
   custom_field_configs?: Record<string, CustomFieldConfig>;
 }
