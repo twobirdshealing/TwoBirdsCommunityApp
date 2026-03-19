@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.47.0
+- **Remove multi_reactions feature flag**: Multi-reactions is now controlled entirely by the app module system (register/unregister in `modules/_registry.ts`). Removed `multi_reactions` from Features tab, default settings, sanitization, and auto-detect logic. No server-side feature flag needed — the tbc-multi-reactions companion plugin is still required on the WordPress side.
+
 ## v3.46.0
 - **Server-controlled feature flags**: Added Features tab to wp-admin settings. Site admins can now toggle Dark Mode, Push Notifications, Messaging, Courses, Multi-Reactions, and Profile Tabs without rebuilding the app. Flags are served via `/app-config` endpoint and fetched on every app launch. Auto-detects missing dependencies (Fluent Messaging, Fluent LMS, Multi-Reactions plugin) and forces flags off when plugins aren't installed. Applies `tbc_ca_features_config` filter for add-on extensibility.
 

@@ -8,7 +8,7 @@
 
 import { AppConfigResponse, FeaturesConfig, RegistrationConfig, SocketConfig, VisibilityConfig } from '@/services/api/appConfig';
 import { createLogger } from '@/utils/logger';
-import { DEFAULT_FEATURES, FEATURES_CACHE_KEY, setFeatureFlagCache } from '@/utils/featureFlags';
+import { FEATURES_CACHE_KEY, setFeatureFlagCache } from '@/utils/featureFlags';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useMemo, useEffect, useState } from 'react';
 
@@ -28,8 +28,8 @@ interface AppConfigContextType {
   registration: RegistrationConfig | null;
   /** Whether the site uses 24-hour time format (derived from WordPress time_format setting) */
   is24Hour: boolean;
-  /** Feature flags from server (wp-admin controlled) */
-  features: FeaturesConfig;
+  /** Feature flags from server (wp-admin controlled) — null until config loads */
+  features: FeaturesConfig | null;
   /** Accept pre-fetched data from the startup batch or _layout refresh */
   setFromBatch: (data: AppConfigResponse) => void;
 }
@@ -57,7 +57,7 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   const [socketConfig, setSocketConfig] = useState<SocketConfig | null>(null);
   const [registration, setRegistration] = useState<RegistrationConfig | null>(null);
   const [is24Hour, setIs24Hour] = useState(false);
-  const [features, setFeatures] = useState<FeaturesConfig>(DEFAULT_FEATURES);
+  const [features, setFeatures] = useState<FeaturesConfig | null>(null);
 
   const applyConfig = useCallback((data: AppConfigResponse) => {
     if (data.visibility) {
@@ -150,7 +150,10 @@ export function useAppConfig() {
   return context;
 }
 
-/** Convenience hook for feature flags */
+/** Convenience hook for feature flags. Safe to call in authenticated screens —
+ *  the startup gate in _layout.tsx guarantees config is loaded before rendering. */
 export function useFeatures(): FeaturesConfig {
-  return useAppConfig().features;
+  const { features } = useAppConfig();
+  if (!features) throw new Error('useFeatures() called before config loaded');
+  return features;
 }

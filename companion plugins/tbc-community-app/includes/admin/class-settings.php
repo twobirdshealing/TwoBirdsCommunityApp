@@ -114,7 +114,6 @@ class TBC_CA_Admin_Settings {
             'push_notifications' => !empty($input['features']['push_notifications']),
             'messaging'          => !empty($input['features']['messaging']),
             'courses'            => !empty($input['features']['courses']),
-            'multi_reactions'    => !empty($input['features']['multi_reactions']),
             'profile_tabs'       => [
                 'posts'    => !empty($input['features']['profile_tabs']['posts']),
                 'spaces'   => !empty($input['features']['profile_tabs']['spaces']),
@@ -461,26 +460,6 @@ class TBC_CA_Admin_Settings {
                                     <p class="description" style="color: #b32d2e;"><?php _e('Requires Fluent Community Pro with Course module enabled. Automatically disabled.', 'tbc-ca'); ?></p>
                                 <?php else: ?>
                                     <p class="description"><?php _e('Course enrollment via Fluent Community Pro with Course module.', 'tbc-ca'); ?></p>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><?php _e('Multi-Reactions', 'tbc-ca'); ?></th>
-                            <td>
-                                <?php $reactions_available = class_exists('TBC_Multi_Reactions'); ?>
-                                <label>
-                                    <input type="checkbox"
-                                           name="tbc_ca_settings[features][multi_reactions]"
-                                           value="1"
-                                           <?php checked(!empty($features['multi_reactions'])); ?>
-                                           <?php disabled(!$reactions_available); ?> />
-                                    <?php _e('Enable emoji reactions', 'tbc-ca'); ?>
-                                </label>
-                                <?php if (!$reactions_available): ?>
-                                    <span class="tbc-ca-feature-badge"><?php _e('NOT AVAILABLE', 'tbc-ca'); ?></span>
-                                    <p class="description" style="color: #b32d2e;"><?php _e('Requires TBC Multi-Reactions plugin. Automatically disabled.', 'tbc-ca'); ?></p>
-                                <?php else: ?>
-                                    <p class="description"><?php _e('Emoji reactions on posts and comments via TBC Multi-Reactions plugin.', 'tbc-ca'); ?></p>
                                 <?php endif; ?>
                             </td>
                         </tr>

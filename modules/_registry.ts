@@ -35,6 +35,7 @@ import { blogModule } from './blog/module';
 import { otpModule } from './otp/module';
 import { profileCompletionModule } from './profile-completion/module';
 import { cartModule } from './cart/module';
+import { multiReactionsModule } from './multi-reactions/module';
 
 export const MODULES: ModuleManifest[] = [
   calendarModule,
@@ -46,6 +47,7 @@ export const MODULES: ModuleManifest[] = [
   otpModule,
   profileCompletionModule,
   cartModule,
+  multiReactionsModule,
 ];
 
 // =============================================================================
@@ -72,6 +74,12 @@ if (__DEV__) {
   const addonCount = MODULES.filter((m) => m.tabBarAddon).length;
   if (addonCount > 1) {
     console.warn(`[Modules] ${addonCount} tabBarAddon registrations — they will stack vertically`);
+  }
+
+  const slotNames = MODULES.flatMap((m) => (m.slots ?? []).map((s) => s.slot));
+  const slotDupes = slotNames.filter((s, i) => slotNames.indexOf(s) !== i);
+  if (slotDupes.length) {
+    console.warn(`[Modules] Multiple modules fill the same slot: ${[...new Set(slotDupes)].join(', ')} — lowest priority wins`);
   }
 }
 
@@ -211,6 +219,23 @@ export function handleModuleNotification(
   }
   return false;
 }
+
+// -----------------------------------------------------------------------------
+// Slot system (module-injected UI into core component areas)
+// -----------------------------------------------------------------------------
+
+/** Get the winning slot component for a named slot (lowest priority wins, null if none) */
+export function getSlotComponent<P = any>(slotName: string): React.ComponentType<P> | null {
+  const registrations = MODULES
+    .flatMap((m) => m.slots ?? [])
+    .filter((s) => s.slot === slotName)
+    .sort((a, b) => a.priority - b.priority);
+  return registrations[0]?.component ?? null;
+}
+
+// -----------------------------------------------------------------------------
+// Widget component map
+// -----------------------------------------------------------------------------
 
 /** Widget component map (id → component) for home screen */
 export function getWidgetComponentMap(): Record<

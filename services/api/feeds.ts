@@ -6,12 +6,13 @@
 // ADDED: getWelcomeBanner() for welcome banner feature
 // =============================================================================
 
-import { DEFAULT_PER_PAGE, ENDPOINTS, TBC_MR_URL } from '@/constants/config';
+import { DEFAULT_PER_PAGE, ENDPOINTS, SITE_URL } from '@/constants/config';
 import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionBreakdown, ReactionType, SurveyConfig, WelcomeBannerResponse } from '@/types/feed';
 import { del, get, patch, post, request } from './client';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('FeedsAPI');
+const TBC_MR_URL = `${SITE_URL}/wp-json/tbc-multi-reactions/v1`;
 
 // -----------------------------------------------------------------------------
 // Request Options

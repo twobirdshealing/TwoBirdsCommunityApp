@@ -182,7 +182,7 @@
   <li>Injects reaction data into Fluent Community&rsquo;s standard feed/comment API responses (no extra API calls needed for basic display)</li>
   <li>The <code>/config</code> endpoint provides icon URLs so the app can display custom reaction graphics</li>
   <li>The <code>/swap</code> endpoint lets users change their reaction type without removing and re-adding</li>
-  <li>Controlled by the <code>multi_reactions</code> feature flag (server-controlled via wp-admin &rarr; TBC Community App &rarr; Features tab, accessed via <code>useFeatures()</code>) &mdash; falls back to default heart if disabled</li>
+  <li>Controlled by the <code>multi-reactions</code> app module (registered in <code>modules/_registry.ts</code>). When the module is not registered, core falls back to a simple like button</li>
 </ul>
 
 <!-- ====================================================================== -->
@@ -386,22 +386,23 @@
 
 <pre><code>// Core plugin APIs
 export const TBC_CA_URL  = `${SITE_URL}/wp-json/tbc-ca/v1`;       // Auth, registration, config
-export const TBC_MR_URL  = `${SITE_URL}/wp-json/tbc-multi-reactions/v1`;
 
 // Addon plugin APIs
 export const TBC_OTP_URL = `${SITE_URL}/wp-json/tbc-otp/v1`;      // OTP (requires tbc-otp)
-export const TBC_YT_URL  = `${SITE_URL}/wp-json/tbc-yt/v1`;       // YouTube (requires tbc-youtube)
 
 // Also used:
 export const API_URL     = `${SITE_URL}/wp-json/fluent-community/v2`;
 export const WP_REST_URL = `${SITE_URL}/wp-json/wp/v2`;</code></pre>
 
+<p>Multi-reactions API URLs are defined locally in the service files that use them (not as a global constant), since the plugin is module-controlled.</p>
+
 <p>Service files pass these as <code>baseUrl</code> to the <a href="api-client.html">HTTP client</a>:</p>
 <pre><code>// services/api/registration.ts
 const response = await fetch(`${TBC_CA_URL}/auth/register`, { ... });
 
-// services/api/reactions.ts
-const response = await get('/breakdown/feed/42', { baseUrl: TBC_MR_URL });</code></pre>
+// services/api/feeds.ts — multi-reaction endpoints use a local constant
+const TBC_MR_URL = `${SITE_URL}/wp-json/tbc-multi-reactions/v1`;
+const response = await request('/breakdown/feed/42', { baseUrl: TBC_MR_URL });</code></pre>
 
 <!-- ====================================================================== -->
 <h2 id="installation">11. Installation</h2>

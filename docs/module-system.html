@@ -16,7 +16,7 @@
   <strong>Source files:</strong>
   <span class="file-path">modules/_types.ts</span> (type definitions) &middot;
   <span class="file-path">modules/_registry.ts</span> (active modules)<br>
-  Modules register tabs, widgets, menu items, header icons, context providers, tab bar addons, registration steps, and response headers via a manifest. Core code reads from the registry &mdash; modules never import core layouts or navigation.
+  Modules register tabs, widgets, menu items, header icons, context providers, tab bar addons, registration steps, response headers, and UI slots via a manifest. Core code reads from the registry &mdash; modules never import core layouts or navigation.
 </div>
 
 <div class="callout callout-success">
@@ -45,7 +45,7 @@
 <!-- ================================================================== -->
 <h2 id="overview">1. Overview</h2>
 
-<p>The module system lets you add features to the app &mdash; bottom tabs, home screen widgets, menu items, header icons, context providers, and persistent UI above the tab bar &mdash; without editing any core files. Each module is a self-contained folder under <code>modules/</code> with a manifest that declares what it registers.</p>
+<p>The module system lets you add features to the app &mdash; bottom tabs, home screen widgets, menu items, header icons, context providers, UI slots, and persistent UI above the tab bar &mdash; without editing any core files. Each module is a self-contained folder under <code>modules/</code> with a manifest that declares what it registers.</p>
 
 <div class="callout callout-success">
   <strong>Zero core changes.</strong> Adding or removing a module requires exactly two edits: one import line and one array entry in <code>modules/_registry.ts</code>. If the module needs deep linking, also add its path prefix to <code>moduleDeepLinkPaths</code> in <code>app.config.ts</code>. Core code reads from the registry at build time &mdash; no runtime discovery, no dynamic imports.
@@ -117,6 +117,7 @@ export interface ModuleManifest {
   headerIcons?: HeaderIconRegistration[];
   registrationSteps?: RegistrationStepRegistration[];
   responseHeaders?: ResponseHeaderMapping[];
+  slots?: SlotRegistration[];
   tabBarAddon?: React.ComponentType;
   routePrefixes?: string[];
 
@@ -154,6 +155,7 @@ export interface ModuleManifest {
     <tr><td><code>headerIcons</code></td><td>HeaderIconRegistration[]</td><td>Icons in the top header bar.</td></tr>
     <tr><td><code>registrationSteps</code></td><td>RegistrationStepRegistration[]</td><td>Steps injected into the registration wizard (pre-creation only).</td></tr>
     <tr><td><code>responseHeaders</code></td><td>ResponseHeaderMapping[]</td><td>HTTP response headers to extract and store (e.g., for login gates).</td></tr>
+    <tr><td><code>slots</code></td><td>SlotRegistration[]</td><td>UI components injected into named core component areas (e.g., reaction buttons).</td></tr>
     <tr><td><code>tabBarAddon</code></td><td>ComponentType</td><td>Persistent UI above the tab bar (e.g., mini player).</td></tr>
     <tr><td><code>routePrefixes</code></td><td>string[]</td><td>Route prefixes for deep link / push notification validation.</td></tr>
     <tr><td><code>hideMenuKey</code></td><td>string</td><td>Server visibility key. Inherited by tab if tab doesn't set its own.</td></tr>
@@ -259,6 +261,33 @@ export interface ModuleManifest {
   transform?: (value: string) =&gt; unknown;  // Optional transform (e.g. parse to boolean)
 }</code></pre>
 
+<h3>SlotRegistration</h3>
+<p>Injects a UI component into a named area inside a core component. Used when a module needs to replace or enhance built-in UI (e.g., replacing the default like button with a multi-reaction picker).</p>
+<pre><code>interface SlotRegistration&lt;P = any&gt; {
+  id: string;             // Unique slot registration ID
+  slot: string;           // Named slot to fill (e.g. 'feedReactions')
+  priority: number;       // Lower number wins if multiple modules target the same slot
+  component: ComponentType&lt;P&gt;;  // Component to render (receives typed props from the host)
+}</code></pre>
+
+<div class="callout">
+  <strong>One winner per slot.</strong> If multiple modules register for the same slot, the lowest <code>priority</code> number wins. In dev mode, a warning is logged when slot conflicts occur.
+</div>
+
+<h4>Available slots</h4>
+<table>
+  <thead>
+    <tr><th>Slot Name</th><th>Host Component</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>feedReactions</code></td><td>FeedCard footer</td><td>Reaction button (tap/long-press)</td></tr>
+    <tr><td><code>feedReactionBreakdown</code></td><td>FeedCard footer right</td><td>Emoji stack + count summary</td></tr>
+    <tr><td><code>commentReactions</code></td><td>CommentItem</td><td>Comment reaction button</td></tr>
+    <tr><td><code>commentReactionBreakdown</code></td><td>CommentItem</td><td>Comment emoji stack + count</td></tr>
+  </tbody>
+</table>
+<p>When no module fills a slot, the host component renders a default fallback (e.g., a simple heart like button).</p>
+
 <!-- ================================================================== -->
 <h2 id="registry">5. The Registry</h2>
 
@@ -292,6 +321,7 @@ export const MODULES: ModuleManifest[] = [
     <tr><td><code>getModuleRoutePrefixes()</code></td><td>string[] flat list</td><td><span class="file-path">app/_layout.tsx</span></td></tr>
     <tr><td><code>getModuleResponseHeaders()</code></td><td>ResponseHeaderMapping[]</td><td><span class="file-path">services/api/client.ts</span></td></tr>
     <tr><td><code>getRegistrationSteps()</code></td><td>RegistrationStepRegistration[] sorted by order</td><td><span class="file-path">app/register.tsx</span></td></tr>
+    <tr><td><code>getSlotComponent(name)</code></td><td>ComponentType | null</td><td>Any core component with a named slot</td></tr>
     <tr><td><code>getWidgetComponentMap()</code></td><td>Record&lt;string, ComponentType&gt;</td><td><span class="file-path">app/(tabs)/index.tsx</span></td></tr>
     <tr><td><code>initModules()</code></td><td>Promise&lt;void&gt;</td><td><span class="file-path">app/_layout.tsx</span> (after auth)</td></tr>
     <tr><td><code>cleanupModules()</code></td><td>void</td><td>Cache registry (on logout)</td></tr>
@@ -304,6 +334,7 @@ export const MODULES: ModuleManifest[] = [
 <ul>
   <li>Duplicate module IDs</li>
   <li>Duplicate widget IDs</li>
+  <li>Multiple modules filling the same slot (lowest priority wins)</li>
   <li>Multiple <code>tabBarAddon</code> registrations (warns they'll stack)</li>
 </ul>
 
@@ -357,18 +388,40 @@ function ModuleProviders({ children }) {
   &lt;AuthProvider&gt;
     &lt;AppConfigProvider&gt;
       &lt;PusherProvider&gt;
-        &lt;ModuleProviders&gt;       &larr; Module providers injected here
-          &lt;KeyboardProvider&gt;
-            &lt;RootLayoutNav /&gt;
-          &lt;/KeyboardProvider&gt;
-        &lt;/ModuleProviders&gt;
+        &lt;BottomSheetModalProvider&gt;
+          &lt;ModuleProviders&gt;       &larr; Module providers injected here
+            &lt;KeyboardProvider&gt;
+              &lt;RootLayoutNav /&gt;
+            &lt;/KeyboardProvider&gt;
+          &lt;/ModuleProviders&gt;
+        &lt;/BottomSheetModalProvider&gt;
       &lt;/PusherProvider&gt;
     &lt;/AppConfigProvider&gt;
   &lt;/AuthProvider&gt;
 &lt;/ThemeProvider&gt;</code></pre>
 
+<div class="callout callout-warn">
+  <strong>Bottom sheets in module providers.</strong> <code>BottomSheetModalProvider</code> wraps <code>ModuleProviders</code>, so module context providers can render bottom sheets (e.g., reaction picker, breakdown modal). If your module provider renders a <code>BottomSheet</code>, it will work without additional setup.
+</div>
+
 <h3>Tab bar addons</h3>
 <p><span class="file-path">app/(tabs)/_layout.tsx</span> renders addon components in a measured container above the tab buttons. The height is tracked via <code>BottomOffsetContext</code> so content below knows where the tab bar starts.</p>
+
+<h3>Slots (injected UI)</h3>
+<p>Core components call <code>getSlotComponent(slotName)</code> at module scope (outside the component body) to resolve which module fills a named UI area. If no module fills it, the host renders its own default. Slot resolution is static &mdash; computed once at import time.</p>
+<pre><code>// How FeedCard resolves reaction slots (simplified)
+import { getSlotComponent } from '@/modules/_registry';
+
+const FeedReactionSlot = getSlotComponent('feedReactions');
+const FeedBreakdownSlot = getSlotComponent('feedReactionBreakdown');
+
+function FeedCard({ feed }) {
+  // ... in footer:
+  {FeedReactionSlot
+    ? &lt;FeedReactionSlot objectId={feed.id} hasReacted={...} onReact={...} /&gt;
+    : &lt;DefaultLikeButton /&gt;  // Simple heart icon fallback
+  }
+}</code></pre>
 
 <h3>Push notification routing</h3>
 <p><span class="file-path">app/_layout.tsx</span> calls <code>handleModuleNotification(data, router)</code> when a notification is tapped. Modules return <code>true</code> to claim the notification, <code>false</code> to let core handle it.</p>
@@ -988,6 +1041,38 @@ const styles = StyleSheet.create({
   text: { fontSize: 13, fontWeight: '600', flex: 1, marginRight: 8 },
 });</code></pre>
 <p><strong>Files needed:</strong> <code>module.ts</code> + <code>components/AnnouncementBar.tsx</code> + registry entry. No route stubs needed.</p>
+
+<h3>Example F: Slot-based UI injection (multi-reactions pattern)</h3>
+<p>A module that replaces core UI via the slot system. No tab, no widget, no menu item &mdash; just injected components and a context provider for shared state (modals, pickers).</p>
+<pre><code>// modules/multi-reactions/module.ts
+
+import type { ModuleManifest } from '@/modules/_types';
+import { FeedReactionSlot } from './components/FeedReactionSlot';
+import { FeedBreakdownSlot } from './components/FeedBreakdownSlot';
+import { CommentReactionSlot } from './components/CommentReactionSlot';
+import { CommentBreakdownSlot } from './components/CommentBreakdownSlot';
+import { MultiReactionsProvider } from './MultiReactionsProvider';
+
+export const multiReactionsModule: ModuleManifest = {
+  id: 'multi-reactions',
+  name: 'Multi-Reactions',
+  version: '1.0.0',
+  companionPlugin: 'tbc-multi-reactions',
+
+  slots: [
+    { id: 'mr-feed-btn', slot: 'feedReactions', priority: 10, component: FeedReactionSlot },
+    { id: 'mr-feed-bd', slot: 'feedReactionBreakdown', priority: 10, component: FeedBreakdownSlot },
+    { id: 'mr-comment-btn', slot: 'commentReactions', priority: 10, component: CommentReactionSlot },
+    { id: 'mr-comment-bd', slot: 'commentReactionBreakdown', priority: 10, component: CommentBreakdownSlot },
+  ],
+
+  providers: [{
+    id: 'multi-reactions-provider',
+    order: 40,
+    component: MultiReactionsProvider,  // Renders picker &amp; breakdown modals
+  }],
+};</code></pre>
+<p><strong>Files needed:</strong> <code>module.ts</code> + <code>MultiReactionsProvider.tsx</code> (context + modals) + 4 slot components + registry entry. No route stubs needed.</p>
 
 <div class="callout callout-success">
   <strong>Mix and match.</strong> A single module can combine any of these patterns. Want a tab with a widget and a menu item and a tab bar addon? Just fill in the relevant manifest fields. The registry handles the rest.

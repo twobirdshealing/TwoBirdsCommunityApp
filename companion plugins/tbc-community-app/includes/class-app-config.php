@@ -382,11 +382,6 @@ class TBC_CA_App_Config {
             $features['courses'] = false;
         }
 
-        // Auto-detect: force multi-reactions off if TBC Multi-Reactions plugin is not active
-        if (!class_exists('TBC_Multi_Reactions')) {
-            $features['multi_reactions'] = false;
-        }
-
         /**
          * Filter feature flags before sending to the app.
          * Add-on plugins can modify flags here.

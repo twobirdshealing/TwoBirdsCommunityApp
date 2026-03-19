@@ -186,7 +186,6 @@ class TBC_CA_Core {
                 'push_notifications' => true,
                 'messaging'          => true,
                 'courses'            => true,
-                'multi_reactions'    => true,
                 'profile_tabs'       => [
                     'posts'    => false,
                     'spaces'   => false,

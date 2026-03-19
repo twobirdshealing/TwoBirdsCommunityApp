@@ -31,7 +31,6 @@ import { withOpacity } from '@/constants/colors';
 import { ScreenHeader } from '@/components/common/ScreenHeader';
 import { useThemedEditor } from '@/hooks/useThemedEditor';
 import { Comment } from '@/types/comment';
-import { ReactionType } from '@/types/feed';
 import { commentsApi } from '@/services/api/comments';
 import { mediaApi } from '@/services/api/media';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
@@ -44,16 +43,10 @@ import { MarkdownToolbar } from '@/components/composer/MarkdownToolbar';
 import { GifPickerModal } from '@/components/composer/GifPickerModal';
 import { GifAttachment } from '@/types/gif';
 import { MediaViewer } from '@/components/media/MediaViewer';
-import { ReactionPicker } from './ReactionPicker';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
-import { ReactionBreakdownModal } from './ReactionBreakdownModal';
-import { ReactionIcon } from './ReactionIcon';
 import { HtmlContent } from '@/components/common/HtmlContent';
 import { CommentItem } from './CommentItem';
 import { useAuth } from '@/contexts/AuthContext';
-import { useReactionConfig } from '@/hooks/useReactionConfig';
-import { updateBreakdownOptimistically, reconcileReactionBreakdown } from '@/utils/reactionHelpers';
-import { swapReactionType } from '@/services/api/feeds';
 import { SITE_URL } from '@/constants/config';
 import { createLogger } from '@/utils/logger';
 
@@ -87,8 +80,6 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   const { width: windowWidth } = useWindowDimensions();
   // Comment content width: window - list padding(16*2) - avatar(32) - avatar margin(12)
   const commentContentWidth = windowWidth - spacing.lg * 2 - sizing.avatar.sm - spacing.md;
-  const { reactions, getReaction, display } = useReactionConfig();
-  const defaultReactionId = reactions[0]?.id || 'like';
   const [comments, setComments] = useState<Comment[]>([]);
   const [stickyComment, setStickyComment] = useState<Comment | null>(null);
   const [loading, setLoading] = useState(false);
@@ -105,12 +96,6 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   // Edit mode state
   const [editingComment, setEditingComment] = useState<Comment | null>(null);
 
-  // Reaction picker state
-  const [reactionPickerComment, setReactionPickerComment] = useState<Comment | null>(null);
-  const [reactionAnchor, setReactionAnchor] = useState<{ top: number; left: number } | undefined>();
-  const reactionButtonRefs = useRef<Record<number, View | null>>({});
-  // Breakdown modal state
-  const [breakdownComment, setBreakdownComment] = useState<Comment | null>(null);
   // Comment image viewer state (null = hidden)
   const [commentMedia, setCommentMedia] = useState<{ images: Array<{ url: string }>; index: number } | null>(null);
   // Menu state
@@ -378,18 +363,15 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   // Handle Comment Reaction - FIXED: Uses {state: 1} format
   // ---------------------------------------------------------------------------
 
-  const handleCommentReaction = async (comment: Comment, reactionType: ReactionType = 'like') => {
+  const handleCommentReaction = async (comment: Comment, reactionType: string = 'like') => {
     if (!postId) return;
 
-    // Derive hasReacted from user_reaction_type (has_user_react not always in API)
     const hasReacted = !!(comment.has_user_react || comment.user_reaction_type);
     const currentType = comment.user_reaction_type || null;
     const isSameType = hasReacted && currentType === reactionType;
     const willRemove = isSameType;
-    const willSwap = hasReacted && !isSameType;
-    const action = willRemove ? 'remove' : willSwap ? 'swap' : 'add';
 
-    // Optimistic update (matches useFeedReactions pattern)
+    // Optimistic update
     setComments(prevComments =>
       prevComments.map(c => {
         if (c.id !== comment.id) return c;
@@ -397,10 +379,6 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         const currentCount = typeof c.reactions_count === 'string'
           ? parseInt(c.reactions_count, 10)
           : c.reactions_count || 0;
-        const updatedBreakdown = updateBreakdownOptimistically(
-          c.reaction_breakdown || [], reactionType, action,
-          currentType as ReactionType | null, getReaction,
-        );
 
         if (willRemove) {
           return {
@@ -411,15 +389,6 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
             user_reaction_name: null,
             reactions_count: currentCount - 1,
             reaction_total: currentCount - 1,
-            reaction_breakdown: updatedBreakdown,
-          };
-        } else if (willSwap) {
-          return {
-            ...c,
-            user_reaction_type: reactionType,
-            user_reaction_icon_url: null,
-            user_reaction_name: null,
-            reaction_breakdown: updatedBreakdown,
           };
         } else {
           return {
@@ -428,23 +397,15 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
             user_reaction_type: reactionType,
             user_reaction_icon_url: null,
             user_reaction_name: null,
-            reactions_count: currentCount + 1,
-            reaction_total: currentCount + 1,
-            reaction_breakdown: updatedBreakdown,
+            reactions_count: hasReacted ? currentCount : currentCount + 1,
+            reaction_total: hasReacted ? currentCount : currentCount + 1,
           };
         }
       })
     );
 
     try {
-      if (willSwap) {
-        await swapReactionType(comment.id, 'comment', reactionType);
-      } else {
-        await commentsApi.reactToComment(postId, comment.id, willRemove, reactionType);
-      }
-
-      // Reconcile with server-accurate breakdown (non-blocking)
-      reconcileReactionBreakdown('comment', comment.id, setComments);
+      await commentsApi.reactToComment(postId, comment.id, willRemove, reactionType);
     } catch (err) {
       log.error('Reaction error:', err);
       // Revert on error
@@ -593,11 +554,6 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   // Render comment item (delegated to memoized CommentItem)
   // ---------------------------------------------------------------------------
 
-  const handleReactionLongPress = React.useCallback((comment: Comment, anchor: { top: number; left: number } | undefined) => {
-    if (anchor) setReactionAnchor(anchor);
-    setReactionPickerComment(comment);
-  }, []);
-
   const handleImagePress = React.useCallback((images: Array<{ url: string }>, index: number) => {
     setCommentMedia({ images, index });
   }, []);
@@ -607,20 +563,14 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
       item={item}
       themeColors={themeColors}
       commentContentWidth={commentContentWidth}
-      defaultReactionId={defaultReactionId}
-      getReaction={getReaction}
-      display={display}
       menuButtonRefs={menuButtonRefs}
-      reactionButtonRefs={reactionButtonRefs}
       onMenu={handleCommentMenu}
       onReply={handleReply}
       onReaction={handleCommentReaction}
-      onReactionLongPress={handleReactionLongPress}
       onImagePress={handleImagePress}
-      onBreakdownPress={setBreakdownComment}
       onLinkNavigate={onClose}
     />
-  ), [themeColors, commentContentWidth, defaultReactionId, getReaction, display, handleCommentMenu, handleReply, handleCommentReaction, handleReactionLongPress, handleImagePress, onClose]);
+  ), [themeColors, commentContentWidth, handleCommentMenu, handleReply, handleCommentReaction, handleImagePress, onClose]);
 
   // ---------------------------------------------------------------------------
   // Can Submit
@@ -802,27 +752,6 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         </SafeAreaView>
       </KeyboardAvoidingView>
       <View style={{ height: insets.bottom, backgroundColor: themeColors.surface }} />
-
-      {/* Reaction Picker for comments */}
-      <ReactionPicker
-        visible={!!reactionPickerComment}
-        onSelect={(type) => {
-          if (reactionPickerComment) {
-            handleCommentReaction(reactionPickerComment, type);
-          }
-        }}
-        onClose={() => setReactionPickerComment(null)}
-        currentType={reactionPickerComment?.user_reaction_type || null}
-        anchor={reactionAnchor}
-      />
-
-      {/* Reaction Breakdown Modal for comments */}
-      <ReactionBreakdownModal
-        visible={!!breakdownComment}
-        onClose={() => setBreakdownComment(null)}
-        objectType="comment"
-        objectId={breakdownComment?.id || 0}
-      />
 
       {/* Comment Options Menu */}
       <DropdownMenu

@@ -5,7 +5,7 @@
 // the tbc-multi-reactions plugin endpoint.
 // =============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -17,9 +17,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { BottomSheet, BottomSheetFlatList, BottomSheetScrollView } from '@/components/common/BottomSheet';
-import { ReactionIcon } from './ReactionIcon';
-import { feedsApi } from '@/services/api/feeds';
-import { BreakdownItem, BreakdownUser } from '@/services/api/feeds';
+import { ReactionIcon } from '@/components/feed/ReactionIcon';
+import { feedsApi, BreakdownItem, BreakdownUser } from '@/services/api/feeds';
 import { spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -78,12 +77,13 @@ export function ReactionBreakdownModal({
 
   // Get users for active tab
   type ActiveUser = BreakdownUser & { reactionType: string; emoji: string; icon_url?: string | null };
-  const activeUsers: ActiveUser[] = activeTab === 'all'
-    ? breakdown.flatMap(b => b.users.map(u => ({ ...u, reactionType: b.type, emoji: b.emoji, icon_url: b.icon_url })))
-    : (() => {
-        const item = breakdown.find(b => b.type === activeTab);
-        return item ? item.users.map(u => ({ ...u, reactionType: item.type, emoji: item.emoji, icon_url: item.icon_url })) : [];
-      })();
+  const activeUsers = useMemo<ActiveUser[]>(() => {
+    if (activeTab === 'all') {
+      return breakdown.flatMap(b => b.users.map(u => ({ ...u, reactionType: b.type, emoji: b.emoji, icon_url: b.icon_url })));
+    }
+    const item = breakdown.find(b => b.type === activeTab);
+    return item ? item.users.map(u => ({ ...u, reactionType: item.type, emoji: item.emoji, icon_url: item.icon_url })) : [];
+  }, [breakdown, activeTab]);
 
   return (
     <BottomSheet
@@ -121,9 +121,7 @@ export function ReactionBreakdownModal({
               ]}
               onPress={() => setActiveTab(item.type)}
             >
-              <View style={styles.tabIcon}>
-                <ReactionIcon iconUrl={item.icon_url} emoji={item.emoji} size={22} />
-              </View>
+              <ReactionIcon iconUrl={item.icon_url} emoji={item.emoji} size={22} />
               <Text style={[
                 styles.tabText,
                 { color: activeTab === item.type ? item.color : themeColors.textSecondary },
@@ -199,7 +197,6 @@ const styles = StyleSheet.create({
   tabActive: {
     borderBottomWidth: 2,
   },
-  tabIcon: {},
   tabText: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium,

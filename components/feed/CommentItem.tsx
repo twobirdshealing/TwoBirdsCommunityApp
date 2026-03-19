@@ -7,18 +7,24 @@
 import React, { RefObject } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { hapticLight, hapticMedium } from '@/utils/haptics';
+import { hapticLight } from '@/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { Comment } from '@/types/comment';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
-import { ReactionIcon } from './ReactionIcon';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { HtmlContent } from '@/components/common/HtmlContent';
+import { getSlotComponent } from '@/modules/_registry';
 import type { ColorTheme } from '@/constants/colors';
-import type { ReactionConfig, DisplayConfig } from '@/hooks/useReactionConfig';
+
+// -----------------------------------------------------------------------------
+// Slot resolution (cached at module level)
+// -----------------------------------------------------------------------------
+
+const CommentReactionSlot = getSlotComponent('commentReactions');
+const CommentBreakdownSlot = getSlotComponent('commentReactionBreakdown');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -28,17 +34,11 @@ interface CommentItemProps {
   item: Comment;
   themeColors: ColorTheme;
   commentContentWidth: number;
-  defaultReactionId: string;
-  getReaction: (type: string) => ReactionConfig | null;
-  display: DisplayConfig;
   menuButtonRefs: RefObject<Record<number, View | null>>;
-  reactionButtonRefs: RefObject<Record<number, View | null>>;
   onMenu: (comment: Comment) => void;
   onReply: (comment: Comment) => void;
   onReaction: (comment: Comment, type: string) => void;
-  onReactionLongPress: (comment: Comment, anchor: { top: number; left: number } | undefined) => void;
   onImagePress: (images: Array<{ url: string }>, index: number) => void;
-  onBreakdownPress: (comment: Comment) => void;
   onLinkNavigate?: () => void;
 }
 
@@ -46,7 +46,7 @@ interface CommentItemProps {
 // Component
 // -----------------------------------------------------------------------------
 
-function CommentItemInner({ item, themeColors, commentContentWidth, defaultReactionId, getReaction, display, menuButtonRefs, reactionButtonRefs, onMenu, onReply, onReaction, onReactionLongPress, onImagePress, onBreakdownPress, onLinkNavigate }: CommentItemProps) {
+function CommentItemInner({ item, themeColors, commentContentWidth, menuButtonRefs, onMenu, onReply, onReaction, onImagePress, onLinkNavigate }: CommentItemProps) {
   const author = item.xprofile;
   const authorName = author?.display_name || 'Unknown';
   const authorAvatar = author?.avatar || null;
@@ -130,48 +130,39 @@ function CommentItemInner({ item, themeColors, commentContentWidth, defaultReact
           </View>
         )}
 
-        {/* Comment actions - Multi-reaction support */}
+        {/* Comment actions */}
         <View style={styles.commentActions}>
           <View style={styles.commentActionsLeft}>
-            {(() => {
-              const hasReacted = !!(item.has_user_react || item.user_reaction_type);
-              const reactionType = item.user_reaction_type || defaultReactionId;
-              const rConfig = getReaction(reactionType);
-              const iconUrl = item.user_reaction_icon_url || rConfig?.icon_url || null;
-              const emoji = rConfig?.emoji || '\u{1F44D}';
-              const reactionColor = rConfig?.color || themeColors.primary;
-
-              return (
-                <AnimatedPressable
-                  ref={(el: any) => { reactionButtonRefs.current![item.id] = el; }}
-                  style={[
-                    styles.commentReactionButton,
-                    hasReacted && { backgroundColor: reactionColor + '15' },
-                  ]}
-                  onPress={() => {
-                    hapticLight();
-                    const type = item.user_reaction_type || defaultReactionId;
-                    onReaction(item, type);
-                  }}
-                  onLongPress={() => {
-                    hapticMedium();
-                    const ref = reactionButtonRefs.current![item.id];
-                    if (ref) {
-                      (ref as any).measureInWindow?.((x: number, y: number, width: number, height: number) => {
-                        onReactionLongPress(item, { top: y, left: x + width / 2 });
-                      });
-                    } else {
-                      onReactionLongPress(item, undefined);
-                    }
-                  }}
-                  delayLongPress={400}
-                >
-                  <View style={{ opacity: hasReacted ? 1 : 0.4 }}>
-                    <ReactionIcon iconUrl={iconUrl} emoji={emoji} size={35} />
-                  </View>
-                </AnimatedPressable>
-              );
-            })()}
+            {/* Reaction Button — slot component or default like */}
+            {CommentReactionSlot ? (
+              <CommentReactionSlot
+                objectType="comment"
+                objectId={item.id}
+                hasReacted={!!(item.has_user_react || item.user_reaction_type)}
+                userReactionType={item.user_reaction_type || null}
+                userReactionIconUrl={item.user_reaction_icon_url || null}
+                reactionsCount={typeof item.reactions_count === 'string' ? parseInt(item.reactions_count, 10) : item.reactions_count || 0}
+                reactionBreakdown={item.reaction_breakdown || []}
+                onReact={(type) => onReaction(item, type)}
+              />
+            ) : (
+              <AnimatedPressable
+                style={[
+                  styles.commentReactionButton,
+                  !!(item.has_user_react || item.user_reaction_type) && { backgroundColor: themeColors.primary + '15' },
+                ]}
+                onPress={() => {
+                  hapticLight();
+                  onReaction(item, 'like');
+                }}
+              >
+                <Ionicons
+                  name={!!(item.has_user_react || item.user_reaction_type) ? 'heart' : 'heart-outline'}
+                  size={20}
+                  color={!!(item.has_user_react || item.user_reaction_type) ? themeColors.primary : themeColors.textSecondary}
+                />
+              </AnimatedPressable>
+            )}
             <Pressable
               style={styles.commentAction}
               onPress={() => onReply(item)}
@@ -180,38 +171,18 @@ function CommentItemInner({ item, themeColors, commentContentWidth, defaultReact
             </Pressable>
           </View>
           {/* Right side: reaction breakdown summary */}
-          {(() => {
-            const breakdown = item.reaction_breakdown || [];
-            const totalReactions = typeof item.reactions_count === 'string'
-              ? parseInt(item.reactions_count, 10) : item.reactions_count || 0;
-            if (breakdown.length === 0 || totalReactions === 0) return null;
-            return (
-              <Pressable
-                style={styles.commentBreakdown}
-                onPress={() => onBreakdownPress(item)}
-              >
-                <View style={styles.commentEmojiStack}>
-                  {breakdown.slice(0, display.count).map((bd, i) => (
-                    <View
-                      key={bd.type}
-                      style={{ zIndex: 10 + i, marginLeft: i === 0 ? 0 : -3 }}
-                    >
-                      <ReactionIcon
-                        iconUrl={bd.icon_url}
-                        emoji={bd.emoji || '\u{1F44D}'}
-                        size={22}
-                        stroke={display.stroke}
-                        borderColor={themeColors.borderLight}
-                      />
-                    </View>
-                  ))}
-                </View>
-                <Text style={[styles.commentActionText, { color: themeColors.textSecondary }]}>
-                  {totalReactions}
-                </Text>
-              </Pressable>
-            );
-          })()}
+          {CommentBreakdownSlot ? (
+            <CommentBreakdownSlot
+              objectType="comment"
+              objectId={item.id}
+              hasReacted={!!(item.has_user_react || item.user_reaction_type)}
+              userReactionType={item.user_reaction_type || null}
+              userReactionIconUrl={item.user_reaction_icon_url || null}
+              reactionsCount={typeof item.reactions_count === 'string' ? parseInt(item.reactions_count, 10) : item.reactions_count || 0}
+              reactionBreakdown={item.reaction_breakdown || []}
+              onReact={(type) => onReaction(item, type)}
+            />
+          ) : null}
         </View>
       </View>
     </View>
@@ -318,14 +289,4 @@ const styles = StyleSheet.create({
     fontSize: typography.size.sm,
   },
 
-  commentBreakdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-
-  commentEmojiStack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
 });

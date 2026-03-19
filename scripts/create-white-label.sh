@@ -159,7 +159,6 @@ sed -i \
   -e "s|PUSH_NOTIFICATIONS: true,|PUSH_NOTIFICATIONS: false,|" \
   -e "s|MESSAGING: true,|MESSAGING: false,|" \
   -e "s|COURSES: true,|COURSES: false,|" \
-  -e "s|MULTI_REACTIONS: true,|MULTI_REACTIONS: false,|" \
   "$TARGET_DIR/constants/config.ts"
 
 # --- app.json ---

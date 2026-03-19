@@ -105,7 +105,6 @@ export interface FeaturesConfig {
   push_notifications: boolean;
   messaging: boolean;
   courses: boolean;
-  multi_reactions: boolean;
   profile_tabs: {
     posts: boolean;
     spaces: boolean;

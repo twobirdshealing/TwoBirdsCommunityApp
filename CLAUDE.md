@@ -67,7 +67,7 @@ Each add-on is a **paired module + plugin**: the app module lives in `modules/`,
 
 ## Module System
 
-Self-contained features that plug into the app without touching core code. Each module registers any combination of: bottom tabs, home widgets, menu items, header icons, context providers, tab bar addons, registration steps, response headers, route prefixes.
+Self-contained features that plug into the app without touching core code. Each module registers any combination of: bottom tabs, home widgets, menu items, header icons, context providers, tab bar addons, registration steps, response headers, route prefixes, UI slots.
 
 - **Define** a manifest in `modules/yourmodule/module.ts`
 - **Register** in `modules/_registry.ts` (one line to enable/disable)

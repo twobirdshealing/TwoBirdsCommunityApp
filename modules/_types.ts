@@ -161,6 +161,21 @@ export interface RegistrationStepRegistration {
 }
 
 // -----------------------------------------------------------------------------
+// Slot Registration (module-injected UI into core component areas)
+// -----------------------------------------------------------------------------
+
+export interface SlotRegistration<P = any> {
+  /** Unique slot ID */
+  id: string;
+  /** Named slot this fills (e.g. 'feedReactions', 'commentReactions') */
+  slot: string;
+  /** Priority — lower number wins if multiple modules target the same slot */
+  priority: number;
+  /** The component to render in this slot — receives typed props from the host */
+  component: React.ComponentType<P>;
+}
+
+// -----------------------------------------------------------------------------
 // Response Header Mapping (module-injected API response headers)
 // -----------------------------------------------------------------------------
 
@@ -218,6 +233,8 @@ export interface ModuleManifest {
   registrationSteps?: RegistrationStepRegistration[];
   /** Response header mappings — extracts custom headers from every API response */
   responseHeaders?: ResponseHeaderMapping[];
+  /** Slot registrations — inject UI into core component areas (e.g. feed reaction button) */
+  slots?: SlotRegistration[];
 
   // ---------------------------------------------------------------------------
   // Lifecycle hooks (all optional)

@@ -6,7 +6,7 @@
 // - Sticky badge for pinned posts
 // =============================================================================
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   Dimensions,
   StyleSheet,
@@ -17,19 +17,18 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { hapticLight, hapticMedium } from '@/utils/haptics';
+import { hapticLight } from '@/utils/haptics';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 import { VideoPlayer } from '@/components/media/VideoPlayer';
 import { PlayButtonOverlay } from '@/components/media/PlayButtonOverlay';
-import { ReactionIcon } from './ReactionIcon';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useReactionConfig } from '@/hooks/useReactionConfig';
 import { useFeedModals } from '@/contexts/FeedModalsContext';
+import { getSlotComponent } from '@/modules/_registry';
 import { shadows, sizing, spacing, typography } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
-import { Feed, ReactionType } from '@/types/feed';
+import { Feed } from '@/types/feed';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { formatCompactNumber } from '@/utils/formatNumber';
 import { stripHtmlTags } from '@/utils/htmlToText';
@@ -110,6 +109,13 @@ function detectMedia(feed: Feed): MediaInfo {
 }
 
 // -----------------------------------------------------------------------------
+// Slot resolution (cached at module level)
+// -----------------------------------------------------------------------------
+
+const FeedReactionSlot = getSlotComponent('feedReactions');
+const FeedBreakdownSlot = getSlotComponent('feedReactionBreakdown');
+
+// -----------------------------------------------------------------------------
 // Props
 // -----------------------------------------------------------------------------
 
@@ -146,14 +152,11 @@ export const FeedCard = React.memo(function FeedCard({
 }: FeedCardProps) {
   const { user } = useAuth();
   const { colors: themeColors } = useTheme();
-  const { reactions, getReaction, display } = useReactionConfig();
-  const defaultReactionId = reactions[0]?.id || 'like';
   const [isBookmarked, setIsBookmarked] = useState(feed.bookmarked || false);
   useEffect(() => { setIsBookmarked(feed.bookmarked || false); }, [feed.bookmarked]);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const { openMenu, openReactionPicker, openReactionBreakdown, openMediaViewer } = useFeedModals();
+  const { openMenu, openMediaViewer } = useFeedModals();
   const menuButtonRef = useRef<View>(null);
-  const reactionButtonRef = useRef<View>(null);
   // Extract data
   const author = feed.xprofile;
   const authorName = author?.display_name || 'Unknown';
@@ -195,11 +198,6 @@ export const FeedCard = React.memo(function FeedCard({
     : feed.comments_count || 0;
   const hasUserReact = feed.has_user_react || false;
   const userReactionType = feed.user_reaction_type || null;
-  const userReactionConfig = getReaction(userReactionType || defaultReactionId);
-  const userReactionIconUrl = feed.user_reaction_icon_url || userReactionConfig?.icon_url || null;
-  const userReactionEmoji = userReactionConfig?.emoji || '👍';
-  const userReactionName = feed.user_reaction_name || userReactionConfig?.name || 'Like';
-  const userReactionColor = userReactionConfig?.color;
   const reactionBreakdown = feed.reaction_breakdown || [];
 
   // ---------------------------------------------------------------------------
@@ -495,43 +493,35 @@ export const FeedCard = React.memo(function FeedCard({
       <View style={[styles.footer, { borderTopColor: themeColors.borderLight }]}>
         {/* Left side: reaction + comment buttons */}
         <View style={styles.footerLeft}>
-          {/* Reaction Button - tap for default like, long-press for picker */}
-          <AnimatedPressable
-            ref={reactionButtonRef}
-            style={[
-              styles.footerButton,
-              hasUserReact && [
-                styles.reactionButtonActive,
-                { backgroundColor: (userReactionColor || themeColors.primary) + '15' },
-              ],
-            ]}
-            onPress={() => {
-              hapticLight();
-              if (hasUserReact && userReactionType) {
-                onReact?.(userReactionType);
-              } else {
-                onReact?.(defaultReactionId as ReactionType);
-              }
-            }}
-            onLongPress={() => {
-              hapticMedium();
-              (reactionButtonRef.current as any)?.measureInWindow?.((x: number, y: number, width: number, height: number) => {
-                openReactionPicker({
-                  anchor: { top: y, left: x + width / 2 },
-                  currentType: userReactionType,
-                  onSelect: (type) => onReact?.(type),
-                });
-              });
-            }}
-            delayLongPress={400}
-            accessibilityRole="button"
-            accessibilityLabel={hasUserReact ? 'Remove reaction' : 'React to post'}
-            accessibilityHint="Long press for more reactions"
-          >
-            <View style={{ opacity: hasUserReact ? 1 : 0.4 }}>
-              <ReactionIcon iconUrl={userReactionIconUrl} emoji={userReactionEmoji} size={35} />
-            </View>
-          </AnimatedPressable>
+          {/* Reaction Button — slot component or default like */}
+          {FeedReactionSlot ? (
+            <FeedReactionSlot
+              objectType="feed"
+              objectId={feed.id}
+              hasReacted={hasUserReact}
+              userReactionType={userReactionType}
+              userReactionIconUrl={feed.user_reaction_icon_url || null}
+              reactionsCount={reactionsCount}
+              reactionBreakdown={reactionBreakdown}
+              onReact={(type) => onReact?.(type)}
+            />
+          ) : (
+            <AnimatedPressable
+              style={[
+                styles.footerButton,
+                hasUserReact && [styles.reactionButtonActive, { backgroundColor: themeColors.primary + '15' }],
+              ]}
+              onPress={() => { hapticLight(); onReact?.('like'); }}
+              accessibilityRole="button"
+              accessibilityLabel={hasUserReact ? 'Unlike' : 'Like'}
+            >
+              <Ionicons
+                name={hasUserReact ? 'heart' : 'heart-outline'}
+                size={22}
+                color={hasUserReact ? themeColors.primary : themeColors.textSecondary}
+              />
+            </AnimatedPressable>
+          )}
 
           {/* Comment button */}
           <AnimatedPressable
@@ -551,36 +541,25 @@ export const FeedCard = React.memo(function FeedCard({
           </AnimatedPressable>
         </View>
 
-        {/* Right side: reaction breakdown summary (tappable) */}
-        {reactionBreakdown.length > 0 && reactionsCount > 0 && (
-          <Pressable
-            style={styles.footerRight}
-            onPress={() => openReactionBreakdown({ objectType: 'feed', objectId: feed.id })}
-          >
-            <View style={styles.reactionEmojiStack}>
-              {reactionBreakdown.slice(0, display.count).map((item, i) => (
-                <View
-                  key={item.type}
-                  style={[
-                    styles.reactionStackIcon,
-                    { zIndex: 10 + i, marginLeft: i === 0 ? 0 : -display.overlap },
-                  ]}
-                >
-                  <ReactionIcon
-                    iconUrl={item.icon_url}
-                    emoji={item.emoji || '👍'}
-                    size={22}
-                    stroke={display.stroke}
-                    borderColor={themeColors.borderLight}
-                  />
-                </View>
-              ))}
-            </View>
+        {/* Right side: breakdown summary (slot) or simple count (fallback) */}
+        {FeedBreakdownSlot ? (
+          <FeedBreakdownSlot
+            objectType="feed"
+            objectId={feed.id}
+            hasReacted={hasUserReact}
+            userReactionType={userReactionType}
+            userReactionIconUrl={feed.user_reaction_icon_url || null}
+            reactionsCount={reactionsCount}
+            reactionBreakdown={reactionBreakdown}
+            onReact={(type) => onReact?.(type)}
+          />
+        ) : reactionsCount > 0 ? (
+          <View style={styles.footerRight}>
             <Text style={[styles.reactionSummaryCount, { color: themeColors.textSecondary }]}>
-              {formatCompactNumber(reactionsCount)}
+              {formatCompactNumber(reactionsCount)} {reactionsCount === 1 ? 'like' : 'likes'}
             </Text>
-          </Pressable>
-        )}
+          </View>
+        ) : null}
       </View>
 
     </View>
@@ -786,15 +765,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-
-  reactionEmojiStack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  reactionStackIcon: {
-    // marginLeft and zIndex set inline from display config
   },
 
   reactionSummaryCount: {

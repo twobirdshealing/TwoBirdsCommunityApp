@@ -8,9 +8,10 @@
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ForceUpdateScreen } from '@/components/common/ForceUpdateScreen';
 import { MaintenanceScreen } from '@/components/common/MaintenanceScreen';
+import { StartupErrorScreen } from '@/components/common/StartupErrorScreen';
 import { APP_VERSION } from '@/constants/config';
 import { isVersionBelow } from '@/utils/version';
-import { AppConfigProvider, useAppConfig, useFeatures } from '@/contexts/AppConfigContext';
+import { AppConfigProvider, useAppConfig } from '@/contexts/AppConfigContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { PusherProvider } from '@/contexts/PusherContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
@@ -97,8 +98,7 @@ function sanitizeParam(value: unknown): string {
 function RootLayoutNav() {
   const { isAuthenticated, isLoading, user, logout, updateUser } = useAuth();
   const { isDark, colors: themeColors, update, maintenance, setFromBatch: setThemeFromBatch } = useTheme();
-  const { portalSlug, setFromBatch: setAppConfigFromBatch } = useAppConfig();
-  const features = useFeatures();
+  const { portalSlug, features, setFromBatch: setAppConfigFromBatch } = useAppConfig();
   const { setUnreadNotifications, setUnreadMessages } = useUnreadCounts();
   const segments = useSegments();
   const router = useRouter();
@@ -128,7 +128,7 @@ function RootLayoutNav() {
   // Startup Batch — single HTTP call replaces ~11 individual requests
   // ---------------------------------------------------------------------------
 
-  useStartupData({
+  const { status: startupStatus, retry: retryStartup } = useStartupData({
     isAuthenticated,
     username: user?.username,
     onAppConfig: distributeConfig,
@@ -136,6 +136,7 @@ function RootLayoutNav() {
     onUnreadNotifications: setUnreadNotifications,
     onUnreadMessages: setUnreadMessages,
   });
+  const [isStartupRetrying, setIsStartupRetrying] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Module Lifecycle — init modules after auth is confirmed
@@ -235,7 +236,7 @@ function RootLayoutNav() {
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    if (!features.push_notifications) return;
+    if (!features?.push_notifications) return;
 
     // Handle notification taps (when user taps on a notification)
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {
@@ -315,6 +316,19 @@ function RootLayoutNav() {
     );
   }
 
+  // Startup error handler
+  const handleStartupRetry = useCallback(async () => {
+    setIsStartupRetrying(true);
+    retryStartup();
+  }, [retryStartup]);
+
+  // Clear retrying spinner when status changes from loading
+  useEffect(() => {
+    if (startupStatus !== 'loading') {
+      setIsStartupRetrying(false);
+    }
+  }, [startupStatus]);
+
   // Maintenance gate
   if (maintenance?.enabled) {
     // Authenticated but bypass status not yet known — show loading
@@ -344,6 +358,23 @@ function RootLayoutNav() {
     }
   }
 
+  // Startup gate — authenticated users must have config loaded before entering the app
+  if (isAuthenticated && startupStatus === 'loading') {
+    return (
+      <View style={[styles.loading, { backgroundColor: themeColors.background }]}>
+        <ActivityIndicator size="large" color={themeColors.primary} />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+      </View>
+    );
+  }
+  if (isAuthenticated && startupStatus === 'error') {
+    return (
+      <View style={[styles.flex, { backgroundColor: themeColors.background }]}>
+        <StartupErrorScreen onRetry={handleStartupRetry} isRetrying={isStartupRetrying} />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+      </View>
+    );
+  }
 
   return (
     <NavThemeProvider value={TRANSPARENT_NAV_THEME}>
@@ -416,13 +447,13 @@ export default function RootLayout() {
             <AppConfigProvider>
               <UnreadCountsProvider>
                 <PusherProvider>
-                  <ModuleProviders>
-                    <KeyboardProvider>
-                      <BottomSheetModalProvider>
+                  <BottomSheetModalProvider>
+                    <ModuleProviders>
+                      <KeyboardProvider>
                         <RootLayoutNav />
-                      </BottomSheetModalProvider>
-                    </KeyboardProvider>
-                  </ModuleProviders>
+                      </KeyboardProvider>
+                    </ModuleProviders>
+                  </BottomSheetModalProvider>
                 </PusherProvider>
               </UnreadCountsProvider>
             </AppConfigProvider>

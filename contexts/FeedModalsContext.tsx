@@ -9,12 +9,10 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { Feed, ReactionType } from '@/types/feed';
+import { Feed } from '@/types/feed';
 import { SITE_URL } from '@/constants/config';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
-import { ReactionPicker } from '@/components/feed/ReactionPicker';
-import { ReactionBreakdownModal } from '@/components/feed/ReactionBreakdownModal';
 import { MediaViewer } from '@/components/media/MediaViewer';
 import { ReportModal } from '@/components/common/ReportModal';
 
@@ -35,17 +33,6 @@ export interface MenuParams {
   onPin?: () => void;
 }
 
-export interface ReactionPickerParams {
-  anchor: { top: number; left: number };
-  currentType: ReactionType | string | null;
-  onSelect: (type: ReactionType) => void;
-}
-
-export interface BreakdownParams {
-  objectType: 'feed' | 'comment';
-  objectId: number;
-}
-
 export interface MediaViewerParams {
   images: { url: string }[];
   initialIndex: number;
@@ -64,8 +51,6 @@ export interface ReportParams {
 
 interface FeedModalsContextValue {
   openMenu: (params: MenuParams) => void;
-  openReactionPicker: (params: ReactionPickerParams) => void;
-  openReactionBreakdown: (params: BreakdownParams) => void;
   openMediaViewer: (params: MediaViewerParams) => void;
   openReport: (params: ReportParams) => void;
 }
@@ -90,26 +75,20 @@ export function useFeedModals(): FeedModalsContextValue {
 
 export function FeedModalsProvider({ children }: { children: React.ReactNode }) {
   const [menuState, setMenuState] = useState<MenuParams | null>(null);
-  const [pickerState, setPickerState] = useState<ReactionPickerParams | null>(null);
-  const [breakdownState, setBreakdownState] = useState<BreakdownParams | null>(null);
   const [mediaState, setMediaState] = useState<MediaViewerParams | null>(null);
   const [reportState, setReportState] = useState<ReportParams | null>(null);
 
   // Stable opener functions (setState refs are stable)
   const openMenu = useCallback((params: MenuParams) => setMenuState(params), []);
-  const openReactionPicker = useCallback((params: ReactionPickerParams) => setPickerState(params), []);
-  const openReactionBreakdown = useCallback((params: BreakdownParams) => setBreakdownState(params), []);
   const openMediaViewer = useCallback((params: MediaViewerParams) => setMediaState(params), []);
   const openReport = useCallback((params: ReportParams) => setReportState(params), []);
 
   // Stable context value
   const value = useMemo<FeedModalsContextValue>(() => ({
     openMenu,
-    openReactionPicker,
-    openReactionBreakdown,
     openMediaViewer,
     openReport,
-  }), [openMenu, openReactionPicker, openReactionBreakdown, openMediaViewer, openReport]);
+  }), [openMenu, openMediaViewer, openReport]);
 
   // ---------------------------------------------------------------------------
   // Menu items (built from menuState when open)
@@ -183,23 +162,6 @@ export function FeedModalsProvider({ children }: { children: React.ReactNode }) 
         onClose={() => setMenuState(null)}
         items={getMenuItems()}
         anchor={menuState?.anchor}
-      />
-
-      {/* Reaction Picker */}
-      <ReactionPicker
-        visible={!!pickerState}
-        onSelect={(type) => { pickerState?.onSelect(type); setPickerState(null); }}
-        onClose={() => setPickerState(null)}
-        currentType={pickerState?.currentType as ReactionType | null}
-        anchor={pickerState?.anchor}
-      />
-
-      {/* Reaction Breakdown */}
-      <ReactionBreakdownModal
-        visible={!!breakdownState}
-        onClose={() => setBreakdownState(null)}
-        objectType={breakdownState?.objectType || 'feed'}
-        objectId={breakdownState?.objectId || 0}
       />
 
       {/* Media Viewer */}

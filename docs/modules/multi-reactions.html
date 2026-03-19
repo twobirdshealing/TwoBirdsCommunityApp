@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App &mdash; Multi-Reactions Module</title>
+<link rel="stylesheet" href="../docs-theme.css">
+<script src="../docs-theme.js"></script>
+</head>
+<body>
+
+<div class="docs-nav">
+  <a href="index.html">&larr; All Modules</a>
+</div>
+
+<h1>Multi-Reactions Module <span class="tag required">Core</span></h1>
+<p class="subtitle">Multi-emoji reaction system &mdash; picker, breakdown modal, swap, custom icons</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#prerequisites">Prerequisites</a></li>
+    <li><a href="#setup">Setup</a></li>
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#file-structure">File Structure</a></li>
+    <li><a href="#slots">Slots</a></li>
+    <li><a href="#api-endpoints">API Endpoints</a></li>
+    <li><a href="#fallback">Fallback Behavior</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="overview">1. Overview</h2>
+
+<p>Replaces the default single-heart like button with a multi-emoji reaction system. Users can tap to react with a default type, long-press to open a reaction picker, and tap the breakdown summary to see who reacted with what. Supports custom icon images (PNG, SVG, GIF, WEBP) configured in WordPress admin.</p>
+
+<p>This module uses the <strong>slot system</strong> to inject reaction UI into core components (FeedCard, CommentItem) without modifying core code. When the module is removed from the registry, core components fall back to a simple like button.</p>
+
+<!-- ================================================================== -->
+<h2 id="prerequisites">2. Prerequisites</h2>
+
+<ul>
+  <li>WordPress site with <a href="../companion-plugins.html#tbc-multi-reactions">tbc-multi-reactions</a> plugin installed and activated</li>
+  <li>Reaction types configured in WP admin &rarr; TBC Multi Reactions (defaults are provided)</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="setup">3. Setup</h2>
+
+<ol>
+  <li>Install the <code>tbc-multi-reactions</code> companion plugin on your WordPress site</li>
+  <li>Configure reaction types in WP admin &rarr; TBC Multi Reactions (emoji, color, icon image)</li>
+  <li>The module is already registered in <code>modules/_registry.ts</code> &mdash; ships with the base product</li>
+</ol>
+
+<p>To <strong>disable</strong> multi-reactions, comment out or remove <code>multiReactionsModule</code> from the <code>MODULES</code> array in <code>modules/_registry.ts</code>. Core components will fall back to a simple heart like button.</p>
+
+<!-- ================================================================== -->
+<h2 id="how-it-works">4. How It Works</h2>
+
+<h3>Architecture</h3>
+<ul>
+  <li><strong>4 slot components</strong> inject reaction UI into FeedCard and CommentItem</li>
+  <li><strong>1 context provider</strong> (MultiReactionsProvider) manages shared state for the reaction picker and breakdown modal</li>
+  <li><strong>Core hook</strong> <code>useReactionConfig</code> fetches available reaction types from the plugin&rsquo;s <code>/config</code> endpoint (stays in core since notifications and chat also use it)</li>
+  <li><strong>Core hook</strong> <code>useFeedReactions</code> handles optimistic react/unreact/swap logic (stays in core since feed screens depend on it)</li>
+</ul>
+
+<h3>User interactions</h3>
+<table>
+  <tr><th>Action</th><th>Behavior</th></tr>
+  <tr><td>Tap reaction button</td><td>Toggle default reaction type (or current type if already reacted)</td></tr>
+  <tr><td>Long-press reaction button</td><td>Open floating reaction picker</td></tr>
+  <tr><td>Select from picker</td><td>React with chosen type (or swap if already reacted with different type)</td></tr>
+  <tr><td>Tap breakdown summary</td><td>Open bottom sheet showing who reacted with what, filterable by reaction type</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="file-structure">5. File Structure</h2>
+
+<pre><code>modules/multi-reactions/
+  module.ts                          &larr; Manifest (4 slots + 1 provider)
+  MultiReactionsProvider.tsx         &larr; Context for picker &amp; breakdown modal
+  components/
+    slotProps.ts                     &larr; Shared ReactionSlotProps interface
+    FeedReactionSlot.tsx             &larr; Slot: feed reaction button (tap + long-press)
+    FeedBreakdownSlot.tsx            &larr; Slot: feed emoji stack + count
+    CommentReactionSlot.tsx          &larr; Slot: comment reaction button
+    CommentBreakdownSlot.tsx         &larr; Slot: comment emoji stack + count
+    ReactionBreakdownModal.tsx       &larr; Bottom sheet: who reacted with what</code></pre>
+
+<h3>What stays in core (shared infrastructure)</h3>
+<ul>
+  <li><code>components/feed/ReactionPicker.tsx</code> &mdash; Floating picker UI (also used by chat)</li>
+  <li><code>components/feed/ReactionIcon.tsx</code> &mdash; Pure icon renderer (also used by notifications)</li>
+  <li><code>hooks/useReactionConfig.ts</code> &mdash; Fetches reaction config, graceful empty return if plugin not installed</li>
+  <li><code>hooks/useFeedReactions.ts</code> &mdash; Optimistic react/swap logic for feed screens</li>
+  <li><code>services/api/feeds.ts</code> &mdash; <code>swapReactionType</code>, <code>getReactionBreakdown</code>, <code>getReactionBreakdownUsers</code> (used by core hooks)</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="slots">6. Slots</h2>
+
+<table>
+  <tr><th>Slot Name</th><th>Component</th><th>Where it renders</th></tr>
+  <tr><td><code>feedReactions</code></td><td>FeedReactionSlot</td><td>FeedCard footer &mdash; reaction button area</td></tr>
+  <tr><td><code>feedReactionBreakdown</code></td><td>FeedBreakdownSlot</td><td>FeedCard footer right &mdash; emoji stack + count</td></tr>
+  <tr><td><code>commentReactions</code></td><td>CommentReactionSlot</td><td>CommentItem &mdash; reaction button</td></tr>
+  <tr><td><code>commentReactionBreakdown</code></td><td>CommentBreakdownSlot</td><td>CommentItem &mdash; emoji stack + count</td></tr>
+</table>
+
+<p>All slot components receive <code>ReactionSlotProps</code>:</p>
+<pre><code>interface ReactionSlotProps {
+  objectId: number;
+  hasReacted: boolean;
+  userReactionType: string | null;
+  userReactionIconUrl: string | null;
+  reactionsCount: number;
+  reactionBreakdown: ReactionBreakdown[];
+  onReact: (type?: string) =&gt; void;
+}</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="api-endpoints">7. API Endpoints</h2>
+
+<p>REST namespace: <code>tbc-multi-reactions/v1</code></p>
+
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
+  <tr><td>GET</td><td><code>/config</code></td><td>No</td><td>Available reaction types with icons and colors</td></tr>
+  <tr><td>POST</td><td><code>/swap</code></td><td>Yes</td><td>Swap reaction type on existing reaction</td></tr>
+  <tr><td>GET</td><td><code>/breakdown/{type}/{id}</code></td><td>No</td><td>Reaction counts by type</td></tr>
+  <tr><td>GET</td><td><code>/breakdown/{type}/{id}/users</code></td><td>No</td><td>Breakdown with user details (for modal)</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="fallback">8. Fallback Behavior</h2>
+
+<p>When this module is <strong>not registered</strong>:</p>
+<ul>
+  <li>FeedCard renders a simple heart icon &mdash; tap to toggle like</li>
+  <li>CommentItem renders a simple heart icon &mdash; tap to toggle like</li>
+  <li>No picker, no breakdown modal, no emoji stack</li>
+  <li>Core <code>reactToFeed</code> still works (sends <code>react_type: 'like'</code> to Fluent Community)</li>
+  <li>The <code>X-TBC-Reaction-Type</code> header is harmless without the plugin installed</li>
+</ul>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">
+<p style="margin-top: 16px; color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary)); font-size: 0.9em;">
+  <a href="index.html">All Modules</a> &middot;
+  <a href="../module-system.html">Module System</a> &middot;
+  <a href="../companion-plugins.html">Companion Plugins</a>
+</p>
+
+</body>
+</html>

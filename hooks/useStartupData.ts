@@ -20,11 +20,12 @@
 // self-fetch on mount. No batch registration needed.
 // =============================================================================
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { batchRequest, findBatchResponse } from '@/services/api/batch';
 import { markBatchFresh } from '@/utils/batchCache';
 import { syncBadgeCount } from '@/services/push';
+import { FEATURES_CACHE_KEY } from '@/utils/featureFlags';
 import { createLogger } from '@/utils/logger';
 import type { AppConfigResponse } from '@/services/api/appConfig';
 import type { AuthUser } from '@/types/user';
@@ -61,6 +62,8 @@ const WIDGET_CACHE_KEYS = {
 // Hook
 // -----------------------------------------------------------------------------
 
+export type StartupStatus = 'idle' | 'loading' | 'success' | 'error';
+
 interface UseStartupDataOptions {
   isAuthenticated: boolean;
   username: string | undefined;
@@ -74,6 +77,11 @@ interface UseStartupDataOptions {
   onUnreadMessages: (count: number) => void;
 }
 
+interface UseStartupDataResult {
+  status: StartupStatus;
+  retry: () => void;
+}
+
 export function useStartupData({
   isAuthenticated,
   username,
@@ -81,11 +89,13 @@ export function useStartupData({
   onProfileUpdate,
   onUnreadNotifications,
   onUnreadMessages,
-}: UseStartupDataOptions) {
+}: UseStartupDataOptions): UseStartupDataResult {
   const hasRun = useRef(false);
+  const [status, setStatus] = useState<StartupStatus>('idle');
 
   const runBatch = useCallback(async () => {
     if (!username) return;
+    setStatus('loading');
 
     log('Firing startup batch...');
 
@@ -173,12 +183,23 @@ export function useStartupData({
       await Promise.all(cacheWrites);
       markBatchFresh(freshKeys);
 
+      setStatus('success');
       log('Startup batch complete —', freshKeys.length, 'widget caches populated');
     } catch (err) {
-      // Batch failed — widgets will still self-fetch via useCachedData as normal
       log.error('Failed:', err);
+      // Batch failed — check if we have cached features from a previous session
+      try {
+        const cached = await AsyncStorage.getItem(FEATURES_CACHE_KEY);
+        setStatus(cached ? 'success' : 'error');
+      } catch {
+        setStatus('error');
+      }
     }
   }, [username, onAppConfig, onProfileUpdate, onUnreadNotifications, onUnreadMessages]);
+
+  const retry = useCallback(() => {
+    runBatch();
+  }, [runBatch]);
 
   // Fire once when authenticated with a username
   useEffect(() => {
@@ -189,6 +210,9 @@ export function useStartupData({
 
     if (!isAuthenticated) {
       hasRun.current = false;
+      setStatus('idle');
     }
   }, [isAuthenticated, username, runBatch]);
+
+  return { status, retry };
 }

@@ -74,7 +74,7 @@
     <span class="stat-label">UI Components</span>
   </div>
   <div class="stat-card">
-    <span class="stat-number">6</span>
+    <span class="stat-number">10</span>
     <span class="stat-label">Modules</span>
   </div>
   <div class="stat-card">
@@ -86,7 +86,7 @@
     <span class="stat-label">API Services</span>
   </div>
   <div class="stat-card">
-    <span class="stat-number">7</span>
+    <span class="stat-number">6</span>
     <span class="stat-label">Feature Flags</span>
   </div>
 </div>
@@ -161,7 +161,7 @@
   </tr>
   <tr class="row-app">
     <td>Module System <span class="tag tag-app">APP EXTRA</span></td>
-    <td>Self-contained feature modules that plug in without touching core code. Register tabs, widgets, menu items, header icons, context providers. Enable/disable with one line. Powers blog, YouTube, book club, calendar, donate, and donor modules.</td>
+    <td>Self-contained feature modules that plug in without touching core code. Register tabs, widgets, menu items, header icons, context providers, and UI slots. Enable/disable with one line. Powers multi-reactions, blog, YouTube, book club, calendar, donate, and donor modules.</td>
     <td>Architecture</td>
   </tr>
   <tr class="row-app">
@@ -1612,7 +1612,7 @@
 <!-- ================================================================ -->
 <h2 id="modules">22. Module Ecosystem</h2>
 
-<p>The app's module system is an architecture-level exclusive &mdash; Fluent Community has no equivalent. Modules are self-contained feature packages that register any combination of: bottom tabs, home widgets, menu items, header icons, context providers, and tab bar addons.</p>
+<p>The app's module system is an architecture-level exclusive &mdash; Fluent Community has no equivalent. Modules are self-contained feature packages that register any combination of: bottom tabs, home widgets, menu items, header icons, context providers, tab bar addons, and UI slots.</p>
 
 <div class="callout-success callout">
   Each module gets its own dedicated documentation page. This section provides the overview.
@@ -1626,6 +1626,14 @@
     <th>Widget</th>
     <th>Menu</th>
     <th>Description</th>
+  </tr>
+  <tr>
+    <td><strong>Multi-Reactions</strong></td>
+    <td><span class="tag required">Core</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td><span class="cross">&#10005;</span></td>
+    <td>Multi-emoji reaction system via slot injection (picker, breakdown modal, swap). Replaces default like button. Companion plugin: tbc-multi-reactions</td>
   </tr>
   <tr>
     <td><strong>Blog</strong></td>
@@ -1685,6 +1693,7 @@
   <li><strong>Push notification routing:</strong> Modules can register push handlers to intercept and route their own notification types.</li>
   <li><strong>Context providers:</strong> Modules can inject React context providers (e.g., Book Club's audio player state) into the app's provider tree.</li>
   <li><strong>Tab bar addons:</strong> Modules can inject persistent UI above the tab bar (e.g., Book Club's mini player).</li>
+  <li><strong>Slot injection:</strong> Modules can replace core UI components via named slots (e.g., Multi-Reactions replaces the default like button with a multi-emoji picker).</li>
 </ul>
 
 <!-- ================================================================ -->
