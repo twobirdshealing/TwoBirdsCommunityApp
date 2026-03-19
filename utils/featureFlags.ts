@@ -8,13 +8,22 @@
 // =============================================================================
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { FeaturesConfig } from '@/services/api/appConfig';
+import type { BooleanFeatureKey, FeaturesConfig } from '@/services/api/appConfig';
 
 // -----------------------------------------------------------------------------
 // Shared constants (imported by AppConfigContext — keep here to avoid circular)
 // -----------------------------------------------------------------------------
 
 export const FEATURES_CACHE_KEY = 'tbc_app_features_cache';
+
+/** Conservative defaults — everything disabled until server config loads. */
+export const DEFAULT_FEATURES: FeaturesConfig = {
+  dark_mode: false,
+  push_notifications: false,
+  messaging: false,
+  courses: false,
+  profile_tabs: { posts: false, spaces: false, comments: false },
+};
 
 // -----------------------------------------------------------------------------
 // In-memory cache
@@ -33,11 +42,11 @@ export function setFeatureFlagCache(features: FeaturesConfig): void {
 // -----------------------------------------------------------------------------
 
 /**
- * Read a feature flag from cache. Returns false (conservative) if no cache exists.
+ * Read a boolean feature flag from cache. Returns false (conservative) if no cache exists.
  * Only used by non-React service code (e.g. AuthContext). React components use useFeatures().
  */
-export async function getFeatureFlag<K extends keyof FeaturesConfig>(key: K): Promise<FeaturesConfig[K]> {
-  if (memoryCache) return memoryCache[key];
+export async function getFeatureFlag(key: BooleanFeatureKey): Promise<boolean> {
+  if (memoryCache) return memoryCache[key] ?? false;
 
   try {
     const cached = await AsyncStorage.getItem(FEATURES_CACHE_KEY);
@@ -46,7 +55,7 @@ export async function getFeatureFlag<K extends keyof FeaturesConfig>(key: K): Pr
       if (memoryCache![key] !== undefined) return memoryCache![key];
     }
   } catch {}
-  // No cache — conservative default (all off). The startup gate ensures
+  // No cache — conservative default (off). The startup gate ensures
   // authenticated users never reach the main app in this state.
-  return false as FeaturesConfig[K];
+  return false;
 }

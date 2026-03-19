@@ -8,7 +8,7 @@
 
 import { AppConfigResponse, FeaturesConfig, RegistrationConfig, SocketConfig, VisibilityConfig } from '@/services/api/appConfig';
 import { createLogger } from '@/utils/logger';
-import { FEATURES_CACHE_KEY, setFeatureFlagCache } from '@/utils/featureFlags';
+import { DEFAULT_FEATURES, FEATURES_CACHE_KEY, setFeatureFlagCache } from '@/utils/featureFlags';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useMemo, useEffect, useState } from 'react';
 
@@ -150,10 +150,8 @@ export function useAppConfig() {
   return context;
 }
 
-/** Convenience hook for feature flags. Safe to call in authenticated screens —
- *  the startup gate in _layout.tsx guarantees config is loaded before rendering. */
+/** Convenience hook for feature flags. Returns safe defaults until config loads. */
 export function useFeatures(): FeaturesConfig {
   const { features } = useAppConfig();
-  if (!features) throw new Error('useFeatures() called before config loaded');
-  return features;
+  return features ?? DEFAULT_FEATURES;
 }
