@@ -68,6 +68,7 @@
     badge_slug?: string[];       // Badge slugs for this user
   };
   badge?: Badge | null;          // Primary badge if assigned
+  is_follower?: boolean;         // Mutual follow flag (FC Pro 2.3.0+)
 }</code></pre>
 
 <h3>Profile (Full)</h3>
@@ -136,8 +137,8 @@
   <tr><td><code>followUser(username)</code></td><td>POST</td><td><code>/profile/{username}/follow</code></td><td>Follow user (sets level 1)</td></tr>
   <tr><td><code>unfollowUser(username)</code></td><td>POST</td><td><code>/profile/{username}/unfollow</code></td><td>Unfollow user (sets level 0)</td></tr>
   <tr><td><code>toggleFollowNotification(username)</code></td><td>POST</td><td><code>/profile/{username}/notification</code></td><td>Toggle email notifications (level 1 ↔ 2)</td></tr>
-  <tr><td><code>getFollowers(username, page, perPage)</code></td><td>GET</td><td><code>/profile/{username}/followers</code></td><td>Paginated followers list</td></tr>
-  <tr><td><code>getFollowing(username, page, perPage)</code></td><td>GET</td><td><code>/profile/{username}/followings</code></td><td>Paginated following list</td></tr>
+  <tr><td><code>getFollowers(username, page, perPage, search?, sortBy?)</code></td><td>GET</td><td><code>/profile/{username}/followers</code></td><td>Paginated followers list with optional search and sort</td></tr>
+  <tr><td><code>getFollowing(username, page, perPage, search?, sortBy?)</code></td><td>GET</td><td><code>/profile/{username}/followings</code></td><td>Paginated following list with optional search and sort</td></tr>
   <tr><td><code>blockUser(username)</code></td><td>POST</td><td><code>/profile/{username}/block</code></td><td>Block user (hides posts, rejects DMs)</td></tr>
   <tr><td><code>unblockUser(username)</code></td><td>POST</td><td><code>/profile/{username}/unblock</code></td><td>Unblock user</td></tr>
 </table>
@@ -154,12 +155,23 @@
   <tr><td><code>2</code></td><td>Following with email notifications</td></tr>
 </table>
 
+<h3>Followers/Following Query Parameters</h3>
+<table>
+  <tr><th>Param</th><th>Type</th><th>Default</th><th>Notes</th></tr>
+  <tr><td><code>page</code></td><td><code>number</code></td><td><code>1</code></td><td>Page number</td></tr>
+  <tr><td><code>per_page</code></td><td><code>number</code></td><td><code>20</code></td><td>Items per page</td></tr>
+  <tr><td><code>search</code></td><td><code>string</code></td><td>&mdash;</td><td>Filter by display name or username (LIKE matching). FC Pro 2.3.0+</td></tr>
+  <tr><td><code>sort_by</code></td><td><code>'id' | 'alphabetical'</code></td><td><code>'id'</code></td><td><code>id</code> = most recent, <code>alphabetical</code> = A-Z by display name. FC Pro 2.3.0+</td></tr>
+</table>
+
 <h3>Followers/Following Response</h3>
 <pre><code>// Followers: data[].follower is the XProfile
-{ followers: { data: [{ follower: XProfile &amp; { follow?: string } }], next_page_url: string | null } }
+{ followers: { data: [{ follower: XProfile &amp; { follow?: string; is_follower?: boolean } }], next_page_url: string | null } }
 
 // Following: data[].followed is the XProfile
-{ followings: { data: [{ followed: XProfile &amp; { follow?: string } }], next_page_url: string | null } }</code></pre>
+{ followings: { data: [{ followed: XProfile &amp; { follow?: string; is_follower?: boolean } }], next_page_url: string | null } }
+
+// is_follower (FC Pro 2.3.0+): true if this user follows the viewed profile back (mutual follow)</code></pre>
 
 <!-- ================================================================== -->
 <h2 id="screens">3. Profile Screens</h2>
@@ -277,9 +289,13 @@ await profilesApi.toggleFollowNotification('janedoe');</code></pre>
 <h3>Connections Screen</h3>
 <p><span class="file-path">app/profile/[username]/connections.tsx</span> — two tabs (Followers / Following).</p>
 <ul>
+  <li><strong>Search bar</strong> — debounced (400ms) server-side filtering by name or username</li>
+  <li><strong>Sort toggle</strong> — switch between Recent (default) and A-Z (alphabetical by display name)</li>
+  <li><strong>"Follows you" badge</strong> — shown on member cards when <code>is_follower</code> is true (mutual follow indicator)</li>
   <li>Infinite scroll with pagination</li>
   <li>Each item rendered as <code>MemberCard</code> with follow/notify/message actions</li>
   <li>Pull-to-refresh on both tabs</li>
+  <li>Lazy-loads each tab on first visit — search/sort state is shared across tabs</li>
   <li>Followers response nests profile in <code>data[].follower</code>, following in <code>data[].followed</code></li>
 </ul>
 

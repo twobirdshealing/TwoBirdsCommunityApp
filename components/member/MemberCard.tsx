@@ -7,10 +7,11 @@
 // - Followers/Following lists
 // - New Message modal
 //
-// Terminology:
+// Badges:
 // - admin → "Admin"
 // - moderator → "Mod"
-// - member → No badge
+// - member → No role badge
+// - is_follower → "Follows you" (mutual follow indicator)
 // =============================================================================
 
 import React from 'react';
@@ -52,6 +53,8 @@ export interface MemberCardData {
       social_links?: Record<string, string> | any[];
     };
   };
+  // Mutual follow flag (FC Pro 2.3.0+)
+  is_follower?: boolean;
   // Alternative direct fields (for flexibility)
   display_name?: string;
   username?: string;
@@ -73,6 +76,7 @@ interface MemberCardProps {
   isFollowing?: boolean;
   isNotifyOn?: boolean;
   followLoading?: boolean;
+  isFollower?: boolean;
   showRole?: boolean;
   showBio?: boolean;
   showLastActive?: boolean;
@@ -138,6 +142,7 @@ export const MemberCard = React.memo(function MemberCard({
   isFollowing = false,
   isNotifyOn = false,
   followLoading = false,
+  isFollower = false,
   showRole = true,
   showBio = true,
   showLastActive = true,
@@ -205,6 +210,11 @@ export const MemberCard = React.memo(function MemberCard({
           {showRole && roleLabel ? (
             <View style={[styles.roleBadge, { backgroundColor: themeColors.primary }]}>
               <Text style={[styles.roleBadgeText, { color: themeColors.textInverse }]}>{roleLabel}</Text>
+            </View>
+          ) : null}
+          {isFollower ? (
+            <View style={[styles.followsYouBadge, { backgroundColor: withOpacity(themeColors.textSecondary, 0.12) }]}>
+              <Text style={[styles.followsYouText, { color: themeColors.textSecondary }]}>Follows you</Text>
             </View>
           ) : null}
         </View>
@@ -400,6 +410,17 @@ const styles = StyleSheet.create({
   roleBadgeText: {
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold,
+  },
+
+  followsYouBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: sizing.borderRadius.full,
+  },
+
+  followsYouText: {
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.medium,
   },
 
   // Actions

@@ -69,9 +69,13 @@ export async function unfollowUser(username: string) {
 // Get Followers
 // -----------------------------------------------------------------------------
 
-export async function getFollowers(username: string, page: number = 1, perPage: number = 20) {
-  return get<{ followers: { data: { follower: XProfile & { follow?: string | null } }[]; next_page_url: string | null } }>(
-    `${ENDPOINTS.PROFILE(username)}/followers`, { page, per_page: perPage }
+export async function getFollowers(username: string, page: number = 1, perPage: number = 20, search?: string, sortBy?: string) {
+  return get<{ followers: { data: { follower: XProfile & { follow?: string | null; is_follower?: boolean } }[]; next_page_url: string | null } }>(
+    `${ENDPOINTS.PROFILE(username)}/followers`, {
+      page, per_page: perPage,
+      ...(search && { search }),
+      ...(sortBy && { sort_by: sortBy }),
+    }
   );
 }
 
@@ -79,9 +83,13 @@ export async function getFollowers(username: string, page: number = 1, perPage: 
 // Get Following
 // -----------------------------------------------------------------------------
 
-export async function getFollowing(username: string, page: number = 1, perPage: number = 20) {
-  return get<{ followings: { data: { followed: XProfile & { follow?: string | null } }[]; next_page_url: string | null } }>(
-    `${ENDPOINTS.PROFILE(username)}/followings`, { page, per_page: perPage }
+export async function getFollowing(username: string, page: number = 1, perPage: number = 20, search?: string, sortBy?: string) {
+  return get<{ followings: { data: { followed: XProfile & { follow?: string | null; is_follower?: boolean } }[]; next_page_url: string | null } }>(
+    `${ENDPOINTS.PROFILE(username)}/followings`, {
+      page, per_page: perPage,
+      ...(search && { search }),
+      ...(sortBy && { sort_by: sortBy }),
+    }
   );
 }
 

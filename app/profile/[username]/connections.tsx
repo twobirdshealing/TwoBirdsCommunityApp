@@ -4,6 +4,9 @@
 // Route: /profile/[username]/connections?initialTab=following|followers
 // Features:
 // - Two tabs: Following / Followers
+// - Search bar (debounced 400ms, server-side filtering by name/username)
+// - Sort toggle (Recent / A-Z)
+// - "Follows you" mutual follow badge on member cards
 // - Infinite scroll with pull-to-refresh
 // - Follow/unfollow, message, view profile
 // - Lazy-loads each tab on first visit
@@ -11,15 +14,16 @@
 
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { EmptyState } from '@/components/common/EmptyState';
 import { TabBar } from '@/components/common/TabBar';
 import { MemberCard, type MemberCardData } from '@/components/member/MemberCard';
-import { spacing } from '@/constants/layout';
+import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { profilesApi } from '@/services/api/profiles';
@@ -30,6 +34,8 @@ import { useFollowToggle } from '@/hooks/useFollowToggle';
 // -----------------------------------------------------------------------------
 
 type TabKey = 'following' | 'followers';
+
+type SortOption = 'id' | 'alphabetical';
 
 interface TabState {
   data: MemberCardData[];
@@ -68,6 +74,7 @@ function xprofileToMemberCard(xp: any): MemberCardData {
     username: xp.username,
     avatar: xp.avatar ?? undefined,
     short_description: xp.short_description ?? undefined,
+    is_follower: xp.is_follower ?? false,
     xprofile: {
       user_id: xp.user_id,
       display_name: xp.display_name,
@@ -96,6 +103,14 @@ export default function ConnectionsScreen() {
   const [followingState, setFollowingState] = useState<TabState>({ ...INITIAL_TAB_STATE });
   const [followersState, setFollowersState] = useState<TabState>({ ...INITIAL_TAB_STATE });
 
+  // Search & Sort
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('id');
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Refs for latest values so fetchData avoids stale closures
+  const searchRef = useRef(search);
+  const sortByRef = useRef(sortBy);
+
   const { followMap, setFollowMap, handleFollowPress, handleNotifyPress, isFollowing, isNotifyOn, isFollowLoading } = useFollowToggle();
 
   // ---------------------------------------------------------------------------
@@ -122,9 +137,13 @@ export default function ConnectionsScreen() {
     }));
 
     try {
+      // Read from refs to avoid stale closures in debounced callbacks
+      const searchTrimmed = searchRef.current.trim() || undefined;
+      const sortParam = sortByRef.current !== 'id' ? sortByRef.current : undefined;
+
       const response = tab === 'following'
-        ? await profilesApi.getFollowing(username, pageNum)
-        : await profilesApi.getFollowers(username, pageNum);
+        ? await profilesApi.getFollowing(username, pageNum, 20, searchTrimmed, sortParam)
+        : await profilesApi.getFollowers(username, pageNum, 20, searchTrimmed, sortParam);
 
       if (!response.success) {
         setTabState(prev => ({
@@ -196,6 +215,45 @@ export default function ConnectionsScreen() {
     }
   }, [activeTab]);
 
+  // Refetch when sort changes (skip initial mount — activeTab effect handles that)
+  const sortMounted = useRef(false);
+  useEffect(() => {
+    if (!sortMounted.current) {
+      sortMounted.current = true;
+      return;
+    }
+    sortByRef.current = sortBy;
+    // Reset both tabs and refetch active tab
+    setFollowingState({ ...INITIAL_TAB_STATE });
+    setFollowersState({ ...INITIAL_TAB_STATE });
+    fetchData(activeTab, 1, false);
+  }, [sortBy]);
+
+  // Cleanup search timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    };
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Search handler (debounced)
+  // ---------------------------------------------------------------------------
+
+  const handleSearchChange = (text: string) => {
+    setSearch(text);
+    searchRef.current = text;
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    searchTimeout.current = setTimeout(() => {
+      // Reset both tabs so they reload with new search
+      setFollowingState({ ...INITIAL_TAB_STATE });
+      setFollowersState({ ...INITIAL_TAB_STATE });
+      fetchData(activeTab, 1, false);
+    }, 400);
+  };
+
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
@@ -258,6 +316,41 @@ export default function ConnectionsScreen() {
           onTabChange={setActiveTab}
         />
 
+        {/* Search Bar + Sort Toggle */}
+        <View style={[styles.searchContainer, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
+          <View style={[styles.searchInputWrapper, { backgroundColor: themeColors.backgroundSecondary }]}>
+            <Ionicons name="search-outline" size={18} color={themeColors.textTertiary} />
+            <TextInput
+              style={[styles.searchInput, { color: themeColors.text }]}
+              placeholder="Search..."
+              placeholderTextColor={themeColors.textTertiary}
+              value={search}
+              onChangeText={handleSearchChange}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {search.length > 0 && (
+              <Pressable onPress={() => { setSearch(''); handleSearchChange(''); }}>
+                <Ionicons name="close-circle" size={18} color={themeColors.textTertiary} />
+              </Pressable>
+            )}
+          </View>
+          <Pressable
+            onPress={() => setSortBy(prev => prev === 'id' ? 'alphabetical' : 'id')}
+            style={[styles.sortButton, { backgroundColor: themeColors.backgroundSecondary }]}
+          >
+            <Ionicons
+              name={sortBy === 'alphabetical' ? 'text-outline' : 'time-outline'}
+              size={18}
+              color={themeColors.textSecondary}
+            />
+            <Text style={[styles.sortLabel, { color: themeColors.textSecondary }]}>
+              {sortBy === 'alphabetical' ? 'A-Z' : 'Recent'}
+            </Text>
+          </Pressable>
+        </View>
+
         {/* Loading State */}
         {currentState.loading && currentState.data.length === 0 && !currentState.error && (
           <LoadingSpinner message={`Loading ${activeTab}...`} />
@@ -290,6 +383,7 @@ export default function ConnectionsScreen() {
                   isFollowing={isFollowing(memberId)}
                   isNotifyOn={isNotifyOn(memberId)}
                   followLoading={isFollowLoading(memberId)}
+                  isFollower={item.is_follower ?? false}
                   showRole={false}
                   showBio={true}
                   showLastActive={false}
@@ -312,7 +406,7 @@ export default function ConnectionsScreen() {
               !currentState.loading && !currentState.error ? (
                 <EmptyState
                   icon="people-outline"
-                  message={activeTab === 'following' ? 'Not following anyone yet' : 'No followers yet'}
+                  message={search ? 'No results found' : activeTab === 'following' ? 'Not following anyone yet' : 'No followers yet'}
                 />
               ) : null
             }
@@ -337,6 +431,46 @@ export default function ConnectionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+
+  // Search & Sort
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    gap: spacing.sm,
+  },
+
+  searchInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: sizing.borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    gap: spacing.xs,
+  },
+
+  searchInput: {
+    flex: 1,
+    fontSize: typography.size.md,
+    paddingVertical: 0,
+  },
+
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: sizing.borderRadius.sm,
+    gap: 4,
+  },
+
+  sortLabel: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium,
   },
 
   // Footer

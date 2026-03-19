@@ -31,6 +31,9 @@ export interface XProfile {
 
   // Badge info if assigned
   badge?: Badge | null;
+
+  // Mutual follow flag (FC Pro 2.3.0+): true if this user follows the viewed profile back
+  is_follower?: boolean;
 }
 
 // -----------------------------------------------------------------------------
