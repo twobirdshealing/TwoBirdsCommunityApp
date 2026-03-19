@@ -44,6 +44,10 @@ class TBC_CA_Registration_API {
         // Fix input types that FC's FormBuilder strips (it only allows text/email/password).
         // Injects JS to convert date→date, number→number, phone→tel on the signup form.
         add_action('wp_footer', [$this, 'fix_signup_field_types']);
+
+        // Save custom profile fields after FC's native web registration.
+        // FC's signup handler creates the user but ignores injected custom fields.
+        add_action('user_register', [$this, 'save_custom_fields_on_web_register']);
     }
 
     /**
@@ -131,8 +135,10 @@ class TBC_CA_Registration_API {
                 continue;
             }
 
-            // Skip if already added from FC auth fields above
+            // If already added from FC auth fields, override type from real definition
+            // (FC's FormBuilder downgrades types it can't render, e.g. date → text)
             if (isset($fields[$slug])) {
+                $fields[$slug]['type'] = $cf['type'] ?? $fields[$slug]['type'];
                 continue;
             }
 
@@ -161,6 +167,16 @@ class TBC_CA_Registration_API {
             }
 
             $fields[$slug] = $field_def;
+        }
+
+        // Slug-based type overrides for types FC doesn't natively support
+        $app_type_overrides = [
+            '_phone' => 'phone',
+        ];
+        foreach ($app_type_overrides as $slug => $override_type) {
+            if (isset($fields[$slug])) {
+                $fields[$slug]['type'] = $override_type;
+            }
         }
 
         // Add terms checkbox at the end of step 1
@@ -616,6 +632,61 @@ class TBC_CA_Registration_API {
         }
 
         return $signed_token;
+    }
+
+    /**
+     * Save custom profile fields when a user registers via FC's native web signup.
+     *
+     * FC's registration handler creates the user but doesn't save the custom
+     * fields we inject into the signup form. The user_register hook fires inside
+     * wp_insert_user() — BEFORE FC's handleSignupCompleted() calls syncXProfile(),
+     * so we must ensure the XProfile row exists before saving custom fields.
+     *
+     * @param int $user_id Newly created user ID.
+     */
+    public function save_custom_fields_on_web_register(int $user_id): void {
+        // Only act during FC's native web registration AJAX call
+        if (
+            !defined('DOING_AJAX') || !DOING_AJAX ||
+            empty($_POST['action']) || $_POST['action'] !== 'fcom_user_registration'
+        ) {
+            return;
+        }
+
+        $fc_field_defs = self::get_fc_field_definitions();
+        if (empty($fc_field_defs)) {
+            return;
+        }
+
+        $custom_values = [];
+        foreach ($fc_field_defs as $cf) {
+            $slug = $cf['slug'] ?? '';
+            if (empty($slug) || empty($cf['is_enabled'])) {
+                continue;
+            }
+            $value = isset($_POST[$slug]) ? trim(wp_unslash($_POST[$slug])) : '';
+            if ($value !== '') {
+                $custom_values[$slug] = $value;
+            }
+        }
+
+        if (empty($custom_values)) {
+            return;
+        }
+
+        // user_register fires before FC creates the XProfile row, so ensure it
+        // exists first. syncXProfile is idempotent — FC calling it again later
+        // in handleSignupCompleted() is harmless.
+        if (!class_exists('FluentCommunity\App\Models\User')) {
+            return;
+        }
+        $fc_user = \FluentCommunity\App\Models\User::find($user_id);
+        if (!$fc_user) {
+            return;
+        }
+        $fc_user->syncXProfile(true, true);
+
+        self::set_fc_custom_fields($user_id, $custom_values);
     }
 
     /**

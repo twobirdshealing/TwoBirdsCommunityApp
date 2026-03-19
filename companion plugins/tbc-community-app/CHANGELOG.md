@@ -2,6 +2,12 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.44.7
+- **Fix registration field types for app**: FC's FormBuilder downgrades field types it can't render (e.g. `date` → `text`), and the API was returning those mangled types. Now cross-references FC's real field definitions to restore correct types (birthdate shows native date picker instead of text input). Also maps `_phone` to `phone` type so the app shows a phone keypad.
+
+## v3.44.6
+- **Fix web registration missing custom fields**: FC's native web signup form collected custom profile fields (pronouns, phone, SMS opt-in, etc.) but never saved them to `xprofile.custom_fields`. Added `user_register` hook that captures custom field values from `$_POST` during FC's web registration AJAX and persists them — same pattern as the app registration flow. Ensures XProfile row exists first via `syncXProfile()` since the hook fires before FC creates it.
+
 ## v3.44.5
 - **Fix field types on web signup form**: FC's FormBuilder strips non-whitelisted input types, so date/number/phone fields rendered as plain text inputs. Added JS injection via `wp_footer` that converts fields back to their correct HTML5 types (`date`, `number`, `tel`) so browsers show native pickers (e.g. Birthdate gets a date picker, Phone gets a tel keypad on mobile). Fixed slug matching to use FC's `_` prefix (e.g. `_phone` not `phone`). Scoped script to only run on FC auth pages.
 
