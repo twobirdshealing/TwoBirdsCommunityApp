@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.44.5
+- **Fix field types on web signup form**: FC's FormBuilder strips non-whitelisted input types, so date/number/phone fields rendered as plain text inputs. Added JS injection via `wp_footer` that converts fields back to their correct HTML5 types (`date`, `number`, `tel`) so browsers show native pickers (e.g. Birthdate gets a date picker, Phone gets a tel keypad on mobile). Fixed slug matching to use FC's `_` prefix (e.g. `_phone` not `phone`). Scoped script to only run on FC auth pages.
+
 ## v3.44.3
 - **Time format in app-config**: Added `time_format` field to `/app-config` response — returns the WordPress general time format setting (e.g., `g:i a` for 12h, `H:i` for 24h). Syncs with Fluent Messaging 2.3.0's time format awareness.
 

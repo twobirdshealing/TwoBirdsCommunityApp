@@ -40,6 +40,10 @@ class TBC_CA_Registration_API {
         // Without this, FC's web registration only shows base fields (name, email, etc.)
         // and custom fields like phone/SMS opt-in are missing.
         add_filter('fluent_community/auth/signup_fields', [$this, 'inject_custom_signup_fields'], 20, 1);
+
+        // Fix input types that FC's FormBuilder strips (it only allows text/email/password).
+        // Injects JS to convert date→date, number→number, phone→tel on the signup form.
+        add_action('wp_footer', [$this, 'fix_signup_field_types']);
     }
 
     /**
@@ -515,17 +519,25 @@ class TBC_CA_Registration_API {
      * Get FC native custom profile field definitions.
      */
     public static function get_fc_field_definitions(): array {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+
         if (!class_exists('FluentCommunity\App\Models\Meta')) {
-            return [];
+            $cache = [];
+            return $cache;
         }
         $meta = \FluentCommunity\App\Models\Meta::where('object_type', 'option')
             ->where('meta_key', 'custom_profile_fields')
             ->first();
         if (!$meta) {
-            return [];
+            $cache = [];
+            return $cache;
         }
         $config = $meta->value;
-        return $config['fields'] ?? [];
+        $cache = $config['fields'] ?? [];
+        return $cache;
     }
 
     /**
@@ -682,5 +694,69 @@ class TBC_CA_Registration_API {
         }
 
         return $fields;
+    }
+
+    /**
+     * Fix input types on FC's native signup form.
+     *
+     * FC's FormBuilder only allows text/email/password input types — everything
+     * else is stripped. This injects a small script that converts fields back to
+     * their correct HTML5 types (date, number, tel) so browsers show native pickers.
+     */
+    public function fix_signup_field_types(): void {
+        // Only run on FC's signup page
+        if (empty($_GET['fcom_action']) || sanitize_key($_GET['fcom_action']) !== 'auth') {
+            return;
+        }
+
+        $fc_field_defs = self::get_fc_field_definitions();
+        if (empty($fc_field_defs)) {
+            return;
+        }
+
+        // Slug-based overrides for fields whose FC type doesn't match the ideal HTML5 type
+        // (e.g. FC stores phone as 'text' but browsers benefit from type="tel")
+        $slug_overrides = [
+            '_phone' => 'tel',
+        ];
+
+        // Collect slugs that need type correction
+        $type_fixes = []; // slug => correct HTML5 type
+        foreach ($fc_field_defs as $cf) {
+            $slug = $cf['slug'] ?? '';
+            $type = $cf['type'] ?? 'text';
+            if (empty($slug) || empty($cf['is_enabled'])) {
+                continue;
+            }
+            if (isset($slug_overrides[$slug])) {
+                $type_fixes[$slug] = $slug_overrides[$slug];
+            } elseif (in_array($type, ['date', 'number'], true)) {
+                $type_fixes[$slug] = $type;
+            }
+        }
+
+        if (empty($type_fixes)) {
+            return;
+        }
+
+        $fixes_json = wp_json_encode($type_fixes);
+        ?>
+        <script>
+        (function(){
+            var fixes = <?php echo $fixes_json; ?>;
+            function apply() {
+                Object.keys(fixes).forEach(function(slug) {
+                    var el = document.querySelector('input[name="' + slug + '"]');
+                    if (el) el.type = fixes[slug];
+                });
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', apply);
+            } else {
+                apply();
+            }
+        })();
+        </script>
+        <?php
     }
 }
