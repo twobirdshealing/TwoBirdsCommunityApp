@@ -190,6 +190,8 @@
 }
 
 // → Phone OTP needed (verify, then re-submit with session key)
+// IMPORTANT: Both otp_required AND session_key must be present.
+// If session_key is missing, the OTP step won't activate.
 {
   success: false,
   otp_required: true,

@@ -336,6 +336,18 @@ export async function silentRefresh(): Promise&lt;boolean&gt; {
 
 <p>The TBC Community App plugin sends live counts and status flags in custom response headers on every authenticated response. The HTTP client extracts these and forwards them to React via a callback.</p>
 
+<h3>Core Header Constants</h3>
+<p>Core header names are defined as the <code>CORE_HEADERS</code> constant in <span class="file-path">services/api/client.ts</span>. Module headers are added dynamically via <code>registerModuleResponseHeaders()</code> during startup &mdash; modules don&rsquo;t need constants, their header names come from the module manifest.</p>
+
+<pre><code>// services/api/client.ts
+const CORE_HEADERS = {
+  UNREAD_NOTIFICATIONS: 'X-TBC-Unread-Notifications',
+  UNREAD_MESSAGES: 'X-TBC-Unread-Messages',
+  CART_COUNT: 'X-TBC-Cart-Count',
+  MAINTENANCE: 'X-TBC-Maintenance',
+  MIN_APP_VERSION: 'X-TBC-Min-App-Version',
+} as const;</code></pre>
+
 <h3>Custom Headers</h3>
 <table>
   <tr><th>Header</th><th>Type</th><th>Purpose</th></tr>

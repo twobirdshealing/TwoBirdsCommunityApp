@@ -73,10 +73,10 @@
 
 <p>In <span class="file-path">modules/_registry.ts</span>, ensure the OTP module is registered:</p>
 
-<pre><code>import otp from './otp/module';
+<pre><code>import { otpModule } from './otp/module';
 
-export const modules = [
-  otp,
+export const MODULES: ModuleManifest[] = [
+  otpModule,
   // ...other modules
 ];</code></pre>
 

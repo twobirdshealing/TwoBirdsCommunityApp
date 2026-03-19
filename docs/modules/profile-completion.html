@@ -72,10 +72,10 @@
 
 <p>In <span class="file-path">modules/_registry.ts</span>, ensure the Profile Completion module is registered:</p>
 
-<pre><code>import profileCompletion from './profile-completion/module';
+<pre><code>import { profileCompletionModule } from './profile-completion/module';
 
-export const modules = [
-  profileCompletion,
+export const MODULES: ModuleManifest[] = [
+  profileCompletionModule,
   // ...other modules
 ];</code></pre>
 
@@ -119,7 +119,7 @@ User accesses the app normally</div>
 
 <ul>
   <li>If an admin later marks additional fields as required, existing users will be gated again on their next session</li>
-  <li>The gate cannot be bypassed by navigating directly to app screens &mdash; the provider intercepts at the top level</li>
+  <li>The gate is <strong>persistent</strong> &mdash; users cannot navigate away via routes or the back button while the profile is incomplete. Any attempt to reach a tab or screen redirects back to <code>/profile-complete</code>.</li>
   <li>Once the header clears (profile is complete), the redirect stops immediately without requiring a restart</li>
 </ul>
 

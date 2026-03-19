@@ -11,7 +11,8 @@ This is a white-label community app powered by [Fluent Community](https://fluent
 | **Setup Guide** | `setup/setup-guide.html` — Full walkthrough with screenshots |
 | **Setup Dashboard** | `npm run dashboard` — Browser-based config UI at localhost:3456 |
 | **Theme System** | `docs/theme-system.html` — Color tokens, Fluent CSS sync, usage rules |
-| **Module System** | `setup/setup-guide.html` (Module System section) |
+| **Module System** | `docs/module-system.html` — Full reference with examples |
+| **Per-Module Docs** | `docs/modules/` — Individual module setup & configuration |
 
 ## Quick Commands
 
