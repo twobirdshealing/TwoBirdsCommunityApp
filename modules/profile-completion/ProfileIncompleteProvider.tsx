@@ -6,7 +6,7 @@
 // Replaces the old needsProfileCompletion logic from AuthContext + _layout.tsx.
 // =============================================================================
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { addResponseHeaderListener } from '@/services/api/client';
@@ -23,7 +23,6 @@ export function ProfileIncompleteProvider({ children }: { children: React.ReactN
   const router = useRouter();
   const segments = useSegments();
   const [needsProfileCompletion, setNeedsProfileCompletion] = useState(false);
-  const hasRedirected = useRef(false);
 
   // ---------------------------------------------------------------------------
   // Subscribe to response header
@@ -33,9 +32,6 @@ export function ProfileIncompleteProvider({ children }: { children: React.ReactN
     return addResponseHeaderListener((data) => {
       if (data.profileIncomplete !== undefined) {
         setNeedsProfileCompletion(data.profileIncomplete);
-        if (!data.profileIncomplete) {
-          hasRedirected.current = false;
-        }
       }
     });
   }, []);
@@ -44,7 +40,6 @@ export function ProfileIncompleteProvider({ children }: { children: React.ReactN
   useEffect(() => {
     if (!isAuthenticated) {
       setNeedsProfileCompletion(false);
-      hasRedirected.current = false;
     }
   }, [isAuthenticated]);
 
@@ -54,7 +49,6 @@ export function ProfileIncompleteProvider({ children }: { children: React.ReactN
 
   useEffect(() => {
     if (isLoading || !isAuthenticated || !needsProfileCompletion) return;
-    if (hasRedirected.current) return;
 
     const currentSegment = segments[0] as string;
 
@@ -62,7 +56,6 @@ export function ProfileIncompleteProvider({ children }: { children: React.ReactN
     if (currentSegment === 'profile-complete' || currentSegment === 'register') return;
 
     log('Profile incomplete — redirecting to /profile-complete');
-    hasRedirected.current = true;
     router.replace('/profile-complete' as any);
   }, [isAuthenticated, isLoading, needsProfileCompletion, segments, router]);
 

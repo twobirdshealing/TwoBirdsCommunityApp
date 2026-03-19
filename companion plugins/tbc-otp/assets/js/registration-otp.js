@@ -26,7 +26,7 @@
     var restBase     = cfg.rest_url || '';
     var restNonce    = cfg.rest_nonce || '';
     var voiceEnabled = cfg.voice_enabled || false;
-    var phoneSlug    = cfg.phone_slug || '_phone';
+    var phoneSlug    = cfg.phone_slug || '';
 
     // ─── State ─────────────────────────────────────────────────────────
     var otpVerified    = false;

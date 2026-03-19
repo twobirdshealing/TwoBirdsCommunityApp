@@ -25,9 +25,8 @@ export const otpModule: ModuleManifest = {
       phase: 'pre-creation',
       title: 'Verify Phone',
       component: OtpRegistrationStep,
-      shouldActivate: ({ submitResponse, registrationConfig }) =>
-        !!(submitResponse?.otp_required && submitResponse?.session_key) ||
-        !!registrationConfig?.otp?.required,
+      shouldActivate: ({ submitResponse }) =>
+        !!(submitResponse?.otp_required && submitResponse?.session_key),
     },
   ],
 };

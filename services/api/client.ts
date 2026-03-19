@@ -9,7 +9,7 @@ import { API_URL } from '@/constants/config';
 import { clearAuth, getAuthToken, silentRefresh } from '@/services/auth';
 import { ApiError } from '@/types/api';
 import { createLogger } from '@/utils/logger';
-import { getModuleResponseHeaders } from '@/modules/_registry';
+import type { ResponseHeaderMapping } from '@/modules/_types';
 import NetInfo from '@react-native-community/netinfo';
 
 const log = createLogger('API');
@@ -41,6 +41,14 @@ export interface ResponseHeaderData {
 
 type ResponseHeaderListener = (data: ResponseHeaderData) => void;
 const responseHeaderListeners = new Set<ResponseHeaderListener>();
+
+// Module response headers — registered by _registry.ts to avoid circular imports
+let _moduleResponseHeaders: ResponseHeaderMapping[] = [];
+
+/** Called by modules/_registry.ts to push header mappings into the client */
+export function registerModuleResponseHeaders(headers: ResponseHeaderMapping[]): void {
+  _moduleResponseHeaders = headers;
+}
 
 /** Subscribe to response header updates. Returns an unsubscribe function. */
 export function addResponseHeaderListener(listener: ResponseHeaderListener): () => void {
@@ -286,7 +294,7 @@ async function request<T>(
       const hMinVer = response.headers.get(CORE_HEADERS.MIN_APP_VERSION);
 
       // Module-registered headers (extracted generically via manifest)
-      const moduleHeaders = getModuleResponseHeaders();
+      const moduleHeaders = _moduleResponseHeaders;
       const moduleData: Record<string, any> = {};
       let hasModuleHeader = false;
       for (const mapping of moduleHeaders) {

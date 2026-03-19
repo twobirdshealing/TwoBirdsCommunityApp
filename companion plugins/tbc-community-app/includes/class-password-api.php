@@ -1,16 +1,13 @@
 <?php
 /**
- * Password Reset REST API - Mobile app password recovery via OTP
+ * Password Reset REST API
  *
  * Provides REST API endpoints for password reset from the mobile app.
- * Reuses the tbc-registration Twilio + Helpers classes for OTP delivery.
- * Falls back to WordPress native email reset if user has no phone on file.
+ * Uses WordPress native email reset.
  *
  * Endpoints:
- *   POST /tbc-ca/v1/password/forgot  - Initiate password reset (sends OTP or email)
+ *   POST /tbc-ca/v1/password/forgot  - Initiate password reset (sends email)
  *   POST /tbc-ca/v1/password/reset   - Set new password with reset token
- *
- * OTP verify/resend/voice handled by tbc-registration (tbc-reg/v1/otp)
  *
  * @package TBC_Community_App
  */
@@ -58,9 +55,7 @@ class TBC_CA_Password_API {
     // =========================================================================
 
     /**
-     * Initiate password reset.
-     * If user has a phone → send OTP via Twilio.
-     * If no phone → send native WP email reset link.
+     * Initiate password reset via WordPress native email.
      */
     public function handle_forgot(WP_REST_Request $request) {
         $data = $request->get_json_params();
@@ -91,52 +86,6 @@ class TBC_CA_Password_API {
             ], 200);
         }
 
-        // Check if OTP password recovery is enabled and classes exist
-        $otp_available = class_exists('TBCRegistration\Helpers')
-            && class_exists('TBCRegistration\Twilio')
-            && \TBCRegistration\Helpers::get_option('enable_password_recovery', false);
-
-        if ($otp_available) {
-            // Look up phone from usermeta
-            $meta_key = \TBCRegistration\Helpers::get_phone_meta_key();
-            $raw_phone = get_user_meta($user->ID, $meta_key, true);
-
-            if (!empty($raw_phone)) {
-                $formatted = \TBCRegistration\Helpers::format_phone((string) $raw_phone, true);
-
-                if (!empty($formatted) && !\TBCRegistration\Helpers::is_blocked($formatted)) {
-                    // Send OTP via Twilio
-                    $twilio = new \TBCRegistration\Twilio();
-                    $result = $twilio->start_verification($formatted);
-
-                    if ($result['success']) {
-                        $clean_phone = $result['data']['phone'] ?? $formatted;
-                        $session_key = \TBCRegistration\Helpers::generate_session_key('tbc_reg_recovery_');
-
-                        \TBCRegistration\Helpers::store_session($session_key, [
-                            'verified'     => false,
-                            'phone_number' => $clean_phone,
-                            'user_id'      => $user->ID,
-                            'user_login'   => $user->user_login,
-                            'context'      => 'recovery',
-                        ]);
-
-                        $voice_fallback = (bool) \TBCRegistration\Helpers::get_option('enable_voice_fallback', false);
-
-                        return new WP_REST_Response([
-                            'success'        => true,
-                            'otp_sent'       => true,
-                            'session_key'    => $session_key,
-                            'phone_masked'   => \TBCRegistration\Helpers::mask_phone($clean_phone),
-                            'voice_fallback' => $voice_fallback,
-                        ], 200);
-                    }
-                    // OTP send failed — fall through to email
-                }
-            }
-        }
-
-        // Fallback: WordPress native email reset
         $result = retrieve_password($user->user_login);
 
         if (is_wp_error($result)) {

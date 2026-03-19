@@ -8,7 +8,7 @@
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ImageBackground, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, BackHandler, ImageBackground, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
@@ -34,6 +34,12 @@ export default function LoginGateScreen() {
     () => missingFields?.includes('avatar') ?? true,
     [missingFields]
   );
+
+  // Block Android back button — this is a gate, not a dismissable screen
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
 
   // Fetch existing profile data on mount so the form pre-populates
   useEffect(() => {

@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.44.2
+- **Removed dead OTP code from password recovery** — `handle_forgot()` no longer checks for `TBCRegistration\Helpers` or attempts OTP via Twilio. Password reset is WordPress native email only, matching the app's email-only UI.
+
 ## v3.43.0
 - **Base registration endpoints**: Added `tbc-ca/v1/auth/register/fields`, `tbc-ca/v1/auth/register`, `tbc-ca/v1/auth/register/status`, `tbc-ca/v1/auth/register/complete` — registration now works with FC's native registration without requiring tbc-registration plugin
 - **Registration capabilities in /app-config**: New `registration` object in app-config response with `enabled`, `email_verification`, `otp`, and `profile_completion` fields. Add-on plugins (tbc-otp, tbc-profile-completion) hook `tbc_ca_registration_config` filter to advertise their capabilities

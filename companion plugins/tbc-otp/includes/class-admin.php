@@ -64,7 +64,7 @@ class Admin {
         $options = [
             'twilio_sid', 'twilio_token', 'verify_service_sid',
             'enable_registration_verification', 'enable_voice_fallback',
-            'disable_email_verification', 'disable_rate_limit',
+            'enable_email_2fa', 'disable_rate_limit',
             'restrict_duplicates', 'blocked_numbers', 'phone_field_slug',
         ];
 
@@ -72,8 +72,40 @@ class Admin {
             register_setting('tbc_otp_settings', TBC_OTP_OPTION_PREFIX . $key);
         }
 
+        // Validate: phone field slug is required when OTP is enabled
+        add_action('pre_update_option_' . TBC_OTP_OPTION_PREFIX . 'enable_registration_verification', [$this, 'validate_otp_requires_phone_slug'], 10, 2);
+
         // Fix unchecked checkboxes
         add_action('admin_init', [$this, 'fix_checkbox_saves'], 99);
+    }
+
+    /**
+     * Block enabling OTP without a phone field slug configured.
+     *
+     * @param mixed $new_value The new option value.
+     * @param mixed $old_value The old option value.
+     * @return mixed
+     */
+    public function validate_otp_requires_phone_slug($new_value, $old_value) {
+        if (empty($new_value)) {
+            return $new_value;
+        }
+
+        // Check if phone slug is being set in this same save request
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing — runs inside pre_update_option hook; nonce already verified by options.php
+        $phone_slug = sanitize_text_field($_POST[TBC_OTP_OPTION_PREFIX . 'phone_field_slug'] ?? '');
+
+        if (empty($phone_slug)) {
+            add_settings_error(
+                'tbc_otp_settings',
+                'phone_slug_required',
+                __('Phone OTP cannot be enabled without selecting a Phone Field. Please select one under Phone & Validation.', 'tbc-otp'),
+                'error'
+            );
+            return $old_value; // Revert — don't enable OTP
+        }
+
+        return $new_value;
     }
 
     /**
@@ -90,7 +122,7 @@ class Admin {
         $checkboxes = [
             'enable_registration_verification',
             'enable_voice_fallback',
-            'disable_email_verification',
+            'enable_email_2fa',
             'disable_rate_limit',
             'restrict_duplicates',
         ];
@@ -141,21 +173,19 @@ class Admin {
 
     /**
      * Get FC native custom field definitions (for phone selector).
-     * Reads from FluentCommunity XProfile field config.
+     * Queries fcom_meta table for custom_profile_fields config.
      */
     public static function get_fc_field_definitions(): array {
-        if (!class_exists('FluentCommunity\App\Functions\Utility')) {
+        if (!class_exists('FluentCommunity\App\Models\Meta')) {
             return [];
         }
-
-        $utility = 'FluentCommunity\App\Functions\Utility';
-        $settings = $utility::getCustomizationSettings();
-        $fields = $settings['custom_profile_fields'] ?? [];
-
-        if (!is_array($fields)) {
+        $meta = \FluentCommunity\App\Models\Meta::where('object_type', 'option')
+            ->where('meta_key', 'custom_profile_fields')
+            ->first();
+        if (!$meta) {
             return [];
         }
-
-        return $fields;
+        $config = $meta->value;
+        return $config['fields'] ?? [];
     }
 }

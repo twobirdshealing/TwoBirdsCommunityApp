@@ -72,22 +72,21 @@ $fc_field_defs = TBCOTP\Admin::get_fc_field_definitions();
                 </td>
             </tr>
             <tr>
+                <th scope="row"><?php esc_html_e('Email 2FA', 'tbc-otp'); ?></th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="tbc_otp_enable_email_2fa" value="1" <?php checked(1, TBCOTP\Helpers::get_option('enable_email_2fa', false)); ?> />
+                        <?php esc_html_e('Require email verification during registration.', 'tbc-otp'); ?>
+                    </label>
+                </td>
+            </tr>
+            <tr>
                 <th scope="row"><?php esc_html_e('Voice Call Fallback', 'tbc-otp'); ?></th>
                 <td>
                     <label>
                         <input type="checkbox" name="tbc_otp_enable_voice_fallback" value="1" <?php checked(1, TBCOTP\Helpers::get_option('enable_voice_fallback', false)); ?> />
                         <?php esc_html_e('Show a "Try voice call" option during OTP verification.', 'tbc-otp'); ?>
                     </label>
-                </td>
-            </tr>
-            <tr>
-                <th scope="row"><?php esc_html_e('Disable Email 2FA', 'tbc-otp'); ?></th>
-                <td>
-                    <label>
-                        <input type="checkbox" name="tbc_otp_disable_email_verification" value="1" <?php checked(1, TBCOTP\Helpers::get_option('disable_email_verification', true)); ?> />
-                        <?php esc_html_e("Skip FluentCommunity's email verification when phone OTP is active.", 'tbc-otp'); ?>
-                    </label>
-                    <p class="description"><?php esc_html_e('Recommended. Phone OTP already proves identity. Uncheck to require both phone OTP and email verification.', 'tbc-otp'); ?></p>
                 </td>
             </tr>
         </table>
@@ -97,7 +96,7 @@ $fc_field_defs = TBCOTP\Admin::get_fc_field_definitions();
 
         <table class="form-table">
             <?php
-            $phone_slug_setting = (string) TBCOTP\Helpers::get_option('phone_field_slug', '_phone');
+            $phone_slug_setting = (string) TBCOTP\Helpers::get_option('phone_field_slug', '');
             ?>
             <tr>
                 <th scope="row"><label for="tbc_otp_phone_field_slug"><?php esc_html_e('Phone Field', 'tbc-otp'); ?></label></th>
@@ -107,6 +106,7 @@ $fc_field_defs = TBCOTP\Admin::get_fc_field_definitions();
                     <?php endif; ?>
 
                     <select id="tbc_otp_phone_field_slug" name="tbc_otp_phone_field_slug" class="regular-text">
+                        <option value="" <?php selected($phone_slug_setting, ''); ?>><?php esc_html_e('— Select a field —', 'tbc-otp'); ?></option>
                         <?php foreach ($fc_field_defs as $fd) :
                             $slug = $fd['slug'] ?? '';
                             $label = $fd['label'] ?? $slug;

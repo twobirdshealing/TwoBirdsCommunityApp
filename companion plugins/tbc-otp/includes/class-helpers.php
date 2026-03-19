@@ -77,6 +77,9 @@ class Helpers {
         }
 
         $slug  = self::get_phone_slug();
+        if (empty($slug)) {
+            return false;
+        }
         $table = $wpdb->prefix . 'fcom_xprofile';
 
         $query  = "SELECT user_id FROM {$table}
@@ -137,8 +140,7 @@ class Helpers {
      * Get the FC native field slug used for phone storage.
      */
     public static function get_phone_slug(): string {
-        $setting = (string) self::get_option('phone_field_slug', '_phone');
-        return !empty($setting) ? $setting : '_phone';
+        return (string) self::get_option('phone_field_slug', '');
     }
 
     /**

@@ -9,6 +9,7 @@
 
 import type { Router } from 'expo-router';
 import { registerCache } from '@/services/cacheRegistry';
+import { registerModuleResponseHeaders } from '@/services/api/client';
 import type {
   ModuleManifest,
   TabRegistration,
@@ -127,6 +128,7 @@ export function getModuleRoutePrefixes(): string[] {
 
 /** All module response header mappings (consumed by API client for generic header extraction) */
 const _cachedResponseHeaders: ResponseHeaderMapping[] = MODULES.flatMap((m) => m.responseHeaders ?? []);
+registerModuleResponseHeaders(_cachedResponseHeaders);
 export function getModuleResponseHeaders(): ResponseHeaderMapping[] {
   return _cachedResponseHeaders;
 }

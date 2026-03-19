@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.4.4 — 2026-03-18
+
+### Fixed
+- **App registration: OTP skipped when phone slug unconfigured** — Empty `phone_field_slug` caused OTP to silently skip during app registration. Added settings validation to require phone field selection when OTP is enabled, persistent admin warning for broken configs, and diagnostic logging to `intercept_registration`.
+
+## 1.4.3 — 2026-03-18
+
+### Changed
+- **Email 2FA setting renamed** — "Disable Email 2FA" → "Email 2FA". Checkbox is now positive logic: checked = on. Moved under Registration OTP.
+
+## 1.4.2 — 2026-03-18
+
+### Fixed
+- **App registration: added `voice_fallback`** to the OTP-required response from `tbc_ca_pre_register` hook so the app can show the "Try voice call" option.
+
+## 1.4.1 — 2026-03-18
+
+### Fixed
+- **Phone Field dropdown empty** — `get_fc_field_definitions()` was calling `Utility::getCustomizationSettings()` which never contained `custom_profile_fields`. Now queries the `fcom_meta` table directly (same approach as tbc-community-app), works with all FC versions including fluent-community-new/pro-new.
+- **Removed `_phone` fallback** — Phone field slug no longer defaults to `_phone` when unconfigured. Dropdown shows "Select a field" placeholder instead. Prevents silent writes to a wrong slug if the buyer names their field something different.
+
 ## 1.4.0 — 2026-03-18
 
 ### Changed

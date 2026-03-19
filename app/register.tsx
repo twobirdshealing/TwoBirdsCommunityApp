@@ -258,19 +258,22 @@ export default function RegisterScreen() {
         return 'Session expired';
       }
 
-      // Check if any pre-creation module step should activate
-      const activePreSteps = getRegistrationSteps().filter(
-        (s) => s.id !== 'email-verify' && s.phase === 'pre-creation' &&
-               s.shouldActivate({ submitResponse: result, registrationConfig })
-      );
+      // Check if any pre-creation module step should activate (before auto-login)
+      // Module interception responses have success: false with module-specific flags
+      if (!result.success) {
+        const activePreSteps = getRegistrationSteps().filter(
+          (s) => s.id !== 'email-verify' && s.phase === 'pre-creation' &&
+                 s.shouldActivate({ submitResponse: result, registrationConfig })
+        );
 
-      if (activePreSteps.length > 0) {
-        setStep(MODULE_STEPS_START);
-        return null;
+        if (activePreSteps.length > 0) {
+          setStep(MODULE_STEPS_START);
+          return null;
+        }
       }
 
+      // Registration complete — auto-login and go to app
       if (result.success && result.access_token && result.user) {
-        // Registration complete — auto-login and go to app
         await registerAndLogin(
           result.access_token,
           result.refresh_token || '',
@@ -569,8 +572,9 @@ export default function RegisterScreen() {
               </Text>
             ) : null}
 
-            {/* Error Message (steps 1-2 only — verification steps manage their own errors) */}
-            {error && step <= 2 && (
+            {/* Error Message — module steps (4+) manage their own error UI;
+                parent errors show on form steps (1-2) and email verify (3) */}
+            {error && step < MODULE_STEPS_START && (
               <View style={[styles.errorContainer, { backgroundColor: themeColors.errorLight, borderColor: withOpacity(themeColors.error, 0.3) }]}>
                 <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
               </View>

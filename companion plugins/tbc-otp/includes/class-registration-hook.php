@@ -50,6 +50,7 @@ class RegistrationHook {
 
         $otp_enabled = (bool) Helpers::get_option('enable_registration_verification', true);
         if (!$otp_enabled) {
+            Helpers::log('OTP registration verification is disabled, skipping');
             return null;
         }
 
@@ -66,8 +67,10 @@ class RegistrationHook {
         $phone_slug = Helpers::get_phone_slug();
         $phone_value = $data[$phone_slug] ?? '';
 
+        Helpers::log("Phone slug: '{$phone_slug}', value present: " . (!empty($phone_value) ? 'yes' : 'no'));
+
         if (empty($phone_value)) {
-            // No phone provided — skip OTP, let registration proceed
+            Helpers::log('No phone value found in registration data — skipping OTP (' . count($data) . ' fields submitted)');
             return null;
         }
 
@@ -117,10 +120,11 @@ class RegistrationHook {
         ]);
 
         return new \WP_REST_Response([
-            'success'      => false,
-            'otp_required' => true,
-            'session_key'  => $new_session_key,
-            'phone_masked' => Helpers::mask_phone($clean_phone),
+            'success'        => false,
+            'otp_required'   => true,
+            'session_key'    => $new_session_key,
+            'phone_masked'   => Helpers::mask_phone($clean_phone),
+            'voice_fallback' => (bool) Helpers::get_option('enable_voice_fallback', false),
         ], 200);
     }
 
@@ -136,8 +140,8 @@ class RegistrationHook {
      * Hook: fluent_auth/verify_signup_email
      */
     public function maybe_disable_email_verification(bool $enabled): bool {
-        $disable = (bool) Helpers::get_option('disable_email_verification', true);
-        if ($disable && (bool) Helpers::get_option('enable_registration_verification', true)) {
+        $email_2fa = (bool) Helpers::get_option('enable_email_2fa', false);
+        if (!$email_2fa && (bool) Helpers::get_option('enable_registration_verification', true)) {
             return false;
         }
         return $enabled;

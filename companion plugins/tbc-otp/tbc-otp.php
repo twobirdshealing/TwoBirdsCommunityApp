@@ -3,7 +3,7 @@
  * Plugin Name: TBC OTP Verification
  * Plugin URI:  https://twobirdscode.com
  * Description: Phone OTP verification via Twilio for Fluent Community registration.
- * Version:     1.4.0
+ * Version:     1.4.4
  * Author:      Two Birds Code
  * Author URI:  https://twobirdscode.com
  * Text Domain: tbc-otp
@@ -19,7 +19,7 @@
 
 defined('ABSPATH') or die('No direct script access allowed');
 
-define('TBC_OTP_VERSION', '1.4.0');
+define('TBC_OTP_VERSION', '1.4.4');
 define('TBC_OTP_FILE', __FILE__);
 define('TBC_OTP_DIR', plugin_dir_path(__FILE__));
 define('TBC_OTP_URL', plugin_dir_url(__FILE__));
@@ -87,6 +87,22 @@ add_action('plugins_loaded', function () {
         add_action('admin_menu', [$admin, 'add_admin_menu']);
         add_action('admin_init', [$admin, 'register_settings']);
         add_action('admin_enqueue_scripts', [$admin, 'admin_assets']);
+
+        // Warn if OTP is enabled but phone field slug is not configured
+        $otp_enabled = (bool) TBCOTP\Helpers::get_option('enable_registration_verification', true);
+        $phone_slug  = (string) TBCOTP\Helpers::get_option('phone_field_slug', '');
+        if ($otp_enabled && empty($phone_slug)) {
+            add_action('admin_notices', function () {
+                $url = admin_url('admin.php?page=tbc-otp');
+                printf(
+                    '<div class="notice notice-error"><p><strong>%s</strong> %s <a href="%s">%s</a></p></div>',
+                    esc_html__('TBC OTP:', 'tbc-otp'),
+                    esc_html__('Phone OTP is enabled but no phone field is selected. OTP verification will be skipped during registration.', 'tbc-otp'),
+                    esc_url($url),
+                    esc_html__('Configure now &rarr;', 'tbc-otp')
+                );
+            });
+        }
     }
 }, 25); // After tbc-community-app (priority 20)
 
@@ -100,10 +116,10 @@ register_activation_hook(__FILE__, function () {
         'verify_service_sid'               => '',
         'enable_registration_verification' => true,
         'enable_voice_fallback'            => false,
-        'disable_email_verification'       => true,
+        'enable_email_2fa'                 => false,
         'restrict_duplicates'              => false,
         'blocked_numbers'                  => '',
-        'phone_field_slug'                 => '_phone',
+        'phone_field_slug'                 => '',
     ];
 
     foreach ($defaults as $key => $value) {

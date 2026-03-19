@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Community App
  * Plugin URI: https://twobirdscode.com
  * Description: Support plugin for the Two Birds Community mobile app. Provides web sessions for WebView, app-specific styling, and push notifications.
- * Version: 3.44.1
+ * Version: 3.44.2
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('TBC_CA_VERSION', '3.44.1');
+define('TBC_CA_VERSION', '3.44.2');
 define('TBC_CA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TBC_CA_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TBC_CA_PLUGIN_FILE', __FILE__);
