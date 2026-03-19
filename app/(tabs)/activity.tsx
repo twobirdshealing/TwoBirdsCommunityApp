@@ -52,41 +52,13 @@ export default function ActivityScreen() {
         throw new Error(response.error?.message || 'Failed to load feeds');
       }
 
-      // BULLETPROOF: sticky can be null, undefined, object, or array
-      let stickyPosts: Feed[] = [];
-      const rawSticky = response.data.sticky;
-
-      if (rawSticky) {
-        if (Array.isArray(rawSticky)) {
-          stickyPosts = rawSticky;
-        } else if (typeof rawSticky === 'object') {
-          if (Array.isArray((rawSticky as any).data)) {
-            stickyPosts = (rawSticky as any).data;
-          } else if ((rawSticky as any).id) {
-            stickyPosts = [rawSticky as Feed];
-          } else {
-            const values = Object.values(rawSticky);
-            if (values.length > 0 && (values[0] as any)?.id) {
-              stickyPosts = values as Feed[];
-            }
-          }
-        }
-      }
-
-      // BULLETPROOF: feeds.data can also be missing
-      let regularFeeds: Feed[] = [];
+      // Activity feed — no sticky posts (sticky is a space-only feature)
+      let feeds: Feed[] = [];
       if (response.data.feeds?.data && Array.isArray(response.data.feeds.data)) {
-        regularFeeds = response.data.feeds.data;
+        feeds = response.data.feeds.data;
       }
 
-      // Remove duplicates (sticky might also appear in regular feeds)
-      const stickyIds = new Set(stickyPosts.map(f => f.id));
-      const filteredRegular = regularFeeds.filter(f => !stickyIds.has(f.id));
-
-      // Ensure sticky posts are marked
-      const markedSticky = stickyPosts.map(f => ({ ...f, is_sticky: true }));
-
-      return [...markedSticky, ...filteredRegular];
+      return feeds;
     },
   });
 

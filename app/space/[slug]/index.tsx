@@ -119,12 +119,25 @@ export default function SpacePage() {
         rawFeeds = response.data;
       }
 
-      // Sort: sticky first, then by date
-      return [...rawFeeds].sort((a, b) => {
-        if (a.is_sticky && !b.is_sticky) return -1;
-        if (!a.is_sticky && b.is_sticky) return 1;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
+      // FC 2.3.0 returns sticky as a separate top-level object (not in feeds.data)
+      let stickyPosts: Feed[] = [];
+      const rawSticky = response.data.sticky;
+      if (rawSticky) {
+        if (Array.isArray(rawSticky)) {
+          stickyPosts = rawSticky;
+        } else if (typeof rawSticky === 'object' && (rawSticky as any).id) {
+          stickyPosts = [rawSticky as Feed];
+        }
+      }
+
+      // Merge sticky at top, remove duplicates, sort rest by date
+      const stickyIds = new Set(stickyPosts.map(f => f.id));
+      const filteredRegular = rawFeeds.filter(f => !stickyIds.has(f.id));
+      const markedSticky = stickyPosts.map(f => ({ ...f, is_sticky: true as const }));
+
+      return [...markedSticky, ...filteredRegular.sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )];
     },
     enabled: !!slug,
   });
