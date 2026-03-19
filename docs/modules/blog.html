@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App &mdash; Blog Module</title>
+<link rel="stylesheet" href="../docs-theme.css">
+<script src="../docs-theme.js"></script>
+</head>
+<body>
+
+<div class="docs-nav">
+  <a href="index.html">&larr; All Modules</a>
+</div>
+
+<h1>Blog Module <span class="tag addon">Sold Separately</span></h1>
+<p class="subtitle">Blog posts from WordPress with full comment support</p>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-number">blog</span>
+    <span class="stat-label">Module ID</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">1.0.0</span>
+    <span class="stat-label">Version</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">&mdash;</span>
+    <span class="stat-label">Companion Plugin</span>
+  </div>
+</div>
+
+<div class="callout">
+  <strong>No companion plugin required.</strong> The Blog module uses the standard WordPress REST API (<code>/wp-json/wp/v2</code>) that ships with every WordPress site. No additional server-side setup is needed.
+</div>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#registration">Module Registration</a></li>
+    <li><a href="#file-structure">File Structure</a></li>
+    <li><a href="#routes">Route Stubs</a></li>
+    <li><a href="#api">API Endpoints</a></li>
+    <li><a href="#setup">Setup</a></li>
+  </ol>
+</nav>
+
+<!-- ================================================================== -->
+<h2 id="registration">Module Registration</h2>
+
+<p>The Blog module manifest registers the following extension points:</p>
+
+<h3>Widget</h3>
+<table>
+  <tr><th>Property</th><th>Value</th></tr>
+  <tr><td>ID</td><td><code>latest-blog</code></td></tr>
+  <tr><td>Label</td><td>Latest Blog</td></tr>
+  <tr><td>Icon</td><td><code>book-outline</code></td></tr>
+  <tr><td>See All Route</td><td><code>/blog</code></td></tr>
+  <tr><td>Default Enabled</td><td><span class="check">&#10003;</span></td></tr>
+  <tr><td>Can Disable</td><td><span class="check">&#10003;</span></td></tr>
+  <tr><td>External Wrapper</td><td><span class="check">&#10003;</span></td></tr>
+</table>
+
+<h3>Menu Item</h3>
+<table>
+  <tr><th>Property</th><th>Value</th></tr>
+  <tr><td>ID</td><td><code>blog</code></td></tr>
+  <tr><td>Label</td><td>Blog</td></tr>
+  <tr><td>Icon</td><td><code>newspaper-outline</code></td></tr>
+  <tr><td>Route</td><td><code>/blog</code></td></tr>
+  <tr><td>Order</td><td>60</td></tr>
+</table>
+
+<h3>Route Prefixes</h3>
+<pre><code>routePrefixes: ['/blog', '/blog-comments']</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="file-structure">File Structure</h2>
+
+<pre><code>modules/blog/
+  <span class="file-path">module.ts</span>                       &larr; Module manifest
+  <span class="file-path">widgets/BlogWidget.tsx</span>          &larr; Home screen widget showing latest posts
+  <span class="file-path">screens/BlogListScreen.tsx</span>      &larr; Blog post list screen
+  <span class="file-path">screens/BlogDetailScreen.tsx</span>    &larr; Single blog post view
+  <span class="file-path">screens/BlogCommentsScreen.tsx</span>  &larr; Blog comment thread
+  <span class="file-path">components/BlogCard.tsx</span>         &larr; Blog post card component
+  <span class="file-path">components/BlogCommentSheet.tsx</span> &larr; Comment bottom sheet
+  <span class="file-path">services/blogApi.ts</span>             &larr; WP REST API service with wpRequest() wrapper
+  <span class="file-path">types/blog.ts</span>                   &larr; TypeScript types</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="routes">Route Stubs</h2>
+
+<p>Each route stub is a one-line re-export in the <span class="file-path">app/</span> directory:</p>
+
+<table>
+  <tr><th>Route Stub</th><th>Screen</th></tr>
+  <tr><td><span class="file-path">app/blog/index.tsx</span></td><td>BlogListScreen</td></tr>
+  <tr><td><span class="file-path">app/blog/[id].tsx</span></td><td>BlogDetailScreen</td></tr>
+  <tr><td><span class="file-path">app/blog-comments/[id].tsx</span></td><td>BlogCommentsScreen</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="api">API Endpoints</h2>
+
+<p>All endpoints use the standard WordPress REST API. The module&rsquo;s <span class="file-path">services/blogApi.ts</span> wraps these with the <code>wpRequest()</code> helper.</p>
+
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+  <tr><td><code>GET</code></td><td><code>/wp-json/wp/v2/posts</code></td><td>List blog posts (paginated)</td></tr>
+  <tr><td><code>GET</code></td><td><code>/wp-json/wp/v2/posts/:id</code></td><td>Single blog post</td></tr>
+  <tr><td><code>GET</code></td><td><code>/wp-json/wp/v2/comments?post=:id</code></td><td>Comments for a post</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="setup">Setup</h2>
+
+<h3>1. Enable the module</h3>
+<p>Register the blog module in <span class="file-path">modules/_registry.ts</span>:</p>
+<pre><code>import { blogModule } from './blog/module';
+
+// Add to the modules array:
+blogModule,</code></pre>
+
+<h3>2. Add route stubs</h3>
+<p>Create the route stub files listed above in <span class="file-path">app/blog/</span> and <span class="file-path">app/blog-comments/</span>. Each is a single re-export line pointing to the corresponding screen.</p>
+
+<h3>3. WordPress configuration</h3>
+<div class="callout callout-success">
+  No server-side setup required. The Blog module reads from the built-in WordPress REST API that is enabled by default on all WordPress sites.
+</div>
+
+<p>If your site has the REST API disabled or restricted, ensure that <code>/wp-json/wp/v2/posts</code> and <code>/wp-json/wp/v2/comments</code> are accessible.</p>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">
+<p style="margin-top: 16px; color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary)); font-size: 0.9em;">
+  <a href="index.html">All Modules</a> &middot;
+  <a href="../module-system.html">Module System</a> &middot;
+  <a href="../companion-plugins.html">Companion Plugins</a>
+</p>
+</body>
+</html>

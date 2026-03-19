@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App &mdash; Profile Completion Module</title>
+<link rel="stylesheet" href="../docs-theme.css">
+<script src="../docs-theme.js"></script>
+</head>
+<body>
+
+<div class="docs-nav">
+  <a href="index.html">&larr; All Modules</a>
+</div>
+
+<h1>Profile Completion Module <span class="tag addon">Sold Separately</span></h1>
+<p class="subtitle">Requires bio and/or avatar after registration before accessing the app</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#prerequisites">Prerequisites</a></li>
+    <li><a href="#setup">Setup</a></li>
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#file-structure">File Structure</a></li>
+    <li><a href="#api-endpoints">API Endpoints</a></li>
+    <li><a href="#configuration">Configuration</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="overview">Overview</h2>
+
+<p>The Profile Completion module acts as a <strong>login gate</strong> that ensures users have filled out essential profile fields before they can access the app. Unlike the OTP module which runs during registration, this module activates <strong>after account creation</strong> and intercepts every authenticated session where the profile is still incomplete.</p>
+
+<table>
+  <tr><th>Property</th><th>Value</th></tr>
+  <tr><td>Module ID</td><td><code>profile-completion</code></td></tr>
+  <tr><td>Version</td><td>1.0.0</td></tr>
+  <tr><td>Companion plugin</td><td><code>tbc-profile-completion</code> <span class="tag required">required</span></td></tr>
+  <tr><td>Registers</td><td><code>providers</code> (ProfileIncompleteProvider, order 90)<br><code>responseHeaders</code> (X-TBC-Profile-Incomplete)<br><code>routePrefixes</code> (['/profile-complete'])</td></tr>
+  <tr><td>API base</td><td><code>${SITE_URL}/wp-json/tbc-pcom/v1</code></td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="prerequisites">Prerequisites</h2>
+
+<ul>
+  <li>The <code>tbc-profile-completion</code> companion plugin installed and activated on your WordPress site</li>
+  <li>The Profile Completion module enabled in <span class="file-path">modules/_registry.ts</span></li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="setup">Setup</h2>
+
+<h3>1. Install the companion plugin</h3>
+
+<p>Upload <span class="file-path">companion plugins/tbc-profile-completion</span> to your WordPress site and activate it.</p>
+
+<h3>2. Configure required fields</h3>
+
+<p>In WordPress admin, go to the Profile Completion settings page and choose which fields are required:</p>
+
+<ul>
+  <li><strong>Bio</strong> &mdash; require users to write a short biography</li>
+  <li><strong>Avatar</strong> &mdash; require users to upload a profile photo</li>
+  <li><strong>Social links</strong> &mdash; optionally require social media links (configurable per admin settings)</li>
+</ul>
+
+<h3>3. Enable the module</h3>
+
+<p>In <span class="file-path">modules/_registry.ts</span>, ensure the Profile Completion module is registered:</p>
+
+<pre><code>import profileCompletion from './profile-completion/module';
+
+export const modules = [
+  profileCompletion,
+  // ...other modules
+];</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="how-it-works">How It Works</h2>
+
+<p>The module uses a <strong>response header detection</strong> pattern rather than a registration step. This means it works for both new sign-ups and existing users who have not yet completed their profiles.</p>
+
+<div class="flow-diagram">User logs in or opens the app
+              &darr;
+App makes any authenticated API request
+              &darr;
+Server attaches header:
+  X-TBC-Profile-Incomplete: 1
+              &darr;
+Module's responseHeaders config extracts header:
+  key: "profileIncomplete"
+  transform: value &rarr; boolean
+              &darr;
+ProfileIncompleteProvider detects flag
+              &darr;
+User is redirected to LoginGateScreen
+  (/profile-complete route)
+              &darr;
+ProfileCompletionSteps shown:
+  &bull; Bio input
+  &bull; Social links (if configured)
+  &bull; Avatar upload
+              &darr;
+User submits &rarr; POST tbc-pcom/v1/complete
+              &darr;
+Server clears X-TBC-Profile-Incomplete header
+              &darr;
+Provider detects header is gone
+              &darr;
+User accesses the app normally</div>
+
+<h3>Detection Flow</h3>
+
+<p>The detection is <strong>continuous</strong>, not one-time. The <code>ProfileIncompleteProvider</code> wraps the entire app (registered at order 90) and monitors every API response for the <code>X-TBC-Profile-Incomplete</code> header. This means:</p>
+
+<ul>
+  <li>If an admin later marks additional fields as required, existing users will be gated again on their next session</li>
+  <li>The gate cannot be bypassed by navigating directly to app screens &mdash; the provider intercepts at the top level</li>
+  <li>Once the header clears (profile is complete), the redirect stops immediately without requiring a restart</li>
+</ul>
+
+<div class="callout">
+  <strong>No registration steps.</strong> Unlike the OTP module, Profile Completion does not register any <code>registrationSteps</code>. It operates entirely as a post-login gate via the provider + response header pattern.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="file-structure">File Structure</h2>
+
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr>
+    <td><span class="file-path">modules/profile-completion/module.ts</span></td>
+    <td>Module manifest &mdash; declares ID, name, version, providers, response headers, and route prefixes</td>
+  </tr>
+  <tr>
+    <td><span class="file-path">modules/profile-completion/ProfileIncompleteProvider.tsx</span></td>
+    <td>App-level provider &mdash; detects incomplete profiles via the response header and triggers redirect</td>
+  </tr>
+  <tr>
+    <td><span class="file-path">modules/profile-completion/components/ProfileCompletionSteps.tsx</span></td>
+    <td>Step-by-step UI &mdash; bio input, social links, and avatar upload screens</td>
+  </tr>
+  <tr>
+    <td><span class="file-path">modules/profile-completion/screens/LoginGateScreen.tsx</span></td>
+    <td>Full-screen gate &mdash; shown when the profile is incomplete, blocks access to the rest of the app</td>
+  </tr>
+  <tr>
+    <td><span class="file-path">modules/profile-completion/services/profileCompletion.ts</span></td>
+    <td>API service &mdash; wraps all <code>tbc-pcom/v1</code> endpoint calls</td>
+  </tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="api-endpoints">API Endpoints</h2>
+
+<p>All endpoints use the base path <code>${SITE_URL}/wp-json/tbc-pcom/v1</code>.</p>
+
+<h3>GET <code>tbc-pcom/v1/status</code></h3>
+
+<p>Check whether the current user's profile is complete. Returns a list of missing fields.</p>
+
+<table class="prop-table">
+  <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+  <tr><td colspan="3"><em>No parameters &mdash; uses the authenticated user's session</em></td></tr>
+</table>
+
+<p><strong>Response:</strong></p>
+
+<pre><code>{
+  "complete": false,
+  "missing": ["bio", "avatar"]
+}</code></pre>
+
+<h3>POST <code>tbc-pcom/v1/complete</code></h3>
+
+<p>Submit the completed profile data. On success, the server stops sending the <code>X-TBC-Profile-Incomplete</code> header.</p>
+
+<table class="prop-table">
+  <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+  <tr><td>bio</td><td>string</td><td>User's biography text</td></tr>
+  <tr><td>avatar</td><td>file</td><td>Profile photo (multipart upload)</td></tr>
+  <tr><td>social_links</td><td>object</td><td>Social media links (keys depend on admin configuration)</td></tr>
+</table>
+
+<div class="callout callout-warn">
+  <strong>Field requirements vary.</strong> Which fields are required depends on the admin configuration. The app should check the <code>GET status</code> endpoint to determine which fields to show.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="configuration">Configuration</h2>
+
+<h3>WordPress Admin Settings</h3>
+
+<p>After installing the <code>tbc-profile-completion</code> plugin, navigate to its settings page in the WordPress admin:</p>
+
+<table>
+  <tr><th>Setting</th><th>Description</th></tr>
+  <tr><td>Require Bio</td><td>When enabled, users must enter a biography before accessing the app</td></tr>
+  <tr><td>Require Avatar</td><td>When enabled, users must upload a profile photo</td></tr>
+  <tr><td>Required Social Links</td><td>Configure which social media fields are required (if any)</td></tr>
+</table>
+
+<h3>Module Manifest</h3>
+
+<p>The module manifest in <span class="file-path">modules/profile-completion/module.ts</span> registers three things:</p>
+
+<ul>
+  <li><strong>providers</strong> &mdash; <code>ProfileIncompleteProvider</code> at order 90, wrapping the app to detect the incomplete profile header</li>
+  <li><strong>responseHeaders</strong> &mdash; maps <code>X-TBC-Profile-Incomplete</code> to the key <code>profileIncomplete</code>, transformed to a boolean</li>
+  <li><strong>routePrefixes</strong> &mdash; registers <code>/profile-complete</code> as a known route prefix so navigation works correctly</li>
+</ul>
+
+<div class="callout">
+  <strong>Provider order 90</strong> means the ProfileIncompleteProvider wraps most other providers but runs after lower-order providers (like auth) have initialized. This ensures the user is authenticated before the profile check runs.
+</div>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">
+<p style="margin-top: 16px; color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary)); font-size: 0.9em;">
+  <a href="index.html">All Modules</a> &middot;
+  <a href="../module-system.html">Module System</a> &middot;
+  <a href="../companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="../registration.html">Registration</a>
+</p>
+</body>
+</html>

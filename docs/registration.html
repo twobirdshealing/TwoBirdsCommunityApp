@@ -17,10 +17,10 @@
   <span class="file-path">app/register.tsx</span> (wizard screen),
   <span class="file-path">app/profile-complete.tsx</span> (login-time gate),
   <span class="file-path">services/api/registration.ts</span> (all registration + profile APIs),
-  <span class="file-path">services/api/otp.ts</span> (universal OTP service),
-  <span class="file-path">hooks/useOtpVerification.ts</span> (OTP state management),
+  <span class="file-path">modules/otp/services/otp.ts</span> (OTP service — add-on module),
+  <span class="file-path">modules/otp/hooks/useOtpVerification.ts</span> (OTP state management — add-on module),
   <span class="file-path">components/register/</span> (step components),
-  <span class="file-path">components/profile/ProfileCompletionSteps.tsx</span> (bio + avatar).
+  <span class="file-path">modules/profile-completion/components/ProfileCompletionSteps.tsx</span> (bio + avatar — add-on module).
   <br><br>
   WordPress backend: <span class="file-path">companion plugins/tbc-community-app/</span> — base registration REST API,
   <span class="file-path">companion plugins/tbc-otp/</span> — OTP/Twilio (add-on),
@@ -215,7 +215,7 @@
 <!-- ================================================================== -->
 <h2 id="otp">4. OTP Verification (Twilio)</h2>
 
-<p>Phone verification via Twilio SMS or voice call. The universal OTP service in <span class="file-path">services/api/otp.ts</span> handles all OTP contexts (registration, password recovery, profile).</p>
+<p>Phone verification via Twilio SMS or voice call. The OTP service in <span class="file-path">modules/otp/services/otp.ts</span> handles all OTP contexts (registration, password recovery, profile). This is an <strong>add-on module</strong> — requires the <code>tbc-otp</code> companion plugin.</p>
 
 <h3>OTP Endpoints</h3>
 
@@ -238,7 +238,7 @@
 </ol>
 
 <h3>useOtpVerification Hook</h3>
-<p><span class="file-path">hooks/useOtpVerification.ts</span> — shared state management for OTP across registration and password recovery.</p>
+<p><span class="file-path">modules/otp/hooks/useOtpVerification.ts</span> — shared state management for OTP across registration and password recovery.</p>
 
 <pre><code>const otp = useOtpVerification({
   onVerified: (sessionKey) =&gt; handleSubmitRegistration(sessionKey),
@@ -309,7 +309,7 @@ otp.reset()           // Clear all state</code></pre>
 </ul>
 
 <h3>ProfileCompletionSteps Component</h3>
-<p><span class="file-path">components/profile/ProfileCompletionSteps.tsx</span> — used by both register.tsx and profile-complete.tsx.</p>
+<p><span class="file-path">modules/profile-completion/components/ProfileCompletionSteps.tsx</span> — used by both register.tsx and profile-complete.tsx. This is an <strong>add-on module</strong> — requires the <code>tbc-profile-completion</code> companion plugin.</p>
 
 <p><strong>Internal Step 1: Bio + Social</strong></p>
 <ul>
@@ -503,8 +503,8 @@ TBC_OTP_URL = `${SITE_URL}/wp-json/tbc-otp/v1`   // OTP (add-on, requires tbc-ot
   <tr><td><span class="file-path">app/profile-complete.tsx</span></td><td>Login-time profile completion gate</td></tr>
   <tr><td><span class="file-path">app/forgot-password.tsx</span></td><td>Password recovery screen</td></tr>
   <tr><td><span class="file-path">services/api/registration.ts</span></td><td>Registration + profile completion API (all endpoints)</td></tr>
-  <tr><td><span class="file-path">services/api/otp.ts</span></td><td>Universal OTP service (verify, resend, voice)</td></tr>
-  <tr><td><span class="file-path">hooks/useOtpVerification.ts</span></td><td>Shared OTP state management hook</td></tr>
+  <tr><td><span class="file-path">modules/otp/services/otp.ts</span></td><td>OTP service — verify, resend, voice (add-on module)</td></tr>
+  <tr><td><span class="file-path">modules/otp/hooks/useOtpVerification.ts</span></td><td>OTP state management hook (add-on module)</td></tr>
   <tr><td><span class="file-path">contexts/AuthContext.tsx</span></td><td><code>registerAndLogin()</code>, <code>markProfileComplete()</code>, <code>needsProfileCompletion</code></td></tr>
   <tr><td><span class="file-path">components/register/EmailVerifyStep.tsx</span></td><td>Email verification code input UI</td></tr>
   <tr><td><span class="file-path">modules/otp/components/PhoneOtpStep.tsx</span></td><td>Phone OTP code input UI (otp module)</td></tr>
@@ -562,6 +562,7 @@ TBC_OTP_URL = `${SITE_URL}/wp-json/tbc-otp/v1`   // OTP (add-on, requires tbc-ot
   <a href="media-uploads.html">Media</a> &middot;
   <a href="messaging.html">Messaging</a> &middot;
   <a href="module-system.html">Module System</a> &middot;
+  <a href="modules/">Modules</a> &middot;
   <a href="notifications.html">Notifications</a> &middot;
   <a href="profile-system.html">Profiles</a> &middot;
   <a href="pusher.html">Pusher</a> &middot;

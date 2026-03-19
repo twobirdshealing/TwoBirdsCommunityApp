@@ -356,7 +356,7 @@ if (result.errors) {
 <!-- ================================================================== -->
 <h2 id="otp-verification">11. OTP Verification</h2>
 
-<p>The <code>useOtpVerification</code> hook (<code>hooks/useOtpVerification.ts</code>) manages the complete OTP flow. It is used by registration, profile edit (phone change), and password recovery.</p>
+<p>The <code>useOtpVerification</code> hook (<code>modules/otp/hooks/useOtpVerification.ts</code>) manages the complete OTP flow. It is used by registration, profile edit (phone change), and password recovery. Part of the <strong>otp add-on module</strong>.</p>
 
 <h3>Hook State</h3>
 
@@ -421,11 +421,11 @@ if (result.errors) {
   <tr><td><code>components/common/SocialLinksForm.tsx</code></td><td>Social link inputs for profile</td></tr>
   <tr><td><code>components/common/ProfilePhotoPicker.tsx</code></td><td>Avatar + cover photo picker</td></tr>
   <tr><td><code>components/register/EmailVerifyStep.tsx</code></td><td>Email verification code entry</td></tr>
-  <tr><td><code>components/register/PhoneOtpStep.tsx</code></td><td>Phone OTP code entry</td></tr>
-  <tr><td><code>components/profile/ProfileCompletionSteps.tsx</code></td><td>Bio + avatar completion step</td></tr>
-  <tr><td><code>hooks/useOtpVerification.ts</code></td><td>OTP state machine + handlers</td></tr>
+  <tr><td><code>modules/otp/components/PhoneOtpStep.tsx</code></td><td>Phone OTP code entry (add-on module)</td></tr>
+  <tr><td><code>modules/profile-completion/components/ProfileCompletionSteps.tsx</code></td><td>Bio + avatar completion step (add-on module)</td></tr>
+  <tr><td><code>modules/otp/hooks/useOtpVerification.ts</code></td><td>OTP state machine + handlers (add-on module)</td></tr>
   <tr><td><code>services/api/registration.ts</code></td><td>GET fields, POST register</td></tr>
-  <tr><td><code>services/api/otp.ts</code></td><td>Verify, resend, voice call</td></tr>
+  <tr><td><code>modules/otp/services/otp.ts</code></td><td>Verify, resend, voice call (add-on module)</td></tr>
   <tr><td><code>services/api/profiles.ts</code></td><td>GET/POST profile, PATCH media</td></tr>
   <tr><td><code>types/user.ts</code></td><td>User, Profile, CustomFieldConfig types</td></tr>
 </table>
@@ -464,6 +464,7 @@ if (result.errors) {
   <a href="media-uploads.html">Media</a> &middot;
   <a href="messaging.html">Messaging</a> &middot;
   <a href="module-system.html">Module System</a> &middot;
+  <a href="modules/">Modules</a> &middot;
   <a href="notifications.html">Notifications</a> &middot;
   <a href="profile-system.html">Profiles</a> &middot;
   <a href="pusher.html">Pusher</a> &middot;

@@ -787,7 +787,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <table>
   <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
   <tr><td>ProfileHeader</td><td><span class="file-path">components/profile/ProfileHeader.tsx</span></td><td>Hero section: cover, avatar, name, bio, actions</td></tr>
-  <tr><td>ProfileCompletionSteps</td><td><span class="file-path">components/profile/ProfileCompletionSteps.tsx</span></td><td>Onboarding: bio + avatar steps after registration</td></tr>
+  <tr><td>ProfileCompletionSteps</td><td><span class="file-path">modules/profile-completion/components/ProfileCompletionSteps.tsx</span></td><td>Onboarding: bio + avatar steps after registration (add-on module)</td></tr>
   <tr><td>ProfileMenu</td><td><span class="file-path">components/profile/ProfileMenu.tsx</span></td><td>Actions menu (edit, message, block, report)</td></tr>
   <tr><td>AboutTab</td><td><span class="file-path">components/profile/AboutTab.tsx</span></td><td>About section with custom fields</td></tr>
 </table>
@@ -832,10 +832,10 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <table>
   <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
   <tr><td>EmailVerifyStep</td><td><span class="file-path">components/register/EmailVerifyStep.tsx</span></td><td>Step 3: email verification code input with resend timer</td></tr>
-  <tr><td>PhoneOtpStep</td><td><span class="file-path">components/register/PhoneOtpStep.tsx</span></td><td>Step 4: phone OTP verification with voice call fallback</td></tr>
+  <tr><td>PhoneOtpStep</td><td><span class="file-path">modules/otp/components/PhoneOtpStep.tsx</span></td><td>Step 4: phone OTP verification with voice call fallback (add-on module)</td></tr>
 </table>
 <p>Both steps use shared styles from <span class="file-path">components/register/styles.ts</span> (<code>verificationStyles</code>).
-PhoneOtpStep receives the full <code>OtpVerificationState</code> type (exported from <span class="file-path">hooks/useOtpVerification.ts</span>) as its <code>otp</code> prop.
+PhoneOtpStep receives the full <code>OtpVerificationState</code> type (exported from <span class="file-path">modules/otp/hooks/useOtpVerification.ts</span>) as its <code>otp</code> prop.
 Steps 1&ndash;2 (account info, profile fields) remain inline in <span class="file-path">app/register.tsx</span> as they are thin dynamic field lists.</p>
 
 <!-- ================================================================== -->
@@ -925,6 +925,7 @@ backgroundColor: withOpacity(colors.primary, 0.12)</code></pre>
   <a href="media-uploads.html">Media</a> &middot;
   <a href="messaging.html">Messaging</a> &middot;
   <a href="module-system.html">Module System</a> &middot;
+  <a href="modules/">Modules</a> &middot;
   <a href="notifications.html">Notifications</a> &middot;
   <a href="profile-system.html">Profiles</a> &middot;
   <a href="pusher.html">Pusher</a> &middot;

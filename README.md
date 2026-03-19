@@ -74,6 +74,8 @@ components/                   # Reusable React components
 └── common/                   # Shared utility components
 
 modules/                      # Feature modules (self-contained)
+├── otp/                      # OTP phone verification (add-on)
+├── profile-completion/       # Profile completion gate (add-on)
 ├── calendar/                 # Calendar module
 
 services/                     # API and business logic
@@ -97,15 +99,14 @@ The `companion plugins/` folder contains WordPress plugins and a theme required 
 - `fluent-community-pro` — Pro add-on
 - `fluent-messaging` — Messaging add-on
 
-**TBC Plugins (custom backend):**
-- `tbc-community-app` — Main bridge plugin, all custom REST endpoints
-- `tbc-registration` — Registration flow, OTP verification & custom profile fields
-- `tbc-multi-reactions` — Multi-reaction support
-- `tbc-otp-verification` — OTP verification for registration
-- `tbc-calendar-fluent` — Calendar plugin (WooCommerce-based events)
+**Core Plugins (ship with white-label):**
+- `tbc-community-app` — Main bridge plugin, all custom REST endpoints including registration
+- `tbc-multi-reactions` — Multi-reaction support (like, love, laugh, etc.)
+- `tbc-starter-theme` — WordPress theme with web companion views and color sync
 
-**Theme:**
-- `fluent-starter` — Custom WordPress theme
+**Add-on Plugins (sold separately):**
+- `tbc-otp` — Phone OTP verification via Twilio (companion to otp module)
+- `tbc-profile-completion` — Profile completion gate after registration (companion to profile-completion module)
 
 ## Getting Started
 

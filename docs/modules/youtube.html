@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App &mdash; YouTube Module</title>
+<link rel="stylesheet" href="../docs-theme.css">
+<script src="../docs-theme.js"></script>
+</head>
+<body>
+
+<div class="docs-nav">
+  <a href="index.html">&larr; All Modules</a>
+</div>
+
+<h1>YouTube Module <span class="tag addon">Sold Separately</span></h1>
+<p class="subtitle">YouTube channel integration with server-side caching</p>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-number">youtube</span>
+    <span class="stat-label">Module ID</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">1.0.0</span>
+    <span class="stat-label">Version</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">tbc-youtube</span>
+    <span class="stat-label">Companion Plugin</span>
+  </div>
+</div>
+
+<div class="callout">
+  <strong>Companion plugin required.</strong> Install the <code>tbc-youtube</code> WordPress plugin and configure it with your YouTube Data API v3 key and channel ID. The plugin handles server-side caching so the app never hits the YouTube API directly.
+</div>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#registration">Module Registration</a></li>
+    <li><a href="#file-structure">File Structure</a></li>
+    <li><a href="#routes">Route Stubs</a></li>
+    <li><a href="#api">API Endpoints</a></li>
+    <li><a href="#setup">Setup</a></li>
+  </ol>
+</nav>
+
+<!-- ================================================================== -->
+<h2 id="registration">Module Registration</h2>
+
+<p>The YouTube module manifest registers the following extension points:</p>
+
+<h3>Widget</h3>
+<table>
+  <tr><th>Property</th><th>Value</th></tr>
+  <tr><td>ID</td><td><code>latest-youtube</code></td></tr>
+  <tr><td>Label</td><td>Latest YouTube</td></tr>
+  <tr><td>Icon</td><td><code>logo-youtube</code></td></tr>
+  <tr><td>See All Route</td><td><code>/youtube</code></td></tr>
+  <tr><td>Default Enabled</td><td><span class="check">&#10003;</span></td></tr>
+  <tr><td>Can Disable</td><td><span class="check">&#10003;</span></td></tr>
+  <tr><td>External Wrapper</td><td><span class="check">&#10003;</span></td></tr>
+</table>
+
+<h3>Access</h3>
+<p>The YouTube module does <strong>not</strong> register a tab or menu item. Users access it through the home screen widget and its &ldquo;See All&rdquo; link.</p>
+
+<h3>Route Prefixes</h3>
+<pre><code>routePrefixes: ['/youtube']</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="file-structure">File Structure</h2>
+
+<pre><code>modules/youtube/
+  <span class="file-path">module.ts</span>                          &larr; Module manifest
+  <span class="file-path">widgets/YouTubeWidget.tsx</span>          &larr; Home screen widget
+  <span class="file-path">screens/YouTubeScreen.tsx</span>          &larr; YouTube channel/playlists screen
+  <span class="file-path">screens/PlaylistDetailScreen.tsx</span>   &larr; Single playlist videos
+  <span class="file-path">components/YouTubeVideoCard.tsx</span>    &larr; Video card component
+  <span class="file-path">services/youtubeApi.ts</span>             &larr; Public API (uses fetch(), no auth needed)
+  <span class="file-path">types/youtube.ts</span>                   &larr; TypeScript types</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="routes">Route Stubs</h2>
+
+<p>Each route stub is a one-line re-export in the <span class="file-path">app/</span> directory:</p>
+
+<table>
+  <tr><th>Route Stub</th><th>Screen</th></tr>
+  <tr><td><span class="file-path">app/youtube/index.tsx</span></td><td>YouTubeScreen</td></tr>
+  <tr><td><span class="file-path">app/youtube/[playlistId].tsx</span></td><td>PlaylistDetailScreen</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="api">API Endpoints</h2>
+
+<p>All endpoints are <strong>public</strong> (no authentication required). The module&rsquo;s <span class="file-path">services/youtubeApi.ts</span> uses <code>fetch()</code> directly rather than the authenticated API client.</p>
+
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+  <tr><td><code>GET</code></td><td><code>tbc-youtube/v1/latest?limit=N</code></td><td>Latest videos from the channel</td></tr>
+  <tr><td><code>GET</code></td><td><code>tbc-youtube/v1/playlists</code></td><td>All playlists for the channel</td></tr>
+  <tr><td><code>GET</code></td><td><code>tbc-youtube/v1/playlists/:id/videos</code></td><td>Videos in a specific playlist</td></tr>
+</table>
+
+<div class="callout callout-warn">
+  <strong>Public endpoints.</strong> These endpoints do not require authentication. The <code>tbc-youtube</code> plugin caches YouTube API responses server-side, so the app fetches cached data from your WordPress site rather than hitting the YouTube Data API directly.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="setup">Setup</h2>
+
+<h3>1. Install the companion plugin</h3>
+<p>Upload and activate the <code>tbc-youtube</code> plugin on your WordPress site (found in <span class="file-path">companion plugins/tbc-youtube/</span>).</p>
+
+<h3>2. Configure the plugin</h3>
+<p>In WordPress admin, go to the <code>tbc-youtube</code> settings and enter:</p>
+<ul>
+  <li><strong>YouTube Data API v3 key</strong> &mdash; obtain from the <a href="https://console.developers.google.com/" target="_blank">Google Cloud Console</a></li>
+  <li><strong>Channel ID</strong> &mdash; your YouTube channel ID</li>
+</ul>
+<p>The plugin handles server-side caching automatically.</p>
+
+<h3>3. Enable the module</h3>
+<p>Register the youtube module in <span class="file-path">modules/_registry.ts</span>:</p>
+<pre><code>import { youtubeModule } from './youtube/module';
+
+// Add to the modules array:
+youtubeModule,</code></pre>
+
+<h3>4. Add route stubs</h3>
+<p>Create the route stub files listed above in <span class="file-path">app/youtube/</span>. Each is a single re-export line pointing to the corresponding screen.</p>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">
+<p style="margin-top: 16px; color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary)); font-size: 0.9em;">
+  <a href="index.html">All Modules</a> &middot;
+  <a href="../module-system.html">Module System</a> &middot;
+  <a href="../companion-plugins.html">Companion Plugins</a>
+</p>
+</body>
+</html>

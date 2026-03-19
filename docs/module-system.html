@@ -16,7 +16,11 @@
   <strong>Source files:</strong>
   <span class="file-path">modules/_types.ts</span> (type definitions) &middot;
   <span class="file-path">modules/_registry.ts</span> (active modules)<br>
-  Modules register tabs, widgets, menu items, header icons, context providers, and tab bar addons via a manifest. Core code reads from the registry &mdash; modules never import core layouts or navigation.
+  Modules register tabs, widgets, menu items, header icons, context providers, tab bar addons, registration steps, and response headers via a manifest. Core code reads from the registry &mdash; modules never import core layouts or navigation.
+</div>
+
+<div class="callout callout-success">
+  <strong>Per-module documentation:</strong> See <a href="modules/">docs/modules/</a> for individual module docs covering setup, configuration, endpoints, and file structure.
 </div>
 
 <div class="toc">
@@ -33,7 +37,7 @@
     <li><a href="#create-module">Creating a Module (Step-by-Step)</a></li>
     <li><a href="#directory-structure">Directory Structure</a></li>
     <li><a href="#api-patterns">API Service Patterns</a></li>
-    <li><a href="#examples">Real Module Examples</a></li>
+    <li><a href="#examples">Examples</a></li>
     <li><a href="#rules">Rules</a></li>
   </ol>
 </div>
@@ -56,27 +60,25 @@
 <pre><code>modules/
   _types.ts          &larr; TypeScript interfaces (ModuleManifest, TabRegistration, etc.)
   _registry.ts       &larr; Active modules array + derived functions
-  blog/
-    module.ts        &larr; Manifest (exports blogModule)
+  yourmodule/
+    module.ts        &larr; Manifest (exports yourModule)
     screens/         &larr; Screen components
     widgets/         &larr; Home screen widgets
     services/        &larr; API calls
     types/           &larr; TypeScript types
     components/      &larr; UI components
-  bookclub/
-    module.ts
-    contexts/        &larr; Context providers (AudioPlayerContext)
-    ...
+    contexts/        &larr; Context providers (if needed)
+    hooks/           &larr; Custom hooks (if needed)
 
 app/
   _layout.tsx        &larr; Injects module providers, lifecycle, notifications
   (tabs)/
     _layout.tsx      &larr; Renders module tabs + tab bar addons
     index.tsx        &larr; Renders module widgets on home screen
-    calendar.tsx     &larr; Route stub (one-line re-export)
-  blog/
-    index.tsx        &larr; Route stub for /blog
-    [id].tsx         &larr; Route stub for /blog/:id
+    yourmodule.tsx   &larr; Route stub (one-line re-export, only if module has a tab)
+  yourmodule/
+    index.tsx        &larr; Route stub for /yourmodule
+    [id].tsx         &larr; Route stub for /yourmodule/:id
 
 components/
   navigation/
@@ -113,6 +115,8 @@ export interface ModuleManifest {
   providers?: ProviderRegistration[];
   menuItems?: MenuItemRegistration[];
   headerIcons?: HeaderIconRegistration[];
+  registrationSteps?: RegistrationStepRegistration[];
+  responseHeaders?: ResponseHeaderMapping[];
   tabBarAddon?: React.ComponentType;
   routePrefixes?: string[];
 
@@ -148,6 +152,8 @@ export interface ModuleManifest {
     <tr><td><code>providers</code></td><td>ProviderRegistration[]</td><td>Context providers injected into the app tree.</td></tr>
     <tr><td><code>menuItems</code></td><td>MenuItemRegistration[]</td><td>Items in the avatar dropdown menu.</td></tr>
     <tr><td><code>headerIcons</code></td><td>HeaderIconRegistration[]</td><td>Icons in the top header bar.</td></tr>
+    <tr><td><code>registrationSteps</code></td><td>RegistrationStepRegistration[]</td><td>Steps injected into the registration wizard (pre-creation only).</td></tr>
+    <tr><td><code>responseHeaders</code></td><td>ResponseHeaderMapping[]</td><td>HTTP response headers to extract and store (e.g., for login gates).</td></tr>
     <tr><td><code>tabBarAddon</code></td><td>ComponentType</td><td>Persistent UI above the tab bar (e.g., mini player).</td></tr>
     <tr><td><code>routePrefixes</code></td><td>string[]</td><td>Route prefixes for deep link / push notification validation.</td></tr>
     <tr><td><code>hideMenuKey</code></td><td>string</td><td>Server visibility key. Inherited by tab if tab doesn't set its own.</td></tr>
@@ -165,7 +171,7 @@ export interface ModuleManifest {
 <h3>TabRegistration</h3>
 <p>Adds a bottom tab to the tab bar.</p>
 <pre><code>interface TabRegistration {
-  name: string;           // Must match filename in app/(tabs)/ (e.g. 'calendar')
+  name: string;           // Must match filename in app/(tabs)/ (e.g. 'shop')
   title: string;          // Label shown under the tab icon
   icon: string;           // Ionicon name for focused state
   iconOutline: string;    // Ionicon name for unfocused state
@@ -230,6 +236,29 @@ export interface ModuleManifest {
   hideMenuKey?: string;
 }</code></pre>
 
+<h3>RegistrationStepRegistration</h3>
+<p>Injects a step into the multi-step registration wizard. Currently only <code>pre-creation</code> phase is supported &mdash; the step runs before the user account is created.</p>
+<pre><code>interface RegistrationStepRegistration {
+  id: string;             // Unique step ID
+  order: number;          // Sort position (core email-verify = 10, place yours higher)
+  phase: 'pre-creation';  // When the step runs in the flow
+  title: string;          // Step title shown in the wizard
+  component: ComponentType&lt;RegistrationStepProps&gt;;  // Step UI component
+  shouldActivate: (submitResponse: Record&lt;string, unknown&gt;) =&gt; boolean;  // Gate function
+}</code></pre>
+
+<div class="callout">
+  <strong>shouldActivate:</strong> Called with the server's registration response. Return <code>true</code> if your step should be shown. For example, an OTP module checks if <code>submitResponse.otp_required</code> is true.
+</div>
+
+<h3>ResponseHeaderMapping</h3>
+<p>Extracts custom HTTP response headers from API responses and stores them for the module to act on. Useful for server-driven gates (e.g., profile completion checks).</p>
+<pre><code>interface ResponseHeaderMapping {
+  header: string;         // HTTP header name (e.g. 'X-My-Custom-Header')
+  key: string;            // Storage key for the extracted value
+  transform?: (value: string) =&gt; unknown;  // Optional transform (e.g. parse to boolean)
+}</code></pre>
+
 <!-- ================================================================== -->
 <h2 id="registry">5. The Registry</h2>
 
@@ -237,12 +266,12 @@ export interface ModuleManifest {
 
 <pre><code>// modules/_registry.ts
 
-import { blogModule } from './blog/module';
-import { bookclubModule } from './bookclub/module';
+import { eventsModule } from './events/module';
+import { shopModule } from './shop/module';
 
 export const MODULES: ModuleManifest[] = [
-  blogModule,
-  bookclubModule,
+  eventsModule,
+  shopModule,
   // Add new modules here &mdash; comment out to disable
 ];</code></pre>
 
@@ -261,6 +290,8 @@ export const MODULES: ModuleManifest[] = [
     <tr><td><code>getModuleHeaderIcons()</code></td><td>HeaderIconRegistration[] sorted by order</td><td><span class="file-path">components/navigation/TopHeader.tsx</span></td></tr>
     <tr><td><code>getTabBarAddons()</code></td><td>ComponentType[] in order</td><td><span class="file-path">app/(tabs)/_layout.tsx</span></td></tr>
     <tr><td><code>getModuleRoutePrefixes()</code></td><td>string[] flat list</td><td><span class="file-path">app/_layout.tsx</span></td></tr>
+    <tr><td><code>getModuleResponseHeaders()</code></td><td>ResponseHeaderMapping[]</td><td><span class="file-path">services/api/client.ts</span></td></tr>
+    <tr><td><code>getRegistrationSteps()</code></td><td>RegistrationStepRegistration[] sorted by order</td><td><span class="file-path">app/register.tsx</span></td></tr>
     <tr><td><code>getWidgetComponentMap()</code></td><td>Record&lt;string, ComponentType&gt;</td><td><span class="file-path">app/(tabs)/index.tsx</span></td></tr>
     <tr><td><code>initModules()</code></td><td>Promise&lt;void&gt;</td><td><span class="file-path">app/_layout.tsx</span> (after auth)</td></tr>
     <tr><td><code>cleanupModules()</code></td><td>void</td><td>Cache registry (on logout)</td></tr>
@@ -374,12 +405,12 @@ function ModuleProviders({ children }) {
 <p>If a module sets <code>hideMenuKey</code> at the manifest level, it's inherited by the tab registration (unless the tab sets its own). Menu items and header icons set their own <code>hideMenuKey</code> individually.</p>
 
 <pre><code>// Module-level hideMenuKey inherited by tab
-export const bookclubModule: ModuleManifest = {
-  id: 'bookclub',
-  hideMenuKey: 'bookclub',  // &larr; Tab inherits this
+export const eventsModule: ModuleManifest = {
+  id: 'events',
+  hideMenuKey: 'events',    // &larr; Tab inherits this
   tab: { ... },             // Tab doesn't need its own hideMenuKey
   menuItems: [{
-    hideMenuKey: 'bookclub', // &larr; Menu items set their own
+    hideMenuKey: 'events',  // &larr; Menu items set their own
     ...
   }],
 };</code></pre>
@@ -588,9 +619,7 @@ export const MODULES: ModuleManifest[] = [
 
 <pre><code>// app.config.ts — YOUR CONFIG section
 const moduleDeepLinkPaths: string[] = [
-  '/blog/',
-  '/bookclub/',
-  '/events/',    // Add your module's path
+  '/events/',    // Add your module's path prefixes here
 ];</code></pre>
 
 <p>Also set <code>routePrefixes</code> in your module manifest so push notification taps route correctly.</p>
@@ -631,34 +660,36 @@ const moduleDeepLinkPaths: string[] = [
 <h3>Authenticated endpoints &mdash; use request()</h3>
 <p>For any endpoint that requires a logged-in user, use the centralized <code>request()</code> from <code>@/services/api/client</code>. It handles JWT injection, 401/403 retry, and silent token refresh.</p>
 
-<pre><code>// modules/bookclub/services/bookclubApi.ts
+<pre><code>// modules/yourmodule/services/yourApi.ts
 
 import { SITE_URL } from '@/constants/config';
 import { request } from '@/services/api/client';
 
-const API_BASE = `${SITE_URL}/wp-json/tbc-bc/v1`;
+const API_BASE = `${SITE_URL}/wp-json/your-plugin/v1`;
 
-export async function getBooks() {
-  return request&lt;BooksListResponse&gt;('/books', { baseUrl: API_BASE });
+export async function getItems() {
+  return request&lt;ItemsListResponse&gt;('/items', { baseUrl: API_BASE });
 }
 
-export async function createBookmark(bookId: number, timestamp: number) {
-  return request&lt;CreateBookmarkResponse&gt;(`/books/${bookId}/bookmarks`, {
+export async function createItem(data: CreateItemPayload) {
+  return request&lt;CreateItemResponse&gt;('/items', {
     baseUrl: API_BASE,
     method: 'POST',
-    body: { timestamp },
+    body: data,
   });
 }</code></pre>
 
 <h3>Public endpoints &mdash; fetch() is fine</h3>
-<p>For truly public endpoints that never need authentication (e.g., YouTube video proxying), you can use <code>fetch()</code> directly. This avoids unnecessary JWT overhead and 401 retry logic.</p>
+<p>For truly public endpoints that never need authentication (e.g., proxied external data), you can use <code>fetch()</code> directly. This avoids unnecessary JWT overhead and 401 retry logic.</p>
 
-<pre><code>// modules/youtube/services/youtubeApi.ts
+<pre><code>// modules/yourmodule/services/publicApi.ts
 
-import { TBC_YT_URL } from '@/constants/config';
+import { SITE_URL } from '@/constants/config';
 
-export async function getLatestVideos(limit: number = 1) {
-  const response = await fetch(`${TBC_YT_URL}/latest?limit=${limit}`, {
+const PUBLIC_URL = `${SITE_URL}/wp-json/your-plugin/v1`;
+
+export async function getPublicData(limit: number = 5) {
+  const response = await fetch(`${PUBLIC_URL}/latest?limit=${limit}`, {
     headers: { 'Accept': 'application/json' },
   });
   if (!response.ok) return null;
@@ -667,9 +698,9 @@ export async function getLatestVideos(limit: number = 1) {
 }</code></pre>
 
 <h3>WP REST API (standard WordPress)</h3>
-<p>For standard WordPress endpoints (posts, comments, users), use <code>request()</code> with <code>WP_REST_URL</code> as the base. The blog module demonstrates this pattern with a thin <code>wpRequest()</code> wrapper:</p>
+<p>For standard WordPress endpoints (posts, comments, users), use <code>request()</code> with <code>WP_REST_URL</code> as the base. A thin <code>wpRequest()</code> wrapper keeps it clean:</p>
 
-<pre><code>// modules/blog/services/blogApi.ts
+<pre><code>// modules/yourmodule/services/wpApi.ts
 
 import { WP_REST_URL } from '@/constants/config';
 import { request } from '@/services/api/client';
@@ -1003,6 +1034,7 @@ const styles = StyleSheet.create({
   <a href="media-uploads.html">Media</a> &middot;
   <a href="messaging.html">Messaging</a> &middot;
   Module System &middot;
+  <a href="modules/">Modules</a> &middot;
   <a href="notifications.html">Notifications</a> &middot;
   <a href="profile-system.html">Profiles</a> &middot;
   <a href="pusher.html">Pusher</a> &middot;

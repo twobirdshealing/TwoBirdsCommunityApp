@@ -185,7 +185,7 @@ Logout:
   <tr><td><span class="file-path">services/auth.ts</span></td><td>Token storage, silent refresh, credential management</td></tr>
   <tr><td><span class="file-path">contexts/AuthContext.tsx</span></td><td>React context: login(), logout(), registerAndLogin(), user state</td></tr>
   <tr><td><span class="file-path">services/api/registration.ts</span></td><td>Registration API (getFields, submit, resetPassword)</td></tr>
-  <tr><td><span class="file-path">services/api/otp.ts</span></td><td>OTP verification (send, verify, resend, voice call)</td></tr>
+  <tr><td><span class="file-path">modules/otp/services/otp.ts</span></td><td>OTP verification — send, verify, resend, voice call (add-on module)</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -591,7 +591,7 @@ useCachedData({
   <tr><td><span class="file-path">hooks/useStartupData.ts</span></td><td>Startup batch: 7 API paths in one request</td></tr>
   <tr><td><span class="file-path">hooks/useFeedActions.ts</span></td><td>Feed CRUD: react, bookmark, pin, edit, delete</td></tr>
   <tr><td><span class="file-path">hooks/useChatMessages.ts</span></td><td>Chat: messages, pagination, optimistic send, Pusher sync</td></tr>
-  <tr><td><span class="file-path">hooks/useOtpVerification.ts</span></td><td>Shared OTP state: code, timer, verify, resend, voice call</td></tr>
+  <tr><td><span class="file-path">modules/otp/hooks/useOtpVerification.ts</span></td><td>Shared OTP state: code, timer, verify, resend, voice call (add-on module)</td></tr>
   <tr><td><span class="file-path">hooks/useTickerPolling.ts</span></td><td>Background polling for unread counts + activity ping</td></tr>
 </table>
 
@@ -665,6 +665,7 @@ useCachedData({
   <a href="media-uploads.html">Media</a> &middot;
   <a href="messaging.html">Messaging</a> &middot;
   <a href="module-system.html">Module System</a> &middot;
+  <a href="modules/">Modules</a> &middot;
   <a href="notifications.html">Notifications</a> &middot;
   <a href="profile-system.html">Profiles</a> &middot;
   <a href="pusher.html">Pusher</a> &middot;

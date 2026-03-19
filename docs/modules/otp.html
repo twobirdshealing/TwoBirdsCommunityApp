@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App &mdash; OTP Verification Module</title>
+<link rel="stylesheet" href="../docs-theme.css">
+<script src="../docs-theme.js"></script>
+</head>
+<body>
+
+<div class="docs-nav">
+  <a href="index.html">&larr; All Modules</a>
+</div>
+
+<h1>OTP Verification Module <span class="tag addon">Sold Separately</span></h1>
+<p class="subtitle">Phone verification via Twilio SMS/voice during registration</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#prerequisites">Prerequisites</a></li>
+    <li><a href="#setup">Setup</a></li>
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#file-structure">File Structure</a></li>
+    <li><a href="#api-endpoints">API Endpoints</a></li>
+    <li><a href="#configuration">Configuration</a></li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2 id="overview">Overview</h2>
+
+<p>The OTP module adds phone number verification as a <strong>registration step</strong>. When a user submits the registration form, the server checks whether OTP is required and, if so, sends a verification code via Twilio SMS. The user must enter the code before their account is created.</p>
+
+<table>
+  <tr><th>Property</th><th>Value</th></tr>
+  <tr><td>Module ID</td><td><code>otp</code></td></tr>
+  <tr><td>Version</td><td>1.0.0</td></tr>
+  <tr><td>Companion plugin</td><td><code>tbc-otp</code> <span class="tag required">required</span></td></tr>
+  <tr><td>Registers</td><td><code>registrationSteps</code> (pre-creation, order 20)</td></tr>
+  <tr><td>API base</td><td><code>${SITE_URL}/wp-json/tbc-otp/v1</code></td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="prerequisites">Prerequisites</h2>
+
+<ul>
+  <li>A <strong>Twilio account</strong> with SMS capability</li>
+  <li>The <code>tbc-otp</code> companion plugin installed and activated on your WordPress site</li>
+  <li>The OTP module enabled in <span class="file-path">modules/_registry.ts</span></li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="setup">Setup</h2>
+
+<h3>1. Install the companion plugin</h3>
+
+<p>Upload <span class="file-path">companion plugins/tbc-otp</span> to your WordPress site and activate it.</p>
+
+<h3>2. Configure Twilio credentials</h3>
+
+<p>In WordPress admin, go to the OTP settings page and enter:</p>
+
+<ul>
+  <li><strong>Twilio Account SID</strong></li>
+  <li><strong>Twilio Auth Token</strong></li>
+  <li><strong>From Phone Number</strong> or <strong>Messaging Service SID</strong></li>
+</ul>
+
+<h3>3. Enable the module</h3>
+
+<p>In <span class="file-path">modules/_registry.ts</span>, ensure the OTP module is registered:</p>
+
+<pre><code>import otp from './otp/module';
+
+export const modules = [
+  otp,
+  // ...other modules
+];</code></pre>
+
+<div class="callout callout-warn">
+  <strong>Order matters.</strong> The OTP module registers at order 20 (pre-creation). If you have other registration steps, check their order values to ensure the correct sequence.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="how-it-works">How It Works</h2>
+
+<p>The OTP module hooks into the registration flow as a <strong>pre-creation step</strong>. Here is the full flow:</p>
+
+<div class="flow-diagram">User fills registration form
+         &darr;
+App submits to registration endpoint
+         &darr;
+Server returns submitResponse with:
+  &bull; otp_required: true
+  &bull; session_key: "abc123..."
+         &darr;
+OTP module's shouldActivate fires:
+  checks submitResponse.otp_required
+  checks submitResponse.session_key
+         &darr;
+OtpRegistrationStep is shown
+         &darr;
+User receives SMS code via Twilio
+         &darr;
+User enters code &rarr; POST tbc-otp/v1/otp/verify
+         &darr;
+  [code valid?]
+    Yes &rarr; Account created, registration continues
+    No  &rarr; Error shown, user can retry or resend</div>
+
+<h3>Resend &amp; Voice Fallback</h3>
+
+<p>If the user does not receive the SMS, they have two options:</p>
+
+<ul>
+  <li><strong>Resend SMS</strong> &mdash; sends another code via SMS. Subject to a <strong>60-second cooldown</strong> between resends.</li>
+  <li><strong>Voice call</strong> &mdash; Twilio calls the phone number and reads the code aloud. Useful when SMS delivery is unreliable.</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2 id="file-structure">File Structure</h2>
+
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr>
+    <td><span class="file-path">modules/otp/module.ts</span></td>
+    <td>Module manifest &mdash; declares ID, name, version, and registration steps</td>
+  </tr>
+  <tr>
+    <td><span class="file-path">modules/otp/components/OtpRegistrationStep.tsx</span></td>
+    <td>Registration step wrapper &mdash; integrates with the registration step system</td>
+  </tr>
+  <tr>
+    <td><span class="file-path">modules/otp/components/PhoneOtpStep.tsx</span></td>
+    <td>Phone OTP code input UI &mdash; code entry field, resend button, voice call button</td>
+  </tr>
+  <tr>
+    <td><span class="file-path">modules/otp/hooks/useOtpVerification.ts</span></td>
+    <td>OTP state management hook &mdash; handles timers, verification state, error handling</td>
+  </tr>
+  <tr>
+    <td><span class="file-path">modules/otp/services/otp.ts</span></td>
+    <td>OTP API service &mdash; wraps all <code>tbc-otp/v1</code> endpoint calls</td>
+  </tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="api-endpoints">API Endpoints</h2>
+
+<p>All endpoints use the base path <code>${SITE_URL}/wp-json/tbc-otp/v1</code>.</p>
+
+<h3>POST <code>tbc-otp/v1/otp/verify</code></h3>
+
+<p>Verify the OTP code entered by the user.</p>
+
+<table class="prop-table">
+  <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+  <tr><td>session_key</td><td>string</td><td>Session key returned by the registration endpoint</td></tr>
+  <tr><td>code</td><td>string</td><td>The verification code entered by the user</td></tr>
+</table>
+
+<h3>POST <code>tbc-otp/v1/otp/resend</code></h3>
+
+<p>Resend the OTP code via SMS. Subject to a <strong>60-second cooldown</strong> between requests.</p>
+
+<table class="prop-table">
+  <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+  <tr><td>session_key</td><td>string</td><td>Session key returned by the registration endpoint</td></tr>
+</table>
+
+<h3>POST <code>tbc-otp/v1/otp/voice</code></h3>
+
+<p>Request a voice call fallback. Twilio calls the registered phone number and reads the code aloud.</p>
+
+<table class="prop-table">
+  <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+  <tr><td>session_key</td><td>string</td><td>Session key returned by the registration endpoint</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="configuration">Configuration</h2>
+
+<h3>WordPress Admin Settings</h3>
+
+<p>After installing the <code>tbc-otp</code> plugin, navigate to its settings page in the WordPress admin. The following fields are required:</p>
+
+<table>
+  <tr><th>Setting</th><th>Description</th></tr>
+  <tr><td>Twilio Account SID</td><td>Your Twilio account identifier (starts with <code>AC</code>)</td></tr>
+  <tr><td>Twilio Auth Token</td><td>Secret token for API authentication</td></tr>
+  <tr><td>From Phone Number</td><td>A Twilio phone number to send SMS from (e.g. <code>+15551234567</code>)</td></tr>
+  <tr><td>Messaging Service SID</td><td>Alternative to From Phone Number &mdash; use a Twilio Messaging Service instead</td></tr>
+</table>
+
+<div class="callout">
+  <strong>Tip:</strong> You can use either a dedicated phone number or a Messaging Service SID. If both are provided, the Messaging Service SID takes priority. A Messaging Service is recommended for production as it handles number rotation and deliverability automatically.
+</div>
+
+<h3>Module Manifest</h3>
+
+<p>The module manifest in <span class="file-path">modules/otp/module.ts</span> controls activation:</p>
+
+<ul>
+  <li><strong>shouldActivate</strong> &mdash; returns <code>true</code> when <code>submitResponse.otp_required</code> is truthy and <code>submitResponse.session_key</code> is present</li>
+  <li><strong>Registration step order</strong> &mdash; <code>20</code> (pre-creation), meaning it runs before the account is finalized</li>
+</ul>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">
+<p style="margin-top: 16px; color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary)); font-size: 0.9em;">
+  <a href="index.html">All Modules</a> &middot;
+  <a href="../module-system.html">Module System</a> &middot;
+  <a href="../companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="../registration.html">Registration</a>
+</p>
+</body>
+</html>

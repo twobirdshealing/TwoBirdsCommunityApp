@@ -21,7 +21,6 @@
   ],
   "corePlugins": [
     "tbc-community-app",
-    "tbc-registration",
     "tbc-multi-reactions",
     "tbc-starter-theme"
   ]

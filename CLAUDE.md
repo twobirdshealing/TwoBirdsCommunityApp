@@ -56,22 +56,24 @@ The `companion plugins/` folder contains WordPress plugins and a theme that ship
 ### Theme
 - **tbc-starter-theme** — WordPress theme that provides the app's web companion views and color sync endpoint.
 
-### Add-on Plugins (sold separately)
-- **tbc-otp** — Phone OTP verification via Twilio. Hooks into registration to require phone verification before account creation. Endpoints at `tbc-otp/v1`.
-- **tbc-profile-completion** — Profile completion gate. Requires bio and/or avatar after registration before accessing the app. Endpoints at `tbc-pcom/v1`.
+### Add-on Modules with Companion Plugins (sold separately)
 
-Add-on modules may include their own companion plugin. Install the plugin on your WordPress site when you activate the module.
+Each add-on is a **paired module + plugin**: the app module lives in `modules/`, and its companion WordPress plugin lives in `companion plugins/`. Both are required for the feature to work.
+
+- **tbc-otp** (plugin) + **otp module** — Phone OTP verification via Twilio. Adds a pre-creation registration step. Endpoints at `tbc-otp/v1`.
+- **tbc-profile-completion** (plugin) + **profile-completion module** — Profile completion gate. Requires bio and/or avatar after registration. Uses response header detection. Endpoints at `tbc-pcom/v1`.
 
 ### Deprecated
 - **tbc-registration** — Replaced by tbc-otp + tbc-profile-completion. Base registration moved to tbc-community-app. Keep installed for existing sites until migrated.
 
 ## Module System
 
-Self-contained features that plug into the app without touching core code. Each module registers any combination of: bottom tabs, home widgets, menu items, header icons, context providers, tab bar addons.
+Self-contained features that plug into the app without touching core code. Each module registers any combination of: bottom tabs, home widgets, menu items, header icons, context providers, tab bar addons, registration steps, response headers, route prefixes.
 
 - **Define** a manifest in `modules/yourmodule/module.ts`
 - **Register** in `modules/_registry.ts` (one line to enable/disable)
 - **Route stub** in `app/(tabs)/` (one-line re-export, only if module has a tab)
+- **Companion plugin** in `companion plugins/` (if module needs a WordPress backend)
 
 Core features (feed, spaces, profiles, messaging, courses) are controlled by `FEATURES.*` flags in `constants/config.ts`. Modules are for self-contained add-ons that go beyond core.
 

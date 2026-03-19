@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App &mdash; Module Documentation</title>
+<link rel="stylesheet" href="../docs-theme.css">
+<script src="../docs-theme.js"></script>
+</head>
+<body>
+
+<h1>Module Documentation</h1>
+<p class="subtitle">Per-module guides covering setup, configuration, endpoints, and file structure</p>
+
+<div class="callout">
+  <strong>System reference:</strong> For how the module system works (manifest API, registration types, creating modules), see the <a href="../module-system.html">Module System docs</a>.
+</div>
+
+<!-- ================================================================== -->
+<h2>Add-on Modules <span class="tag addon">Sold Separately</span></h2>
+
+<p>Each add-on is a <strong>paired module + companion plugin</strong>. The app module lives in <code>modules/</code>, the WordPress plugin lives in <code>companion plugins/</code>. Both are required.</p>
+
+<table>
+  <tr><th>Module</th><th>Companion Plugin</th><th>What it does</th></tr>
+  <tr>
+    <td><a href="otp.html">OTP</a></td>
+    <td><code>tbc-otp</code></td>
+    <td>Phone verification via Twilio SMS/voice during registration</td>
+  </tr>
+  <tr>
+    <td><a href="profile-completion.html">Profile Completion</a></td>
+    <td><code>tbc-profile-completion</code></td>
+    <td>Requires bio and/or avatar after registration before accessing the app</td>
+  </tr>
+  <tr>
+    <td><a href="blog.html">Blog</a></td>
+    <td>&mdash;</td>
+    <td>Blog posts from WordPress with comments, uses standard WP REST API</td>
+  </tr>
+  <tr>
+    <td><a href="youtube.html">YouTube</a></td>
+    <td><code>tbc-youtube</code></td>
+    <td>YouTube channel integration with server-side caching</td>
+  </tr>
+  <tr>
+    <td><a href="bookclub.html">Book Club</a></td>
+    <td><code>tbc-book-club</code></td>
+    <td>Audiobook player with chapters, bookmarks, meetings, and persistent mini player</td>
+  </tr>
+</table>
+
+<!-- ================================================================== -->
+<h2>Site-Specific Modules</h2>
+
+<p>Custom modules built for specific communities. Not sold as add-ons, but documented here as examples of what the module system can do.</p>
+
+<table>
+  <tr><th>Module</th><th>Companion Plugin</th><th>What it does</th></tr>
+  <tr>
+    <td><a href="calendar.html">Calendar</a></td>
+    <td><code>tbc-calendar-fluent</code></td>
+    <td>Event calendar with WooCommerce booking integration</td>
+  </tr>
+  <tr>
+    <td><a href="donate.html">Donate</a></td>
+    <td>&mdash;</td>
+    <td>Donation tab linking to external giving page via WebView</td>
+  </tr>
+  <tr>
+    <td><a href="donor.html">Donor</a></td>
+    <td>&mdash;</td>
+    <td>Donor dashboard menu item opening WordPress page in WebView</td>
+  </tr>
+</table>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">
+<p style="margin-top: 16px; color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary)); font-size: 0.9em;">
+  <a href="../module-system.html">Module System</a> &middot;
+  <a href="../companion-plugins.html">Companion Plugins</a> &middot;
+  <a href="../registration.html">Registration</a> &middot;
+  <a href="../architecture.html">Architecture</a>
+</p>
+
+</body>
+</html>
