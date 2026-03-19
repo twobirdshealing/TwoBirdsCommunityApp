@@ -11,6 +11,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { useAppConfig } from '@/contexts/AppConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { spacing, sizing, shadows, typography } from '@/constants/layout';
@@ -56,7 +57,7 @@ function formatCountdown(target: Date): string {
   return `${diffDays}d ${diffHours % 24}h`;
 }
 
-function formatEventDate(event: CalendarEvent): string {
+function formatEventDate(event: CalendarEvent, is24Hour: boolean): string {
   const date = new Date(`${event.start}T00:00:00`);
   const options: Intl.DateTimeFormatOptions = {
     weekday: 'short',
@@ -67,9 +68,13 @@ function formatEventDate(event: CalendarEvent): string {
 
   if (event.start_time) {
     const [h, m] = event.start_time.split(':').map(Number);
-    const period = h >= 12 ? 'PM' : 'AM';
-    const hour12 = h % 12 || 12;
-    formatted += ` at ${hour12}:${String(m).padStart(2, '0')} ${period}`;
+    if (is24Hour) {
+      formatted += ` at ${h}:${String(m).padStart(2, '0')}`;
+    } else {
+      const period = h >= 12 ? 'PM' : 'AM';
+      const hour12 = h % 12 || 12;
+      formatted += ` at ${hour12}:${String(m).padStart(2, '0')} ${period}`;
+    }
   }
 
   return formatted;
@@ -81,6 +86,7 @@ function formatEventDate(event: CalendarEvent): string {
 
 export function CeremonyWidget({ refreshKey }: CeremonyWidgetProps) {
   const { colors: themeColors } = useTheme();
+  const { is24Hour } = useAppConfig();
   const { openEvent } = useEventWebView();
   const [countdown, setCountdown] = useState('');
 
@@ -148,7 +154,7 @@ export function CeremonyWidget({ refreshKey }: CeremonyWidgetProps) {
           {event.title}
         </Text>
         <Text style={[styles.date, { color: themeColors.textSecondary }]} numberOfLines={1}>
-          {formatEventDate(event)}
+          {formatEventDate(event, is24Hour)}
         </Text>
         {location ? (
           <Text style={[styles.location, { color: themeColors.textTertiary }]} numberOfLines={1}>

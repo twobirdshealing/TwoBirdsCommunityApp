@@ -11,6 +11,7 @@
 import { Avatar } from '@/components/common/Avatar';
 import { withOpacity } from '@/constants/colors';
 import { spacing, typography, sizing } from '@/constants/layout';
+import { useAppConfig } from '@/contexts/AppConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ChatMessage, getMessageText, getMessagePreview } from '@/types/message';
 import { Ionicons } from '@expo/vector-icons';
@@ -82,6 +83,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   reactionRenderer,
 }: MessageBubbleProps) {
   const { colors: themeColors } = useTheme();
+  const { is24Hour } = useAppConfig();
   const swipeableRef = useRef<Swipeable>(null);
   const reactionBtnRef = useRef<View>(null);
   const menuBtnRef = useRef<View>(null);
@@ -100,13 +102,13 @@ export const MessageBubble = React.memo(function MessageBubble({
     ? Object.values(reactions!).some(ids => ids.includes(currentUserId))
     : false;
 
-  // Format timestamp
+  // Format timestamp — respects WordPress time format setting (12h/24h)
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true,
+      hour12: !is24Hour,
     });
   };
 

@@ -25,6 +25,8 @@ interface AppConfigContextType {
   socketConfig: SocketConfig | null;
   /** Registration capabilities from server — null until app-config loads */
   registration: RegistrationConfig | null;
+  /** Whether the site uses 24-hour time format (derived from WordPress time_format setting) */
+  is24Hour: boolean;
   /** Accept pre-fetched data from the startup batch or _layout refresh */
   setFromBatch: (data: AppConfigResponse) => void;
 }
@@ -52,6 +54,7 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   const [portalSlug, setPortalSlug] = useState('');
   const [socketConfig, setSocketConfig] = useState<SocketConfig | null>(null);
   const [registration, setRegistration] = useState<RegistrationConfig | null>(null);
+  const [is24Hour, setIs24Hour] = useState(false);
 
   const applyConfig = useCallback((data: AppConfigResponse) => {
     if (data.visibility) {
@@ -77,6 +80,11 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
     if (data.registration) {
       setRegistration(data.registration);
       AsyncStorage.setItem(REGISTRATION_CACHE_KEY, JSON.stringify(data.registration)).catch((e) => log.warn('Registration config cache write failed:', e));
+    }
+    // WordPress PHP time format: 'H' or 'G' = 24-hour, 'g' or 'h' = 12-hour
+    if (data.time_format) {
+      const use24 = /[HG]/.test(data.time_format);
+      setIs24Hour(use24);
     }
   }, []);
 
@@ -106,8 +114,9 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
     portalSlug,
     socketConfig,
     registration,
+    is24Hour,
     setFromBatch,
-  }), [visibility, portalSlug, socketConfig, registration, setFromBatch]);
+  }), [visibility, portalSlug, socketConfig, registration, is24Hour, setFromBatch]);
 
   return (
     <AppConfigContext.Provider value={value}>

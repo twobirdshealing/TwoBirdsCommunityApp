@@ -71,6 +71,9 @@ class TBC_CA_App_Config {
         // ─── Registration capabilities ────────────────────────────────────
         $response['registration'] = $this->get_registration_config();
 
+        // ─── Time format (WordPress general setting) ─────────────────────
+        $response['time_format'] = get_option('time_format', 'g:i a');
+
         // ─── Auth-aware: bypass + visibility (only when JWT is present) ──
         $user_id = get_current_user_id();
         if ($user_id) {

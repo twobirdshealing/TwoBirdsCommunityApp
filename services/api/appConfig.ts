@@ -112,6 +112,8 @@ export interface AppConfigResponse {
   branding?: BrandingConfig;
   socket?: SocketConfig | null;
   registration?: RegistrationConfig;
+  /** WordPress time format string (e.g. 'g:i a' for 12h, 'H:i' for 24h) */
+  time_format?: string;
 }
 
 // -----------------------------------------------------------------------------

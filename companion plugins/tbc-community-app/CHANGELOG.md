@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.44.3
+- **Time format in app-config**: Added `time_format` field to `/app-config` response — returns the WordPress general time format setting (e.g., `g:i a` for 12h, `H:i` for 24h). Syncs with Fluent Messaging 2.3.0's time format awareness.
+
 ## v3.44.2
 - **Removed dead OTP code from password recovery** — `handle_forgot()` no longer checks for `TBCRegistration\Helpers` or attempts OTP via Twilio. Password reset is WordPress native email only, matching the app's email-only UI.
 

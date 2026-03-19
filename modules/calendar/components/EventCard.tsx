@@ -19,6 +19,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
+import { useAppConfig } from '@/contexts/AppConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CalendarEvent } from '@/modules/calendar/types/calendar';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
@@ -37,15 +38,18 @@ interface EventCardProps {
 // Helpers
 // -----------------------------------------------------------------------------
 
-function formatTime(time: string | null): string {
+function formatTime(time: string | null, is24Hour: boolean): string {
   if (!time) return '';
   const [hours, minutes] = time.split(':').map(Number);
+  if (is24Hour) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}`;
+  }
   const period = hours >= 12 ? 'PM' : 'AM';
   const hour12 = hours % 12 || 12;
   return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
-function formatEventDate(start: string, end: string, startTime: string | null): string {
+function formatEventDate(start: string, end: string, startTime: string | null, is24Hour: boolean): string {
   const startDate = new Date(start + 'T12:00:00');
   const endDate = new Date(end + 'T12:00:00');
 
@@ -55,7 +59,7 @@ function formatEventDate(start: string, end: string, startTime: string | null): 
     day: 'numeric',
   });
 
-  const timeStr = startTime ? formatTime(startTime) : '';
+  const timeStr = startTime ? formatTime(startTime, is24Hour) : '';
   const isMultiDay = start !== end;
 
   if (isMultiDay) {
@@ -66,7 +70,7 @@ function formatEventDate(start: string, end: string, startTime: string | null): 
   return timeStr ? `${dateStr} • ${timeStr}` : dateStr;
 }
 
-function formatDateChip(start: string, end: string, startTime: string | null): { month: string; day: string; timeLabel: string } {
+function formatDateChip(start: string, end: string, startTime: string | null, is24Hour: boolean): { month: string; day: string; timeLabel: string } {
   const startDate = new Date(start + 'T12:00:00');
   const month = startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
   const day = String(startDate.getDate());
@@ -77,7 +81,7 @@ function formatDateChip(start: string, end: string, startTime: string | null): {
     const endDate = new Date(end + 'T12:00:00');
     timeLabel = `– ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
   } else if (startTime) {
-    timeLabel = formatTime(startTime);
+    timeLabel = formatTime(startTime, is24Hour);
   } else {
     timeLabel = 'All Day';
   }
@@ -118,9 +122,10 @@ function formatPrice(priceRaw: number, deposit: number | null): string {
 
 export const EventCard = React.memo(function EventCard({ event, onPress, compact = false }: EventCardProps) {
   const { colors: themeColors } = useTheme();
+  const { is24Hour } = useAppConfig();
   const status = getStatusConfig(event, themeColors);
-  const eventDate = formatEventDate(event.start, event.end, event.start_time);
-  const dateInfo = formatDateChip(event.start, event.end, event.start_time);
+  const eventDate = formatEventDate(event.start, event.end, event.start_time, is24Hour);
+  const dateInfo = formatDateChip(event.start, event.end, event.start_time, is24Hour);
   const calendarColor = event.calendar_color || themeColors.primary;
   const location = event.location?.business_name || event.location?.address;
   const isFree = event.price_raw === 0;
