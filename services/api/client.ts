@@ -21,6 +21,14 @@ const log = createLogger('API');
 // every authenticated API response. _layout.tsx registers the core listener;
 // modules can add their own via addResponseHeaderListener.
 
+const CORE_HEADERS = {
+  UNREAD_NOTIFICATIONS: 'X-TBC-Unread-Notifications',
+  UNREAD_MESSAGES: 'X-TBC-Unread-Messages',
+  CART_COUNT: 'X-TBC-Cart-Count',
+  MAINTENANCE: 'X-TBC-Maintenance',
+  MIN_APP_VERSION: 'X-TBC-Min-App-Version',
+} as const;
+
 export interface ResponseHeaderData {
   unreadNotifications?: number;
   unreadMessages?: number;
@@ -271,11 +279,11 @@ async function request<T>(
 
     // Extract custom response headers (unread counts, cart count, maintenance, min version)
     if (responseHeaderListeners.size > 0) {
-      const hNotif = response.headers.get('X-TBC-Unread-Notifications');
-      const hMsg = response.headers.get('X-TBC-Unread-Messages');
-      const hCart = response.headers.get('X-TBC-Cart-Count');
-      const hMaint = response.headers.get('X-TBC-Maintenance');
-      const hMinVer = response.headers.get('X-TBC-Min-App-Version');
+      const hNotif = response.headers.get(CORE_HEADERS.UNREAD_NOTIFICATIONS);
+      const hMsg = response.headers.get(CORE_HEADERS.UNREAD_MESSAGES);
+      const hCart = response.headers.get(CORE_HEADERS.CART_COUNT);
+      const hMaint = response.headers.get(CORE_HEADERS.MAINTENANCE);
+      const hMinVer = response.headers.get(CORE_HEADERS.MIN_APP_VERSION);
 
       // Module-registered headers (extracted generically via manifest)
       const moduleHeaders = getModuleResponseHeaders();

@@ -352,7 +352,7 @@ export default function EditProfileScreen() {
       placeholder: field.placeholder || '',
       instructions: '',
       required: field.is_required,
-      options: field.options || [],
+      options: field.options,
     };
 
     return (
@@ -375,7 +375,7 @@ export default function EditProfileScreen() {
   const selectNativeField = selectModalField ? nativeFieldsMap[selectModalField] : null;
   const selectConfig = selectNativeField ? {
     label: selectNativeField.label,
-    options: selectNativeField.options || [],
+    options: selectNativeField.options,
   } : null;
 
   // ---------------------------------------------------------------------------
