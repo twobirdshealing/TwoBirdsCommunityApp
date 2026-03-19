@@ -6,7 +6,7 @@
 // Replaces the old needsProfileCompletion logic from AuthContext + _layout.tsx.
 // =============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { addResponseHeaderListener } from '@/services/api/client';
@@ -23,6 +23,7 @@ export function ProfileIncompleteProvider({ children }: { children: React.ReactN
   const router = useRouter();
   const segments = useSegments();
   const [needsProfileCompletion, setNeedsProfileCompletion] = useState(false);
+  const isRedirecting = useRef(false);
 
   // ---------------------------------------------------------------------------
   // Subscribe to response header
@@ -52,10 +53,17 @@ export function ProfileIncompleteProvider({ children }: { children: React.ReactN
 
     const currentSegment = segments[0] as string;
 
-    // Don't redirect if already on profile-complete or in the registration flow
-    if (currentSegment === 'profile-complete' || currentSegment === 'register') return;
+    // Already on gate or registration — reset redirect lock and skip
+    if (currentSegment === 'profile-complete' || currentSegment === 'register') {
+      isRedirecting.current = false;
+      return;
+    }
+
+    // Debounce: skip if a redirect is already in flight
+    if (isRedirecting.current) return;
 
     log('Profile incomplete — redirecting to /profile-complete');
+    isRedirecting.current = true;
     router.replace('/profile-complete' as any);
   }, [isAuthenticated, isLoading, needsProfileCompletion, segments, router]);
 
