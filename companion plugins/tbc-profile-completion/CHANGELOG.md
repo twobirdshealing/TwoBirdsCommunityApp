@@ -1,9 +1,18 @@
 # Changelog
 
-## 1.2.2 — 2026-03-18
+## 1.2.9 — 2026-03-18
+
+### Fixed
+- **Profile save failing** — Split single PUT request into POST (text fields) + PUT (media URLs) to match FC's native API. Bio, social links, and name are saved via POST (`updateProfile`); avatar and cover photo URLs are saved via PUT (`patchProfile`). Previously all fields were sent via PUT, which only processes media — bio and social links were silently ignored.
+- **"Invalid username" error** — Include `username` in the POST payload so FC's `can_customize_username` validation doesn't treat a missing field as a username change attempt.
+- **Better error messages** — Error responses from the server are now parsed and displayed instead of generic "Failed to save profile."
+
+## 1.2.4 — 2026-03-18
 
 ### Fixed
 - **Photo uploads** — Avatar and cover photo uploads now use FC's two-step flow: upload file to `feeds/media-upload`, then save the returned URL to the profile. Previously sent files directly to the profile endpoint which only accepts JSON with URLs.
+- **Profile save 404** — Profile PUT/POST calls now include the username in the path (`/profile/{username}`) as required by FC's REST API.
+- **Profile save 422** — Request body now wrapped in `{ data: { ... } }` to match FC's expected format. Also includes `first_name` and `last_name` (required by FC) in bio/socials save.
 
 ## 1.2.0 — 2026-03-18
 

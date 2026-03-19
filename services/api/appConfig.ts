@@ -97,8 +97,8 @@ export interface SocketConfig {
 export interface RegistrationConfig {
   enabled: boolean;
   email_verification: boolean;
-  otp: { required: boolean; voice_fallback: boolean } | null;
-  profile_completion: { enabled: boolean; require_bio: boolean; require_avatar: boolean } | null;
+  /** Module-specific config fields from server plugins */
+  [key: string]: any;
 }
 
 export interface AppConfigResponse {

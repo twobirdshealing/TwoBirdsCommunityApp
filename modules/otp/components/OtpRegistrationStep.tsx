@@ -7,7 +7,7 @@
 
 import React, { useCallback, useEffect, useRef } from 'react';
 import type { RegistrationStepProps } from '../../_types';
-import { useOtpVerification } from '@/hooks/useOtpVerification';
+import { useOtpVerification } from '../hooks/useOtpVerification';
 import { PhoneOtpStep } from './PhoneOtpStep';
 
 export function OtpRegistrationStep({

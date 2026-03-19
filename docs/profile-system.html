@@ -87,7 +87,7 @@
   <tr><td><code>profile_navs</code></td><td><code>ProfileNav[]</code></td><td>Server-defined tab config (slug, title)</td></tr>
   <tr><td><code>social_links</code></td><td><code>Record&lt;string, string&gt;</code></td><td>At top level (not in meta) on profile endpoint</td></tr>
   <tr><td><code>badge_slugs</code></td><td><code>string[]</code></td><td>At top level on profile endpoint</td></tr>
-  <tr><td><code>custom_fields</code></td><td><code>Record&lt;string, CustomFieldValue&gt;</code></td><td>Injected by tbc-registration plugin</td></tr>
+  <tr><td><code>custom_fields</code></td><td><code>Record&lt;string, CustomFieldValue&gt;</code></td><td>Fluent Community native custom profile fields</td></tr>
   <tr><td><code>custom_field_configs</code></td><td><code>Record&lt;string, CustomFieldConfig&gt;</code></td><td>Field definitions for the edit form</td></tr>
 </table>
 
@@ -321,12 +321,12 @@ await updateProfile(username, {
 </div>
 
 <h3>Phone Number Change → OTP</h3>
-<p>If the profile update includes a phone number change and OTP is enabled, the server returns <code>otp_required: true</code>. The edit screen opens an OTP modal (same <code>useOtpVerification</code> hook as registration), verifies the code, then retries the save with <code>tbc_reg_session_key</code> in the payload.</p>
+<p>If the profile update includes a phone number change and OTP is enabled, the server returns <code>otp_required: true</code>. The edit screen opens an OTP modal (same <code>useOtpVerification</code> hook as registration), verifies the code, then retries the save with <code>tbc_otp_session_key</code> in the payload.</p>
 
 <!-- ================================================================== -->
 <h2 id="custom-fields">8. Custom Profile Fields</h2>
 
-<p>Custom fields are defined in the WordPress admin (tbc-registration) and injected into the profile response.</p>
+<p>Custom fields are defined in Fluent Community&rsquo;s native custom profile fields (FC 2.3.0+) and included in the profile response.</p>
 
 <h3>CustomFieldValue (Display)</h3>
 <pre><code>interface CustomFieldValue {

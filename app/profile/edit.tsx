@@ -9,8 +9,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -25,7 +23,6 @@ import { hapticLight } from '@/utils/haptics';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { withOpacity } from '@/constants/colors';
 import { profilesApi, patchProfileMedia } from '@/services/api/profiles';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
@@ -36,7 +33,6 @@ import { DynamicFormField } from '@/components/common/DynamicFormField';
 import { SelectModal } from '@/components/common/SelectModal';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { useSocialProviders } from '@/hooks/useSocialProviders';
-import { useOtpVerification } from '@/hooks/useOtpVerification';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('ProfileEdit');
@@ -96,18 +92,6 @@ export default function EditProfileScreen() {
   // Select modal state
   const [selectModalVisible, setSelectModalVisible] = useState(false);
   const [selectModalField, setSelectModalField] = useState<string | null>(null);
-
-  // OTP verification (phone change)
-  const [showOtp, setShowOtp] = useState(false);
-
-  // We need a ref pattern to avoid circular dependency between handleSave and otp.onVerified
-  const handleSaveRef = React.useRef<(otpSessionKey?: string) => Promise<void>>(undefined);
-
-  const otp = useOtpVerification({
-    onVerified: async (sessionKey) => {
-      await handleSaveRef.current?.(sessionKey);
-    },
-  });
 
   // ---------------------------------------------------------------------------
   // Load Profile
@@ -267,30 +251,27 @@ export default function EditProfileScreen() {
   // Save
   // ---------------------------------------------------------------------------
 
-  const handleSave = async (otpSessionKeyOverride?: string) => {
+  const handleSave = async () => {
     if (saving || !username) return;
 
-    // Basic validation (skip if resubmitting after OTP)
-    if (!otpSessionKeyOverride) {
-      const errors: Record<string, string> = {};
-      if (!formData.first_name.trim()) {
-        errors.first_name = 'First name is required';
-      }
+    const errors: Record<string, string> = {};
+    if (!formData.first_name.trim()) {
+      errors.first_name = 'First name is required';
+    }
 
-      if (profile?.custom_field_groups) {
-        for (const group of profile.custom_field_groups) {
-          for (const field of group.fields) {
-            if (field.is_required && field.is_enabled && !formData.custom_fields[field.slug]) {
-              errors[`cf_${field.slug}`] = `${field.label} is required`;
-            }
+    if (profile?.custom_field_groups) {
+      for (const group of profile.custom_field_groups) {
+        for (const field of group.fields) {
+          if (field.is_required && field.is_enabled && !formData.custom_fields[field.slug]) {
+            errors[`cf_${field.slug}`] = `${field.label} is required`;
           }
         }
       }
+    }
 
-      if (Object.keys(errors).length > 0) {
-        setFieldErrors(errors);
-        return;
-      }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
     }
 
     try {
@@ -324,34 +305,17 @@ export default function EditProfileScreen() {
         payload.status = profile.status;
       }
 
-      // Include verified OTP session key for resubmit
-      if (otpSessionKeyOverride) {
-        payload.tbc_otp_session_key = otpSessionKeyOverride;
-      }
-
       const response = await profilesApi.updateProfile(username, payload);
 
       if (response.success) {
         const displayName = [formData.first_name.trim(), formData.last_name.trim()].filter(Boolean).join(' ');
         await updateUser({ displayName });
-        setShowOtp(false);
         cacheEvents.emit(CACHE_EVENTS.PROFILE);
         router.back();
       } else {
         const errorData = response.error as any;
-        // Check for OTP required response (phone change verification)
-        const otpData = errorData?.data || errorData;
-        if (otpData?.otp_required) {
-          otp.start({
-            sessionKey: otpData.session_key || '',
-            phoneMasked: otpData.phone_masked,
-            voiceFallback: otpData.voice_fallback,
-          });
-          setShowOtp(true);
-        } else {
-          const message = otpData?.message || errorData?.message;
-          Alert.alert('Error', message || 'Failed to save profile.');
-        }
+        const message = errorData?.message || errorData?.data?.message;
+        Alert.alert('Error', message || 'Failed to save profile.');
       }
     } catch (err) {
       log.error('Failed to save profile:', err);
@@ -360,9 +324,6 @@ export default function EditProfileScreen() {
       setSaving(false);
     }
   };
-
-  // Keep ref in sync so OTP onVerified always calls latest handleSave
-  handleSaveRef.current = handleSave;
 
   // ---------------------------------------------------------------------------
   // Custom field renderer (FC native format)
@@ -636,89 +597,6 @@ export default function EditProfileScreen() {
         />
       )}
 
-      {/* OTP verification modal */}
-      <Modal
-        visible={showOtp}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowOtp(false)}
-      >
-        <Pressable
-          style={[styles.modalOverlay, { backgroundColor: themeColors.overlay }]}
-          onPress={() => setShowOtp(false)}
-        >
-          <Pressable style={[styles.otpModalContent, { backgroundColor: themeColors.surface }]}>
-            <Text style={[styles.modalTitle, { color: themeColors.text }]}>
-              Verify Your Phone
-            </Text>
-            <Text style={[styles.otpSubtitle, { color: themeColors.textSecondary }]}>
-              Enter the code sent to {otp.phoneMasked}
-            </Text>
-
-            {otp.error ? (
-              <View style={[styles.otpErrorContainer, { backgroundColor: themeColors.errorLight, borderColor: withOpacity(themeColors.error, 0.3) }]}>
-                <Text style={[styles.otpErrorText, { color: themeColors.error }]}>{otp.error}</Text>
-              </View>
-            ) : null}
-
-            <TextInput
-              style={[
-                styles.input,
-                styles.otpInput,
-                {
-                  backgroundColor: themeColors.background,
-                  borderColor: themeColors.border,
-                  color: themeColors.text,
-                },
-              ]}
-              value={otp.code}
-              onChangeText={(text) => otp.setCode(text.replace(/[^0-9]/g, ''))}
-              placeholder="0000"
-              placeholderTextColor={themeColors.textTertiary}
-              keyboardType="number-pad"
-              maxLength={8}
-              textContentType="oneTimeCode"
-              autoComplete="sms-otp"
-              autoFocus
-            />
-
-            <Button
-              title="Verify"
-              onPress={otp.handleVerify}
-              loading={otp.verifying || saving}
-              style={styles.otpVerifyButton}
-            />
-
-            <View style={styles.otpActions}>
-              <Pressable
-                onPress={otp.handleResend}
-                disabled={otp.resendTimer > 0}
-              >
-                <Text style={[
-                  styles.otpActionText,
-                  { color: otp.resendTimer > 0 ? themeColors.textTertiary : themeColors.primary },
-                ]}>
-                  {otp.resendTimer > 0 ? `Resend code (${otp.resendTimer}s)` : 'Resend code'}
-                </Text>
-              </Pressable>
-              {otp.voiceFallback && (
-                <Pressable onPress={otp.handleVoiceCall}>
-                  <Text style={[styles.otpActionText, { color: themeColors.primary }]}>
-                    Try voice call
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-
-            <Pressable
-              style={styles.otpCancelButton}
-              onPress={() => setShowOtp(false)}
-            >
-              <Text style={[styles.otpActionText, { color: themeColors.textSecondary }]}>Cancel</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
@@ -794,72 +672,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
-  // OTP + Select overlay
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
-
-  modalTitle: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold,
-    padding: spacing.lg,
-    textAlign: 'center',
-  },
-
-  // OTP modal
-  otpModalContent: {
-    borderRadius: sizing.borderRadius.lg,
-    width: '100%',
-    padding: spacing.xl,
-  },
-
-  otpSubtitle: {
-    fontSize: typography.size.sm,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-
-  otpInput: {
-    fontSize: typography.size.xxl,
-    fontWeight: typography.weight.semibold,
-    textAlign: 'center' as const,
-    letterSpacing: 8,
-    marginBottom: spacing.md,
-  },
-
-  otpVerifyButton: {
-    marginTop: spacing.sm,
-  },
-
-  otpActions: {
-    flexDirection: 'row' as const,
-    justifyContent: 'center' as const,
-    gap: spacing.xl,
-    marginTop: spacing.lg,
-  },
-
-  otpActionText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-  },
-
-  otpCancelButton: {
-    alignItems: 'center' as const,
-    marginTop: spacing.md,
-  },
-
-  otpErrorContainer: {
-    borderWidth: 1,
-    borderRadius: sizing.borderRadius.sm,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
-  },
-
-  otpErrorText: {
-    fontSize: typography.size.xs,
-    textAlign: 'center' as const,
-  },
 });

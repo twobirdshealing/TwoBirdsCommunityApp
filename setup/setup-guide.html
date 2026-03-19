@@ -525,7 +525,7 @@
         <li>Go to <a href="https://www.twilio.com/try-twilio" target="_blank">twilio.com/try-twilio</a> and create a free account.</li>
         <li>In the Twilio Console, note your <strong>Account SID</strong> and <strong>Auth Token</strong> from the dashboard.</li>
         <li>Go to <strong>Messaging &rarr; Services</strong> and create a new Messaging Service (or use the default).</li>
-        <li>In your WordPress admin, go to the <strong>tbc-registration</strong> plugin settings and enter your Twilio Account SID, Auth Token, and phone number or Messaging Service SID.</li>
+        <li>In your WordPress admin, go to the <strong>tbc-otp</strong> plugin settings and enter your Twilio Account SID, Auth Token, and phone number or Messaging Service SID. (Requires the <code>tbc-otp</code> add-on plugin.)</li>
       </ol>
       <div class="callout" style="margin-top: 12px;">
         <strong>Completely optional.</strong> Registration works without Twilio &mdash; the phone number field simply won't appear on the signup form. Only set this up if phone verification is important for your community.
@@ -1282,7 +1282,7 @@
 
 <div class="callout callout-warn">
   <strong>Install order matters.</strong> Install <code>tbc-community-app</code> first — other plugins depend on it.
-  Recommended order: <code>tbc-community-app</code> → <code>tbc-registration</code> → <code>tbc-multi-reactions</code> → any add-on plugins.
+  Recommended order: <code>tbc-community-app</code> → <code>tbc-multi-reactions</code> → any add-on plugins (<code>tbc-otp</code>, <code>tbc-profile-completion</code>, etc.).
 </div>
 
 <h3>Required Plugins <span class="tag required">Must Install</span></h3>
@@ -1293,13 +1293,8 @@
   <tr><th>Plugin</th><th>Purpose</th><th>WordPress Dependencies</th></tr>
   <tr>
     <td><code>tbc-community-app</code></td>
-    <td>Main bridge plugin. All custom REST endpoints (auth, push notifications, config, branding, theme sync, etc.)</td>
+    <td>Main bridge plugin. All custom REST endpoints (auth, registration, push notifications, config, branding, theme sync, etc.). Supports Fluent Community's native custom profile fields.</td>
     <td><a href="https://fluentcommunity.co">Fluent Community</a> (free or Pro)</td>
-  </tr>
-  <tr>
-    <td><code>tbc-registration</code></td>
-    <td>Registration flow, OTP phone verification, and custom profile fields (OTP optional, requires <a href="https://twilio.com">Twilio</a> — configured in plugin settings)</td>
-    <td>Fluent Community</td>
   </tr>
   <tr>
     <td><code>tbc-multi-reactions</code></td>
@@ -1314,6 +1309,18 @@
 
 <table>
   <tr><th>Plugin</th><th>Module</th><th>WordPress Dependencies</th><th>Purpose</th></tr>
+  <tr>
+    <td><code>tbc-otp</code></td>
+    <td><code>otpModule</code></td>
+    <td><a href="https://twilio.com">Twilio</a> account</td>
+    <td>Phone OTP verification via SMS/voice during registration. Adds a verification step to the signup wizard.</td>
+  </tr>
+  <tr>
+    <td><code>tbc-profile-completion</code></td>
+    <td><code>profileCompletionModule</code></td>
+    <td>None</td>
+    <td>Profile completion gate. Blocks app access until bio and/or avatar are completed after registration.</td>
+  </tr>
   <tr>
     <td><code>tbc-book-club</code></td>
     <td><code>bookclubModule</code></td>
@@ -1352,7 +1359,7 @@
   <tr><td>Blog</td><td>WordPress posts (built-in, uses standard WP REST API)</td></tr>
   <tr><td>Push notifications</td><td>Firebase project + <code>tbc-community-app</code> (see <a href="#firebase-setup">Firebase Setup</a>)</td></tr>
   <tr><td>Real-time updates</td><td>Fluent Messaging add-on &mdash; supports Pusher Cloud, Fluent Socket, or custom Soketi (configured in WordPress admin, app reads config automatically)</td></tr>
-  <tr><td>OTP verification</td><td><a href="https://twilio.com">Twilio</a> account — configured in <code>tbc-registration</code> plugin settings. Optional.</td></tr>
+  <tr><td>OTP verification</td><td><a href="https://twilio.com">Twilio</a> account — configured in <code>tbc-otp</code> plugin settings. Requires the <code>tbc-otp</code> add-on (sold separately).</td></tr>
 </table>
 
 <!-- ====================================================================== -->
@@ -1406,6 +1413,20 @@ export const MODULES: ModuleManifest[] = [
     <td><code>tbc-youtube</code> plugin, YouTube Data API v3 key</td>
     <td><span class="tag addon">Add-on</span></td>
   </tr>
+  <tr>
+    <td><code>otpModule</code></td>
+    <td>Registration step</td>
+    <td>Phone OTP verification via SMS/voice. Adds a verification step to the registration wizard that requires a code sent to the user's phone.</td>
+    <td><code>tbc-otp</code> plugin, Twilio account</td>
+    <td><span class="tag addon">Add-on</span></td>
+  </tr>
+  <tr>
+    <td><code>profileCompletionModule</code></td>
+    <td>Context provider, registration step</td>
+    <td>Profile completion gate. Blocks app access until required fields (bio, avatar) are completed. Works for both new registrations and existing incomplete profiles.</td>
+    <td><code>tbc-profile-completion</code> plugin</td>
+    <td><span class="tag addon">Add-on</span></td>
+  </tr>
 </table>
 
 <h3>What Modules Can Register</h3>
@@ -1416,6 +1437,7 @@ export const MODULES: ModuleManifest[] = [
   <li><strong>Header icons</strong> — icon buttons in the top navigation bar</li>
   <li><strong>Context providers</strong> — app-level state (e.g., audio player)</li>
   <li><strong>Tab bar addons</strong> — persistent UI above the tab bar (e.g., mini player)</li>
+  <li><strong>Registration steps</strong> — dynamic steps in the registration wizard (e.g., OTP verification)</li>
 </ul>
 
 <h3>Building Your Own Modules</h3>

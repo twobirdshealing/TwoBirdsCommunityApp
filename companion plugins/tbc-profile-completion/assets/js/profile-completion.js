@@ -272,19 +272,56 @@
         updateButtonState();
         setStatus('Saving your profile...', 'info');
 
-        // Chain: upload avatar (if new) → save bio/socials → mark complete
-        var chain = Promise.resolve();
+        // 1. Upload photos in parallel
+        var mediaData = {};
+        var uploads = [];
 
         if (avatarFile) {
-            chain = chain.then(uploadAvatar);
+            uploads.push(uploadFile(avatarFile, 'photo').then(function (url) { mediaData.avatar = url; }));
         }
-
         if (coverFile) {
-            chain = chain.then(uploadCover);
+            uploads.push(uploadFile(coverFile, 'cover photo').then(function (url) { mediaData.cover_photo = url; }));
         }
 
-        chain
-            .then(saveBioAndSocials)
+        // Collect text fields for POST (must include username to avoid
+        // FC's can_customize_username validation treating missing as a change)
+        var textData = {
+            first_name: cfg.firstName || cfg.username || '',
+            username: cfg.username,
+        };
+        if (cfg.lastName) {
+            textData.last_name = cfg.lastName;
+        }
+        if (bioValue.trim()) {
+            textData.short_description = bioValue.trim();
+        }
+
+        // Collect social links
+        if (cfg.socialProviders && cfg.socialProviders.length > 0) {
+            var socialLinks = {};
+            for (var i = 0; i < cfg.socialProviders.length; i++) {
+                var sp = cfg.socialProviders[i];
+                var input = document.querySelector('[name="social_' + sp.key + '"]');
+                if (input && input.value.trim()) {
+                    socialLinks[sp.key] = input.value.trim();
+                }
+            }
+            if (Object.keys(socialLinks).length > 0) {
+                textData.social_links = socialLinks;
+            }
+        }
+
+        Promise.all(uploads)
+            .then(function () {
+                // 2. POST text fields (bio, social links, name)
+                return saveProfileText(textData);
+            })
+            .then(function () {
+                // 3. PUT media fields (avatar, cover_photo) — only if we have any
+                if (Object.keys(mediaData).length > 0) {
+                    return saveProfileMedia(mediaData);
+                }
+            })
             .then(markComplete)
             .then(function () {
                 setStatus('Profile complete! Redirecting...', 'success');
@@ -299,9 +336,9 @@
             });
     }
 
-    function uploadAvatar() {
+    function uploadFile(file, label) {
         var formData = new FormData();
-        formData.append('file', avatarFile);
+        formData.append('file', file);
         formData.append('object_source', 'profile');
 
         return fetch(fcRestUrl + 'feeds/media-upload', {
@@ -311,101 +348,58 @@
             credentials: 'same-origin',
         })
         .then(function (r) {
-            if (!r.ok) throw new Error('Failed to upload photo.');
+            if (!r.ok) throw new Error('Failed to upload ' + label + '.');
             return r.json();
         })
         .then(function (data) {
             var url = data.media && data.media.url;
-            if (!url) throw new Error('Failed to upload photo.');
-
-            return fetch(fcRestUrl + 'profile', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-WP-Nonce': nonce,
-                },
-                body: JSON.stringify({ avatar: url }),
-                credentials: 'same-origin',
-            })
-            .then(function (r) {
-                if (!r.ok) throw new Error('Failed to save photo.');
-                return r.json();
-            });
+            if (!url) throw new Error('Failed to upload ' + label + '.');
+            return url;
         });
     }
 
-    function uploadCover() {
-        var formData = new FormData();
-        formData.append('file', coverFile);
-        formData.append('object_source', 'profile');
-
-        return fetch(fcRestUrl + 'feeds/media-upload', {
-            method: 'POST',
-            headers: { 'X-WP-Nonce': nonce },
-            body: formData,
-            credentials: 'same-origin',
-        })
-        .then(function (r) {
-            if (!r.ok) throw new Error('Failed to upload cover photo.');
-            return r.json();
-        })
-        .then(function (data) {
-            var url = data.media && data.media.url;
-            if (!url) throw new Error('Failed to upload cover photo.');
-
-            return fetch(fcRestUrl + 'profile', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-WP-Nonce': nonce,
-                },
-                body: JSON.stringify({ cover_photo: url }),
-                credentials: 'same-origin',
-            })
-            .then(function (r) {
-                if (!r.ok) throw new Error('Failed to save cover photo.');
-                return r.json();
-            });
-        });
-    }
-
-    function saveBioAndSocials() {
-        var body = {};
-
-        if (bioValue.trim()) {
-            body.short_description = bioValue.trim();
-        }
-
-        // Collect social links
-        if (cfg.socialProviders && cfg.socialProviders.length > 0) {
-            var socialLinks = {};
-            for (var i = 0; i < cfg.socialProviders.length; i++) {
-                var sp = cfg.socialProviders[i];
-                var input = document.querySelector('[name="social_' + sp.key + '"]');
-                if (input && input.value.trim()) {
-                    socialLinks[sp.key] = input.value.trim();
-                }
-            }
-            if (Object.keys(socialLinks).length > 0) {
-                body.social_links = socialLinks;
-            }
-        }
-
-        if (Object.keys(body).length === 0) {
-            return Promise.resolve();
-        }
-
-        return fetch(fcRestUrl + 'profile', {
+    /**
+     * POST text fields (bio, name, social links, website) via FC's updateProfile.
+     */
+    function saveProfileText(fields) {
+        return fetch(fcRestUrl + 'profile/' + cfg.username, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-WP-Nonce': nonce,
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ data: fields }),
             credentials: 'same-origin',
         })
         .then(function (r) {
-            if (!r.ok) throw new Error('Failed to save profile.');
+            if (!r.ok) {
+                return r.json().then(function (err) {
+                    throw new Error(err.message || 'Failed to save profile.');
+                });
+            }
+            return r.json();
+        });
+    }
+
+    /**
+     * PUT media URLs (avatar, cover_photo) via FC's patchProfile.
+     */
+    function saveProfileMedia(fields) {
+        return fetch(fcRestUrl + 'profile/' + cfg.username, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-WP-Nonce': nonce,
+            },
+            body: JSON.stringify({ data: fields }),
+            credentials: 'same-origin',
+        })
+        .then(function (r) {
+            if (!r.ok) {
+                return r.json().then(function (err) {
+                    throw new Error(err.message || 'Failed to save profile media.');
+                });
+            }
             return r.json();
         });
     }

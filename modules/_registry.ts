@@ -17,6 +17,7 @@ import type {
   MenuItemRegistration,
   HeaderIconRegistration,
   RegistrationStepRegistration,
+  ResponseHeaderMapping,
 } from './_types';
 
 // =============================================================================
@@ -122,6 +123,12 @@ export function getTabBarAddons(): React.ComponentType[] {
 /** All module route prefixes for push notification / deep link validation */
 export function getModuleRoutePrefixes(): string[] {
   return MODULES.flatMap((m) => m.routePrefixes ?? []);
+}
+
+/** All module response header mappings (consumed by API client for generic header extraction) */
+const _cachedResponseHeaders: ResponseHeaderMapping[] = MODULES.flatMap((m) => m.responseHeaders ?? []);
+export function getModuleResponseHeaders(): ResponseHeaderMapping[] {
+  return _cachedResponseHeaders;
 }
 
 // -----------------------------------------------------------------------------

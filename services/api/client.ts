@@ -9,6 +9,7 @@ import { API_URL } from '@/constants/config';
 import { clearAuth, getAuthToken, silentRefresh } from '@/services/auth';
 import { ApiError } from '@/types/api';
 import { createLogger } from '@/utils/logger';
+import { getModuleResponseHeaders } from '@/modules/_registry';
 import NetInfo from '@react-native-community/netinfo';
 
 const log = createLogger('API');
@@ -25,8 +26,9 @@ export interface ResponseHeaderData {
   unreadMessages?: number;
   cartCount?: number;
   maintenance?: boolean;
-  profileIncomplete?: boolean;
   minAppVersion?: string;
+  /** Module-injected header values (keyed by ResponseHeaderMapping.key) */
+  [key: string]: any;
 }
 
 type ResponseHeaderListener = (data: ResponseHeaderData) => void;
@@ -273,9 +275,21 @@ async function request<T>(
       const hMsg = response.headers.get('X-TBC-Unread-Messages');
       const hCart = response.headers.get('X-TBC-Cart-Count');
       const hMaint = response.headers.get('X-TBC-Maintenance');
-      const hProfile = response.headers.get('X-TBC-Profile-Incomplete');
       const hMinVer = response.headers.get('X-TBC-Min-App-Version');
-      if (hNotif !== null || hMsg !== null || hCart !== null || hMaint !== null || hProfile !== null || hMinVer !== null) {
+
+      // Module-registered headers (extracted generically via manifest)
+      const moduleHeaders = getModuleResponseHeaders();
+      const moduleData: Record<string, any> = {};
+      let hasModuleHeader = false;
+      for (const mapping of moduleHeaders) {
+        const value = response.headers.get(mapping.header);
+        if (value !== null) {
+          moduleData[mapping.key] = mapping.transform ? mapping.transform(value) : value;
+          hasModuleHeader = true;
+        }
+      }
+
+      if (hNotif !== null || hMsg !== null || hCart !== null || hMaint !== null || hMinVer !== null || hasModuleHeader) {
         const nNotif = hNotif !== null ? parseInt(hNotif, 10) : NaN;
         const nMsg = hMsg !== null ? parseInt(hMsg, 10) : NaN;
         const nCart = hCart !== null ? parseInt(hCart, 10) : NaN;
@@ -284,8 +298,8 @@ async function request<T>(
           ...(!isNaN(nMsg) && nMsg >= 0 && { unreadMessages: nMsg }),
           ...(!isNaN(nCart) && nCart >= 0 && { cartCount: nCart }),
           ...(hMaint !== null && { maintenance: hMaint === '1' }),
-          ...(hProfile !== null && { profileIncomplete: hProfile === '1' }),
           ...(hMinVer !== null && { minAppVersion: hMinVer }),
+          ...moduleData,
         };
         for (const listener of responseHeaderListeners) {
           listener(headerData);

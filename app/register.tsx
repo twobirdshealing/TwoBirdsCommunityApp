@@ -4,7 +4,7 @@
 // Step 1: Basic info (name, email, username, password)
 // Step 2: Custom profile fields + terms
 // Step 3: Email verification (if required)  → EmailVerifyStep (core)
-// Step 4+: Module steps (OTP, profile completion, etc.) from registry
+// Step 4+: Module-provided steps from registry
 // =============================================================================
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -76,7 +76,7 @@ export default function RegisterScreen() {
   const [submitResponse, setSubmitResponse] = useState<Record<string, any>>({});
 
   // Accumulated verification extras — carried forward across steps so each
-  // resubmit includes all prior verification params (email code + OTP key etc.)
+  // resubmit includes all prior verification params (email code + module extras)
   const verificationExtrasRef = useRef<Record<string, any>>({});
 
   // Email verification token (set when server requires email verify)
@@ -106,7 +106,7 @@ export default function RegisterScreen() {
    *   1 = form fields page 1
    *   2 = form fields page 2 (custom fields + terms)
    *   3 = email verification (core, if needed)
-   *   4 .. 4+N-1 = pre-creation module steps (OTP, etc.)
+   *   4 .. 4+N-1 = pre-creation module steps
    */
   const MODULE_STEPS_START = 4;
 
@@ -258,7 +258,7 @@ export default function RegisterScreen() {
         return 'Session expired';
       }
 
-      // Check if any pre-creation module step should activate (e.g. OTP)
+      // Check if any pre-creation module step should activate
       const activePreSteps = getRegistrationSteps().filter(
         (s) => s.id !== 'email-verify' && s.phase === 'pre-creation' &&
                s.shouldActivate({ submitResponse: result, registrationConfig })
@@ -314,7 +314,7 @@ export default function RegisterScreen() {
     }
   }, [formData, validateStep, registerAndLogin, getFieldsForStep, registrationConfig]);
 
-  /** Called by module steps to resubmit the form with extra data (e.g. OTP session key) */
+  /** Called by module steps to resubmit the form with extra verification data */
   const handleModuleResubmit = useCallback(async (extras: Record<string, any>) => {
     await handleSubmitRegistration(extras);
   }, [handleSubmitRegistration]);

@@ -5,8 +5,11 @@
 // and caches results in WordPress transients.
 // =============================================================================
 
-import { TBC_YT_URL } from '@/constants/config';
+import { SITE_URL } from '@/constants/config';
 import { createLogger } from '@/utils/logger';
+
+/** YouTube plugin base URL — derived from SITE_URL at import time */
+const TBC_YT_URL = `${SITE_URL}/wp-json/tbc-yt/v1`;
 
 const log = createLogger('YouTubeAPI');
 import type {

@@ -2,12 +2,10 @@
 // REGISTRATION API SERVICE - Mobile app registration endpoints
 // =============================================================================
 // Base registration endpoints are on tbc-community-app (tbc-ca/v1).
-// OTP endpoints are on tbc-otp plugin (tbc-otp/v1).
 // These are PUBLIC endpoints (no auth required).
 // =============================================================================
 
 import { TBC_CA_URL } from '@/constants/config';
-import { verifyOtp, resendOtp, requestVoiceCall } from './otp';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('RegistrationAPI');
@@ -33,14 +31,8 @@ export interface FieldsResponse {
   email_verification_required: boolean;
   fields: Record<string, RegistrationField>;
   message?: string;
-  // Legacy fields (from tbc-registration, no longer returned by tbc-ca base endpoint)
-  otp_required?: boolean;
-  voice_fallback?: boolean;
-  profile_completion?: {
-    enabled: boolean;
-    require_bio: boolean;
-    require_avatar: boolean;
-  };
+  /** Module-specific fields from server plugins */
+  [key: string]: any;
 }
 
 export interface RegisterResponse {
@@ -53,30 +45,19 @@ export interface RegisterResponse {
     display_name: string;
     email: string;
   };
-  otp_required?: boolean;
-  session_key?: string;
-  phone_masked?: string;
   email_verification_required?: boolean;
   verification_token?: string;
   message?: string;
   errors?: Record<string, string>;
+  /** Module-specific fields from server plugins */
+  [key: string]: any;
 }
-
-// OTP types re-exported from universal otp service
-export type { OtpResponse, OtpVerifyResponse } from './otp';
 
 export interface ForgotPasswordResponse {
   success: boolean;
-  otp_sent?: boolean;
   email_sent?: boolean;
-  session_key?: string;
-  phone_masked?: string;
-  voice_fallback?: boolean;
   message?: string;
 }
-
-// PasswordVerifyResponse is now OtpVerifyResponse from otp.ts (same shape)
-export type { OtpVerifyResponse as PasswordVerifyResponse } from './otp';
 
 export interface PasswordResetResponse {
   success: boolean;
@@ -104,7 +85,7 @@ async function tbcPublicRequest<T>(
 
     const data = await response.json();
 
-    if (!response.ok && !data.otp_required) {
+    if (!response.ok) {
       return {
         success: false,
         error: data?.message || `Request failed with status ${response.status}`,
@@ -140,7 +121,8 @@ export async function getRegistrationFields(): Promise<FieldsResponse | null> {
 
 /**
  * POST /auth/register - Submit registration data
- * May return otp_required if phone OTP verification is needed (via tbc-otp plugin hook).
+ * Server may return module-specific fields in error responses — these are
+ * passed through so module registration steps can read them.
  */
 export async function submitRegistration(data: Record<string, any>): Promise<RegisterResponse> {
   const result = await tbcPublicRequest<RegisterResponse>('/auth/register', {
@@ -152,22 +134,22 @@ export async function submitRegistration(data: Record<string, any>): Promise<Reg
     return result.data;
   }
 
+  // Spread server response first so module-specific fields are preserved,
+  // then overlay success/message so server can't accidentally clobber them
+  const serverData = 'data' in result ? result.data : {};
   return {
+    ...serverData,
     success: false,
     message: result.error,
-    errors: 'data' in result ? result.data?.errors as Record<string, string> | undefined : undefined,
-  };
+  } as RegisterResponse;
 }
-
-// OTP functions re-exported from universal otp service
-export { verifyOtp, resendOtp, requestVoiceCall };
 
 // -----------------------------------------------------------------------------
 // Password Reset API Functions
 // -----------------------------------------------------------------------------
 
 /**
- * POST /password/forgot - Initiate password reset (sends OTP or email)
+ * POST /password/forgot - Initiate password reset (sends reset email)
  */
 export async function forgotPassword(login: string): Promise<ForgotPasswordResponse> {
   const result = await tbcPublicRequest<ForgotPasswordResponse>('/password/forgot', {
@@ -184,11 +166,6 @@ export async function forgotPassword(login: string): Promise<ForgotPasswordRespo
     message: result.error,
   };
 }
-
-// Password OTP functions — aliases to universal otp service
-export const verifyPasswordOtp = verifyOtp;
-export const resendPasswordOtp = resendOtp;
-export const requestPasswordVoiceCall = requestVoiceCall;
 
 /**
  * POST /password/reset - Set new password with reset token
@@ -220,13 +197,7 @@ export async function resetPassword(
 export const registrationApi = {
   getRegistrationFields,
   submitRegistration,
-  verifyOtp,
-  resendOtp,
-  requestVoiceCall,
   forgotPassword,
-  verifyPasswordOtp,
-  resendPasswordOtp,
-  requestPasswordVoiceCall,
   resetPassword,
 };
 

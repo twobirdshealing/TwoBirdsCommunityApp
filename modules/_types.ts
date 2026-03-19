@@ -138,9 +138,9 @@ export interface RegistrationStepProps {
 }
 
 export interface RegistrationStepRegistration {
-  /** Unique step ID (e.g. 'email-verify', 'otp') */
+  /** Unique step ID (e.g. 'email-verify') */
   id: string;
-  /** Sort order: email=10, OTP=20. Custom steps can use any value. */
+  /** Sort order: email=10. Module steps can use any value (e.g. 20, 30). */
   order: number;
   /** Step runs before user account creation (all module steps are pre-creation) */
   phase: 'pre-creation';
@@ -156,6 +156,19 @@ export interface RegistrationStepRegistration {
     submitResponse: Record<string, any>;
     registrationConfig: RegistrationConfig | null;
   }) => boolean;
+}
+
+// -----------------------------------------------------------------------------
+// Response Header Mapping (module-injected API response headers)
+// -----------------------------------------------------------------------------
+
+export interface ResponseHeaderMapping {
+  /** HTTP response header name (e.g. 'X-TBC-Profile-Incomplete') */
+  header: string;
+  /** Key name in the header data object (e.g. 'profileIncomplete') */
+  key: string;
+  /** Transform the raw header string value. Default: pass through as-is. */
+  transform?: (value: string) => any;
 }
 
 // -----------------------------------------------------------------------------
@@ -201,6 +214,8 @@ export interface ModuleManifest {
   routePrefixes?: string[];
   /** Registration step registrations — adds steps to the registration flow */
   registrationSteps?: RegistrationStepRegistration[];
+  /** Response header mappings — extracts custom headers from every API response */
+  responseHeaders?: ResponseHeaderMapping[];
 
   // ---------------------------------------------------------------------------
   // Lifecycle hooks (all optional)

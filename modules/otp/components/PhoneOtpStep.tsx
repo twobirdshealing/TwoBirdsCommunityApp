@@ -13,7 +13,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { Button } from '@/components/common/Button';
 import { hapticMedium } from '@/utils/haptics';
-import type { OtpVerificationState } from '@/hooks/useOtpVerification';
+import type { OtpVerificationState } from '../hooks/useOtpVerification';
 import { verificationStyles as styles } from '@/components/register/styles';
 
 // -----------------------------------------------------------------------------

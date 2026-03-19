@@ -163,7 +163,6 @@ function RootLayoutNav() {
       if (data.cartCount !== undefined) {
         setCartCount(data.cartCount);
       }
-      // profileIncomplete header is handled by the profile-completion module's provider
       if (data.maintenance || (data.minAppVersion && isVersionBelow(APP_VERSION, data.minAppVersion))) {
         // Maintenance or version change detected mid-session — refresh all config
         refreshAllConfig();
@@ -218,14 +217,13 @@ function RootLayoutNav() {
     if (maintenance?.enabled && !maintenance.can_bypass && !maintenanceLoginMode) return;
 
     const currentSegment = segments[0] as string;
-    const inAuthGroup = currentSegment === 'login' || currentSegment === 'register' || currentSegment === 'forgot-password' || currentSegment === 'webview' || currentSegment === 'profile-complete';
+    const inAuthGroup = currentSegment === 'login' || currentSegment === 'register' || currentSegment === 'forgot-password' || currentSegment === 'webview';
 
     if (!isAuthenticated && !inAuthGroup) {
       router.replace('/login');
     } else if (isAuthenticated && segments[0] === 'login') {
       router.replace('/(tabs)');
     }
-    // Profile completion redirect is handled by the profile-completion module's provider
   }, [isAuthenticated, isLoading, segments, maintenance, maintenanceLoginMode]);
 
   // Reset login mode when bypass check completes: can't bypass → back to maintenance

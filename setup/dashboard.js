@@ -107,15 +107,16 @@ const REQUIRED_ASSETS = [
 // ---------------------------------------------------------------------------
 
 const CORE_PLUGINS = [
-  { folder: 'tbc-community-app', label: 'TBC Community App', required: true, description: 'Main bridge plugin — upload to WordPress and activate' },
-  { folder: 'tbc-registration', label: 'TBC Registration', required: true, description: 'Registration, OTP, and custom profile fields — upload to WordPress and activate' },
+  { folder: 'tbc-community-app', label: 'TBC Community App', required: true, description: 'Main bridge plugin — auth, registration, push notifications, config, branding, theme sync' },
   { folder: 'tbc-multi-reactions', label: 'TBC Multi Reactions', required: false, description: 'Multi-reaction support — upload to WordPress if desired' },
   { folder: 'tbc-starter-theme', label: 'TBC Starter Theme', required: false, description: 'Custom WordPress theme — upload and activate' },
 ];
 
 const ADDON_PLUGINS = [
-  { folder: 'tbc-youtube', label: 'TBC YouTube', description: 'YouTube channel integration (companion to youtube module)' },
-  { folder: 'tbc-book-club', label: 'TBC Book Club', description: 'Book club with audiobook player (companion to bookclub module)' },
+  { folder: 'tbc-otp', label: 'TBC OTP', description: 'Phone OTP verification via Twilio (companion to otp module) — sold separately' },
+  { folder: 'tbc-profile-completion', label: 'TBC Profile Completion', description: 'Profile completion gate — require bio/avatar after registration (companion to profile-completion module) — sold separately' },
+  { folder: 'tbc-youtube', label: 'TBC YouTube', description: 'YouTube channel integration (companion to youtube module) — sold separately' },
+  { folder: 'tbc-book-club', label: 'TBC Book Club', description: 'Book club with audiobook player (companion to bookclub module) — sold separately' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -553,7 +554,6 @@ async function checkConnectivity(siteUrl) {
     { key: 'wpRest', url: `${siteUrl}/wp-json/`, label: 'WP REST API' },
     { key: 'fluentApi', url: `${siteUrl}/wp-json/fluent-community/v2`, label: 'Fluent Community API' },
     { key: 'tbcCa', url: `${siteUrl}/wp-json/tbc-ca/v1`, label: 'TBC Community App plugin' },
-    { key: 'tbcReg', url: `${siteUrl}/wp-json/tbc-reg/v1`, label: 'TBC Registration plugin' },
   ];
   const checks = await Promise.all(endpoints.map(async (ep) => {
     try {

@@ -1,15 +1,17 @@
 // =============================================================================
-// UNIVERSAL OTP SERVICE - Single set of OTP functions for all contexts
+// OTP SERVICE - OTP verification for the OTP registration module
 // =============================================================================
-// Replaces context-specific OTP functions (registration, password, profile).
 // All contexts use the same /otp/verify, /otp/resend, /otp/voice endpoints
 // on the tbc-otp plugin (tbc-otp/v1).
 // =============================================================================
 
-import { TBC_OTP_URL } from '@/constants/config';
+import { SITE_URL } from '@/constants/config';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('OtpAPI');
+
+/** OTP plugin base URL — derived from SITE_URL at import time */
+const TBC_OTP_URL = `${SITE_URL}/wp-json/tbc-otp/v1`;
 
 // -----------------------------------------------------------------------------
 // Types
@@ -19,9 +21,6 @@ export interface OtpVerifyResponse {
   success: boolean;
   verified?: boolean;
   message?: string;
-  // Password recovery context only:
-  reset_token?: string;
-  login?: string;
 }
 
 export interface OtpResponse {
@@ -30,7 +29,7 @@ export interface OtpResponse {
 }
 
 // -----------------------------------------------------------------------------
-// Helper: Public request to TBC-CA OTP endpoints
+// Helper: Public request to TBC OTP endpoints
 // -----------------------------------------------------------------------------
 
 async function otpRequest<T>(
@@ -71,10 +70,7 @@ async function otpRequest<T>(
 // -----------------------------------------------------------------------------
 
 /**
- * POST /otp/verify - Verify an OTP code for any session context.
- *
- * For registration/profile: returns { success, verified }
- * For password recovery: also returns { reset_token, login }
+ * POST /otp/verify - Verify an OTP code for a session.
  */
 export async function verifyOtp(sessionKey: string, code: string): Promise<OtpVerifyResponse> {
   const result = await otpRequest<OtpVerifyResponse>('/otp/verify', {
@@ -93,7 +89,7 @@ export async function verifyOtp(sessionKey: string, code: string): Promise<OtpVe
 }
 
 /**
- * POST /otp/resend - Resend OTP SMS for any session.
+ * POST /otp/resend - Resend OTP SMS for a session.
  */
 export async function resendOtp(sessionKey: string): Promise<OtpResponse> {
   const result = await otpRequest<OtpResponse>('/otp/resend', {
@@ -111,7 +107,7 @@ export async function resendOtp(sessionKey: string): Promise<OtpResponse> {
 }
 
 /**
- * POST /otp/voice - Request voice call OTP for any session.
+ * POST /otp/voice - Request voice call OTP for a session.
  */
 export async function requestVoiceCall(sessionKey: string): Promise<OtpResponse> {
   const result = await otpRequest<OtpResponse>('/otp/voice', {
@@ -127,15 +123,3 @@ export async function requestVoiceCall(sessionKey: string): Promise<OtpResponse>
     message: result.error,
   };
 }
-
-// -----------------------------------------------------------------------------
-// Export as object for convenience
-// -----------------------------------------------------------------------------
-
-export const otpApi = {
-  verifyOtp,
-  resendOtp,
-  requestVoiceCall,
-};
-
-export default otpApi;

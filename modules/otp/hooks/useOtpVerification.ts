@@ -1,15 +1,12 @@
 // =============================================================================
-// USE OTP VERIFICATION - Shared OTP state & handlers
+// USE OTP VERIFICATION - OTP state & handlers for the OTP module
 // =============================================================================
-// Extracts the duplicated OTP verification logic used by both the registration
-// wizard (register.tsx) and the profile editor (profile/edit.tsx).
-//
 // Manages: code input, session key, phone mask, resend timer, voice fallback,
 // error/loading state, and verify/resend/voice-call handlers.
 // =============================================================================
 
 import { useState, useEffect, useCallback } from 'react';
-import { verifyOtp, resendOtp, requestVoiceCall } from '@/services/api/otp';
+import { verifyOtp, resendOtp, requestVoiceCall } from '../services/otp';
 
 // -----------------------------------------------------------------------------
 // Types

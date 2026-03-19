@@ -75,8 +75,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
           }
 
-          // Profile completion is checked via X-TBC-Profile-Incomplete response headers
-          // on every authenticated API call (startup batch, etc). No separate call needed here.
         } else {
           // Has auth but no user info - clear it
           await authService.clearAuth();
@@ -100,9 +98,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (result.success && result.user) {
         setUser(result.user);
         setIsAuthenticated(true);
-
-        // Profile completion is detected via X-TBC-Profile-Incomplete response headers
-        // on the first authenticated API call (startup batch). No separate call needed.
 
         return { success: true };
       } else {

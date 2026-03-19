@@ -252,6 +252,7 @@ class Shortcode {
             'communityUrl'    => $this->get_community_url(),
             'username'        => $user->user_login,
             'firstName'       => $user->first_name,
+            'lastName'        => $user->last_name,
             'siteName'        => get_bloginfo('name'),
             'siteLogoUrl'     => $this->get_site_logo_url(),
             'existing'        => $existing,

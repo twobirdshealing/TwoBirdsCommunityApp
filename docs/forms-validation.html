@@ -111,7 +111,7 @@ const [fieldErrors, setFieldErrors] = useState&lt;Record&lt;string, string&gt;&g
 <!-- ================================================================== -->
 <h2 id="server-driven-config">4. Server-Driven Field Config</h2>
 
-<p>Registration fields come from the server, not hardcoded in the app. On mount, <code>register.tsx</code> calls <code>getRegistrationFields()</code> which hits the <code>tbc-reg/v1/register/fields</code> endpoint.</p>
+<p>Registration fields come from the server, not hardcoded in the app. On mount, <code>register.tsx</code> calls <code>getRegistrationFields()</code> which hits the <code>tbc-ca/v1/auth/register/fields</code> endpoint.</p>
 
 <h3>FieldsResponse</h3>
 
@@ -333,7 +333,7 @@ if (result.errors) {
 </table>
 
 <div class="callout callout-success">
-  <strong>Web parity:</strong> The scoring algorithm is kept in sync with the web registration form in <code>companion plugins/tbc-registration/assets/js/registration.js</code>. Changes to either must be mirrored.
+  <strong>Web parity:</strong> The scoring algorithm is kept in sync with the web registration form. Changes to either the app or web version must be mirrored.
 </div>
 
 <!-- ================================================================== -->
@@ -383,7 +383,7 @@ if (result.errors) {
 
 <h3>OTP API Endpoints</h3>
 
-<p>All at <code>tbc-reg/v1/otp/*</code> (tbc-registration plugin):</p>
+<p>All at <code>tbc-otp/v1/otp/*</code> (tbc-otp plugin, addon):</p>
 
 <table>
   <tr><th>Endpoint</th><th>Method</th><th>Purpose</th></tr>

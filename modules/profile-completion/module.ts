@@ -21,6 +21,14 @@ export const profileCompletionModule: ModuleManifest = {
   companionPlugin: 'tbc-profile-completion',
   routePrefixes: ['/profile-complete'],
 
+  responseHeaders: [
+    {
+      header: 'X-TBC-Profile-Incomplete',
+      key: 'profileIncomplete',
+      transform: (value) => value === '1',
+    },
+  ],
+
   providers: [
     {
       id: 'profile-incomplete-guard',
