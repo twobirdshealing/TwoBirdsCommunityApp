@@ -64,8 +64,6 @@ Each add-on is a **paired module + plugin**: the app module lives in `modules/`,
 - **tbc-otp** (plugin) + **otp module** — Phone OTP verification via Twilio. Adds a pre-creation registration step. Endpoints at `tbc-otp/v1`.
 - **tbc-profile-completion** (plugin) + **profile-completion module** — Profile completion gate. Requires bio and/or avatar after registration. Uses response header detection. Endpoints at `tbc-pcom/v1`.
 
-### Deprecated
-- **tbc-registration** — Replaced by tbc-otp + tbc-profile-completion. Base registration moved to tbc-community-app. Keep installed for existing sites until migrated.
 
 ## Module System
 
@@ -129,17 +127,10 @@ Or use the version bump buttons in the setup dashboard.
 
 ---
 
-## Your Instructions
-
-Add your own project-specific notes, preferences, and instructions below. This section is yours — it won't be affected by core updates.
-
-<!-- YOUR_CUSTOM_INSTRUCTIONS_START -->
-
-<!-- YOUR_CUSTOM_INSTRUCTIONS_END -->
-
 <!-- ====================================================================== -->
-<!-- SITE-SPECIFIC — Everything below this line is stripped from snapshots  -->
-<!-- SNAPSHOT_STRIP_BELOW -->
+<!-- Your Instructions — Add project-specific notes and preferences below  -->
+<!-- Everything below this marker is stripped from white-label snapshots    -->
+<!-- CUSTOM_INSTRUCTIONS_BELOW -->
 
 ## Site: Two Birds Church
 

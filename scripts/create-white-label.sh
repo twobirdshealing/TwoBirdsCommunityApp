@@ -159,7 +159,6 @@ sed -i \
   -e "s|PUSH_NOTIFICATIONS: true,|PUSH_NOTIFICATIONS: false,|" \
   -e "s|MESSAGING: true,|MESSAGING: false,|" \
   -e "s|COURSES: true,|COURSES: false,|" \
-  -e "s|CART: true,|CART: false,|" \
   -e "s|MULTI_REACTIONS: true,|MULTI_REACTIONS: false,|" \
   "$TARGET_DIR/constants/config.ts"
 
@@ -284,9 +283,9 @@ rm -f "$TARGET_DIR/assets/images/splash_screen_img.png"
 rm -f "$TARGET_DIR/assets/images/login_logo.png"
 rm -f "$TARGET_DIR/assets/images/login_background_img.png"
 
-# Strip site-specific section from CLAUDE.md (keep generic buyer-facing content)
+# Strip site-specific section from CLAUDE.md (keep marker, remove content below it)
 if [ -f "$TARGET_DIR/CLAUDE.md" ]; then
-  sed -i '/<!-- SNAPSHOT_STRIP_BELOW -->/,$d' "$TARGET_DIR/CLAUDE.md"
+  sed -i '/<!-- CUSTOM_INSTRUCTIONS_BELOW -->/q' "$TARGET_DIR/CLAUDE.md"
   echo "" >> "$TARGET_DIR/CLAUDE.md"
 fi
 
