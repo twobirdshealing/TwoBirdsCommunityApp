@@ -2,6 +2,12 @@
 
 All notable changes to TBC License Server.
 
+## [2.3.0] — 2026-03-19
+
+- Fix: Per-site license validation — verify the requesting site is actually activated, not just that the license is globally active
+- Fix: Auto-activation now works for any new site with available slots, not only on first-ever activation
+- Add: `/deactivate` endpoint to release a site's activation slot when license is removed from dashboard
+
 ## [2.2.0] — 2026-03-16
 
 - Auto-activate license on first validation using FluentCart's site activation system

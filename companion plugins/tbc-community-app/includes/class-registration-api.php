@@ -570,6 +570,24 @@ class TBC_CA_Registration_API {
         $existing = is_array($xprofile->custom_fields) ? $xprofile->custom_fields : [];
         $xprofile->custom_fields = array_merge($existing, $values);
         $xprofile->save();
+
+        // Announce the change so the Automator trigger can pick it up
+        // (same action that fires on profile edits via tbc-automator-fcom-fields).
+        $changed = [];
+        foreach ($values as $slug => $new_value) {
+            $old_value = $existing[$slug] ?? null;
+            if (is_array($new_value) || is_array($old_value)) {
+                if ((array) $old_value !== (array) $new_value) {
+                    $changed[$slug] = ['old_value' => $old_value, 'new_value' => $new_value];
+                }
+            } elseif ((string) ($old_value ?? '') !== (string) $new_value) {
+                $changed[$slug] = ['old_value' => $old_value, 'new_value' => $new_value];
+            }
+        }
+        if (!empty($changed)) {
+            do_action('tbc_fcom/profile_custom_fields_updated', $user_id, $changed, $xprofile->custom_fields);
+        }
+
         return true;
     }
 

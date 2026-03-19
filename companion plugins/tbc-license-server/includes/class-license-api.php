@@ -36,6 +36,13 @@ class TBC_License_API {
             'callback'            => [$this, 'check_license'],
             'permission_callback' => '__return_true',
         ]);
+
+        // POST /wp-json/tbc-license/v1/deactivate
+        register_rest_route(TBC_LICENSE_REST_NAMESPACE, '/deactivate', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'deactivate_site_endpoint'],
+            'permission_callback' => '__return_true',
+        ]);
     }
 
     /**
@@ -78,17 +85,29 @@ class TBC_License_API {
             ], 200);
         }
 
-        // Auto-activate on first use via FluentCart's site activation system
-        if ($site_url && $license->status === 'inactive' && $license->hasActivationLeft()) {
+        // Auto-activate this site if it isn't already and slots remain
+        if ($site_url && $license->hasActivationLeft()) {
             $this->activate_site($license, $site_url);
             $license->refresh();
         }
 
-        if (!$license->isActive()) {
-            return new WP_REST_Response([
-                'valid' => false,
-                'error' => 'This license has been disabled or all activations are used. Contact support.',
-            ], 200);
+        // Per-site validation: verify THIS site is activated, not just the license globally
+        if ($site_url) {
+            if (!$this->is_site_activated($license, $site_url)) {
+                return new WP_REST_Response([
+                    'valid' => false,
+                    'error' => 'This license is not activated for your site. All activation slots may be in use. Contact support.',
+                    'plan'  => $this->get_plan($license),
+                ], 200);
+            }
+        } else {
+            // No siteUrl provided — fall back to global status check
+            if (!$license->isActive()) {
+                return new WP_REST_Response([
+                    'valid' => false,
+                    'error' => 'This license has been disabled or all activations are used. Contact support.',
+                ], 200);
+            }
         }
 
         // License is valid — check for updates
@@ -161,6 +180,69 @@ class TBC_License_API {
             // Let FluentCart recount — this sets status to active and saves
             $license->recountActivations();
         }
+    }
+
+    /**
+     * Check if a specific site has an active activation for this license.
+     */
+    private function is_site_activated($license, $site_url) {
+        $LicenseSite = '\FluentCartPro\App\Modules\Licensing\Models\LicenseSite';
+        $LicenseActivation = '\FluentCartPro\App\Modules\Licensing\Models\LicenseActivation';
+
+        if (!class_exists($LicenseSite) || !class_exists($LicenseActivation)) {
+            // Cannot verify — fail open to avoid blocking legitimate users
+            return true;
+        }
+
+        $clean_url = preg_replace('#^https?://#', '', rtrim($site_url, '/'));
+        $site = $LicenseSite::where('site_url', $clean_url)->first();
+        if (!$site) return false;
+
+        return $LicenseActivation::where('license_id', $license->id)
+            ->where('site_id', $site->id)
+            ->where('status', 'active')
+            ->exists();
+    }
+
+    /**
+     * POST /deactivate — Remove a site's activation record for a license.
+     */
+    public function deactivate_site_endpoint($request) {
+        $license_key = sanitize_text_field($request->get_param('licenseKey') ?? '');
+        $site_url    = sanitize_text_field($request->get_param('siteUrl') ?? '');
+
+        if (empty($license_key) || empty($site_url)) {
+            return new WP_REST_Response(['success' => false, 'error' => 'licenseKey and siteUrl are required'], 400);
+        }
+
+        if (!class_exists('FluentCartPro\App\Modules\Licensing\Models\License')) {
+            return new WP_REST_Response(['success' => false, 'error' => 'License system not available'], 500);
+        }
+
+        $license = \FluentCartPro\App\Modules\Licensing\Models\License::where('license_key', $license_key)->first();
+        if (!$license) {
+            return new WP_REST_Response(['success' => false, 'error' => 'License not found'], 200);
+        }
+
+        $LicenseSite = '\FluentCartPro\App\Modules\Licensing\Models\LicenseSite';
+        $LicenseActivation = '\FluentCartPro\App\Modules\Licensing\Models\LicenseActivation';
+
+        if (!class_exists($LicenseSite) || !class_exists($LicenseActivation)) {
+            return new WP_REST_Response(['success' => false, 'error' => 'License models not available'], 500);
+        }
+
+        $clean_url = preg_replace('#^https?://#', '', rtrim($site_url, '/'));
+        $site = $LicenseSite::where('site_url', $clean_url)->first();
+
+        if ($site) {
+            $LicenseActivation::where('license_id', $license->id)
+                ->where('site_id', $site->id)
+                ->delete();
+
+            $license->recountActivations();
+        }
+
+        return new WP_REST_Response(['success' => true], 200);
     }
 
     /**
