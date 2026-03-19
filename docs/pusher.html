@@ -166,7 +166,7 @@ interface SocketConfig {
 <p>On first-ever launch, the startup batch fetches <code>/app-config</code> and provides socket config to PusherContext. There is no static fallback &mdash; the app waits for the server's answer.</p>
 
 <div class="callout callout-warn">
-  <strong>Fluent Messaging required for real-time.</strong> Without the <strong>Fluent Messaging</strong> add-on (part of Fluent Community Pro), the server returns <code>socket: null</code> and real-time is disabled. Messaging features still work via polling if <code>FEATURES.MESSAGING</code> is enabled. The Messages tab won't appear at all if <code>FEATURES.MESSAGING</code> is off.
+  <strong>Fluent Messaging required for real-time.</strong> Without the <strong>Fluent Messaging</strong> add-on (part of Fluent Community Pro), the server returns <code>socket: null</code> and real-time is disabled. Messaging features still work via polling if the <code>messaging</code> feature flag is enabled. The Messages tab won't appear at all if <code>features.messaging</code> is off (controlled via wp-admin &rarr; TBC Community App &rarr; Features tab, accessed via <code>useFeatures()</code>).
 </div>
 
 <!-- ================================================================== -->
@@ -539,7 +539,7 @@ useNewMessageListener((data) =&gt; {
       <li><strong>Custom Soketi</strong> &mdash; enter your self-hosted Soketi host, port, and credentials</li>
     </ul>
   </li>
-  <li>Ensure <code>FEATURES.MESSAGING</code> is <code>true</code> in <span class="file-path">constants/config.ts</span></li>
+  <li>Ensure the <code>messaging</code> feature flag is enabled in wp-admin &rarr; TBC Community App &rarr; Features tab</li>
   <li>Build and test &mdash; the app reads socket config from the server automatically</li>
 </ol>
 

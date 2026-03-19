@@ -37,7 +37,7 @@ The following directories and files are **core** and will be **overwritten when 
 - `constants/colors.ts` — Theme color definitions (overridden by Fluent sync)
 
 **Safe to edit** (protected during updates):
-- `constants/config.ts` — Your app name, feature flags, site URL
+- `constants/config.ts` — Your app name, site URL
 - `app.json` — Bundle IDs, EAS config, permissions
 - `eas.json` — Build profiles, submit config
 - `app.config.ts` — Fallback values
@@ -74,7 +74,7 @@ Self-contained features that plug into the app without touching core code. Each 
 - **Route stub** in `app/(tabs)/` (one-line re-export, only if module has a tab)
 - **Companion plugin** in `companion plugins/` (if module needs a WordPress backend)
 
-Core features (feed, spaces, profiles, messaging, courses) are controlled by `FEATURES.*` flags in `constants/config.ts`. Modules are for self-contained add-ons that go beyond core.
+Core features (feed, spaces, profiles, messaging, courses) are controlled by feature flags in wp-admin → TBC Community App → Features tab. The app fetches them via `/app-config` on startup (see `AppConfigContext` + `useFeatures` hook). Modules are for self-contained add-ons that go beyond core.
 
 ## Import Rules — Direct Imports Only
 

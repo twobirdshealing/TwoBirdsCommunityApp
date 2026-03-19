@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FEATURES } from '@/constants/config';
+import { useFeatures } from '@/contexts/AppConfigContext';
 import {
   CategoryPreferences,
   ChannelInfo,
@@ -37,6 +37,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export function useNotificationSettings() {
   const { user } = useAuth();
+  const features = useFeatures();
 
   // ---------------------------------------------------------------------------
   // State
@@ -59,7 +60,7 @@ export function useNotificationSettings() {
   // ---------------------------------------------------------------------------
 
   const pushAvailable = isPushAvailable();
-  const pushEnabled = FEATURES.PUSH_NOTIFICATIONS;
+  const pushEnabled = features.push_notifications;
   const showPush = pushAvailable && pushEnabled && pushPermission === 'granted';
 
   // ---------------------------------------------------------------------------

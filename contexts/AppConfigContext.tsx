@@ -6,8 +6,9 @@
 // Does NOT fetch on its own — all fetching is orchestrated by _layout.tsx.
 // =============================================================================
 
-import { AppConfigResponse, RegistrationConfig, SocketConfig, VisibilityConfig } from '@/services/api/appConfig';
+import { AppConfigResponse, FeaturesConfig, RegistrationConfig, SocketConfig, VisibilityConfig } from '@/services/api/appConfig';
 import { createLogger } from '@/utils/logger';
+import { DEFAULT_FEATURES, FEATURES_CACHE_KEY, setFeatureFlagCache } from '@/utils/featureFlags';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useMemo, useEffect, useState } from 'react';
 
@@ -27,6 +28,8 @@ interface AppConfigContextType {
   registration: RegistrationConfig | null;
   /** Whether the site uses 24-hour time format (derived from WordPress time_format setting) */
   is24Hour: boolean;
+  /** Feature flags from server (wp-admin controlled) */
+  features: FeaturesConfig;
   /** Accept pre-fetched data from the startup batch or _layout refresh */
   setFromBatch: (data: AppConfigResponse) => void;
 }
@@ -38,7 +41,6 @@ interface AppConfigContextType {
 const VISIBILITY_CACHE_KEY = 'tbc_app_visibility_cache';
 const SOCKET_CACHE_KEY = 'tbc_socket_config_cache';
 const REGISTRATION_CACHE_KEY = 'tbc_registration_config_cache';
-
 // -----------------------------------------------------------------------------
 // Context
 // -----------------------------------------------------------------------------
@@ -55,6 +57,7 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   const [socketConfig, setSocketConfig] = useState<SocketConfig | null>(null);
   const [registration, setRegistration] = useState<RegistrationConfig | null>(null);
   const [is24Hour, setIs24Hour] = useState(false);
+  const [features, setFeatures] = useState<FeaturesConfig>(DEFAULT_FEATURES);
 
   const applyConfig = useCallback((data: AppConfigResponse) => {
     if (data.visibility) {
@@ -81,6 +84,13 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
       setRegistration(data.registration);
       AsyncStorage.setItem(REGISTRATION_CACHE_KEY, JSON.stringify(data.registration)).catch((e) => log.warn('Registration config cache write failed:', e));
     }
+    if (data.features) {
+      // Stable-reference guard: only update if values actually changed
+      const incoming = JSON.stringify(data.features);
+      setFeatures(prev => JSON.stringify(prev) === incoming ? prev : data.features!);
+      setFeatureFlagCache(data.features);
+      AsyncStorage.setItem(FEATURES_CACHE_KEY, incoming).catch((e) => log.warn('Features cache write failed:', e));
+    }
     // WordPress PHP time format: 'H' or 'G' = 24-hour, 'g' or 'h' = 12-hour
     if (data.time_format) {
       const use24 = /[HG]/.test(data.time_format);
@@ -97,14 +107,16 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        const [cached, cachedSocket, cachedReg] = await Promise.all([
+        const [cached, cachedSocket, cachedReg, cachedFeatures] = await Promise.all([
           AsyncStorage.getItem(VISIBILITY_CACHE_KEY),
           AsyncStorage.getItem(SOCKET_CACHE_KEY),
           AsyncStorage.getItem(REGISTRATION_CACHE_KEY),
+          AsyncStorage.getItem(FEATURES_CACHE_KEY),
         ]);
         if (cached) setVisibility(JSON.parse(cached));
         if (cachedSocket) setSocketConfig(JSON.parse(cachedSocket));
         if (cachedReg) setRegistration(JSON.parse(cachedReg));
+        if (cachedFeatures) setFeatures(JSON.parse(cachedFeatures));
       } catch {}
     })();
   }, []);
@@ -115,8 +127,9 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
     socketConfig,
     registration,
     is24Hour,
+    features,
     setFromBatch,
-  }), [visibility, portalSlug, socketConfig, registration, is24Hour, setFromBatch]);
+  }), [visibility, portalSlug, socketConfig, registration, is24Hour, features, setFromBatch]);
 
   return (
     <AppConfigContext.Provider value={value}>
@@ -135,4 +148,9 @@ export function useAppConfig() {
     throw new Error('useAppConfig must be used within an AppConfigProvider');
   }
   return context;
+}
+
+/** Convenience hook for feature flags */
+export function useFeatures(): FeaturesConfig {
+  return useAppConfig().features;
 }

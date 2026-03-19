@@ -380,11 +380,11 @@ await updateProfile(username, {
 <!-- ================================================================== -->
 <h2 id="tabs">9. Profile Tabs</h2>
 
-<p>Profile tabs are controlled by both client-side feature flags and server-side navigation config.</p>
+<p>Profile tabs are controlled by both server-controlled feature flags and server-side navigation config.</p>
 
 <h3>Tab Visibility Logic</h3>
 <pre><code>// A tab is shown if BOTH conditions are met:
-// 1. Feature flag is enabled: FEATURES.PROFILE_TABS.POSTS = true
+// 1. Feature flag is enabled: features.profile_tabs.posts = true (via useFeatures())
 // 2. Server nav includes the slug: profile_navs contains 'user_profile_feeds'
 
 // If server returns no profile_navs, feature flag alone determines visibility</code></pre>
@@ -392,9 +392,9 @@ await updateProfile(username, {
 <table>
   <tr><th>Tab</th><th>Feature Flag</th><th>Server Nav Slug</th><th>Default</th></tr>
   <tr><td>About</td><td>(always shown)</td><td>—</td><td>Always</td></tr>
-  <tr><td>Posts</td><td><code>FEATURES.PROFILE_TABS.POSTS</code></td><td><code>user_profile_feeds</code></td><td><code>false</code></td></tr>
-  <tr><td>Spaces</td><td><code>FEATURES.PROFILE_TABS.SPACES</code></td><td><code>user_spaces</code></td><td><code>false</code></td></tr>
-  <tr><td>Comments</td><td><code>FEATURES.PROFILE_TABS.COMMENTS</code></td><td><code>user_comments</code></td><td><code>false</code></td></tr>
+  <tr><td>Posts</td><td><code>features.profile_tabs.posts</code></td><td><code>user_profile_feeds</code></td><td><code>false</code></td></tr>
+  <tr><td>Spaces</td><td><code>features.profile_tabs.spaces</code></td><td><code>user_spaces</code></td><td><code>false</code></td></tr>
+  <tr><td>Comments</td><td><code>features.profile_tabs.comments</code></td><td><code>user_comments</code></td><td><code>false</code></td></tr>
 </table>
 
 <p>When <code>is_restricted: true</code>, only the About tab is shown regardless of flags.</p>
@@ -498,7 +498,7 @@ await profilesApi.unblockUser('spammer');</code></pre>
   <li><strong>Preserve admin fields on profile update.</strong> Include <code>is_verified</code>, <code>badge_slugs</code>, and <code>status</code> in the payload with their current values. The FC API may clear them otherwise.</li>
   <li><strong>Use <code>useFollowToggle</code> for follow actions.</strong> It handles optimistic updates, loading state, and notification toggling. Don't call follow/unfollow APIs directly from components.</li>
   <li><strong>Use <code>useProfileBadges</code> or <code>useBadgeDefinitions</code> for badge resolution.</strong> Don't fetch badge definitions yourself — the hooks share a two-layer cache.</li>
-  <li><strong>Check both feature flag AND server navs for profile tabs.</strong> A tab should only be shown if <code>FEATURES.PROFILE_TABS.X</code> is true AND the server's <code>profile_navs</code> includes the corresponding slug (or <code>profile_navs</code> is not provided).</li>
+  <li><strong>Check both feature flag AND server navs for profile tabs.</strong> A tab should only be shown if <code>features.profile_tabs.x</code> is true (via <code>useFeatures()</code>) AND the server's <code>profile_navs</code> includes the corresponding slug (or <code>profile_navs</code> is not provided).</li>
   <li><strong>Handle <code>is_restricted</code> profiles.</strong> When true, only show the About tab. Don't fetch posts/comments/spaces for restricted profiles.</li>
   <li><strong>Social links location differs between XProfile and Profile.</strong> On XProfile, social links are in <code>meta.social_links</code>. On the full Profile endpoint, they're at the top level: <code>profile.social_links</code>. Same for <code>badge_slugs</code> vs <code>meta.badge_slug</code>.</li>
   <li><strong>Navigate to profiles by username.</strong> Always use <code>router.push('/profile/{username}')</code> — never by user ID. The API uses username as the path parameter.</li>

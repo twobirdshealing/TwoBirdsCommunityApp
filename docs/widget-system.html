@@ -65,7 +65,7 @@ Widget Registry (core + modules)
   title: string;                 // Display title in header
   icon?: keyof typeof Ionicons.glyphMap;  // Header icon
   seeAllRoute?: string;          // Navigation route for "See all"
-  featureFlag?: keyof typeof FEATURES;    // Conditional inclusion
+  featureFlag?: keyof FeaturesConfig;      // Conditional inclusion (server-controlled)
   defaultEnabled: boolean;       // Default state for new users
   canDisable: boolean;           // Whether user can toggle
   externalWrapper: boolean;      // true = wrapped in HomeWidget
@@ -76,7 +76,7 @@ Widget Registry (core + modules)
 <table>
   <tr><th>Field</th><th>Description</th></tr>
   <tr><td><code>id</code></td><td>Must be stable across app updates. Used as AsyncStorage preference key. Never change once shipped.</td></tr>
-  <tr><td><code>featureFlag</code></td><td>If set, widget only included when <code>FEATURES[flag] === true</code>. Excluded entirely when flag is off.</td></tr>
+  <tr><td><code>featureFlag</code></td><td>If set, widget only included when the server-controlled flag is enabled (checked via <code>useFeatures()</code>). Excluded entirely when flag is off.</td></tr>
   <tr><td><code>externalWrapper</code></td><td>When <code>true</code>, HomeWidget provides header, icon, and "See all" link. When <code>false</code>, widget handles its own layout.</td></tr>
   <tr><td><code>seeAllRoute</code></td><td>Tapping "See all" navigates to this route. If undefined, no link shown.</td></tr>
 </table>
@@ -92,7 +92,7 @@ Widget Registry (core + modules)
     title: 'My Courses',
     icon: 'school-outline',
     seeAllRoute: '/courses',
-    featureFlag: 'COURSES',
+    featureFlag: 'courses',
     defaultEnabled: true,
     canDisable: true,
     externalWrapper: true,
@@ -155,7 +155,7 @@ export const blogModule: ModuleManifest = {
 <ul>
   <li><strong>New widgets</strong> (added since last save) are appended to the end with their <code>defaultEnabled</code> state</li>
   <li><strong>Removed widgets</strong> (no longer in registry) are silently dropped</li>
-  <li><strong>Disabled feature flags</strong> exclude widgets entirely</li>
+  <li><strong>Disabled feature flags</strong> (server-controlled, fetched via <code>/app-config</code>) exclude widgets entirely</li>
   <li><strong>Existing order</strong> is preserved across app updates</li>
 </ul>
 
@@ -235,7 +235,7 @@ export const blogModule: ModuleManifest = {
 <h3>Core Widgets</h3>
 <table>
   <tr><th>ID</th><th>Title</th><th>Feature Flag</th><th>See All</th></tr>
-  <tr><td><code>my-courses</code></td><td>My Courses</td><td><code>COURSES</code></td><td><code>/courses</code></td></tr>
+  <tr><td><code>my-courses</code></td><td>My Courses</td><td><code>courses</code></td><td><code>/courses</code></td></tr>
 </table>
 
 <h3>Module Widgets</h3>
@@ -288,7 +288,7 @@ export const blogModule: ModuleManifest = {
 
   <li><strong>Set <code>refreshOnFocus: false</code> in widget data hooks.</strong> The home screen manages focus-based refresh via <code>useAppFocus</code>. If widgets also refresh on focus, you get double fetches.</li>
 
-  <li><strong>Use <code>featureFlag</code> for conditional widgets.</strong> When a feature flag is off, the widget is excluded from the registry entirely &mdash; not just hidden. It won't appear in preferences or edit mode.</li>
+  <li><strong>Use <code>featureFlag</code> for conditional widgets.</strong> Feature flags are server-controlled (wp-admin &rarr; TBC Community App &rarr; Features tab) and accessed via <code>useFeatures()</code>. When a flag is off, the widget is excluded from the registry entirely &mdash; not just hidden. It won't appear in preferences or edit mode.</li>
 
   <li><strong>Module widgets go in the module manifest, not the core registry.</strong> Register via <code>widgets: [...]</code> in your <code>ModuleManifest</code>. The registry merges them automatically via <code>getModuleWidgets()</code>.</li>
 

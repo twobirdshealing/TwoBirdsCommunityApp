@@ -100,6 +100,24 @@ export interface RegistrationConfig {
   [key: string]: any;
 }
 
+export interface FeaturesConfig {
+  dark_mode: boolean;
+  push_notifications: boolean;
+  messaging: boolean;
+  courses: boolean;
+  multi_reactions: boolean;
+  profile_tabs: {
+    posts: boolean;
+    spaces: boolean;
+    comments: boolean;
+  };
+}
+
+/** Keys of FeaturesConfig whose value is boolean (excludes nested objects like profile_tabs) */
+export type BooleanFeatureKey = {
+  [K in keyof FeaturesConfig]: FeaturesConfig[K] extends boolean ? K : never;
+}[keyof FeaturesConfig];
+
 export interface AppConfigResponse {
   success: boolean;
   theme: ThemeData;
@@ -111,6 +129,8 @@ export interface AppConfigResponse {
   branding?: BrandingConfig;
   socket?: SocketConfig | null;
   registration?: RegistrationConfig;
+  /** Feature flags controlled from wp-admin */
+  features?: FeaturesConfig;
   /** WordPress time format string (e.g. 'g:i a' for 12h, 'H:i' for 24h) */
   time_format?: string;
 }

@@ -108,6 +108,20 @@ class TBC_CA_Admin_Settings {
         $sanitized['app_store_id']         = sanitize_text_field($input['app_store_id'] ?? '');
         $sanitized['smart_banner_enabled'] = !empty($input['smart_banner_enabled']);
 
+        // Feature flags
+        $sanitized['features'] = [
+            'dark_mode'          => !empty($input['features']['dark_mode']),
+            'push_notifications' => !empty($input['features']['push_notifications']),
+            'messaging'          => !empty($input['features']['messaging']),
+            'courses'            => !empty($input['features']['courses']),
+            'multi_reactions'    => !empty($input['features']['multi_reactions']),
+            'profile_tabs'       => [
+                'posts'    => !empty($input['features']['profile_tabs']['posts']),
+                'spaces'   => !empty($input['features']['profile_tabs']['spaces']),
+                'comments' => !empty($input['features']['profile_tabs']['comments']),
+            ],
+        ];
+
         // Data management
         $sanitized['delete_data_on_uninstall'] = !empty($input['delete_data_on_uninstall']);
 
@@ -144,6 +158,7 @@ class TBC_CA_Admin_Settings {
         $ui_visibility = $settings['ui_visibility'] ?? [];
         $min_app_version = $settings['min_app_version'] ?? '';
         $store_urls = $settings['store_urls'] ?? [];
+        $features = $settings['features'] ?? [];
 
         // Core elements (hardcoded in app UI, not from modules)
         $hideable_elements = [
@@ -175,6 +190,9 @@ class TBC_CA_Admin_Settings {
                     <?php if (!empty($maint['enabled'])): ?>
                         <span class="tbc-ca-tab-dot tbc-ca-tab-dot--warning" title="<?php esc_attr_e('Maintenance mode active', 'tbc-ca'); ?>"></span>
                     <?php endif; ?>
+                </a>
+                <a href="#features" class="nav-tab<?php echo $current_tab === 'features' ? ' nav-tab-active' : ''; ?>" data-tab="features">
+                    <?php _e('Features', 'tbc-ca'); ?>
                 </a>
                 <a href="#visibility" class="nav-tab<?php echo $current_tab === 'visibility' ? ' nav-tab-active' : ''; ?>" data-tab="visibility">
                     <?php _e('UI Visibility', 'tbc-ca'); ?>
@@ -371,6 +389,149 @@ class TBC_CA_Admin_Settings {
                 </div>
 
                 </div><!-- /.tbc-ca-tab-panel general -->
+
+                <!-- Tab: Features -->
+                <div class="tbc-ca-tab-panel<?php echo $current_tab === 'features' ? ' tbc-ca-tab-panel--active' : ''; ?>" data-panel="features">
+
+                <div class="tbc-ca-section">
+                    <h2><?php _e('App Feature Flags', 'tbc-ca'); ?></h2>
+                    <p class="description"><?php _e('Toggle app features on or off. Changes take effect the next time the app is launched. Features with missing dependencies are automatically disabled regardless of this setting.', 'tbc-ca'); ?></p>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><?php _e('Dark Mode', 'tbc-ca'); ?></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox"
+                                           name="tbc_ca_settings[features][dark_mode]"
+                                           value="1"
+                                           <?php checked(!empty($features['dark_mode'])); ?> />
+                                    <?php _e('Enable dark mode support', 'tbc-ca'); ?>
+                                </label>
+                                <p class="description"><?php _e('Dark mode colors are synced from your Fluent Community theme settings.', 'tbc-ca'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Push Notifications', 'tbc-ca'); ?></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox"
+                                           name="tbc_ca_settings[features][push_notifications]"
+                                           value="1"
+                                           <?php checked(!empty($features['push_notifications'])); ?> />
+                                    <?php _e('Enable push notifications', 'tbc-ca'); ?>
+                                </label>
+                                <p class="description"><?php _e('Requires Firebase configuration in the app. When disabled, no push tokens are registered and no notifications are sent.', 'tbc-ca'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Messaging', 'tbc-ca'); ?></th>
+                            <td>
+                                <?php $messaging_available = class_exists('FluentMessaging\App\Services\PusherHelper'); ?>
+                                <label>
+                                    <input type="checkbox"
+                                           name="tbc_ca_settings[features][messaging]"
+                                           value="1"
+                                           <?php checked(!empty($features['messaging'])); ?>
+                                           <?php disabled(!$messaging_available); ?> />
+                                    <?php _e('Enable direct messaging', 'tbc-ca'); ?>
+                                </label>
+                                <?php if (!$messaging_available): ?>
+                                    <span class="tbc-ca-feature-badge"><?php _e('NOT AVAILABLE', 'tbc-ca'); ?></span>
+                                    <p class="description" style="color: #b32d2e;"><?php _e('Requires Fluent Community Pro with Fluent Messaging enabled. Automatically disabled.', 'tbc-ca'); ?></p>
+                                <?php else: ?>
+                                    <p class="description"><?php _e('Direct messaging via Fluent Community Pro with Fluent Messaging.', 'tbc-ca'); ?></p>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Courses', 'tbc-ca'); ?></th>
+                            <td>
+                                <?php $courses_available = class_exists('FluentCommunity\Modules\Course\Model\Course'); ?>
+                                <label>
+                                    <input type="checkbox"
+                                           name="tbc_ca_settings[features][courses]"
+                                           value="1"
+                                           <?php checked(!empty($features['courses'])); ?>
+                                           <?php disabled(!$courses_available); ?> />
+                                    <?php _e('Enable courses', 'tbc-ca'); ?>
+                                </label>
+                                <?php if (!$courses_available): ?>
+                                    <span class="tbc-ca-feature-badge"><?php _e('NOT AVAILABLE', 'tbc-ca'); ?></span>
+                                    <p class="description" style="color: #b32d2e;"><?php _e('Requires Fluent Community Pro with Course module enabled. Automatically disabled.', 'tbc-ca'); ?></p>
+                                <?php else: ?>
+                                    <p class="description"><?php _e('Course enrollment via Fluent Community Pro with Course module.', 'tbc-ca'); ?></p>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Multi-Reactions', 'tbc-ca'); ?></th>
+                            <td>
+                                <?php $reactions_available = class_exists('TBC_Multi_Reactions'); ?>
+                                <label>
+                                    <input type="checkbox"
+                                           name="tbc_ca_settings[features][multi_reactions]"
+                                           value="1"
+                                           <?php checked(!empty($features['multi_reactions'])); ?>
+                                           <?php disabled(!$reactions_available); ?> />
+                                    <?php _e('Enable emoji reactions', 'tbc-ca'); ?>
+                                </label>
+                                <?php if (!$reactions_available): ?>
+                                    <span class="tbc-ca-feature-badge"><?php _e('NOT AVAILABLE', 'tbc-ca'); ?></span>
+                                    <p class="description" style="color: #b32d2e;"><?php _e('Requires TBC Multi-Reactions plugin. Automatically disabled.', 'tbc-ca'); ?></p>
+                                <?php else: ?>
+                                    <p class="description"><?php _e('Emoji reactions on posts and comments via TBC Multi-Reactions plugin.', 'tbc-ca'); ?></p>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="tbc-ca-section">
+                    <h2><?php _e('Profile Tabs', 'tbc-ca'); ?></h2>
+                    <p class="description"><?php _e('Extra tabs shown on user profile pages. The About tab is always visible.', 'tbc-ca'); ?></p>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><?php _e('Posts', 'tbc-ca'); ?></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox"
+                                           name="tbc_ca_settings[features][profile_tabs][posts]"
+                                           value="1"
+                                           <?php checked(!empty($features['profile_tabs']['posts'])); ?> />
+                                    <?php _e('Show user posts feed on their profile', 'tbc-ca'); ?>
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Spaces', 'tbc-ca'); ?></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox"
+                                           name="tbc_ca_settings[features][profile_tabs][spaces]"
+                                           value="1"
+                                           <?php checked(!empty($features['profile_tabs']['spaces'])); ?> />
+                                    <?php _e('Show user joined spaces on their profile', 'tbc-ca'); ?>
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Comments', 'tbc-ca'); ?></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox"
+                                           name="tbc_ca_settings[features][profile_tabs][comments]"
+                                           value="1"
+                                           <?php checked(!empty($features['profile_tabs']['comments'])); ?> />
+                                    <?php _e('Show user comments on their profile', 'tbc-ca'); ?>
+                                </label>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                </div><!-- /.tbc-ca-tab-panel features -->
 
                 <!-- Tab: UI Visibility -->
                 <div class="tbc-ca-tab-panel<?php echo $current_tab === 'visibility' ? ' tbc-ca-tab-panel--active' : ''; ?>" data-panel="visibility">

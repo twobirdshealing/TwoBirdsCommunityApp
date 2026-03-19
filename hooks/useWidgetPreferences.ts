@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAvailableWidgets } from '@/components/home/widgetRegistry';
+import { useFeatures } from '@/contexts/AppConfigContext';
 import type { WidgetRegistration } from '@/modules/_types';
 import { createLogger } from '@/utils/logger';
 
@@ -79,13 +80,14 @@ function mergePreferences(
 // -----------------------------------------------------------------------------
 
 export function useWidgetPreferences() {
+  const features = useFeatures();
   const [preferences, setPreferences] = useState<WidgetPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load on mount
+  // Load on mount (re-run when features change from server)
   useEffect(() => {
     (async () => {
-      const available = getAvailableWidgets();
+      const available = getAvailableWidgets(features);
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
@@ -104,7 +106,7 @@ export function useWidgetPreferences() {
         setIsLoading(false);
       }
     })();
-  }, []);
+  }, [features]);
 
   // Persist helper
   const persist = useCallback(async (prefs: WidgetPreferences) => {
@@ -143,11 +145,11 @@ export function useWidgetPreferences() {
 
   // Reset to defaults
   const resetToDefaults = useCallback(() => {
-    const available = getAvailableWidgets();
+    const available = getAvailableWidgets(features);
     const defaults = buildDefaults(available);
     setPreferences(defaults);
     persist(defaults);
-  }, [persist]);
+  }, [persist, features]);
 
   return {
     preferences,

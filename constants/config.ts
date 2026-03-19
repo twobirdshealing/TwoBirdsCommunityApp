@@ -25,19 +25,10 @@ export const APP_USER_AGENT = 'TBCCommunityApp/1.0';   // User agent for API req
 export const SITE_URL: string = Constants.expoConfig?.extra?.siteUrl;
 
 // --- Feature Flags -----------------------------------------------------------
-
-export const FEATURES = {
-  DARK_MODE: true,          // Dark mode synced from Fluent Community theme
-  PUSH_NOTIFICATIONS: true, // Push notifications via TBC-CA plugin
-  MESSAGING: true,          // Fluent Messaging (direct chat)
-  COURSES: true,            // Fluent LMS courses
-  MULTI_REACTIONS: true,    // Multi-reaction support via TBC Multi-Reactions plugin (disable if plugin not installed)
-  PROFILE_TABS: {           // Which tabs appear on user profiles (About is always on)
-    POSTS: false,           // User's posts feed
-    SPACES: false,          // User's joined spaces
-    COMMENTS: false,        // User's comments
-  },
-};
+// Feature flags are now controlled from wp-admin → TBC Community App → Features tab.
+// The app fetches them via /app-config on startup (see AppConfigContext + useFeatures hook).
+// No build-time feature flags needed — defaults are hardcoded in AppConfigContext.
+// -------------------------------------------------------------------------
 
 // --- Links -------------------------------------------------------------------
 

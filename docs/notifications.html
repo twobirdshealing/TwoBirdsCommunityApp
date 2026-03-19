@@ -508,7 +508,7 @@ interface UnifiedSection {
 <h2 id="rules">12. Rules</h2>
 
 <ol>
-  <li><strong>Check <code>FEATURES.PUSH_NOTIFICATIONS</code> before any push operations.</strong> When disabled, skip token registration, hide push toggles in settings, and don't show push-related UI.</li>
+  <li><strong>Check <code>features.push_notifications</code> (via <code>useFeatures()</code>) before any push operations.</strong> This flag is server-controlled (wp-admin &rarr; TBC Community App &rarr; Features tab). When disabled, skip token registration, hide push toggles in settings, and don't show push-related UI.</li>
   <li><strong>Always pass auth token as parameter to push functions.</strong> The <code>services/push.ts</code> and <code>services/api/push.ts</code> files use raw <code>fetch()</code> to avoid circular dependency with <code>auth.ts</code>. Never import from <code>services/auth.ts</code> in push code.</li>
   <li><strong>Email prefs are full replacement.</strong> When updating email preferences, always send the complete <code>user_globals</code> + <code>space_prefs</code> object. Omitting keys resets them to defaults.</li>
   <li><strong>Use <code>UnreadCountsContext</code> for all badge counts.</strong> Don't maintain separate unread state — all screens and components read from this single context. It's updated by response headers, startup batch, and mark-as-read APIs.</li>

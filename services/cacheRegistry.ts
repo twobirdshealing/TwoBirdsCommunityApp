@@ -23,9 +23,11 @@ const log = createLogger('CacheRegistry');
 
 // Only tbc_* keys need listing here — non-prefixed keys are already excluded by the filter.
 const PERSIST_ACROSS_LOGOUT: string[] = [
-  'tbc_app_config_cache',      // Site maintenance, update config, branding
-  'tbc_app_visibility_cache',  // Site-level menu visibility (hide_menu[])
-  'tbc_socket_config_cache',   // Socket provider config (Pusher/Soketi) — site-level, not user-specific
+  'tbc_app_config_cache',         // Site maintenance, update config, branding
+  'tbc_app_visibility_cache',     // Site-level menu visibility (hide_menu[])
+  'tbc_socket_config_cache',      // Socket provider config (Pusher/Soketi) — site-level, not user-specific
+  'tbc_app_features_cache',       // Feature flags — site-level, not user-specific
+  'tbc_registration_config_cache', // Registration capabilities — site-level
 ];
 
 // -----------------------------------------------------------------------------

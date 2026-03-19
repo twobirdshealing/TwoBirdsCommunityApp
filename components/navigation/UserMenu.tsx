@@ -16,9 +16,9 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAppConfig } from '@/contexts/AppConfigContext';
+import { useAppConfig, useFeatures } from '@/contexts/AppConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { FEATURES, PRIVACY_POLICY_URL } from '@/constants/config';
+import { PRIVACY_POLICY_URL } from '@/constants/config';
 import { spacing, typography, shadows, sizing } from '@/constants/layout';
 import { hapticLight, hapticMedium, hapticWarning } from '@/utils/haptics';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
@@ -97,6 +97,7 @@ export function UserMenu({
   const insets = useSafeAreaInsets();
   const { theme, isDark, setTheme, colors: themeColors } = useTheme();
   const { visibility } = useAppConfig();
+  const features = useFeatures();
   const hideMenu = visibility?.hide_menu ?? [];
   const isHidden = (key: string) => hideMenu.includes(key);
 
@@ -186,7 +187,7 @@ export function UserMenu({
                   onPress={onBookmarksPress}
                 />
               )}
-              {FEATURES.COURSES && !isHidden('courses') && (
+              {features.courses && !isHidden('courses') && (
                 <MenuItem
                   icon="school-outline"
                   label="My Courses"

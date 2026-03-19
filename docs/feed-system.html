@@ -634,7 +634,7 @@ useTickerPolling(isAuthenticated);</code></pre>
   <li><strong>Handle sticky post shape variance.</strong> The <code>sticky</code> field in <code>FeedsResponse</code> can be <code>null</code>, empty array, or populated array. Always handle all cases when merging.</li>
   <li><strong>Survey votes use option slugs, not indices.</strong> Send <code>vote_indexes: ['opt_1', 'opt_2']</code> — these are slug strings from <code>SurveyOption.slug</code>, not numeric indices.</li>
   <li><strong>Emit cache events after mutations.</strong> After creating/editing/deleting a post, emit <code>CACHE_EVENTS.FEEDS</code>. After toggling a bookmark, emit <code>CACHE_EVENTS.BOOKMARKS</code>.</li>
-  <li><strong>Check <code>FEATURES.MULTI_REACTIONS</code></strong> before showing reaction picker and breakdown. If the multi-reactions plugin isn't installed, only simple like/unlike is available.</li>
+  <li><strong>Check <code>features.multi_reactions</code></strong> (via <code>useFeatures()</code>) before showing reaction picker and breakdown. If the multi-reactions plugin isn't installed, only simple like/unlike is available.</li>
   <li><strong>Use <code>message_rendered</code> for display, <code>message</code> for editing.</strong> The server returns pre-rendered HTML in <code>message_rendered</code> — render it with <code>HtmlContent</code>. When editing, use <code>htmlToMarkdown(message_rendered)</code> to convert back for the editor.</li>
 </ol>
 

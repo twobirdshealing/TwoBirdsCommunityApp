@@ -181,6 +181,18 @@ class TBC_CA_Core {
             'android_sha256'           => '',
             'app_store_id'             => '',
             'smart_banner_enabled'     => false,
+            'features'                 => [
+                'dark_mode'          => true,
+                'push_notifications' => true,
+                'messaging'          => true,
+                'courses'            => true,
+                'multi_reactions'    => true,
+                'profile_tabs'       => [
+                    'posts'    => false,
+                    'spaces'   => false,
+                    'comments' => false,
+                ],
+            ],
         ];
 
         $settings = get_option('tbc_ca_settings', []);

@@ -3,7 +3,7 @@
 // =============================================================================
 // Route: /profile/[username]
 // Works for viewing your OWN profile and OTHER users' profiles
-// Tabs: About (always), Posts, Spaces, Comments (configurable via FEATURES)
+// Tabs: About (always), Posts, Spaces, Comments (configurable via server features)
 // =============================================================================
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -24,8 +24,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
-import { FEATURES } from '@/constants/config';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFeatures } from '@/contexts/AppConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCachedData } from '@/hooks/useCachedData';
 import { CACHE_EVENTS } from '@/utils/cacheEvents';
@@ -91,6 +91,7 @@ export default function UserProfileScreen() {
   const { username } = useLocalSearchParams<{ username: string }>();
   const { user: currentUser, updateUser } = useAuth();
   const { colors: themeColors } = useTheme();
+  const features = useFeatures();
 
   // Check if viewing own profile
   const isOwnProfile = currentUser?.username === username;
@@ -119,7 +120,7 @@ export default function UserProfileScreen() {
   const isBlocked = profile?.is_blocked_by_you === true;
 
   // ---------------------------------------------------------------------------
-  // Tab visibility — intersection of FEATURES config + server profile_navs
+  // Tab visibility — intersection of server features + server profile_navs
   // ---------------------------------------------------------------------------
 
   const visibleTabs = useMemo(() => {
@@ -133,18 +134,18 @@ export default function UserProfileScreen() {
     const serverSlugs = profile?.profile_navs?.map(n => n.slug) || [];
     const hasServerNavs = serverSlugs.length > 0;
 
-    if (FEATURES.PROFILE_TABS.POSTS && (!hasServerNavs || serverSlugs.includes('user_profile_feeds'))) {
+    if (features.profile_tabs.posts && (!hasServerNavs || serverSlugs.includes('user_profile_feeds'))) {
       tabs.push({ key: 'posts', title: 'Posts' });
     }
-    if (FEATURES.PROFILE_TABS.SPACES && (!hasServerNavs || serverSlugs.includes('user_spaces'))) {
+    if (features.profile_tabs.spaces && (!hasServerNavs || serverSlugs.includes('user_spaces'))) {
       tabs.push({ key: 'spaces', title: 'Spaces' });
     }
-    if (FEATURES.PROFILE_TABS.COMMENTS && (!hasServerNavs || serverSlugs.includes('user_comments'))) {
+    if (features.profile_tabs.comments && (!hasServerNavs || serverSlugs.includes('user_comments'))) {
       tabs.push({ key: 'comments', title: 'Comments' });
     }
 
     return tabs;
-  }, [profile?.profile_navs, profile?.is_restricted]);
+  }, [profile?.profile_navs, profile?.is_restricted, features.profile_tabs]);
 
   // ---------------------------------------------------------------------------
   // Per-tab state (Posts, Spaces, Comments)

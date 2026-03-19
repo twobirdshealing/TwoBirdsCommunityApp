@@ -7,7 +7,8 @@
 // =============================================================================
 
 import { useState, useEffect, useCallback } from 'react';
-import { TBC_MR_URL, FEATURES } from '@/constants/config';
+import { TBC_MR_URL } from '@/constants/config';
+import { getFeatureFlag } from '@/utils/featureFlags';
 import { request } from '@/services/api/client';
 import { createLogger } from '@/utils/logger';
 import { registerCache } from '@/services/cacheRegistry';
@@ -56,7 +57,7 @@ let fetchPromise: Promise<ConfigResult> | null = null;
 registerCache({ clearMemory: () => { cachedConfig = null; fetchPromise = null; } });
 
 async function fetchReactionConfig(): Promise<ConfigResult> {
-  if (!FEATURES.MULTI_REACTIONS) return EMPTY_CONFIG;
+  if (!await getFeatureFlag('multi_reactions')) return EMPTY_CONFIG;
 
   try {
     const result = await request<{ reactions?: ReactionConfig[]; display?: Partial<DisplayConfig> }>('/config', { baseUrl: TBC_MR_URL });

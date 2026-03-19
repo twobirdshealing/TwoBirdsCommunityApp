@@ -182,7 +182,7 @@
   <li>Injects reaction data into Fluent Community&rsquo;s standard feed/comment API responses (no extra API calls needed for basic display)</li>
   <li>The <code>/config</code> endpoint provides icon URLs so the app can display custom reaction graphics</li>
   <li>The <code>/swap</code> endpoint lets users change their reaction type without removing and re-adding</li>
-  <li>Controlled by <code>FEATURES.MULTI_REACTIONS</code> in the app &mdash; falls back to default heart if disabled</li>
+  <li>Controlled by the <code>multi_reactions</code> feature flag (server-controlled via wp-admin &rarr; TBC Community App &rarr; Features tab, accessed via <code>useFeatures()</code>) &mdash; falls back to default heart if disabled</li>
 </ul>
 
 <!-- ====================================================================== -->

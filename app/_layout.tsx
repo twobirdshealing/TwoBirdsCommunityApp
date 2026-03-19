@@ -8,9 +8,9 @@
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ForceUpdateScreen } from '@/components/common/ForceUpdateScreen';
 import { MaintenanceScreen } from '@/components/common/MaintenanceScreen';
-import { APP_VERSION, FEATURES } from '@/constants/config';
+import { APP_VERSION } from '@/constants/config';
 import { isVersionBelow } from '@/utils/version';
-import { AppConfigProvider, useAppConfig } from '@/contexts/AppConfigContext';
+import { AppConfigProvider, useAppConfig, useFeatures } from '@/contexts/AppConfigContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { PusherProvider } from '@/contexts/PusherContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
@@ -98,6 +98,7 @@ function RootLayoutNav() {
   const { isAuthenticated, isLoading, user, logout, updateUser } = useAuth();
   const { isDark, colors: themeColors, update, maintenance, setFromBatch: setThemeFromBatch } = useTheme();
   const { portalSlug, setFromBatch: setAppConfigFromBatch } = useAppConfig();
+  const features = useFeatures();
   const { setUnreadNotifications, setUnreadMessages } = useUnreadCounts();
   const segments = useSegments();
   const router = useRouter();
@@ -234,7 +235,7 @@ function RootLayoutNav() {
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    if (!FEATURES.PUSH_NOTIFICATIONS) return;
+    if (!features.push_notifications) return;
 
     // Handle notification taps (when user taps on a notification)
     const subscription = Notifications.addNotificationResponseReceivedListener(response => {

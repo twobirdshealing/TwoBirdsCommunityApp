@@ -71,6 +71,9 @@ class TBC_CA_App_Config {
         // ─── Registration capabilities ────────────────────────────────────
         $response['registration'] = $this->get_registration_config();
 
+        // ─── Feature flags (admin-controlled) ──────────────────────────────
+        $response['features'] = $this->get_features_config();
+
         // ─── Time format (WordPress general setting) ─────────────────────
         $response['time_format'] = get_option('time_format', 'g:i a');
 
@@ -353,6 +356,46 @@ class TBC_CA_App_Config {
         $config = apply_filters('tbc_ca_registration_config', $config);
 
         return $config;
+    }
+
+    // =========================================================================
+    // Feature Flags (admin-controlled, with auto-detection)
+    // =========================================================================
+
+    /**
+     * Get feature flags from plugin settings with dependency auto-detection.
+     * Flags are set by admin in wp-admin → TBC Community App → Features tab.
+     * Dependencies are checked at runtime — if a required plugin/module is not
+     * active, the flag is forced off regardless of the admin setting.
+     */
+    private function get_features_config() {
+        $settings = TBC_CA_Core::get_settings();
+        $features = $settings['features'] ?? [];
+
+        // Auto-detect: force messaging off if Fluent Messaging is not active
+        if (!class_exists('FluentMessaging\App\Services\PusherHelper')) {
+            $features['messaging'] = false;
+        }
+
+        // Auto-detect: force courses off if Fluent LMS Course module is not active
+        if (!class_exists('FluentCommunity\Modules\Course\Model\Course')) {
+            $features['courses'] = false;
+        }
+
+        // Auto-detect: force multi-reactions off if TBC Multi-Reactions plugin is not active
+        if (!class_exists('TBC_Multi_Reactions')) {
+            $features['multi_reactions'] = false;
+        }
+
+        /**
+         * Filter feature flags before sending to the app.
+         * Add-on plugins can modify flags here.
+         *
+         * @param array $features Feature flags array.
+         */
+        $features = apply_filters('tbc_ca_features_config', $features);
+
+        return $features;
     }
 
     // =========================================================================

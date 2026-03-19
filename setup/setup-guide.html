@@ -464,7 +464,7 @@
     <span class="prereq-badge firebase">Firebase</span>
     <span class="prereq-card-cost">Free (Spark plan)</span>
   </div>
-  <p class="prereq-card-desc">Push notifications &mdash; alerts users about new posts, replies, chat messages. Skip if you set <code>FEATURES.PUSH_NOTIFICATIONS = false</code>.</p>
+  <p class="prereq-card-desc">Push notifications &mdash; alerts users about new posts, replies, chat messages. Skip if you disable Push Notifications in wp-admin &rarr; TBC Community App &rarr; Features.</p>
   <details>
     <summary>Walkthrough: Create a Firebase project</summary>
     <div class="details-content">
@@ -861,7 +861,7 @@
   <div class="step-body">
     <p class="prereq-ref">Requires: <a href="#prereq-fluent" class="prereq-badge fluent">Fluent</a></p>
     <p>
-      Toggle core features on or off. Disabled features are completely removed from the app &mdash; users never see them. All flags start <strong>off</strong> by default. Enable only the ones your site supports.
+      Feature flags are controlled from your WordPress admin panel: <strong>TBC Community App &rarr; Features</strong> tab. Changes take effect immediately &mdash; no app rebuild needed. The app fetches the latest flags on every launch.
     </p>
 
     <table style="width:100%;font-size:13px;margin:12px 0 16px;border-collapse:collapse">
@@ -901,6 +901,10 @@
       </tbody>
     </table>
 
+    <p style="margin-top: 12px;">
+      The plugin auto-detects missing dependencies &mdash; if a required plugin isn't installed, the flag is forced off regardless of the setting. Flags that depend on missing plugins show a <strong>"NOT AVAILABLE"</strong> badge in the admin UI.
+    </p>
+
     <h5 style="margin-top: 20px;">Profile Tabs</h5>
     <p>
       Below the feature flags you'll find <strong>Profile Tabs</strong> &mdash; extra tabs shown on user profile pages. The <strong>About</strong> tab is always visible. Toggle each additional tab independently:
@@ -910,11 +914,6 @@
       <li><strong>Spaces</strong> &mdash; shows which spaces the user has joined</li>
       <li><strong>Comments</strong> &mdash; shows the user's comment history</li>
     </ul>
-
-    <p style="margin-top: 12px;">
-      Changes are included when you click <strong>Save Changes</strong>. After saving, feature flag changes require a <strong>dev server restart</strong> or a <strong>new build</strong> to take effect &mdash; they're compiled into the app bundle, not loaded at runtime.
-    </p>
-    <img class="step-img" src="images/featureflag.webp" alt="Feature Flags card showing toggles for Dark Mode, Push Notifications, Messaging, Courses, Multi-Reactions, and Profile Tabs">
   </div>
 </div>
 
@@ -1109,12 +1108,7 @@
   <tr><td><code>APP_NAME</code></td><td>Display name used in UI where server branding isn't available</td><td><code>'My Community'</code></td></tr>
   <tr><td><code>APP_USER_AGENT</code></td><td>User-Agent header sent with API requests</td><td><code>'MyCommunityApp/1.0'</code></td></tr>
   <tr><td><code>SITE_URL</code></td><td>Derived from eas.json (no fallback — build fails if missing)</td><td><code>'https://community.example.com'</code></td></tr>
-  <tr><td><code>FEATURES.DARK_MODE</code></td><td>Dark mode synced from Fluent Community theme</td><td><code>true</code></td></tr>
-  <tr><td><code>FEATURES.PUSH_NOTIFICATIONS</code></td><td>Push notifications via TBC-CA plugin</td><td><code>true</code></td></tr>
-  <tr><td><code>FEATURES.MESSAGING</code></td><td>Fluent Messaging (direct chat)</td><td><code>true</code></td></tr>
-  <tr><td><code>FEATURES.COURSES</code></td><td>Fluent LMS courses</td><td><code>true</code></td></tr>
-  <tr><td><code>FEATURES.MULTI_REACTIONS</code></td><td>Multi-reaction support (requires TBC Multi-Reactions plugin). When off, uses single like button.</td><td><code>true</code></td></tr>
-  <tr><td><code>FEATURES.PROFILE_TABS.*</code></td><td>Which tabs appear on user profiles (POSTS, SPACES, COMMENTS)</td><td><code>false</code></td></tr>
+  <tr><td colspan="3" style="color:var(--text-secondary);font-style:italic">Feature flags have moved to wp-admin &rarr; TBC Community App &rarr; Features tab. No build-time flags in this file.</td></tr>
 </table>
 
 <!-- app.json -->
@@ -1575,7 +1569,7 @@ eas submit --platform android</code></pre>
   <tr><td>7</td><td>Apple ID and App Store Connect ID set for iOS submissions</td><td><code>eas.json</code> (submit.production.ios)</td><td></td></tr>
   <tr><td>8</td><td>APP_NAME and APP_USER_AGENT updated</td><td><code>constants/config.ts</code></td><td></td></tr>
   <tr><td>9</td><td>Real-time messaging configured in WordPress admin (if using Fluent Messaging)</td><td>WP Admin &rarr; Fluent Community &rarr; Settings &rarr; Messaging</td><td></td></tr>
-  <tr><td>10</td><td>Feature flags reviewed (disable features you don't use)</td><td><code>constants/config.ts</code></td><td></td></tr>
+  <tr><td>10</td><td>Feature flags reviewed (disable features you don't use)</td><td>WP Admin &rarr; TBC Community App &rarr; Features</td><td></td></tr>
   <tr><td>11</td><td>Module registry reviewed (only needed modules enabled)</td><td><code>modules/_registry.ts</code></td><td></td></tr>
   <tr><td>12</td><td>All branding images replaced</td><td><code>assets/images/</code></td><td></td></tr>
   <tr><td>13</td><td>Notification + adaptive icon colors match brand</td><td><code>app.json</code></td><td></td></tr>
@@ -1628,7 +1622,7 @@ eas submit --platform android</code></pre>
 
 <p>Protected files that are <strong>never overwritten</strong> by an update:</p>
 <ul>
-  <li><code>constants/config.ts</code> &mdash; your app name, site URL, feature flags</li>
+  <li><code>constants/config.ts</code> &mdash; your app name, site URL</li>
   <li><code>app.json</code> &mdash; your bundle IDs, app name, icons, EAS config</li>
   <li><code>eas.json</code> &mdash; your build profiles and site URL</li>
   <li><code>app.config.ts</code> &mdash; your fallback values and deep link paths</li>
@@ -1702,7 +1696,7 @@ git merge upstream/main</code></pre>
   </tr>
   <tr>
     <td><code>constants/config.ts</code></td>
-    <td>You set your APP_NAME, feature flags; upstream has placeholders</td>
+    <td>You set your APP_NAME; upstream has placeholders</td>
     <td>Keep your values in the YOUR CONFIG section; accept upstream changes below END YOUR CONFIG</td>
   </tr>
   <tr>
@@ -1774,7 +1768,7 @@ git merge upstream/main</code></pre>
   <li>Verify Firebase config files match your app's bundle ID / package name <strong>exactly</strong></li>
   <li><strong>iOS:</strong> Ensure your APNs key (<code>.p8</code> file) is uploaded in Firebase Console → Cloud Messaging settings</li>
   <li><strong>Android:</strong> Verify <code>google-services.json</code> is in the project root and has the correct package name</li>
-  <li>Check that <code>FEATURES.PUSH_NOTIFICATIONS = true</code> in <code>constants/config.ts</code></li>
+  <li>Check that Push Notifications is enabled in wp-admin &rarr; TBC Community App &rarr; Features</li>
   <li>EAS project ID must be set in <code>app.json</code> — push tokens are registered via Expo's push service</li>
 </ul>
 

@@ -8,7 +8,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import type { Router } from 'expo-router';
-import { FEATURES } from '@/constants/config';
+import type { BooleanFeatureKey } from '@/services/api/appConfig';
 import type { ColorTheme } from '@/constants/colors';
 import type { RegistrationConfig } from '@/services/api/appConfig';
 
@@ -56,7 +56,7 @@ export interface WidgetRegistration {
   /** "See all" route — if undefined, no "See all" link */
   seeAllRoute?: string;
   /** Feature flag key — if set and false, widget is excluded entirely */
-  featureFlag?: keyof typeof FEATURES;
+  featureFlag?: BooleanFeatureKey;
   /** Default enabled state for new users */
   defaultEnabled: boolean;
   /** Whether the user can disable this widget */

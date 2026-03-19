@@ -6,7 +6,7 @@
 // Both use the same WidgetRegistration type from modules/_types.ts.
 // =============================================================================
 
-import { FEATURES } from '@/constants/config';
+import type { FeaturesConfig } from '@/services/api/appConfig';
 import type { WidgetRegistration } from '@/modules/_types';
 import { getModuleWidgets } from '@/modules/_registry';
 import { CoursesWidget } from '@/components/home/CoursesWidget';
@@ -21,7 +21,7 @@ const CORE_WIDGETS: WidgetRegistration[] = [
     title: 'My Courses',
     icon: 'school-outline',
     seeAllRoute: '/courses',
-    featureFlag: 'COURSES',
+    featureFlag: 'courses',
     defaultEnabled: true,
     canDisable: true,
     externalWrapper: true,
@@ -44,10 +44,10 @@ export const WIDGET_REGISTRY: WidgetRegistration[] = [
 // -----------------------------------------------------------------------------
 
 /** Get the subset of widgets that pass their feature flag check */
-export function getAvailableWidgets(): WidgetRegistration[] {
+export function getAvailableWidgets(features: FeaturesConfig): WidgetRegistration[] {
   return WIDGET_REGISTRY.filter((w) => {
     if (w.featureFlag) {
-      return FEATURES[w.featureFlag] === true;
+      return features[w.featureFlag] === true;
     }
     return true;
   });

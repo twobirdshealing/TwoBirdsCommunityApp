@@ -20,7 +20,7 @@
   <span class="file-path">hooks/useMessageMenu.ts</span> &middot;
   <span class="file-path">types/message.ts</span> &middot;
   <span class="file-path">app/messages/</span><br>
-  Messaging requires the <strong>Fluent Messaging</strong> add-on on the WordPress site. The app feature is gated by <code>FEATURES.MESSAGING</code> in <span class="file-path">constants/config.ts</span>.
+  Messaging requires the <strong>Fluent Messaging</strong> add-on on the WordPress site. The app feature is gated by the <code>messaging</code> feature flag, controlled in wp-admin &rarr; TBC Community App &rarr; Features tab and accessed via <code>useFeatures()</code>.
 </div>
 
 <div class="toc">
@@ -337,7 +337,7 @@ await messagesApi.unblockThread(threadId);</code></pre>
   <li><strong>Strip HTML from message text before display.</strong> Use <code>getMessageText()</code> for full text or <code>getMessagePreview()</code> for truncated previews. Never render raw <code>message.text</code> as plain text.</li>
   <li><strong>Use <code>useNewMessageListener</code> and <code>useReactionListener</code></strong> for real-time updates. Don&rsquo;t subscribe to Pusher channels directly for messaging.</li>
   <li><strong>Mark threads read on screen mount.</strong> Call <code>messagesApi.markThreadsRead([threadId])</code> when the chat screen loads so badge counts stay accurate.</li>
-  <li><strong>Check <code>FEATURES.MESSAGING</code> before showing chat UI.</strong> Sites without Fluent Messaging installed should hide all messaging UI.</li>
+  <li><strong>Check <code>features.messaging</code> (via <code>useFeatures()</code>) before showing chat UI.</strong> Sites without Fluent Messaging installed should hide all messaging UI.</li>
   <li><strong>Reactions use the same <code>meta.reactions</code> shape as feeds</strong> &mdash; a map of emoji string to array of user IDs. Toggle (not add/remove) is the API contract.</li>
 </ol>
 

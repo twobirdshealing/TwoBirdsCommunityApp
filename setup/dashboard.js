@@ -120,13 +120,6 @@ const ADDON_PLUGINS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Feature flag keys (single source of truth — used by reader + writer)
-// ---------------------------------------------------------------------------
-
-const BOOL_FLAGS = ['DARK_MODE', 'PUSH_NOTIFICATIONS', 'MESSAGING', 'COURSES', 'MULTI_REACTIONS'];
-const PROFILE_TAB_KEYS = ['POSTS', 'SPACES', 'COMMENTS'];
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -224,18 +217,6 @@ function readProjectState() {
     const content = fs.readFileSync(PATHS.configTs, 'utf8');
     state.config.appNameConfig = extractTsValue(content, /export const APP_NAME = '([^']*)'/);
     state.config.userAgent = extractTsValue(content, /export const APP_USER_AGENT = '([^']*)'/);
-    // Feature flags
-    state.features = {};
-    for (const flag of BOOL_FLAGS) {
-      const m = content.match(new RegExp(flag + ':\\s*(true|false)'));
-      if (m) state.features[flag] = m[1] === 'true';
-    }
-    // Nested PROFILE_TABS
-    state.features.PROFILE_TABS = {};
-    for (const sub of PROFILE_TAB_KEYS) {
-      const m = content.match(new RegExp('PROFILE_TABS:[\\s\\S]*?' + sub + ':\\s*(true|false)'));
-      if (m) state.features.PROFILE_TABS[sub] = m[1] === 'true';
-    }
   }
 
   // --- app.config.ts ---
@@ -500,46 +481,6 @@ function writeConfigValues(changes) {
   }
 
   return results;
-}
-
-// ---------------------------------------------------------------------------
-// Feature Flag Writer
-// ---------------------------------------------------------------------------
-
-function writeFeatureFlags(changes) {
-  if (!fileExists(PATHS.configTs)) return ['constants/config.ts not found'];
-  let content = fs.readFileSync(PATHS.configTs, 'utf8');
-  let changed = false;
-
-  // Top-level boolean flags
-  for (const flag of BOOL_FLAGS) {
-    if (changes[flag] !== undefined) {
-      const val = changes[flag] === true || changes[flag] === 'true' ? 'true' : 'false';
-      content = content.replace(new RegExp('(' + flag + ':\\s*)(true|false)'), '$1' + val);
-      changed = true;
-    }
-  }
-
-  // Nested PROFILE_TABS flags
-  if (changes.PROFILE_TABS) {
-    for (const sub of PROFILE_TAB_KEYS) {
-      if (changes.PROFILE_TABS[sub] !== undefined) {
-        const val = changes.PROFILE_TABS[sub] === true || changes.PROFILE_TABS[sub] === 'true' ? 'true' : 'false';
-        // Match within the PROFILE_TABS block
-        content = content.replace(
-          new RegExp('(PROFILE_TABS:\\s*\\{[\\s\\S]*?' + sub + ':\\s*)(true|false)'),
-          '$1' + val
-        );
-        changed = true;
-      }
-    }
-  }
-
-  if (changed) {
-    fs.writeFileSync(PATHS.configTs, content);
-    return ['Feature flags updated in constants/config.ts'];
-  }
-  return ['No feature flag changes'];
 }
 
 // ---------------------------------------------------------------------------
@@ -1550,13 +1491,6 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (pathname === '/api/features' && req.method === 'POST') {
-      const body = await readBody(req);
-      const changes = JSON.parse(body);
-      const results = writeFeatureFlags(changes);
-      jsonResponse(res, { ok: true, results });
-      return;
-    }
 
     if (pathname === '/api/connectivity' && req.method === 'GET') {
       const siteUrl = getSiteUrl(readJsonSafe(PATHS.easJson));
@@ -2148,21 +2082,6 @@ function getDashboardHTML() {
   .version-bumps { display: flex; gap: 4px; flex-shrink: 0; }
   .version-files { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
-  .feature-flags { display: flex; flex-direction: column; gap: 6px; }
-  .feature-flag { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; }
-  .toggle-label { display: flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap; flex-shrink: 0; min-width: 180px; }
-  .toggle-label input[type="checkbox"] { display: none; }
-  .toggle-switch { position: relative; width: 36px; height: 20px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 10px; transition: all 0.2s; flex-shrink: 0; }
-  .toggle-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--text-muted); border-radius: 50%; transition: all 0.2s; }
-  .toggle-label input:checked + .toggle-switch { background: var(--green); border-color: var(--green); }
-  .toggle-label input:checked + .toggle-switch::after { left: 18px; background: #fff; }
-  .toggle-text { font-size: 13px; font-weight: 500; }
-  .flag-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.4; padding-top: 2px; }
-  .flag-desc code { font-family: var(--font-mono); font-size: 11px; background: var(--bg-tertiary); padding: 1px 5px; border-radius: 3px; }
-  .features-notice { margin-top: 12px; padding: 10px 14px; background: rgba(210,153,34,0.1); border: 1px solid var(--yellow); border-radius: var(--radius); font-size: 12px; color: var(--yellow); line-height: 1.5; }
-  .features-notice code { font-family: var(--font-mono); font-size: 11px; background: var(--bg-tertiary); padding: 1px 5px; border-radius: 3px; }
-  .features-notice strong { color: var(--text-primary); }
-  .feature-flag.changed .toggle-switch { box-shadow: 0 0 0 2px var(--yellow); }
 
   .btn { padding: 8px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: var(--font-sans); }
   .btn:hover { background: var(--bg-hover); }
@@ -2471,89 +2390,6 @@ function getDashboardHTML() {
   </div>
 
   <div class="card">
-    <div class="card-header"><h3>Feature Flags</h3><span class="badge" style="color:var(--text-muted)">constants/config.ts</span></div>
-    <div class="card-body">
-      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Toggle app features on or off. Disabled features are hidden from users. Changes are saved to <code>constants/config.ts</code>.</p>
-      <div class="feature-flags" id="feature-flags">
-        <div class="feature-flag">
-          <label class="toggle-label">
-            <input type="checkbox" id="flag-DARK_MODE" data-flag="DARK_MODE">
-            <span class="toggle-switch"></span>
-            <span class="toggle-text">Dark Mode</span>
-          </label>
-          <span class="flag-desc">Dark mode synced from Fluent Community theme</span>
-        </div>
-        <div class="feature-flag">
-          <label class="toggle-label">
-            <input type="checkbox" id="flag-PUSH_NOTIFICATIONS" data-flag="PUSH_NOTIFICATIONS">
-            <span class="toggle-switch"></span>
-            <span class="toggle-text">Push Notifications</span>
-          </label>
-          <span class="flag-desc">Push notifications via Firebase + TBC-CA plugin. Requires <code>google-services.json</code> and <code>GoogleService-Info.plist</code>.</span>
-        </div>
-        <div class="feature-flag">
-          <label class="toggle-label">
-            <input type="checkbox" id="flag-MESSAGING" data-flag="MESSAGING">
-            <span class="toggle-switch"></span>
-            <span class="toggle-text">Messaging</span>
-          </label>
-          <span class="flag-desc">Direct messaging via Fluent Community Pro with FluentCommunity Chat enabled</span>
-        </div>
-        <div class="feature-flag">
-          <label class="toggle-label">
-            <input type="checkbox" id="flag-COURSES" data-flag="COURSES">
-            <span class="toggle-switch"></span>
-            <span class="toggle-text">Courses</span>
-          </label>
-          <span class="flag-desc">Course enrollment via Fluent Community Pro with Course module enabled</span>
-        </div>
-        <div class="feature-flag">
-          <label class="toggle-label">
-            <input type="checkbox" id="flag-MULTI_REACTIONS" data-flag="MULTI_REACTIONS">
-            <span class="toggle-switch"></span>
-            <span class="toggle-text">Multi-Reactions</span>
-          </label>
-          <span class="flag-desc">Emoji reactions on posts and comments via TBC Multi-Reactions plugin. Disable if plugin is not installed.</span>
-        </div>
-        <div class="feature-flag-group">
-          <h4 style="font-size:13px;color:var(--text-secondary);margin:16px 0 8px;border-top:1px solid var(--border);padding-top:12px">Profile Tabs</h4>
-          <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">Extra tabs shown on user profile pages. The About tab is always visible.</p>
-          <div class="feature-flag">
-            <label class="toggle-label">
-              <input type="checkbox" id="flag-PROFILE_POSTS" data-flag="PROFILE_TABS.POSTS">
-              <span class="toggle-switch"></span>
-              <span class="toggle-text">Posts</span>
-            </label>
-            <span class="flag-desc">Show user posts feed on their profile</span>
-          </div>
-          <div class="feature-flag">
-            <label class="toggle-label">
-              <input type="checkbox" id="flag-PROFILE_SPACES" data-flag="PROFILE_TABS.SPACES">
-              <span class="toggle-switch"></span>
-              <span class="toggle-text">Spaces</span>
-            </label>
-            <span class="flag-desc">Show user joined spaces on their profile</span>
-          </div>
-          <div class="feature-flag">
-            <label class="toggle-label">
-              <input type="checkbox" id="flag-PROFILE_COMMENTS" data-flag="PROFILE_TABS.COMMENTS">
-              <span class="toggle-switch"></span>
-              <span class="toggle-text">Comments</span>
-            </label>
-            <span class="flag-desc">Show user comments on their profile</span>
-          </div>
-        </div>
-      </div>
-      <div id="features-changed-notice" class="features-notice" style="display:none">
-        <span>\u26A0</span> Feature flag changes require a <strong>dev server restart</strong> (<code>npx expo start</code>) or a <strong>new build</strong> to take effect.
-      </div>
-      <div style="margin-top:16px;font-size:13px;color:var(--text-secondary)">
-        Feature flag changes are included when you click <strong>Save Changes</strong> below.
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
     <div class="card-header"><h3>iOS App Store Submit</h3><span class="badge" style="color:var(--text-muted)">eas.json</span></div>
     <div class="card-body">
       <div class="field-group">
@@ -2826,8 +2662,6 @@ let dirty = false;
 const CONFIG_FIELDS = ['appName', 'slug', 'scheme', 'version', 'iosBundleId', 'androidPackage',
   'siteUrl', 'easOwner', 'easProjectId', 'appNameConfig', 'userAgent',
   'appleId', 'ascAppId', 'packageName', 'appToken'];
-const BOOL_FLAGS = ${JSON.stringify(BOOL_FLAGS)};
-const PROFILE_TAB_KEYS = ${JSON.stringify(PROFILE_TAB_KEYS)};
 const PLACEHOLDERS = ${JSON.stringify(PLACEHOLDERS)};
 
 // ---------------------------------------------------------------------------
@@ -3032,7 +2866,6 @@ async function loadState() {
     populateChecks(state.validation);
     updateProgress(state.validation);
     populateGooglePlayKey(state.config);
-    populateFeatures(state.features);
     showDepsBanner(state.dependencies && !state.dependencies.nodeModules);
     dirty = false;
     document.getElementById('save-config-btn').textContent = 'Save Changes';
@@ -3347,43 +3180,15 @@ async function saveConfig() {
   if (changes.appName !== undefined) changes.fallbackName = changes.appName;
   if (changes.slug !== undefined) changes.fallbackSlug = changes.slug.toLowerCase();
 
-  // Also collect feature flag changes
-  const featureChanges = {};
-  for (const flag of BOOL_FLAGS) {
-    const el = document.getElementById('flag-' + flag);
-    if (el && el.checked !== (originalFeatures[flag] === true)) {
-      featureChanges[flag] = el.checked;
-    }
-  }
-  const profileChanges = {};
-  let hasProfileChanges = false;
-  for (const sub of PROFILE_TAB_KEYS) {
-    const el = document.getElementById('flag-PROFILE_' + sub);
-    const orig = originalFeatures.PROFILE_TABS && originalFeatures.PROFILE_TABS[sub] === true;
-    if (el && el.checked !== orig) {
-      profileChanges[sub] = el.checked;
-      hasProfileChanges = true;
-    }
-  }
-  if (hasProfileChanges) featureChanges.PROFILE_TABS = profileChanges;
-  const hasFeatureChanges = Object.keys(featureChanges).length > 0;
   const hasConfigChanges = Object.keys(changes).length > 0;
 
-  if (!hasConfigChanges && !hasFeatureChanges) { showToast('No changes to save', 'error'); return; }
+  if (!hasConfigChanges) { showToast('No changes to save', 'error'); return; }
   const results = [];
   try {
-    if (hasConfigChanges) {
-      const res = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) });
-      const data = await res.json();
-      if (data.ok) results.push(...data.results);
-      else { showToast('Save failed: ' + JSON.stringify(data), 'error'); return; }
-    }
-    if (hasFeatureChanges) {
-      const res = await fetch('/api/features', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(featureChanges) });
-      const data = await res.json();
-      if (data.ok) results.push(...data.results);
-      else { showToast('Feature save failed: ' + JSON.stringify(data), 'error'); return; }
-    }
+    const res = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) });
+    const data = await res.json();
+    if (data.ok) results.push(...data.results);
+    else { showToast('Save failed: ' + JSON.stringify(data), 'error'); return; }
     showToast('Saved: ' + results.join(', '), 'success');
     await loadState();
   } catch (err) { showToast('Save error: ' + err.message, 'error'); }
@@ -3431,56 +3236,6 @@ async function saveVersionFromBuild() {
       await loadState();
     } else showToast('Save failed', 'error');
   } catch (err) { showToast('Save error: ' + err.message, 'error'); }
-}
-
-// ---------- Feature flags ----------
-let originalFeatures = {};
-
-function populateFeatures(features) {
-  if (!features) return;
-  originalFeatures = JSON.parse(JSON.stringify(features));
-  for (const flag of BOOL_FLAGS) {
-    const el = document.getElementById('flag-' + flag);
-    if (el) {
-      el.checked = features[flag] === true;
-      el.removeEventListener('change', checkFeatureChanges);
-      el.addEventListener('change', checkFeatureChanges);
-    }
-  }
-  if (features.PROFILE_TABS) {
-    for (const sub of PROFILE_TAB_KEYS) {
-      const el = document.getElementById('flag-PROFILE_' + sub);
-      if (el) {
-        el.checked = features.PROFILE_TABS[sub] === true;
-        el.removeEventListener('change', checkFeatureChanges);
-        el.addEventListener('change', checkFeatureChanges);
-      }
-    }
-  }
-  // Reset notice and changed indicators
-  document.getElementById('features-changed-notice').style.display = 'none';
-  document.querySelectorAll('.feature-flag.changed').forEach(el => el.classList.remove('changed'));
-}
-
-function checkFeatureChanges() {
-  let anyChanged = false;
-  for (const flag of BOOL_FLAGS) {
-    const el = document.getElementById('flag-' + flag);
-    if (!el) continue;
-    const orig = originalFeatures[flag] === true;
-    const changed = el.checked !== orig;
-    el.closest('.feature-flag').classList.toggle('changed', changed);
-    if (changed) anyChanged = true;
-  }
-  for (const sub of PROFILE_TAB_KEYS) {
-    const el = document.getElementById('flag-PROFILE_' + sub);
-    if (!el) continue;
-    const orig = originalFeatures.PROFILE_TABS && originalFeatures.PROFILE_TABS[sub] === true;
-    const changed = el.checked !== orig;
-    el.closest('.feature-flag').classList.toggle('changed', changed);
-    if (changed) anyChanged = true;
-  }
-  document.getElementById('features-changed-notice').style.display = anyChanged ? 'block' : 'none';
 }
 
 // ---------- File uploads ----------

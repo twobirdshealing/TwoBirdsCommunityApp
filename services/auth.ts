@@ -6,7 +6,8 @@
 // No stored credentials — refresh token is the only re-auth mechanism.
 // =============================================================================
 
-import { TBC_CA_URL, FEATURES } from '@/constants/config';
+import { TBC_CA_URL } from '@/constants/config';
+import { getFeatureFlag } from '@/utils/featureFlags';
 import type { AuthUser } from '@/types/user';
 import * as SecureStore from 'expo-secure-store';
 import { registerDeviceToken, unregisterDeviceToken, clearBadgeCount } from './push';
@@ -171,11 +172,13 @@ export async function login(username: string, password: string): Promise<LoginRe
     log('User info stored:', user.username, 'id:', user.id);
 
     // Register device for push notifications (non-blocking)
-    if (FEATURES.PUSH_NOTIFICATIONS) {
-      registerDeviceToken(loginData.access_token).catch(err => {
-        log('Failed to register push token:', err);
-      });
-    }
+    getFeatureFlag('push_notifications').then(enabled => {
+      if (enabled) {
+        registerDeviceToken(loginData.access_token).catch(err => {
+          log('Failed to register push token:', err);
+        });
+      }
+    });
 
     return { success: true, user };
 
@@ -206,7 +209,8 @@ export async function logout(): Promise<void> {
   const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
 
   // Unregister device from push notifications
-  if (FEATURES.PUSH_NOTIFICATIONS && token) {
+  const pushEnabled = await getFeatureFlag('push_notifications');
+  if (pushEnabled && token) {
     await unregisterDeviceToken(token).catch((e) => {
       log.warn('Failed to unregister device token:', e);
     });

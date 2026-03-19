@@ -194,7 +194,7 @@ export interface ModuleManifest {
   title: string;          // Header text in HomeWidget wrapper
   icon?: string;          // Ionicon name for header
   seeAllRoute?: string;   // "See All" navigation target
-  featureFlag?: string;   // If set and false, widget is excluded entirely
+  featureFlag?: string;   // If set and server flag is off, widget is excluded entirely
   defaultEnabled: boolean;   // Default visibility for new users
   canDisable: boolean;       // Whether user can toggle in edit mode
   externalWrapper: boolean;  // true = HomeWidget wraps it; false = widget handles own layout
@@ -395,8 +395,8 @@ function ModuleProviders({ children }) {
     </tr>
     <tr>
       <td><strong>Feature flags</strong></td>
-      <td><code>featureFlag</code> on widgets &mdash; checked against <code>FEATURES.*</code> in config.ts</td>
-      <td>Developer (config.ts)</td>
+      <td><code>featureFlag</code> on widgets &mdash; checked against server-controlled flags via <code>useFeatures()</code></td>
+      <td>WordPress admin (wp-admin &rarr; TBC Community App &rarr; Features tab)</td>
     </tr>
   </tbody>
 </table>

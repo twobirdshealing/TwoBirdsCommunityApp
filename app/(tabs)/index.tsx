@@ -22,6 +22,7 @@ import { useRouter } from 'expo-router';
 import { spacing } from '@/constants/layout';
 import { useTabContentPadding } from '@/contexts/BottomOffsetContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useFeatures } from '@/contexts/AppConfigContext';
 import { useTabBar } from '@/contexts/TabBarContext';
 import { hapticMedium } from '@/utils/haptics';
 import { useWidgetPreferences, WidgetPreference } from '@/hooks/useWidgetPreferences';
@@ -62,6 +63,7 @@ interface WidgetItem {
 export default function HomeScreen() {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
+  const features = useFeatures();
   const bottomInset = useTabContentPadding();
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -97,7 +99,7 @@ export default function HomeScreen() {
 
   const widgetItems = useMemo<WidgetItem[]>(() => {
     if (!preferences) return [];
-    const available = getAvailableWidgets();
+    const available = getAvailableWidgets(features);
     const registryMap = new Map(available.map((w) => [w.id, w]));
 
     return preferences.order
@@ -107,7 +109,7 @@ export default function HomeScreen() {
         return { pref, config };
       })
       .filter((item): item is WidgetItem => item !== null);
-  }, [preferences]);
+  }, [preferences, features]);
 
   // ---------------------------------------------------------------------------
   // Edit Mode

@@ -5,7 +5,7 @@
 import * as authService from '@/services/auth';
 import { clearAllUserCaches } from '@/services/cacheRegistry';
 import { registerDeviceToken } from '@/services/push';
-import { FEATURES } from '@/constants/config';
+import { getFeatureFlag } from '@/utils/featureFlags';
 import { createLogger } from '@/utils/logger';
 import type { AuthUser } from '@/types/user';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -69,11 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAuthenticated(true);
 
           // Re-register push token on every app start (token may have changed)
-          if (FEATURES.PUSH_NOTIFICATIONS) {
+          getFeatureFlag('push_notifications').then(enabled => {
+            if (!enabled) return;
             authService.getAuthToken().then(token => {
               if (token) registerDeviceToken(token).catch((e) => log.warn('Push token registration failed:', e));
             });
-          }
+          });
 
         } else {
           // Has auth but no user info - clear it
@@ -144,9 +145,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(true);
 
     // Register push token for new registrations
-    if (FEATURES.PUSH_NOTIFICATIONS) {
-      registerDeviceToken(accessToken).catch((e) => log.warn('Push token registration failed:', e));
-    }
+    getFeatureFlag('push_notifications').then(enabled => {
+      if (enabled) registerDeviceToken(accessToken).catch((e) => log.warn('Push token registration failed:', e));
+    });
   }, []);
 
   const value = useMemo(() => ({
