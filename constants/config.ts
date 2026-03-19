@@ -31,7 +31,6 @@ export const FEATURES = {
   PUSH_NOTIFICATIONS: true, // Push notifications via TBC-CA plugin
   MESSAGING: true,          // Fluent Messaging (direct chat)
   COURSES: true,            // Fluent LMS courses
-  CART: true,               // WooCommerce cart icon in header (disable if no WooCommerce)
   MULTI_REACTIONS: true,    // Multi-reaction support via TBC Multi-Reactions plugin (disable if plugin not installed)
   PROFILE_TABS: {           // Which tabs appear on user profiles (About is always on)
     POSTS: false,           // User's posts feed

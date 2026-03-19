@@ -34,6 +34,7 @@ import { youtubeModule } from './youtube/module';
 import { blogModule } from './blog/module';
 import { otpModule } from './otp/module';
 import { profileCompletionModule } from './profile-completion/module';
+import { cartModule } from './cart/module';
 
 export const MODULES: ModuleManifest[] = [
   calendarModule,
@@ -44,6 +45,7 @@ export const MODULES: ModuleManifest[] = [
   blogModule,
   otpModule,
   profileCompletionModule,
+  cartModule,
 ];
 
 // =============================================================================

@@ -123,7 +123,7 @@ const ADDON_PLUGINS = [
 // Feature flag keys (single source of truth — used by reader + writer)
 // ---------------------------------------------------------------------------
 
-const BOOL_FLAGS = ['DARK_MODE', 'PUSH_NOTIFICATIONS', 'MESSAGING', 'COURSES', 'CART', 'MULTI_REACTIONS'];
+const BOOL_FLAGS = ['DARK_MODE', 'PUSH_NOTIFICATIONS', 'MESSAGING', 'COURSES', 'MULTI_REACTIONS'];
 const PROFILE_TAB_KEYS = ['POSTS', 'SPACES', 'COMMENTS'];
 
 // ---------------------------------------------------------------------------
@@ -1195,6 +1195,32 @@ async function validateLicense(key) {
   }
 }
 
+/**
+ * Deactivate license on the server (release the activation slot).
+ * Best-effort — doesn't throw on failure.
+ */
+async function deactivateLicense(key) {
+  const manifest = readManifest();
+  const updateUrl = manifest.updateUrl;
+  if (!updateUrl) return;
+
+  const deactivateUrl = updateUrl.replace(/\/check\s*$/, '/deactivate');
+
+  try {
+    await httpsRequest(deactivateUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        licenseKey: key,
+        siteUrl: getSiteUrl(readJsonSafe(PATHS.easJson)) || '',
+      }),
+      timeout: 10000,
+    });
+  } catch {
+    // Best-effort — don't block removal if server is unreachable
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Update System — Backup & Restore
 // ---------------------------------------------------------------------------
@@ -1790,6 +1816,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/updates/license' && req.method === 'DELETE') {
+      const key = readLicense();
+      if (key) {
+        await deactivateLicense(key);
+      }
       try { fs.unlinkSync(PATHS.licenseFile); } catch { /* ignore */ }
       jsonResponse(res, { removed: true });
       return;
@@ -2476,14 +2506,6 @@ function getDashboardHTML() {
             <span class="toggle-text">Courses</span>
           </label>
           <span class="flag-desc">Course enrollment via Fluent Community Pro with Course module enabled</span>
-        </div>
-        <div class="feature-flag">
-          <label class="toggle-label">
-            <input type="checkbox" id="flag-CART" data-flag="CART">
-            <span class="toggle-switch"></span>
-            <span class="toggle-text">Cart</span>
-          </label>
-          <span class="flag-desc">WooCommerce cart icon in header. Disable if you do not use WooCommerce.</span>
         </div>
         <div class="feature-flag">
           <label class="toggle-label">
@@ -4241,14 +4263,16 @@ async function applyLicenseUpdate(downloadUrl, version) {
     document.getElementById('update-step-apply').textContent = '\\u2713 Applied (' + data.filesWritten + ' files updated, config preserved)';
 
     let resultHtml = '<div class="update-result success">';
-    resultHtml += '<strong>Update applied successfully!</strong><br>';
-    if (data.depsChanged) resultHtml += '<br>&#x26A0; Dependencies changed. Run <code>npm install</code> to update them.';
-    if (data.dashboardUpdated) resultHtml += '<br>&#x26A0; Dashboard updated. Restart the dashboard to use the new version.';
-    resultHtml += '<br><br>Run <code>npm install</code> then rebuild your app.';
+    resultHtml += '<strong>Update applied successfully!</strong>';
+    if (data.depsChanged) resultHtml += '<br><br>&#x26A0; Dependencies changed. Run <code>npm install</code> to update them.';
     resultHtml += '</div>';
     statusEl.innerHTML += resultHtml;
 
     await loadBackups();
+
+    if (data.dashboardUpdated) {
+      showDashboardRestartNotice(statusEl);
+    }
   } catch (err) {
     statusEl.innerHTML += '<div class="update-result error"><strong>Update failed:</strong> ' + err.message + '<br><br>Your backup is safe. Use the Backups section below to restore if needed.</div>';
   }
@@ -4305,17 +4329,30 @@ async function uploadManualUpdate(file) {
     html += 'Backup saved as: ' + data.backup;
     if (data.newVersion) html += '<br>Updated to version ' + data.newVersion;
     if (data.depsChanged) html += '<br><br>&#x26A0; Dependencies changed. Run <code>npm install</code> to update them.';
-    if (data.dashboardUpdated) html += '<br>&#x26A0; Dashboard updated. Restart the dashboard to use the new version.';
-    html += '<br><br>Run <code>npm install</code> then rebuild your app.';
     html += '</div>';
 
     statusEl.innerHTML = html;
     showToast('Update applied!', 'success');
     await loadBackups();
+
+    if (data.dashboardUpdated) {
+      showDashboardRestartNotice(statusEl);
+    }
   } catch (err) {
     statusEl.innerHTML = '<div class="update-result error"><strong>Upload failed:</strong> ' + err.message + '</div>';
     zone.style.display = '';
   }
+}
+
+// Prompt user to restart dashboard after self-update
+function showDashboardRestartNotice(statusEl) {
+  statusEl.innerHTML += '<div class="update-result" style="margin-top:12px;">' +
+    '<strong>&#x26A0; Dashboard updated.</strong><br>' +
+    'Stop the server, close this tab, then run <code>npm run dashboard</code> again.<br><br>' +
+    '<button onclick="fetch(\\'/api/shutdown\\',{method:\\'POST\\'}).then(function(){document.title=\\'Stopped — safe to close\\';})' +
+    '.catch(function(){})" style="padding:6px 16px;border-radius:6px;border:1px solid var(--border-color,#e2e8f0);' +
+    'background:var(--card-bg,#fff);cursor:pointer;font-size:13px;">Stop Server</button>' +
+    '</div>';
 }
 
 // Backups

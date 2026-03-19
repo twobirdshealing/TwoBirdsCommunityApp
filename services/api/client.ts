@@ -24,7 +24,6 @@ const log = createLogger('API');
 const CORE_HEADERS = {
   UNREAD_NOTIFICATIONS: 'X-TBC-Unread-Notifications',
   UNREAD_MESSAGES: 'X-TBC-Unread-Messages',
-  CART_COUNT: 'X-TBC-Cart-Count',
   MAINTENANCE: 'X-TBC-Maintenance',
   MIN_APP_VERSION: 'X-TBC-Min-App-Version',
 } as const;
@@ -32,7 +31,6 @@ const CORE_HEADERS = {
 export interface ResponseHeaderData {
   unreadNotifications?: number;
   unreadMessages?: number;
-  cartCount?: number;
   maintenance?: boolean;
   minAppVersion?: string;
   /** Module-injected header values (keyed by ResponseHeaderMapping.key) */
@@ -285,11 +283,10 @@ async function request<T>(
       log('Response data (preview):', JSON.stringify(data).substring(0, 500));
     }
 
-    // Extract custom response headers (unread counts, cart count, maintenance, min version)
+    // Extract custom response headers (unread counts, maintenance, min version, module headers)
     if (responseHeaderListeners.size > 0) {
       const hNotif = response.headers.get(CORE_HEADERS.UNREAD_NOTIFICATIONS);
       const hMsg = response.headers.get(CORE_HEADERS.UNREAD_MESSAGES);
-      const hCart = response.headers.get(CORE_HEADERS.CART_COUNT);
       const hMaint = response.headers.get(CORE_HEADERS.MAINTENANCE);
       const hMinVer = response.headers.get(CORE_HEADERS.MIN_APP_VERSION);
 
@@ -305,14 +302,12 @@ async function request<T>(
         }
       }
 
-      if (hNotif !== null || hMsg !== null || hCart !== null || hMaint !== null || hMinVer !== null || hasModuleHeader) {
+      if (hNotif !== null || hMsg !== null || hMaint !== null || hMinVer !== null || hasModuleHeader) {
         const nNotif = hNotif !== null ? parseInt(hNotif, 10) : NaN;
         const nMsg = hMsg !== null ? parseInt(hMsg, 10) : NaN;
-        const nCart = hCart !== null ? parseInt(hCart, 10) : NaN;
         const headerData: ResponseHeaderData = {
           ...(!isNaN(nNotif) && nNotif >= 0 && { unreadNotifications: nNotif }),
           ...(!isNaN(nMsg) && nMsg >= 0 && { unreadMessages: nMsg }),
-          ...(!isNaN(nCart) && nCart >= 0 && { cartCount: nCart }),
           ...(hMaint !== null && { maintenance: hMaint === '1' }),
           ...(hMinVer !== null && { minAppVersion: hMinVer }),
           ...moduleData,

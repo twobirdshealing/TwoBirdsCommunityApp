@@ -98,7 +98,7 @@ function RootLayoutNav() {
   const { isAuthenticated, isLoading, user, logout, updateUser } = useAuth();
   const { isDark, colors: themeColors, update, maintenance, setFromBatch: setThemeFromBatch } = useTheme();
   const { portalSlug, setFromBatch: setAppConfigFromBatch } = useAppConfig();
-  const { setUnreadNotifications, setUnreadMessages, setCartCount } = useUnreadCounts();
+  const { setUnreadNotifications, setUnreadMessages } = useUnreadCounts();
   const segments = useSegments();
   const router = useRouter();
   const [isRetrying, setIsRetrying] = useState(false);
@@ -134,7 +134,6 @@ function RootLayoutNav() {
     onProfileUpdate: updateUser,
     onUnreadNotifications: setUnreadNotifications,
     onUnreadMessages: setUnreadMessages,
-    onCartCount: setCartCount,
   });
 
   // ---------------------------------------------------------------------------
@@ -160,15 +159,12 @@ function RootLayoutNav() {
       if (data.unreadMessages !== undefined) {
         setUnreadMessages(data.unreadMessages);
       }
-      if (data.cartCount !== undefined) {
-        setCartCount(data.cartCount);
-      }
       if (data.maintenance || (data.minAppVersion && isVersionBelow(APP_VERSION, data.minAppVersion))) {
         // Maintenance or version change detected mid-session — refresh all config
         refreshAllConfig();
       }
     });
-  }, [setUnreadNotifications, setUnreadMessages, setCartCount, refreshAllConfig]);
+  }, [setUnreadNotifications, setUnreadMessages, refreshAllConfig]);
 
   // ---------------------------------------------------------------------------
   // Deep Link Listener (Universal Links + App Links)

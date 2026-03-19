@@ -118,6 +118,8 @@ export interface HeaderIconRegistration {
   accessibilityLabel?: string;
   /** Server visibility key — icon hidden when this key is in hide_menu[] */
   hideMenuKey?: string;
+  /** React hook returning a badge count. Called inside a wrapper component so hook rules are safe. */
+  useBadgeCount?: () => number;
 }
 
 // -----------------------------------------------------------------------------

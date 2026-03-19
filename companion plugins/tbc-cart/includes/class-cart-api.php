@@ -3,21 +3,21 @@
  * Cart API - Exposes WooCommerce cart item count for authenticated users
  *
  * Endpoints:
- *   GET /tbc-ca/v1/cart/count - Returns total item quantity in user's persistent cart
+ *   GET /tbc-cart/v1/count - Returns total item quantity in user's persistent cart
  *
  * Reads from `_woocommerce_persistent_cart_1` user meta directly (no WC session
  * overhead). Works identically on HPOS and non-HPOS sites since persistent cart
  * is always stored in wp_usermeta.
  *
- * @package TBC_Community_App
- * @since 3.28.0
+ * @package TBC_Cart
+ * @since 1.0.0
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class TBC_CA_Cart {
+class TBC_Cart_API {
 
     private static $instance = null;
 
@@ -37,7 +37,7 @@ class TBC_CA_Cart {
     // -------------------------------------------------------------------------
 
     public function register_routes() {
-        register_rest_route(TBC_CA_REST_NAMESPACE, '/cart/count', [
+        register_rest_route(TBC_CART_REST_NAMESPACE, '/count', [
             'methods'             => 'GET',
             'callback'            => [$this, 'handle_count'],
             'permission_callback' => 'is_user_logged_in',
@@ -57,17 +57,17 @@ class TBC_CA_Cart {
     }
 
     // -------------------------------------------------------------------------
-    // Shared helper (also used by Response Headers)
+    // Shared helper (also used by Response Header)
     // -------------------------------------------------------------------------
 
     /**
      * Read the persistent cart from user meta and sum item quantities.
      *
      * @param int $user_id WordPress user ID.
-     * @return int Total item quantity (0 if WooCommerce inactive or cart empty).
+     * @return int Total item quantity (0 if cart empty).
      */
     public static function get_cart_count($user_id) {
-        if (!$user_id || !class_exists('WooCommerce')) {
+        if (!$user_id) {
             return 0;
         }
 

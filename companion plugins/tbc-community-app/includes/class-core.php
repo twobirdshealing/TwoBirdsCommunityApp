@@ -50,7 +50,6 @@ class TBC_CA_Core {
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-batch-api.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-response-headers.php';
         require_once TBC_CA_PLUGIN_DIR . 'includes/class-deep-links.php';
-        require_once TBC_CA_PLUGIN_DIR . 'includes/cart/class-cart.php';
 
         // Admin only
         if (is_admin()) {
@@ -105,9 +104,6 @@ class TBC_CA_Core {
 
         // Initialize Response Headers (unread counts + maintenance on every response)
         TBC_CA_Response_Headers::get_instance();
-
-        // Initialize Cart API (WooCommerce cart item count)
-        TBC_CA_Cart::get_instance();
 
         // Initialize Deep Links (.well-known endpoints + smart app banner)
         TBC_CA_Deep_Links::get_instance();

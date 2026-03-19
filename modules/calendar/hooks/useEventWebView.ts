@@ -2,7 +2,6 @@
 // USE EVENT WEBVIEW - Hook to open calendar events in WebView
 // =============================================================================
 // Convenience wrapper around the generic /webview route for calendar events
-// Automatically enables cart icon since events are purchasable
 // =============================================================================
 
 import { useCallback } from 'react';
@@ -26,8 +25,6 @@ export function useEventWebView() {
       params: {
         url: event.url,
         title: event.title,
-        rightIcon: 'cart-outline',
-        rightAction: 'cart',
       },
     });
   }, [router]);

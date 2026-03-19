@@ -6,7 +6,6 @@
  * Headers added to all authenticated responses (any namespace):
  *   X-TBC-Unread-Notifications: N   (Fluent Community unread count)
  *   X-TBC-Unread-Messages: N        (Fluent Messaging unread thread count)
- *   X-TBC-Cart-Count: N              (WooCommerce persistent cart item quantity)
  *   X-TBC-Maintenance: 0|1          (should user see maintenance screen?)
  *   X-TBC-Profile-Incomplete: 0|1   (should user be gated for profile completion?)
  *   X-TBC-Min-App-Version: x.y.z    (minimum app version, omitted when not set)
@@ -56,10 +55,6 @@ class TBC_CA_Response_Headers {
         // Maintenance (1 = user should see maintenance screen, 0 = normal)
         $maintenance = $this->should_show_maintenance($user_id);
         $response->header('X-TBC-Maintenance', $maintenance ? '1' : '0');
-
-        // Cart item count (WooCommerce persistent cart)
-        $cart_count = TBC_CA_Cart::get_cart_count($user_id);
-        $response->header('X-TBC-Cart-Count', (string) $cart_count);
 
         // Profile completion gate (cheap: single meta read, skips settings check for non-gated users)
         $profile_incomplete = $this->is_profile_incomplete($user_id);

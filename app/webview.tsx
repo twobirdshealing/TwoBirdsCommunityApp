@@ -1,23 +1,14 @@
 // =============================================================================
 // WEBVIEW SCREEN - Reusable authenticated WebView
 // =============================================================================
-// Route: /webview?url={url}&title={title}&rightIcon={icon}&rightAction={action}
+// Route: /webview?url={url}&title={title}
 // Uses PageHeader for consistent header styling
 //
 // Params:
 //   url         - Required: The URL to load
 //   title       - Required: Header title
-//   rightIcon   - Optional: Ionicons name (e.g., 'cart-outline', 'share-outline')
-//   rightAction - Optional: Action type ('cart' triggers cart navigation)
 //
 // Usage:
-//   // With cart icon
-//   router.push({ pathname: '/webview', params: { url, title, rightIcon: 'cart-outline', rightAction: 'cart' } })
-//
-//   // With share icon (future)
-//   router.push({ pathname: '/webview', params: { url, title, rightIcon: 'share-outline', rightAction: 'share' } })
-//
-//   // No right icon
 //   router.push({ pathname: '/webview', params: { url, title } })
 // =============================================================================
 
@@ -33,14 +24,12 @@ import type { WebViewNavigation, WebViewErrorEvent, WebViewHttpErrorEvent } from
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { hapticLight } from '@/utils/haptics';
 import { spacing, typography, sizing } from '@/constants/layout';
-import { SITE_URL, APP_USER_AGENT } from '@/constants/config';
+import { APP_USER_AGENT } from '@/constants/config';
 import { appApi } from '@/services/api/app';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getThemeInjectionScript } from '@/utils/webviewTheme';
-import { useUnreadCounts } from '@/contexts/UnreadCountsContext';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('WebView');
@@ -53,17 +42,11 @@ export default function WebViewScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isDark, colors } = useTheme();
-  const { cartCount } = useUnreadCounts();
   const params = useLocalSearchParams<{
     url?: string;
     title?: string;
-    rightIcon?: string;   // Ionicons name (e.g., 'cart-outline')
-    rightAction?: string; // Action type (e.g., 'cart')
     noAuth?: string;      // Skip session creation, load URL directly (for public pages)
   }>();
-
-  // Cast rightIcon to Ionicons type (validated at render time)
-  const rightIcon = params.rightIcon as keyof typeof Ionicons.glyphMap | undefined;
 
   const webViewRef = useRef<WebView>(null);
 
@@ -150,41 +133,6 @@ export default function WebViewScreen() {
     router.back();
   };
 
-  // ---------------------------------------------------------------------------
-  // Right Action Handler - Extensible for different actions
-  // ---------------------------------------------------------------------------
-
-  const handleRightPress = async () => {
-    hapticLight();
-
-    switch (params.rightAction) {
-      case 'cart':
-        try {
-          const cartUrl = `${SITE_URL}/cart/`;
-          const response = await appApi.createWebSession(cartUrl);
-
-          if (response.success && response.url && webViewRef.current) {
-            const safeUrl = JSON.stringify(response.url);
-            webViewRef.current.injectJavaScript(
-              `window.location.assign(${safeUrl}); true;`
-            );
-            setPageTitle('Cart');
-          }
-        } catch (err) {
-          log('Cart error:', err);
-        }
-        break;
-
-      case 'share':
-        // Future: implement share functionality
-        log('Share action - not implemented yet');
-        break;
-
-      default:
-        log('Unknown action:', params.rightAction);
-    }
-  };
-
   const handleNavigationChange = (navState: WebViewNavigation) => {
     setCanGoBack(navState.canGoBack);
     if (navState.title) {
@@ -267,9 +215,6 @@ export default function WebViewScreen() {
         onLeftPress={handleBack}
         title={pageTitle}
         showLoader={pageLoading}
-        rightIcon={rightIcon}
-        onRightPress={rightIcon ? handleRightPress : undefined}
-        rightBadgeCount={params.rightAction === 'cart' ? cartCount : undefined}
       />
 
       {/* WebView with custom User-Agent + theme sync */}

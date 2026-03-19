@@ -14,7 +14,7 @@
 // │  4. /fluent-community/v2/chat/unread_threads  → message count      │
 // │  5. /fluent-community/v2/feeds/welcome-banner → welcome widget     │
 // │  6. /fluent-community/v2/courses?type=enrolled&per_page=5 → courses│
-// │  7. /tbc-ca/v1/cart/count                     → cart badge count   │
+// │  (cart count now handled by cart module via response headers)       │
 // └─────────────────────────────────────────────────────────────────────┘
 // Module widgets (calendar, bookclub, etc.) use useCachedData to
 // self-fetch on mount. No batch registration needed.
@@ -72,8 +72,6 @@ interface UseStartupDataOptions {
   onUnreadNotifications: (count: number) => void;
   /** Callback to set unread message count */
   onUnreadMessages: (count: number) => void;
-  /** Callback to set cart item count */
-  onCartCount: (count: number) => void;
 }
 
 export function useStartupData({
@@ -83,7 +81,6 @@ export function useStartupData({
   onProfileUpdate,
   onUnreadNotifications,
   onUnreadMessages,
-  onCartCount,
 }: UseStartupDataOptions) {
   const hasRun = useRef(false);
 
@@ -102,7 +99,6 @@ export function useStartupData({
         // Core widget data (module widgets self-fetch via useCachedData)
         { path: '/fluent-community/v2/feeds/welcome-banner' },
         { path: '/fluent-community/v2/courses?type=enrolled&per_page=5' },
-        { path: '/tbc-ca/v1/cart/count' },
       ];
 
       const responses = await batchRequest(batchPaths);
@@ -147,13 +143,6 @@ export function useStartupData({
       const threadKeys = chatData?.unread_threads ? Object.keys(chatData.unread_threads) : [];
       onUnreadMessages(threadKeys.length);
 
-      // 5. Cart item count
-      const cartData = findBatchResponse<{ count?: number }>(
-        responses,
-        '/tbc-ca/v1/cart/count',
-      );
-      onCartCount(cartData?.count ?? 0);
-
       // -- Write widget data to AsyncStorage caches --
 
       const cacheWrites: Promise<void>[] = [];
@@ -189,7 +178,7 @@ export function useStartupData({
       // Batch failed — widgets will still self-fetch via useCachedData as normal
       log.error('Failed:', err);
     }
-  }, [username, onAppConfig, onProfileUpdate, onUnreadNotifications, onUnreadMessages, onCartCount]);
+  }, [username, onAppConfig, onProfileUpdate, onUnreadNotifications, onUnreadMessages]);
 
   // Fire once when authenticated with a username
   useEffect(() => {

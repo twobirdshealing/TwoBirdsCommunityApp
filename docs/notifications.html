@@ -238,12 +238,14 @@
 <pre><code>const {
   unreadNotifications,         // number
   unreadMessages,              // number
-  cartCount,                   // number
   setUnreadNotifications,      // setter
   setUnreadMessages,           // setter
-  setCartCount,                // setter
   resetCounts,                 // clear all on logout
-} = useUnreadCounts();</code></pre>
+} = useUnreadCounts();
+
+// Cart count is now in the cart module:
+// import { useCartCount } from '@/modules/cart/CartContext';
+// const cartCount = useCartCount();</code></pre>
 
 <h3>How Counts Are Updated</h3>
 

@@ -63,8 +63,7 @@ export interface MaintenanceConfig {
 }
 
 export interface VisibilityConfig {
-  hide_cart: boolean;
-  hide_menu: string[]; // e.g. ['blog', 'courses']
+  hide_menu: string[]; // e.g. ['blog', 'courses', 'cart']
 }
 
 export interface UpdateConfig {

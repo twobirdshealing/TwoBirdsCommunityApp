@@ -893,11 +893,6 @@
           <td style="padding:6px 8px">Course enrollment, progress tracking, and lesson viewing. Shows a Courses tab.</td>
           <td style="padding:6px 8px;color:var(--text-secondary)"><a href="https://fluentcommunity.co" target="_blank">Fluent Community Pro</a> with Course module enabled</td>
         </tr>
-        <tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:6px 8px;white-space:nowrap"><strong>Cart</strong></td>
-          <td style="padding:6px 8px">Shows a cart icon in the header linking to your WooCommerce store. Disable if you don't use WooCommerce.</td>
-          <td style="padding:6px 8px;color:var(--text-secondary)">WooCommerce on your WordPress site</td>
-        </tr>
         <tr>
           <td style="padding:6px 8px;white-space:nowrap"><strong>Multi-Reactions</strong></td>
           <td style="padding:6px 8px">Emoji reactions (like, love, laugh, etc.) on posts and comments instead of a simple like button.</td>
@@ -919,7 +914,7 @@
     <p style="margin-top: 12px;">
       Changes are included when you click <strong>Save Changes</strong>. After saving, feature flag changes require a <strong>dev server restart</strong> or a <strong>new build</strong> to take effect &mdash; they're compiled into the app bundle, not loaded at runtime.
     </p>
-    <img class="step-img" src="images/featureflag.webp" alt="Feature Flags card showing toggles for Dark Mode, Push Notifications, Messaging, Courses, Cart, Multi-Reactions, and Profile Tabs">
+    <img class="step-img" src="images/featureflag.webp" alt="Feature Flags card showing toggles for Dark Mode, Push Notifications, Messaging, Courses, Multi-Reactions, and Profile Tabs">
   </div>
 </div>
 
@@ -1118,7 +1113,6 @@
   <tr><td><code>FEATURES.PUSH_NOTIFICATIONS</code></td><td>Push notifications via TBC-CA plugin</td><td><code>true</code></td></tr>
   <tr><td><code>FEATURES.MESSAGING</code></td><td>Fluent Messaging (direct chat)</td><td><code>true</code></td></tr>
   <tr><td><code>FEATURES.COURSES</code></td><td>Fluent LMS courses</td><td><code>true</code></td></tr>
-  <tr><td><code>FEATURES.CART</code></td><td>WooCommerce cart icon in header</td><td><code>true</code></td></tr>
   <tr><td><code>FEATURES.MULTI_REACTIONS</code></td><td>Multi-reaction support (requires TBC Multi-Reactions plugin). When off, uses single like button.</td><td><code>true</code></td></tr>
   <tr><td><code>FEATURES.PROFILE_TABS.*</code></td><td>Which tabs appear on user profiles (POSTS, SPACES, COMMENTS)</td><td><code>false</code></td></tr>
 </table>
@@ -1355,7 +1349,7 @@
   <tr><td>Community (feed, spaces, profiles)</td><td>Fluent Community (free)</td></tr>
   <tr><td>Direct messaging</td><td>Fluent Community Pro + Fluent Messaging add-on</td></tr>
   <tr><td>Courses</td><td>Fluent Community Pro + LMS add-on</td></tr>
-  <tr><td>Cart / E-commerce</td><td>WooCommerce</td></tr>
+  <tr><td>Cart / E-commerce</td><td>WooCommerce + <code>tbc-cart</code> companion plugin + cart module in <code>modules/_registry.ts</code></td></tr>
   <tr><td>Blog</td><td>WordPress posts (built-in, uses standard WP REST API)</td></tr>
   <tr><td>Push notifications</td><td>Firebase project + <code>tbc-community-app</code> (see <a href="#firebase-setup">Firebase Setup</a>)</td></tr>
   <tr><td>Real-time updates</td><td>Fluent Messaging add-on &mdash; supports Pusher Cloud, Fluent Socket, or custom Soketi (configured in WordPress admin, app reads config automatically)</td></tr>

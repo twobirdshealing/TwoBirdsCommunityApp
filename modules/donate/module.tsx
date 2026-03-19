@@ -12,8 +12,6 @@ import { DonateTabIcon } from './components/DonateTabIcon';
 const DONATE_ROUTE_PARAMS = {
   url: `${SITE_URL}/calendar/donate/`, // SETUP: Path to your donation page (WooCommerce)
   title: 'Donate',
-  rightIcon: 'cart-outline',
-  rightAction: 'cart',
 };
 
 export const donateModule: ModuleManifest = {

@@ -8,7 +8,7 @@
 // 4. Push notifications (instant notification badge bump)
 // =============================================================================
 
-import { FEATURES, SITE_URL, getHeaderLogoSource } from '@/constants/config';
+import { getHeaderLogoSource } from '@/constants/config';
 import { spacing, shadows, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -25,6 +25,7 @@ import { useNewMessageListener } from '@/contexts/PusherContext';
 import { HeaderIconButton } from './HeaderIconButton';
 import { UserMenu } from './UserMenu';
 import { getModuleHeaderIcons } from '@/modules/_registry';
+import type { HeaderIconRegistration } from '@/modules/_types';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -48,7 +49,6 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   const {
     unreadMessages,
     unreadNotifications,
-    cartCount,
     setUnreadMessages,
     setUnreadNotifications,
   } = useUnreadCounts();
@@ -99,16 +99,6 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
 
   const handleNotificationsPress = () => {
     router.push('/notifications');
-  };
-
-  const handleCartPress = () => {
-    router.push({
-      pathname: '/webview',
-      params: {
-        url: `${SITE_URL}/cart/`,
-        title: 'Cart',
-      },
-    });
   };
 
   const handleProfilePress = () => {
@@ -207,24 +197,9 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             accessibilityLabel={unreadNotifications > 0 ? `Notifications, ${unreadNotifications} unread` : 'Notifications'}
           />
 
-          {/* Cart - requires FEATURES.CART + not hidden per role */}
-          {FEATURES.CART && !visibility?.hide_cart && (
-            <HeaderIconButton
-              icon="cart-outline"
-              onPress={handleCartPress}
-              badgeCount={cartCount}
-              accessibilityLabel={cartCount > 0 ? `Cart, ${cartCount} items` : 'Cart'}
-            />
-          )}
-
           {/* Module header icons */}
           {moduleHeaderIcons.map((icon) => (
-            <HeaderIconButton
-              key={icon.id}
-              icon={icon.icon}
-              onPress={() => router.push(icon.route as any)}
-              accessibilityLabel={icon.accessibilityLabel || icon.id}
-            />
+            <ModuleHeaderIcon key={icon.id} registration={icon} />
           ))}
 
           {/* Avatar with dropdown arrow */}
@@ -275,6 +250,24 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
         onLogout={handleLogout}
       />
     </View>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Module Header Icon — wrapper that supports useBadgeCount hooks
+// -----------------------------------------------------------------------------
+
+function ModuleHeaderIcon({ registration }: { registration: HeaderIconRegistration }) {
+  const router = useRouter();
+  // Safe: registrations are static (import-time), so hook presence never changes between renders
+  const badgeCount = registration.useBadgeCount ? registration.useBadgeCount() : 0;
+  return (
+    <HeaderIconButton
+      icon={registration.icon}
+      onPress={() => router.push(registration.route as any)}
+      badgeCount={badgeCount}
+      accessibilityLabel={registration.accessibilityLabel || registration.id}
+    />
   );
 }
 

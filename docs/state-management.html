@@ -196,8 +196,9 @@ const feedUrl = `${SITE_URL}/${portalSlug}/feeds/${slug}`;</code></pre>
   <tr><th>Field</th><th>Type</th><th>Written By</th></tr>
   <tr><td><code>unreadNotifications</code></td><td><code>number</code></td><td>Startup batch, response headers, push listener</td></tr>
   <tr><td><code>unreadMessages</code></td><td><code>number</code></td><td>Startup batch, response headers, Pusher real-time</td></tr>
-  <tr><td><code>cartCount</code></td><td><code>number</code></td><td>Startup batch, response headers</td></tr>
 </table>
+
+<p><strong>Note:</strong> Cart count was moved to the cart module (<code>modules/cart/CartContext.tsx</code>). Use <code>useCartCount()</code> from the cart module instead.</p>
 
 <h3>How Counts Stay Updated</h3>
 <ol>
@@ -207,7 +208,7 @@ const feedUrl = `${SITE_URL}/${portalSlug}/feeds/${slug}`;</code></pre>
 </ol>
 
 <h3>Usage</h3>
-<pre><code>const { unreadNotifications, unreadMessages, cartCount, resetCounts } = useUnreadCounts();
+<pre><code>const { unreadNotifications, unreadMessages, resetCounts } = useUnreadCounts();
 
 // Display badge
 &lt;BadgeIcon count={unreadNotifications} /&gt;

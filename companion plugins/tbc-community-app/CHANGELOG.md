@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.45.0
+- **Extract cart to standalone plugin**: Moved WooCommerce cart count API endpoint and response header injection to the new `tbc-cart` companion plugin. Removed `includes/cart/class-cart.php`, cart autoloader entry, and cart header from response headers. Unified `hide_cart` into `hide_menu[]` array (no longer a separate boolean). Install `tbc-cart` plugin for WooCommerce cart support.
+
 ## v3.44.7
 - **Fix registration field types for app**: FC's FormBuilder downgrades field types it can't render (e.g. `date` → `text`), and the API was returning those mangled types. Now cross-references FC's real field definitions to restore correct types (birthdate shows native date picker instead of text input). Also maps `_phone` to `phone` type so the app shows a phone keypad.
 
