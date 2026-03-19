@@ -191,24 +191,24 @@ const styles = StyleSheet.create({
   // Header
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-
-  logo: {
-    width: 120,
-    height: 120,
     marginBottom: spacing.md,
   },
 
+  logo: {
+    width: 250,
+    height: 180,
+  },
+
   title: {
-    fontSize: typography.size.xxl,
+    fontSize: typography.size.xl,
     fontWeight: typography.weight.bold,
     marginBottom: spacing.xs,
   },
 
   subtitle: {
-    fontSize: typography.size.xl,
-    fontWeight: typography.weight.medium,
+    fontSize: typography.size.sm,
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
   },
 
   // Form Card
