@@ -201,7 +201,7 @@ interface SpaceMembersOptions {
 <p><span class="file-path">app/(tabs)/spaces.tsx</span> is the Spaces tab. It loads all discoverable spaces and organizes them by group.</p>
 
 <h3>Data Loading</h3>
-<p>Uses <code>useCachedData</code> with <code>CACHE_EVENTS.SPACES</code> for invalidation. Two parallel fetches inside the fetcher:</p>
+<p>Uses <code>useAppQuery</code> with <code>CACHE_EVENTS.SPACES</code> for invalidation. Two parallel fetches inside the fetcher:</p>
 <ol>
   <li><code>spacesApi.getSpaceGroups({ options_only: true })</code> &mdash; lightweight group list (id + title) for tabs</li>
   <li><code>spacesApi.discoverSpaces({ per_page: 100 })</code> &mdash; all spaces with membership info</li>
@@ -243,7 +243,7 @@ interface SpaceMembersOptions {
   <li><strong>SpaceLockScreen</strong> &mdash; shown for non-members of private/secret spaces instead of the feed</li>
 </ul>
 
-<p>The space is fetched by slug via <code>spacesApi.getSpaceBySlug(slug)</code>. The detail response includes <code>permissions</code>, <code>membership</code>, and <code>lockscreen_config</code> not present in the discovery list. Feeds are fetched separately using <code>useCachedData</code> with <code>CACHE_EVENTS.FEEDS</code> invalidation.</p>
+<p>The space is fetched by slug via <code>spacesApi.getSpaceBySlug(slug)</code>. The detail response includes <code>permissions</code>, <code>membership</code>, and <code>lockscreen_config</code> not present in the discovery list. Feeds are fetched separately using <code>useAppQuery</code> with <code>CACHE_EVENTS.FEEDS</code> invalidation.</p>
 
 <h3>Pin/Sticky Support</h3>
 <p>Admins and moderators can pin posts within a space. The permission check uses <code>membership.pivot.role</code> and the <code>permissions</code> object (<code>community_admin</code>, <code>community_moderator</code>, <code>edit_any_feed</code>). Pinned posts appear at the top of the feed.</p>
@@ -430,7 +430,7 @@ Ungrouped → "Other Spaces" tab</code></pre>
   <tr><td><span class="file-path">components/composer/SpaceSelector.tsx</span></td><td>Space picker for post composer</td></tr>
   <tr><td><span class="file-path">services/api/feeds.ts</span></td><td>Feed API with <code>space</code> slug filter</td></tr>
   <tr><td><span class="file-path">services/api/profiles.ts</span></td><td><code>getUserSpaces(username)</code> for profile spaces tab</td></tr>
-  <tr><td><span class="file-path">hooks/useCachedData.ts</span></td><td>Stale-while-revalidate data hook used by the Spaces tab</td></tr>
+  <tr><td><span class="file-path">hooks/useAppQuery.ts</span></td><td>MMKV-persisted TanStack Query data hook used by the Spaces tab</td></tr>
   <tr><td><span class="file-path">utils/cacheEvents.ts</span></td><td><code>CACHE_EVENTS.SPACES</code> for cross-screen invalidation</td></tr>
   <tr><td><span class="file-path">contexts/AppConfigContext.tsx</span></td><td><code>features.spaces</code> flag (server-controlled via <code>useFeatures()</code>)</td></tr>
 </table>

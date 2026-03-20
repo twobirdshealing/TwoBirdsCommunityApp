@@ -2,7 +2,7 @@
 // EVENTS WIDGET - Featured events carousel for home page
 // =============================================================================
 // Fetches featured events and renders existing FeaturedEvents component.
-// Uses useCachedData for stale-while-revalidate caching.
+// Uses useAppQuery for stale-while-revalidate caching.
 // Returns null if no events or fetch fails.
 // =============================================================================
 
@@ -14,7 +14,7 @@ import calendarApi from '@/modules/calendar/services/calendarApi';
 import { CalendarEvent } from '@/modules/calendar/types/calendar';
 import { FeaturedEvents } from '@/modules/calendar/components/FeaturedEvents';
 import { useEventWebView } from '@/modules/calendar/hooks/useEventWebView';
-import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -32,7 +32,7 @@ export function EventsWidget({ refreshKey }: EventsWidgetProps) {
   const { colors: themeColors } = useTheme();
   const { openEvent } = useEventWebView();
 
-  const { data: events, isLoading } = useCachedData<CalendarEvent[]>({
+  const { data: events, isLoading } = useAppQuery<CalendarEvent[]>({
     cacheKey: 'tbc_widget_featured_events',
     fetcher: async () => {
       const response = await calendarApi.getFeaturedEvents(6);

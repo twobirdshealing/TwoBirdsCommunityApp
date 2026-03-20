@@ -8,13 +8,13 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage, getJSON, setJSON } from '@/services/storage';
 import { spacing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { feedsApi } from '@/services/api/feeds';
 import { WelcomeBanner as WelcomeBannerType } from '@/types/feed';
 import { WelcomeBanner } from '@/components/feed/WelcomeBanner';
-import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -45,26 +45,19 @@ interface DismissData {
   fingerprint: string;
 }
 
-async function getDismissData(): Promise<DismissData | null> {
-  try {
-    const raw = await AsyncStorage.getItem(DISMISS_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as DismissData;
-  } catch {
-    return null;
-  }
+function getDismissData(): DismissData | null {
+  return getJSON<DismissData>(DISMISS_KEY);
 }
 
-async function setDismissData(fingerprint: string): Promise<void> {
-  const data: DismissData = {
+function setDismissData(fingerprint: string): void {
+  setJSON(DISMISS_KEY, {
     expiresAt: Date.now() + DISMISS_DURATION,
     fingerprint,
-  };
-  await AsyncStorage.setItem(DISMISS_KEY, JSON.stringify(data));
+  });
 }
 
-async function clearDismissData(): Promise<void> {
-  await AsyncStorage.removeItem(DISMISS_KEY);
+function clearDismissData(): void {
+  storage.remove(DISMISS_KEY);
 }
 
 // -----------------------------------------------------------------------------
@@ -84,10 +77,10 @@ export function WelcomeBannerWidget({ refreshKey }: WelcomeBannerWidgetProps) {
   const [dismissed, setDismissed] = useState(false);
 
   // ---------------------------------------------------------------------------
-  // Fetch banner via useCachedData (instant from cache, background refresh)
+  // Fetch banner via useAppQuery (instant from cache, background refresh)
   // ---------------------------------------------------------------------------
 
-  const { data: banner, isLoading: loading } = useCachedData<WelcomeBannerType | null>({
+  const { data: banner, isLoading: loading } = useAppQuery<WelcomeBannerType | null>({
     cacheKey: BANNER_CACHE_KEY,
     fetcher: async () => {
       const response = await feedsApi.getWelcomeBanner();
@@ -111,30 +104,29 @@ export function WelcomeBannerWidget({ refreshKey }: WelcomeBannerWidgetProps) {
       return;
     }
 
-    getDismissData().then(dismissData => {
-      if (!dismissData) { setDismissed(false); return; }
+    const dismissData = getDismissData();
+    if (!dismissData) { setDismissed(false); return; }
 
-      const fingerprint = getBannerFingerprint(banner);
-      const expired = Date.now() >= dismissData.expiresAt;
-      const contentChanged = dismissData.fingerprint !== fingerprint;
+    const fingerprint = getBannerFingerprint(banner);
+    const expired = Date.now() >= dismissData.expiresAt;
+    const contentChanged = dismissData.fingerprint !== fingerprint;
 
-      if (expired || contentChanged) {
-        clearDismissData();
-        setDismissed(false);
-      } else {
-        setDismissed(true);
-      }
-    });
+    if (expired || contentChanged) {
+      clearDismissData();
+      setDismissed(false);
+    } else {
+      setDismissed(true);
+    }
   }, [banner]);
 
   // ---------------------------------------------------------------------------
   // Handle close
   // ---------------------------------------------------------------------------
 
-  const handleClose = useCallback(async () => {
+  const handleClose = useCallback(() => {
     if (!banner) return;
     setDismissed(true);
-    await setDismissData(getBannerFingerprint(banner));
+    setDismissData(getBannerFingerprint(banner));
   }, [banner]);
 
   // ---------------------------------------------------------------------------

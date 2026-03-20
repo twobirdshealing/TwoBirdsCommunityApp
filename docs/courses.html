@@ -606,7 +606,7 @@ interface LessonDetailResponse {
 
 <ul>
   <li>Fetches enrolled courses: <code>getCourses({ type: 'enrolled', per_page: 5 })</code></li>
-  <li>Uses <code>useCachedData</code> with cache key <code>tbc_widget_enrolled_courses</code> and <code>WIDGET_STALE_TIME</code> (120 seconds)</li>
+  <li>Uses <code>useAppQuery</code> with cache key <code>tbc_widget_enrolled_courses</code> and <code>WIDGET_STALE_TIME</code> (120 seconds)</li>
   <li>Card width: 70% of screen width, snaps to card boundaries</li>
   <li>Each card: 16:9 aspect ratio with cover photo + gradient overlay + title + progress bar</li>
   <li>If no enrollments: shows "Browse Courses" CTA card with school icon and subtitle</li>
@@ -658,7 +658,7 @@ interface LessonDetailResponse {
 
   <li><strong>Progress bar turns green at 100%.</strong> Use <code>primary</code> color for 0&ndash;99% and <code>success</code> for 100%. This is the ProgressBar component's built-in behavior &mdash; don't override it.</li>
 
-  <li><strong>Cache course detail by slug.</strong> Use cache key <code>tbc_course_{slug}</code> with <code>useCachedData</code>. The home widget uses its own cache key (<code>tbc_widget_enrolled_courses</code>) with <code>WIDGET_STALE_TIME</code>.</li>
+  <li><strong>Cache course detail by slug.</strong> Use cache key <code>tbc_course_{slug}</code> with <code>useAppQuery</code>. The home widget uses its own cache key (<code>tbc_widget_enrolled_courses</code>) with <code>WIDGET_STALE_TIME</code>.</li>
 
   <li><strong>Lesson IDs in <code>completed_lessons</code> are strings (or numbers).</strong> The server returns lesson IDs as strings in the array. Compare with <code>String(lesson.id)</code> when checking completion status.</li>
 

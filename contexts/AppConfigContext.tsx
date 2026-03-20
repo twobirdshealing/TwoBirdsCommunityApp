@@ -9,8 +9,8 @@
 import { AppConfigResponse, FeaturesConfig, RegistrationConfig, SocketConfig, VisibilityConfig } from '@/services/api/appConfig';
 import { createLogger } from '@/utils/logger';
 import { DEFAULT_FEATURES, FEATURES_CACHE_KEY, setFeatureFlagCache } from '@/utils/featureFlags';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useCallback, useContext, useMemo, useEffect, useState } from 'react';
+import { getJSON, setJSON } from '@/services/storage';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 const log = createLogger('AppConfig');
 
@@ -52,17 +52,22 @@ const AppConfigContext = createContext<AppConfigContextType | undefined>(undefin
 // -----------------------------------------------------------------------------
 
 export function AppConfigProvider({ children }: { children: React.ReactNode }) {
-  const [visibility, setVisibility] = useState<VisibilityConfig | null>(null);
+  // MMKV reads are synchronous — hydrate from cache immediately
+  const [visibility, setVisibility] = useState<VisibilityConfig | null>(() => getJSON<VisibilityConfig>(VISIBILITY_CACHE_KEY));
   const [portalSlug, setPortalSlug] = useState('');
-  const [socketConfig, setSocketConfig] = useState<SocketConfig | null>(null);
-  const [registration, setRegistration] = useState<RegistrationConfig | null>(null);
+  const [socketConfig, setSocketConfig] = useState<SocketConfig | null>(() => getJSON<SocketConfig>(SOCKET_CACHE_KEY));
+  const [registration, setRegistration] = useState<RegistrationConfig | null>(() => getJSON<RegistrationConfig>(REGISTRATION_CACHE_KEY));
   const [is24Hour, setIs24Hour] = useState(false);
-  const [features, setFeatures] = useState<FeaturesConfig | null>(null);
+  const [features, setFeatures] = useState<FeaturesConfig | null>(() => {
+    const cached = getJSON<FeaturesConfig>(FEATURES_CACHE_KEY);
+    if (cached) setFeatureFlagCache(cached);
+    return cached;
+  });
 
   const applyConfig = useCallback((data: AppConfigResponse) => {
     if (data.visibility) {
       setVisibility(data.visibility);
-      AsyncStorage.setItem(VISIBILITY_CACHE_KEY, JSON.stringify(data.visibility)).catch((e) => log.warn('Visibility cache write failed:', e));
+      setJSON(VISIBILITY_CACHE_KEY, data.visibility);
     }
     if (data.portal_slug !== undefined) {
       setPortalSlug(data.portal_slug);
@@ -78,18 +83,18 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
         }
         return data.socket!;
       });
-      AsyncStorage.setItem(SOCKET_CACHE_KEY, JSON.stringify(data.socket)).catch((e) => log.warn('Socket config cache write failed:', e));
+      setJSON(SOCKET_CACHE_KEY, data.socket);
     }
     if (data.registration) {
       setRegistration(data.registration);
-      AsyncStorage.setItem(REGISTRATION_CACHE_KEY, JSON.stringify(data.registration)).catch((e) => log.warn('Registration config cache write failed:', e));
+      setJSON(REGISTRATION_CACHE_KEY, data.registration);
     }
     if (data.features) {
       // Stable-reference guard: only update if values actually changed
       const incoming = JSON.stringify(data.features);
       setFeatures(prev => JSON.stringify(prev) === incoming ? prev : data.features!);
       setFeatureFlagCache(data.features);
-      AsyncStorage.setItem(FEATURES_CACHE_KEY, incoming).catch((e) => log.warn('Features cache write failed:', e));
+      setJSON(FEATURES_CACHE_KEY, data.features);
     }
     // WordPress PHP time format: 'H' or 'G' = 24-hour, 'g' or 'h' = 12-hour
     if (data.time_format) {
@@ -102,24 +107,6 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
   const setFromBatch = useCallback((data: AppConfigResponse) => {
     applyConfig(data);
   }, [applyConfig]);
-
-  // Load cached visibility on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const [cached, cachedSocket, cachedReg, cachedFeatures] = await Promise.all([
-          AsyncStorage.getItem(VISIBILITY_CACHE_KEY),
-          AsyncStorage.getItem(SOCKET_CACHE_KEY),
-          AsyncStorage.getItem(REGISTRATION_CACHE_KEY),
-          AsyncStorage.getItem(FEATURES_CACHE_KEY),
-        ]);
-        if (cached) setVisibility(JSON.parse(cached));
-        if (cachedSocket) setSocketConfig(JSON.parse(cachedSocket));
-        if (cachedReg) setRegistration(JSON.parse(cachedReg));
-        if (cachedFeatures) setFeatures(JSON.parse(cachedFeatures));
-      } catch {}
-    })();
-  }, []);
 
   const value = useMemo(() => ({
     visibility,

@@ -15,7 +15,7 @@ import { useAppConfig } from '@/contexts/AppConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { withOpacity } from '@/constants/colors';
 import { spacing, sizing, shadows, typography } from '@/constants/layout';
-import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 import { useEventWebView } from '@/modules/calendar/hooks/useEventWebView';
 import calendarApi from '@/modules/calendar/services/calendarApi';
 import type { CalendarEvent } from '@/modules/calendar/types/calendar';
@@ -90,7 +90,7 @@ export function CeremonyWidget({ refreshKey }: CeremonyWidgetProps) {
   const { openEvent } = useEventWebView();
   const [countdown, setCountdown] = useState('');
 
-  const { data: event } = useCachedData<CalendarEvent | null>({
+  const { data: event } = useAppQuery<CalendarEvent | null>({
     cacheKey: 'tbc_widget_ceremony',
     fetcher: async () => {
       const response = await calendarApi.getUserBooked(1);

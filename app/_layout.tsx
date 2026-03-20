@@ -34,6 +34,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { getModuleProviders, getModuleRoutePrefixes, initModules, handleModuleNotification } from '@/modules/_registry';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { queryClient, queryPersister } from '@/services/queryClient';
 import 'react-native-reanimated';
 
 // Keep the native splash screen visible until we're ready to render
@@ -357,7 +359,7 @@ function RootLayoutNav() {
   if (isAuthenticated && startupStatus === 'error') {
     return (
       <View style={[styles.flex, { backgroundColor: themeColors.background }]}>
-        <StartupErrorScreen onRetry={retryStartup} isRetrying={startupStatus === 'loading'} />
+        <StartupErrorScreen onRetry={retryStartup} isRetrying={false} />
         <StatusBar style={isDark ? 'light' : 'dark'} />
       </View>
     );
@@ -429,23 +431,25 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.flex}>
       <ErrorBoundary>
-        <ThemeProvider>
-          <AuthProvider>
-            <AppConfigProvider>
-              <UnreadCountsProvider>
-                <PusherProvider>
-                  <BottomSheetModalProvider>
-                    <ModuleProviders>
-                      <KeyboardProvider>
-                        <RootLayoutNav />
-                      </KeyboardProvider>
-                    </ModuleProviders>
-                  </BottomSheetModalProvider>
-                </PusherProvider>
-              </UnreadCountsProvider>
-            </AppConfigProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <PersistQueryClientProvider client={queryClient} persistOptions={{ persister: queryPersister }}>
+          <ThemeProvider>
+            <AuthProvider>
+              <AppConfigProvider>
+                <UnreadCountsProvider>
+                  <PusherProvider>
+                    <BottomSheetModalProvider>
+                      <ModuleProviders>
+                        <KeyboardProvider>
+                          <RootLayoutNav />
+                        </KeyboardProvider>
+                      </ModuleProviders>
+                    </BottomSheetModalProvider>
+                  </PusherProvider>
+                </UnreadCountsProvider>
+              </AppConfigProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </PersistQueryClientProvider>
       </ErrorBoundary>
     </GestureHandlerRootView>
   );

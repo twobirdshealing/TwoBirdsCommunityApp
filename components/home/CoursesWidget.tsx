@@ -2,7 +2,7 @@
 // COURSES WIDGET - Enrolled courses carousel for home page
 // =============================================================================
 // Fetches user's enrolled courses and renders horizontal cards.
-// Uses useCachedData for stale-while-revalidate caching.
+// Uses useAppQuery for stale-while-revalidate caching.
 // Returns null if no enrolled courses or fetch fails.
 // =============================================================================
 
@@ -25,7 +25,7 @@ import { withOpacity } from '@/constants/colors';
 import { coursesApi } from '@/services/api/courses';
 import { Course } from '@/types/course';
 import { ProgressBar } from '@/components/course/ProgressBar';
-import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 
 // -----------------------------------------------------------------------------
@@ -52,7 +52,7 @@ export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
 
-  const { data: courses, isLoading } = useCachedData<Course[]>({
+  const { data: courses, isLoading } = useAppQuery<Course[]>({
     cacheKey: 'tbc_widget_enrolled_courses',
     fetcher: async () => {
       const response = await coursesApi.getCourses({ type: 'enrolled', per_page: 5 });

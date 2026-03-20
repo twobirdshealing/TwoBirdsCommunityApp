@@ -26,7 +26,7 @@ import { spacing } from '@/constants/layout';
 import { Feed } from '@/types/feed';
 import { feedsApi } from '@/services/api/feeds';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useAppQuery } from '@/hooks/useAppQuery';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 
@@ -43,7 +43,7 @@ export default function SinglePostScreen() {
   // Fetch single feed
   // ---------------------------------------------------------------------------
 
-  const { data: feed, isLoading: loading, error: fetchError, refresh, mutate } = useCachedData<Feed>({
+  const { data: feed, isLoading: loading, error: fetchError, refresh, mutate } = useAppQuery<Feed>({
     cacheKey: `tbc_feed_${id}`,
     invalidateOn: CACHE_EVENTS.FEEDS,
     fetcher: async () => {

@@ -1,12 +1,12 @@
 // =============================================================================
 // USE WIDGET PREFERENCES - Persist widget order + visibility
 // =============================================================================
-// Stores user's widget order and enabled/disabled state in AsyncStorage.
+// Stores user's widget order and enabled/disabled state in MMKV.
 // Handles forward compatibility: new widgets appended, removed widgets dropped.
 // =============================================================================
 
 import { useCallback, useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getJSON, setJSON } from '@/services/storage';
 import { getAvailableWidgets } from '@/components/home/widgetRegistry';
 import { useFeatures } from '@/contexts/AppConfigContext';
 import type { WidgetRegistration } from '@/modules/_types';
@@ -84,37 +84,25 @@ export function useWidgetPreferences() {
   const [preferences, setPreferences] = useState<WidgetPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load on mount (re-run when features change from server)
+  // Load on mount (re-run when features change from server) — synchronous with MMKV
   useEffect(() => {
-    (async () => {
-      const available = getAvailableWidgets(features);
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const saved: WidgetPreferences = JSON.parse(raw);
-          const merged = mergePreferences(saved, available);
-          setPreferences(merged);
-          log('loaded & merged', merged.order.length, 'widgets');
-        } else {
-          const defaults = buildDefaults(available);
-          setPreferences(defaults);
-          log('using defaults', defaults.order.length, 'widgets');
-        }
-      } catch {
-        setPreferences(buildDefaults(available));
-      } finally {
-        setIsLoading(false);
-      }
-    })();
+    const available = getAvailableWidgets(features);
+    const saved = getJSON<WidgetPreferences>(STORAGE_KEY);
+    if (saved) {
+      const merged = mergePreferences(saved, available);
+      setPreferences(merged);
+      log('loaded & merged', merged.order.length, 'widgets');
+    } else {
+      const defaults = buildDefaults(available);
+      setPreferences(defaults);
+      log('using defaults', defaults.order.length, 'widgets');
+    }
+    setIsLoading(false);
   }, [features]);
 
-  // Persist helper
-  const persist = useCallback(async (prefs: WidgetPreferences) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
-    } catch {
-      // Silent fail — preferences are nice-to-have, not critical
-    }
+  // Persist helper (synchronous)
+  const persist = useCallback((prefs: WidgetPreferences) => {
+    setJSON(STORAGE_KEY, prefs);
   }, []);
 
   // Reorder widgets (called after drag ends)

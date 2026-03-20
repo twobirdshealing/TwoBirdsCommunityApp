@@ -18,6 +18,7 @@ import {
   Text,
   TextInput,
   TextInputProps,
+  TextStyle,
   View,
   ViewStyle,
 } from 'react-native';
@@ -40,7 +41,7 @@ export interface TextInputFieldProps extends Omit<TextInputProps, 'style'> {
   /** Override container style (includes label + input + error) */
   containerStyle?: StyleProp<ViewStyle>;
   /** Override input style */
-  inputStyle?: StyleProp<ViewStyle>;
+  inputStyle?: StyleProp<TextStyle>;
 }
 
 // -----------------------------------------------------------------------------

@@ -29,7 +29,7 @@ import { SpaceLockScreen } from '@/components/space/SpaceLockScreen';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useFeedActions } from '@/hooks/useFeedActions';
-import { useCachedData, useArrayMutate } from '@/hooks/useCachedData';
+import { useAppQuery, useArrayMutate } from '@/hooks/useAppQuery';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
 import { createLogger } from '@/utils/logger';
@@ -52,7 +52,7 @@ export default function SpacePage() {
   const [isPending, setIsPending] = useState(false);
 
   // ---------------------------------------------------------------------------
-  // Fetch Space Data (manual — side effects don't fit useCachedData)
+  // Fetch Space Data (manual — side effects don't fit useAppQuery)
   // ---------------------------------------------------------------------------
 
   const fetchSpace = useCallback(async () => {
@@ -99,7 +99,7 @@ export default function SpacePage() {
     error: fetchError,
     refresh: refreshFeeds,
     mutate,
-  } = useCachedData<Feed[]>({
+  } = useAppQuery<Feed[]>({
     cacheKey: `tbc_space_feeds_${slug}`,
     invalidateOn: CACHE_EVENTS.FEEDS,
     fetcher: async () => {

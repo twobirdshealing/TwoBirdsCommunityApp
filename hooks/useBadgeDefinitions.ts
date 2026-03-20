@@ -32,15 +32,14 @@ export function useBadgeDefinitions() {
     if (!_initialized) {
       _initialized = true;
 
-      // 1. Load cached badges from SecureStore (instant)
-      loadCachedBadges().then((cached) => {
-        if (Object.keys(cached).length > 0) {
-          notifyListeners();
-        }
+      // 1. Load cached badges from MMKV (synchronous)
+      const cached = loadCachedBadges();
+      if (Object.keys(cached).length > 0) {
+        notifyListeners();
+      }
 
-        // 2. Background-refresh from API
-        fetchBadgeDefinitions().then(() => notifyListeners());
-      });
+      // 2. Background-refresh from API
+      fetchBadgeDefinitions().then(() => notifyListeners());
     }
 
     return () => {

@@ -16,7 +16,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { blogApi } from '@/modules/blog/services/blogApi';
-import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 import { formatSmartDate } from '@/utils/formatDate';
 import type { WPPost } from '@/modules/blog/types/blog';
@@ -38,7 +38,7 @@ export function BlogWidget({ refreshKey }: BlogWidgetProps) {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
 
-  const { data: post } = useCachedData<WPPost | null>({
+  const { data: post } = useAppQuery<WPPost | null>({
     cacheKey: 'tbc_widget_latest_blog',
     fetcher: async () => {
       const response = await blogApi.getBlogPosts({ per_page: 1 });

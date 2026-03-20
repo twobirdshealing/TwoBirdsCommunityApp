@@ -2,8 +2,8 @@
 // CACHE REGISTRY - Centralized cache clearing on logout
 // =============================================================================
 // Solves the "forgotten cache key" problem: instead of manually listing
-// every AsyncStorage prefix to clear, we clear ALL tbc_* keys EXCEPT
-// an explicit keep-list. In-memory caches self-register their clear functions.
+// every MMKV prefix to clear, we clear ALL tbc_* keys EXCEPT an explicit
+// keep-list. Also clears TanStack Query cache and in-memory caches.
 //
 // Usage:
 //   import { registerCache } from '@/services/cacheRegistry';
@@ -12,7 +12,8 @@
 // On logout, AuthContext calls clearAllUserCaches() once — no manual wiring.
 // =============================================================================
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '@/services/storage';
+import { queryClient } from '@/services/queryClient';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('CacheRegistry');
@@ -51,25 +52,32 @@ export function registerCache(opts: { clearMemory: ClearFn }): void {
 
 /**
  * Clear all user-specific caches:
- * 1. Removes ALL tbc_* AsyncStorage keys except the keep-list
- * 2. Calls all registered in-memory clear functions
+ * 1. Removes ALL tbc_* MMKV keys except the keep-list
+ * 2. Clears TanStack Query cache
+ * 3. Calls all registered in-memory clear functions
  */
-export async function clearAllUserCaches(): Promise<void> {
-  // 1. AsyncStorage — clear all tbc_* keys except persist list
+export function clearAllUserCaches(): void {
+  // 1. MMKV — clear all tbc_* keys except persist list (synchronous)
   try {
-    const allKeys = await AsyncStorage.getAllKeys();
-    const keysToRemove = allKeys.filter(
-      (k) => k.startsWith('tbc_') && !PERSIST_ACROSS_LOGOUT.includes(k)
-    );
-    if (keysToRemove.length > 0) {
-      await AsyncStorage.multiRemove(keysToRemove);
-      log('Cleared', keysToRemove.length, 'cached keys');
+    const allKeys = storage.getAllKeys();
+    let cleared = 0;
+    for (const key of allKeys) {
+      if (key.startsWith('tbc_') && !PERSIST_ACROSS_LOGOUT.includes(key)) {
+        storage.remove(key);
+        cleared++;
+      }
+    }
+    if (cleared > 0) {
+      log('Cleared', cleared, 'cached keys');
     }
   } catch (e) {
-    log.error('AsyncStorage clear failed:', e);
+    log.error('MMKV clear failed:', e);
   }
 
-  // 2. In-memory caches
+  // 2. Clear TanStack Query cache
+  queryClient.clear();
+
+  // 3. In-memory caches
   for (const clear of memoryClearFns) {
     try {
       clear();

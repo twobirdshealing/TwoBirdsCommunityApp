@@ -18,7 +18,7 @@ import { spacing, sizing, shadows, typography } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { spacesApi } from '@/services/api/spaces';
 import bookclubApi from '@/modules/bookclub/services/bookclubApi';
-import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 import type { BookSummary } from '@/modules/bookclub/types/bookclub';
 
 // -----------------------------------------------------------------------------
@@ -42,7 +42,7 @@ export function BookClubWidget({ refreshKey }: BookClubWidgetProps) {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
 
-  const { data } = useCachedData<BookClubCacheData>({
+  const { data } = useAppQuery<BookClubCacheData>({
     cacheKey: 'tbc_widget_book_club',
     fetcher: async () => {
       try {

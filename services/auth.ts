@@ -172,13 +172,11 @@ export async function login(username: string, password: string): Promise<LoginRe
     log('User info stored:', user.username, 'id:', user.id);
 
     // Register device for push notifications (non-blocking)
-    getFeatureFlag('push_notifications').then(enabled => {
-      if (enabled) {
-        registerDeviceToken(loginData.access_token).catch(err => {
-          log('Failed to register push token:', err);
-        });
-      }
-    });
+    if (getFeatureFlag('push_notifications')) {
+      registerDeviceToken(loginData.access_token).catch(err => {
+        log('Failed to register push token:', err);
+      });
+    }
 
     return { success: true, user };
 
@@ -209,8 +207,7 @@ export async function logout(): Promise<void> {
   const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
 
   // Unregister device from push notifications
-  const pushEnabled = await getFeatureFlag('push_notifications');
-  if (pushEnabled && token) {
+  if (getFeatureFlag('push_notifications') && token) {
     await unregisterDeviceToken(token).catch((e) => {
       log.warn('Failed to unregister device token:', e);
     });

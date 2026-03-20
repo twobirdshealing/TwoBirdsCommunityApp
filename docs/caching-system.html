@@ -14,20 +14,21 @@
 
 <div class="callout">
   <strong>Source files:</strong>
-  <span class="file-path">hooks/useCachedData.ts</span> &middot;
+  <span class="file-path">hooks/useAppQuery.ts</span> &middot;
   <span class="file-path">utils/cacheEvents.ts</span> &middot;
-  <span class="file-path">utils/batchCache.ts</span> &middot;
   <span class="file-path">utils/optimisticUpdate.ts</span> &middot;
   <span class="file-path">services/cacheRegistry.ts</span> &middot;
+  <span class="file-path">services/storage.ts</span> &middot;
+  <span class="file-path">services/queryClient.ts</span> &middot;
   <span class="file-path">hooks/useStartupData.ts</span><br>
-  Every screen and widget fetches data through <code>useCachedData</code>. Data loads instantly from AsyncStorage, refreshes silently in the background, and stays in sync across screens via cache events.
+  Every screen and widget fetches data through <code>useAppQuery</code>. Data loads instantly from the MMKV-persisted TanStack Query cache, refreshes silently in the background, and stays in sync across screens via cache events. TanStack Query handles deduplication, stale-while-revalidate, background refetch, and MMKV persistence automatically.
 </div>
 
 <div class="toc">
   <strong>Contents</strong>
   <ol>
     <li><a href="#overview">How It Works</a></li>
-    <li><a href="#usecacheddata">useCachedData Hook</a></li>
+    <li><a href="#usecacheddata">useAppQuery Hook</a></li>
     <li><a href="#screens-vs-widgets">Screens vs Widgets</a></li>
     <li><a href="#cache-events">Cache Events (Cross-Screen Invalidation)</a></li>
     <li><a href="#batch-startup">Batch Startup Loading</a></li>
@@ -43,34 +44,32 @@
 <!-- ====================================================================== -->
 <h2 id="overview">1. How It Works</h2>
 
-<p>The app uses a <strong>stale-while-revalidate (SWR)</strong> pattern. When a screen mounts, it loads cached data from AsyncStorage immediately (no loading spinner if cache exists), then fetches fresh data from the network in the background. If the fresh data differs, the UI updates seamlessly.</p>
+<p>The app uses a <strong>stale-while-revalidate (SWR)</strong> pattern. When a screen mounts, it loads cached data from the MMKV-persisted TanStack Query cache immediately (no loading spinner if cache exists), then fetches fresh data from the network in the background. If the fresh data differs, the UI updates seamlessly.</p>
 
 <div class="flow-diagram">Mount
   &darr;
-  AsyncStorage.getItem(cacheKey)
+  TanStack Query cache (MMKV-persisted)
   &darr;
   Cache hit? &rarr; Render immediately (isLoading = false)
   &darr;
-  Batch-fresh? &rarr; Skip network fetch (startup batch already populated it)
-  &darr;
   Fetch from API in background
   &darr;
-  Update state + persist to AsyncStorage</div>
+  Update TanStack Query cache (auto-persisted to MMKV)</div>
 
 <p>Data stays in sync across screens through three mechanisms:</p>
 <ol>
   <li><strong>Cache events</strong> &mdash; after a mutation (create post, bookmark, join space), the mutating screen emits a cache event. Other screens subscribed to that event silently re-fetch.</li>
   <li><strong>App focus refresh</strong> &mdash; when the user returns to the app from the background, screens re-fetch (with a cooldown to prevent rapid-fire requests).</li>
-  <li><strong>Batch startup</strong> &mdash; on authenticated startup, a single batch API call pre-populates multiple cache keys. Screens that mount after the batch skip their initial network fetch.</li>
+  <li><strong>Batch startup</strong> &mdash; on authenticated startup, a single batch API call pre-populates multiple cache keys via <code>queryClient.setQueryData()</code>. Screens that mount after the batch use the already-populated TanStack Query cache and skip their initial network fetch.</li>
 </ol>
 
 <!-- ====================================================================== -->
-<h2 id="usecacheddata">2. useCachedData Hook</h2>
+<h2 id="usecacheddata">2. useAppQuery Hook</h2>
 
 <p>The single data-fetching hook used by every screen and widget in the app.</p>
 
 <h3>Import</h3>
-<pre><code>import { useCachedData } from '@/hooks/useCachedData';</code></pre>
+<pre><code>import { useAppQuery } from '@/hooks/useAppQuery';</code></pre>
 
 <h3>API</h3>
 <pre><code>const {
@@ -80,8 +79,8 @@
   error,         // Error | null
   refresh,       // () =&gt; Promise&lt;void&gt; — imperative pull-to-refresh
   mutate,        // (T | (prev =&gt; T | null)) =&gt; void — optimistic updates
-} = useCachedData&lt;T&gt;({
-  cacheKey,        // AsyncStorage key (required)
+} = useAppQuery&lt;T&gt;({
+  cacheKey,        // TanStack Query key (required)
   fetcher,         // async () =&gt; T (required)
   refreshKey,      // number — changes trigger re-fetch (default: 0)
   refreshOnFocus,  // boolean — refetch on app resume (default: true)
@@ -98,7 +97,7 @@
     <td><code>cacheKey</code></td>
     <td><code>string</code></td>
     <td>&mdash;</td>
-    <td>AsyncStorage key. Prefix with <code>tbc_</code>. Include dynamic segments for parameterized screens (e.g. <code>`tbc_space_feeds_${slug}`</code>).</td>
+    <td>TanStack Query cache key (also used as the MMKV persistence key). Prefix with <code>tbc_</code>. Include dynamic segments for parameterized screens (e.g. <code>`tbc_space_feeds_${slug}`</code>).</td>
   </tr>
   <tr>
     <td><code>fetcher</code></td>
@@ -148,7 +147,7 @@ const {
   error: fetchError,
   refresh,
   mutate,
-} = useCachedData&lt;Feed[]&gt;({
+} = useAppQuery&lt;Feed[]&gt;({
   cacheKey: 'tbc_activity_feeds',
   invalidateOn: CACHE_EVENTS.FEEDS,
   fetcher: async () =&gt; {
@@ -167,9 +166,9 @@ const setFeeds = useArrayMutate(mutate);</code></pre>
 <h3>Widget Example</h3>
 <pre><code>// components/home/CoursesWidget.tsx
 
-import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 
-const { data: courses } = useCachedData&lt;Course[]&gt;({
+const { data: courses } = useAppQuery&lt;Course[]&gt;({
   cacheKey: 'tbc_widget_enrolled_courses',
   staleTime: WIDGET_STALE_TIME,
   fetcher: async () =&gt; {
@@ -214,7 +213,7 @@ const { data: courses } = useCachedData&lt;Course[]&gt;({
 </table>
 
 <div class="callout callout-success">
-  <strong>Import <code>WIDGET_STALE_TIME</code></strong> from <code>@/hooks/useCachedData</code> &mdash; never hardcode <code>120000</code> or <code>120_000</code>. This keeps the value consistent across all widgets and easy to tune.
+  <strong>Import <code>WIDGET_STALE_TIME</code></strong> from <code>@/hooks/useAppQuery</code> &mdash; never hardcode <code>120000</code> or <code>120_000</code>. This keeps the value consistent across all widgets and easy to tune.
 </div>
 
 <!-- ====================================================================== -->
@@ -243,16 +242,16 @@ cacheEvents.emit(CACHE_EVENTS.FEEDS);
 // After toggling a bookmark:
 cacheEvents.emit(CACHE_EVENTS.BOOKMARKS);</code></pre>
 
-<h3>Subscribing (Automatic via useCachedData)</h3>
+<h3>Subscribing (Automatic via useAppQuery)</h3>
 <pre><code>// The Activity feed auto-refreshes when any screen emits FEEDS:
-useCachedData&lt;Feed[]&gt;({
+useAppQuery&lt;Feed[]&gt;({
   cacheKey: 'tbc_activity_feeds',
   invalidateOn: CACHE_EVENTS.FEEDS,  // &larr; subscribes automatically
   fetcher: ...,
 });</code></pre>
 
 <h3>Subscribing (Manual — rare)</h3>
-<p>If you're not using <code>useCachedData</code> (e.g., manual state with side effects), subscribe directly:</p>
+<p>If you're not using <code>useAppQuery</code> (e.g., manual state with side effects), subscribe directly:</p>
 <pre><code>useEffect(() =&gt; {
   return cacheEvents.subscribe(CACHE_EVENTS.FEEDS, () =&gt; {
     fetchFeeds();
@@ -266,7 +265,7 @@ useCachedData&lt;Feed[]&gt;({
 <!-- ====================================================================== -->
 <h2 id="batch-startup">5. Batch Startup Loading</h2>
 
-<p>On authenticated startup, <span class="file-path">hooks/useStartupData.ts</span> fires a single batch API call that replaces 6 individual HTTP requests. Results are distributed to contexts (config, auth, badges) and written to AsyncStorage for widget caches.</p>
+<p>On authenticated startup, <span class="file-path">hooks/useStartupData.ts</span> fires a single batch API call that replaces 6 individual HTTP requests. Results are distributed to contexts (config, auth, badges) and written directly into the TanStack Query cache via <code>queryClient.setQueryData()</code> for widget caches.</p>
 
 <h3>What the Batch Fetches</h3>
 <table>
@@ -275,27 +274,19 @@ useCachedData&lt;Feed[]&gt;({
   <tr><td>2</td><td><code>/fluent-community/v2/profile/{user}</code></td><td>AuthContext (avatar, name)</td></tr>
   <tr><td>3</td><td><code>/fluent-community/v2/notifications/unread</code></td><td>Notification badge count</td></tr>
   <tr><td>4</td><td><code>/fluent-community/v2/chat/unread_threads</code></td><td>Message badge count</td></tr>
-  <tr><td>5</td><td><code>/fluent-community/v2/feeds/welcome-banner</code></td><td>AsyncStorage &rarr; WelcomeBannerWidget</td></tr>
-  <tr><td>6</td><td><code>/fluent-community/v2/courses?type=enrolled&amp;per_page=5</code></td><td>AsyncStorage &rarr; CoursesWidget</td></tr>
+  <tr><td>5</td><td><code>/fluent-community/v2/feeds/welcome-banner</code></td><td>TanStack Query cache &rarr; WelcomeBannerWidget</td></tr>
+  <tr><td>6</td><td><code>/fluent-community/v2/courses?type=enrolled&amp;per_page=5</code></td><td>TanStack Query cache &rarr; CoursesWidget</td></tr>
 </table>
 
-<h3>Batch-Fresh Coordination</h3>
-<p><span class="file-path">utils/batchCache.ts</span> prevents duplicate network requests. After the batch writes widget data to AsyncStorage, it calls <code>markBatchFresh(keys)</code>. When those widgets mount, <code>useCachedData</code> checks <code>isBatchFresh(cacheKey)</code> &mdash; if true, it skips the initial network fetch since the cache was just populated.</p>
+<h3>Startup Cache Pre-Population</h3>
+<p>After the batch fetch completes, <code>useStartupData</code> calls <code>queryClient.setQueryData(cacheKey, data)</code> for each widget result. When those widgets mount, TanStack Query finds the data already in cache and renders immediately &mdash; no duplicate network fetch is triggered because the cache is already populated and within its stale window.</p>
 
-<pre><code>// In useStartupData.ts — after writing to AsyncStorage:
-await Promise.all(cacheWrites);
-markBatchFresh(freshKeys);
-
-// In useCachedData — on initial mount:
-if (hasCachedData && isBatchFresh(cacheKey)) {
-  log(cacheKey, 'skipping initial fetch — batch-fresh');
-  return; // Use cache, don't hit network
-}</code></pre>
-
-<p>Batch-fresh status auto-expires after 30 seconds, so subsequent focus/refresh cycles still work normally.</p>
+<pre><code>// In useStartupData.ts — pre-populating widget caches:
+queryClient.setQueryData('tbc_welcome_banner', bannerData);
+queryClient.setQueryData('tbc_widget_enrolled_courses', coursesData);</code></pre>
 
 <div class="callout">
-  <strong>Modules don't use the batch.</strong> Module widgets self-fetch via <code>useCachedData</code> when they mount. Only core widgets participate in the batch to keep it lean and avoid coupling modules to core startup.
+  <strong>Modules don't use the batch.</strong> Module widgets self-fetch via <code>useAppQuery</code> when they mount. Only core widgets participate in the batch to keep it lean and avoid coupling modules to core startup.
 </div>
 
 <!-- ====================================================================== -->
@@ -337,11 +328,11 @@ if (!response.success) {
 <!-- ====================================================================== -->
 <h2 id="usearraymutate">7. useArrayMutate Adapter</h2>
 
-<p>Feed screens need <code>React.Dispatch&lt;SetStateAction&lt;Feed[]&gt;&gt;</code> for the shared <code>useFeedActions</code> and <code>useFeedReactions</code> hooks. But <code>useCachedData</code>&rsquo;s <code>mutate</code> accepts <code>T | null</code>. The adapter bridges the two:</p>
+<p>Feed screens need <code>React.Dispatch&lt;SetStateAction&lt;Feed[]&gt;&gt;</code> for the shared <code>useFeedActions</code> and <code>useFeedReactions</code> hooks. But <code>useAppQuery</code>&rsquo;s <code>mutate</code> accepts <code>T | null</code>. The adapter bridges the two:</p>
 
-<pre><code>import { useCachedData, useArrayMutate } from '@/hooks/useCachedData';
+<pre><code>import { useAppQuery, useArrayMutate } from '@/hooks/useAppQuery';
 
-const { data: feedsData, mutate, ...rest } = useCachedData&lt;Feed[]&gt;({ ... });
+const { data: feedsData, mutate, ...rest } = useAppQuery&lt;Feed[]&gt;({ ... });
 const feeds = feedsData || [];
 const setFeeds = useArrayMutate(mutate);
 
@@ -358,8 +349,9 @@ const handleReact = useFeedReactions(feeds, setFeeds);</code></pre>
 
 <h3>How It Works</h3>
 <ol>
-  <li><strong>AsyncStorage</strong> &mdash; removes ALL keys starting with <code>tbc_</code> except an explicit keep-list</li>
-  <li><strong>In-memory caches</strong> &mdash; calls all registered clear functions (e.g., batchCache clears its Map)</li>
+  <li><strong>MMKV</strong> &mdash; removes ALL keys starting with <code>tbc_</code> via <code>storage.getAllKeys()</code> except an explicit keep-list</li>
+  <li><strong>TanStack Query</strong> &mdash; calls <code>queryClient.clear()</code> to wipe the in-memory query cache</li>
+  <li><strong>In-memory caches</strong> &mdash; calls all registered clear functions</li>
 </ol>
 
 <pre><code>// AuthContext logout calls:
@@ -406,7 +398,7 @@ registerCache({ clearMemory: () =&gt; myCache.clear() });</code></pre>
 </table>
 
 <div class="callout callout-warn">
-  <strong>Dynamic cache keys</strong> (e.g. <code>tbc_space_feeds_${slug}</code>) create a new AsyncStorage entry per slug. These are cleaned up on logout by the <a href="#cache-registry">cache registry</a>'s blanket <code>tbc_*</code> clear, but they do accumulate during a session. This is fine for normal usage but worth noting if a user visits hundreds of unique spaces.
+  <strong>Dynamic cache keys</strong> (e.g. <code>tbc_space_feeds_${slug}</code>) create a new MMKV + TanStack Query entry per slug. These are cleaned up on logout by the <a href="#cache-registry">cache registry</a>'s blanket <code>tbc_*</code> clear, but they do accumulate during a session. This is fine for normal usage but worth noting if a user visits hundreds of unique spaces.
 </div>
 
 <!-- ====================================================================== -->
@@ -419,7 +411,7 @@ const cacheKey = `tbc_my_feature_${id}`;     // parameterized screen
 const cacheKey = 'tbc_widget_my_widget';     // widget</code></pre>
 
 <h3>Step 2: Write the fetcher</h3>
-<p>The fetcher should return the data directly. Throw on failure &mdash; <code>useCachedData</code> catches it and sets <code>error</code>.</p>
+<p>The fetcher should return the data directly. Throw on failure &mdash; <code>useAppQuery</code> catches it and sets <code>error</code>.</p>
 <pre><code>const fetcher = async () =&gt; {
   const response = await myApi.getData();
   if (!response.success) {
@@ -429,7 +421,7 @@ const cacheKey = 'tbc_widget_my_widget';     // widget</code></pre>
 };</code></pre>
 
 <h3>Step 3: Use the hook</h3>
-<pre><code>const { data, isLoading, isRefreshing, error, refresh, mutate } = useCachedData({
+<pre><code>const { data, isLoading, isRefreshing, error, refresh, mutate } = useAppQuery({
   cacheKey: 'tbc_my_feature',
   fetcher,
   invalidateOn: CACHE_EVENTS.FEEDS,  // if relevant — omit if not
@@ -444,9 +436,9 @@ const { handleDelete, handleEdit, ... } = useFeedActions({ setFeeds: setItems, r
 cacheEvents.emit(CACHE_EVENTS.FEEDS);</code></pre>
 
 <h3>Step 6: For widgets, use WIDGET_STALE_TIME</h3>
-<pre><code>import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+<pre><code>import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 
-const { data } = useCachedData({
+const { data } = useAppQuery({
   cacheKey: 'tbc_widget_my_widget',
   staleTime: WIDGET_STALE_TIME,
   fetcher,
@@ -456,16 +448,16 @@ const { data } = useCachedData({
 <h2 id="rules">11. Rules</h2>
 
 <ol>
-  <li><strong>Use <code>useCachedData</code> for all data fetching.</strong> Don&rsquo;t write manual useEffect + useState fetch cycles. The hook handles caching, loading states, error handling, focus refresh, and cache invalidation.</li>
+  <li><strong>Use <code>useAppQuery</code> for all data fetching.</strong> Don&rsquo;t write manual useEffect + useState fetch cycles. The hook handles caching, loading states, error handling, focus refresh, and cache invalidation. TanStack Query manages dedup, stale-while-revalidate, background refetch, and MMKV persistence automatically.</li>
   <li><strong>Prefix all cache keys with <code>tbc_</code>.</strong> The cache registry clears all <code>tbc_*</code> keys on logout. Non-prefixed keys won't get cleaned up.</li>
   <li><strong>Use <code>CACHE_EVENTS.X</code>, not raw strings.</strong> The <code>CacheEvent</code> type prevents typos and makes event usage searchable.</li>
-  <li><strong>Use <code>WIDGET_STALE_TIME</code>, not <code>120000</code>.</strong> Import from <code>@/hooks/useCachedData</code>. Keeps the value consistent and easy to change.</li>
+  <li><strong>Use <code>WIDGET_STALE_TIME</code>, not <code>120000</code>.</strong> Import from <code>@/hooks/useAppQuery</code>. Keeps the value consistent and easy to change.</li>
   <li><strong>Emit cache events after mutations.</strong> If your screen creates/edits/deletes data that appears on other screens, emit the relevant event so they refresh.</li>
   <li><strong>Use <code>optimisticUpdate</code> for instant-feedback mutations.</strong> Pin, bookmark, react &mdash; anything the user expects to happen instantly. It handles snapshot + rollback.</li>
-  <li><strong>Fetchers should throw on failure.</strong> Return data on success, throw on failure. <code>useCachedData</code> catches errors and sets <code>error</code> state. Don&rsquo;t return <code>null</code> to indicate failure.</li>
-  <li><strong>Don&rsquo;t add modules to the startup batch.</strong> Module widgets self-fetch via <code>useCachedData</code>. Only core widgets participate in the batch.</li>
+  <li><strong>Fetchers should throw on failure.</strong> Return data on success, throw on failure. <code>useAppQuery</code> catches errors and sets <code>error</code> state. Don&rsquo;t return <code>null</code> to indicate failure.</li>
+  <li><strong>Don&rsquo;t add modules to the startup batch.</strong> Module widgets self-fetch via <code>useAppQuery</code>. Only core widgets participate in the batch.</li>
   <li><strong>Register in-memory caches for logout cleanup.</strong> If you create a Map, cache object, or any in-memory store, call <code>registerCache()</code> so it gets cleared on logout.</li>
-  <li><strong>Use <code>useArrayMutate</code> for feed list screens.</strong> Don&rsquo;t write manual mutate adapters. The hook bridges <code>useCachedData</code>&rsquo;s <code>mutate</code> to the <code>SetStateAction&lt;T[]&gt;</code> that <code>useFeedActions</code> and <code>useFeedReactions</code> expect.</li>
+  <li><strong>Use <code>useArrayMutate</code> for feed list screens.</strong> Don&rsquo;t write manual mutate adapters. The hook bridges <code>useAppQuery</code>&rsquo;s <code>mutate</code> to the <code>SetStateAction&lt;T[]&gt;</code> that <code>useFeedActions</code> and <code>useFeedReactions</code> expect.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

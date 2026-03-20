@@ -232,7 +232,7 @@
   <li><strong>Restricted profile:</strong> Only About tab visible, shows "Profile is Private" lock icon message on About tab.</li>
   <li><strong>Tabs:</strong> About (always), Posts, Spaces, Comments (configurable via feature flags + server navs)</li>
   <li>Tab data is <strong>lazy-loaded</strong> on first visit and paginated on scroll</li>
-  <li>Profile data uses <code>useCachedData</code> with <code>CACHE_EVENTS.PROFILE</code> invalidation</li>
+  <li>Profile data uses <code>useAppQuery</code> with <code>CACHE_EVENTS.PROFILE</code> invalidation</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -275,7 +275,7 @@
 
 <h3>Two-Layer Cache</h3>
 <ol>
-  <li><strong>AsyncStorage</strong> — persists across app restarts, loaded instantly on launch</li>
+  <li><strong>MMKV</strong> — persists across app restarts, loaded instantly on launch</li>
   <li><strong>In-memory</strong> — module-level variable, background-refreshed from API</li>
 </ol>
 <p>Self-registers with <code>cacheRegistry</code> so logout clears the in-memory cache.</p>
@@ -288,7 +288,7 @@ const badges: Badge[] = resolveBadges(['moderator', 'founding_member']);
 // Convenience: resolve directly from slugs
 const badges = useProfileBadges(xprofile.meta?.badge_slug);</code></pre>
 
-<p>Both hooks share the same cache. First call triggers AsyncStorage load + API refresh. All subsequent calls use the cached result. Listeners are notified when the cache updates.</p>
+<p>Both hooks share the same cache. First call triggers MMKV load + API refresh. All subsequent calls use the cached result. Listeners are notified when the cache updates.</p>
 
 <h3>Badge Display</h3>
 <ul>
@@ -568,8 +568,8 @@ await profilesApi.unblockUser('spammer');</code></pre>
   <li><strong>Always use <code>UserDisplayName</code> for rendering user names.</strong> It handles the verified badge and profile badges automatically. Don't manually render name + badge combinations.</li>
   <li><strong>Always use <code>Avatar</code> for user images.</strong> It handles null avatars (fallback initials), sizing, caching, and online indicators. Don't render avatar images manually.</li>
   <li><strong>Preserve admin fields on profile update.</strong> Include <code>is_verified</code>, <code>badge_slugs</code>, and <code>status</code> in the payload with their current values. The FC API may clear them otherwise.</li>
-  <li><strong>Use <code>useFollowToggle</code> for follow actions in list contexts.</strong> It handles optimistic updates, loading state, and notification toggling. The profile view screen manages follow state locally via <code>useCachedData</code> + <code>mutate</code> instead.</li>
-  <li><strong>Use <code>useProfileBadges</code> or <code>useBadgeDefinitions</code> for badge resolution.</strong> Don't fetch badge definitions yourself — the hooks share a two-layer cache (AsyncStorage + in-memory).</li>
+  <li><strong>Use <code>useFollowToggle</code> for follow actions in list contexts.</strong> It handles optimistic updates, loading state, and notification toggling. The profile view screen manages follow state locally via <code>useAppQuery</code> + <code>mutate</code> instead.</li>
+  <li><strong>Use <code>useProfileBadges</code> or <code>useBadgeDefinitions</code> for badge resolution.</strong> Don't fetch badge definitions yourself — the hooks share a two-layer cache (MMKV + in-memory).</li>
   <li><strong>Check both feature flag AND server navs for profile tabs.</strong> A tab should only be shown if <code>features.profile_tabs.x</code> is true (via <code>useFeatures()</code>) AND the server's <code>profile_navs</code> includes the corresponding slug (or <code>profile_navs</code> is not provided).</li>
   <li><strong>Handle <code>is_restricted</code> profiles.</strong> When true, only show the About tab. Don't fetch posts/comments/spaces for restricted profiles.</li>
   <li><strong>Social links location differs between XProfile and Profile.</strong> On XProfile, social links are in <code>meta.social_links</code>. On the full Profile endpoint, they're at the top level: <code>profile.social_links</code>. Same for <code>badge_slugs</code> vs <code>meta.badge_slug</code>.</li>

@@ -27,7 +27,7 @@ import { withOpacity } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatures } from '@/contexts/AppConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useAppQuery } from '@/hooks/useAppQuery';
 import { CACHE_EVENTS } from '@/utils/cacheEvents';
 import { useFeedActions } from '@/hooks/useFeedActions';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
@@ -100,7 +100,7 @@ export default function UserProfileScreen() {
   const [activeTab, setActiveTab] = useState<ProfileTabKey>('about');
 
   // Fetch Profile (refreshOnFocus replaces useFocusEffect)
-  const { data: profile, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh, mutate } = useCachedData<Profile>({
+  const { data: profile, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh, mutate } = useAppQuery<Profile>({
     cacheKey: `tbc_profile_${username}`,
     invalidateOn: CACHE_EVENTS.PROFILE,
     fetcher: async () => {

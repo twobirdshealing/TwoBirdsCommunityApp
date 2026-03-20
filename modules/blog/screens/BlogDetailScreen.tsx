@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useAppQuery } from '@/hooks/useAppQuery';
 import { HtmlContent } from '@/components/common/HtmlContent';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
@@ -61,7 +61,7 @@ export default function BlogDetailScreen() {
   // Fetch Post
   // ---------------------------------------------------------------------------
 
-  const { data: post, isLoading: loading, error: fetchError } = useCachedData<WPPost>({
+  const { data: post, isLoading: loading, error: fetchError } = useAppQuery<WPPost>({
     cacheKey: `tbc_blog_${id}`,
     fetcher: async () => {
       const numericId = Number(id);

@@ -3,7 +3,7 @@
 // =============================================================================
 // Renders self-contained widgets in a user-customizable order.
 // Long-press any widget header to enter edit mode (drag to reorder, toggle
-// visibility). Preferences persist across sessions via AsyncStorage.
+// visibility). Preferences persist across sessions via MMKV.
 //
 // Normal mode: FlashList with RefreshControl (pull-to-refresh works)
 // Edit mode: DraggableFlatList (drag-to-reorder works)

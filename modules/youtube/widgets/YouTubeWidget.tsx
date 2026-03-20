@@ -15,7 +15,7 @@ import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 import { PlayButtonOverlay } from '@/components/media/PlayButtonOverlay';
 import { spacing, typography, sizing, shadows } from '@/constants/layout';
 import { youtubeApi } from '../services/youtubeApi';
-import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 import { formatSmartDate } from '@/utils/formatDate';
 import type { YouTubeVideo } from '../types/youtube';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
@@ -35,7 +35,7 @@ interface YouTubeWidgetProps {
 export function YouTubeWidget({ refreshKey }: YouTubeWidgetProps) {
   const { colors: themeColors } = useTheme();
 
-  const { data: video } = useCachedData<YouTubeVideo | null>({
+  const { data: video } = useAppQuery<YouTubeVideo | null>({
     cacheKey: 'tbc_widget_latest_youtube',
     fetcher: async () => {
       const response = await youtubeApi.getLatestVideos(1);

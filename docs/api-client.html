@@ -435,7 +435,7 @@ const courses = findBatchResponse&lt;CoursesResponse&gt;(responses, '/fluent-com
 <p><code>findBatchResponse()</code> returns the body if status is 2xx, or <code>null</code> otherwise. It matches by path <strong>prefix</strong>, so <code>'/fluent-community/v2/courses'</code> matches both <code>/courses</code> and <code>/courses?type=enrolled</code>.</p>
 
 <div class="callout">
-  <strong>The batch is used once per session</strong> &mdash; on startup, by <span class="file-path">hooks/useStartupData.ts</span>. See the <a href="caching-system.html#batch-startup">Caching System doc</a> for details on how it coordinates with <code>useCachedData</code>.
+  <strong>The batch is used once per session</strong> &mdash; on startup, by <span class="file-path">hooks/useStartupData.ts</span>. See the <a href="caching-system.html#batch-startup">Caching System doc</a> for details on how it coordinates with <code>useAppQuery</code>.
 </div>
 
 <!-- ====================================================================== -->

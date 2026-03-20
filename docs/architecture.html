@@ -13,7 +13,7 @@
 <p class="subtitle">How the app works end-to-end &mdash; from cold start to real-time updates</p>
 
 <div class="callout">
-  <strong>Stack:</strong> React Native (Expo 55) &bull; React 19 &bull; Expo Router (file-based) &bull; WordPress + Fluent Community backend &bull; Pusher WebSockets (pusher-js) &bull; JWT authentication
+  <strong>Stack:</strong> React Native (Expo 55) &bull; React 19 &bull; Expo Router (file-based) &bull; TanStack Query &bull; MMKV &bull; WordPress + Fluent Community backend &bull; Pusher WebSockets (pusher-js) &bull; JWT authentication
 </div>
 
 <div class="toc">
@@ -99,12 +99,12 @@ scripts/                Dev-only scripts (white-label snapshot, not shipped)</di
 4. Auth guard in RootLayoutNav evaluates route access
 5. useStartupData fires (single batch HTTP request)
    &rarr; 6 API paths in one request (replaces ~12 individual calls)
-   &rarr; Distributes results to contexts + AsyncStorage caches
+   &rarr; Distributes results to contexts + TanStack Query cache
 6. ThemeContext receives app-config with Fluent Community colors
 7. Pusher connects to private channel for real-time messaging
 8. Module onInit() callbacks fire (non-blocking)
 9. Home screen renders with cached widget data (instant)
-   &rarr; Widgets refresh in background via useCachedData</div>
+   &rarr; Widgets refresh in background via useAppQuery</div>
 
 <div class="callout callout-success">
   <strong>Fast perceived startup.</strong> Cached data renders immediately. The batch request populates fresh data in the background. Users see content within milliseconds of auth check completing.
@@ -120,14 +120,15 @@ scripts/                Dev-only scripts (white-label snapshot, not shipped)</di
   <tr><th>#</th><th>Provider</th><th>File</th><th>Purpose</th></tr>
   <tr><td>1</td><td>GestureHandlerRootView</td><td>react-native-gesture-handler</td><td>Gesture handling for bottom sheets, swipes</td></tr>
   <tr><td>2</td><td>ErrorBoundary</td><td>components/common/ErrorBoundary.tsx</td><td>App-wide crash recovery</td></tr>
-  <tr><td>3</td><td>ThemeProvider</td><td>contexts/ThemeContext.tsx</td><td>Colors, dark mode, branding</td></tr>
-  <tr><td>4</td><td>AuthProvider</td><td>contexts/AuthContext.tsx</td><td>JWT auth state, login/logout</td></tr>
-  <tr><td>5</td><td>AppConfigProvider</td><td>contexts/AppConfigContext.tsx</td><td>Server config, feature flags, maintenance</td></tr>
-  <tr><td>6</td><td>UnreadCountsProvider</td><td>contexts/UnreadCountsContext.tsx</td><td>Badge counts (notifications, messages)</td></tr>
-  <tr><td>7</td><td>PusherProvider</td><td>contexts/PusherContext.tsx</td><td>Real-time WebSocket connection</td></tr>
-  <tr><td>8</td><td>BottomSheetModalProvider</td><td>@gorhom/bottom-sheet</td><td>Bottom sheet modals</td></tr>
-  <tr><td>9</td><td>ModuleProviders</td><td>Dynamic from module registry</td><td>Module-specific contexts (audio player, etc.)</td></tr>
-  <tr><td>10</td><td>KeyboardProvider</td><td>react-native-keyboard-controller</td><td>Keyboard avoidance + edge-to-edge</td></tr>
+  <tr><td>3</td><td>PersistQueryClientProvider</td><td>@tanstack/react-query-persist-client</td><td>TanStack Query cache persistence to MMKV</td></tr>
+  <tr><td>4</td><td>ThemeProvider</td><td>contexts/ThemeContext.tsx</td><td>Colors, dark mode, branding</td></tr>
+  <tr><td>5</td><td>AuthProvider</td><td>contexts/AuthContext.tsx</td><td>JWT auth state, login/logout</td></tr>
+  <tr><td>6</td><td>AppConfigProvider</td><td>contexts/AppConfigContext.tsx</td><td>Server config, feature flags, maintenance</td></tr>
+  <tr><td>7</td><td>UnreadCountsProvider</td><td>contexts/UnreadCountsContext.tsx</td><td>Badge counts (notifications, messages)</td></tr>
+  <tr><td>8</td><td>PusherProvider</td><td>contexts/PusherContext.tsx</td><td>Real-time WebSocket connection</td></tr>
+  <tr><td>9</td><td>BottomSheetModalProvider</td><td>@gorhom/bottom-sheet</td><td>Bottom sheet modals</td></tr>
+  <tr><td>10</td><td>ModuleProviders</td><td>Dynamic from module registry</td><td>Module-specific contexts (audio player, etc.)</td></tr>
+  <tr><td>11</td><td>KeyboardProvider</td><td>react-native-keyboard-controller</td><td>Keyboard avoidance + edge-to-edge</td></tr>
 </table>
 
 <div class="callout callout-warn">
@@ -156,7 +157,7 @@ Silent Refresh (on 401/403):
 Logout:
   Unregister push token &rarr; server-side session revoke
   &rarr; Clear SecureStore (jwt, refresh, user)
-  &rarr; Clear AsyncStorage caches
+  &rarr; Clear MMKV caches + TanStack Query cache
   &rarr; Module cleanup callbacks
   &rarr; Pusher disconnect</div>
 
@@ -236,13 +237,13 @@ const config = await request&lt;AppConfig&gt;('/app-config', {
 <h2 id="data-fetching">6. Data Fetching</h2>
 <!-- ================================================================== -->
 
-<p>The app uses a <strong>stale-while-revalidate (SWR)</strong> pattern via <span class="file-path">hooks/useCachedData.ts</span>. Cached data renders instantly; fresh data loads in the background.</p>
+<p>The app uses a <strong>stale-while-revalidate (SWR)</strong> pattern via <span class="file-path">hooks/useAppQuery.ts</span>. Cached data renders instantly; fresh data loads in the background.</p>
 
 <h3>How It Works</h3>
 <div class="diagram">Mount:
-  1. Read AsyncStorage instantly (no loading spinner if cache exists)
+  1. Read MMKV-persisted TanStack Query cache instantly (no loading spinner if cache exists)
   2. Fetch fresh data in background
-  3. Update state + persist to AsyncStorage
+  3. Update state + persist to MMKV-persisted TanStack Query cache
 
 App Focus:
   1. Check if data is older than staleTime
@@ -259,7 +260,7 @@ Cross-Screen Invalidation:
   3. Screen B (listening on same key) refetches silently</div>
 
 <h3>Usage</h3>
-<pre><code>const { data, isLoading, isRefreshing, error, refresh, mutate } = useCachedData({
+<pre><code>const { data, isLoading, isRefreshing, error, refresh, mutate } = useAppQuery({
   cacheKey: 'tbc_space_members_general',
   fetcher: () =&gt; getSpaceMembers('general'),
   refreshOnFocus: true,
@@ -268,13 +269,7 @@ Cross-Screen Invalidation:
 });</code></pre>
 
 <h3>Batch Fresh Skip</h3>
-<p>When the startup batch pre-populates a widget's cache key, <code>useCachedData</code> skips its initial network fetch. This prevents duplicate requests on app boot.</p>
-<pre><code>// In useStartupData: writes to AsyncStorage + marks as batch-fresh
-await AsyncStorage.setItem('tbc_widget_enrolled_courses', JSON.stringify(courses));
-markBatchFresh(['tbc_widget_enrolled_courses']);
-
-// In the widget: useCachedData checks isBatchFresh() on mount
-// If batch-fresh, skip initial fetch — cache is already current</code></pre>
+<p>When the startup batch pre-populates widget data, it writes directly to TanStack Query's cache via <code>queryClient.setQueryData()</code>. When widgets mount with <code>useAppQuery</code>, the data is already available &mdash; no duplicate fetch needed.</p>
 
 <!-- ================================================================== -->
 <h2 id="startup-batch">7. Startup Batch</h2>
@@ -289,12 +284,12 @@ markBatchFresh(['tbc_widget_enrolled_courses']);
   <tr><td>2</td><td><code>/fluent-community/v2/profile/{user}</code></td><td>Profile refresh (avatar, name)</td><td>AuthContext.updateUser()</td></tr>
   <tr><td>3</td><td><code>/fluent-community/v2/notifications/unread</code></td><td>Unread notification count</td><td>UnreadCountsContext + OS badge</td></tr>
   <tr><td>4</td><td><code>/fluent-community/v2/chat/unread_threads</code></td><td>Unread message threads</td><td>UnreadCountsContext</td></tr>
-  <tr><td>5</td><td><code>/fluent-community/v2/feeds/welcome-banner</code></td><td>Welcome widget data</td><td>AsyncStorage (widget cache)</td></tr>
-  <tr><td>6</td><td><code>/fluent-community/v2/courses?type=enrolled</code></td><td>Enrolled courses</td><td>AsyncStorage (widget cache)</td></tr>
+  <tr><td>5</td><td><code>/fluent-community/v2/feeds/welcome-banner</code></td><td>Welcome widget data</td><td>TanStack Query cache &rarr; WelcomeBannerWidget</td></tr>
+  <tr><td>6</td><td><code>/fluent-community/v2/courses?type=enrolled</code></td><td>Enrolled courses</td><td>TanStack Query cache &rarr; WelcomeBannerWidget</td></tr>
 </table>
 
 <div class="callout">
-  <strong>Modules don't use the batch.</strong> Module widgets self-fetch via <code>useCachedData</code> when they mount. This keeps the batch lean and avoids coupling modules to core startup.
+  <strong>Modules don't use the batch.</strong> Module widgets self-fetch via <code>useAppQuery</code> when they mount. This keeps the batch lean and avoids coupling modules to core startup.
 </div>
 
 <h3>Lifecycle</h3>
@@ -474,7 +469,7 @@ GET /tbc-ca/v1/app-config (public, no auth)
   &darr; returns light + dark color tokens
 services/api/appConfig.ts &rarr; mapFluentToAppColors()
   &darr; maps Fluent keys to app tokens
-ThemeContext &rarr; caches in AsyncStorage
+ThemeContext &rarr; caches in MMKV
   &darr; provides via useTheme() hook
 Components use colors.primary, colors.surface, etc.</div>
 
@@ -524,11 +519,11 @@ backgroundColor: withOpacity(colors.primary, 0.12)  // light brand tint</code></
 <table>
   <tr><th>Layer</th><th>Pattern</th><th>Examples</th></tr>
   <tr><td>Global (app-wide)</td><td>React Context</td><td>Auth, Theme, AppConfig, UnreadCounts, Pusher</td></tr>
-  <tr><td>Screen (persisted)</td><td>useCachedData hook</td><td>Feed lists, space members, courses, widget data</td></tr>
+  <tr><td>Screen (persisted)</td><td>useAppQuery hook</td><td>Feed lists, space members, courses, widget data</td></tr>
   <tr><td>Screen (ephemeral)</td><td>useState / useRef</td><td>Form inputs, modals, scroll position</td></tr>
   <tr><td>Cross-screen sync</td><td>Cache events</td><td>Post created &rarr; feed refreshes, member followed &rarr; list updates</td></tr>
   <tr><td>Real-time</td><td>Pusher event handlers</td><td>New chat message, reaction update</td></tr>
-  <tr><td>Persistent</td><td>AsyncStorage</td><td>Cached API responses, widget preferences, theme preference</td></tr>
+  <tr><td>Persistent</td><td>MMKV</td><td>Cached API responses, widget preferences, theme preference</td></tr>
   <tr><td>Secure</td><td>expo-secure-store</td><td>JWT tokens, user credentials</td></tr>
 </table>
 
@@ -538,8 +533,8 @@ backgroundColor: withOpacity(colors.primary, 0.12)  // light brand tint</code></
 await createFeed(data);
 cacheEvents.emit(CACHE_EVENTS.FEEDS);  // tell other screens
 
-// Screen B: useCachedData with invalidateOn
-useCachedData({
+// Screen B: useAppQuery with invalidateOn
+useAppQuery({
   cacheKey: 'tbc_space_feeds_general',
   fetcher: () =&gt; getSpaceFeeds('general'),
   invalidateOn: CACHE_EVENTS.FEEDS,  // auto-refetch when event fires
@@ -571,6 +566,8 @@ useCachedData({
   <tr><td><span class="file-path">services/pusher.ts</span></td><td>Pusher WebSocket client (pusher-js/react-native)</td></tr>
   <tr><td><span class="file-path">services/push.ts</span></td><td>Push notification registration + OS badge sync</td></tr>
   <tr><td><span class="file-path">services/cacheRegistry.ts</span></td><td>Cache invalidation events + clear-all on logout</td></tr>
+  <tr><td><span class="file-path">services/storage.ts</span></td><td>MMKV storage instance + typed helpers (getJSON, setJSON)</td></tr>
+  <tr><td><span class="file-path">services/queryClient.ts</span></td><td>TanStack Query client, MMKV persister, focus/online managers</td></tr>
 </table>
 
 <h3>Contexts</h3>
@@ -589,7 +586,7 @@ useCachedData({
 <h3>Hooks</h3>
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
-  <tr><td><span class="file-path">hooks/useCachedData.ts</span></td><td>Stale-while-revalidate data fetching + caching</td></tr>
+  <tr><td><span class="file-path">hooks/useAppQuery.ts</span></td><td>TanStack Query adapter: stale-while-revalidate data fetching + MMKV-persisted caching</td></tr>
   <tr><td><span class="file-path">hooks/useStartupData.ts</span></td><td>Startup batch: 6 API paths in one request</td></tr>
   <tr><td><span class="file-path">hooks/useFeedActions.ts</span></td><td>Feed CRUD: react, bookmark, pin, edit, delete</td></tr>
   <tr><td><span class="file-path">hooks/useFeedReactions.ts</span></td><td>Feed reaction state management</td></tr>

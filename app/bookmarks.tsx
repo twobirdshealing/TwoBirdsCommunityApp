@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
-import { useCachedData, useArrayMutate } from '@/hooks/useCachedData';
+import { useAppQuery, useArrayMutate } from '@/hooks/useAppQuery';
 import { useFeedActions } from '@/hooks/useFeedActions';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
@@ -47,7 +47,7 @@ export default function BookmarksScreen() {
     error: fetchError,
     refresh,
     mutate,
-  } = useCachedData<Feed[]>({
+  } = useAppQuery<Feed[]>({
     cacheKey: 'tbc_bookmarks',
     invalidateOn: CACHE_EVENTS.BOOKMARKS,
     fetcher: async () => {

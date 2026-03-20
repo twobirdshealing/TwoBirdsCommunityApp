@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useAppQuery } from '@/hooks/useAppQuery';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -38,7 +38,7 @@ export default function YouTubeScreen() {
   const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
 
-  const { data: config } = useCachedData<{ channel_url: string }>({
+  const { data: config } = useAppQuery<{ channel_url: string }>({
     cacheKey: 'tbc_youtube_config',
     fetcher: async () => {
       const res = await youtubeApi.getConfig();
@@ -48,7 +48,7 @@ export default function YouTubeScreen() {
   });
   const channelUrl = config?.channel_url || '';
 
-  const { data: playlists, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh } = useCachedData<YouTubePlaylist[]>({
+  const { data: playlists, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh } = useAppQuery<YouTubePlaylist[]>({
     cacheKey: 'tbc_youtube_playlists',
     fetcher: async () => {
       const res = await youtubeApi.getPlaylists();

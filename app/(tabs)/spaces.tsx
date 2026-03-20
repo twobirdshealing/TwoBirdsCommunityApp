@@ -30,7 +30,7 @@ import { useTabContentPadding } from '@/contexts/BottomOffsetContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTabBar } from '@/contexts/TabBarContext';
 import { spacesApi } from '@/services/api/spaces';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useAppQuery } from '@/hooks/useAppQuery';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { Space, SpaceGroupOption } from '@/types/space';
 import { createLogger } from '@/utils/logger';
@@ -68,7 +68,7 @@ export default function SpacesScreen() {
     isRefreshing: refreshing,
     error: fetchError,
     refresh,
-  } = useCachedData<SpacesData>({
+  } = useAppQuery<SpacesData>({
     cacheKey: 'tbc_spaces_all',
     invalidateOn: CACHE_EVENTS.SPACES,
     fetcher: async () => {

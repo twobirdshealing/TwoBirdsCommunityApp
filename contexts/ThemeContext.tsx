@@ -10,8 +10,8 @@ import {
 } from '@/constants/colors';
 import { getAppConfig, AppConfigResponse, MaintenanceConfig, UpdateConfig, ThemeData, BrandingConfig } from '@/services/api/appConfig';
 import { setSocialProviders } from '@/services/api/socialProviders';
+import { storage, getJSON, setJSON } from '@/services/storage';
 import { createLogger } from '@/utils/logger';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 const log = createLogger('ThemeContext');
@@ -53,15 +53,27 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 // -----------------------------------------------------------------------------
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeMode>('light');
+  // MMKV reads are synchronous — parse config once, use for all initializers
+  const cachedConfig = getJSON<AppConfigResponse>(CONFIG_CACHE_KEY);
+
+  const [theme, setThemeState] = useState<ThemeMode>(() => {
+    const saved = storage.getString(THEME_PREF_KEY);
+    return saved === 'light' || saved === 'dark' ? saved : 'light';
+  });
   const [fluentOverrides, setFluentOverrides] = useState<{
     light: Partial<ColorTheme>;
     dark: Partial<ColorTheme>;
-  } | null>(null);
-  const [update, setUpdate] = useState<UpdateConfig | null>(null);
-  const [maintenance, setMaintenance] = useState<MaintenanceConfig | null>(null);
-  const [branding, setBranding] = useState<BrandingConfig | null>(null);
-  const [isReady, setIsReady] = useState(false);
+  } | null>(() => {
+    if (cachedConfig?.theme) {
+      const lightOv = cachedConfig.theme.light ? mapFluentToAppColors(cachedConfig.theme.light.body, cachedConfig.theme.light.header) : {};
+      const darkOv = cachedConfig.theme.dark ? mapFluentToAppColors(cachedConfig.theme.dark.body, cachedConfig.theme.dark.header) : {};
+      return { light: lightOv, dark: darkOv };
+    }
+    return null;
+  });
+  const [update, setUpdate] = useState<UpdateConfig | null>(cachedConfig?.update ?? null);
+  const [maintenance, setMaintenance] = useState<MaintenanceConfig | null>(cachedConfig?.maintenance ?? null);
+  const [branding, setBranding] = useState<BrandingConfig | null>(cachedConfig?.branding ?? null);
 
   // Resolve isDark from preference
   const isDark = useMemo(() => theme === 'dark', [theme]);
@@ -86,33 +98,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [isDark, fluentOverrides]);
 
   // ---------------------------------------------------------------------------
-  // Load saved preference + cached config on mount
+  // Background refresh on mount (cache already loaded synchronously above)
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    (async () => {
-      try {
-        // Load saved theme preference
-        const savedPref = await AsyncStorage.getItem(THEME_PREF_KEY);
-        if (savedPref === 'light' || savedPref === 'dark') {
-          setThemeState(savedPref);
-        }
-
-        // Load cached app config
-        const cached = await AsyncStorage.getItem(CONFIG_CACHE_KEY);
-        if (cached) {
-          const parsed: AppConfigResponse = JSON.parse(cached);
-          applyAppConfig(parsed);
-        }
-      } catch (e) {
-        // Silent fail — defaults are fine
-      } finally {
-        setIsReady(true);
-      }
-
-      // Background refresh
-      refreshAppConfig();
-    })();
+    refreshAppConfig();
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -123,12 +113,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const data = await getAppConfig();
     if (!data) return;
 
-    // Cache for next launch
-    try {
-      await AsyncStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(data));
-    } catch (e) {
-      // Cache failed — data still works from API
-    }
+    // Cache for next launch (synchronous)
+    setJSON(CONFIG_CACHE_KEY, data);
 
     applyAppConfig(data);
   }, []);
@@ -136,7 +122,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setFromBatch = useCallback((data: AppConfigResponse) => {
     applyAppConfig(data);
     // Also cache so next cold start has latest data
-    AsyncStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(data)).catch((e) => log.warn('Config cache write failed:', e));
+    setJSON(CONFIG_CACHE_KEY, data);
   }, []);
 
   const applyAppConfig = (data: AppConfigResponse) => {
@@ -175,13 +161,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Set theme + persist
   // ---------------------------------------------------------------------------
 
-  const setTheme = useCallback(async (mode: ThemeMode) => {
+  const setTheme = useCallback((mode: ThemeMode) => {
     setThemeState(mode);
-    try {
-      await AsyncStorage.setItem(THEME_PREF_KEY, mode);
-    } catch (e) {
-      // Silent fail
-    }
+    storage.set(THEME_PREF_KEY, mode);
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -189,12 +171,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // ---------------------------------------------------------------------------
 
   const value = useMemo(() => ({ theme, isDark, colors, setTheme, update, maintenance, branding, refreshAppConfig, setFromBatch }), [theme, isDark, colors, setTheme, update, maintenance, branding, refreshAppConfig, setFromBatch]);
-
-  // ---------------------------------------------------------------------------
-  // Don't render children until preference is loaded (prevents flash)
-  // ---------------------------------------------------------------------------
-
-  if (!isReady) return null;
 
   return (
     <ThemeContext.Provider value={value}>

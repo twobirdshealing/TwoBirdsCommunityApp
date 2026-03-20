@@ -8,7 +8,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useAppQuery } from '@/hooks/useAppQuery';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -26,7 +26,7 @@ export default function BookClubListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
-  const { data: booksData, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh } = useCachedData<BookSummary[]>({
+  const { data: booksData, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh } = useAppQuery<BookSummary[]>({
     cacheKey: 'tbc_bookclub_list',
     fetcher: async () => {
       const response = await bookclubApi.getBooks();

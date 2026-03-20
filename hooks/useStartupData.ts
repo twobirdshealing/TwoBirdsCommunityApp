@@ -3,7 +3,7 @@
 // =============================================================================
 // Replaces ~12 individual HTTP requests with 1 batch call.
 // Distributes results to: AppConfigContext, AuthContext, badge state,
-// and widget AsyncStorage caches.
+// and TanStack Query widget caches.
 //
 // ┌─────────────────────────────────────────────────────────────────────┐
 // │ BATCH REQUEST PATHS (core only — modules self-fetch via widgets)   │
@@ -16,15 +16,15 @@
 // │  6. /fluent-community/v2/courses?type=enrolled&per_page=5 → courses│
 // │  (cart count now handled by cart module via response headers)       │
 // └─────────────────────────────────────────────────────────────────────┘
-// Module widgets (calendar, bookclub, etc.) use useCachedData to
+// Module widgets (calendar, bookclub, etc.) use useAppQuery to
 // self-fetch on mount. No batch registration needed.
 // =============================================================================
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQueryClient } from '@tanstack/react-query';
 import { batchRequest, findBatchResponse } from '@/services/api/batch';
-import { markBatchFresh } from '@/utils/batchCache';
 import { syncBadgeCount } from '@/services/push';
+import { getJSON } from '@/services/storage';
 import { FEATURES_CACHE_KEY } from '@/utils/featureFlags';
 import { createLogger } from '@/utils/logger';
 import type { AppConfigResponse } from '@/services/api/appConfig';
@@ -79,7 +79,7 @@ interface UseStartupDataOptions {
 
 interface UseStartupDataResult {
   status: StartupStatus;
-  retry: () => void;
+  retry: () => Promise<void>;
 }
 
 export function useStartupData({
@@ -92,6 +92,7 @@ export function useStartupData({
 }: UseStartupDataOptions): UseStartupDataResult {
   const hasRun = useRef(false);
   const [status, setStatus] = useState<StartupStatus>('idle');
+  const queryClient = useQueryClient();
 
   const runBatch = useCallback(async () => {
     if (!username) return;
@@ -106,7 +107,7 @@ export function useStartupData({
         { path: `/fluent-community/v2/profile/${username}` },
         { path: '/fluent-community/v2/notifications/unread' },
         { path: '/fluent-community/v2/chat/unread_threads' },
-        // Core widget data (module widgets self-fetch via useCachedData)
+        // Core widget data (module widgets self-fetch via useAppQuery)
         { path: '/fluent-community/v2/feeds/welcome-banner' },
         { path: '/fluent-community/v2/courses?type=enrolled&per_page=5' },
       ];
@@ -153,19 +154,16 @@ export function useStartupData({
       const threadKeys = chatData?.unread_threads ? Object.keys(chatData.unread_threads) : [];
       onUnreadMessages(threadKeys.length);
 
-      // -- Write widget data to AsyncStorage caches --
+      // -- Pre-populate TanStack Query cache with widget data --
+      // This means when widgets mount with useAppQuery, data is already there.
 
-      const cacheWrites: Promise<void>[] = [];
-      const freshKeys: string[] = [];
-
-      // Welcome banner — widget caches the inner welcome_banner object (not full response)
+      // Welcome banner — widget caches the inner welcome_banner object
       const bannerData = findBatchResponse<{ welcome_banner?: unknown }>(
         responses,
         '/fluent-community/v2/feeds/welcome-banner',
       );
       if (bannerData?.welcome_banner) {
-        freshKeys.push(WIDGET_CACHE_KEYS.welcomeBanner);
-        cacheWrites.push(AsyncStorage.setItem(WIDGET_CACHE_KEYS.welcomeBanner, JSON.stringify(bannerData.welcome_banner)));
+        queryClient.setQueryData([WIDGET_CACHE_KEYS.welcomeBanner], bannerData.welcome_banner);
       }
 
       // Courses — widget caches courses.data array (paginated response)
@@ -174,28 +172,18 @@ export function useStartupData({
         '/fluent-community/v2/courses',
       );
       if (coursesData) {
-        const courses = coursesData.courses?.data ?? [];
-        freshKeys.push(WIDGET_CACHE_KEYS.courses);
-        cacheWrites.push(AsyncStorage.setItem(WIDGET_CACHE_KEYS.courses, JSON.stringify(courses)));
+        queryClient.setQueryData([WIDGET_CACHE_KEYS.courses], coursesData.courses?.data ?? []);
       }
-
-      // Write all caches in parallel, then mark them as batch-fresh
-      await Promise.all(cacheWrites);
-      markBatchFresh(freshKeys);
 
       setStatus('success');
-      log('Startup batch complete —', freshKeys.length, 'widget caches populated');
+      log('Startup batch complete');
     } catch (err) {
       log.error('Failed:', err);
-      // Batch failed — check if we have cached features from a previous session
-      try {
-        const cached = await AsyncStorage.getItem(FEATURES_CACHE_KEY);
-        setStatus(cached ? 'success' : 'error');
-      } catch {
-        setStatus('error');
-      }
+      // Batch failed — check if we have cached features from a previous session (synchronous)
+      const cached = getJSON(FEATURES_CACHE_KEY);
+      setStatus(cached ? 'success' : 'error');
     }
-  }, [username, onAppConfig, onProfileUpdate, onUnreadNotifications, onUnreadMessages]);
+  }, [username, onAppConfig, onProfileUpdate, onUnreadNotifications, onUnreadMessages, queryClient]);
 
   // Fire once when authenticated with a username
   useEffect(() => {

@@ -15,7 +15,7 @@
 <div class="callout">
   <strong>Key files:</strong><br>
   <span class="file-path">constants/colors.ts</span> &mdash; ColorTheme interface, defaults, <code>mapFluentToAppColors()</code>, <code>withOpacity()</code><br>
-  <span class="file-path">contexts/ThemeContext.tsx</span> &mdash; Provider, caches in AsyncStorage, background-refreshes from API<br>
+  <span class="file-path">contexts/ThemeContext.tsx</span> &mdash; Provider, caches in MMKV (synchronous), background-refreshes from API<br>
   <span class="file-path">services/api/appConfig.ts</span> &mdash; Fetches <code>/tbc-ca/v1/app-config</code> (public, includes JWT when available)<br>
   <span class="file-path">utils/webviewTheme.ts</span> &mdash; Theme CSS injection for WebViews (syncs dark mode to Fluent web views)<br>
   <span class="file-path">companion plugins/tbc-community-app/includes/class-app-config.php</span> &mdash; PHP REST endpoint
@@ -59,8 +59,8 @@ useTheme().colors &rarr; All 137+ components</code></pre>
 
 <h3>Startup sequence</h3>
 <ol>
-  <li>ThemeContext mounts, loads saved theme preference (light/dark) from AsyncStorage</li>
-  <li>Loads cached app config from AsyncStorage &mdash; applies immediately (no flash)</li>
+  <li>ThemeContext mounts, loads saved theme preference (light/dark) from MMKV (synchronous)</li>
+  <li>Loads cached app config from MMKV &mdash; applies immediately (no flash)</li>
   <li>Background-fetches fresh config from <code>/app-config</code></li>
   <li>Merges Fluent overrides on top of app defaults, caches for next launch</li>
 </ol>
@@ -348,7 +348,7 @@ useTheme().colors &rarr; All 137+ components</code></pre>
 </ol>
 
 <div class="callout callout-warn">
-  <strong>No server-side caching.</strong> The PHP endpoint calls Fluent Utility methods on each request. Caching happens on the client side (AsyncStorage). If Fluent Community is not active, the endpoint returns <code>{ light: null, dark: null }</code> and the app uses its built-in defaults.
+  <strong>No server-side caching.</strong> The PHP endpoint calls Fluent Utility methods on each request. Caching happens on the client side (MMKV). If Fluent Community is not active, the endpoint returns <code>{ light: null, dark: null }</code> and the app uses its built-in defaults.
 </div>
 
 <!-- ================================================================== -->
@@ -377,7 +377,7 @@ interface ThemeContextType {
   <tr><td><code>theme</code></td><td><code>ThemeMode</code></td><td>Current mode (<code>'light' | 'dark'</code>)</td></tr>
   <tr><td><code>isDark</code></td><td><code>boolean</code></td><td>Shorthand for <code>theme === 'dark'</code></td></tr>
   <tr><td><code>colors</code></td><td><code>ColorTheme</code></td><td>Active color palette (defaults + Fluent overrides)</td></tr>
-  <tr><td><code>setTheme(mode)</code></td><td><code>(mode) => void</code></td><td>Switch mode, persists to AsyncStorage</td></tr>
+  <tr><td><code>setTheme(mode)</code></td><td><code>(mode) => void</code></td><td>Switch mode, persists to MMKV</td></tr>
   <tr><td><code>update</code></td><td><code>UpdateConfig | null</code></td><td>Min app version + store URLs</td></tr>
   <tr><td><code>maintenance</code></td><td><code>MaintenanceConfig | null</code></td><td>Maintenance mode status</td></tr>
   <tr><td><code>branding</code></td><td><code>BrandingConfig | null</code></td><td>Site name, tagline, logo URLs</td></tr>
@@ -407,7 +407,7 @@ return {
 </table>
 
 <div class="callout callout-success">
-  <strong>Flash prevention.</strong> <code>ThemeProvider</code> returns <code>null</code> until AsyncStorage loads (the <code>isReady</code> gate). This prevents a flash of wrong-theme colors on cold start.
+  <strong>Flash prevention.</strong> MMKV reads are synchronous, so <code>ThemeProvider</code> has cached config available immediately on mount &mdash; no loading gate needed. Users see correct theme colors from the first frame.
 </div>
 
 <!-- ================================================================== -->

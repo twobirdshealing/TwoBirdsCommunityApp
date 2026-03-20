@@ -2,11 +2,11 @@
 // BADGE API SERVICE - Fetch & cache Fluent Community badge definitions
 // =============================================================================
 // Public endpoint (no auth needed) — returns badge colors, labels, icons
-// Two-layer cache: AsyncStorage (persists across restarts) + in-memory
+// Two-layer cache: MMKV (persists across restarts) + in-memory
 // Same pattern as theme colors — instant on launch, background refresh
 // =============================================================================
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getJSON, setJSON } from '@/services/storage';
 import { TBC_CA_URL } from '@/constants/config';
 import type { Badge } from '@/types/user';
 import { createLogger } from '@/utils/logger';
@@ -41,20 +41,16 @@ registerCache({ clearMemory: () => { cachedBadges = null; } });
 // -----------------------------------------------------------------------------
 
 /**
- * Load badge definitions from AsyncStorage (instant, no network).
+ * Load badge definitions from MMKV (instant, synchronous).
  * Called before the API fetch to provide immediate data.
  */
-export async function loadCachedBadges(): Promise<BadgeDefinitions> {
+export function loadCachedBadges(): BadgeDefinitions {
   if (cachedBadges) return cachedBadges;
 
-  try {
-    const stored = await AsyncStorage.getItem(BADGE_CACHE_KEY);
-    if (stored) {
-      cachedBadges = JSON.parse(stored);
-      return cachedBadges!;
-    }
-  } catch (e) {
-    // Silent fail — will fetch from API
+  const stored = getJSON<BadgeDefinitions>(BADGE_CACHE_KEY);
+  if (stored) {
+    cachedBadges = stored;
+    return cachedBadges;
   }
   return {};
 }
@@ -75,12 +71,8 @@ export async function fetchBadgeDefinitions(): Promise<BadgeDefinitions> {
     if (data.success && data.badges) {
       cachedBadges = data.badges;
 
-      // Persist to AsyncStorage for next launch
-      try {
-        await AsyncStorage.setItem(BADGE_CACHE_KEY, JSON.stringify(data.badges));
-      } catch (e) {
-        // Persist failed — in-memory still works
-      }
+      // Persist to MMKV for next launch
+      setJSON(BADGE_CACHE_KEY, data.badges);
 
       return cachedBadges;
     }

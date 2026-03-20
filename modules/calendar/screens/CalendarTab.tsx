@@ -16,7 +16,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useTabBar } from '@/contexts/TabBarContext';
 import { useTabContentPadding } from '@/contexts/BottomOffsetContext';
 import { calendarApi } from '@/modules/calendar/services/calendarApi';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useAppQuery } from '@/hooks/useAppQuery';
 import { CalendarEvent, CalendarViewMode } from '@/modules/calendar/types/calendar';
 import { useEventWebView } from '@/modules/calendar/hooks/useEventWebView';
 import { CalendarHeader } from '@/modules/calendar/components/CalendarHeader';
@@ -83,7 +83,7 @@ export default function CalendarScreen() {
     isRefreshing: refreshing,
     error: fetchError,
     refresh,
-  } = useCachedData<CalendarEvent[]>({
+  } = useAppQuery<CalendarEvent[]>({
     cacheKey: `tbc_calendar_events_${currentMonth}`,
     fetcher: async () => {
       const response = await calendarApi.getEvents({

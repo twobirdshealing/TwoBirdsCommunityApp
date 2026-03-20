@@ -57,7 +57,7 @@
                        │ uses
          ┌─────────────┼──────────────┐
          ▼             ▼              ▼
-  useFeedActions  useFeedReactions  useCachedData
+  useFeedActions  useFeedReactions  useAppQuery
   (nav, CRUD)    (optimistic react)  (SWR cache)
          │             │              │
          ▼             ▼              ▼
@@ -75,7 +75,7 @@
 
 <p>Each feed screen follows the same pattern:</p>
 <ol>
-  <li>Fetch feeds via <code>useCachedData</code> (stale-while-revalidate from AsyncStorage)</li>
+  <li>Fetch feeds via <code>useAppQuery</code> (stale-while-revalidate from MMKV-persisted TanStack Query cache)</li>
   <li>Adapt state with <code>useArrayMutate(mutate)</code> to get a <code>setFeeds</code> dispatcher, then pass to <code>useFeedReactions</code> and <code>useFeedActions</code></li>
   <li>Render with <code>FeedList</code> → <code>FeedCard</code> components</li>
   <li>All modals (menu, media viewer, report) are hoisted into <code>FeedModalsProvider</code> — one instance per screen, not per card</li>
@@ -294,7 +294,7 @@ interface SurveyOption {
 <p>All list screens (activity, space, bookmarks) follow the same pattern:</p>
 
 <pre><code>// 1. Fetch with SWR cache
-const { data: feeds, mutate, refresh } = useCachedData&lt;Feed[]&gt;({
+const { data: feeds, mutate, refresh } = useAppQuery&lt;Feed[]&gt;({
   cacheKey: 'tbc_activity_feeds',
   fetcher: () => getFeeds({ page: 1 }),
   invalidateOn: CACHE_EVENTS.FEEDS,
@@ -557,7 +557,7 @@ feedsApi.toggleBookmark(feedId, true);
 <!-- ================================================================== -->
 <h2 id="caching">13. Feed Caching</h2>
 
-<p>All feed screens use <code>useCachedData</code> for stale-while-revalidate caching. See <a href="caching-system.html">Data Fetching &amp; Caching</a> for the full caching system reference.</p>
+<p>All feed screens use <code>useAppQuery</code> for stale-while-revalidate caching. See <a href="caching-system.html">Data Fetching &amp; Caching</a> for the full caching system reference.</p>
 
 <table>
   <tr><th>Cache Key</th><th>Screen</th><th>Invalidation Event</th></tr>
@@ -628,7 +628,7 @@ useTickerPolling(isAuthenticated);</code></pre>
   <tr><td><code>useReactionConfig()</code></td><td><span class="file-path">hooks/useReactionConfig.ts</span></td><td>Returns <code>{ reactions, display, loading, getReaction }</code>. Fetches config once from <code>TBC_MR_URL/config</code>, caches in memory. All components share the same cached result.</td></tr>
   <tr><td><code>useTickerPolling(enabled)</code></td><td><span class="file-path">hooks/useTickerPolling.ts</span></td><td>Background polling to keep user active for Pusher. See <a href="#ticker">Ticker Polling</a>.</td></tr>
   <tr><td><code>useFeedModals()</code></td><td><span class="file-path">contexts/FeedModalsContext.tsx</span></td><td>Returns openers for all 3 hoisted modals (<code>openMenu</code>, <code>openMediaViewer</code>, <code>openReport</code>). Must be inside <code>FeedModalsProvider</code>.</td></tr>
-  <tr><td><code>useArrayMutate(mutate)</code></td><td><span class="file-path">hooks/useCachedData.ts</span></td><td>Adapts <code>useCachedData</code>'s <code>mutate</code> into a standard <code>React.Dispatch&lt;SetStateAction&lt;T[]&gt;&gt;</code> for use with <code>useFeedReactions</code> and <code>useFeedActions</code>.</td></tr>
+  <tr><td><code>useArrayMutate(mutate)</code></td><td><span class="file-path">hooks/useAppQuery.ts</span></td><td>Adapts <code>useAppQuery</code>'s <code>mutate</code> into a standard <code>React.Dispatch&lt;SetStateAction&lt;T[]&gt;&gt;</code> for use with <code>useFeedReactions</code> and <code>useFeedActions</code>.</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -647,7 +647,7 @@ useTickerPolling(isAuthenticated);</code></pre>
   <li><strong>Emit cache events after mutations.</strong> After creating/editing/deleting a post, emit <code>CACHE_EVENTS.FEEDS</code>. After toggling a bookmark, emit <code>CACHE_EVENTS.BOOKMARKS</code>.</li>
   <li><strong>Check <code>features.multi_reactions</code></strong> (via <code>useFeatures()</code>) before showing reaction picker and breakdown. If the multi-reactions plugin isn't installed, only simple like/unlike is available.</li>
   <li><strong>Use <code>message_rendered</code> for display, <code>message</code> for editing.</strong> The server returns pre-rendered HTML in <code>message_rendered</code> — render it with <code>HtmlContent</code>. When editing, use <code>htmlToMarkdown(message_rendered)</code> to convert back for the editor.</li>
-  <li><strong>Use <code>useArrayMutate</code> to adapt <code>useCachedData</code>'s <code>mutate</code>.</strong> Feed hooks (<code>useFeedReactions</code>, <code>useFeedActions</code>) expect <code>React.Dispatch&lt;SetStateAction&lt;Feed[]&gt;&gt;</code>. The <code>useArrayMutate</code> adapter handles the null-to-empty-array conversion.</li>
+  <li><strong>Use <code>useArrayMutate</code> to adapt <code>useAppQuery</code>'s <code>mutate</code>.</strong> Feed hooks (<code>useFeedReactions</code>, <code>useFeedActions</code>) expect <code>React.Dispatch&lt;SetStateAction&lt;Feed[]&gt;&gt;</code>. The <code>useArrayMutate</code> adapter handles the null-to-empty-array conversion.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

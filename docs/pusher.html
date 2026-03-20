@@ -118,7 +118,7 @@ userChannel.bind('message', (data: PusherMessage) =&gt; {
 <ol>
   <li>The <code>tbc-community-app</code> PHP plugin reads socket settings from Fluent Messaging's <code>PusherHelper::getSocketConfig()</code></li>
   <li>It returns a <code>socket</code> section in the <code>/app-config</code> response (public keys only &mdash; no secrets)</li>
-  <li><code>AppConfigContext</code> stores and caches the config in AsyncStorage</li>
+  <li><code>AppConfigContext</code> stores and caches the config in MMKV</li>
   <li><code>PusherContext</code> passes it to <code>initializePusher()</code> on connect</li>
 </ol>
 
@@ -173,7 +173,7 @@ interface SocketConfig {
 <h2 id="connection-flow">4. Connection Flow</h2>
 
 <div class="diagram">1. User logs in &rarr; AuthContext sets isAuthenticated = true
-2. AppConfigContext loads socketConfig (cached from AsyncStorage or from startup batch)
+2. AppConfigContext loads socketConfig (cached from MMKV or from startup batch)
 3. PusherContext effect fires &rarr; if socketConfig exists, calls initializePusher(user.id, socketConfig)
    (If socketConfig is null &mdash; server has no Pusher &mdash; effect skips, messaging uses polling)
 4. initializePusher:

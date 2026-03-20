@@ -26,7 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useAppQuery } from '@/hooks/useAppQuery';
 
 import {
   ActivityIndicator,
@@ -71,7 +71,7 @@ export default function NotificationsScreen() {
     error: fetchError,
     refresh,
     mutate,
-  } = useCachedData<NotificationsPage1>({
+  } = useAppQuery<NotificationsPage1>({
     cacheKey: `tbc_notifications_${showUnreadOnly ? 'unread' : 'all'}`,
     fetcher: async () => {
       const response = await notificationsApi.getNotifications({
@@ -154,7 +154,7 @@ export default function NotificationsScreen() {
     setExtraNotifications([]);
     setPage(1);
     setHasMore(true);
-    // Cache key changes → useCachedData auto-loads the correct cache
+    // Cache key changes → useAppQuery auto-loads the correct cache
   };
 
   const handleMarkAllAsRead = async () => {

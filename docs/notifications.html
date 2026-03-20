@@ -401,7 +401,7 @@ interface UnifiedSection {
   <li>Swipe left on notification &rarr; mark as read (green checkmark, haptic feedback)</li>
   <li>"Mark all as read" via header settings icon</li>
   <li>Tap notification &rarr; navigate to related content + mark as read</li>
-  <li>Uses <code>useCachedData</code> for SWR caching (page 1 cached, pages 2+ appended manually)</li>
+  <li>Uses <code>useAppQuery</code> for SWR caching (page 1 cached, pages 2+ appended manually)</li>
   <li>Empty state when no notifications (different messages for "All" vs "Unread" filter)</li>
 </ul>
 

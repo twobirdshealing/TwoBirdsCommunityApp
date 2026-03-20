@@ -14,7 +14,7 @@
 
 <div class="callout">
   <strong>Source directory:</strong> <span class="file-path">contexts/</span><br>
-  The app uses React Context for all global state. No external state library (Redux, Zustand, etc.). Screen-level data uses <a href="caching-system.html"><code>useCachedData</code></a>. Contexts handle auth, config, theme, real-time, badges, and UI coordination.
+  The app uses React Context for all global state. No external state library (Redux, Zustand, etc.). Screen-level data uses <a href="caching-system.html"><code>useAppQuery</code></a>. Contexts handle auth, config, theme, real-time, badges, and UI coordination.
 </div>
 
 <div class="toc">
@@ -43,15 +43,16 @@
 
 <div class="flow-diagram">GestureHandlerRootView
 &boxur;&boxh; ErrorBoundary
-   &boxur;&boxh; ThemeProvider              &larr; Colors, dark mode, maintenance, update, branding
-      &boxur;&boxh; AuthProvider             &larr; Login/logout, user state
-         &boxur;&boxh; AppConfigProvider     &larr; Visibility flags, portal slug, socket config, features, registration
-            &boxur;&boxh; UnreadCountsProvider  &larr; Badge counts (notifications, messages)
-               &boxur;&boxh; PusherProvider     &larr; Real-time WebSocket (needs Auth + AppConfig)
-                  &boxur;&boxh; BottomSheetModalProvider  &larr; Gorhom bottom sheet host
-                     &boxur;&boxh; ModuleProviders  &larr; Dynamic providers from module registry
-                        &boxur;&boxh; KeyboardProvider
-                           &boxur;&boxh; RootLayoutNav (screens)</div>
+   &boxur;&boxh; PersistQueryClientProvider  &larr; TanStack Query client + MMKV-persisted cache
+      &boxur;&boxh; ThemeProvider              &larr; Colors, dark mode, maintenance, update, branding
+         &boxur;&boxh; AuthProvider             &larr; Login/logout, user state
+            &boxur;&boxh; AppConfigProvider     &larr; Visibility flags, portal slug, socket config, features, registration
+               &boxur;&boxh; UnreadCountsProvider  &larr; Badge counts (notifications, messages)
+                  &boxur;&boxh; PusherProvider     &larr; Real-time WebSocket (needs Auth + AppConfig)
+                     &boxur;&boxh; BottomSheetModalProvider  &larr; Gorhom bottom sheet host
+                        &boxur;&boxh; ModuleProviders  &larr; Dynamic providers from module registry
+                           &boxur;&boxh; KeyboardProvider
+                              &boxur;&boxh; RootLayoutNav (screens)</div>
 
 <p>Additional providers are nested <strong>inside tab screens</strong>, not in the root layout:</p>
 <table>
@@ -119,7 +120,7 @@
 <h3>Key Methods</h3>
 <table>
   <tr><th>Method</th><th>Purpose</th></tr>
-  <tr><td><code>setTheme(mode)</code></td><td>Switch between <code>'light'</code> and <code>'dark'</code>; persists to AsyncStorage</td></tr>
+  <tr><td><code>setTheme(mode)</code></td><td>Switch between <code>'light'</code> and <code>'dark'</code>; persists to MMKV</td></tr>
   <tr><td><code>refreshAppConfig()</code></td><td>Fetch fresh config from <code>/tbc-ca/v1/app-config</code> and apply (theme, maintenance, update, branding, social providers)</td></tr>
   <tr><td><code>setFromBatch(data)</code></td><td>Accept pre-fetched <code>AppConfigResponse</code> from <code>_layout.tsx</code> startup batch</td></tr>
 </table>
@@ -159,7 +160,7 @@ const colors = { ...base, ...overrides };</code></pre>
 <p>Both paths extract theme colors, maintenance status, update info, branding, and social providers from the same <code>AppConfigResponse</code>.</p>
 
 <h3>Cache Persistence</h3>
-<p>Full app config response is cached to AsyncStorage (<code>tbc_app_config_cache</code>) so the app has correct theme colors on cold start before the batch response arrives. Theme preference (<code>theme_preference</code>) is also persisted.</p>
+<p>Full app config response is cached to MMKV (synchronous) (<code>tbc_app_config_cache</code>) so the app has correct theme colors on cold start before the batch response arrives. Theme preference (<code>theme_preference</code>) is also persisted.</p>
 
 <!-- ====================================================================== -->
 <h2 id="appconfig">4. AppConfigContext</h2>
@@ -199,7 +200,7 @@ if (features.courses) { /* show courses tab */ }
 const showCourses = !visibility?.hide_menu?.includes('courses');</code></pre>
 
 <h3>Cache Persistence</h3>
-<p>Several fields are cached to AsyncStorage so the app has correct state on cold start before the batch response arrives:</p>
+<p>Several fields are cached to MMKV (synchronous) so the app has correct state on cold start before the batch response arrives:</p>
 <ul>
   <li><code>tbc_app_visibility_cache</code> &mdash; survives logout (site-level, not user-specific)</li>
   <li><code>tbc_socket_config_cache</code> &mdash; survives logout</li>
@@ -425,7 +426,7 @@ export const yourModule: ModuleManifest = {
 
 <table>
   <tr><th>Hook</th><th>File</th><th>Purpose</th></tr>
-  <tr><td><code>useCachedData</code></td><td><code>useCachedData.ts</code></td><td>Universal stale-while-revalidate data fetching (AsyncStorage cache + background refresh + app focus + invalidation events + optimistic <code>mutate()</code>)</td></tr>
+  <tr><td><code>useAppQuery</code></td><td><code>useAppQuery.ts</code></td><td>Universal TanStack Query-backed data fetching (MMKV-persisted cache + background refresh + app focus + invalidation events + optimistic <code>mutate()</code>)</td></tr>
   <tr><td><code>useStartupData</code></td><td><code>useStartupData.ts</code></td><td>Fires a single batch API call on authenticated startup; distributes results to AppConfig, Auth, and badge state</td></tr>
   <tr><td><code>useAppFocus</code></td><td><code>useAppFocus.ts</code></td><td>Callback when app resumes from background (not on initial mount); gated by <code>enabled</code> flag</td></tr>
   <tr><td><code>useTickerPolling</code></td><td><code>useTickerPolling.ts</code></td><td>Polls <code>/feeds/ticker</code> every ~4 minutes to keep <code>last_activity</code> fresh for Pusher broadcasts</td></tr>
@@ -439,12 +440,12 @@ export const yourModule: ModuleManifest = {
   <tr><td><code>useBadgeDefinitions</code></td><td><code>useBadgeDefinitions.ts</code></td><td>Fetch and resolve profile badge definitions (two-layer cache: SecureStore instant + background API refresh)</td></tr>
   <tr><td><code>useSocialProviders</code></td><td><code>useSocialProviders.ts</code></td><td>Consume dynamic social link providers (data arrives via <code>/app-config</code>; subscribes to module-level cache)</td></tr>
   <tr><td><code>useNotificationSettings</code></td><td><code>useNotificationSettings.ts</code></td><td>Push prefs, email prefs, permission state, toggle handlers, frequency changes, and space email prefs</td></tr>
-  <tr><td><code>useWidgetPreferences</code></td><td><code>useWidgetPreferences.ts</code></td><td>Persist widget order and visibility to AsyncStorage; handles forward compatibility for new/removed widgets</td></tr>
+  <tr><td><code>useWidgetPreferences</code></td><td><code>useWidgetPreferences.ts</code></td><td>Persist widget order and visibility to MMKV; handles forward compatibility for new/removed widgets</td></tr>
   <tr><td><code>useThemedEditor</code></td><td><code>useThemedEditor.ts</code></td><td>Shared 10tap editor bridge with app theming (CSS, bridge extensions, placeholder) for post and comment editors</td></tr>
 </table>
 
 <div class="callout">
-  <strong>No React Query.</strong> This app uses <code>useCachedData</code> as its universal data fetching pattern instead of React Query / TanStack Query. Every screen and widget uses it for stale-while-revalidate behavior with AsyncStorage persistence.
+  <strong>TanStack Query.</strong> This app uses <code>useAppQuery</code> (a TanStack Query adapter in <code>hooks/useAppQuery.ts</code>) as its universal data fetching pattern. TanStack Query provides stale-while-revalidate, request deduplication, background refetch on app focus, and MMKV-persisted cache via <code>PersistQueryClientProvider</code>.
 </div>
 
 <!-- ====================================================================== -->
@@ -485,7 +486,7 @@ useEffect(() =&gt; {
 <h2 id="rules">13. Rules</h2>
 
 <ol>
-  <li><strong>Use <code>useCachedData</code> for screen data, contexts for global state.</strong> Don&rsquo;t create a context to hold data that only one screen uses. Contexts are for state shared across multiple screens or the entire app.</li>
+  <li><strong>Use <code>useAppQuery</code> for screen data, contexts for global state.</strong> Don&rsquo;t create a context to hold data that only one screen uses. Contexts are for state shared across multiple screens or the entire app.</li>
   <li><strong>Don&rsquo;t add new contexts without checking existing ones.</strong> The current set covers auth, config, theme, badges, real-time, and UI coordination. Most new features don&rsquo;t need a new context.</li>
   <li><strong>Module providers go in the module manifest.</strong> Don&rsquo;t edit <code>_layout.tsx</code> to add module providers. Register them via <code>providers: [{ component: MyProvider }]</code> in the module&rsquo;s <code>module.ts</code>.</li>
   <li><strong>Use the callback bridge pattern for service &rarr; React communication.</strong> Don&rsquo;t import React contexts into plain services. Register a callback from the React side.</li>

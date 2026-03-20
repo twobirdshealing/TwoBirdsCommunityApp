@@ -29,7 +29,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useAppQuery } from '@/hooks/useAppQuery';
 import {
   Alert,
   Pressable,
@@ -70,7 +70,7 @@ export default function MessagesScreen() {
     error: fetchError,
     refresh,
     mutate,
-  } = useCachedData<MessagesData>({
+  } = useAppQuery<MessagesData>({
     cacheKey: 'tbc_messages_threads',
     fetcher: async () => {
       const [threadsRes, unreadIds] = await Promise.all([

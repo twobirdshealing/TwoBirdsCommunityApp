@@ -16,7 +16,7 @@ import { createLogger } from '@/utils/logger';
 
 const log = createLogger('Activity');
 import { useFeedReactions } from '@/hooks/useFeedReactions';
-import { useCachedData, useArrayMutate } from '@/hooks/useCachedData';
+import { useAppQuery, useArrayMutate } from '@/hooks/useAppQuery';
 import { useFeedActions } from '@/hooks/useFeedActions';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
 import { CACHE_EVENTS } from '@/utils/cacheEvents';
@@ -42,7 +42,7 @@ export default function ActivityScreen() {
     error: fetchError,
     refresh,
     mutate,
-  } = useCachedData<Feed[]>({
+  } = useAppQuery<Feed[]>({
     cacheKey: 'tbc_activity_feeds',
     invalidateOn: CACHE_EVENTS.FEEDS,
     fetcher: async () => {

@@ -1,13 +1,13 @@
 // =============================================================================
 // FEATURE FLAGS — Non-React access for service-layer code
 // =============================================================================
-// Reads from the same AsyncStorage cache that AppConfigContext writes.
-// Uses an in-memory cache to avoid repeated AsyncStorage bridge hits.
+// Reads from the same MMKV cache that AppConfigContext writes.
+// MMKV reads are synchronous (JSI), so no async bridge needed.
 // Returns conservative defaults (all OFF) if no cache exists yet.
 // Use useFeatures() hook in React components instead.
 // =============================================================================
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getJSON } from '@/services/storage';
 import type { BooleanFeatureKey, FeaturesConfig } from '@/services/api/appConfig';
 
 // -----------------------------------------------------------------------------
@@ -42,19 +42,19 @@ export function setFeatureFlagCache(features: FeaturesConfig): void {
 // -----------------------------------------------------------------------------
 
 /**
- * Read a boolean feature flag from cache. Returns false (conservative) if no cache exists.
+ * Read a boolean feature flag from cache (synchronous).
+ * Returns false (conservative) if no cache exists.
  * Only used by non-React service code (e.g. AuthContext). React components use useFeatures().
  */
-export async function getFeatureFlag(key: BooleanFeatureKey): Promise<boolean> {
+export function getFeatureFlag(key: BooleanFeatureKey): boolean {
   if (memoryCache) return memoryCache[key] ?? false;
 
-  try {
-    const cached = await AsyncStorage.getItem(FEATURES_CACHE_KEY);
-    if (cached) {
-      memoryCache = JSON.parse(cached);
-      if (memoryCache![key] !== undefined) return memoryCache![key];
-    }
-  } catch {}
+  const cached = getJSON<FeaturesConfig>(FEATURES_CACHE_KEY);
+  if (cached) {
+    memoryCache = cached;
+    return memoryCache[key] ?? false;
+  }
+
   // No cache — conservative default (off). The startup gate ensures
   // authenticated users never reach the main app in this state.
   return false;

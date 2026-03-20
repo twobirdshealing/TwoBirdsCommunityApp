@@ -215,7 +215,7 @@ export interface ModuleManifest {
 <h3 id="widget-registration">WidgetRegistration</h3>
 <p>Adds a card to the home screen.</p>
 <pre><code>interface WidgetRegistration {
-  /** Unique stable ID &mdash; never change once shipped (used as AsyncStorage key) */
+  /** Unique stable ID &mdash; never change once shipped (used as MMKV preference key) */
   id: string;
   /** Display title shown in HomeWidget header */
   title: string;
@@ -595,7 +595,7 @@ export const MODULES: ModuleManifest[] = [
 </div>
 
 <h3>Home screen widgets</h3>
-<p><span class="file-path">components/home/widgetRegistry.ts</span> merges core and module widgets into a single <code>WIDGET_REGISTRY</code> array. Core widgets (like Courses) come first, then module widgets from <code>getModuleWidgets()</code>. The <code>getAvailableWidgets(features)</code> helper filters out widgets whose <code>featureFlag</code> is disabled. Users can reorder and toggle widgets in edit mode (long-press). Preferences persist in AsyncStorage.</p>
+<p><span class="file-path">components/home/widgetRegistry.ts</span> merges core and module widgets into a single <code>WIDGET_REGISTRY</code> array. Core widgets (like Courses) come first, then module widgets from <code>getModuleWidgets()</code>. The <code>getAvailableWidgets(features)</code> helper filters out widgets whose <code>featureFlag</code> is disabled. Users can reorder and toggle widgets in edit mode (long-press). Preferences persist in MMKV.</p>
 
 <h3>Avatar dropdown menu</h3>
 <p><span class="file-path">components/navigation/UserMenu.tsx</span> renders module menu items after core items (Profile, Spaces, Bookmarks, etc.), sorted by <code>order</code>.</p>
@@ -703,7 +703,7 @@ export const eventsModule: ModuleManifest = {
 };</code></pre>
 
 <h3>Widget user preferences</h3>
-<p>Users can reorder and toggle widgets on the home screen (long-press to enter edit mode). These preferences are stored in AsyncStorage and persist across sessions. The <code>defaultEnabled</code> and <code>canDisable</code> fields on <code>WidgetRegistration</code> control the initial state and whether toggling is allowed.</p>
+<p>Users can reorder and toggle widgets on the home screen (long-press to enter edit mode). These preferences are stored in MMKV and persist across sessions. The <code>defaultEnabled</code> and <code>canDisable</code> fields on <code>WidgetRegistration</code> control the initial state and whether toggling is allowed.</p>
 
 <!-- ================================================================== -->
 <h2 id="lifecycle">8. Lifecycle Hooks</h2>
@@ -753,11 +753,11 @@ export function cleanupModules(): void {
 // Self-registered with cache system
 registerCache({ clearMemory: cleanupModules });</code></pre>
 
-<p><strong>Use cases:</strong> Clear module-specific AsyncStorage keys, reset in-memory state, disconnect websockets.</p>
+<p><strong>Use cases:</strong> Clear module-specific MMKV keys, reset in-memory state, disconnect websockets.</p>
 
 <pre><code>// Example: clear cached events on logout
 onCleanup: () =&gt; {
-  AsyncStorage.removeItem('tbc_events_cache');
+  storage.remove('tbc_events_cache');
   eventsStore.reset();
 },</code></pre>
 
@@ -851,7 +851,7 @@ export async function getUpcomingEvent() {
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 import { getUpcomingEvent } from '../services/eventsApi';
 
 interface Props {
@@ -860,7 +860,7 @@ interface Props {
 
 export function EventsWidget({ refreshKey }: Props) {
   const { colors } = useTheme();
-  const { data } = useCachedData({
+  const { data } = useAppQuery({
     cacheKey: 'tbc_widget_events',
     fetcher: getUpcomingEvent,
     refreshKey,
@@ -890,13 +890,13 @@ const styles = StyleSheet.create({
 import React from 'react';
 import { View } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useAppQuery } from '@/hooks/useAppQuery';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { getEvents } from '../services/eventsApi';
 
 export default function EventsScreen() {
   const { colors } = useTheme();
-  const { data, isLoading: loading, refresh: refetch } = useCachedData({
+  const { data, isLoading: loading, refresh: refetch } = useAppQuery({
     cacheKey: 'tbc_events_list',
     fetcher: getEvents,
   });
@@ -1149,7 +1149,7 @@ export const announcementsModule: ModuleManifest = {
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useCachedData, WIDGET_STALE_TIME } from '@/hooks/useCachedData';
+import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 import { SITE_URL } from '@/constants/config';
 import { request } from '@/services/api/client';
 
@@ -1163,7 +1163,7 @@ async function fetchAnnouncement() {
 
 export function AnnouncementWidget({ refreshKey }: { refreshKey: number }) {
   const { colors } = useTheme();
-  const { data } = useCachedData({
+  const { data } = useAppQuery({
     cacheKey: 'tbc_widget_announcement',
     fetcher: fetchAnnouncement,
     refreshKey,
@@ -1597,11 +1597,11 @@ export const eventsModule: ModuleManifest = {
   <li><strong>No barrel files.</strong> Import directly from source files. Never create <code>index.ts</code> re-exports.</li>
   <li><strong>Import core via <code>@/</code> aliases.</strong> Modules can import from <code>@/components</code>, <code>@/contexts</code>, <code>@/services</code>, <code>@/hooks</code>, <code>@/constants</code>, <code>@/utils</code>. Never import from other modules.</li>
   <li><strong>No inter-module dependencies.</strong> Module A must never import from Module B. If two of your modules need shared utilities, create a <code>modules/_shared/</code> folder for common code. The underscore prefix signals &ldquo;infrastructure, not a module&rdquo; (like <code>_types.ts</code> and <code>_registry.ts</code>). Core utilities (<code>@/utils</code>, <code>@/hooks</code>, etc.) are always available to all modules.</li>
-  <li><strong>IDs are permanent.</strong> Widget <code>id</code> and module <code>id</code> are used as AsyncStorage keys. Never change them after shipping &mdash; you'll lose user preferences.</li>
+  <li><strong>IDs are permanent.</strong> Widget <code>id</code> and module <code>id</code> are used as MMKV keys. Never change them after shipping &mdash; you'll lose user preferences.</li>
   <li><strong>Route stubs are one-liners.</strong> Files in <code>app/</code> for module routes must be a single re-export: <code>export { default } from '@/modules/...'</code>.</li>
   <li><strong>Always use <code>useTheme()</code>.</strong> Never hardcode colors. Import <code>useTheme</code> from <code>@/contexts/ThemeContext</code> and use semantic tokens. See <a href="theme-system.html">Theme System docs</a>.</li>
   <li><strong>Use <code>createLogger()</code> for logging.</strong> Tag pattern: <code>{Module}API</code> for services, <code>{Module}{Name}</code> for components. See <a href="logging.html">Logging docs</a>.</li>
-  <li><strong>Use <code>useCachedData()</code> for data fetching.</strong> The centralized hook handles caching, loading states, and refresh. Prefix cache keys with <code>tbc_{module}_</code>.</li>
+  <li><strong>Use <code>useAppQuery()</code> for data fetching.</strong> The centralized hook handles caching, loading states, and refresh. Prefix cache keys with <code>tbc_{module}_</code>.</li>
   <li><strong>Widgets return <code>null</code> when empty.</strong> Never render an empty card or placeholder. The home screen skips null widgets cleanly.</li>
   <li><strong>Include metadata fields.</strong> Set <code>description</code>, <code>author</code>, <code>authorUrl</code>, and <code>license</code> in every manifest. The setup dashboard displays these on module cards &mdash; they help buyers understand what each module does and where it came from.</li>
   <li><strong>Register companion plugin and apiBase.</strong> Even though they're informational, they make the manifest self-documenting for other developers.</li>

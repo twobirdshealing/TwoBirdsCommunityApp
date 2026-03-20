@@ -47,7 +47,7 @@ export interface TabRegistration {
 // -----------------------------------------------------------------------------
 
 export interface WidgetRegistration {
-  /** Unique stable ID — never change once shipped (used as AsyncStorage key) */
+  /** Unique stable ID — never change once shipped (used as preference key) */
   id: string;
   /** Display title shown in HomeWidget header */
   title: string;

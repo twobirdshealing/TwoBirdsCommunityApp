@@ -36,7 +36,7 @@ import { PageHeader } from '@/components/navigation/PageHeader';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useCachedData } from '@/hooks/useCachedData';
+import { useAppQuery } from '@/hooks/useAppQuery';
 import { coursesApi } from '@/services/api/courses';
 import { Course, CourseLesson, CourseSection, CourseTrack } from '@/types/course';
 import { hapticMedium } from '@/utils/haptics';
@@ -61,7 +61,7 @@ export default function CourseDetailScreen() {
     track: CourseTrack | null;
   }
 
-  const { data, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh, mutate } = useCachedData<CourseDetailData>({
+  const { data, isLoading: loading, isRefreshing: refreshing, error: fetchError, refresh, mutate } = useAppQuery<CourseDetailData>({
     cacheKey: `tbc_course_${slug}`,
     fetcher: async () => {
       const response = await coursesApi.getCourseBySlug(slug);

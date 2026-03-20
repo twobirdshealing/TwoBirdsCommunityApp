@@ -5,7 +5,7 @@
 // Subscribers call their refresh function when the event fires.
 //
 // Used directly by manual-state screens (space page).
-// Used internally by useCachedData via the `invalidateOn` option.
+// Used internally by useAppQuery via the `invalidateOn` option.
 // =============================================================================
 
 /** Type-safe cache event keys — use CACHE_EVENTS.FEEDS instead of raw strings */
