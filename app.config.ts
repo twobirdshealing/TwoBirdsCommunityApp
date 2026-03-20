@@ -1,7 +1,7 @@
 // =============================================================================
 // APP CONFIG - Expo requires this file name (do not rename)
 // =============================================================================
-// Reads SITE_URL from eas.json and wires up deep links automatically.
+// Reads EXPO_PUBLIC_SITE_URL from eas.json and wires up deep links automatically.
 // =============================================================================
 
 import { ExpoConfig, ConfigContext } from 'expo/config';

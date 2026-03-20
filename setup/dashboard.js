@@ -412,7 +412,7 @@ function writeConfigValues(changes) {
   }
 
   // --- eas.json ---
-  if (changes.siteUrl !== undefined || changes.appleId !== undefined || changes.ascAppId !== undefined ||
+  if (changes.siteUrl !== undefined || changes.stagingUrl !== undefined || changes.appleId !== undefined || changes.ascAppId !== undefined ||
       changes.googlePlayTrack !== undefined || changes.googlePlayServiceAccountKeyPath !== undefined) {
     const easJson = readJsonSafe(PATHS.easJson);
     if (easJson) {
@@ -424,6 +424,13 @@ function writeConfigValues(changes) {
           if (!profiles[key].env) profiles[key].env = {};
           profiles[key].env.EXPO_PUBLIC_SITE_URL = changes.siteUrl;
         }
+      }
+      if (changes.stagingUrl !== undefined) {
+        // Update development profile with staging URL
+        if (!easJson.build) easJson.build = {};
+        if (!easJson.build.development) easJson.build.development = {};
+        if (!easJson.build.development.env) easJson.build.development.env = {};
+        easJson.build.development.env.EXPO_PUBLIC_SITE_URL = changes.stagingUrl;
       }
       // Helper: ensure nested path exists in eas.json
       const ensurePath = (...keys) => {

@@ -1083,7 +1083,7 @@
     <ol>
       <li><strong>Install dependencies:</strong> <code>npm install</code></li>
       <li><strong>Set up EAS CLI:</strong> <code>npm install -g eas-cli && eas login && eas init</code></li>
-      <li><strong>Set your site URL</strong> in <code>eas.json</code> &mdash; replace the <code>SITE_URL</code> value in all build profiles</li>
+      <li><strong>Set your site URL</strong> in <code>eas.json</code> &mdash; replace the <code>EXPO_PUBLIC_SITE_URL</code> value in all build profiles</li>
       <li><strong>Set your app name &amp; branding</strong> in <code>constants/config.ts</code> &mdash; update <code>APP_NAME</code> and <code>APP_USER_AGENT</code></li>
       <li><strong>Update <code>app.json</code></strong> &mdash; app name, slug, scheme, bundle IDs, EAS project ID, owner, permission strings</li>
       <li><strong>Update <code>app.config.ts</code></strong> &mdash; edit the YOUR CONFIG section: fallback URL, name, slug</li>
@@ -1110,7 +1110,7 @@
   <tr><th>Value</th><th>What It Does</th><th>Example</th></tr>
   <tr><td><code>APP_NAME</code></td><td>Display name used in UI where server branding isn't available</td><td><code>'My Community'</code></td></tr>
   <tr><td><code>APP_USER_AGENT</code></td><td>User-Agent header sent with API requests</td><td><code>'MyCommunityApp/1.0'</code></td></tr>
-  <tr><td><code>SITE_URL</code></td><td>Derived from eas.json (no fallback — build fails if missing)</td><td><code>'https://community.example.com'</code></td></tr>
+  <tr><td><code>EXPO_PUBLIC_SITE_URL</code></td><td>Derived from eas.json (no fallback — build fails if missing)</td><td><code>'https://community.example.com'</code></td></tr>
   <tr><td colspan="3" style="color:var(--text-secondary);font-style:italic">Feature flags have moved to wp-admin &rarr; TBC Community App &rarr; Features tab. No build-time flags in this file.</td></tr>
 </table>
 
@@ -1144,7 +1144,7 @@
 
 <!-- app.config.ts -->
 <h3>app.config.ts <span class="tag required">Required</span></h3>
-<p>Reads <code>SITE_URL</code> from the environment (set in <code>eas.json</code>) and wires up deep links automatically. Has its own <strong>YOUR CONFIG</strong> section with three things to edit:</p>
+<p>Reads <code>EXPO_PUBLIC_SITE_URL</code> from the environment (set in <code>eas.json</code>) and wires up deep links automatically. Has its own <strong>YOUR CONFIG</strong> section with three things to edit:</p>
 
 <table>
   <tr><th>Value</th><th>What to Change</th></tr>
@@ -1155,13 +1155,13 @@
 
 <!-- eas.json -->
 <h3>eas.json <span class="tag required">Required</span></h3>
-<p><strong>Critical:</strong> <code>SITE_URL</code> must be set in every build profile. The app will not build without it.</p>
+<p><strong>Critical:</strong> <code>EXPO_PUBLIC_SITE_URL</code> must be set in every build profile. The app will not build without it.</p>
 <pre><code>{
   "build": {
-    "development": { "env": { "SITE_URL": "https://your-site.com" } },
-    "preview":     { "env": { "SITE_URL": "https://your-site.com" } },
-    "simulator":   { "env": { "SITE_URL": "https://your-site.com" } },
-    "production":  { "env": { "SITE_URL": "https://your-site.com" } }
+    "development": { "env": { "EXPO_PUBLIC_SITE_URL": "https://your-site.com" } },
+    "preview":     { "env": { "EXPO_PUBLIC_SITE_URL": "https://your-site.com" } },
+    "simulator":   { "env": { "EXPO_PUBLIC_SITE_URL": "https://your-site.com" } },
+    "production":  { "env": { "EXPO_PUBLIC_SITE_URL": "https://your-site.com" } }
   },
   "submit": {
     "production": {
@@ -1751,7 +1751,7 @@ git merge upstream/main</code></pre>
 
 <h3>App Won't Connect to Server</h3>
 <ul>
-  <li>Verify <code>SITE_URL</code> is correct in <code>eas.json</code> — must include <code>https://</code>, no trailing slash</li>
+  <li>Verify <code>EXPO_PUBLIC_SITE_URL</code> is correct in <code>eas.json</code> — must include <code>https://</code>, no trailing slash</li>
   <li>Verify <code>tbc-community-app</code> plugin is installed and <strong>activated</strong> on WordPress</li>
   <li>Test the API directly: visit <code>https://yoursite.com/wp-json/tbc-ca/v1/config</code> in a browser — should return JSON</li>
   <li>Check WordPress permalink settings — must <strong>not</strong> be set to "Plain" (use Post name or any other option)</li>
