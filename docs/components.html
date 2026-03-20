@@ -28,8 +28,8 @@
     <li><a href="#display-components">Display Components</a> &mdash; Avatar, UserDisplayName, HtmlContent, etc.</li>
     <li><a href="#feedback-components">Feedback &amp; State</a> &mdash; LoadingSpinner, EmptyState, ErrorMessage, etc.</li>
     <li><a href="#form-components">Form Components</a> &mdash; DynamicFormField, SelectModal, SocialLinksForm</li>
-    <li><a href="#media-components">Media Components</a> &mdash; YouTubeEmbed, VideoPlayer, MediaViewer, OEmbedPlayer</li>
-    <li><a href="#feature-components">Feature Components</a> &mdash; Feed, Composer, Profile, Space, Course, Member, Message, Register</li>
+    <li><a href="#media-components">Media Components</a> &mdash; YouTubeEmbed, VideoPlayer, MediaViewer, ImageMedia, OEmbedPlayer, LinkPreview</li>
+    <li><a href="#feature-components">Feature Components</a> &mdash; Feed, Composer, Profile, Space, Course, Home, Notification, Member, Message, Register</li>
     <li><a href="#import-rules">Import Rules &amp; Conventions</a></li>
   </ol>
 </div>
@@ -117,7 +117,7 @@
 <!-- ================================================================== -->
 
 <p>Colors are synced from the WordPress site's Fluent Community theme. They flow through:</p>
-<pre><code>Fluent Community (WordPress) → REST API (/tbc-ca/v1/theme/colors) → ThemeContext → useTheme().colors</code></pre>
+<pre><code>Fluent Community (WordPress) &rarr; REST API (/tbc-ca/v1/theme/colors) &rarr; ThemeContext &rarr; useTheme().colors</code></pre>
 
 <div class="callout callout-warn">
   <strong>Never hardcode colors.</strong> Always use <code>const { colors } = useTheme()</code> inside components.
@@ -184,7 +184,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>Button <span class="tag core">Core</span></h4>
   <span class="file-path">components/common/Button.tsx</span>
-  <p>Unified button component with 4 variants, 2 sizes, loading/disabled states, and optional icon. Built on <code>AnimatedPressable</code> for consistent spring-scale press feedback.</p>
+  <p>Unified button component with 4 variants, 2 sizes, loading/disabled states, and optional icon. Built on <code>AnimatedPressable</code> for consistent spring-scale press feedback. Extends <code>AnimatedPressableProps</code> so all pressable props (onPress, disabled, etc.) are accepted.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -195,6 +195,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
     <tr><td>disabled</td><td>boolean</td><td>false</td><td>Disable (also auto-set when loading)</td></tr>
     <tr><td>icon</td><td>Ionicons name</td><td>&mdash;</td><td>Icon left of title</td></tr>
     <tr><td>iconOnly</td><td>boolean</td><td>false</td><td>Circular icon-only button (hides title)</td></tr>
+    <tr><td>iconColor</td><td>string</td><td>&mdash;</td><td>Override icon color</td></tr>
     <tr><td>style</td><td>ViewStyle</td><td>&mdash;</td><td>Override container style</td></tr>
     <tr><td>textStyle</td><td>TextStyle</td><td>&mdash;</td><td>Override text style</td></tr>
   </table>
@@ -245,7 +246,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>TextInputField <span class="tag core">Core</span></h4>
   <span class="file-path">components/common/TextInputField.tsx</span>
-  <p>Themed form input with optional label, error state, and password toggle. For standard forms (login, registration, profile edit). <em>Not</em> for chat inputs, search bars, or verification code inputs.</p>
+  <p>Themed form input with optional label, error state, and password toggle. For standard forms (login, registration, profile edit). <em>Not</em> for chat inputs, search bars, or verification code inputs. Uses <code>forwardRef</code> so you can pass a ref for focus management.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -254,7 +255,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
     <tr><td>password</td><td>boolean</td><td>false</td><td>Adds show/hide toggle button</td></tr>
     <tr><td>containerStyle</td><td>ViewStyle</td><td>&mdash;</td><td>Override container style</td></tr>
     <tr><td>inputStyle</td><td>ViewStyle</td><td>&mdash;</td><td>Override input style</td></tr>
-    <tr><td>...rest</td><td>TextInputProps</td><td>&mdash;</td><td>All React Native TextInput props</td></tr>
+    <tr><td>...rest</td><td>TextInputProps</td><td>&mdash;</td><td>All React Native TextInput props (except style)</td></tr>
   </table>
 
 <pre><code>import { TextInputField } from '@/components/common/TextInputField';
@@ -291,7 +292,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>AnimatedPressable <span class="tag core">Core</span></h4>
   <span class="file-path">components/common/AnimatedPressable.tsx</span>
-  <p>Pressable wrapper with spring-scale animation and haptic feedback. The foundation for <code>Button</code> and all tappable cards/widgets.</p>
+  <p>Pressable wrapper with Reanimated spring-scale animation and haptic feedback. The foundation for <code>Button</code> and all tappable cards/widgets. Uses <code>forwardRef</code>.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -339,6 +340,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
     <tr><td>onRightPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Right button handler</td></tr>
     <tr><td>rightBadgeCount</td><td>number</td><td>&mdash;</td><td>Badge on right icon</td></tr>
     <tr><td>rightElement</td><td>ReactNode</td><td>&mdash;</td><td>Custom right element (overrides rightIcon)</td></tr>
+    <tr><td>includeSafeArea</td><td>boolean</td><td>false</td><td>Include safe area top padding</td></tr>
   </table>
 
 <pre><code>&lt;PageHeader
@@ -353,7 +355,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>TopHeader <span class="tag shared">Shared</span></h4>
   <span class="file-path">components/navigation/TopHeader.tsx</span>
-  <p>Main app header with logo/title and icon buttons for messages, notifications, cart, and user avatar menu.</p>
+  <p>Main app header with logo/title and icon buttons for messages, notifications, and user avatar menu. Reads unread counts from <code>UnreadCountsContext</code>. Supports module-registered header icons via the module system.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -372,9 +374,31 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
     <tr><td>icon</td><td>Ionicons name</td><td>&mdash;</td><td>Icon to display</td></tr>
     <tr><td>onPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Press handler</td></tr>
-    <tr><td>badgeCount</td><td>number</td><td>&mdash;</td><td>Badge count (red circle)</td></tr>
+    <tr><td>badgeCount</td><td>number</td><td>0</td><td>Badge count (red circle)</td></tr>
     <tr><td>size</td><td>number</td><td>24</td><td>Icon size</td></tr>
     <tr><td>color</td><td>string</td><td>&mdash;</td><td>Icon color override</td></tr>
+    <tr><td>accessibilityLabel</td><td>string</td><td>&mdash;</td><td>Accessibility label for screen readers</td></tr>
+  </table>
+</div>
+
+<!-- UserMenu -->
+<div class="component-card">
+  <h4>UserMenu <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/navigation/UserMenu.tsx</span>
+  <p>Dropdown menu triggered from the avatar in <code>TopHeader</code>. Displays profile preview and navigation to: My Profile, My Spaces, Directory, Bookmarks, Courses, Notification Settings, Privacy Policy, and Logout. Supports module-registered menu items via the module system.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide menu</td></tr>
+    <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close handler</td></tr>
+    <tr><td>user</td><td>{ displayName, username, email?, avatar? }</td><td>&mdash;</td><td>Current user data</td></tr>
+    <tr><td>onProfilePress</td><td>() =&gt; void</td><td>&mdash;</td><td>Navigate to profile</td></tr>
+    <tr><td>onMySpacesPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Navigate to My Spaces</td></tr>
+    <tr><td>onDirectoryPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Navigate to Directory</td></tr>
+    <tr><td>onBookmarksPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Navigate to Bookmarks</td></tr>
+    <tr><td>onCoursesPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Navigate to Courses</td></tr>
+    <tr><td>onNotificationSettingsPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Navigate to Notification Settings</td></tr>
+    <tr><td>onLogout</td><td>() =&gt; void</td><td>&mdash;</td><td>Logout handler</td></tr>
   </table>
 </div>
 
@@ -382,7 +406,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>ScreenHeader <span class="tag shared">Shared</span></h4>
   <span class="file-path">components/common/ScreenHeader.tsx</span>
-  <p>Simple close button + centered title. Used inside modals and bottom sheets.</p>
+  <p>Simple close button + centered title. Used inside modals and bottom sheets (CommentSheet, CreatePostContent).</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -395,7 +419,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>TabBar <span class="tag shared">Shared</span></h4>
   <span class="file-path">components/common/TabBar.tsx</span>
-  <p>Horizontal tab navigation with animated active indicator. Generic &mdash; works with any key type.</p>
+  <p>Horizontal tab navigation with active indicator. Generic &mdash; works with any key type. Auto-hides when only one tab is present.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -411,23 +435,55 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 /&gt;</code></pre>
 </div>
 
+<!-- TabActivityWrapper -->
+<div class="component-card">
+  <h4>TabActivityWrapper <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/TabActivityWrapper.tsx</span>
+  <p>Wraps tab screen content with React 19.2 <code>&lt;Activity&gt;</code> to pause effects on hidden tabs while preserving component state (scroll position, form inputs). When a tab is hidden, effects unmount and re-renders are deferred; when visible, effects re-mount with preserved state.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>children</td><td>ReactNode</td><td>&mdash;</td><td>Tab screen content</td></tr>
+  </table>
+
+<pre><code>import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
+
+export default function HomeScreen() {
+  return (
+    &lt;TabActivityWrapper&gt;
+      &lt;View style={styles.container}&gt;...&lt;/View&gt;
+    &lt;/TabActivityWrapper&gt;
+  );
+}</code></pre>
+</div>
+
 <!-- BottomSheet -->
 <div class="component-card">
   <h4>BottomSheet <span class="tag shared">Shared</span></h4>
   <span class="file-path">components/common/BottomSheet.tsx</span>
-  <p>Slide-up modal built on <code>@gorhom/bottom-sheet</code> with keyboard handling, backdrop, and optional title/footer.</p>
+  <p>Slide-up modal built on <code>@gorhom/bottom-sheet</code> with keyboard handling, backdrop, and optional title/footer. Also re-exports <code>BottomSheetFlatList</code>, <code>BottomSheetScrollView</code>, <code>BottomSheetTextInput</code>, and <code>BottomSheetFooter</code> for use inside sheets.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
     <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide the sheet</td></tr>
     <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close handler</td></tr>
-    <tr><td>heightPercentage</td><td>number</td><td>0.9</td><td>Sheet height (0-1)</td></tr>
+    <tr><td>heightPercentage</td><td>number</td><td>60</td><td>Sheet height as percentage (0&ndash;100)</td></tr>
     <tr><td>title</td><td>string</td><td>&mdash;</td><td>Optional header title</td></tr>
-    <tr><td>footerComponent</td><td>React.FC</td><td>&mdash;</td><td>Sticky footer</td></tr>
+    <tr><td>enableSwipeToClose</td><td>boolean</td><td>&mdash;</td><td>Allow swiping down to close</td></tr>
+    <tr><td>footerComponent</td><td>React.FC&lt;BottomSheetFooterProps&gt;</td><td>&mdash;</td><td>Sticky footer</td></tr>
     <tr><td>children</td><td>ReactNode</td><td>&mdash;</td><td>Sheet content</td></tr>
   </table>
 
-  <p>Use the companion <code>SheetInput</code> render-prop wrapper to register text inputs with the sheet's keyboard handling.</p>
+  <p>Use the companion <code>SheetInput</code> render-prop wrapper to register text inputs with the sheet's keyboard handling:</p>
+<pre><code>import { BottomSheet, SheetInput } from '@/components/common/BottomSheet';
+
+&lt;BottomSheet visible={visible} onClose={onClose}&gt;
+  &lt;SheetInput&gt;
+    {(inputProps) =&gt; (
+      &lt;TextInput {...inputProps} value={text} onChangeText={setText} /&gt;
+    )}
+  &lt;/SheetInput&gt;
+&lt;/BottomSheet&gt;</code></pre>
 </div>
 
 <!-- ================================================================== -->
@@ -438,11 +494,11 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>Avatar <span class="tag core">Core</span></h4>
   <span class="file-path">components/common/Avatar.tsx</span>
-  <p>User profile image with initials fallback and optional online indicator dot.</p>
+  <p>User profile image with initials fallback and optional online indicator dot. Uses <code>expo-image</code> for optimized loading.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
-    <tr><td>source</td><td>string</td><td>&mdash;</td><td>Image URL</td></tr>
+    <tr><td>source</td><td>string | null</td><td>&mdash;</td><td>Image URL (shows placeholder if null/undefined)</td></tr>
     <tr><td>size</td><td>'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl'</td><td>'md'</td><td>Size preset (uses sizing.avatar tokens)</td></tr>
     <tr><td>online</td><td>boolean</td><td>false</td><td>Show green online dot</td></tr>
     <tr><td>fallback</td><td>string</td><td>&mdash;</td><td>Initials text when no image</td></tr>
@@ -462,7 +518,10 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
     <tr><td>badgeSlugs</td><td>string[]</td><td>&mdash;</td><td>Profile badge slugs to render</td></tr>
     <tr><td>size</td><td>'sm' | 'md' | 'lg' | 'xl'</td><td>'md'</td><td>Text size preset</td></tr>
     <tr><td>bold</td><td>boolean</td><td>true</td><td>Bold weight</td></tr>
+    <tr><td>center</td><td>boolean</td><td>false</td><td>Center-align the name</td></tr>
+    <tr><td>numberOfLines</td><td>number</td><td>&mdash;</td><td>Limit text to N lines</td></tr>
     <tr><td>nameColor</td><td>string</td><td>&mdash;</td><td>Override text color</td></tr>
+    <tr><td>style</td><td>ViewStyle</td><td>&mdash;</td><td>Override container style</td></tr>
   </table>
 </div>
 
@@ -470,7 +529,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>HtmlContent <span class="tag core">Core</span></h4>
   <span class="file-path">components/common/HtmlContent.tsx</span>
-  <p>Rich HTML renderer with theme-aware styling, deep linking (profiles, spaces), image galleries, and YouTube embeds.</p>
+  <p>Rich HTML renderer with theme-aware styling, deep linking (profiles, spaces, posts, courses), and community URL routing via <code>mapUrlToRoute()</code>. Non-community URLs open externally.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -478,7 +537,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
     <tr><td>contentWidth</td><td>number</td><td>&mdash;</td><td>Available width for layout</td></tr>
     <tr><td>baseFontSize</td><td>number</td><td>15</td><td>Base font size</td></tr>
     <tr><td>selectable</td><td>boolean</td><td>false</td><td>Allow text selection</td></tr>
-    <tr><td>onLinkNavigate</td><td>() =&gt; void</td><td>&mdash;</td><td>Called when link navigation happens</td></tr>
+    <tr><td>onLinkNavigate</td><td>() =&gt; void</td><td>&mdash;</td><td>Called before in-app navigation (e.g., to close a sheet)</td></tr>
   </table>
 </div>
 
@@ -486,11 +545,11 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>VerifiedBadge <span class="tag core">Core</span></h4>
   <span class="file-path">components/common/VerifiedBadge.tsx</span>
-  <p>Inline checkmark badge next to display names. Uses <code>colors.info</code> color.</p>
+  <p>Inline checkmark badge next to display names. Uses <code>MaterialCommunityIcons</code> "check-decagram" icon in <code>colors.info</code> color.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
-    <tr><td>size</td><td>number</td><td>14</td><td>Badge size in pixels</td></tr>
+    <tr><td>size</td><td>number</td><td>16</td><td>Badge size in pixels</td></tr>
   </table>
 </div>
 
@@ -528,9 +587,10 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
-    <tr><td>icon</td><td>Ionicons name</td><td>&mdash;</td><td>Icon above message</td></tr>
+    <tr><td>icon</td><td>Ionicons name</td><td>'mail-open-outline'</td><td>Icon above message</td></tr>
+    <tr><td>iconColor</td><td>string</td><td>&mdash;</td><td>Icon color override (defaults to textTertiary)</td></tr>
     <tr><td>title</td><td>string</td><td>&mdash;</td><td>Title text</td></tr>
-    <tr><td>message</td><td>string</td><td>&mdash;</td><td>Description text</td></tr>
+    <tr><td>message</td><td>string</td><td><em>required</em></td><td>Description text</td></tr>
     <tr><td>actionLabel</td><td>string</td><td>&mdash;</td><td>Action button text</td></tr>
     <tr><td>onAction</td><td>() =&gt; void</td><td>&mdash;</td><td>Action button handler</td></tr>
   </table>
@@ -552,10 +612,23 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
-    <tr><td>message</td><td>string</td><td>&mdash;</td><td>Error message text</td></tr>
+    <tr><td>message</td><td>string</td><td><em>required</em></td><td>Error message text</td></tr>
     <tr><td>onRetry</td><td>() =&gt; void</td><td>&mdash;</td><td>Retry button handler (shows button when set)</td></tr>
     <tr><td>fullScreen</td><td>boolean</td><td>true</td><td>Center in full screen</td></tr>
-    <tr><td>title</td><td>string</td><td>&mdash;</td><td>Error title text</td></tr>
+    <tr><td>title</td><td>string</td><td>'Oops!'</td><td>Error title text</td></tr>
+  </table>
+</div>
+
+<!-- StartupErrorScreen -->
+<div class="component-card">
+  <h4>StartupErrorScreen <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/common/StartupErrorScreen.tsx</span>
+  <p>Full-screen error gate shown when essential startup config cannot be loaded (from server or cache). Displays app logo, error message, and retry button. Used by <code>_layout.tsx</code> after the maintenance check.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>onRetry</td><td>() =&gt; void</td><td>&mdash;</td><td>Retry handler</td></tr>
+    <tr><td>isRetrying</td><td>boolean</td><td>&mdash;</td><td>Show loading state on retry button</td></tr>
   </table>
 </div>
 
@@ -588,12 +661,12 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>DynamicFormField <span class="tag core">Core</span></h4>
   <span class="file-path">components/common/DynamicFormField.tsx</span>
-  <p>Polymorphic form field that renders the correct input for any field type: text, email, date, phone, radio, select, checkbox, textarea, password. Used by the registration wizard and profile edit.</p>
+  <p>Polymorphic form field that renders the correct input for any field type: text, email, date, phone, number, url, textarea, select, gender, radio, password, inline_checkbox, and multiselect/checkbox chips. Used by the registration wizard and profile edit.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
     <tr><td>fieldKey</td><td>string</td><td>&mdash;</td><td>Field identifier</td></tr>
-    <tr><td>field</td><td>FormFieldConfig</td><td>&mdash;</td><td>Field configuration (type, label, options, etc.)</td></tr>
+    <tr><td>field</td><td>FormFieldConfig</td><td>&mdash;</td><td>Field configuration (type, label, options, required, inline_label, instructions)</td></tr>
     <tr><td>value</td><td>any</td><td>&mdash;</td><td>Current field value</td></tr>
     <tr><td>onChange</td><td>(value: any) =&gt; void</td><td>&mdash;</td><td>Change handler</td></tr>
     <tr><td>error</td><td>string</td><td>&mdash;</td><td>Validation error message</td></tr>
@@ -612,7 +685,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
     <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide modal</td></tr>
     <tr><td>title</td><td>string</td><td>&mdash;</td><td>Modal title</td></tr>
     <tr><td>options</td><td>string[]</td><td>&mdash;</td><td>Available options</td></tr>
-    <tr><td>selectedValue</td><td>string</td><td>&mdash;</td><td>Currently selected</td></tr>
+    <tr><td>selectedValue</td><td>string | undefined</td><td>&mdash;</td><td>Currently selected</td></tr>
     <tr><td>onSelect</td><td>(value: string) =&gt; void</td><td>&mdash;</td><td>Selection handler</td></tr>
     <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close handler</td></tr>
   </table>
@@ -652,8 +725,8 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
-    <tr><td>avatarSource</td><td>string</td><td>&mdash;</td><td>Avatar image URL</td></tr>
-    <tr><td>coverSource</td><td>string</td><td>&mdash;</td><td>Cover image URL</td></tr>
+    <tr><td>avatarSource</td><td>string | null</td><td>&mdash;</td><td>Avatar image URL</td></tr>
+    <tr><td>coverSource</td><td>string | null</td><td>&mdash;</td><td>Cover image URL</td></tr>
     <tr><td>fallbackName</td><td>string</td><td>&mdash;</td><td>Initials fallback</td></tr>
     <tr><td>onAvatarPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Avatar tap handler (opens picker)</td></tr>
     <tr><td>onCoverPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Cover tap handler (opens picker)</td></tr>
@@ -666,14 +739,15 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>DropdownMenu <span class="tag shared">Shared</span></h4>
   <span class="file-path">components/common/DropdownMenu.tsx</span>
-  <p>Modal-based dropdown menu with icon + label items. Supports destructive items styled in red.</p>
+  <p>Modal-based dropdown menu with icon + label items. Supports destructive items styled in red. Two positioning modes: default (top-right with offset) or anchored near a trigger button.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
     <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide menu</td></tr>
     <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close handler</td></tr>
-    <tr><td>items</td><td>DropdownMenuItem[]</td><td>&mdash;</td><td>Menu items with icon, label, onPress, destructive flag</td></tr>
-    <tr><td>anchor</td><td>{top, right}</td><td>&mdash;</td><td>Position anchor</td></tr>
+    <tr><td>items</td><td>DropdownMenuItem[]</td><td>&mdash;</td><td>Menu items (key, label, icon, onPress, destructive?, disabled?)</td></tr>
+    <tr><td>topOffset</td><td>number</td><td>100</td><td>Top offset for default (non-anchored) positioning</td></tr>
+    <tr><td>anchor</td><td>{ top, right }</td><td>&mdash;</td><td>Absolute position anchor (overrides topOffset)</td></tr>
   </table>
 </div>
 
@@ -681,16 +755,16 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>ReportModal <span class="tag shared">Shared</span></h4>
   <span class="file-path">components/common/ReportModal.tsx</span>
-  <p>Modal for reporting posts and comments to moderators. Radio-style reason picker with 6 options (Spam, Harassment, Misinformation, Inappropriate Content, Hate Speech, Other), optional explanation text field, and submit button. Uses Fluent Community Pro&rsquo;s built-in moderation API &mdash; server handles duplicates, moderator protection, and notification.</p>
+  <p>Modal for reporting posts and comments to moderators. Radio-style reason picker with 6 options (Spam, Harassment or Bullying, Misinformation, Inappropriate Content, Hate Speech, Other), optional explanation text field, and submit button. Uses Fluent Community Pro's built-in moderation API &mdash; server handles duplicates, moderator protection, and notification.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
     <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide modal</td></tr>
     <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close handler (resets state)</td></tr>
-    <tr><td>contentType</td><td>&quot;post&quot; | &quot;comment&quot;</td><td>&mdash;</td><td>Type of content being reported</td></tr>
+    <tr><td>contentType</td><td>'post' | 'comment'</td><td>&mdash;</td><td>Type of content being reported</td></tr>
     <tr><td>postId</td><td>number</td><td>&mdash;</td><td>Feed post ID (parent post for comments)</td></tr>
     <tr><td>parentId</td><td>number</td><td>&mdash;</td><td>Comment ID (only for comment reports)</td></tr>
-    <tr><td>userId</td><td>number</td><td>&mdash;</td><td>Content author&rsquo;s user ID</td></tr>
+    <tr><td>userId</td><td>number</td><td>&mdash;</td><td>Content author's user ID</td></tr>
   </table>
 </div>
 
@@ -700,11 +774,27 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 
 <p>All live in <span class="file-path">components/media/</span>.</p>
 
+<!-- ImageMedia -->
+<div class="component-card">
+  <h4>ImageMedia <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/media/ImageMedia.tsx</span>
+  <p>Responsive image display for feed post images. Handles aspect ratio sizing, loading placeholder, error fallback, and HTTP URLs. Tappable to open in MediaViewer.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>url</td><td>string</td><td>&mdash;</td><td>Image URL</td></tr>
+    <tr><td>width</td><td>number</td><td>&mdash;</td><td>Original image width</td></tr>
+    <tr><td>height</td><td>number</td><td>&mdash;</td><td>Original image height</td></tr>
+    <tr><td>maxHeight</td><td>number</td><td>&mdash;</td><td>Maximum display height</td></tr>
+    <tr><td>onPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Tap handler (open gallery)</td></tr>
+  </table>
+</div>
+
 <!-- YouTubeEmbed -->
 <div class="component-card">
   <h4>YouTubeEmbed <span class="tag shared">Shared</span></h4>
   <span class="file-path">components/media/YouTubeEmbed.tsx</span>
-  <p>Native YouTube player using <code>react-native-youtube-iframe</code>.</p>
+  <p>Native YouTube player using <code>react-native-youtube-iframe</code>. Falls back gracefully if the package is not installed.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -717,12 +807,26 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>VideoPlayer <span class="tag shared">Shared</span></h4>
   <span class="file-path">components/media/VideoPlayer.tsx</span>
-  <p>Native video playback using <code>expo-video</code> with poster image support.</p>
+  <p>Native video playback using <code>expo-video</code> (<code>VideoView</code>) with poster image support.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
     <tr><td>url</td><td>string</td><td>&mdash;</td><td>Video URL</td></tr>
     <tr><td>posterUrl</td><td>string</td><td>&mdash;</td><td>Poster/thumbnail image URL</td></tr>
+    <tr><td>onPlay</td><td>() =&gt; void</td><td>&mdash;</td><td>Called when playback starts</td></tr>
+    <tr><td>onEnd</td><td>() =&gt; void</td><td>&mdash;</td><td>Called when playback ends</td></tr>
+  </table>
+</div>
+
+<!-- PlayButtonOverlay -->
+<div class="component-card">
+  <h4>PlayButtonOverlay <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/media/PlayButtonOverlay.tsx</span>
+  <p>Presentational play button overlay for video thumbnails. Two variants: YouTube (red pill + badge) and generic video (white circle). Parent handles press events.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>variant</td><td>'youtube' | 'video'</td><td>'video'</td><td>Visual style</td></tr>
   </table>
 </div>
 
@@ -730,14 +834,30 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>MediaViewer <span class="tag shared">Shared</span></h4>
   <span class="file-path">components/media/MediaViewer.tsx</span>
-  <p>Full-screen image gallery with swipe navigation, pinch-to-zoom, download, and share.</p>
+  <p>Full-screen image gallery with swipe navigation, pinch-to-zoom (Reanimated + Gesture Handler), download to camera roll, and share.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
     <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide viewer</td></tr>
-    <tr><td>images</td><td>MediaViewerImage[]</td><td>&mdash;</td><td>Array of image objects</td></tr>
+    <tr><td>images</td><td>MediaViewerImage[]</td><td>&mdash;</td><td>Array of { url, width?, height? }</td></tr>
     <tr><td>initialIndex</td><td>number</td><td>0</td><td>Starting image index</td></tr>
     <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close handler</td></tr>
+  </table>
+</div>
+
+<!-- LinkPreview -->
+<div class="component-card">
+  <h4>LinkPreview <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/media/LinkPreview.tsx</span>
+  <p>Rich preview card for external links (articles, Instagram, TikTok, etc.). Shows thumbnail, title, description, and domain. Tapping opens the link in browser or native app.</p>
+
+  <table class="prop-table">
+    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td>url</td><td>string</td><td>&mdash;</td><td>Link URL</td></tr>
+    <tr><td>thumbnail</td><td>string</td><td>&mdash;</td><td>Preview thumbnail image</td></tr>
+    <tr><td>title</td><td>string</td><td>&mdash;</td><td>Link title</td></tr>
+    <tr><td>description</td><td>string</td><td>&mdash;</td><td>Link description</td></tr>
+    <tr><td>provider</td><td>string</td><td>&mdash;</td><td>Provider name</td></tr>
   </table>
 </div>
 
@@ -749,7 +869,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
-    <tr><td>html</td><td>string</td><td>&mdash;</td><td>oEmbed HTML from <code>lesson.meta.media.html</code></td></tr>
+    <tr><td>html</td><td>string</td><td>&mdash;</td><td>oEmbed HTML (typically an iframe)</td></tr>
   </table>
 </div>
 
@@ -768,6 +888,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
   <tr><td>CommentSheet</td><td><span class="file-path">components/feed/CommentSheet.tsx</span></td><td>Full-screen comments panel with rich text editor; comment actions (copy link, pin, edit, delete, report)</td></tr>
   <tr><td>CommentItem</td><td><span class="file-path">components/feed/CommentItem.tsx</span></td><td>Single comment with reactions and reply</td></tr>
   <tr><td>ReactionPicker</td><td><span class="file-path">components/feed/ReactionPicker.tsx</span></td><td>Emoji reaction picker (multi-reaction)</td></tr>
+  <tr><td>ReactionIcon</td><td><span class="file-path">components/feed/ReactionIcon.tsx</span></td><td>Single reaction icon renderer (emoji or custom image)</td></tr>
   <tr><td>SurveyCard</td><td><span class="file-path">components/feed/SurveyCard.tsx</span></td><td>Poll/survey embedded in feed</td></tr>
   <tr><td>WelcomeBanner</td><td><span class="file-path">components/feed/WelcomeBanner.tsx</span></td><td>Welcome banner at top of feed</td></tr>
 </table>
@@ -779,8 +900,14 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
   <tr><td>QuickPostBox</td><td><span class="file-path">components/composer/QuickPostBox.tsx</span></td><td>"What's happening?" placeholder that opens composer</td></tr>
   <tr><td>ComposerToolbar</td><td><span class="file-path">components/composer/ComposerToolbar.tsx</span></td><td>Bottom toolbar: image, GIF, poll, video, submit</td></tr>
   <tr><td>MarkdownToolbar</td><td><span class="file-path">components/composer/MarkdownToolbar.tsx</span></td><td>Rich text formatting buttons (bold, italic, lists, etc.)</td></tr>
+  <tr><td>MediaPreview</td><td><span class="file-path">components/composer/MediaPreview.tsx</span></td><td>Preview grid for attached images in composer</td></tr>
+  <tr><td>GifPreview</td><td><span class="file-path">components/composer/GifPreview.tsx</span></td><td>Preview for attached GIF in composer</td></tr>
+  <tr><td>VideoPreview</td><td><span class="file-path">components/composer/VideoPreview.tsx</span></td><td>Preview for attached video in composer</td></tr>
+  <tr><td>PollPreview</td><td><span class="file-path">components/composer/PollPreview.tsx</span></td><td>Preview for attached poll in composer</td></tr>
   <tr><td>GifPickerModal</td><td><span class="file-path">components/composer/GifPickerModal.tsx</span></td><td>GIF search modal (Giphy API)</td></tr>
+  <tr><td>VideoAttachModal</td><td><span class="file-path">components/composer/VideoAttachModal.tsx</span></td><td>Bottom sheet for attaching video via URL with oEmbed preview</td></tr>
   <tr><td>PollBuilderSheet</td><td><span class="file-path">components/composer/PollBuilderSheet.tsx</span></td><td>Bottom sheet for creating poll options</td></tr>
+  <tr><td>SpaceSelector</td><td><span class="file-path">components/composer/SpaceSelector.tsx</span></td><td>Modal dropdown to select a space for posting</td></tr>
 </table>
 
 <h3>Profile</h3>
@@ -789,6 +916,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
   <tr><td>ProfileHeader</td><td><span class="file-path">components/profile/ProfileHeader.tsx</span></td><td>Hero section: cover, avatar, name, bio, actions</td></tr>
   <tr><td>ProfileMenu</td><td><span class="file-path">components/profile/ProfileMenu.tsx</span></td><td>Actions menu (edit, message, block, report)</td></tr>
   <tr><td>AboutTab</td><td><span class="file-path">components/profile/AboutTab.tsx</span></td><td>About section with custom fields</td></tr>
+  <tr><td>CommentCard</td><td><span class="file-path">components/profile/CommentCard.tsx</span></td><td>Profile comments tab item: timeline-style with dashed connector line, links to parent post</td></tr>
 </table>
 
 <h3>Space</h3>
@@ -810,6 +938,24 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
   <tr><td>QuizView</td><td><span class="file-path">components/course/QuizView.tsx</span></td><td>Quiz-taking UI: radio/checkbox questions, haptic feedback, score display, per-question breakdown, retake support</td></tr>
   <tr><td>CompletionCelebration</td><td><span class="file-path">components/course/CompletionCelebration.tsx</span></td><td>Modal with confetti animation shown on course completion (Reanimated particles, trophy icon, stats)</td></tr>
   <tr><td>CourseLockScreen</td><td><span class="file-path">components/course/CourseLockScreen.tsx</span></td><td>Lock screen for restricted/private courses: custom HTML content, request access button, pending state</td></tr>
+</table>
+
+<h3>Home (Widget System)</h3>
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>HomeWidget</td><td><span class="file-path">components/home/HomeWidget.tsx</span></td><td>Shared wrapper for home page widget sections: title, icon, "See all" link, edit mode (drag handle, toggle switch)</td></tr>
+  <tr><td>EditableWidgetWrapper</td><td><span class="file-path">components/home/EditableWidgetWrapper.tsx</span></td><td>Edit overlay for headerless widgets (e.g., WelcomeBanner) that don't use HomeWidget</td></tr>
+  <tr><td>EditModeBar</td><td><span class="file-path">components/home/EditModeBar.tsx</span></td><td>Top bar during widget editing with Reset and Done actions</td></tr>
+  <tr><td>WelcomeBannerWidget</td><td><span class="file-path">components/home/WelcomeBannerWidget.tsx</span></td><td>Self-contained welcome banner widget: fetches data, handles dismiss (7-day expiry), cached</td></tr>
+  <tr><td>CoursesWidget</td><td><span class="file-path">components/home/CoursesWidget.tsx</span></td><td>Enrolled courses horizontal carousel with progress bars, cached</td></tr>
+  <tr><td>widgetRegistry.ts</td><td><span class="file-path">components/home/widgetRegistry.ts</span></td><td>Core widget definitions merged with module widgets via <code>getModuleWidgets()</code></td></tr>
+</table>
+
+<h3>Notification</h3>
+<table>
+  <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>NotificationCard</td><td><span class="file-path">components/notification/NotificationCard.tsx</span></td><td>Single notification: unread indicator, actor avatar, type icon overlay, message, timestamp, swipe-to-read</td></tr>
+  <tr><td>NotificationTypeIcon</td><td><span class="file-path">components/notification/NotificationTypeIcon.tsx</span></td><td>Icon and color for each notification type. Renders actual reaction icon for reaction notifications</td></tr>
 </table>
 
 <h3>Member</h3>
@@ -887,17 +1033,18 @@ backgroundColor: withOpacity(colors.primary, 0.12)</code></pre>
 <table>
   <tr><th>Directory</th><th>Purpose</th></tr>
   <tr><td><span class="file-path">components/common/</span></td><td>Reusable across features (buttons, inputs, feedback)</td></tr>
-  <tr><td><span class="file-path">components/navigation/</span></td><td>Headers, tab bars, navigation elements</td></tr>
-  <tr><td><span class="file-path">components/media/</span></td><td>Video, image, gallery components</td></tr>
+  <tr><td><span class="file-path">components/navigation/</span></td><td>Headers, user menu, navigation elements</td></tr>
+  <tr><td><span class="file-path">components/media/</span></td><td>Video, image, gallery, link preview components</td></tr>
   <tr><td><span class="file-path">components/composer/</span></td><td>Post creation flow</td></tr>
   <tr><td><span class="file-path">components/feed/</span></td><td>Feed cards, comments, reactions</td></tr>
   <tr><td><span class="file-path">components/profile/</span></td><td>Profile views and editing</td></tr>
   <tr><td><span class="file-path">components/space/</span></td><td>Space cards, headers, access control</td></tr>
-  <tr><td><span class="file-path">components/course/</span></td><td>Course cards, progress, lessons</td></tr>
+  <tr><td><span class="file-path">components/course/</span></td><td>Course cards, progress, lessons, quizzes</td></tr>
+  <tr><td><span class="file-path">components/home/</span></td><td>Home screen widgets and edit mode</td></tr>
+  <tr><td><span class="file-path">components/notification/</span></td><td>Notification cards and type icons</td></tr>
   <tr><td><span class="file-path">components/member/</span></td><td>Member directory cards</td></tr>
   <tr><td><span class="file-path">components/message/</span></td><td>Chat UI components</td></tr>
   <tr><td><span class="file-path">components/register/</span></td><td>Registration verification step components</td></tr>
-  <tr><td><span class="file-path">components/settings/</span></td><td>Settings screens</td></tr>
   <tr><td><span class="file-path">constants/</span></td><td>Design tokens, config, colors</td></tr>
   <tr><td><span class="file-path">contexts/</span></td><td>React contexts (Auth, Theme, Pusher)</td></tr>
   <tr><td><span class="file-path">hooks/</span></td><td>Custom hooks</td></tr>

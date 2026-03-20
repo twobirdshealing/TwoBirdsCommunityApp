@@ -52,8 +52,8 @@
   <li><strong>Category filtering</strong> &mdash; horizontal chip bar to filter by course topic</li>
   <li><strong>Course detail</strong> &mdash; sections with collapsible lesson lists, progress tracking</li>
   <li><strong>Lesson viewer</strong> &mdash; HTML content, YouTube videos, documents, comments</li>
-  <li><strong>Lock screens</strong> &mdash; custom lock screens for private/restricted courses with join-request support</li>
-  <li><strong>Quizzes</strong> &mdash; full quiz lesson type with multiple choice, scoring, pass/fail, retake</li>
+  <li><strong>Lock screens</strong> &mdash; custom lock screens for private/restricted courses with join-request support and enroll fallback</li>
+  <li><strong>Quizzes</strong> &mdash; full quiz lesson type with single and multiple choice, scoring, pass/fail, retake</li>
   <li><strong>Media players</strong> &mdash; YouTube, Vimeo, Wistia, and other oEmbed providers</li>
   <li><strong>Progress</strong> &mdash; per-lesson completion with optimistic updates</li>
   <li><strong>Completion celebration</strong> &mdash; confetti modal when all lessons are completed</li>
@@ -77,19 +77,30 @@
 <h3>Course</h3>
 <pre><code>interface Course {
   id: number;
+  created_by: string;
+  parent_id: number | string | null;
   title: string;
   slug: string;
-  description: string;
+  logo: string | null;
   cover_photo: string | null;
-  status: 'published' | 'draft';
+  description: string;
+  type: 'course';
   privacy: 'public' | 'private' | 'secret';
+  status: 'published' | 'draft' | 'archived';
+  serial: string;
   settings: CourseSettings;
-  instructor: CourseInstructor;
-  sections_count: number;
-  lessons_count: number;
-  students_count: number;
-  sections?: CourseSection[];      // Detail endpoint only
-  track?: CourseTrack;             // User's progress
+  created_at: string;
+  updated_at: string;
+
+  // Enrollment &amp; progress (list + detail)
+  isEnrolled: boolean;
+  progress?: number;              // 0-100, only present when enrolled
+  sectionsCount: number;
+  lessonsCount: number;
+  studentsCount: number;          // 0 if hide_members_count=yes
+
+  // Detail endpoint only
+  creator?: CourseInstructor;
   lockscreen_config?: CourseLockscreenConfig;
 }</code></pre>
 
@@ -97,14 +108,17 @@
 <table>
   <tr><th>Field</th><th>Description</th></tr>
   <tr><td><code>course_type</code></td><td><code>'self_paced'</code>, <code>'scheduled'</code>, or <code>'structured'</code></td></tr>
+  <tr><td><code>course_layout</code></td><td>Layout variant (<code>'classic'</code> or <code>'modern'</code>)</td></tr>
+  <tr><td><code>course_details</code></td><td>Markdown description (raw)</td></tr>
+  <tr><td><code>course_details_rendered</code></td><td>HTML description (detail endpoint only)</td></tr>
   <tr><td><code>emoji</code></td><td>Custom emoji badge displayed on cover</td></tr>
   <tr><td><code>hide_members_count</code></td><td>Hide student count ('yes'/'no')</td></tr>
   <tr><td><code>hide_instructor_view</code></td><td>Hide instructor card ('yes'/'no')</td></tr>
+  <tr><td><code>show_instructor_students_count</code></td><td>Show total students in instructor card ('yes'/'no')</td></tr>
   <tr><td><code>disable_comments</code></td><td>Disable lesson comments ('yes'/'no')</td></tr>
   <tr><td><code>show_paywalls</code></td><td>Show payment options ('yes'/'no')</td></tr>
   <tr><td><code>public_lesson_view</code></td><td>Allow non-enrolled lesson viewing ('yes'/'no')</td></tr>
   <tr><td><code>links</code></td><td>Array of resource links (title, permalink, enabled, new_tab, emoji, slug, privacy)</td></tr>
-  <tr><td><code>course_layout</code></td><td>Layout variant (<code>'classic'</code> or <code>'modern'</code>)</td></tr>
 </table>
 
 <h3>CourseSection &amp; CourseLesson</h3>
@@ -112,57 +126,82 @@
   id: number;
   title: string;
   slug: string;
-  serial: number;
-  lessons: CourseLesson[];
+  type: 'section';
+  created_at: string | { date: string; timezone_type: number; timezone: string };
   is_locked: boolean;
-  unlock_date?: string;
+  unlock_date: string;
+  lessons: CourseLesson[];
 }
 
 interface CourseLesson {
   id: number;
   title: string;
   slug: string;
-  serial: number;
-  content: string;               // HTML (may be empty if lazy_load)
+  content: string;               // HTML (empty if lazy_load or locked)
+  course_id: string | number;
+  section_id: string | number;
+  created_at: string;
   content_type: 'text' | 'quiz';
   featured_image: string | null;
   is_locked: boolean;
-  is_viewable: boolean;
-  can_view: boolean;             // Whether lesson content is viewable
-  unclock_date?: string;         // Scheduled unlock date (API typo preserved)
+  can_view: boolean;
+  unclock_date: string | null;   // Scheduled unlock date (API typo preserved)
+  inline_css: string;            // CSS prepended as &lt;style&gt; tag
+  lazy_load: boolean;            // Content may be empty, fetch individually
+  comments_count: number;
+  access_message?: string;       // HTML shown when can_view=false
   meta: CourseLessonMeta;
 }</code></pre>
 
 <h3>CourseTrack (Progress)</h3>
 <pre><code>interface CourseTrack {
-  completed_lessons: string[];   // Array of lesson IDs (as strings)
+  completed_lessons: (string | number)[];  // API returns strings
   isEnrolled: boolean;
   progress: number;              // 0-100 percentage
+}</code></pre>
+
+<h3>CourseLockscreenConfig</h3>
+<pre><code>interface CourseLockscreenConfig {
+  showCustom: boolean;           // Whether to show custom HTML lock screen
+  showPaywalls: boolean;         // Whether to show payment options
+  canSendRequest: boolean;       // Whether user can request join access
+  lockScreen: string | null;     // Custom HTML content for lock screen
+  redirect_url: string;          // Redirect URL for restricted access
 }</code></pre>
 
 <h3>Quiz Types</h3>
 <pre><code>interface QuizQuestion {
   slug: string;
-  label: string;
-  label_rendered?: string;  // HTML version
   type: 'single_choice' | 'multiple_choice';
-  enabled: boolean;
+  label: string;
+  label_rendered?: string;       // HTML version
   help_text?: string;
+  enabled: boolean;
+  image_enabled: boolean;
+  image_url?: string;
   options: QuizOption[];
 }
 
 interface QuizOption {
   label: string;
-  value?: string;
 }
 
 type QuizAnswers = Record&lt;string, string | string[]&gt;;
 
 interface QuizResult {
-  status: 'passed' | 'failed';
+  id: number;
+  user_id: number;
+  post_id: number;
+  parent_id: number;
   score: number;
-  meta: { correct_answers: number; total_questions: number; attempts: number };
-  message?: Record&lt;string, { is_correct: boolean; user_answer: string | string[] }&gt;;
+  status: 'passed' | 'failed' | 'published';
+  message: Record&lt;string, QuizResultDetail&gt;;
+  meta: { total_questions: number; correct_answers: number; attempts: number };
+}
+
+interface QuizResultDetail {
+  is_correct: boolean;
+  user_answer: string | string[];
 }</code></pre>
 
 <!-- ================================================================== -->
@@ -193,6 +232,48 @@ interface QuizResult {
   with_categories?: boolean;  // Include category list
 }</code></pre>
 
+<h3>Response Types</h3>
+<pre><code>// GET /courses
+interface CoursesListResponse {
+  courses: {
+    data: Course[];
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+    next_page_url: string | null;
+    prev_page_url: string | null;
+  };
+  course_categories: CourseCategory[];
+}
+
+// GET /courses/{slug}/by-slug
+interface CourseDetailResponse {
+  course: Course;
+  sections: CourseSection[];
+  track: CourseTrack;
+}
+
+// POST /courses/{id}/enroll
+interface CourseEnrollResponse {
+  message: string;
+  track: CourseTrack;
+}
+
+// PUT /courses/{id}/lessons/{id}/completion
+interface LessonCompletionResponse {
+  message: string;
+  track: CourseTrack;
+  is_completed: boolean;   // true if entire course is now 100%
+}
+
+// GET /courses/{slug}/lessons/{slug}/by-slug
+interface LessonDetailResponse {
+  lesson: CourseLesson;
+}</code></pre>
+
 <div class="callout">
   <strong>Intended lesson slug optimization.</strong> When navigating to a specific lesson via deep link, pass <code>intendedLessonSlug</code> to <code>getCourseBySlug()</code>. The server pre-populates that lesson's content, avoiding a second API call.
 </div>
@@ -203,13 +284,13 @@ interface QuizResult {
 <p><span class="file-path">app/courses/index.tsx</span> &mdash; route: <code>/courses</code></p>
 
 <ul>
-  <li><strong>Tabs:</strong> "All Courses" and "My Courses" (enrolled only)</li>
-  <li><strong>Search:</strong> Text input with 400ms debounce</li>
-  <li><strong>Category filtering:</strong> Horizontal chip bar fetched with <code>with_categories: 1</code>. Tapping a chip re-fetches with <code>topic_slug</code>. "All" chip clears the filter.</li>
+  <li><strong>Tabs:</strong> "All Courses" and "My Courses" (enrolled only) via segmented control</li>
+  <li><strong>Search:</strong> Text input with 400ms debounce, clear button when non-empty</li>
+  <li><strong>Category filtering:</strong> Horizontal chip bar fetched with <code>with_categories: 1</code> on the first page. Tapping a chip re-fetches with <code>topic_slug</code>. Tapping the active chip again clears it. "All" chip clears the filter.</li>
   <li><strong>Search optimization:</strong> Uses a ref-based approach to prevent duplicate API calls &mdash; <code>fetchCourses</code> reads search from a ref rather than closing over the state, so <code>useCallback</code> identity doesn't change on every keystroke.</li>
-  <li><strong>List:</strong> FlashList with infinite scroll pagination</li>
+  <li><strong>List:</strong> FlashList with infinite scroll pagination (per_page: 15, sort: alphabetical)</li>
   <li><strong>Pull-to-refresh:</strong> Resets pagination and refetches</li>
-  <li><strong>Cards:</strong> CourseCard with cover photo, title, stats, and progress bar for enrolled courses</li>
+  <li><strong>Cards:</strong> CourseCard with cover photo, title, description, stats, and progress bar for enrolled courses</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -219,34 +300,37 @@ interface QuizResult {
 
 <h3>Layout</h3>
 <ol>
-  <li><strong>Hero section</strong> &mdash; cover photo (or placeholder icon) with emoji badge and stats overlay (sections, lessons, students)</li>
-  <li><strong>Instructor card</strong> &mdash; uses unified <code>Avatar</code> + <code>UserDisplayName</code> components with verification badge support. Tappable to profile. Shows <code>short_description</code> bio (2 lines). Conditionally hidden via <code>hide_instructor_view</code>.</li>
-  <li><strong>Enrollment CTA</strong> &mdash; "Enroll in Course" button, or progress bar + "Continue Learning" if enrolled</li>
-  <li><strong>Resource links</strong> &mdash; clickable links from <code>course.settings.links</code>. Filters out disabled links (<code>enabled !== 'no'</code>). Opens via <code>Linking.openURL()</code>. Shows link icon + title + open-in-new icon.</li>
-  <li><strong>Course details</strong> &mdash; rich text description section</li>
-  <li><strong>Sections list</strong> &mdash; collapsible sections with lesson rows showing lock/check/number indicators</li>
-  <li><strong>Lock screen</strong> &mdash; non-enrolled users see <code>CourseLockScreen</code> component when course is private/restricted. Supports custom HTML lock content, join-request button, and pending request state.</li>
+  <li><strong>Hero section</strong> &mdash; cover photo (or placeholder book icon with emoji) with gradient overlay showing title and stats (sections, lessons). Stats are computed from the sections array.</li>
+  <li><strong>Instructor card</strong> &mdash; uses unified <code>Avatar</code> + <code>UserDisplayName</code> components with verification badge support via <code>course.creator</code>. Tappable to profile. Shows <code>short_description</code> bio (2 lines), total courses, and optionally total students. Conditionally hidden via <code>hide_instructor_view</code>.</li>
+  <li><strong>Enrollment CTA / Lock Screen</strong> &mdash; Three states: (a) enrolled: progress bar + "Continue Learning" (or "Review Course" at 100%), (b) not enrolled with <code>lockscreen_config</code>: renders <code>CourseLockScreen</code>, (c) not enrolled without lock config: "Enroll in Course" button.</li>
+  <li><strong>Course details</strong> &mdash; "About This Course" section rendering <code>course_details_rendered</code> HTML (stripped to text)</li>
+  <li><strong>Resource links</strong> &mdash; "Resources" section with clickable links from <code>course.settings.links</code>. Filters out disabled links (<code>enabled !== 'no'</code>). Opens via <code>Linking.openURL()</code>. Shows link icon + title + open-in-new icon.</li>
+  <li><strong>Sections list</strong> &mdash; "Course Content" heading, then collapsible sections with lesson rows. Sections default to expanded when there are 3 or fewer sections.</li>
 </ol>
 
 <h3>Continue Learning</h3>
-<p>The "Continue Learning" button navigates to the first incomplete lesson. If all lessons are complete, it navigates to the first lesson in the course.</p>
+<p>The "Continue Learning" button navigates to the first incomplete, viewable, unlocked lesson. If all lessons are complete, it navigates to the first lesson in the course.</p>
 
 <!-- ================================================================== -->
 <h2 id="lesson-view">6. Lesson View Screen</h2>
 
 <p><span class="file-path">app/courses/[slug]/lesson/[lessonSlug].tsx</span> &mdash; route: <code>/courses/[slug]/lesson/[lessonSlug]</code></p>
 
+<h3>Data Fetching</h3>
+<p>The lesson screen fetches the full course via <code>getCourseBySlug(slug, lessonSlug)</code> with the intended lesson slug. This returns the course, all sections, and the track. The target lesson is found by matching <code>lessonSlug</code> across all sections. If the lesson's content is empty (lazy-loaded), it fetches individually via <code>getLessonBySlug()</code>.</p>
+
 <h3>Layout</h3>
 <ol>
-  <li><strong>Hero image</strong> &mdash; extracted from the first <code>&lt;img&gt;</code> or <code>&lt;figure&gt;</code> in the lesson HTML (removed from body to avoid duplication)</li>
-  <li><strong>YouTube video</strong> &mdash; if <code>lesson.meta.media.url</code> contains a YouTube URL, renders YouTubeEmbed</li>
+  <li><strong>Nav bar title</strong> &mdash; shows "Lesson N of M" (e.g., "Lesson 3 of 16")</li>
+  <li><strong>Hero image</strong> &mdash; extracted from the first <code>&lt;figure&gt;</code> containing an <code>&lt;img&gt;</code> (or standalone <code>&lt;img&gt;</code>) in the lesson HTML, removed from body to avoid duplication. Rendered at natural aspect ratio. Includes gradient overlay with title and action badges (comments count, documents count).</li>
+  <li><strong>YouTube video</strong> &mdash; if <code>lesson.meta.media.url</code> contains a YouTube URL, renders YouTubeEmbed via <code>extractYouTubeId()</code></li>
   <li><strong>oEmbed video</strong> &mdash; if media URL is not YouTube, falls back to OEmbedPlayer WebView using <code>lesson.meta.media.html</code></li>
+  <li><strong>Lesson title</strong> &mdash; shown only when there is no hero image (hero has title overlay)</li>
   <li><strong>Inline CSS</strong> &mdash; lesson's <code>inline_css</code> prepended as <code>&lt;style&gt;</code> tag to content HTML</li>
-  <li><strong>Quiz</strong> &mdash; if <code>content_type === 'quiz'</code>, renders QuizView instead of HTML content</li>
   <li><strong>Lesson body</strong> &mdash; remaining HTML rendered via HtmlContent component</li>
-  <li><strong>Access message</strong> &mdash; locked lessons show <code>lesson.access_message</code> HTML instead of hardcoded text</li>
-  <li><strong>Documents</strong> &mdash; downloadable files from <code>lesson.meta.document_lists</code></li>
-  <li><strong>Comments</strong> &mdash; if enabled, shows comment count badge and links to comments screen</li>
+  <li><strong>Quiz</strong> &mdash; if <code>content_type === 'quiz'</code> and <code>meta.quiz_questions</code> exists, renders QuizView</li>
+  <li><strong>Documents</strong> &mdash; downloadable files from <code>lesson.meta.document_lists</code> with file-type icons (PDF, image, video, audio, archive). Tapping opens via <code>Linking.openURL()</code></li>
+  <li><strong>Comments button</strong> &mdash; if enabled, shows comment count and navigates to <code>/comments/[postId]</code></li>
   <li><strong>Sticky bottom bar</strong> &mdash; state-specific UI (see below)</li>
 </ol>
 
@@ -255,19 +339,20 @@ interface QuizResult {
   <tr><th>State</th><th>UI</th></tr>
   <tr><td>Not enrolled</td><td>Previous / Next navigation buttons</td></tr>
   <tr><td>Enrolled, not complete</td><td>"Mark as Complete" button</td></tr>
-  <tr><td>Completing</td><td>Loading spinner + success animation</td></tr>
-  <tr><td>Completed</td><td>Success badge + Previous / Next navigation</td></tr>
+  <tr><td>Completing</td><td>Loading spinner</td></tr>
+  <tr><td>Just completed</td><td>Animated success badge ("Completed!" with checkmark), then transitions to nav row</td></tr>
+  <tr><td>Completed</td><td>Completed badge (center) + Previous / Next navigation with animated slide-in</td></tr>
   <tr><td>Quiz not passed (enforced)</td><td>Server blocks completion API, returns error if quiz score below passing score</td></tr>
 </table>
 
 <h3>Completion</h3>
-<p>When a lesson is marked complete and <code>is_completed: true</code> is returned in the response (meaning the entire course is now complete), the app triggers the <code>CompletionCelebration</code> modal with confetti and stats instead of a plain alert.</p>
+<p>When a lesson is marked complete and <code>is_completed: true</code> is returned in the response (meaning the entire course is now complete), the app triggers the <code>CompletionCelebration</code> modal after a 1400ms delay (to let the success animation play first).</p>
 
 <h3>Lesson Navigation</h3>
-<p>Previous/Next buttons navigate sequentially through lessons across section boundaries. Sections are flattened into a linear list for prev/next calculation. Locked or non-viewable lessons are skipped (buttons disabled).</p>
+<p>Previous/Next buttons navigate sequentially through lessons across section boundaries. Sections are flattened into a linear list. Locked or non-viewable lessons cannot be navigated to (buttons disabled). Navigation uses <code>router.replace()</code> to avoid deep back stacks.</p>
 
 <h3>Locked Lessons</h3>
-<p>If a lesson is locked (<code>is_locked: true</code>), the screen shows a lock icon with the lesson's <code>access_message</code> HTML (or a fallback "This lesson is locked" message) and a "Back to Course" button.</p>
+<p>If a lesson is locked (<code>is_locked: true</code> or <code>can_view: false</code>), the screen shows a lock icon with the lesson's <code>access_message</code> HTML (via HtmlContent) or a fallback "Please enroll in this course to access this lesson" message and a "Back to Course" button.</p>
 
 <!-- ================================================================== -->
 <h2 id="enrollment">7. Enrollment</h2>
@@ -275,21 +360,20 @@ interface QuizResult {
 <h3>Enrollment Flow</h3>
 <ol>
   <li>User taps "Enroll in Course" on the course detail screen</li>
-  <li>Optimistic update: set <code>isEnrolled: true</code>, <code>progress: 0</code></li>
   <li>API call: <code>enrollInCourse(courseId)</code></li>
   <li>Server returns <code>CourseEnrollResponse</code> with updated <code>CourseTrack</code></li>
-  <li>Refetch course detail to unlock lesson content</li>
-  <li>UI switches to "Continue Learning" button + progress bar</li>
+  <li>Optimistic update via <code>mutate()</code>: set <code>isEnrolled: true</code>, <code>progress: 0</code>, merge server track</li>
+  <li>Refetch course detail via <code>refresh()</code> to unlock lesson content</li>
+  <li>UI switches to progress bar + "Continue Learning" button</li>
 </ol>
 
 <h3>Lock Screens</h3>
-<p>Non-enrolled users of private/restricted courses see a lock screen instead of the course content. This is handled by the <code>CourseLockScreen</code> component (<span class="file-path">components/course/CourseLockScreen.tsx</span>), which follows the same pattern as <code>SpaceLockScreen</code>:</p>
+<p>Non-enrolled users of private/restricted courses see a lock screen instead of the course content. This is handled by the <code>CourseLockScreen</code> component (<span class="file-path">components/course/CourseLockScreen.tsx</span>):</p>
 
 <ul>
-  <li>Renders custom <code>lockscreen_config.lockScreen</code> HTML via HtmlContent when available</li>
-  <li>Shows "Request Access" button when <code>can_request_join</code> and not already pending</li>
-  <li>Shows "Pending" badge when a join request is already submitted</li>
-  <li>Falls back to a default lock card with lock icon + title + description when no custom lock screen HTML is configured</li>
+  <li><strong>Custom HTML lock screen:</strong> When <code>config.showCustom</code> is true and <code>config.lockScreen</code> exists, renders the custom HTML via HtmlContent. Shows "Request Access" button if <code>canSendRequest</code>, otherwise "Enroll in Course" button.</li>
+  <li><strong>Default lock card:</strong> Lock icon + "This course is private" title. Shows "Request Access" if <code>canSendRequest</code>, otherwise "Enroll in Course" button with context-appropriate description text.</li>
+  <li><strong>Pending state:</strong> After a join request is submitted, shows a clock icon + "Request Submitted" + description message.</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -298,12 +382,12 @@ interface QuizResult {
 <h3>Completion Flow</h3>
 <ol>
   <li>User taps "Mark as Complete" on a lesson</li>
-  <li>Optimistic update: add lesson ID to <code>completed_lessons</code> array</li>
+  <li>Optimistic update: add lesson ID (as string) to <code>completed_lessons</code> array</li>
   <li>API call: <code>toggleLessonCompletion(courseId, lessonId, 'completed')</code></li>
   <li>Server recalculates <code>progress</code> percentage</li>
-  <li>Response includes updated <code>CourseTrack</code></li>
-  <li>If <code>is_completed: true</code>, triggers CompletionCelebration modal (confetti + stats)</li>
-  <li>Animated success badge reveals, then Previous/Next buttons slide in</li>
+  <li>Response includes updated <code>CourseTrack</code> &mdash; replaces local state entirely</li>
+  <li>Animated success badge ("Completed!") shows for ~800ms, then transitions to nav row with spring animation</li>
+  <li>If <code>is_completed: true</code>, triggers CompletionCelebration modal after 1400ms delay</li>
 </ol>
 
 <div class="callout callout-warn">
@@ -314,8 +398,9 @@ interface QuizResult {
 <p><span class="file-path">components/course/ProgressBar.tsx</span> renders a horizontal progress bar:</p>
 <ul>
   <li>Color: <code>primary</code> until 99%, then <code>success</code> (green) at 100%</li>
+  <li>Track background: <code>withOpacity(primary, 0.15)</code></li>
   <li>Clamped to 0&ndash;100 range</li>
-  <li>Optional percentage label</li>
+  <li>Optional percentage label via <code>showLabel</code> prop (default false)</li>
   <li>Configurable height (default 6px)</li>
 </ul>
 
@@ -326,10 +411,10 @@ interface QuizResult {
 <p>Lesson content is stored as HTML in the <code>content</code> field and rendered via the <code>HtmlContent</code> component (see <a href="components.html">Components</a>).</p>
 
 <h3>Hero Image Extraction</h3>
-<p>The first <code>&lt;figure&gt;</code> containing an <code>&lt;img&gt;</code> (or standalone <code>&lt;img&gt;</code>) is extracted from the HTML and rendered as a full-width hero image above the body. This prevents the image from appearing twice.</p>
+<p>The first <code>&lt;figure&gt;</code> containing an <code>&lt;img&gt;</code> (or standalone <code>&lt;img&gt;</code>) is extracted from the HTML and rendered as a full-width hero image above the body. The image is rendered at its natural aspect ratio (resolved via <code>RNImage.getSize()</code>, falling back to ~16:9). This prevents the image from appearing twice.</p>
 
 <h3>Lazy Loading</h3>
-<p>The course detail API may return lessons with empty <code>content</code> fields when <code>lazy_load</code> is enabled. In this case, the lesson view fetches individual lesson content via <code>getLessonBySlug()</code>.</p>
+<p>The course detail API may return lessons with empty <code>content</code> fields when <code>lazy_load</code> is true. In this case, the lesson view fetches individual lesson content via <code>getLessonBySlug()</code>.</p>
 
 <div class="callout">
   <strong>Intended lesson slug.</strong> When navigating to a lesson via deep link, the course is fetched with <code>intendedLessonSlug</code> query parameter. The server pre-populates that specific lesson's content, avoiding the lazy-load second fetch.
@@ -337,13 +422,13 @@ interface QuizResult {
 
 <h3>Video &amp; Documents</h3>
 <ul>
-  <li><strong>YouTube:</strong> If <code>lesson.meta.media.url</code> contains a YouTube URL, a YouTubeEmbed component renders below the hero</li>
+  <li><strong>YouTube:</strong> If <code>lesson.meta.media.url</code> contains a YouTube URL (detected via <code>extractYouTubeId()</code>), a YouTubeEmbed component renders below the hero</li>
   <li><strong>oEmbed:</strong> If the media URL is not YouTube but <code>lesson.meta.media.html</code> exists, the OEmbedPlayer WebView renders the oEmbed HTML (supports Vimeo, Wistia, and any provider WordPress returns)</li>
   <li><strong>Documents:</strong> <code>lesson.meta.document_lists</code> array rendered as downloadable file cards with file-type icons (PDF, image, video, audio, archive). Tapping opens via <code>Linking.openURL()</code></li>
 </ul>
 
 <h3>Comments</h3>
-<p>Lesson comments are enabled when <code>lesson.meta.enable_comments !== 'no'</code> AND <code>course.settings.disable_comments !== 'yes'</code>. The comments button navigates to <code>/comments/[lessonId]</code> using the lesson's ID as the post ID.</p>
+<p>Lesson comments are enabled when <code>lesson.meta.enable_comments !== 'no'</code> AND <code>course.settings.disable_comments !== 'yes'</code>. The comments button navigates to <code>/comments/[postId]</code> using the lesson's ID as the post ID.</p>
 
 <!-- ================================================================== -->
 <h2 id="quiz-system">10. Quiz System</h2>
@@ -365,25 +450,28 @@ interface QuizResult {
   <li><strong>multiple_choice</strong> &mdash; checkbox-style selection, toggle for multi-select</li>
 </ul>
 
-<p>Only questions with <code>question.enabled === true</code> are shown to the user.</p>
+<p>Only questions with <code>question.enabled === true</code> are shown to the user. Questions may have <code>label_rendered</code> (HTML) which is rendered via HtmlContent, falling back to plain-text <code>label</code>.</p>
 
 <h3>Answer Selection</h3>
 <ul>
-  <li>Haptic feedback on each selection</li>
+  <li>Haptic feedback (light) on each selection</li>
   <li>Toggle behavior for multi-select questions</li>
   <li><strong>Validation:</strong> all questions must be answered before submit is enabled</li>
+  <li>Haptic feedback (medium) on submit</li>
 </ul>
 
 <h3>Results View</h3>
 <ul>
-  <li>Score circle showing percentage</li>
+  <li>Score circle showing percentage with color coding (success for pass, error for fail)</li>
   <li>Pass/fail status indicator</li>
-  <li>Attempt count from <code>result.meta.attempts</code></li>
-  <li>Per-question breakdown showing correct/incorrect (unless <code>hide_result</code> is enabled)</li>
+  <li>Correct answers count (e.g., "5 of 10 correct")</li>
+  <li>Passing score shown when <code>enablePassingScore</code> is true</li>
+  <li>Attempt count from <code>result.meta.attempts</code> (shown when &gt; 1)</li>
+  <li>Per-question breakdown showing correct/incorrect with user's answer (unless <code>hideResult</code> is true)</li>
 </ul>
 
 <h3>Retake</h3>
-<p>The retake button clears all answers and the existing result, allowing the user to re-submit the quiz.</p>
+<p>The retake button clears all answers and the existing result, allowing the user to re-submit the quiz. Available when the quiz was failed, or when <code>enforcePassingScore</code> is off (retake even after passing).</p>
 
 <h3>Server Enforcement</h3>
 <div class="callout callout-warn">
@@ -405,16 +493,16 @@ interface QuizResult {
 <p>Lessons can include video from multiple providers. The detection logic determines which player to render:</p>
 
 <ol>
-  <li><strong>Check for YouTube ID</strong> &mdash; if the media URL contains a YouTube video ID (extracted via regex), render <code>YouTubeEmbed</code></li>
+  <li><strong>Check for YouTube ID</strong> &mdash; if the media URL contains a YouTube video ID (extracted via <code>extractYouTubeId()</code> from <span class="file-path">utils/youtube.ts</span>), render <code>YouTubeEmbed</code></li>
   <li><strong>Check for oEmbed HTML</strong> &mdash; if no YouTube ID but <code>lesson.meta.media.html</code> exists, render <code>OEmbedPlayer</code></li>
   <li><strong>No video</strong> &mdash; if neither condition is met, no video player is rendered</li>
 </ol>
 
 <h3>YouTubeEmbed</h3>
-<p>Existing YouTube player component. Extracts the video ID from the URL and renders an embedded YouTube player.</p>
+<p>Existing YouTube player component. Receives a video ID and renders an embedded YouTube player.</p>
 
 <h3>OEmbedPlayer</h3>
-<p><span class="file-path">components/media/OEmbedPlayer.tsx</span> &mdash; a WebView wrapper that renders <code>lesson.meta.media.html</code> in a responsive 16:9 container. Provider-agnostic: works with any oEmbed HTML WordPress returns, including Vimeo, Wistia, and other oEmbed providers.</p>
+<p><span class="file-path">components/media/OEmbedPlayer.tsx</span> &mdash; a WebView wrapper that renders <code>lesson.meta.media.html</code> in a responsive container. Provider-agnostic: works with any oEmbed HTML WordPress returns, including Vimeo, Wistia, and other oEmbed providers.</p>
 
 <div class="callout">
   <strong>Never render both players.</strong> The detection is sequential: YouTube ID first, then oEmbed fallback. Only one player renders per lesson.
@@ -426,50 +514,54 @@ interface QuizResult {
 <p><span class="file-path">components/course/CompletionCelebration.tsx</span> renders a celebratory modal when the entire course is completed.</p>
 
 <ul>
-  <li><strong>Trigger:</strong> fires when <code>is_completed: true</code> is returned in the completion API response</li>
-  <li><strong>Trophy icon</strong> on top</li>
-  <li><strong>"Course Complete!"</strong> title text</li>
-  <li><strong>Total lessons stat</strong> displayed</li>
-  <li><strong>Dismiss button</strong> to close the modal</li>
+  <li><strong>Trigger:</strong> fires when <code>is_completed: true</code> is returned in the completion API response (after 1400ms delay)</li>
+  <li><strong>Trophy icon</strong> in a green (<code>success</code>) circle container</li>
+  <li><strong>"Congratulations!"</strong> title text</li>
+  <li><strong>"You've completed"</strong> subtitle + course title displayed</li>
+  <li><strong>"View Certificate" button</strong> &mdash; shown when <code>onViewCertificate</code> callback is provided</li>
+  <li><strong>"Continue" button</strong> (secondary variant) to dismiss the modal</li>
 </ul>
 
 <h3>Confetti Animation</h3>
-<p>50 animated particles using Reanimated (<code>withTiming</code>, spring physics). Uses theme tokens: <code>themeColors.overlay</code> for backdrop, <code>themeColors.textInverse</code> for the icon.</p>
+<p>30 animated confetti particles using Reanimated (<code>withTiming</code>, <code>withDelay</code>, easing curves). Card entrance uses <code>withSequence</code> for a scale bounce effect. Uses theme tokens: <code>themeColors.overlay</code> for backdrop, <code>themeColors.textInverse</code> for the trophy icon.</p>
 
 <!-- ================================================================== -->
 <h2 id="category-filtering">13. Category Filtering</h2>
 
-<p>The course list screen includes a horizontal chip bar for filtering courses by topic category. Categories are fetched alongside courses by passing <code>with_categories: 1</code> to the API.</p>
+<p>The course list screen includes a horizontal chip bar for filtering courses by topic category. Categories are fetched alongside courses by passing <code>with_categories: 1</code> to the API on the first page only.</p>
 
 <ul>
   <li>Tapping a category chip re-fetches courses with the <code>topic_slug</code> parameter</li>
+  <li>Tapping the already-active category chip clears the filter (toggle behavior)</li>
   <li>The "All" chip clears the filter and shows all courses</li>
   <li>Chips are displayed in a horizontally scrollable row above the course list</li>
+  <li>Active chip uses <code>primary</code> background with <code>textInverse</code> text; inactive uses <code>backgroundSecondary</code></li>
 </ul>
 
 <!-- ================================================================== -->
 <h2 id="free-preview-drip">14. Free Preview &amp; Drip Content</h2>
 
 <h3>Free Preview</h3>
-<p>Lessons with <code>meta.free_preview_lesson === 'yes'</code> are viewable by non-enrolled users. The <code>LessonRow</code> component shows a "Preview" badge with an eye icon for these lessons.</p>
+<p>Lessons with <code>meta.free_preview_lesson === 'yes'</code> are viewable by non-enrolled users. The <code>LessonRow</code> component shows a "Preview" badge with an eye icon for these lessons. Free preview lessons bypass the lock check &mdash; even if <code>is_locked</code> is true, they remain tappable.</p>
 
 <h3>Drip Content</h3>
 <p>Sections and lessons can have scheduled unlock dates. When locked with a future date:</p>
 <ul>
-  <li>Locked sections show <code>Unlocks {date}</code> via <code>formatMediumDate()</code></li>
-  <li>Locked lessons show <code>Unlocks {date}</code> badge</li>
+  <li>Locked sections show the unlock date in the section meta text via <code>formatMediumDate()</code></li>
+  <li>Locked lessons show an "Unlocks {date}" badge with a clock icon</li>
   <li>Uses <code>section.unlock_date</code> for sections and <code>lesson.unclock_date</code> for lessons (API typo preserved)</li>
 </ul>
 
 <!-- ================================================================== -->
 <h2 id="resource-links">15. Resource Links</h2>
 
-<p>Courses can include external resource links configured in <code>course.settings.links</code>. These appear on the course detail screen between the enrollment CTA and the course description.</p>
+<p>Courses can include external resource links configured in <code>course.settings.links</code>. These appear on the course detail screen in a "Resources" section between the course description and the sections list.</p>
 
 <ul>
-  <li>Disabled links (<code>enabled !== 'no'</code>) are filtered out</li>
+  <li>Disabled links (<code>enabled === 'no'</code>) are filtered out</li>
   <li>Each link shows a link icon + title + open-in-new icon</li>
   <li>Tapping opens the link's <code>permalink</code> via <code>Linking.openURL()</code></li>
+  <li>Link text and icon use <code>primary</code> color</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -477,31 +569,34 @@ interface QuizResult {
 
 <table>
   <tr><th>Component</th><th>File</th><th>Description</th></tr>
-  <tr><td>CourseCard</td><td><span class="file-path">components/course/CourseCard.tsx</span></td><td>Hero card with cover, title, stats, progress bar</td></tr>
-  <tr><td>ProgressBar</td><td><span class="file-path">components/course/ProgressBar.tsx</span></td><td>Horizontal progress indicator (0&ndash;100%)</td></tr>
-  <tr><td>SectionList</td><td><span class="file-path">components/course/SectionList.tsx</span></td><td>Collapsible section header with lesson count and lock state</td></tr>
-  <tr><td>LessonRow</td><td><span class="file-path">components/course/LessonRow.tsx</span></td><td>Lesson item with lock/check/number indicator, quiz/video badges</td></tr>
+  <tr><td>CourseCard</td><td><span class="file-path">components/course/CourseCard.tsx</span></td><td>Hero card with cover, gradient overlay, title, emoji, stats, description, progress bar</td></tr>
+  <tr><td>ProgressBar</td><td><span class="file-path">components/course/ProgressBar.tsx</span></td><td>Horizontal progress indicator (0&ndash;100%), green at completion</td></tr>
+  <tr><td>SectionList</td><td><span class="file-path">components/course/SectionList.tsx</span></td><td>Collapsible section header with lesson count, completion count, lock state, unlock date</td></tr>
+  <tr><td>LessonRow</td><td><span class="file-path">components/course/LessonRow.tsx</span></td><td>Lesson item with lock/check/number indicator, quiz/video/preview badges, unlock date</td></tr>
   <tr><td>QuizView</td><td><span class="file-path">components/course/QuizView.tsx</span></td><td>Quiz-taking UI with questions, scoring, results, retake</td></tr>
-  <tr><td>CompletionCelebration</td><td><span class="file-path">components/course/CompletionCelebration.tsx</span></td><td>Confetti modal for course completion</td></tr>
-  <tr><td>CourseLockScreen</td><td><span class="file-path">components/course/CourseLockScreen.tsx</span></td><td>Lock screen for restricted courses</td></tr>
+  <tr><td>CompletionCelebration</td><td><span class="file-path">components/course/CompletionCelebration.tsx</span></td><td>Confetti modal for course completion with trophy and course title</td></tr>
+  <tr><td>CourseLockScreen</td><td><span class="file-path">components/course/CourseLockScreen.tsx</span></td><td>Lock screen for restricted courses (custom HTML, default card, pending state, enroll fallback)</td></tr>
   <tr><td>OEmbedPlayer</td><td><span class="file-path">components/media/OEmbedPlayer.tsx</span></td><td>WebView wrapper for non-YouTube oEmbed HTML</td></tr>
   <tr><td>CoursesWidget</td><td><span class="file-path">components/home/CoursesWidget.tsx</span></td><td>Home screen carousel of enrolled courses</td></tr>
 </table>
 
+<h3>CourseCard Details</h3>
+<p>The CourseCard renders a 16:9 hero container with cover photo (or placeholder book icon). A gradient overlay at the bottom shows the emoji badge (in a semi-transparent circle), title, and stats (sections, lessons, students). A privacy badge (lock icon) appears top-right for non-public courses. Below the hero: description text (HTML-stripped, 2 lines) and progress bar for enrolled courses.</p>
+
 <h3>LessonRow Indicators</h3>
 <table>
   <tr><th>State</th><th>Indicator</th></tr>
-  <tr><td>Locked</td><td>Grey lock icon</td></tr>
-  <tr><td>Completed</td><td>Green checkmark</td></tr>
-  <tr><td>Available</td><td>Lesson number in empty circle</td></tr>
+  <tr><td>Locked</td><td>Lock icon in light background circle</td></tr>
+  <tr><td>Completed</td><td>Checkmark in green (<code>success</code>) circle</td></tr>
+  <tr><td>Available</td><td>Lesson number in bordered empty circle</td></tr>
 </table>
 
 <h3>LessonRow Badges</h3>
 <ul>
-  <li><strong>Quiz badge</strong> &mdash; shown when <code>content_type === 'quiz'</code></li>
-  <li><strong>Video duration</strong> &mdash; formatted as MM:SS or HH:MM:SS from <code>meta.video_length</code></li>
-  <li><strong>Preview badge</strong> &mdash; shown for free preview lessons when not enrolled (eye icon)</li>
-  <li><strong>Unlock date</strong> &mdash; shown when locked with <code>unclock_date</code>, displays formatted date</li>
+  <li><strong>Preview badge</strong> &mdash; shown for free preview lessons when not enrolled (eye icon + "Preview" in primary color)</li>
+  <li><strong>Quiz badge</strong> &mdash; shown when <code>content_type === 'quiz'</code> (help-circle icon + "Quiz")</li>
+  <li><strong>Video duration</strong> &mdash; formatted as MM:SS or HH:MM:SS from <code>meta.video_length</code> (play-circle icon)</li>
+  <li><strong>Unlock date</strong> &mdash; shown when locked with <code>unclock_date</code>, displays formatted date (time icon)</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -511,9 +606,10 @@ interface QuizResult {
 
 <ul>
   <li>Fetches enrolled courses: <code>getCourses({ type: 'enrolled', per_page: 5 })</code></li>
-  <li>Each card: cover photo + gradient + title + progress bar</li>
-  <li>Stale time: 120 seconds (only refetches if older)</li>
-  <li>If no enrollments: shows "Browse Courses" CTA button</li>
+  <li>Uses <code>useCachedData</code> with cache key <code>tbc_widget_enrolled_courses</code> and <code>WIDGET_STALE_TIME</code> (120 seconds)</li>
+  <li>Card width: 70% of screen width, snaps to card boundaries</li>
+  <li>Each card: 16:9 aspect ratio with cover photo + gradient overlay + title + progress bar</li>
+  <li>If no enrollments: shows "Browse Courses" CTA card with school icon and subtitle</li>
   <li>Tapping a card navigates to course detail</li>
 </ul>
 
@@ -523,22 +619,22 @@ interface QuizResult {
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
   <tr><td><span class="file-path">services/api/courses.ts</span></td><td>All course API functions (list, detail, enroll, complete, quiz, join)</td></tr>
-  <tr><td><span class="file-path">types/course.ts</span></td><td>Course, CourseSection, CourseLesson, CourseTrack, quiz types, settings types</td></tr>
+  <tr><td><span class="file-path">types/course.ts</span></td><td>Course, CourseSection, CourseLesson, CourseTrack, quiz types, settings types, response types</td></tr>
   <tr><td><span class="file-path">app/courses/index.tsx</span></td><td>Course list screen with tabs, search, and category filtering</td></tr>
   <tr><td><span class="file-path">app/courses/[slug].tsx</span></td><td>Course detail with sections, enrollment, lock screen, and resource links</td></tr>
   <tr><td><span class="file-path">app/courses/[slug]/lesson/[lessonSlug].tsx</span></td><td>Lesson viewer with content, video, quiz, documents, completion</td></tr>
-  <tr><td><span class="file-path">components/course/CourseCard.tsx</span></td><td>Course card with cover and progress</td></tr>
+  <tr><td><span class="file-path">components/course/CourseCard.tsx</span></td><td>Course card with cover, gradient, stats, and progress</td></tr>
   <tr><td><span class="file-path">components/course/ProgressBar.tsx</span></td><td>Progress bar (primary color, green at 100%)</td></tr>
-  <tr><td><span class="file-path">components/course/SectionList.tsx</span></td><td>Collapsible section with lesson count</td></tr>
+  <tr><td><span class="file-path">components/course/SectionList.tsx</span></td><td>Collapsible section with lesson count and completion count</td></tr>
   <tr><td><span class="file-path">components/course/LessonRow.tsx</span></td><td>Lesson item with state indicators and badges</td></tr>
   <tr><td><span class="file-path">components/course/QuizView.tsx</span></td><td>Quiz-taking UI (questions, submit, results, retake)</td></tr>
-  <tr><td><span class="file-path">components/course/CompletionCelebration.tsx</span></td><td>Confetti completion modal</td></tr>
-  <tr><td><span class="file-path">components/course/CourseLockScreen.tsx</span></td><td>Lock screen for restricted courses</td></tr>
+  <tr><td><span class="file-path">components/course/CompletionCelebration.tsx</span></td><td>Confetti completion modal with trophy and course title</td></tr>
+  <tr><td><span class="file-path">components/course/CourseLockScreen.tsx</span></td><td>Lock screen for restricted courses (custom HTML, default, pending, enroll)</td></tr>
   <tr><td><span class="file-path">components/media/OEmbedPlayer.tsx</span></td><td>WebView oEmbed player (Vimeo, Wistia, etc.)</td></tr>
   <tr><td><span class="file-path">components/home/CoursesWidget.tsx</span></td><td>Home screen enrolled courses carousel</td></tr>
-  <tr><td><span class="file-path">utils/deepLinkMapper.ts</span></td><td>Course deep link mapping (<code>/courses/*</code>)</td></tr>
+  <tr><td><span class="file-path">utils/youtube.ts</span></td><td>YouTube URL parsing (<code>extractYouTubeId()</code>)</td></tr>
   <tr><td><span class="file-path">utils/formatDate.ts</span></td><td>Shared date formatting (formatMediumDate for unlock dates)</td></tr>
-  <tr><td><span class="file-path">constants/config.ts</span></td><td>Endpoint paths</td></tr>
+  <tr><td><span class="file-path">constants/config.ts</span></td><td>Endpoint paths (ENDPOINTS.COURSES, COURSE_BY_SLUG, etc.)</td></tr>
   <tr><td><span class="file-path">contexts/AppConfigContext.tsx</span></td><td><code>features.courses</code> flag (server-controlled via <code>useFeatures()</code>)</td></tr>
 </table>
 
@@ -550,29 +646,31 @@ interface QuizResult {
 
   <li><strong>Pass <code>intendedLessonSlug</code> for deep link navigation.</strong> When navigating to a specific lesson, include this parameter in the course detail fetch. The server pre-populates that lesson's content, avoiding a second fetch.</li>
 
-  <li><strong>Handle lazy-loaded lesson content.</strong> Course detail may return lessons with empty <code>content</code> fields. Always check for empty content and fetch individually via <code>getLessonBySlug()</code> when needed.</li>
+  <li><strong>Handle lazy-loaded lesson content.</strong> Course detail may return lessons with empty <code>content</code> fields when <code>lazy_load</code> is true. Always check for empty content and fetch individually via <code>getLessonBySlug()</code> when needed.</li>
 
   <li><strong>Optimistic updates are authoritative until server responds.</strong> Add lesson ID to <code>completed_lessons</code> immediately. On API success, replace the entire track with the server response. On failure, revert the optimistic change.</li>
 
-  <li><strong>Flatten sections for prev/next navigation.</strong> Lessons span multiple sections but prev/next navigation is linear. Flatten all sections' lesson arrays into a single list sorted by section serial then lesson serial.</li>
+  <li><strong>Flatten sections for prev/next navigation.</strong> Lessons span multiple sections but prev/next navigation is linear. Flatten all sections' lesson arrays into a single list.</li>
 
   <li><strong>Check both lesson and course settings for comments.</strong> Comments are enabled only when <code>lesson.meta.enable_comments !== 'no'</code> AND <code>course.settings.disable_comments !== 'yes'</code>. Either flag can disable them.</li>
 
-  <li><strong>Hero images are extracted from HTML, not duplicated.</strong> The first <code>&lt;img&gt;</code> or <code>&lt;figure&gt;</code> is removed from the HTML body after being rendered as a hero. Don't render the full HTML unmodified or the image appears twice.</li>
+  <li><strong>Hero images are extracted from HTML, not duplicated.</strong> The first <code>&lt;figure&gt;</code> containing an <code>&lt;img&gt;</code> (or standalone <code>&lt;img&gt;</code>) is removed from the HTML body after being rendered as a hero. Don't render the full HTML unmodified or the image appears twice.</li>
 
   <li><strong>Progress bar turns green at 100%.</strong> Use <code>primary</code> color for 0&ndash;99% and <code>success</code> for 100%. This is the ProgressBar component's built-in behavior &mdash; don't override it.</li>
 
-  <li><strong>Cache course detail by slug.</strong> Use cache key <code>tbc_course_{slug}</code> with <code>useCachedData</code>. The home widget uses its own cache key with a 120-second stale time.</li>
+  <li><strong>Cache course detail by slug.</strong> Use cache key <code>tbc_course_{slug}</code> with <code>useCachedData</code>. The home widget uses its own cache key (<code>tbc_widget_enrolled_courses</code>) with <code>WIDGET_STALE_TIME</code>.</li>
 
-  <li><strong>Lesson IDs in <code>completed_lessons</code> are strings.</strong> The server returns lesson IDs as strings in the array, not numbers. Compare with <code>String(lesson.id)</code> when checking completion status.</li>
+  <li><strong>Lesson IDs in <code>completed_lessons</code> are strings (or numbers).</strong> The server returns lesson IDs as strings in the array. Compare with <code>String(lesson.id)</code> when checking completion status.</li>
 
   <li><strong>Quiz enforcement is server-side.</strong> The Fluent Quiz Pro module hooks <code>is_allowed_to_complete_lesson</code>. If <code>enforce_passing_score</code> is on and the quiz hasn't been passed, the completion API rejects. Don't add client-side enforcement &mdash; let the server be authoritative.</li>
 
-  <li><strong>Use <code>permalink</code> for course links, not <code>url</code>.</strong> The API sends <code>permalink</code> as the URL field. Filter out disabled links (<code>enabled !== 'no'</code>).</li>
+  <li><strong>Use <code>permalink</code> for course links, not <code>url</code>.</strong> The API sends <code>permalink</code> as the URL field. Filter out disabled links (<code>enabled === 'no'</code>).</li>
 
-  <li><strong>Use unified Avatar + UserDisplayName for instructor.</strong> Don't use raw Image + Text for the instructor row &mdash; use the shared Avatar and UserDisplayName components to get verification badges and consistent styling.</li>
+  <li><strong>Use unified Avatar + UserDisplayName for instructor.</strong> Don't use raw Image + Text for the instructor row &mdash; use the shared Avatar and UserDisplayName components to get verification badges and consistent styling. The instructor data is at <code>course.creator</code>, not <code>course.instructor</code>.</li>
 
-  <li><strong>oEmbed fallback for non-YouTube video.</strong> Check for YouTube ID first, then fall back to OEmbedPlayer if <code>media.html</code> exists. Never render both.</li>
+  <li><strong>oEmbed fallback for non-YouTube video.</strong> Check for YouTube ID first (via <code>extractYouTubeId()</code>), then fall back to OEmbedPlayer if <code>media.html</code> exists. Never render both.</li>
+
+  <li><strong>Use <code>router.replace()</code> for lesson-to-lesson navigation.</strong> Previous/Next navigation replaces the current route to avoid building up a deep back stack of lesson screens.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

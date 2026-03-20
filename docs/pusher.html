@@ -257,19 +257,19 @@ authorizer: (channel) =&gt; ({
 
 <pre><code>// PusherMessage type
 {
-  thread_id: number | string;
+  thread_id?: number | string;       // Optional — fall back to message.thread_id
   message: {
     id: number;
     thread_id: number | string;
     user_id: number | string;
     text: string;                    // HTML: &lt;div class="chat_text"&gt;&lt;p&gt;...&lt;/p&gt;&lt;/div&gt;
     created_at: string;
-    xprofile: XProfile;              // Sender info (name, avatar, username)
+    xprofile?: XProfile;             // Sender info (name, avatar, username)
     meta?: {
       reactions?: Record&lt;string, number[]&gt;;
       reply_to?: number;
       reply_text?: string;
-    };
+    } | null;
     attachments?: ChatAttachment[];
   };
 }</code></pre>

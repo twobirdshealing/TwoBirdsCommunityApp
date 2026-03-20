@@ -103,19 +103,24 @@
   xprofile?: XProfile;               // Actor who triggered the notification
 
   // Computed (added by transformNotification)
-  id: number;                        // From subscriber.id
-  is_read: boolean;                  // Parsed from subscriber.is_read ("0"/"1")
+  id: number;                        // From subscriber.object_id
+  is_read: boolean;                  // Parsed from subscriber.is_read ("0"/"1"/true)
   created_at: string;                // From subscriber.created_at
   type: NotificationAction;          // Alias for action
 
   // Multi-reaction data (injected by tbc-multi-reactions plugin)
   tbc_reaction_type?: string;
-  tbc_reaction_emoji?: string;
-  tbc_reaction_icon_url?: string;
+  tbc_reaction_emoji?: string | null;
+  tbc_reaction_icon_url?: string | null;
 
   // Legacy/convenience
   message?: string;                  // HTML-stripped version of content
   title?: string;                    // First line of message
+  action_url?: string | null;        // Not used (route is used instead)
+  actor_id?: number | null;
+  object_id?: number | null;
+  object_type?: string | null;
+  read_at?: string | null;
 }</code></pre>
 
 <h3>NotificationAction Types</h3>
@@ -141,7 +146,7 @@
 <h3>Prerequisites</h3>
 <ul>
   <li><strong>Firebase:</strong> <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS) in project root</li>
-  <li><strong>EAS Project ID:</strong> Set in <code>app.json</code> → <code>expo.extra.eas.projectId</code></li>
+  <li><strong>EAS Project ID:</strong> Set in <code>app.json</code> &rarr; <code>expo.extra.eas.projectId</code></li>
   <li><strong>Physical device required:</strong> Push tokens can't be obtained on simulators</li>
 </ul>
 
@@ -184,7 +189,7 @@
 <ul>
   <li><strong>On login:</strong> <code>AuthContext</code> calls <code>registerDeviceToken(authToken)</code></li>
   <li><strong>On every app startup:</strong> Re-registers to ensure fresh token even if device state changed</li>
-  <li><strong>On logout:</strong> Calls <code>unregisterDeviceToken()</code> → <code>DELETE tbc-ca/v1/push/device</code></li>
+  <li><strong>On logout:</strong> Calls <code>unregisterDeviceToken()</code> &rarr; <code>DELETE tbc-ca/v1/push/device</code></li>
 </ul>
 
 <h3>Push API Endpoints</h3>
@@ -192,10 +197,10 @@
 
 <table>
   <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
-  <tr><td><code>registerDevice(auth, token, platform)</code></td><td>POST</td><td><code>tbc-ca/v1/push/device</code></td><td>Register Expo push token</td></tr>
-  <tr><td><code>unregisterDevice(auth, token)</code></td><td>DELETE</td><td><code>tbc-ca/v1/push/device</code></td><td>Remove device token on logout</td></tr>
-  <tr><td><code>getPushSettings(auth)</code></td><td>GET</td><td><code>tbc-ca/v1/push/settings</code></td><td>Get push notification preferences</td></tr>
-  <tr><td><code>updatePushSettings(auth, prefs)</code></td><td>POST</td><td><code>tbc-ca/v1/push/settings</code></td><td>Update push preferences</td></tr>
+  <tr><td><code>registerDevice(authToken, pushToken, platform)</code></td><td>POST</td><td><code>tbc-ca/v1/push/device</code></td><td>Register Expo push token</td></tr>
+  <tr><td><code>unregisterDevice(authToken, pushToken?)</code></td><td>DELETE</td><td><code>tbc-ca/v1/push/device</code></td><td>Remove device token on logout (token passed as query param when provided)</td></tr>
+  <tr><td><code>getPushSettings(authToken)</code></td><td>GET</td><td><code>tbc-ca/v1/push/settings</code></td><td>Get push notification preferences</td></tr>
+  <tr><td><code>updatePushSettings(authToken, preferences)</code></td><td>POST</td><td><code>tbc-ca/v1/push/settings</code></td><td>Update push preferences (map of ID &rarr; boolean)</td></tr>
 </table>
 
 <div class="callout callout-warn">
@@ -238,21 +243,17 @@
 <pre><code>const {
   unreadNotifications,         // number
   unreadMessages,              // number
-  setUnreadNotifications,      // setter
-  setUnreadMessages,           // setter
+  setUnreadNotifications,      // setter (accepts number or updater function)
+  setUnreadMessages,           // setter (accepts number or updater function)
   resetCounts,                 // clear all on logout
-} = useUnreadCounts();
-
-// Cart count is now in the cart module:
-// import { useCartCount } from '@/modules/cart/CartContext';
-// const cartCount = useCartCount();</code></pre>
+} = useUnreadCounts();</code></pre>
 
 <h3>How Counts Are Updated</h3>
 
 <table>
   <tr><th>Source</th><th>When</th><th>Mechanism</th></tr>
   <tr><td>Startup batch</td><td>App launch (authenticated)</td><td><code>useStartupData</code> populates initial counts from batch API</td></tr>
-  <tr><td>Response headers</td><td>Every authenticated API response</td><td><code>X-TBC-Unread-Notifications</code>, <code>X-TBC-Unread-Messages</code>, <code>X-TBC-Cart-Count</code></td></tr>
+  <tr><td>Response headers</td><td>Every authenticated API response</td><td><code>X-TBC-Unread-Notifications</code>, <code>X-TBC-Unread-Messages</code></td></tr>
   <tr><td>Mark as read</td><td>User marks notification read</td><td>API returns new <code>unread_count</code></td></tr>
   <tr><td>Mark all read</td><td>User marks all read</td><td>Sets count to 0</td></tr>
 </table>
@@ -291,8 +292,15 @@ await clearBadgeCount();       // Sets to 0</code></pre>
   email_key?: string;      // Matching email pref key (for unified UI)
   group?: string;          // Sub-group within category
   group_label?: string;
+  group_description?: string;
   push_label?: string;     // Override label for push channel
   note?: string;           // Contextual note to display
+}
+
+interface PushSettingsResponse {
+  success: boolean;
+  preferences: Record&lt;string, PushPreference[]&gt;;
+  device_count: number;
 }</code></pre>
 
 <h3>Email Preferences</h3>
@@ -304,23 +312,29 @@ await clearBadgeCount();       // Sets to 0</code></pre>
   mention_mail: 'yes' | 'no';           // Mentions
   digest_mail: 'yes' | 'no';            // Weekly digest
   message_email_frequency: 'default' | 'disabled' | 'hourly' | 'daily' | 'weekly';
+  [key: string]: string;                // Allow dynamic key lookup from server-driven email_key
 }
 
-// Per-space email notification level
-type SpacePref = '' | 'admin_only_posts' | 'all_member_posts';</code></pre>
+interface EmailPrefsResponse {
+  user_globals: EmailUserGlobals;
+  spaceGroups: EmailSpaceGroup[];
+  space_prefs: Record&lt;string, '' | 'admin_only_posts' | 'all_member_posts'&gt;;
+  digestEmailDay: string;
+  default_messaging_email_frequency: string;
+}</code></pre>
 
 <div class="callout callout-error">
   <strong>Email prefs are full replacement.</strong> <code>POST /notification-preferences</code> replaces ALL preferences, not just the changed ones. Always send the complete <code>user_globals</code> + <code>space_prefs</code> object. Missing keys will be reset to defaults.
 </div>
 
 <h3>Unified Settings Model</h3>
-<p><span class="file-path">hooks/useNotificationSettings.ts</span> builds a unified model by matching push preferences to email preferences via the <code>email_key</code> field:</p>
+<p><span class="file-path">hooks/useNotificationSettings.ts</span> builds a unified model by matching push preferences to email preferences via the <code>email_key</code> field. Types defined in <span class="file-path">constants/notificationMap.ts</span>:</p>
 
 <pre><code>interface UnifiedItem {
   key: string;
   label: string;
   description: string;
-  channels: ChannelInfo[];  // [{ type: 'push', enabled }, { type: 'email', enabled }]
+  channels: ChannelInfo[];  // [{ type: 'push', id, label, enabled }, { type: 'email', id, label, enabled }]
   note?: string;
 }
 
@@ -331,15 +345,15 @@ interface UnifiedSection {
 }</code></pre>
 
 <h3>DM Email Frequency</h3>
-<p>Special setting with picker options:</p>
+<p>Base frequency options (defined in <span class="file-path">constants/notificationMap.ts</span>):</p>
 <table>
   <tr><th>Value</th><th>Label</th></tr>
   <tr><td><code>hourly</code></td><td>Hourly</td></tr>
   <tr><td><code>daily</code></td><td>Daily</td></tr>
   <tr><td><code>weekly</code></td><td>Weekly</td></tr>
   <tr><td><code>disabled</code></td><td>Off</td></tr>
-  <tr><td><code>default</code></td><td>Use admin default</td></tr>
 </table>
+<p>A <code>default</code> option (labeled "Default (Daily)" etc.) is dynamically prepended by the settings screen when the admin has set a specific default frequency.</p>
 
 <h3>Space Email Preferences</h3>
 <p>Per-space notification levels:</p>
@@ -353,24 +367,28 @@ interface UnifiedSection {
 <!-- ================================================================== -->
 <h2 id="deep-linking">8. Deep Linking from Notifications</h2>
 
-<p><span class="file-path">app/_layout.tsx</span> handles notification taps via <code>Notifications.addNotificationResponseReceivedListener</code>.</p>
+<p>Push notification taps are handled in <span class="file-path">app/_layout.tsx</span> via <code>Notifications.addNotificationResponseReceivedListener</code>. In-app notification taps are handled in <span class="file-path">app/notifications.tsx</span> via the <code>navigateToRoute()</code> function.</p>
 
-<h3>Route Resolution Priority</h3>
+<h3>Push Notification Tap — Route Resolution Priority</h3>
+<p>When a push notification is tapped (<span class="file-path">app/_layout.tsx</span>), the <code>data</code> payload is checked in this order:</p>
 <ol>
-  <li><strong><code>data.route</code></strong> — server-provided route string (highest priority)</li>
-  <li><strong>Module handler</strong> — <code>handleModuleNotification(data, router)</code> for module-specific routes</li>
-  <li><strong>Legacy fields</strong> — <code>feed_id</code>, <code>space_slug</code>, <code>course_slug</code>, <code>profile_username</code></li>
-  <li><strong>Default</strong> — navigate to <code>/notifications</code> screen</li>
+  <li><strong><code>data.route</code> (string)</strong> — server-provided route path (e.g. <code>/feed/123</code>), validated against known route prefixes. Highest priority.</li>
+  <li><strong>Module handler</strong> — <code>handleModuleNotification(data, router)</code> lets modules claim the notification.</li>
+  <li><strong>Legacy fields</strong> — <code>feed_id</code>, <code>space_slug</code>, <code>course_slug</code>, <code>profile_username</code>.</li>
+  <li><strong>Default</strong> — navigate to <code>/notifications</code> screen.</li>
 </ol>
 
-<h3>Common Route Mappings</h3>
+<h3>In-App Notification Tap — Route Object Navigation</h3>
+<p>When a notification is tapped from the notification list (<span class="file-path">app/notifications.tsx</span>), the <code>notification.route</code> object is used:</p>
 <table>
   <tr><th>Route Name</th><th>App Path</th></tr>
-  <tr><td><code>space_feed</code>, <code>feed</code>, <code>feed_detail</code></td><td><code>/feed/{id}</code></td></tr>
-  <tr><td><code>space</code>, <code>space_detail</code></td><td><code>/space/{slug}</code></td></tr>
-  <tr><td><code>profile</code>, <code>user_profile</code></td><td><code>/profile/{username}</code></td></tr>
-  <tr><td><code>course</code>, <code>course_detail</code></td><td><code>/courses/{slug}</code></td></tr>
+  <tr><td><code>space_feed</code></td><td><code>/feed/{feed_slug}</code></td></tr>
+  <tr><td><code>feed</code>, <code>feed_detail</code></td><td><code>/feed/{id|slug|feed_slug}</code></td></tr>
+  <tr><td><code>space</code>, <code>space_detail</code></td><td><code>/space/{slug|space}</code></td></tr>
+  <tr><td><code>profile</code>, <code>user_profile</code></td><td><code>/profile/{username|user}</code></td></tr>
+  <tr><td><code>course</code>, <code>course_detail</code></td><td><code>/courses/{slug|course}</code></td></tr>
 </table>
+<p>If no route matches, falls back to navigating to the actor's profile (via <code>notification.xprofile.username</code>).</p>
 
 <!-- ================================================================== -->
 <h2 id="screens">9. Notification Screens</h2>
@@ -380,11 +398,11 @@ interface UnifiedSection {
 <ul>
   <li>Paginated FlashList (20 items per page)</li>
   <li>Filter toggle: "All" vs "Unread" (dynamic cache key)</li>
-  <li>Swipe right on notification → mark as read (green checkmark, haptic feedback)</li>
-  <li>"Mark all as read" button in header</li>
-  <li>Tap notification → navigate to related content + mark as read</li>
-  <li>Uses <code>useCachedData</code> for SWR caching</li>
-  <li>Empty state when no notifications</li>
+  <li>Swipe left on notification &rarr; mark as read (green checkmark, haptic feedback)</li>
+  <li>"Mark all as read" via header settings icon</li>
+  <li>Tap notification &rarr; navigate to related content + mark as read</li>
+  <li>Uses <code>useCachedData</code> for SWR caching (page 1 cached, pages 2+ appended manually)</li>
+  <li>Empty state when no notifications (different messages for "All" vs "Unread" filter)</li>
 </ul>
 
 <h3>Notification Settings</h3>
@@ -392,10 +410,11 @@ interface UnifiedSection {
 <ul>
   <li>Unified push + email preferences in one screen</li>
   <li>Per-notification-type toggle with push and email channels</li>
-  <li>Weekly digest toggle</li>
-  <li>DM email frequency selector</li>
-  <li>Per-space email notification level</li>
-  <li>Status banners: permission denied, undetermined, feature disabled</li>
+  <li>Weekly digest toggle (shows day of week when available from server)</li>
+  <li>DM email frequency selector (chip-based picker)</li>
+  <li>Per-space email notification level (cycle-on-tap selector: Off &rarr; Admin Posts &rarr; All Posts)</li>
+  <li>Status banners: push disabled by admin, physical device required, permission denied (links to OS settings), permission undetermined (enable button)</li>
+  <li>Partial error banners (one API failed, other succeeded)</li>
   <li>Optimistic updates with rollback on failure</li>
   <li>Pull-to-refresh to reload all settings</li>
 </ul>
@@ -403,8 +422,8 @@ interface UnifiedSection {
 <h3>Components</h3>
 <table>
   <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
-  <tr><td><code>NotificationCard</code></td><td><span class="file-path">components/notification/NotificationCard.tsx</span></td><td>List item with unread indicator, actor avatar + type icon, message, timestamp, swipe-to-read</td></tr>
-  <tr><td><code>NotificationTypeIcon</code></td><td><span class="file-path">components/notification/NotificationTypeIcon.tsx</span></td><td>Maps notification action to icon (comment, reaction with emoji, follow, etc.)</td></tr>
+  <tr><td><code>NotificationCard</code></td><td><span class="file-path">components/notification/NotificationCard.tsx</span></td><td>List item with unread indicator (blue dot + tinted background), actor avatar + type icon overlay, message, timestamp, swipe-to-read, chevron</td></tr>
+  <tr><td><code>NotificationActionIcon</code></td><td><span class="file-path">components/notification/NotificationTypeIcon.tsx</span></td><td>Maps notification action to icon (comment, reply, reaction with emoji, follow, mention, invite, etc.). For reaction notifications with <code>tbc_reaction_type</code>, renders the actual reaction icon via <code>ReactionIcon</code>.</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -446,7 +465,7 @@ interface UnifiedSection {
   "data": {
     "feed_id": 123,
     "space_slug": "general",
-    "route": "feed_detail",      // For deep linking
+    "route": "/feed/123",        // For deep linking (string path)
     ...
   },
   "channelId": "default",        // Android only
@@ -485,12 +504,12 @@ interface UnifiedSection {
   <tr><td><span class="file-path">services/api/emailPrefs.ts</span></td><td>Fluent Community email preference sync</td></tr>
   <tr><td><span class="file-path">types/notification.ts</span></td><td>AppNotification type + transformNotification helper</td></tr>
   <tr><td><span class="file-path">constants/notificationMap.ts</span></td><td>Unified model types + frequency/space-pref option constants</td></tr>
-  <tr><td><span class="file-path">contexts/UnreadCountsContext.tsx</span></td><td>Shared badge count state (notifications, messages, cart)</td></tr>
+  <tr><td><span class="file-path">contexts/UnreadCountsContext.tsx</span></td><td>Shared badge count state (notifications, messages)</td></tr>
   <tr><td><span class="file-path">hooks/useNotificationSettings.ts</span></td><td>Unified settings state + handlers (merges push + email)</td></tr>
   <tr><td><span class="file-path">app/notifications.tsx</span></td><td>Notification list screen with filter + swipe</td></tr>
   <tr><td><span class="file-path">app/notification-settings.tsx</span></td><td>Unified push + email settings screen</td></tr>
   <tr><td><span class="file-path">components/notification/NotificationCard.tsx</span></td><td>List item with actor avatar, type icon, swipe action</td></tr>
-  <tr><td><span class="file-path">components/notification/NotificationTypeIcon.tsx</span></td><td>Maps action → icon (supports multi-reaction emoji)</td></tr>
+  <tr><td><span class="file-path">components/notification/NotificationTypeIcon.tsx</span></td><td>Maps action &rarr; icon (supports multi-reaction emoji via ReactionIcon)</td></tr>
 </table>
 
 <h3>WordPress Backend</h3>
@@ -514,7 +533,7 @@ interface UnifiedSection {
   <li><strong>Use <code>UnreadCountsContext</code> for all badge counts.</strong> Don't maintain separate unread state — all screens and components read from this single context. It's updated by response headers, startup batch, and mark-as-read APIs.</li>
   <li><strong>Sync OS badge after count changes.</strong> After updating <code>unreadNotifications</code> in context, call <code>syncBadgeCount(count)</code> to update the app icon badge. It deduplicates automatically.</li>
   <li><strong>Transform notifications before use.</strong> All raw API notification data must pass through <code>transformNotification()</code>. The API service functions do this automatically — don't transform again in UI code.</li>
-  <li><strong>Deep link via <code>route</code> field, not legacy fields.</strong> Use <code>notification.route</code> (server-provided) for navigation. Legacy fields (<code>feed_id</code>, <code>space_slug</code>) are fallbacks only.</li>
+  <li><strong>Deep link via <code>route</code> field, not legacy fields.</strong> Push notifications use a string <code>data.route</code> path. In-app notification objects use a <code>route</code> object with <code>{ name, params }</code>. Legacy fields (<code>feed_id</code>, <code>space_slug</code>) are fallbacks only.</li>
   <li><strong>Register device token on every app startup.</strong> Don't skip registration if a token was previously obtained — device tokens can change. Re-registering ensures the backend always has the current token.</li>
   <li><strong>Push requires physical device.</strong> Check <code>Device.isDevice</code> before requesting permissions or tokens. Simulators will always return null.</li>
   <li><strong>Use the unified settings hook for the settings screen.</strong> <code>useNotificationSettings</code> merges push and email prefs into <code>UnifiedSection[]</code>. Don't build the settings UI directly from the raw APIs.</li>

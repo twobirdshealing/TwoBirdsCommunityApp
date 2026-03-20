@@ -19,6 +19,7 @@
   <span class="file-path">hooks/useChatReactions.tsx</span> &middot;
   <span class="file-path">hooks/useMessageMenu.ts</span> &middot;
   <span class="file-path">types/message.ts</span> &middot;
+  <span class="file-path">components/message/</span> &middot;
   <span class="file-path">app/messages/</span><br>
   Messaging requires the <strong>Fluent Messaging</strong> add-on on the WordPress site. The app feature is gated by the <code>messaging</code> feature flag, controlled in wp-admin &rarr; TBC Community App &rarr; Features tab and accessed via <code>useFeatures()</code>.
 </div>
@@ -35,6 +36,7 @@
     <li><a href="#realtime">Real-Time (Pusher)</a></li>
     <li><a href="#reactions">Message Reactions</a></li>
     <li><a href="#blocking">Block &amp; Unblock</a></li>
+    <li><a href="#components">UI Components</a></li>
     <li><a href="#types">Data Types</a></li>
     <li><a href="#helpers">Helper Functions</a></li>
     <li><a href="#rules">Rules</a></li>
@@ -49,6 +51,7 @@
   &boxvr;&boxh; Client-side search (name, username, preview)
   &boxvr;&boxh; Swipe-to-delete threads
   &boxvr;&boxh; Pusher updates thread previews in real-time
+  &boxvr;&boxh; New Message modal &mdash; search users, tap to start conversation
   &boxur;&boxh; Tap thread &rarr; Chat screen
 
 Chat Screen (/messages/user/[userId])
@@ -57,6 +60,8 @@ Chat Screen (/messages/user/[userId])
   &boxvr;&boxh; Send text + image attachments + reply quotes
   &boxvr;&boxh; Real-time: Pusher appends new messages instantly
   &boxvr;&boxh; Reactions: emoji picker, optimistic toggle, Pusher sync
+  &boxvr;&boxh; Context menu: reply, delete (own messages)
+  &boxvr;&boxh; Image lightbox via MediaViewer
   &boxur;&boxh; Block/unblock thread participants</div>
 
 <p>The messaging system is built on Fluent Community&rsquo;s Chat API (v2.2.0). Threads represent conversations between users. Messages are loaded via cursor-based pagination and updated in real-time via Pusher.</p>
@@ -74,22 +79,32 @@ Chat Screen (/messages/user/[userId])
 <p>The chat screen is always navigated to by <strong>user ID</strong>, not thread ID. This supports both:</p>
 <ul>
   <li><strong>Existing conversations</strong> &mdash; the hook resolves the user ID to an existing thread</li>
-  <li><strong>New conversations</strong> &mdash; when tapping &ldquo;Message&rdquo; on a profile, no thread exists yet. The hook shows the user&rsquo;s info and creates a thread on first message send.</li>
+  <li><strong>New conversations</strong> &mdash; when tapping &ldquo;Message&rdquo; on a profile or selecting a user in the New Message modal, no thread exists yet. The hook shows the user&rsquo;s info and creates a thread on first message send.</li>
 </ul>
 
 <pre><code>// Navigate to chat with a user
 router.push(`/messages/user/${userId}`);
 
-// From thread list (also uses userId from thread info)
+// From thread list (uses userId from thread.info)
 const userId = getThreadUserId(thread);
-router.push(`/messages/user/${userId}`);</code></pre>
+router.push(`/messages/user/${userId}`);
+
+// From New Message modal (passes display info as params)
+router.push({
+  pathname: '/messages/user/[userId]',
+  params: {
+    userId: String(member.user_id),
+    displayName: member.display_name,
+    avatar: member.avatar || '',
+  },
+});</code></pre>
 
 <!-- ====================================================================== -->
 <h2 id="thread-resolution">3. Thread Resolution</h2>
 
 <p>The <code>useChatMessages</code> hook handles finding the right thread for a given user ID. This is the most complex part of the messaging system.</p>
 
-<div class="flow-diagram">useChatMessages({ targetUserId, knownThreadId })
+<div class="flow-diagram">useChatMessages({ targetUserId, knownThreadId, currentUserId, listRef })
   &darr;
   knownThreadId provided?
   &boxvr;&boxh; Yes: getMessages(threadId) directly
@@ -100,13 +115,26 @@ router.push(`/messages/user/${userId}`);</code></pre>
          &boxur;&boxh; No: intended_object returned (user info, no thread yet)
                 &darr;
                 Show user info + empty chat
-                Thread created on first message send</div>
+                Thread created on first message send via startChatWithUser()</div>
 
 <h3>Response Fields</h3>
 <table>
   <tr><th>Field</th><th>Meaning</th></tr>
   <tr><td><code>selected_thread</code></td><td>Existing thread with this user &mdash; load its messages</td></tr>
-  <tr><td><code>intended_object</code></td><td>Target user info (id, title, photo) &mdash; no thread exists yet</td></tr>
+  <tr><td><code>intended_object</code></td><td>Target user info (id, title, photo, type) &mdash; no thread exists yet</td></tr>
+</table>
+
+<h3>Hook Return Value</h3>
+<p><code>useChatMessages</code> returns everything the chat screen needs:</p>
+<table>
+  <tr><th>Property</th><th>Purpose</th></tr>
+  <tr><td><code>thread</code>, <code>threadDetails</code>, <code>intendedUser</code></td><td>Resolved thread state</td></tr>
+  <tr><td><code>messages</code>, <code>setMessages</code></td><td>Message list + setter (used by reactions hook)</td></tr>
+  <tr><td><code>loading</code>, <code>sending</code>, <code>error</code></td><td>Loading/error state</td></tr>
+  <tr><td><code>hasMore</code>, <code>loadingOlder</code>, <code>loadOlderMessages</code></td><td>Cursor-based pagination</td></tr>
+  <tr><td><code>isBlocked</code>, <code>blockLoading</code>, <code>handleBlockPress</code>, <code>handleUnblockPress</code></td><td>Block/unblock state and actions</td></tr>
+  <tr><td><code>replyTo</code>, <code>setReplyTo</code></td><td>Reply-to state for the input</td></tr>
+  <tr><td><code>handleDeleteMessage</code>, <code>handleSend</code></td><td>Message actions</td></tr>
 </table>
 
 <!-- ====================================================================== -->
@@ -119,8 +147,9 @@ router.push(`/messages/user/${userId}`);</code></pre>
   <tr><td><code>getThreads()</code></td><td><code>GET /chat/threads</code></td><td>Get all conversation threads</td></tr>
   <tr><td><code>getThreadsForUser(userId)</code></td><td><code>GET /chat/threads?user_id=</code></td><td>Resolve thread for a specific user</td></tr>
   <tr><td><code>getThread(threadId)</code></td><td><code>GET /chat/threads/{id}</code></td><td>Get single thread by ID</td></tr>
-  <tr><td><code>getMessages(threadId, beforeId?)</code></td><td><code>GET /chat/messages/{id}</code></td><td>Get messages (cursor pagination)</td></tr>
-  <tr><td><code>getNewMessages(threadId, lastId)</code></td><td><code>GET /chat/messages/{id}/new</code></td><td>Poll for new messages after an ID</td></tr>
+  <tr><td><code>createThread(data)</code></td><td><code>POST /chat/threads</code></td><td>Create a new thread (low-level &mdash; prefer <code>startChatWithUser</code>)</td></tr>
+  <tr><td><code>getMessages(threadId, beforeId?)</code></td><td><code>GET /chat/messages/{id}</code></td><td>Get messages (cursor pagination via <code>?before_id=</code>)</td></tr>
+  <tr><td><code>getNewMessages(threadId, lastId)</code></td><td><code>GET /chat/messages/{id}/new?last_id=</code></td><td>Poll for new messages after an ID</td></tr>
   <tr><td><code>sendMessage(threadId, text, attachments?, reply?)</code></td><td><code>POST /chat/messages/{id}</code></td><td>Send a message (text + optional images + reply)</td></tr>
   <tr><td><code>startChatWithUser(userId, message)</code></td><td><code>POST /chat/threads</code></td><td>Create thread + first message in one call</td></tr>
   <tr><td><code>deleteMessage(messageId)</code></td><td><code>POST /chat/messages/delete/{id}</code></td><td>Delete own message</td></tr>
@@ -130,7 +159,12 @@ router.push(`/messages/user/${userId}`);</code></pre>
   <tr><td><code>unblockThread(threadId)</code></td><td><code>POST /chat/threads/unblock/{id}</code></td><td>Unblock a conversation</td></tr>
   <tr><td><code>markThreadsRead(threadIds)</code></td><td><code>POST /chat/read-threads</code></td><td>Mark threads as read</td></tr>
   <tr><td><code>getUnreadThreadIds()</code></td><td><code>GET /chat/unread_threads</code></td><td>Get IDs of threads with unread messages</td></tr>
+  <tr><td><code>getMessageUnreadCount()</code></td><td>(calls <code>getUnreadThreadIds</code>)</td><td>Returns count of unread threads</td></tr>
 </table>
+
+<div class="callout callout-info">
+  <strong>New Message user search</strong> uses a separate endpoint: <code>GET /chat/users?search=</code> (via <code>ENDPOINTS.CHAT_USERS</code>). This is called directly in <span class="file-path">components/message/NewMessageModal.tsx</span>, not through <code>messagesApi</code>.
+</div>
 
 <!-- ====================================================================== -->
 <h2 id="pagination">5. Cursor-Based Pagination</h2>
@@ -141,6 +175,7 @@ router.push(`/messages/user/${userId}`);</code></pre>
 const response = await messagesApi.getMessages(threadId);
 // response.data.messages = [newest, ..., oldest]
 // response.data.has_more = true/false
+// response.data.threadDetails = { id, title, info, blocked_thread, ... }
 
 // Load older messages
 const oldestId = messages[0].id;
@@ -148,7 +183,9 @@ const older = await messagesApi.getMessages(threadId, oldestId);
 // Prepend older.data.messages to existing array</code></pre>
 
 <h3>Message Order</h3>
-<p>The API returns messages in <strong>descending order</strong> (newest first). The hook reverses them to ascending (oldest first) for chronological display in a bottom-anchored FlashList.</p>
+<p>The API returns messages in <strong>descending order</strong> (newest first). The <code>useChatMessages</code> hook reverses them to ascending (oldest first) for chronological display in a bottom-anchored FlashList:</p>
+
+<pre><code>const fetchedMessages = (response.data.messages || []).slice().reverse();</code></pre>
 
 <!-- ====================================================================== -->
 <h2 id="sending">6. Sending Messages</h2>
@@ -160,13 +197,26 @@ const older = await messagesApi.getMessages(threadId, oldestId);
 <pre><code>// Creates thread + sends first message in a single API call
 const response = await messagesApi.startChatWithUser(userId, text);
 // response.data.thread — the new thread
-// response.data.message — the sent message</code></pre>
+// response.data.message — the sent message (optional)</code></pre>
 
 <h3>Attachments</h3>
-<p>Image attachments are uploaded separately first (via media upload), then their URLs are passed in the <code>mediaItems</code> array:</p>
-<pre><code>await messagesApi.sendMessage(threadId, text, [
+<p>Image attachments are uploaded first via <code>mediaApi.uploadMedia()</code> with the <code>'chat'</code> context, then their URLs are passed as <code>ChatInputAttachment</code> objects. Internally, <code>sendMessage</code> maps them to URL strings in the <code>mediaItems</code> body field:</p>
+<pre><code>// ChatInputAttachment shape
+interface ChatInputAttachment {
+  url: string;
+  type: 'image';
+  width?: number;
+  height?: number;
+}
+
+// Usage
+await messagesApi.sendMessage(threadId, text, [
   { url: 'https://...uploaded-image.jpg', type: 'image' },
-]);</code></pre>
+]);
+
+// Internally sent as: { text, mediaItems: ['https://...uploaded-image.jpg'] }</code></pre>
+
+<p>The <code>ChatInput</code> component limits attachments to <strong>4 images</strong> per message (<code>selectionLimit: 4 - attachments.length</code>).</p>
 
 <h3>Reply Quotes</h3>
 <p>To reply to a specific message, pass <code>reply_to</code> (message ID) and <code>reply_text</code> (quoted text):</p>
@@ -178,7 +228,7 @@ const response = await messagesApi.startChatWithUser(userId, text);
 <!-- ====================================================================== -->
 <h2 id="realtime">7. Real-Time (Pusher)</h2>
 
-<p>New messages and reactions arrive via Pusher on the user&rsquo;s private channel (<code>private-chat_user_{id}</code>). See <a href="pusher.html">Pusher doc</a> for connection details.</p>
+<p>New messages and reactions arrive via Pusher on the user&rsquo;s private channel. See <a href="pusher.html">Pusher doc</a> for connection details.</p>
 
 <h3>Hooks</h3>
 <table>
@@ -187,24 +237,40 @@ const response = await messagesApi.startChatWithUser(userId, text);
   <tr><td><code>useReactionListener(handler)</code></td><td><span class="file-path">contexts/PusherContext.tsx</span></td><td>Subscribe to reaction events</td></tr>
 </table>
 
+<p>Both hooks use <code>useEffectEvent</code> internally to keep the handler reference stable without re-subscribing on every render.</p>
+
 <h3>Message Events</h3>
-<pre><code>// In useChatMessages.ts
-useNewMessageListener((pusherMessage: PusherMessage) =&gt; {
-  // Append new message to the list if it's for our thread
-  if (pusherMessage.thread_id === thread?.id) {
-    setMessages(prev =&gt; [...prev, newMessage]);
+<pre><code>// In useChatMessages.ts — uses useEffectEvent for stable handler
+const handleNewMessage = useEffectEvent((data: PusherMessage) =&gt; {
+  const msgThreadId = data.thread_id || data.message.thread_id;
+  if (thread && String(msgThreadId) === String(thread.id)) {
+    const newMessage: ChatMessage = data.message;
+
+    setMessages(prev =&gt; {
+      // Deduplicate — message may already exist from sendMessage response
+      const exists = prev.some(m =&gt; m.id === newMessage.id);
+      if (exists) return prev;
+      return [...prev, newMessage];
+    });
+
     // Auto-scroll to bottom
+    setTimeout(() =&gt; { listRef.current?.scrollToEnd({ animated: true }); }, 100);
   }
 });
 
-useReactionListener((reaction: PusherReaction) =&gt; {
-  // Update reactions on the target message
-  setMessages(prev =&gt; prev.map(m =&gt;
-    m.id === reaction.message_id
-      ? { ...m, meta: { ...m.meta, reactions: reaction.reactions } }
-      : m
-  ));
-});</code></pre>
+const handleReaction = useEffectEvent((data: PusherReaction) =&gt; {
+  if (thread && String(data.thread_id) === String(thread.id)) {
+    setMessages(prev =&gt; prev.map(m =&gt; {
+      if (m.id === data.message_id) {
+        return { ...m, meta: { ...m.meta, reactions: data.reactions } };
+      }
+      return m;
+    }));
+  }
+});
+
+useNewMessageListener(handleNewMessage);
+useReactionListener(handleReaction);</code></pre>
 
 <h3>Thread List Updates</h3>
 <p>The thread list screen also subscribes to <code>useNewMessageListener</code>. When a new message arrives, it updates the thread&rsquo;s preview message and moves it to the top of the list.</p>
@@ -212,7 +278,7 @@ useReactionListener((reaction: PusherReaction) =&gt; {
 <h3>Badge Counts</h3>
 <p>Unread message counts are tracked in <a href="state-management.html#unread">UnreadCountsContext</a>. The count updates via:</p>
 <ul>
-  <li><strong>Startup batch</strong> &mdash; initial count</li>
+  <li><strong>Startup batch</strong> &mdash; initial count via <code>getMessageUnreadCount()</code></li>
   <li><strong>Response headers</strong> &mdash; <code>X-TBC-Unread-Messages</code> on every API call</li>
   <li><strong>Pusher</strong> &mdash; bumps count on incoming message event</li>
 </ul>
@@ -222,10 +288,10 @@ useReactionListener((reaction: PusherReaction) =&gt; {
 
 <p><span class="file-path">hooks/useChatReactions.tsx</span></p>
 
-<p>Chat message reactions use the same emoji set as feed reactions but with a different API endpoint. Reactions are stored in the message&rsquo;s <code>meta.reactions</code> field.</p>
+<p>Chat message reactions use the same emoji set as feed reactions (configured via <code>useReactionConfig</code>) but with a different API endpoint. Reactions are stored in the message&rsquo;s <code>meta.reactions</code> field.</p>
 
 <h3>Data Shape</h3>
-<pre><code>// meta.reactions is a map of emoji → array of user IDs
+<pre><code>// meta.reactions is a map of emoji &rarr; array of user IDs
 {
   "reactions": {
     "&#x1f44d;": [1, 42],     // user IDs who reacted with thumbs up
@@ -233,12 +299,33 @@ useReactionListener((reaction: PusherReaction) =&gt; {
   }
 }</code></pre>
 
+<h3>Interaction Modes</h3>
+<ul>
+  <li><strong>Tap smiley button</strong> &mdash; toggles the default reaction (first in config). If user already has a reaction, it toggles that one instead.</li>
+  <li><strong>Long-press smiley button</strong> &mdash; opens the reaction picker (positioned at button anchor).</li>
+  <li><strong>Tap existing reaction pill</strong> &mdash; toggles that specific reaction for the current user.</li>
+</ul>
+
 <h3>Optimistic Updates</h3>
-<p>When a user taps a reaction, the UI updates immediately (optimistic). If the API call fails, the change is reverted. Pusher also delivers the update, which reconciles the server state.</p>
+<p>All reactions use <code>optimisticUpdate()</code> from <span class="file-path">utils/optimisticUpdate</span>. The UI updates immediately; if the API call fails, the change is reverted. Pusher also delivers the update, which reconciles the server state. One reaction per user &mdash; adding a new reaction removes the previous one.</p>
 
 <h3>API</h3>
 <pre><code>// Toggle reaction (add if not present, remove if present)
 await messagesApi.toggleReaction(messageId, '&#x1f44d;');</code></pre>
+
+<h3>Hook Return Value</h3>
+<p><code>useChatReactions({ currentUserId, setMessages })</code> returns:</p>
+<table>
+  <tr><th>Property</th><th>Purpose</th></tr>
+  <tr><td><code>reactionPickerVisible</code>, <code>reactionPickerAnchor</code></td><td>Picker state for the overlay</td></tr>
+  <tr><td><code>renderReactionIcon(emoji)</code></td><td>Renders a <code>ReactionIcon</code> for breakdown pills</td></tr>
+  <tr><td><code>renderUserReactionIcon(message)</code></td><td>Returns a render function for the smiley button</td></tr>
+  <tr><td><code>handleDefaultReact</code></td><td>Tap handler for the smiley button</td></tr>
+  <tr><td><code>handleReactionLongPress</code></td><td>Long-press handler to open picker</td></tr>
+  <tr><td><code>handleReactionPillPress</code></td><td>Tap handler for existing reaction pills</td></tr>
+  <tr><td><code>handleReactionSelect</code></td><td>Selection handler from the picker</td></tr>
+  <tr><td><code>handleReactionPickerClose</code></td><td>Dismiss picker without selection</td></tr>
+</table>
 
 <!-- ====================================================================== -->
 <h2 id="blocking">9. Block &amp; Unblock</h2>
@@ -254,14 +341,70 @@ await messagesApi.unblockThread(threadId);</code></pre>
 <p>When a thread is blocked:</p>
 <ul>
   <li>The chat input is disabled</li>
-  <li>A &ldquo;You blocked messages&rdquo; indicator is shown</li>
+  <li>A blocked-state indicator is shown</li>
   <li>The user can unblock from the chat menu or the blocked state UI</li>
 </ul>
 
-<p>Block state is read from <code>threadDetails.blocked_thread</code> in the messages response.</p>
+<p>Block state is read from <code>threadDetails.blocked_thread</code> in the messages response. The <code>useChatMessages</code> hook tracks it via the <code>isBlocked</code> state variable and provides <code>handleBlockPress(displayName)</code> and <code>handleUnblockPress()</code> handlers that show confirmation alerts.</p>
 
 <!-- ====================================================================== -->
-<h2 id="types">10. Data Types</h2>
+<h2 id="components">10. UI Components</h2>
+
+<p>All messaging components live in <span class="file-path">components/message/</span>.</p>
+
+<h3>ChatInput</h3>
+<p><span class="file-path">components/message/ChatInput.tsx</span></p>
+<p>Message composer with text input, image attachment picker, and send button.</p>
+<ul>
+  <li>Multiline text input (max 2000 characters)</li>
+  <li>Image picker &mdash; uses <code>expo-image-picker</code>, uploads via <code>mediaApi.uploadMedia()</code> with <code>'chat'</code> context</li>
+  <li>Up to 4 image attachments per message</li>
+  <li>Reply bar &mdash; shows quoted text and cancel button when replying</li>
+  <li>Media preview strip &mdash; uses <code>MediaPreview</code> component while uploading/attached</li>
+  <li>Clears text and attachments immediately on send for responsive UX; restores text on error</li>
+  <li>Haptic feedback on send</li>
+</ul>
+
+<h3>MessageBubble</h3>
+<p><span class="file-path">components/message/MessageBubble.tsx</span></p>
+<p>Displays an individual chat message with different styles for sent vs received.</p>
+<ul>
+  <li>Avatar shown for received messages (first in group)</li>
+  <li>Sender name shown for received messages (first in group)</li>
+  <li>Images extracted from HTML text via regex (<code>extractImagesFromHtml</code>) &mdash; tappable to open MediaViewer</li>
+  <li>Reply quote block &mdash; tappable to scroll to original message</li>
+  <li>Reaction row: smiley button (far left) + reaction pills with counts + context menu button (far right)</li>
+  <li>Swipe-to-delete for own messages (via <code>Swipeable</code> from react-native-gesture-handler)</li>
+  <li>Timestamps respect WordPress time format setting (12h/24h via <code>useAppConfig().is24Hour</code>)</li>
+</ul>
+<p>Also exports <code>MessageGroup</code> (groups consecutive messages from same sender) and <code>DateSeparator</code> (Today/Yesterday/date headers).</p>
+
+<h3>ConversationCard</h3>
+<p><span class="file-path">components/message/ConversationCard.tsx</span></p>
+<p>Thread list item displaying a conversation preview.</p>
+<ul>
+  <li>Avatar with online status indicator (via <code>isUserOnline(thread.info?.last_activity)</code>)</li>
+  <li>Display name with verified badge and custom badge support (<code>UserDisplayName</code> component)</li>
+  <li>Message preview with &ldquo;You:&rdquo; prefix for own last message</li>
+  <li>Relative timestamp (via <code>formatRelativeTime</code>)</li>
+  <li>Unread dot indicator</li>
+  <li>Swipe-to-delete (via <code>Swipeable</code>)</li>
+  <li>Press animation (via <code>AnimatedPressable</code>)</li>
+</ul>
+
+<h3>NewMessageModal</h3>
+<p><span class="file-path">components/message/NewMessageModal.tsx</span></p>
+<p>Modal for starting new conversations.</p>
+<ul>
+  <li>Page-sheet presentation with search input</li>
+  <li>Debounced user search (300ms) via <code>GET /chat/users?search=</code></li>
+  <li>Minimum 2 characters to trigger search</li>
+  <li>Displays results using <code>MemberCard</code> component</li>
+  <li>Tap user to close modal and navigate to <code>/messages/user/[userId]</code></li>
+</ul>
+
+<!-- ====================================================================== -->
+<h2 id="types">11. Data Types</h2>
 
 <p><span class="file-path">types/message.ts</span></p>
 
@@ -275,6 +418,7 @@ await messagesApi.unblockThread(threadId);</code></pre>
   updated_at: string;
   info?: ThreadInfo;     // Other participant (v2.2.0)
   type?: 'user' | 'community';
+  provider?: string;
   messages: ChatMessage[]; // Recent messages (preview)
   space_id?: number | null;
 }</code></pre>
@@ -286,9 +430,10 @@ await messagesApi.unblockThread(threadId);</code></pre>
   user_id: string | number;
   text: string;              // HTML content
   created_at: string;
+  updated_at?: string;
   xprofile?: XProfile;       // Sender (on individual messages, not previews)
   meta?: {
-    reactions?: Record&lt;string, number[]&gt;;  // emoji → user IDs
+    reactions?: Record&lt;string, number[]&gt;;  // emoji &rarr; user IDs
     reply_to?: number;                      // ID of quoted message
     reply_text?: string;                    // Text of quoted message
   } | null;
@@ -298,11 +443,76 @@ await messagesApi.unblockThread(threadId);</code></pre>
 <h3>ThreadInfo (v2.2.0)</h3>
 <pre><code>interface ThreadInfo {
   id: string | number;
-  title: string;       // Display name
-  photo: string;       // Avatar URL
+  title: string;         // Display name
+  photo: string;         // Avatar URL
   username: string;
-  is_verified: number | boolean;
+  last_activity: string;
+  permalink: string;
+  type: string;
   badge: string | null;
+  is_verified: number | boolean;
+}</code></pre>
+
+<h3>IntendedObject</h3>
+<pre><code>interface IntendedObject {
+  id: number;
+  title: string;
+  photo: string;
+  type: string;
+}</code></pre>
+
+<h3>ThreadDetails</h3>
+<pre><code>interface ThreadDetails {
+  id: number;
+  title: string;
+  space_id?: number | null;
+  message_count?: string | number;
+  status?: string;
+  provider?: string;
+  type?: 'user' | 'community';
+  info?: ThreadInfo;
+  blocked_thread?: boolean;
+}</code></pre>
+
+<h3>ChatAttachment</h3>
+<pre><code>interface ChatAttachment {
+  id: number;
+  type: 'image' | 'video' | 'file';
+  url: string;
+  thumbnail?: string;
+  filename?: string;
+  size?: number;
+}</code></pre>
+
+<h3>API Response Types</h3>
+<pre><code>interface ThreadsResponse {
+  community_threads: ChatThread[];
+  left_community_threads: ChatThread[];
+  threads: ChatThread[];
+  has_more_threads: boolean;
+  selected_thread?: ChatThread;
+  intended_object?: IntendedObject;
+}
+
+interface MessagesResponse {
+  messages: ChatMessage[];
+  has_more: boolean;
+  threadDetails?: ThreadDetails;
+}
+
+interface SendMessageResponse {
+  message: ChatMessage;
+}
+
+interface CreateThreadResponse {
+  thread: ChatThread;
+  message?: ChatMessage;
+}
+
+interface CreateThreadRequest {
+  message: string;
+  intent_id: number;     // User ID to start chat with
+  intent_type: 'user';
 }</code></pre>
 
 <div class="callout callout-warn">
@@ -310,25 +520,34 @@ await messagesApi.unblockThread(threadId);</code></pre>
 </div>
 
 <!-- ====================================================================== -->
-<h2 id="helpers">11. Helper Functions</h2>
+<h2 id="helpers">12. Helper Functions</h2>
 
 <p>All helpers are in <span class="file-path">types/message.ts</span> and extract info from the v2.2.0 <code>ThreadInfo</code> structure:</p>
 
 <table>
   <tr><th>Function</th><th>Returns</th><th>Purpose</th></tr>
-  <tr><td><code>getThreadDisplayName(thread)</code></td><td><code>string</code></td><td>Other participant&rsquo;s name</td></tr>
+  <tr><td><code>getThreadDisplayName(thread)</code></td><td><code>string</code></td><td>Other participant&rsquo;s name (falls back to <code>thread.title</code> then <code>'Unknown'</code>)</td></tr>
   <tr><td><code>getThreadAvatar(thread)</code></td><td><code>string | null</code></td><td>Other participant&rsquo;s avatar URL</td></tr>
   <tr><td><code>getThreadUserId(thread)</code></td><td><code>number | null</code></td><td>Other participant&rsquo;s user ID</td></tr>
   <tr><td><code>getThreadUsername(thread)</code></td><td><code>string | null</code></td><td>Other participant&rsquo;s username</td></tr>
   <tr><td><code>isThreadVerified(thread)</code></td><td><code>boolean</code></td><td>Whether participant has verified badge</td></tr>
-  <tr><td><code>getThreadBadgeSlugs(thread)</code></td><td><code>string[]</code></td><td>Badge slugs for participant</td></tr>
-  <tr><td><code>getLastMessage(thread)</code></td><td><code>ChatMessage | null</code></td><td>Most recent message for preview</td></tr>
-  <tr><td><code>getMessagePreview(text, maxLen)</code></td><td><code>string</code></td><td>Strip HTML + truncate for list preview</td></tr>
+  <tr><td><code>getThreadBadgeSlugs(thread)</code></td><td><code>string[]</code></td><td>Badge slugs for participant (wraps single badge string in array)</td></tr>
+  <tr><td><code>getLastMessage(thread)</code></td><td><code>ChatMessage | null</code></td><td>Most recent message (last in <code>thread.messages</code> array)</td></tr>
+  <tr><td><code>getMessagePreview(text, maxLen)</code></td><td><code>string</code></td><td>Strip HTML + truncate for list preview (default 50 chars)</td></tr>
   <tr><td><code>getMessageText(text)</code></td><td><code>string</code></td><td>Strip HTML, preserve newlines</td></tr>
 </table>
 
+<h3>useMessageMenu Hook</h3>
+<p><span class="file-path">hooks/useMessageMenu.ts</span> &mdash; manages message context menu and media viewer state:</p>
+<table>
+  <tr><th>Property</th><th>Purpose</th></tr>
+  <tr><td><code>handleMenuPress(message, anchor)</code></td><td>Opens context menu (Reply / Delete) at anchor position</td></tr>
+  <tr><td><code>handleImagePress(images, index)</code></td><td>Opens MediaViewer lightbox for tapped image</td></tr>
+  <tr><td><code>handleReplyQuotePress(messageId)</code></td><td>Scrolls the message list to the quoted original message</td></tr>
+</table>
+
 <!-- ====================================================================== -->
-<h2 id="rules">12. Rules</h2>
+<h2 id="rules">13. Rules</h2>
 
 <ol>
   <li><strong>Navigate to chat by user ID, not thread ID.</strong> The <code>useChatMessages</code> hook handles thread resolution. This supports both existing and new conversations.</li>
@@ -336,9 +555,11 @@ await messagesApi.unblockThread(threadId);</code></pre>
   <li><strong>Use the helper functions for thread data.</strong> Don&rsquo;t access <code>thread.info.title</code> directly &mdash; use <code>getThreadDisplayName(thread)</code>. The helpers handle null checks and fallbacks.</li>
   <li><strong>Strip HTML from message text before display.</strong> Use <code>getMessageText()</code> for full text or <code>getMessagePreview()</code> for truncated previews. Never render raw <code>message.text</code> as plain text.</li>
   <li><strong>Use <code>useNewMessageListener</code> and <code>useReactionListener</code></strong> for real-time updates. Don&rsquo;t subscribe to Pusher channels directly for messaging.</li>
-  <li><strong>Mark threads read on screen mount.</strong> Call <code>messagesApi.markThreadsRead([threadId])</code> when the chat screen loads so badge counts stay accurate.</li>
+  <li><strong>Mark threads read on screen mount.</strong> The <code>useChatMessages</code> hook does this automatically after loading messages.</li>
   <li><strong>Check <code>features.messaging</code> (via <code>useFeatures()</code>) before showing chat UI.</strong> Sites without Fluent Messaging installed should hide all messaging UI.</li>
-  <li><strong>Reactions use the same <code>meta.reactions</code> shape as feeds</strong> &mdash; a map of emoji string to array of user IDs. Toggle (not add/remove) is the API contract.</li>
+  <li><strong>Reactions use the same <code>meta.reactions</code> shape as feeds</strong> &mdash; a map of emoji string to array of user IDs. Toggle (not add/remove) is the API contract. One reaction per user.</li>
+  <li><strong>Deduplicate Pusher messages.</strong> The send response already adds the message to state; when Pusher delivers the same message, skip it (check <code>prev.some(m =&gt; m.id === newMessage.id)</code>).</li>
+  <li><strong>Use <code>optimisticUpdate()</code> for reactions.</strong> Update the UI immediately, call the API, revert on failure. This is handled by <code>useChatReactions</code>.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

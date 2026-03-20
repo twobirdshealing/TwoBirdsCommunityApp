@@ -31,6 +31,8 @@
     <li><a href="#auth-guard">Auth Guard &amp; Navigation</a></li>
     <li><a href="#webview">WebView Routes</a></li>
     <li><a href="#portal-slug">Portal Slug Handling</a></li>
+    <li><a href="#server-side">Server-Side Configuration (AASA &amp; Asset Links)</a></li>
+    <li><a href="#smart-banner">Smart App Banner</a></li>
     <li><a href="#files">File Reference</a></li>
     <li><a href="#rules">Rules</a></li>
   </ol>
@@ -49,7 +51,7 @@
   </tr>
   <tr>
     <td>Universal / App Links</td>
-    <td>User taps a <code>https://site.com/spaces/general</code> link externally</td>
+    <td>User taps a <code>https://community.yoursite.com/spaces/general</code> link externally</td>
     <td><code>Linking.getInitialURL()</code> + <code>addEventListener('url')</code></td>
   </tr>
   <tr>
@@ -72,18 +74,20 @@
 <h3>Custom Scheme</h3>
 <p>Defined in <span class="file-path">app.json</span>:</p>
 <pre><code>"scheme": "yourappscheme"</code></pre>
-<p>Allows links like <code>yourappscheme://spaces/general</code>. Used mainly for web-to-app redirects. The constant <code>APP_SCHEME</code> in <span class="file-path">constants/config.ts</span> mirrors this value.</p>
+<p>Allows links like <code>yourappscheme://spaces/general</code>. Used mainly for web-to-app redirects. The constant <code>APP_SCHEME</code> in <span class="file-path">constants/config.ts</span> is derived at runtime from <code>Constants.expoConfig?.scheme</code>.</p>
 
 <h3>iOS Universal Links</h3>
 <p>Generated dynamically in <span class="file-path">app.config.ts</span>:</p>
 <pre><code>ios: {
+  ...config.ios,
   associatedDomains: [`applinks:${hostname}`],
 }</code></pre>
-<p>The hostname is extracted from <code>SITE_URL</code>. Requires an <code>apple-app-site-association</code> file on the server (served by WordPress).</p>
+<p>The hostname is extracted from the resolved <code>siteUrl</code> (which reads <code>EXPO_PUBLIC_SITE_URL</code> from eas.json env, or falls back to the hardcoded production/staging URLs). Requires an <code>apple-app-site-association</code> file on the server (served by the companion plugin).</p>
 
 <h3>Android App Links</h3>
 <p>Also generated in <span class="file-path">app.config.ts</span> as intent filters:</p>
 <pre><code>android: {
+  ...config.android,
   intentFilters: [{
     action: 'VIEW',
     autoVerify: true,
@@ -96,7 +100,7 @@
       { scheme: 'https', host: hostname, pathPrefix: '/leaderboard' },
       { scheme: 'https', host: hostname, pathPrefix: '/chat/' },
       // Module deep links (from moduleDeepLinkPaths array)
-      ...moduleDeepLinkPaths.map(p => ({ scheme: 'https', host: hostname, pathPrefix: p })),
+      ...moduleDeepLinkPaths.map(p =&gt; ({ scheme: 'https', host: hostname, pathPrefix: p })),
     ],
     category: ['BROWSABLE', 'DEFAULT'],
   }],
@@ -157,7 +161,7 @@
   <tr><td><code>/login</code></td><td>Login screen</td></tr>
   <tr><td><code>/register</code></td><td>Registration wizard</td></tr>
   <tr><td><code>/forgot-password</code></td><td>Password recovery</td></tr>
-  <tr><td><code>/profile-complete</code></td><td>Post-login completion gate (module-driven)</td></tr>
+  <tr><td><code>/profile-complete</code></td><td>Post-login completion gate (module-driven, not part of core auth guard)</td></tr>
 </table>
 
 <h3>Module Routes</h3>
@@ -175,24 +179,24 @@
 <p>The mapper in <span class="file-path">utils/deepLinkMapper.ts</span> converts web URLs to app routes in three steps:</p>
 
 <ol>
-  <li><strong>Extract path</strong> &mdash; strips the site origin, handles custom scheme (<code>yourappscheme://</code>), and relative paths</li>
-  <li><strong>Strip portal prefix</strong> &mdash; removes the Fluent Community portal slug (e.g., <code>/community</code>) to get the community-relative path</li>
+  <li><strong>Extract path</strong> &mdash; strips the site origin, handles custom scheme (<code>yourappscheme://</code>), and relative paths. Only same-origin URLs are accepted &mdash; URLs from other domains return <code>null</code>.</li>
+  <li><strong>Strip portal prefix</strong> &mdash; removes the Fluent Community portal slug (e.g., <code>/community</code>) to get the community-relative path. Also tries <code>/portal</code> as a fallback if the current slug is different.</li>
   <li><strong>Match route</strong> &mdash; pattern-matches against known app routes</li>
 </ol>
 
 <h3>URL-to-Route Mapping Table</h3>
 <table>
-  <tr><th>Web URL Pattern</th><th>App Route</th></tr>
-  <tr><td><code>/</code></td><td><code>/(tabs)</code> (home)</td></tr>
-  <tr><td><code>/spaces</code></td><td><code>/(tabs)/spaces</code></td></tr>
-  <tr><td><code>/spaces/{slug}</code></td><td><code>/space/[slug]</code></td></tr>
-  <tr><td><code>/spaces/{slug}/{title}~{id}</code></td><td><code>/feed/[id]</code></td></tr>
-  <tr><td><code>/u/{username}</code></td><td><code>/profile/[username]</code></td></tr>
-  <tr><td><code>/courses</code></td><td><code>/courses/index</code></td></tr>
-  <tr><td><code>/courses/{slug}</code></td><td><code>/courses/[slug]</code></td></tr>
-  <tr><td><code>/courses/{slug}/lessons/{lessonSlug}</code></td><td><code>/courses/[slug]/lesson/[lessonSlug]</code></td></tr>
-  <tr><td><code>/notifications</code></td><td><code>/notifications</code></td></tr>
-  <tr><td><code>/leaderboard</code></td><td><code>/(tabs)</code> (fallback &mdash; web-only feature)</td></tr>
+  <tr><th>Web URL Pattern</th><th>App Route</th><th>Notes</th></tr>
+  <tr><td><code>/</code></td><td><code>/(tabs)</code> (home)</td><td></td></tr>
+  <tr><td><code>/spaces</code></td><td><code>/(tabs)/spaces</code></td><td></td></tr>
+  <tr><td><code>/spaces/{slug}</code></td><td><code>/space/[slug]</code></td><td></td></tr>
+  <tr><td><code>/spaces/{slug}/{title}~{id}</code></td><td><code>/feed/[id]</code></td><td>Falls back to <code>/space/[slug]</code> if no post ID found</td></tr>
+  <tr><td><code>/u/{username}</code></td><td><code>/profile/[username]</code></td><td>Matches 2+ segments (<code>/u/john</code>, <code>/u/john/extra</code>)</td></tr>
+  <tr><td><code>/courses</code></td><td><code>/courses/index</code></td><td></td></tr>
+  <tr><td><code>/courses/{slug}</code></td><td><code>/courses/[slug]</code></td><td></td></tr>
+  <tr><td><code>/courses/{slug}/lessons/{lessonSlug}</code></td><td><code>/courses/[slug]/lesson/[lessonSlug]</code></td><td>Note: web uses <code>lessons</code> (plural), app uses <code>lesson</code> (singular)</td></tr>
+  <tr><td><code>/notifications</code></td><td><code>/notifications</code></td><td></td></tr>
+  <tr><td><code>/leaderboard</code></td><td><code>/(tabs)</code></td><td>Fallback &mdash; no app equivalent, redirects to home</td></tr>
 </table>
 
 <div class="callout callout-warn">
@@ -200,7 +204,7 @@
 </div>
 
 <h3>Return Type</h3>
-<pre><code>type AppRoute = {
+<pre><code>export type AppRoute = {
   pathname: string;
   params?: Record&lt;string, string&gt;;
 } | null;</code></pre>
@@ -228,7 +232,7 @@ return () => sub.remove();</code></pre>
   if (!route) return;
 
   if (isAuthenticated) {
-    router.push(route);
+    router.push(route as any);
   } else {
     pendingDeepLink.current = route;  // Queue for after login
   }
@@ -239,7 +243,7 @@ useEffect(() => {
   if (isAuthenticated && pendingDeepLink.current) {
     const route = pendingDeepLink.current;
     pendingDeepLink.current = null;
-    setTimeout(() => router.push(route), 300);
+    setTimeout(() => router.push(route as any), 300);
   }
 }, [isAuthenticated, router]);</code></pre>
 
@@ -253,7 +257,7 @@ useEffect(() => {
 <p>Push notification taps are handled in <span class="file-path">app/_layout.tsx</span> with a priority chain:</p>
 
 <ol>
-  <li><strong>Server-specified route</strong> (highest priority) &mdash; if <code>data.route</code> is a valid string matching <code>VALID_ROUTE_PREFIXES</code></li>
+  <li><strong>Server-specified route</strong> (highest priority) &mdash; if <code>data.route</code> is a valid string matching <code>VALID_ROUTE_PREFIXES</code> via <code>isValidRoute()</code></li>
   <li><strong>Module notification handler</strong> &mdash; calls <code>handleModuleNotification(data, router)</code>; returns <code>true</code> if handled</li>
   <li><strong>Fallback parameters</strong>:
     <ul>
@@ -270,14 +274,24 @@ useEffect(() => {
 <p>Server-specified routes are validated against a prefix allowlist before navigation:</p>
 
 <pre><code>const CORE_ROUTE_PREFIXES = [
-  '/(tabs)', '/feed/', '/profile/', '/space/', '/messages',
-  '/notifications', '/courses', '/directory', '/bookmarks',
-  '/notification-settings', '/webview', '/create-post', '/comments/',
+  '/(tabs)',
+  '/feed/',
+  '/profile/',
+  '/space/',
+  '/messages',
+  '/notifications',
+  '/courses',
+  '/directory',
+  '/bookmarks',
+  '/notification-settings',
+  '/webview',
+  '/create-post',
+  '/comments/',
 ];
 
 const VALID_ROUTE_PREFIXES = [
   ...CORE_ROUTE_PREFIXES,
-  ...getModuleRoutePrefixes(),  // e.g. ['/yourmodule', '/another-module']
+  ...getModuleRoutePrefixes(),  // e.g. ['/yourmodule']
 ];</code></pre>
 
 <div class="callout callout-error">
@@ -296,14 +310,17 @@ const VALID_ROUTE_PREFIXES = [
 
 <pre><code>const renderersProps = useMemo(() => ({
   a: {
-    onPress: (_event, href) => {
+    onPress: (_event: any, href: string) => {
+      if (!href) return;
+
       const route = mapUrlToRoute(href, portalSlug);
       if (route) {
         onLinkNavigate?.();   // Close bottom sheet if open
-        router.push(route);
-      } else {
-        Linking.openURL(href);  // External link
+        router.push(route as any);
+        return;
       }
+
+      Linking.openURL(href);  // External link
     },
   },
 }), [onLinkNavigate, router, portalSlug]);</code></pre>
@@ -331,7 +348,7 @@ export const yourModule: ModuleManifest = {
   // ...
 };</code></pre>
 
-<p>These prefixes are collected by <code>getModuleRoutePrefixes()</code> and merged into the route validation allowlist at load time.</p>
+<p>These prefixes are collected by <code>getModuleRoutePrefixes()</code> in <span class="file-path">modules/_registry.ts</span> and merged into the route validation allowlist at load time.</p>
 
 <h3>Tab Press Interception</h3>
 <p>Some modules intercept their tab press to open a WebView instead of navigating to a screen:</p>
@@ -355,14 +372,17 @@ tab: {
 <table>
   <tr><th>Condition</th><th>Action</th></tr>
   <tr><td>Not authenticated &amp; not on auth route</td><td>Redirect to <code>/login</code></td></tr>
-  <tr><td>Authenticated &amp; profile incomplete</td><td>Redirect to <code>/profile-complete</code></td></tr>
   <tr><td>Authenticated &amp; on login screen</td><td>Redirect to <code>/(tabs)</code></td></tr>
 </table>
 
-<p>Auth routes are: <code>login</code>, <code>register</code>, <code>forgot-password</code>, <code>webview</code>, <code>profile-complete</code>. These are accessible without authentication.</p>
+<p>Auth routes (accessible without authentication): <code>login</code>, <code>register</code>, <code>forgot-password</code>, <code>webview</code>.</p>
 
 <div class="callout">
   <strong>Maintenance gate:</strong> During maintenance mode, auth redirects are suppressed unless the user explicitly initiated login from the maintenance screen (via <code>maintenanceLoginMode</code> flag).
+</div>
+
+<div class="callout">
+  <strong>Profile completion:</strong> The <code>/profile-complete</code> route exists but is not part of the core auth guard. It is driven by the profile-completion module, which uses response header detection to redirect users who haven't completed their profile.
 </div>
 
 <!-- ================================================================== -->
@@ -404,30 +424,91 @@ tab: {
   <tr><td><code>'community'</code></td><td><code>/portal/spaces/general</code></td><td><code>/spaces/general</code> (fallback)</td></tr>
 </table>
 
-<p>The <code>portalSlug</code> value comes from <code>useAppConfig()</code> which reads it from the server's startup batch response. A fallback to <code>/portal</code> handles legacy URLs from before a slug rename.</p>
+<p>The <code>portalSlug</code> value comes from <code>useAppConfig()</code> which reads it from the server's startup batch response. The mapper always tries <code>/portal</code> as a fallback prefix (unless the current slug is already <code>portal</code>) to handle legacy URLs from before a slug rename.</p>
 
 <div class="callout callout-warn">
-  <strong>Non-community paths return null.</strong> If the URL doesn't start with the portal slug (or the fallback), <code>stripPortalPrefix()</code> returns <code>null</code> and the URL is treated as external. This prevents the app from trying to route non-community pages (e.g., <code>/about-us</code>).
+  <strong>Non-community paths return null.</strong> If the URL doesn't start with the portal slug (or the <code>/portal</code> fallback), <code>stripPortalPrefix()</code> returns <code>null</code> and the URL is treated as external. This prevents the app from trying to route non-community pages (e.g., <code>/about-us</code>).
 </div>
 
 <!-- ================================================================== -->
-<h2 id="files">12. File Reference</h2>
+<h2 id="server-side">12. Server-Side Configuration (AASA &amp; Asset Links)</h2>
+
+<p>The companion plugin (<span class="file-path">companion plugins/tbc-community-app/includes/class-deep-links.php</span>) serves the verification files that iOS and Android require for universal/app links.</p>
+
+<h3>Delivery Method</h3>
+<p>The <code>.well-known</code> files are served via two mechanisms for maximum compatibility:</p>
+<ol>
+  <li><strong>Early interception</strong> (primary) &mdash; hooks into WordPress <code>init</code> at priority 1, intercepts <code>/.well-known/apple-app-site-association</code> and <code>/.well-known/assetlinks.json</code> requests, serves raw JSON and exits. Works on any web server (OpenLiteSpeed, nginx, Apache) without rewrite rules.</li>
+  <li><strong>REST API</strong> (fallback) &mdash; registers the same paths under the <code>tbc-ca/v1</code> REST namespace for direct access.</li>
+</ol>
+
+<h3>Apple App Site Association (AASA)</h3>
+<p>Built from settings configured in wp-admin (Apple Team ID + Bundle Identifier):</p>
+<pre><code>{
+  "applinks": {
+    "apps": [],
+    "details": [{
+      "appID": "{teamId}.{bundleId}",
+      "paths": ["/spaces/*", "/u/*", "/courses/*", "/notifications", "/leaderboard"]
+    }]
+  }
+}</code></pre>
+
+<p>Path generation is portal-slug-aware:</p>
+<table>
+  <tr><th>Portal Slug</th><th>Generated Paths</th></tr>
+  <tr><td><code>''</code> (root)</td><td><code>/spaces/*</code>, <code>/u/*</code>, <code>/courses/*</code>, <code>/notifications</code>, <code>/leaderboard</code></td></tr>
+  <tr><td><code>'community'</code></td><td><code>/community/*</code>, <code>/portal/*</code> (fallback)</td></tr>
+  <tr><td><code>'portal'</code></td><td><code>/portal/*</code> (no duplicate fallback)</td></tr>
+</table>
+
+<h3>Android Asset Links</h3>
+<p>Built from settings configured in wp-admin (SHA256 fingerprint + Package Name):</p>
+<pre><code>[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.yourcompany.community",
+    "sha256_cert_fingerprints": ["AB:CD:..."]
+  }
+}]</code></pre>
+
+<div class="callout">
+  <strong>Settings source:</strong> All deep link settings (Apple Team ID, Bundle ID, Android SHA256, Package Name, URL scheme, App Store ID, store URLs) are configured in wp-admin under the TBC Community App settings page.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="smart-banner">13. Smart App Banner</h2>
+
+<p>The companion plugin also injects a Smart App Banner on the website to prompt users to open the app:</p>
+
+<table>
+  <tr><th>Platform</th><th>Implementation</th></tr>
+  <tr><td>iOS</td><td>Native <code>&lt;meta name="apple-itunes-app"&gt;</code> tag with app-id and current page URL as app-argument</td></tr>
+  <tr><td>Android</td><td>Custom banner (HTML/CSS/JS) styled with Fluent Community CSS variables. Dismissed state stored in <code>localStorage</code> for 7 days. Attempts to open the app via custom URL scheme, falls back to Play Store.</td></tr>
+</table>
+
+<p>The banner hooks into <code>fluent_community/portal_head</code> (not <code>wp_head</code>) so it renders even when Fluent Community runs in headless mode. It can be enabled/disabled in wp-admin settings (<code>smart_banner_enabled</code>).</p>
+
+<!-- ================================================================== -->
+<h2 id="files">14. File Reference</h2>
 
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
-  <tr><td><span class="file-path">utils/deepLinkMapper.ts</span></td><td>Central URL-to-route mapper (<code>mapUrlToRoute</code>, <code>extractPath</code>, <code>stripPortalPrefix</code>, <code>matchRoute</code>)</td></tr>
-  <tr><td><span class="file-path">app/_layout.tsx</span></td><td>Deep link listener, push notification tap handler, auth guard, route validation</td></tr>
+  <tr><td><span class="file-path">utils/deepLinkMapper.ts</span></td><td>Central URL-to-route mapper (<code>mapUrlToRoute</code>, <code>extractPath</code>, <code>stripPortalPrefix</code>, <code>matchRoute</code>, <code>extractPostId</code>)</td></tr>
+  <tr><td><span class="file-path">app/_layout.tsx</span></td><td>Deep link listener, push notification tap handler, auth guard, route validation (<code>CORE_ROUTE_PREFIXES</code>, <code>sanitizeParam</code>)</td></tr>
   <tr><td><span class="file-path">app/(tabs)/_layout.tsx</span></td><td>Tab navigator with module tab registration and press interception</td></tr>
-  <tr><td><span class="file-path">app.config.ts</span></td><td>iOS associated domains, Android intent filters, module deep link paths</td></tr>
+  <tr><td><span class="file-path">app.config.ts</span></td><td>iOS associated domains, Android intent filters, <code>moduleDeepLinkPaths</code> array</td></tr>
   <tr><td><span class="file-path">app.json</span></td><td>Custom scheme, bundle IDs, typed routes experiment</td></tr>
-  <tr><td><span class="file-path">constants/config.ts</span></td><td><code>APP_SCHEME</code>, <code>SITE_URL</code> constants</td></tr>
+  <tr><td><span class="file-path">constants/config.ts</span></td><td><code>APP_SCHEME</code> (derived from <code>Constants.expoConfig?.scheme</code>), <code>SITE_URL</code> (from <code>EXPO_PUBLIC_SITE_URL</code> env var)</td></tr>
   <tr><td><span class="file-path">components/common/HtmlContent.tsx</span></td><td>In-app link interception for rendered HTML content</td></tr>
   <tr><td><span class="file-path">modules/_types.ts</span></td><td><code>ModuleManifest.routePrefixes</code> and <code>notificationHandler</code> definitions</td></tr>
   <tr><td><span class="file-path">modules/_registry.ts</span></td><td><code>getModuleRoutePrefixes()</code>, <code>handleModuleNotification()</code></td></tr>
+  <tr><td><span class="file-path">companion plugins/tbc-community-app/includes/class-deep-links.php</span></td><td>AASA + Asset Links server-side files, Smart App Banner injection</td></tr>
 </table>
 
 <!-- ================================================================== -->
-<h2 id="rules">13. Rules</h2>
+<h2 id="rules">15. Rules</h2>
 
 <ol>
   <li><strong>All URL-to-route conversion goes through <code>mapUrlToRoute()</code>.</strong> Never parse URLs manually in screens or components. The centralized mapper ensures consistent portal slug handling and route matching.</li>
@@ -449,6 +530,8 @@ tab: {
   <li><strong>Use <code>router.push()</code> for deep link navigation, not <code>replace()</code>.</strong> Push preserves back navigation so users can return to where they were. Only the auth guard uses <code>replace()</code> (login redirects shouldn't be in the back stack).</li>
 
   <li><strong>The WebView doesn't intercept internal links.</strong> Links tapped inside the WebView load within the WebView. If you need in-app routing from WebView content, you'd need to add <code>onNavigationStateChange</code> handling &mdash; but currently this isn't needed.</li>
+
+  <li><strong>Server-side AASA paths are portal-slug-aware.</strong> When the portal is at root, specific path prefixes are listed to avoid claiming the entire domain. When using a sub-path slug, the entire slug prefix is claimed with a wildcard.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

@@ -2573,6 +2573,14 @@ function getDashboardHTML() {
   <div class="card">
     <div class="card-header"><h3>New Build</h3></div>
     <div class="card-body">
+      <div id="build-blockers-banner" style="display:none;background:var(--error-bg,#fef2f2);border:1px solid var(--error-border,#fca5a5);border-radius:8px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-weight:600;color:var(--error-text,#dc2626);margin-bottom:4px">Cannot build — fix these issues first:</div>
+        <ul id="build-blockers-list" style="margin:0;padding-left:20px;font-size:13px;color:var(--error-text,#dc2626)"></ul>
+      </div>
+      <div id="build-warnings-banner" style="display:none;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-weight:600;color:#92400e;margin-bottom:4px">Heads up — you can still build, but:</div>
+        <ul id="build-warnings-list" style="margin:0;padding-left:20px;font-size:13px;color:#92400e"></ul>
+      </div>
       <div class="build-version-bar">
         <span class="build-version-label">App Version</span>
         <input type="text" id="build-version" class="build-version-input" readonly>
@@ -3265,8 +3273,16 @@ function populateChecks(validation) {
 function updateProgress(validation) {
   const total = validation.pass + validation.fail + validation.warn;
   const badge = document.getElementById('progress-badge');
-  badge.textContent = validation.pass + '/' + total + ' checks passing';
-  badge.className = 'progress-badge ' + (validation.fail === 0 ? 'good' : validation.fail <= 3 ? 'partial' : 'bad');
+  if (validation.fail === 0 && validation.warn === 0) {
+    badge.textContent = total + '/' + total + ' checks passing';
+    badge.className = 'progress-badge good';
+  } else if (validation.fail === 0) {
+    badge.textContent = validation.pass + ' passing, ' + validation.warn + ' warning' + (validation.warn !== 1 ? 's' : '');
+    badge.className = 'progress-badge partial';
+  } else {
+    badge.textContent = validation.pass + '/' + total + ' checks passing';
+    badge.className = 'progress-badge ' + (validation.fail <= 3 ? 'partial' : 'bad');
+  }
 }
 
 // ---------- Save config ----------
@@ -3327,6 +3343,18 @@ function syncBuildVersion() {
     const changed = configEl.value !== originalValues.version;
     buildEl.classList.toggle('bumped', changed);
     if (saveBtn) saveBtn.style.display = changed ? 'inline-flex' : 'none';
+  }
+  // Update build banners
+  var blockers = getChecksByStatus('fail');
+  updateBannerList('build-blockers-banner', 'build-blockers-list', blockers);
+  updateBannerList('build-warnings-banner', 'build-warnings-list', getChecksByStatus('warn'));
+  // Disable/enable build buttons based on blockers
+  var buildBtns = document.querySelectorAll('.new-build-card .btn');
+  var hasBlockers = blockers.length > 0;
+  for (var i = 0; i < buildBtns.length; i++) {
+    buildBtns[i].disabled = hasBlockers;
+    buildBtns[i].style.opacity = hasBlockers ? '0.5' : '';
+    buildBtns[i].style.pointerEvents = hasBlockers ? 'none' : '';
   }
 }
 
@@ -3510,7 +3538,32 @@ async function loadBuilds() {
   }
 }
 
+function getChecksByStatus(status) {
+  if (!state || !state.validation) return [];
+  return state.validation.checks
+    .filter(function(c) { return c.pass === status; })
+    .map(function(c) { return c.label; });
+}
+
+function updateBannerList(bannerId, listId, items) {
+  var banner = document.getElementById(bannerId);
+  var list = document.getElementById(listId);
+  if (banner && list) {
+    if (items.length > 0) {
+      list.innerHTML = items.map(function(i) { return '<li>' + i + '</li>'; }).join('');
+      banner.style.display = '';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+}
+
 async function startBuild(platform, profile) {
+  var blockers = getChecksByStatus('fail');
+  if (blockers.length > 0) {
+    alert('Cannot build — fix these issues first:\\n\\n' + blockers.map(function(b) { return '  ✗ ' + b; }).join('\\n') + '\\n\\nGo to the Config tab to resolve them.');
+    return;
+  }
   if (!confirm('Start a ' + profile + ' build for ' + platform + '?\\n\\nThis will queue a build on EAS servers.')) return;
   showToast('Starting ' + platform + ' ' + profile + ' build...', 'info');
   try {

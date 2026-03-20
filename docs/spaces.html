@@ -59,32 +59,45 @@
 <h3>Space</h3>
 <pre><code>interface Space {
   id: number;
-  parent_id: number | null;        // Links to SpaceGroup
+  created_by: string | number;
+  parent_id: number | string | null;  // Links to SpaceGroup
   title: string;
   slug: string;
   logo: string | null;
   cover_photo: string | null;
   description: string | null;
-  description_rendered?: string;
+  description_rendered?: string | null;
   type: 'community' | 'discussion' | 'announcement';
   privacy: 'public' | 'private' | 'secret';
   status: 'published' | 'draft' | 'archived';
-  serial: string | number;          // Sort order within group
+  serial: string | number;            // Sort order within group
   settings: SpaceSettings;
+  created_at: string;
+  updated_at: string;
 
   // Stats
   members_count?: number;
   posts_count?: number;
 
-  // User's relationship to this space
+  // User's relationship (detail endpoint)
   is_member?: boolean;
   role?: 'member' | 'moderator' | 'admin';
-  pivot?: { role, status, user_id, space_id, created_at };
+
+  // User's relationship (profile endpoint)
+  pivot?: { user_id, space_id, role, status, created_at };
+
+  // User's relationship (discover endpoint)
+  space_pivot?: { id, space_id, user_id, status, role, meta, created_at, updated_at } | null;
+
+  // Creator info (detail endpoint)
+  creator?: { id, username, display_name };
 
   // Detail endpoint only
   permissions?: Record&lt;string, boolean&gt;;
-  membership?: { ID, display_name, pivot: { role, status } };
-  lockscreen_config?: LockScreenConfig;
+  membership?: { ID, display_name, pivot: { role, status, ... } };
+  topics?: Record&lt;string, unknown&gt;[];
+  header_links?: { title, route: { name } }[];
+  lockscreen_config?: LockScreenConfig | null;
 }</code></pre>
 
 <h3>SpaceGroup</h3>
@@ -92,13 +105,22 @@
   id: number;
   title: string;
   slug: string;
-  serial: number;             // Sort order
+  description: string | null;
+  serial: number;              // Sort order
   spaces_count: number;
-  spaces?: Space[];           // Included with with_spaces=true
+  created_at: string;
+  updated_at: string;
+  spaces?: Space[];            // Included with with_spaces=true
   settings?: {
-    is_collapsible: boolean;
-    default_collapsed: boolean;
+    is_collapsible?: boolean;
+    default_collapsed?: boolean;
   };
+}
+
+// Lightweight variant from options_only=true
+interface SpaceGroupOption {
+  id: number;
+  title: string;
 }</code></pre>
 
 <h3>SpaceSettings</h3>
@@ -106,10 +128,15 @@
   <tr><th>Field</th><th>Type</th><th>Description</th></tr>
   <tr><td><code>emoji</code></td><td>string</td><td>Custom emoji displayed instead of logo</td></tr>
   <tr><td><code>hide_members_count</code></td><td>'yes'/'no'</td><td>Hide member count on card</td></tr>
-  <tr><td><code>can_request_join</code></td><td>boolean</td><td>Allow join requests for private spaces</td></tr>
-  <tr><td><code>restricted_post_only</code></td><td>boolean</td><td>Only admins can post</td></tr>
+  <tr><td><code>can_request_join</code></td><td>'yes'/'no'</td><td>Allow join requests for private spaces</td></tr>
+  <tr><td><code>restricted_post_only</code></td><td>'yes'/'no'</td><td>Only admins can post</td></tr>
   <tr><td><code>topic_required</code></td><td>'yes'/'no'</td><td>Posts must have a topic tag</td></tr>
-  <tr><td><code>custom_lock_screen</code></td><td>boolean</td><td>Use custom lock screen content</td></tr>
+  <tr><td><code>custom_lock_screen</code></td><td>'yes'/'no'</td><td>Use custom lock screen content</td></tr>
+  <tr><td><code>og_image</code></td><td>string</td><td>Open Graph / card preview image URL</td></tr>
+  <tr><td><code>layout_style</code></td><td>'timeline'/'grid'</td><td>Feed layout style</td></tr>
+  <tr><td><code>members_page_status</code></td><td>'public'/'private'/'members_only'</td><td>Members page visibility</td></tr>
+  <tr><td><code>document_library</code></td><td>'yes'/'no'</td><td>Enable document library</td></tr>
+  <tr><td><code>onboard_redirect_url</code></td><td>string</td><td>URL to redirect new members to</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -130,16 +157,42 @@
 </table>
 
 <h3>Query Options</h3>
-<pre><code>interface GetSpacesOptions {
+<pre><code>// getSpaces()
+interface GetSpacesOptions {
   page?: number;
   per_page?: number;
-  type?: 'community' | 'discussion' | 'announcement';
-  privacy?: 'public' | 'private' | 'secret';
+  type?: string;
+  privacy?: 'public' | 'private';
   status?: 'published' | 'draft' | 'archived';
-  parent_id?: number;        // Filter by group
+  parent_id?: number;          // Filter by group
   search?: string;
-  orderby?: string;
+  orderby?: 'serial' | 'title' | 'created_at';
   order?: 'asc' | 'desc';
+}
+
+// discoverSpaces()
+interface DiscoverSpacesOptions {
+  type?: 'joined';
+  search?: string;
+  sort_by?: string;
+  page?: number;
+  per_page?: number;
+}
+
+// getSpaceGroups()
+interface SpaceGroupsOptions {
+  with_spaces?: boolean;       // Default true — include nested spaces
+  include_empty?: boolean;     // Include groups with no spaces
+  options_only?: boolean;      // Return lightweight SpaceGroupOption[] (id + title only)
+}
+
+// getSpaceMembers()
+interface SpaceMembersOptions {
+  page?: number;
+  per_page?: number;
+  role?: string;
+  status?: string;
+  search?: string;
 }</code></pre>
 
 <!-- ================================================================== -->
@@ -148,34 +201,34 @@
 <p><span class="file-path">app/(tabs)/spaces.tsx</span> is the Spaces tab. It loads all discoverable spaces and organizes them by group.</p>
 
 <h3>Data Loading</h3>
-<p>Two parallel fetches on mount:</p>
+<p>Uses <code>useCachedData</code> with <code>CACHE_EVENTS.SPACES</code> for invalidation. Two parallel fetches inside the fetcher:</p>
 <ol>
-  <li><code>spacesApi.getSpaceGroups({ options_only: true })</code> &mdash; lightweight group list for tabs</li>
+  <li><code>spacesApi.getSpaceGroups({ options_only: true })</code> &mdash; lightweight group list (id + title) for tabs</li>
   <li><code>spacesApi.discoverSpaces({ per_page: 100 })</code> &mdash; all spaces with membership info</li>
 </ol>
 
 <h3>Group Tabs</h3>
-<p>Spaces are organized into horizontal tabs by group. Each tab shows its group name and space count. Spaces without a group appear under "Other Spaces". Within each group, spaces are sorted by their <code>serial</code> field.</p>
+<p>Spaces are organized into horizontal tabs by group. Each tab shows its group name and space count badge. Spaces without a group appear under "Other Spaces". Within each group, spaces are sorted by their <code>serial</code> field. Tabs only appear when there are multiple groups.</p>
 
 <h3>Space Cards</h3>
 <p>Each space renders as a <code>SpaceCard</code> with:</p>
 <ul>
-  <li>16:9 cover image with gradient overlay</li>
-  <li>Space logo or emoji icon</li>
-  <li>Title + privacy icon + member count</li>
-  <li>Description snippet (2 lines max)</li>
-  <li>Membership badge:
+  <li>16:9 cover image (prefers <code>og_image</code>, falls back to <code>cover_photo</code>, filters out Fluent default placeholders) with gradient overlay</li>
+  <li>Space logo or emoji icon on the hero overlay</li>
+  <li>Title + privacy label + member count on the gradient overlay</li>
+  <li>Description snippet below the hero (2 lines max, HTML stripped)</li>
+  <li>Membership badge (top-right overlay):
     <ul>
-      <li><strong>Admin/Mod</strong> (green) &mdash; user is admin or moderator</li>
-      <li><strong>Awaiting</strong> (semi-transparent) &mdash; join request pending</li>
-      <li><strong>Joined</strong> (semi-transparent) &mdash; regular member</li>
-      <li><strong>Join / Request</strong> button &mdash; non-member</li>
+      <li><strong>Admin/Mod</strong> (primary color background) &mdash; user is admin or moderator</li>
+      <li><strong>Awaiting</strong> (glass/semi-transparent) &mdash; join request pending</li>
+      <li><strong>Joined</strong> (glass/semi-transparent) &mdash; regular member</li>
+      <li><strong>Join / Request</strong> button (bordered glass) &mdash; non-member; shows lock-open icon for private spaces, plus icon for public</li>
     </ul>
   </li>
 </ul>
 
 <h3>Search</h3>
-<p>Full-text search filters by title, description, and slug across all spaces in the current tab.</p>
+<p>Full-text search filters by title, description, and slug across all spaces in the current tab. Shows a result count when searching.</p>
 
 <!-- ================================================================== -->
 <h2 id="detail">5. Space Detail Screen</h2>
@@ -183,13 +236,17 @@
 <p><span class="file-path">app/space/[slug]/index.tsx</span> shows an individual space:</p>
 
 <ul>
-  <li><strong>SpaceInfoHeader</strong> &mdash; cover photo, logo, title, description, member count</li>
-  <li><strong>QuickPostBox</strong> &mdash; shown for members, or "Join to Post" for non-members</li>
-  <li><strong>Feed</strong> &mdash; space-specific feed filtered by slug</li>
-  <li><strong>SpaceMenu</strong> &mdash; three-dot menu with Members and Leave options</li>
+  <li><strong>PageHeader</strong> &mdash; back button, space title, SpaceMenu (settings icon) on the right</li>
+  <li><strong>SpaceInfoHeader</strong> &mdash; 16:9 cover photo with gradient, logo, title, privacy label, description</li>
+  <li><strong>QuickPostBox</strong> &mdash; shown for members ("Post in [Space]..."), or "Join Space to Post" button for non-members of public spaces</li>
+  <li><strong>FeedList</strong> &mdash; space-specific feed with full feed actions (react, comment, bookmark, edit, delete, pin)</li>
+  <li><strong>SpaceLockScreen</strong> &mdash; shown for non-members of private/secret spaces instead of the feed</li>
 </ul>
 
-<p>The space is fetched by slug via <code>spacesApi.getSpaceBySlug(slug)</code>. The detail response includes <code>permissions</code>, <code>membership</code>, and <code>lockscreen_config</code> not present in the discovery list.</p>
+<p>The space is fetched by slug via <code>spacesApi.getSpaceBySlug(slug)</code>. The detail response includes <code>permissions</code>, <code>membership</code>, and <code>lockscreen_config</code> not present in the discovery list. Feeds are fetched separately using <code>useCachedData</code> with <code>CACHE_EVENTS.FEEDS</code> invalidation.</p>
+
+<h3>Pin/Sticky Support</h3>
+<p>Admins and moderators can pin posts within a space. The permission check uses <code>membership.pivot.role</code> and the <code>permissions</code> object (<code>community_admin</code>, <code>community_moderator</code>, <code>edit_any_feed</code>). Pinned posts appear at the top of the feed.</p>
 
 <!-- ================================================================== -->
 <h2 id="membership">6. Join &amp; Leave</h2>
@@ -197,24 +254,25 @@
 <h3>Join Flow</h3>
 <table>
   <tr><th>Space Privacy</th><th>Behavior</th></tr>
-  <tr><td>Public</td><td>Instant membership. Feed access immediately.</td></tr>
+  <tr><td>Public</td><td>Instant membership. Feed access immediately. Optimistic UI update shows post box right away.</td></tr>
   <tr><td>Private</td><td>Join request sent. Status becomes "pending". Admin must approve.</td></tr>
   <tr><td>Secret</td><td>Invite-only. No join button shown. Not in discovery.</td></tr>
 </table>
 
 <pre><code>// Join a space
 const response = await spacesApi.joinSpace('general');
-// Public: { success: true, data: { status: 'active' } }
-// Private: { success: true, data: { status: 'pending' } }</code></pre>
+// Response includes data.data.status:
+//   undefined/absent = auto-approved (active)
+//   'pending' = awaiting admin approval</code></pre>
 
 <p>After joining, <code>CACHE_EVENTS.SPACES</code> is emitted to refresh the discovery tab and update badges.</p>
 
 <h3>Leave Flow</h3>
 <ol>
   <li>User taps "Leave Space" in SpaceMenu</li>
-  <li>Confirmation alert shown</li>
+  <li>Confirmation alert shown ("Leave Space" / "Cancel")</li>
   <li><code>spacesApi.leaveSpace(slug)</code> called</li>
-  <li>Navigates back to Spaces tab</li>
+  <li>Navigates back via <code>router.back()</code></li>
   <li>Cache invalidated via <code>CACHE_EVENTS.SPACES</code></li>
 </ol>
 
@@ -226,8 +284,10 @@ const response = await spacesApi.joinSpace('general');
 <ul>
   <li><strong>Sorting:</strong> Admins and moderators first, then members, alphabetically within each group</li>
   <li><strong>Section headers:</strong> "Leadership" for admins/mods, "Members" for the rest</li>
-  <li><strong>Per member:</strong> Avatar, display name, role badge, bio, last active, follow/message buttons</li>
-  <li><strong>Pagination:</strong> 20 per page with infinite scroll</li>
+  <li><strong>Per member:</strong> Uses <code>MemberCard</code> component with avatar, display name, role badge, bio, last active</li>
+  <li><strong>Actions:</strong> Follow/notify toggle and message button (hidden for current user)</li>
+  <li><strong>Pagination:</strong> 20 per page with infinite scroll (FlashList <code>onEndReached</code>)</li>
+  <li><strong>Follow state:</strong> Tracks <code>current_user_follows</code> from API response via <code>useFollowToggle</code></li>
 </ul>
 
 <h3>SpaceMember Type</h3>
@@ -238,6 +298,7 @@ const response = await spacesApi.joinSpace('general');
   role: 'member' | 'moderator' | 'admin';
   status: 'active' | 'pending' | 'banned';
   joined_at: string;
+  updated_at: string;
   xprofile: XProfile;  // User display data
 }</code></pre>
 
@@ -252,32 +313,45 @@ const response = await spacesApi.joinSpace('general');
 </table>
 
 <h3>Lock Screen System</h3>
-<p><span class="file-path">components/space/SpaceLockScreen.tsx</span> renders for non-members of private/secret spaces. Four modes:</p>
+<p><span class="file-path">components/space/SpaceLockScreen.tsx</span> renders for non-members of private/secret spaces. Three rendering modes inside the component:</p>
 
 <ol>
-  <li><strong>Default</strong> &mdash; "This is a private space, ask to join" with Request button</li>
-  <li><strong>Pending</strong> &mdash; "You're all set! A team member will review your request soon"</li>
-  <li><strong>Custom</strong> &mdash; WordPress-configured blocks with images, text, and buttons</li>
-  <li><strong>Redirect</strong> &mdash; Opens <code>redirect_url</code> in WebView, then navigates back</li>
+  <li><strong>Pending</strong> &mdash; "You're all set! A team member will review and let you in soon." (time icon)</li>
+  <li><strong>Custom</strong> &mdash; WordPress-configured blocks with images, text, overlays, and buttons. Blocks with <code>hidden: true</code> are filtered out. Includes optional "Ask to Join" button.</li>
+  <li><strong>Default</strong> &mdash; "This is a private space" with lock icon and "Request Access" button</li>
 </ol>
+
+<p>Redirect mode is handled by the parent <code>SpacePage</code> before <code>SpaceLockScreen</code> renders &mdash; if <code>lockscreen_config.redirect_url</code> is set, the page navigates to a WebView and does not mount the lock screen component.</p>
 
 <h3>Lock Screen Config</h3>
 <pre><code>interface LockScreenConfig {
   showCustom: boolean;          // Use custom blocks
-  canSendRequest: boolean;      // Show "Request Access" button
+  showPaywalls: boolean;        // Show paywall blocks
+  canSendRequest: boolean;      // Show "Request Access" / "Ask to Join" button
   lockScreen: LockScreenBlock[] | null;
-  redirect_url: string;         // External redirect URL
+  redirect_url: string;         // External redirect URL (handled by parent)
   is_pending?: boolean;         // User already requested
 }
 
 interface LockScreenBlock {
+  hidden: boolean;              // Skip rendering if true
   type: 'image' | 'block' | 'lesson';
+  label: string;
+  name: string;
+  // type: 'image' fields (Banner / Call to Action)
   heading?: string;
+  heading_color?: string;
   description?: string;
+  text_color?: string;
   button_text?: string;
   button_link?: string;
-  content?: string;             // For 'block' type
-  background_image?: string;    // For 'image' type
+  button_color?: string;
+  button_text_color?: string;
+  background_image?: string;
+  overlay_color?: string;
+  new_tab?: 'yes' | 'no';
+  // type: 'block' fields (Description)
+  content?: string;             // HTML content, stripped for display
 }</code></pre>
 
 <!-- ================================================================== -->
@@ -296,10 +370,10 @@ feedsApi.createFeed({ space: 'general', message: '...', content_type: 'markdown'
 </div>
 
 <h3>Sticky Posts</h3>
-<p>Space admins can sticky/pin posts. Sticky posts appear at the top of the space feed before chronological posts. The <code>is_sticky</code> flag on feed objects controls this.</p>
+<p>Space admins and moderators can pin posts. The space detail screen fetches sticky posts from a separate <code>response.data.sticky</code> field (FC 2.3.0+), merges them at the top of the feed with <code>is_sticky: true</code>, and removes duplicates from the regular feed list.</p>
 
 <h3>Quick Post Box</h3>
-<p>The space detail screen shows a QuickPostBox when the user is a member. Tapping opens the composer with the space pre-selected. Non-members see a "Join Space to Post" prompt instead.</p>
+<p>The space detail screen shows a QuickPostBox when the user is a member. Tapping opens the composer with the space pre-selected. Non-members of public spaces see a "Join Space to Post" button instead. Non-members of private/secret spaces see the lock screen.</p>
 
 <!-- ================================================================== -->
 <h2 id="groups">10. Space Groups</h2>
@@ -307,14 +381,14 @@ feedsApi.createFeed({ space: 'general', message: '...', content_type: 'markdown'
 <p>Space Groups are categories that organize multiple spaces. They're managed in WordPress admin, not the app.</p>
 
 <h3>Hierarchy</h3>
-<pre><code>SpaceGroup (e.g., "Ministry Teams")
-  ├── Space: Worship Team (parent_id → group.id)
-  ├── Space: Youth Ministry
-  └── Space: Outreach
+<pre><code>SpaceGroup (e.g., "Discussion")
+  ├── Space: General Chat (parent_id → group.id)
+  ├── Space: Introductions
+  └── Space: Off Topic
 
-SpaceGroup (e.g., "Community")
-  ├── Space: General
-  └── Space: Prayer Requests
+SpaceGroup (e.g., "Projects")
+  ├── Space: Feature Requests
+  └── Space: Bug Reports
 
 Ungrouped → "Other Spaces" tab</code></pre>
 
@@ -323,6 +397,7 @@ Ungrouped → "Other Spaces" tab</code></pre>
   <li>Spaces within groups are also sorted by <code>serial</code></li>
   <li><code>parent_id</code> on a Space links it to a SpaceGroup's <code>id</code></li>
   <li>Groups can be collapsible with <code>settings.is_collapsible</code> and <code>settings.default_collapsed</code></li>
+  <li>The Spaces tab fetches groups via <code>options_only: true</code> for a lightweight list (id + title only)</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -330,10 +405,10 @@ Ungrouped → "Other Spaces" tab</code></pre>
 
 <table>
   <tr><th>Component</th><th>File</th><th>Description</th></tr>
-  <tr><td>SpaceCard</td><td><span class="file-path">components/space/SpaceCard.tsx</span></td><td>Hero card with 16:9 cover, title, stats, membership badge</td></tr>
-  <tr><td>SpaceInfoHeader</td><td><span class="file-path">components/space/SpaceInfoHeader.tsx</span></td><td>Detail page header with cover, logo, description, quick post</td></tr>
-  <tr><td>SpaceMenu</td><td><span class="file-path">components/space/SpaceMenu.tsx</span></td><td>Three-dot menu (Members, Leave Space)</td></tr>
-  <tr><td>SpaceLockScreen</td><td><span class="file-path">components/space/SpaceLockScreen.tsx</span></td><td>Lock screen for non-members (default, pending, custom, redirect)</td></tr>
+  <tr><td>SpaceCard</td><td><span class="file-path">components/space/SpaceCard.tsx</span></td><td>Hero card with 16:9 cover, gradient overlay, title, stats, membership badge</td></tr>
+  <tr><td>SpaceInfoHeader</td><td><span class="file-path">components/space/SpaceInfoHeader.tsx</span></td><td>Detail page header with cover, logo, description, quick post box or join CTA</td></tr>
+  <tr><td>SpaceMenu</td><td><span class="file-path">components/space/SpaceMenu.tsx</span></td><td>Settings icon menu (Members, Leave Space, Space Settings for admins)</td></tr>
+  <tr><td>SpaceLockScreen</td><td><span class="file-path">components/space/SpaceLockScreen.tsx</span></td><td>Lock screen for non-members (pending, custom blocks, default)</td></tr>
   <tr><td>SpaceSelector</td><td><span class="file-path">components/composer/SpaceSelector.tsx</span></td><td>Modal picker for choosing a space when composing posts</td></tr>
 </table>
 
@@ -350,12 +425,13 @@ Ungrouped → "Other Spaces" tab</code></pre>
   <tr><td><span class="file-path">app/space/[slug]/_layout.tsx</span></td><td>Stack navigation container for space screens</td></tr>
   <tr><td><span class="file-path">components/space/SpaceCard.tsx</span></td><td>Discovery card (cover + badge + stats)</td></tr>
   <tr><td><span class="file-path">components/space/SpaceInfoHeader.tsx</span></td><td>Detail header (cover + logo + description)</td></tr>
-  <tr><td><span class="file-path">components/space/SpaceMenu.tsx</span></td><td>Members and Leave actions</td></tr>
+  <tr><td><span class="file-path">components/space/SpaceMenu.tsx</span></td><td>Members, Leave, and Settings (admin) actions</td></tr>
   <tr><td><span class="file-path">components/space/SpaceLockScreen.tsx</span></td><td>Lock screen for restricted spaces</td></tr>
   <tr><td><span class="file-path">components/composer/SpaceSelector.tsx</span></td><td>Space picker for post composer</td></tr>
   <tr><td><span class="file-path">services/api/feeds.ts</span></td><td>Feed API with <code>space</code> slug filter</td></tr>
   <tr><td><span class="file-path">services/api/profiles.ts</span></td><td><code>getUserSpaces(username)</code> for profile spaces tab</td></tr>
-  <tr><td><span class="file-path">constants/config.ts</span></td><td>API endpoints</td></tr>
+  <tr><td><span class="file-path">hooks/useCachedData.ts</span></td><td>Stale-while-revalidate data hook used by the Spaces tab</td></tr>
+  <tr><td><span class="file-path">utils/cacheEvents.ts</span></td><td><code>CACHE_EVENTS.SPACES</code> for cross-screen invalidation</td></tr>
   <tr><td><span class="file-path">contexts/AppConfigContext.tsx</span></td><td><code>features.spaces</code> flag (server-controlled via <code>useFeatures()</code>)</td></tr>
 </table>
 
@@ -369,7 +445,7 @@ Ungrouped → "Other Spaces" tab</code></pre>
 
   <li><strong>Space Groups are categories, not nested spaces.</strong> <code>parent_id</code> on a Space points to a SpaceGroup, not another Space. There's no space-within-space nesting. Groups are purely organizational for the discovery UI.</li>
 
-  <li><strong>Join behavior depends on privacy.</strong> Public = instant, Private = pending approval, Secret = not shown. Check the response status ('active' vs 'pending') to show the correct UI after joining.</li>
+  <li><strong>Join behavior depends on privacy.</strong> Public = instant, Private = pending approval, Secret = not shown. Check the response <code>data.data.status</code> for <code>'pending'</code> to show the correct UI after joining.</li>
 
   <li><strong>Emit <code>CACHE_EVENTS.SPACES</code> after join/leave.</strong> This refreshes the discovery tab and updates membership badges. Don't rely on local state mutations alone.</li>
 
@@ -379,9 +455,11 @@ Ungrouped → "Other Spaces" tab</code></pre>
 
   <li><strong>Member list sorts leadership first.</strong> Admins and moderators appear under "Leadership" section before regular "Members". The sort is by role priority then alphabetical within each group.</li>
 
-  <li><strong>Privacy icons on SpaceCard.</strong> Lock icon = secret, people icon = private, globe = public. These help users understand access level before tapping into a space.</li>
+  <li><strong>Privacy icons on SpaceCard.</strong> <code>globe-outline</code> = public, <code>lock-closed-outline</code> = private, <code>eye-off-outline</code> = secret. These help users understand access level before tapping into a space.</li>
 
   <li><strong>Server enforces all access control.</strong> The app doesn't pre-check permissions. If a non-member tries to access a private space's feed, the server returns the lock screen config. Don't add client-side access checks that could get out of sync.</li>
+
+  <li><strong>Membership comes from different fields per endpoint.</strong> Discover uses <code>space_pivot</code>, profile uses <code>pivot</code>, detail uses <code>membership.pivot</code>. <code>SpaceCard</code> merges them: <code>const pivot = space.space_pivot ?? space.pivot</code>.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">
