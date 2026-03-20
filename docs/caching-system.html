@@ -266,18 +266,17 @@ useCachedData&lt;Feed[]&gt;({
 <!-- ====================================================================== -->
 <h2 id="batch-startup">5. Batch Startup Loading</h2>
 
-<p>On authenticated startup, <span class="file-path">hooks/useStartupData.ts</span> fires a single batch API call that replaces ~7 individual HTTP requests. Results are distributed to contexts (config, auth, badges) and written to AsyncStorage for widget caches.</p>
+<p>On authenticated startup, <span class="file-path">hooks/useStartupData.ts</span> fires a single batch API call that replaces 6 individual HTTP requests. Results are distributed to contexts (config, auth, badges) and written to AsyncStorage for widget caches.</p>
 
 <h3>What the Batch Fetches</h3>
 <table>
   <tr><th>#</th><th>Endpoint</th><th>Goes To</th></tr>
-  <tr><td>1</td><td><code>/tbc-ca/v1/app-config</code></td><td>AppConfigContext</td></tr>
+  <tr><td>1</td><td><code>/tbc-ca/v1/app-config</code></td><td>AppConfigContext (config + visibility)</td></tr>
   <tr><td>2</td><td><code>/fluent-community/v2/profile/{user}</code></td><td>AuthContext (avatar, name)</td></tr>
   <tr><td>3</td><td><code>/fluent-community/v2/notifications/unread</code></td><td>Notification badge count</td></tr>
   <tr><td>4</td><td><code>/fluent-community/v2/chat/unread_threads</code></td><td>Message badge count</td></tr>
   <tr><td>5</td><td><code>/fluent-community/v2/feeds/welcome-banner</code></td><td>AsyncStorage &rarr; WelcomeBannerWidget</td></tr>
   <tr><td>6</td><td><code>/fluent-community/v2/courses?type=enrolled&amp;per_page=5</code></td><td>AsyncStorage &rarr; CoursesWidget</td></tr>
-  <tr><td>7</td><td><code>/tbc-ca/v1/cart/count</code></td><td>Cart badge count</td></tr>
 </table>
 
 <h3>Batch-Fresh Coordination</h3>
@@ -374,6 +373,8 @@ await clearAllUserCaches();</code></pre>
   <tr><td><code>tbc_app_config_cache</code></td><td>Site maintenance mode, update config, branding</td></tr>
   <tr><td><code>tbc_app_visibility_cache</code></td><td>Site-level menu visibility (hide_menu[])</td></tr>
   <tr><td><code>tbc_socket_config_cache</code></td><td>Socket provider config (Pusher/Soketi)</td></tr>
+  <tr><td><code>tbc_app_features_cache</code></td><td>Feature flags &mdash; site-level, not user-specific</td></tr>
+  <tr><td><code>tbc_registration_config_cache</code></td><td>Registration capabilities &mdash; site-level</td></tr>
 </table>
 
 <h3>Registering In-Memory Caches</h3>

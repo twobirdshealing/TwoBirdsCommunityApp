@@ -13,7 +13,7 @@
 <p class="subtitle">How the app works end-to-end &mdash; from cold start to real-time updates</p>
 
 <div class="callout">
-  <strong>Stack:</strong> React Native (Expo 55) &bull; React 19 with React Compiler &bull; Expo Router (file-based) &bull; WordPress + Fluent Community backend &bull; Pusher WebSockets &bull; JWT authentication
+  <strong>Stack:</strong> React Native (Expo 55) &bull; React 19 &bull; Expo Router (file-based) &bull; WordPress + Fluent Community backend &bull; Pusher WebSockets (pusher-js) &bull; JWT authentication
 </div>
 
 <div class="toc">
@@ -44,14 +44,17 @@
   courses/              Course + lesson screens
   feed/                 Single post view
   messages/             Chat screens
-  profile/              Profile view + edit
+  profile/              Profile view + edit + connections
   space/                Space detail + members
+  comments/             Full-screen comment thread
 assets/                 Images, fonts, splash
 companion plugins/      WordPress plugins that ship with the app
 components/             UI components by domain
   common/               Shared: Button, Avatar, TextInputField, etc.
   composer/             Post creation flow
+  course/               Course cards, lesson views
   feed/                 FeedCard, CommentSheet, reactions
+  home/                 Home screen widgets and layout
   media/                Video, image, gallery
   member/               MemberCard
   message/              Chat bubbles, input, modals
@@ -60,7 +63,6 @@ components/             UI components by domain
   profile/              Profile views, edit, completion
   register/             Registration step components
   space/                Space cards, headers, lock screens
-  settings/             Settings screens
 constants/              Design tokens, config, colors, API endpoints
 contexts/               React contexts (Auth, Theme, Pusher, etc.)
 hooks/                  Custom hooks (data fetching, actions, etc.)
@@ -73,6 +75,7 @@ services/               Core services
   auth.ts               JWT token management
   pusher.ts             WebSocket client
   push.ts               Push notification service
+  cacheRegistry.ts      Cache invalidation events + clear-all on logout
 types/                  TypeScript type definitions
 utils/                  Utility functions (logger, formatters, etc.)
 setup/                  Buyer setup tools
@@ -95,7 +98,7 @@ scripts/                Dev-only scripts (white-label snapshot, not shipped)</di
    &rarr; If missing/expired: routes to /login
 4. Auth guard in RootLayoutNav evaluates route access
 5. useStartupData fires (single batch HTTP request)
-   &rarr; 7 API paths in one request (replaces ~12 individual calls)
+   &rarr; 6 API paths in one request (replaces ~12 individual calls)
    &rarr; Distributes results to contexts + AsyncStorage caches
 6. ThemeContext receives app-config with Fluent Community colors
 7. Pusher connects to private channel for real-time messaging
@@ -120,11 +123,11 @@ scripts/                Dev-only scripts (white-label snapshot, not shipped)</di
   <tr><td>3</td><td>ThemeProvider</td><td>contexts/ThemeContext.tsx</td><td>Colors, dark mode, branding</td></tr>
   <tr><td>4</td><td>AuthProvider</td><td>contexts/AuthContext.tsx</td><td>JWT auth state, login/logout</td></tr>
   <tr><td>5</td><td>AppConfigProvider</td><td>contexts/AppConfigContext.tsx</td><td>Server config, feature flags, maintenance</td></tr>
-  <tr><td>6</td><td>UnreadCountsProvider</td><td>contexts/UnreadCountsContext.tsx</td><td>Badge counts (notifications, messages, cart)</td></tr>
+  <tr><td>6</td><td>UnreadCountsProvider</td><td>contexts/UnreadCountsContext.tsx</td><td>Badge counts (notifications, messages)</td></tr>
   <tr><td>7</td><td>PusherProvider</td><td>contexts/PusherContext.tsx</td><td>Real-time WebSocket connection</td></tr>
-  <tr><td>8</td><td>ModuleProviders</td><td>Dynamic from module registry</td><td>Module-specific contexts (audio player, etc.)</td></tr>
-  <tr><td>9</td><td>KeyboardProvider</td><td>react-native-keyboard-controller</td><td>Keyboard avoidance + edge-to-edge</td></tr>
-  <tr><td>10</td><td>BottomSheetModalProvider</td><td>@gorhom/bottom-sheet</td><td>Bottom sheet modals</td></tr>
+  <tr><td>8</td><td>BottomSheetModalProvider</td><td>@gorhom/bottom-sheet</td><td>Bottom sheet modals</td></tr>
+  <tr><td>9</td><td>ModuleProviders</td><td>Dynamic from module registry</td><td>Module-specific contexts (audio player, etc.)</td></tr>
+  <tr><td>10</td><td>KeyboardProvider</td><td>react-native-keyboard-controller</td><td>Keyboard avoidance + edge-to-edge</td></tr>
 </table>
 
 <div class="callout callout-warn">
@@ -207,15 +210,14 @@ Logout:
 </ul>
 
 <h3>Response Header Interceptor</h3>
-<p>Every authenticated response is scanned for custom headers that update app-wide state:</p>
+<p>Every authenticated response is scanned for custom headers that update app-wide state. Core headers are built into the client; modules can register additional headers via <code>ResponseHeaderMapping</code> in their manifest.</p>
 <table>
   <tr><th>Header</th><th>Purpose</th><th>Consumer</th></tr>
   <tr><td><code>X-TBC-Unread-Notifications</code></td><td>Notification badge count</td><td>UnreadCountsContext</td></tr>
   <tr><td><code>X-TBC-Unread-Messages</code></td><td>Message badge count</td><td>UnreadCountsContext</td></tr>
-  <tr><td><code>X-TBC-Cart-Count</code></td><td>Cart item count</td><td>UnreadCountsContext</td></tr>
   <tr><td><code>X-TBC-Maintenance</code></td><td>Maintenance mode flag</td><td>ThemeContext</td></tr>
-  <tr><td><code>X-TBC-Profile-Incomplete</code></td><td>Profile completion gate (add-on module)</td><td>AuthContext</td></tr>
   <tr><td><code>X-TBC-Min-App-Version</code></td><td>Force update gate</td><td>ThemeContext</td></tr>
+  <tr><td colspan="3"><em>Modules can register additional headers (e.g. cart count, profile completion) via <code>responseHeaders</code> in their manifest.</em></td></tr>
 </table>
 
 <h3>Exported Methods</h3>
@@ -289,7 +291,6 @@ markBatchFresh(['tbc_widget_enrolled_courses']);
   <tr><td>4</td><td><code>/fluent-community/v2/chat/unread_threads</code></td><td>Unread message threads</td><td>UnreadCountsContext</td></tr>
   <tr><td>5</td><td><code>/fluent-community/v2/feeds/welcome-banner</code></td><td>Welcome widget data</td><td>AsyncStorage (widget cache)</td></tr>
   <tr><td>6</td><td><code>/fluent-community/v2/courses?type=enrolled</code></td><td>Enrolled courses</td><td>AsyncStorage (widget cache)</td></tr>
-  <tr><td>7</td><td><code>/tbc-ca/v1/cart/count</code></td><td>Cart badge count</td><td>UnreadCountsContext</td></tr>
 </table>
 
 <div class="callout">
@@ -307,7 +308,7 @@ markBatchFresh(['tbc_widget_enrolled_courses']);
 <h2 id="realtime">8. Real-Time (Pusher)</h2>
 <!-- ================================================================== -->
 
-<p>The app uses <strong>Pusher WebSockets</strong> for real-time chat. Socket config is <strong>server-driven</strong> &mdash; read from <code>/app-config</code> at startup and cached in <span class="file-path">contexts/AppConfigContext.tsx</span>. Supports Pusher Cloud, Fluent Socket, and custom Soketi &mdash; the buyer configures once in WordPress admin, the app auto-detects the provider.</p>
+<p>The app uses <strong>Pusher WebSockets</strong> via the <code>pusher-js</code> library for real-time chat. Socket config is <strong>server-driven</strong> &mdash; read from <code>/app-config</code> at startup and cached in <span class="file-path">contexts/AppConfigContext.tsx</span>. Supports Pusher Cloud, Fluent Socket, and custom Soketi &mdash; the buyer configures once in WordPress admin, the app auto-detects the provider.</p>
 
 <h3>Connection Flow</h3>
 <div class="diagram">Auth confirmed &rarr; AppConfigContext provides socketConfig (cached or from /app-config)
@@ -369,10 +370,13 @@ useReactionListener((data) =&gt; {
   <tr><td><code>/(tabs)/spaces</code></td><td>Spaces directory</td><td>Yes</td></tr>
   <tr><td><code>/feed/[id]</code></td><td>Single post view</td><td>Yes</td></tr>
   <tr><td><code>/create-post</code></td><td>Post composer (modal)</td><td>Yes</td></tr>
+  <tr><td><code>/comments/[postId]</code></td><td>Full-screen comment thread (modal)</td><td>Yes</td></tr>
   <tr><td><code>/space/[slug]</code></td><td>Space detail + feed</td><td>Yes</td></tr>
   <tr><td><code>/space/[slug]/members</code></td><td>Space member list</td><td>Yes</td></tr>
   <tr><td><code>/profile/[username]</code></td><td>User profile</td><td>Yes</td></tr>
+  <tr><td><code>/profile/[username]/connections</code></td><td>User connections (followers/following)</td><td>Yes</td></tr>
   <tr><td><code>/profile/edit</code></td><td>Edit own profile</td><td>Yes</td></tr>
+  <tr><td><code>/profile-complete</code></td><td>Profile completion gate</td><td>Yes</td></tr>
   <tr><td><code>/messages</code></td><td>Chat thread list</td><td>Yes</td></tr>
   <tr><td><code>/messages/user/[userId]</code></td><td>Chat conversation</td><td>Yes</td></tr>
   <tr><td><code>/courses</code></td><td>Course catalog</td><td>Yes</td></tr>
@@ -381,6 +385,7 @@ useReactionListener((data) =&gt; {
   <tr><td><code>/directory</code></td><td>Member directory</td><td>Yes</td></tr>
   <tr><td><code>/bookmarks</code></td><td>Saved posts</td><td>Yes</td></tr>
   <tr><td><code>/notifications</code></td><td>Notification list</td><td>Yes</td></tr>
+  <tr><td><code>/notification-settings</code></td><td>Push notification preferences</td><td>Yes</td></tr>
   <tr><td><code>/webview</code></td><td>In-app browser (cart, policies)</td><td>Configurable</td></tr>
 </table>
 
@@ -467,7 +472,7 @@ tbc-community-app plugin (PHP)
   &darr; exposes via REST API
 GET /tbc-ca/v1/app-config (public, no auth)
   &darr; returns light + dark color tokens
-services/api/theme.ts &rarr; mapFluentToAppColors()
+services/api/appConfig.ts &rarr; mapFluentToAppColors()
   &darr; maps Fluent keys to app tokens
 ThemeContext &rarr; caches in AsyncStorage
   &darr; provides via useTheme() hook
@@ -561,8 +566,9 @@ useCachedData({
   <tr><td><span class="file-path">services/auth.ts</span></td><td>JWT storage, silent refresh, credential management</td></tr>
   <tr><td><span class="file-path">services/api/client.ts</span></td><td>HTTP client: requests, retry, error normalization, headers</td></tr>
   <tr><td><span class="file-path">services/api/batch.ts</span></td><td>Batch request helper (multiple paths in one HTTP call)</td></tr>
+  <tr><td><span class="file-path">services/api/appConfig.ts</span></td><td>App config fetch, Fluent-to-app color mapping, feature flags</td></tr>
   <tr><td><span class="file-path">services/api/moderation.ts</span></td><td>Content reporting (POST /moderation/report via FC Pro)</td></tr>
-  <tr><td><span class="file-path">services/pusher.ts</span></td><td>Pusher WebSocket client</td></tr>
+  <tr><td><span class="file-path">services/pusher.ts</span></td><td>Pusher WebSocket client (pusher-js/react-native)</td></tr>
   <tr><td><span class="file-path">services/push.ts</span></td><td>Push notification registration + OS badge sync</td></tr>
   <tr><td><span class="file-path">services/cacheRegistry.ts</span></td><td>Cache invalidation events + clear-all on logout</td></tr>
 </table>
@@ -573,27 +579,41 @@ useCachedData({
   <tr><td><span class="file-path">contexts/AuthContext.tsx</span></td><td>User, isAuthenticated, login/logout/register</td></tr>
   <tr><td><span class="file-path">contexts/ThemeContext.tsx</span></td><td>Colors, dark mode, branding, maintenance, force update</td></tr>
   <tr><td><span class="file-path">contexts/AppConfigContext.tsx</span></td><td>Feature flags, visibility config, socket config</td></tr>
-  <tr><td><span class="file-path">contexts/UnreadCountsContext.tsx</span></td><td>Badge counts: notifications, messages, cart</td></tr>
+  <tr><td><span class="file-path">contexts/UnreadCountsContext.tsx</span></td><td>Badge counts: notifications, messages</td></tr>
   <tr><td><span class="file-path">contexts/PusherContext.tsx</span></td><td>WebSocket connection, event subscriptions</td></tr>
   <tr><td><span class="file-path">contexts/FeedModalsContext.tsx</span></td><td>Shared feed modals: menu, reaction picker, breakdown, media viewer, report (1 instance per provider, not per card)</td></tr>
+  <tr><td><span class="file-path">contexts/TabBarContext.tsx</span></td><td>Tab bar visibility state (show/hide for immersive screens)</td></tr>
+  <tr><td><span class="file-path">contexts/BottomOffsetContext.tsx</span></td><td>Dynamic bottom offset for tab bar addons (mini players, etc.)</td></tr>
 </table>
 
 <h3>Hooks</h3>
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
   <tr><td><span class="file-path">hooks/useCachedData.ts</span></td><td>Stale-while-revalidate data fetching + caching</td></tr>
-  <tr><td><span class="file-path">hooks/useStartupData.ts</span></td><td>Startup batch: 7 API paths in one request</td></tr>
+  <tr><td><span class="file-path">hooks/useStartupData.ts</span></td><td>Startup batch: 6 API paths in one request</td></tr>
   <tr><td><span class="file-path">hooks/useFeedActions.ts</span></td><td>Feed CRUD: react, bookmark, pin, edit, delete</td></tr>
+  <tr><td><span class="file-path">hooks/useFeedReactions.ts</span></td><td>Feed reaction state management</td></tr>
   <tr><td><span class="file-path">hooks/useChatMessages.ts</span></td><td>Chat: messages, pagination, optimistic send, Pusher sync</td></tr>
+  <tr><td><span class="file-path">hooks/useChatReactions.tsx</span></td><td>Chat message reaction handling</td></tr>
   <tr><td><span class="file-path">hooks/useTickerPolling.ts</span></td><td>Background polling for unread counts + activity ping</td></tr>
+  <tr><td><span class="file-path">hooks/useAppFocus.ts</span></td><td>App foreground/background detection</td></tr>
+  <tr><td><span class="file-path">hooks/useFollowToggle.ts</span></td><td>Follow/unfollow user toggle</td></tr>
+  <tr><td><span class="file-path">hooks/useMessageMenu.ts</span></td><td>Chat message long-press menu actions</td></tr>
+  <tr><td><span class="file-path">hooks/useNotificationSettings.ts</span></td><td>Push notification preference management</td></tr>
+  <tr><td><span class="file-path">hooks/useReactionConfig.ts</span></td><td>Reaction type configuration from server</td></tr>
+  <tr><td><span class="file-path">hooks/useSocialProviders.ts</span></td><td>Social login provider configuration</td></tr>
+  <tr><td><span class="file-path">hooks/useBadgeDefinitions.ts</span></td><td>User badge/role definitions</td></tr>
+  <tr><td><span class="file-path">hooks/useThemedEditor.ts</span></td><td>Rich text editor theme configuration</td></tr>
+  <tr><td><span class="file-path">hooks/useWidgetPreferences.ts</span></td><td>Home screen widget show/hide preferences</td></tr>
 </table>
 
 <h3>Constants &amp; Config</h3>
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
-  <tr><td><span class="file-path">constants/config.ts</span></td><td>Site URL, API endpoints, Pusher auth endpoint</td></tr>
+  <tr><td><span class="file-path">constants/config.ts</span></td><td>Site URL (EXPO_PUBLIC_SITE_URL), API endpoints, Pusher auth endpoint</td></tr>
   <tr><td><span class="file-path">constants/layout.ts</span></td><td>Design tokens: spacing, sizing, typography, shadows</td></tr>
   <tr><td><span class="file-path">constants/colors.ts</span></td><td>Color definitions, Fluent-to-app token map, withOpacity()</td></tr>
+  <tr><td><span class="file-path">constants/notificationMap.ts</span></td><td>Notification type display config for settings screen</td></tr>
 </table>
 
 <h3>Module Infrastructure</h3>
@@ -637,6 +657,7 @@ useCachedData({
   <tr><td><span class="file-path">types/comment.ts</span></td><td>Comment, reply threading</td></tr>
   <tr><td><span class="file-path">types/course.ts</span></td><td>Course, Lesson, enrollment</td></tr>
   <tr><td><span class="file-path">types/notification.ts</span></td><td>Notification types + push payload</td></tr>
+  <tr><td><span class="file-path">types/gif.ts</span></td><td>GifAttachment (GIPHY integration)</td></tr>
   <tr><td><span class="file-path">types/api.ts</span></td><td>ApiError, ApiResponse</td></tr>
 </table>
 

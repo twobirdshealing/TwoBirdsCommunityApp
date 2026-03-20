@@ -24,7 +24,6 @@
     <li><a href="#registration-form">Registration Form (Multi-Step)</a></li>
     <li><a href="#profile-edit-form">Profile Edit Form</a></li>
     <li><a href="#password-strength">Password Strength Meter</a></li>
-    <li><a href="#phone-input">Phone Input &amp; Country Picker</a></li>
     <li><a href="#module-verification">Module-Injected Verification</a></li>
     <li><a href="#select-modal">Select Modal</a></li>
     <li><a href="#file-reference">File Reference</a></li>
@@ -35,14 +34,14 @@
 <!-- ================================================================== -->
 <h2 id="overview">1. Overview</h2>
 
-<p>The app has <strong>no centralized form library</strong> &mdash; all form state lives as local component state (<code>useState</code>) in the screen that owns the form. A shared <code>DynamicFormField</code> component renders 13 field types from server-driven configs, while validation runs inline at step transitions or before submission.</p>
+<p>The app has <strong>no centralized form library</strong> &mdash; all form state lives as local component state (<code>useState</code>) in the screen that owns the form. A shared <code>DynamicFormField</code> component renders field types from server-driven configs, while validation runs inline at step transitions or before submission.</p>
 
 <p>Two primary form screens consume this infrastructure:</p>
 
 <table>
   <tr><th>Screen</th><th>File</th><th>Purpose</th></tr>
   <tr><td>Registration Wizard</td><td><code>app/register.tsx</code></td><td>Multi-step signup with dynamic fields, email verify, module-injectable steps</td></tr>
-  <tr><td>Profile Edit</td><td><code>app/profile/edit.tsx</code></td><td>Edit name, bio, social links, custom fields with visibility</td></tr>
+  <tr><td>Profile Edit</td><td><code>app/profile/edit.tsx</code></td><td>Edit name, bio, social links, custom fields</td></tr>
 </table>
 
 <p>Both screens follow the same pattern:</p>
@@ -64,10 +63,9 @@ const [fieldErrors, setFieldErrors] = useState&lt;Record&lt;string, string&gt;&g
   <tr><td><code>value</code></td><td><code>any</code></td><td>Current value (null-safe)</td></tr>
   <tr><td><code>onChange</code></td><td><code>(value: any) =&gt; void</code></td><td>Called on every value change</td></tr>
   <tr><td><code>error</code></td><td><code>string | undefined</code></td><td>Error message &mdash; triggers red border + error text</td></tr>
-  <tr><td><code>onSelectPress</code></td><td><code>(key, field) =&gt; void</code></td><td>Opens SelectModal for select/gender/radio types</td></tr>
+  <tr><td><code>onSelectPress</code></td><td><code>(fieldKey: string) =&gt; void</code></td><td>Opens SelectModal for select/gender types</td></tr>
   <tr><td><code>disabled</code></td><td><code>boolean</code></td><td>Disables interaction</td></tr>
-  <tr><td><code>extraContent</code></td><td><code>ReactNode</code></td><td>Rendered after input (e.g., visibility selector)</td></tr>
-  <tr><td><code>labelExtra</code></td><td><code>ReactNode</code></td><td>Between label and instructions (e.g., visibility chips)</td></tr>
+  <tr><td><code>extraContent</code></td><td><code>ReactNode</code></td><td>Rendered after input (e.g., password strength meter)</td></tr>
 </table>
 
 <h3>FormFieldConfig Interface</h3>
@@ -85,22 +83,21 @@ const [fieldErrors, setFieldErrors] = useState&lt;Record&lt;string, string&gt;&g
 <!-- ================================================================== -->
 <h2 id="field-types">3. Supported Field Types</h2>
 
-<p>DynamicFormField handles 13 field types. The <code>type</code> string from the server config determines which renderer is used.</p>
+<p>DynamicFormField handles these field types. The <code>type</code> string from the server config determines which renderer is used.</p>
 
 <table>
   <tr><th>Type</th><th>Renders As</th><th>Keyboard / Behavior</th></tr>
-  <tr><td><code>text</code></td><td>Single-line TextInput</td><td><code>default</code>, auto-capitalize sentences</td></tr>
-  <tr><td><code>email</code></td><td>Single-line TextInput</td><td><code>email-address</code>, no auto-capitalize</td></tr>
-  <tr><td><code>password</code></td><td>TextInput + eye toggle</td><td>Secure entry with show/hide icon</td></tr>
-  <tr><td><code>phone</code></td><td>PhoneInput (international)</td><td>Country picker + formatted number input</td></tr>
+  <tr><td><code>text</code></td><td>Single-line TextInput</td><td><code>default</code>, auto-capitalize sentences. Special-cased for <code>username</code> keys (no auto-capitalize, <code>username-new</code> autocomplete) and keys containing <code>phone</code> (<code>phone-pad</code> keyboard)</td></tr>
+  <tr><td><code>email</code></td><td>Single-line TextInput</td><td><code>email-address</code>, no auto-capitalize, <code>email</code> autocomplete</td></tr>
+  <tr><td><code>password</code></td><td>TextInput + eye toggle</td><td>Secure entry with show/hide icon, <code>newPassword</code> text content type</td></tr>
   <tr><td><code>number</code></td><td>Single-line TextInput</td><td><code>numeric</code> keyboard</td></tr>
   <tr><td><code>url</code></td><td>Single-line TextInput</td><td><code>url</code> keyboard, no auto-capitalize</td></tr>
-  <tr><td><code>date</code></td><td>DateTimePicker (native)</td><td>Displays as &ldquo;Mon DD, YYYY&rdquo;</td></tr>
+  <tr><td><code>date</code></td><td>Pressable &rarr; DateTimePicker (native)</td><td>Displays as &ldquo;Mon DD, YYYY&rdquo; using UTC getters, stores as <code>YYYY-MM-DD</code> string. iOS uses spinner display, Android uses default.</td></tr>
   <tr><td><code>textarea</code></td><td>Multi-line TextInput</td><td>3 lines, top-aligned text</td></tr>
-  <tr><td><code>select</code></td><td>Pressable &rarr; SelectModal</td><td>Dropdown with options list</td></tr>
-  <tr><td><code>gender</code></td><td>Pressable &rarr; SelectModal</td><td>Special case of select for gender field</td></tr>
-  <tr><td><code>radio</code></td><td>Inline single-select buttons</td><td>Tap to pick one option</td></tr>
-  <tr><td><code>inline_checkbox</code></td><td>Single checkbox with label</td><td>Renders checkmark, uses <code>inline_label</code></td></tr>
+  <tr><td><code>select</code></td><td>Pressable &rarr; SelectModal</td><td>Dropdown with options list, shows chevron-down icon</td></tr>
+  <tr><td><code>gender</code></td><td>Pressable &rarr; SelectModal</td><td>Same rendering as select</td></tr>
+  <tr><td><code>radio</code></td><td>Inline radio buttons</td><td>Circular radio indicators, tap to pick one option</td></tr>
+  <tr><td><code>inline_checkbox</code></td><td>Single checkbox with label</td><td>Renders checkmark box, uses <code>inline_label</code> (falls back to <code>label</code>). Label text is HTML-stripped and entity-decoded.</td></tr>
   <tr><td><code>checkbox</code> / <code>multiselect</code></td><td>Multi-select chip toggles</td><td>Values stored as JSON string array</td></tr>
 </table>
 
@@ -118,9 +115,10 @@ const [fieldErrors, setFieldErrors] = useState&lt;Record&lt;string, string&gt;&g
 <pre><code>export interface FieldsResponse {
   registration_enabled: boolean;
   email_verification_required: boolean;
-  [key: string]: unknown;  // Extensible via add-on module hooks
   fields: Record&lt;string, RegistrationField&gt;;
   message?: string;
+  /** Module-specific fields from server plugins */
+  [key: string]: any;
 }</code></pre>
 
 <h3>RegistrationField</h3>
@@ -142,22 +140,33 @@ const [fieldErrors, setFieldErrors] = useState&lt;Record&lt;string, string&gt;&g
 
 <p>Fields are grouped by their <code>step</code> property. Step 1 fields render on the first screen, step 2 on the second, etc. The wizard dynamically adjusts its step count based on what the server returns and which verification features are enabled.</p>
 
-<h3>Profile Custom Fields</h3>
+<h3>Profile Custom Fields (FC Native)</h3>
 
-<p>Profile edit gets its custom field configs from the profile object itself:</p>
+<p>Profile edit gets its custom field configs from the profile object via <code>profile.custom_field_groups</code>, which uses FC&rsquo;s native <code>NativeCustomField</code> format:</p>
 
-<pre><code>export interface CustomFieldConfig {
+<pre><code>export interface NativeCustomField {
+  slug: string;
   label: string;
-  type: string;
+  type: 'text' | 'textarea' | 'number' | 'date'
+      | 'select' | 'radio' | 'url' | 'multiselect';
   placeholder: string;
-  instructions: string;
-  required: boolean;
   options: string[];
-  visibility: string;              // Default visibility level
-  allow_user_override: boolean;    // Can user change visibility?
+  is_required: boolean;
+  is_enabled: boolean;
+  privacy: 'public' | 'logged_in' | 'private' | 'internal';
+  group: string;
+  value?: string | string[];
+}
+
+export interface CustomFieldGroup {
+  slug: string;
+  label: string;
+  edit_description?: string;
+  is_system?: boolean;
+  fields: NativeCustomField[];
 }</code></pre>
 
-<p>These are available at <code>profile.custom_field_configs</code> and rendered with the same <code>DynamicFormField</code> component.</p>
+<p>In profile edit, the <code>custom_field_groups</code> array is flattened into a slug-to-field map. Only enabled fields (<code>is_enabled: true</code>) are rendered. The <code>radio</code> type is converted to <code>select</code> for mobile rendering (radio renders as a SelectModal dropdown instead of inline buttons).</p>
 
 <!-- ================================================================== -->
 <h2 id="validation">5. Validation Logic</h2>
@@ -166,7 +175,7 @@ const [fieldErrors, setFieldErrors] = useState&lt;Record&lt;string, string&gt;&g
 
 <ul>
   <li><strong>Step transition</strong> &mdash; <code>validateStep(stepNumber)</code> in <code>register.tsx</code>, called before advancing to next step</li>
-  <li><strong>Form submission</strong> &mdash; inline validation in <code>handleSave()</code> / <code>handleSubmit()</code> before the API call</li>
+  <li><strong>Form submission</strong> &mdash; inline validation in <code>handleSave()</code> / <code>handleSubmitRegistration()</code> before the API call</li>
   <li><strong>Server-side</strong> &mdash; API returns <code>result.errors: Record&lt;string, string&gt;</code> which are merged into <code>fieldErrors</code></li>
 </ul>
 
@@ -186,7 +195,7 @@ const [fieldErrors, setFieldErrors] = useState&lt;Record&lt;string, string&gt;&g
 <table>
   <tr><th>Field</th><th>Rule</th><th>Error Message</th></tr>
   <tr><td><code>first_name</code></td><td>Non-empty after trim</td><td>First name is required</td></tr>
-  <tr><td>Custom fields</td><td><code>config.required &amp;&amp; !value</code></td><td><code>{label} is required</code></td></tr>
+  <tr><td>Custom fields</td><td><code>field.is_required &amp;&amp; field.is_enabled &amp;&amp; !value</code></td><td><code>{label} is required</code></td></tr>
 </table>
 
 <div class="callout callout-warn">
@@ -215,44 +224,57 @@ const [fieldErrors, setFieldErrors] = useState&lt;Record&lt;string, string&gt;&g
 
 <h3>Server-Side Errors</h3>
 
-<p>When the API returns validation errors, they arrive as <code>Record&lt;string, string&gt;</code> keyed by field name. These are spread into <code>fieldErrors</code> state so each field shows its server-returned message.</p>
+<p>When the API returns validation errors, they arrive as <code>Record&lt;string, string&gt;</code> keyed by field name. These are spread into <code>fieldErrors</code> state so each field shows its server-returned message. In registration, server errors also trigger navigation back to the step containing the errored field.</p>
 
 <pre><code>// After API call returns errors
 if (result.errors) {
   setFieldErrors(result.errors);
+  // Navigate back to the step with the error
+  const errorKeys = Object.keys(result.errors);
+  const step1Fields = getFieldsForStep(1).map(([k]) =&gt; k);
+  const hasStep1Error = errorKeys.some((k) =&gt; step1Fields.includes(k));
+  if (hasStep1Error) {
+    setStep(1);
+  } else {
+    setStep(2);
+  }
 }</code></pre>
 
 <h3>Error Key Convention</h3>
 
 <table>
   <tr><th>Context</th><th>Key Pattern</th><th>Example</th></tr>
-  <tr><td>Registration fields</td><td>Field name directly</td><td><code>email</code>, <code>username</code>, <code>phone</code></td></tr>
-  <tr><td>Profile custom fields</td><td><code>cf_{key}</code> prefix</td><td><code>cf_denomination</code>, <code>cf_birthday</code></td></tr>
+  <tr><td>Registration fields</td><td>Field name directly</td><td><code>email</code>, <code>username</code></td></tr>
+  <tr><td>Profile custom fields</td><td><code>cf_{slug}</code> prefix</td><td><code>cf_birthday</code>, <code>cf_location</code></td></tr>
 </table>
 
 <!-- ================================================================== -->
 <h2 id="registration-form">7. Registration Form (Multi-Step)</h2>
 
-<p><code>app/register.tsx</code> implements a wizard with up to 5 conditional steps. The step count adapts based on server config &mdash; steps are skipped if their feature is disabled.</p>
+<p><code>app/register.tsx</code> implements a wizard with conditional steps. The step count adapts based on server config &mdash; steps are skipped if their feature is disabled. A dot-style step indicator shows progress.</p>
 
 <h3>Step 1: Basic Account Info</h3>
 
-<p>Always shown. Fields: <code>full_name</code>, <code>email</code>, <code>username</code>, <code>password</code>, <code>conf_password</code>. If there are no custom fields, the terms checkbox also appears here.</p>
+<p>Always shown. Fields from step 1 of the server config (typically <code>full_name</code>, <code>email</code>, <code>username</code>, <code>password</code>, <code>conf_password</code>). If there are no custom fields (step 2), the step 2 fields (e.g., terms checkbox) are merged into step 1.</p>
 
 <h3>Step 2: Custom Profile Fields</h3>
 
-<p>Dynamic fields from the server with <code>step: 2</code>. The terms agreement checkbox (<code>inline_checkbox</code>) is always on step 2 when custom fields exist.</p>
+<p>Dynamic fields from the server with <code>step: 2</code>. Only shown if there are custom fields beyond just the terms checkbox. The terms agreement checkbox (<code>inline_checkbox</code>) typically appears here.</p>
 
 <h3>Step 3: Email Verification <span class="tag auto">conditional</span></h3>
 
-<p>Shown only if <code>email_verification_required: true</code> in the fields response. Uses <code>EmailVerifyStep</code> component &mdash; a 6-digit code input that the user receives by email.</p>
+<p>Shown only if <code>email_verification_required: true</code> in the fields response, or when the server returns <code>email_verification_required</code> with a <code>verification_token</code> after form submission. Uses <code>EmailVerifyStep</code> component &mdash; a 6-digit code input that the user receives by email.</p>
 
 <h3>Steps 4+: Module-Injected Steps <span class="tag auto">conditional</span></h3>
 
-<p>Add-on modules can inject additional steps into the registration wizard via the <code>registrationSteps</code> manifest field. Each step has a <code>shouldActivate()</code> gate that checks the server response to determine if the step should be shown. See <a href="module-system.html">Module System</a> for details.</p>
+<p>Add-on modules can inject additional steps into the registration wizard via the <code>registrationSteps</code> manifest field. Each step has a <code>shouldActivate()</code> gate that checks the submit response and registration config to determine if the step should be shown. Module steps receive <code>formData</code>, <code>submitResponse</code>, <code>submitting</code>, <code>onResubmit</code>, <code>onComplete</code>, and <code>onBack</code> props. See <a href="module-system.html">Module System</a> for details.</p>
+
+<h3>Username Sanitization</h3>
+
+<p>Before submitting, the registration form sanitizes the username: <code>payload.username.toLowerCase().replace(/[^a-z0-9_]/g, '')</code>. This ensures only lowercase letters, numbers, and underscores are sent to the server.</p>
 
 <div class="callout">
-  <strong>Auth guard note:</strong> The <code>register</code> route stays accessible even after authentication so users can complete the profile step (avatar upload) after their account is created. See <a href="registration.html">Registration &amp; Onboarding</a> for the full flow.
+  <strong>Verification extras accumulation:</strong> When a registration requires multiple verification steps (email + module steps), each step&rsquo;s extras are accumulated in a <code>verificationExtrasRef</code> and included in every subsequent resubmit. This ensures prior verifications aren&rsquo;t lost when a later step resubmits the form.
 </div>
 
 <!-- ================================================================== -->
@@ -267,35 +289,44 @@ if (result.errors) {
   <tr><td>First Name</td><td>text</td><td>Required</td></tr>
   <tr><td>Last Name</td><td>text</td><td>Optional</td></tr>
   <tr><td>Email</td><td>email</td><td>Only if <code>profile.can_change_email</code></td></tr>
-  <tr><td>Username</td><td>text</td><td>Only if <code>profile.can_change_username</code> (lowercase, numbers, hyphens, underscores)</td></tr>
-  <tr><td>Bio</td><td>textarea</td><td>Optional, <code>short_description</code></td></tr>
-  <tr><td>Website</td><td>url</td><td>Optional, URL validated on save</td></tr>
+  <tr><td>Username</td><td>text</td><td>Only if <code>profile.can_change_username</code> (lowercase, numbers, underscores only &mdash; enforced via <code>onChangeText</code> filter)</td></tr>
+  <tr><td>Bio</td><td>textarea</td><td>Optional, <code>short_description</code>, 4 lines</td></tr>
+  <tr><td>Website</td><td>url</td><td>Optional</td></tr>
 </table>
+
+<p>Basic info fields are rendered with raw <code>TextInput</code> components (not <code>DynamicFormField</code>), as they have hardcoded layout and behavior.</p>
 
 <h3>Section 2: Social Links</h3>
 
-<p>Dynamic providers fetched via <code>useSocialProviders()</code> hook. Each provider has a key, title, placeholder, and domain prefix. Rendered as a list of text inputs.</p>
+<p>Dynamic providers fetched via <code>useSocialProviders()</code> hook. Each provider has a key, title, placeholder, and domain prefix. Rendered using the <code>SocialLinksForm</code> component, which shows an icon + label row above each input, with the domain prefix displayed inline.</p>
 
 <h3>Section 3: Custom Fields</h3>
 
-<p>Rendered from <code>profile.custom_field_configs</code> using <code>DynamicFormField</code>. Each field can have a <strong>per-field visibility selector</strong> if <code>config.allow_user_override</code> is true.</p>
+<p>Rendered from <code>profile.custom_field_groups</code> using <code>DynamicFormField</code>. Only enabled fields are shown. The <code>NativeCustomField</code> format is adapted to <code>FormFieldConfig</code> before passing to <code>DynamicFormField</code>:</p>
 
-<h3>Visibility Levels</h3>
+<pre><code>const config = {
+  label: field.label,
+  type: field.type === 'radio' ? 'select' : field.type,
+  placeholder: field.placeholder || '',
+  instructions: '',
+  required: field.is_required,
+  options: field.options,
+};</code></pre>
 
-<table>
-  <tr><th>Level</th><th>Who Can See</th></tr>
-  <tr><td>Public</td><td>Everyone (including non-members)</td></tr>
-  <tr><td>Members</td><td>Logged-in community members</td></tr>
-  <tr><td>Friends</td><td>User&rsquo;s connections only</td></tr>
-  <tr><td>Admins</td><td>Administrators only</td></tr>
-</table>
+<p>Note that <code>radio</code> type fields are converted to <code>select</code> so they render as dropdown modals on mobile instead of inline radio buttons.</p>
 
-<p>Visibility is stored as <code>{key}_visibility</code> in <code>custom_fields</code> and rendered as chips between the label and the input via the <code>labelExtra</code> prop.</p>
+<h3>Photo Uploads</h3>
+
+<p>The <code>ProfilePhotoPicker</code> component renders at the top with a cover photo and overlapping avatar. Both are tappable and show camera overlays with loading indicators during upload. Uploads are handled immediately via <code>showAvatarPicker</code>/<code>showCoverPicker</code> utilities and <code>patchProfileMedia</code> API, not as part of the form save.</p>
+
+<h3>Save Behavior</h3>
+
+<p>The save payload preserves admin-managed fields (<code>is_verified</code>, <code>badge_slugs</code>, <code>status</code>) to prevent the server from resetting them for moderator accounts.</p>
 
 <!-- ================================================================== -->
 <h2 id="password-strength">9. Password Strength Meter</h2>
 
-<p><code>components/common/PasswordStrengthMeter.tsx</code> shows a colored progress bar below the password field. It is <strong>advisory only</strong> &mdash; it does NOT block form submission.</p>
+<p><code>components/common/PasswordStrengthMeter.tsx</code> shows a colored progress bar with a label next to it, rendered below the password field via the <code>extraContent</code> prop. It is <strong>advisory only</strong> &mdash; it does NOT block form submission.</p>
 
 <h3>Scoring Algorithm (6-Point Scale)</h3>
 
@@ -322,66 +353,64 @@ if (result.errors) {
   <tr><td>6</td><td>strong</td><td>Very strong</td><td>100%</td><td><code>colors.success</code></td></tr>
 </table>
 
+<p>The component returns <code>null</code> when the password is empty. It renders with <code>accessibilityRole="progressbar"</code> and full accessibility values.</p>
+
 <div class="callout callout-success">
   <strong>Web parity:</strong> The scoring algorithm is kept in sync with the web registration form. Changes to either the app or web version must be mirrored.
 </div>
 
 <!-- ================================================================== -->
-<h2 id="phone-input">10. Phone Input &amp; Country Picker</h2>
-
-<p>The <code>phone</code> field type uses the <code>react-native-international-phone-number</code> library.</p>
-
-<h3>How It Works</h3>
-
-<ul>
-  <li><strong>Default country:</strong> US (can be overridden)</li>
-  <li><strong>Country detection:</strong> On mount, calls <code>getCountryByPhoneNumber(currentValue)</code> to detect country from existing value</li>
-  <li><strong>Stored value:</strong> Full E.164 format string (e.g., <code>+12025551234</code>)</li>
-  <li><strong>Validation:</strong> Server-side only &mdash; the app passes the raw value to the API</li>
-  <li><strong>Theme:</strong> Follows app dark/light mode via <code>theme={isDark ? 'dark' : 'light'}</code></li>
-</ul>
-
-<p>Country state is managed locally within <code>DynamicFormField</code> as <code>[phoneCountry, setPhoneCountry]</code>.</p>
-
-<!-- ================================================================== -->
-<h2 id="module-verification">11. Module-Injected Verification</h2>
+<h2 id="module-verification">10. Module-Injected Verification</h2>
 
 <p>Add-on modules can inject verification steps into the registration wizard and login flow. Each module provides its own UI component, hook, and API service. The module system's <code>registrationSteps</code> manifest field controls when steps appear.</p>
 
 <h3>How It Works</h3>
 
 <ul>
-  <li><strong>Registration steps</strong> &mdash; modules register steps with a <code>shouldActivate(fieldsResponse)</code> gate that checks server config to decide if the step appears</li>
+  <li><strong>Registration steps</strong> &mdash; modules register steps with a <code>shouldActivate({ submitResponse, registrationConfig })</code> gate that checks server response and registration config to decide if the step appears</li>
   <li><strong>Post-login gates</strong> &mdash; modules use <code>responseHeaders</code> mapping to detect server headers and redirect users (e.g., to a completion screen)</li>
   <li><strong>Each module owns its own endpoints, hooks, and UI</strong> &mdash; the core registration system just provides the injection points</li>
+  <li><strong>Pre-creation phase</strong> &mdash; module steps with <code>phase: 'pre-creation'</code> are checked when registration returns <code>success: false</code> with module-specific flags</li>
 </ul>
 
 <p>See <a href="module-system.html">Module System</a> and <a href="registration.html">Registration &amp; Onboarding</a> for full details on the injection mechanism.</p>
 
 <!-- ================================================================== -->
-<h2 id="select-modal">12. Select Modal</h2>
+<h2 id="select-modal">11. Select Modal</h2>
 
-<p><code>components/common/SelectModal.tsx</code> provides the dropdown picker for <code>select</code>, <code>gender</code>, and <code>radio</code> field types.</p>
+<p><code>components/common/SelectModal.tsx</code> provides the dropdown picker for <code>select</code> and <code>gender</code> field types (and <code>radio</code> fields in profile edit, which are converted to <code>select</code>).</p>
 
-<p>When <code>DynamicFormField</code> receives a press on a select-type field, it calls <code>onSelectPress(fieldKey, field)</code>. The parent screen opens <code>SelectModal</code> with the field&rsquo;s options array and handles the selection callback.</p>
+<h3>Props</h3>
+
+<table>
+  <tr><th>Prop</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>visible</code></td><td><code>boolean</code></td><td>Controls modal visibility</td></tr>
+  <tr><td><code>title</code></td><td><code>string</code></td><td>Modal header text</td></tr>
+  <tr><td><code>options</code></td><td><code>string[]</code></td><td>List of selectable options</td></tr>
+  <tr><td><code>selectedValue</code></td><td><code>string | undefined</code></td><td>Currently selected option (highlighted with checkmark)</td></tr>
+  <tr><td><code>onSelect</code></td><td><code>(value: string) =&gt; void</code></td><td>Called when an option is picked</td></tr>
+  <tr><td><code>onClose</code></td><td><code>() =&gt; void</code></td><td>Called to dismiss the modal</td></tr>
+</table>
+
+<p>When <code>DynamicFormField</code> receives a press on a select-type field, it calls <code>onSelectPress(fieldKey)</code>. The parent screen opens <code>SelectModal</code> with the field&rsquo;s options array and handles the selection callback. The modal uses <code>AnimatedPressable</code> for option rows, <code>colors.overlay</code> for the backdrop, and <code>hapticSelection</code> on pick. The selected option is highlighted with a primary-tinted background and checkmark icon.</p>
 
 <p>This keeps the modal state at the screen level (not inside DynamicFormField), avoiding nested modal issues on Android.</p>
 
 <!-- ================================================================== -->
-<h2 id="file-reference">13. File Reference</h2>
+<h2 id="file-reference">12. File Reference</h2>
 
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
-  <tr><td><code>components/common/DynamicFormField.tsx</code></td><td>Universal field renderer (13 types)</td></tr>
+  <tr><td><code>components/common/DynamicFormField.tsx</code></td><td>Universal field renderer (handles all server-driven field types)</td></tr>
   <tr><td><code>components/common/PasswordStrengthMeter.tsx</code></td><td>Advisory password strength bar</td></tr>
   <tr><td><code>components/common/SelectModal.tsx</code></td><td>Dropdown picker modal</td></tr>
-  <tr><td><code>components/common/TextInputField.tsx</code></td><td>Simple text input (used outside form system)</td></tr>
-  <tr><td><code>components/common/SocialLinksForm.tsx</code></td><td>Social link inputs for profile</td></tr>
-  <tr><td><code>components/common/ProfilePhotoPicker.tsx</code></td><td>Avatar + cover photo picker</td></tr>
+  <tr><td><code>components/common/TextInputField.tsx</code></td><td>Themed text input with label, error, and password toggle (used outside the dynamic form system)</td></tr>
+  <tr><td><code>components/common/SocialLinksForm.tsx</code></td><td>Social link inputs with provider icons and domain prefixes</td></tr>
+  <tr><td><code>components/common/ProfilePhotoPicker.tsx</code></td><td>Avatar + cover photo picker with upload indicators</td></tr>
   <tr><td><code>components/register/EmailVerifyStep.tsx</code></td><td>Email verification code entry</td></tr>
-  <tr><td><code>services/api/registration.ts</code></td><td>GET fields, POST register</td></tr>
+  <tr><td><code>services/api/registration.ts</code></td><td>GET fields, POST register, password reset</td></tr>
   <tr><td><code>services/api/profiles.ts</code></td><td>GET/POST profile, PATCH media</td></tr>
-  <tr><td><code>types/user.ts</code></td><td>User, Profile, CustomFieldConfig types</td></tr>
+  <tr><td><code>types/user.ts</code></td><td>User, Profile, NativeCustomField, CustomFieldGroup types</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -395,9 +424,9 @@ if (result.errors) {
   <li><strong>Use <code>cf_</code> prefix for custom field error keys in profile edit</strong> &mdash; this prevents collisions with basic field keys like <code>email</code> or <code>first_name</code>.</li>
   <li><strong>Checkbox/multiselect values are JSON strings</strong> &mdash; always <code>JSON.parse()</code> before reading and <code>JSON.stringify()</code> before saving. The server expects this format.</li>
   <li><strong>PasswordStrengthMeter is advisory only</strong> &mdash; never block submission based on score. The server enforces minimum requirements separately.</li>
-  <li><strong>Keep password scoring in sync with web</strong> &mdash; the mobile <code>PasswordStrengthMeter.tsx</code> and web <code>registration.js</code> must use the same algorithm. Update both when changing scoring.</li>
+  <li><strong>Keep password scoring in sync with web</strong> &mdash; the mobile <code>PasswordStrengthMeter.tsx</code> and web registration must use the same algorithm. Update both when changing scoring.</li>
   <li><strong>SelectModal lives at screen level, not inside DynamicFormField</strong> &mdash; nested modals break on Android. The field emits <code>onSelectPress</code> and the screen manages the modal.</li>
-  <li><strong>Phone validation is server-side only</strong> &mdash; the app sends the raw E.164 string and lets the server (Twilio) validate it. Don&rsquo;t add client-side phone format validation.</li>
+  <li><strong>Profile edit converts <code>radio</code> to <code>select</code></strong> &mdash; FC native custom fields can have <code>radio</code> type, but the edit screen adapts them to <code>select</code> for mobile-friendly dropdown rendering.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

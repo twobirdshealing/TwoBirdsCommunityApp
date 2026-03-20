@@ -15,8 +15,7 @@
 <div class="callout">
   <strong>Key files:</strong>
   <span class="file-path">app/register.tsx</span> (wizard screen),
-  <span class="file-path">app/profile-complete.tsx</span> (login-time gate),
-  <span class="file-path">services/api/registration.ts</span> (all registration + profile APIs),
+  <span class="file-path">services/api/registration.ts</span> (all registration APIs),
   <span class="file-path">components/register/</span> (step components).
   <br><br>
   WordPress backend: <span class="file-path">companion plugins/tbc-community-app/</span> — base registration REST API.
@@ -27,14 +26,15 @@
   <strong>Contents</strong>
   <ol>
     <li><a href="#flow">Registration Flow Overview</a></li>
-    <li><a href="#wizard">The 5-Step Wizard</a></li>
+    <li><a href="#wizard">The Step Wizard</a></li>
     <li><a href="#registration-api">Registration API</a></li>
     <li><a href="#module-steps">Module-Injected Verification Steps</a></li>
     <li><a href="#email-verify">Email Verification</a></li>
-    <li><a href="#profile-completion">Profile Completion</a></li>
+    <li><a href="#profile-completion">Profile Completion (Add-on)</a></li>
     <li><a href="#password-recovery">Password Recovery</a></li>
     <li><a href="#auth-guard">Auth Guard &amp; Route Protection</a></li>
     <li><a href="#custom-fields">Custom Profile Fields</a></li>
+    <li><a href="#social-providers">Social Link Providers</a></li>
     <li><a href="#config">Configuration &amp; Feature Flags</a></li>
     <li><a href="#errors">Error Handling</a></li>
     <li><a href="#files">File Reference</a></li>
@@ -81,27 +81,21 @@
                                         │
                     registerAndLogin()  ◄┘
                            │
-              ┌────────────▼────────────┐
-              │  Post-login gates?      │
-              ├─── yes ──► Completion   │
-              │            steps        │
-              └─── no ──► Main App      │
-              └─────────────────────────┘</code></pre>
+                     Main App (/(tabs))</code></pre>
 
 <p>Each conditional step is driven by server config returned from <code>GET /register/fields</code>. The mobile app adapts the wizard dynamically — buyers control what steps appear from the WordPress admin panel.</p>
 
 <!-- ================================================================== -->
-<h2 id="wizard">2. The 5-Step Wizard</h2>
+<h2 id="wizard">2. The Step Wizard</h2>
 
-<p><span class="file-path">app/register.tsx</span> renders a multi-step form. Steps 3–5 are conditional based on server config.</p>
+<p><span class="file-path">app/register.tsx</span> renders a multi-step form. Steps 3+ are conditional based on server config and module registrations.</p>
 
 <table>
   <tr><th>Step</th><th>Component</th><th>Purpose</th><th>Conditional?</th></tr>
   <tr><td>1</td><td>Inline (renderStep1)</td><td>Name, email, username, password</td><td>Always shown</td></tr>
-  <tr><td>2</td><td>Inline (renderStep2)</td><td>Custom profile fields + terms checkbox</td><td>Skipped if no custom fields</td></tr>
+  <tr><td>2</td><td>Inline (renderStep2)</td><td>Custom profile fields + terms checkbox</td><td>Skipped if no custom fields (terms merged into step 1)</td></tr>
   <tr><td>3</td><td><code>EmailVerifyStep</code></td><td>6-digit email verification code</td><td>Only if <code>email_verification_required: true</code></td></tr>
-  <tr><td>4+</td><td><em>Module-injected steps</em></td><td>Verification steps from add-on modules</td><td>Only if module's <code>shouldActivate()</code> returns true</td></tr>
-  <tr><td>Last</td><td><em>Post-login steps</em></td><td>Profile completion, onboarding gates</td><td>Only if server config enables them</td></tr>
+  <tr><td>4+</td><td><em>Module-injected steps</em></td><td>Pre-creation verification steps from add-on modules</td><td>Only if module's <code>shouldActivate()</code> returns true</td></tr>
 </table>
 
 <h3>Step 1: Basic Information</h3>
@@ -116,20 +110,23 @@
 </table>
 
 <h3>Step 2: Custom Fields + Terms</h3>
-<p>Renders any custom fields where <code>show_on_signup = true</code> in the WordPress admin. All fields are rendered via the <code>DynamicFormField</code> component. A <code>terms</code> inline checkbox is always present (required).</p>
+<p>Renders any custom fields where <code>show_on_signup = true</code> in the WordPress admin. All fields are rendered via the <code>DynamicFormField</code> component. A <code>terms</code> inline checkbox is always present (required). When there are no custom fields, step 2 is skipped entirely and the terms checkbox is merged into step 1.</p>
 
 <h3>Step Transitions</h3>
 <p>After step 1 (or step 2 if custom fields exist), <code>handleSubmitRegistration()</code> sends a <code>POST /register</code> request. The server response determines what happens next:</p>
 <ul>
-  <li><code>email_verification_required: true</code> → advance to step 3</li>
-  <li>Module-specific flags (e.g., <code>verification_required: true</code>) → advance to module steps</li>
-  <li><code>success: true</code> with tokens → auto-login, then step 5 or main app</li>
+  <li><code>email_verification_required: true</code> + <code>verification_token</code> &rarr; advance to step 3 (email verify)</li>
+  <li>Module-specific flags (checked via each step's <code>shouldActivate()</code>) &rarr; advance to step 4+ (module steps)</li>
+  <li><code>success: true</code> with tokens &rarr; auto-login via <code>registerAndLogin()</code>, then navigate to <code>/(tabs)</code></li>
 </ul>
+
+<h3>Step Indicator</h3>
+<p>A dot-based step indicator dynamically adjusts its count based on which steps are active. It accounts for skipped steps (no custom fields, no email verify) so the visual count always matches the actual number of steps the user will see.</p>
 
 <!-- ================================================================== -->
 <h2 id="registration-api">3. Registration API</h2>
 
-<p>All endpoints in <span class="file-path">services/api/registration.ts</span>. Registration endpoints are <strong>public</strong> (no auth required). Profile completion endpoints require JWT auth.</p>
+<p>All endpoints in <span class="file-path">services/api/registration.ts</span>. Registration endpoints are <strong>public</strong> (no auth required).</p>
 
 <h3>Public Endpoints</h3>
 
@@ -141,29 +138,25 @@
   <tr><td><code>resetPassword(token, login, pwd)</code></td><td>POST</td><td><code>tbc-ca/v1/password/reset</code></td><td>Set new password with reset token</td></tr>
 </table>
 
-<h3>Authenticated Endpoints</h3>
-
-<table>
-  <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
-  <tr><td><code>checkProfileComplete()</code></td><td>GET</td><td><code>tbc-ca/v1/auth/register/status</code></td><td>Check if profile is complete, return missing fields + existing data</td></tr>
-  <tr><td><code>completeRegistration()</code></td><td>POST</td><td><code>tbc-ca/v1/auth/register/complete</code></td><td>Mark profile as complete</td></tr>
-</table>
+<div class="callout callout-warn">
+  <strong>No profile completion endpoints in core.</strong> The base <code>services/api/registration.ts</code> only contains the four endpoints above. Profile completion endpoints (check status, mark complete) are provided by the optional profile-completion add-on module, not by core.
+</div>
 
 <h3>FieldsResponse</h3>
 <pre><code>interface FieldsResponse {
   registration_enabled: boolean;
   email_verification_required: boolean;
   fields: Record&lt;string, RegistrationField&gt;;
+  message?: string;
   // Add-on plugins extend this via the tbc_ca_registration_config filter hook:
-  // Add-on modules extend this with their own flags (e.g., verification settings)
   // Each add-on advertises its capabilities here so the app adapts dynamically.
-  [key: string]: unknown;  // Extensible via add-on hooks
+  [key: string]: any;  // Extensible via add-on hooks
 }</code></pre>
 
 <h3>RegisterResponse</h3>
 <p>The <code>POST /register</code> response has three possible shapes:</p>
 
-<pre><code>// ✓ Success — user created, tokens returned
+<pre><code>// Success — user created, tokens returned
 {
   success: true,
   access_token: "eyJ...",
@@ -171,7 +164,7 @@
   user: { id: 42, username: "jane", display_name: "Jane", email: "jane@..." }
 }
 
-// → Email verification needed (re-submit with code + token)
+// Email verification needed (re-submit with code + token)
 {
   success: false,
   email_verification_required: true,
@@ -179,7 +172,7 @@
   message: "Please check your email for a verification code."
 }
 
-// → Module verification needed (add-on plugins can return custom verification requirements)
+// Module verification needed (add-on plugins can return custom verification requirements)
 // The app checks each registered module's shouldActivate() against this response.
 {
   success: false,
@@ -189,7 +182,7 @@
   message: "Additional verification required."
 }
 
-// ✗ Validation errors
+// Validation errors
 {
   success: false,
   message: "Registration failed.",
@@ -199,8 +192,20 @@
   }
 }</code></pre>
 
+<h3>Password Reset Response Types</h3>
+<pre><code>interface ForgotPasswordResponse {
+  success: boolean;
+  email_sent?: boolean;
+  message?: string;
+}
+
+interface PasswordResetResponse {
+  success: boolean;
+  message?: string;
+}</code></pre>
+
 <div class="callout callout-warn">
-  <strong>Re-submission pattern:</strong> After email verification or module-injected verification steps, the app re-calls <code>submitRegistration()</code> with the original form data plus the verification data (e.g., <code>__two_fa_code</code> / <code>__two_fa_signed_token</code> for email). The server validates the verification and creates the user.
+  <strong>Re-submission pattern:</strong> After email verification or module-injected verification steps, the app re-calls <code>submitRegistration()</code> with the original form data plus the verification data (e.g., <code>__two_fa_code</code> / <code>__two_fa_signed_token</code> for email). Verification extras from all prior steps are accumulated via <code>verificationExtrasRef</code> so each resubmit includes all prior verification params. The server validates the verification and creates the user.
 </div>
 
 <!-- ================================================================== -->
@@ -212,27 +217,47 @@
 <ol>
   <li>User submits the registration form</li>
   <li>Server returns a response with add-on-specific fields (via <code>tbc_ca_registration_config</code> hooks)</li>
-  <li>The app checks each registered module step's <code>shouldActivate(submitResponse)</code></li>
-  <li>If a step activates, the wizard advances to show that module's verification UI</li>
-  <li>After the module step completes, the app re-submits registration with the verification data</li>
+  <li>The app checks each registered module step's <code>shouldActivate(context)</code> where context includes both <code>submitResponse</code> and <code>registrationConfig</code></li>
+  <li>If a step activates, the wizard advances to show that module's verification UI (starting at step 4)</li>
+  <li>After the module step completes, it calls <code>onResubmit(extras)</code> which re-submits registration with the verification data merged</li>
   <li>Server validates and creates the user</li>
 </ol>
 
 <h3>RegistrationStepRegistration</h3>
 <pre><code>interface RegistrationStepRegistration {
-  id: string;             // Unique step ID
+  id: string;             // Unique step ID (e.g. 'email-verify')
   order: number;          // Sort position (core email-verify = 10)
   phase: 'pre-creation';  // When the step runs
-  title: string;          // Step title in wizard
+  title: string;          // Step title shown in the register screen header
   component: ComponentType&lt;RegistrationStepProps&gt;;
-  shouldActivate: (submitResponse: Record&lt;string, unknown&gt;) =&gt; boolean;
+  shouldActivate: (context: {
+    submitResponse: Record&lt;string, any&gt;;
+    registrationConfig: RegistrationConfig | null;
+  }) =&gt; boolean;
+}</code></pre>
+
+<h3>RegistrationStepProps</h3>
+<p>Props passed to every module registration step component rendered inline in the register screen:</p>
+<pre><code>interface RegistrationStepProps {
+  formData: Record&lt;string, any&gt;;
+  submitResponse: Record&lt;string, any&gt;;
+  submitting: boolean;
+  /** Resubmit the registration form with verification extras merged in */
+  onResubmit: (extras: Record&lt;string, any&gt;) =&gt; Promise&lt;void&gt;;
+  /** Signal that this step is complete (navigates to main app) */
+  onComplete: () =&gt; void;
+  /** Go back to the previous step */
+  onBack: () =&gt; void;
 }</code></pre>
 
 <p>See <a href="module-system.html#registration-types">Module System &rarr; Registration Types</a> for full details on building custom verification steps.</p>
 
 <div class="callout">
-  <strong>Server-driven activation.</strong> The server response determines which module steps activate. The app never hardcodes which steps to show &mdash; it queries each registered module's <code>shouldActivate()</code> function against the server response.
+  <strong>Server-driven activation.</strong> The server response determines which module steps activate. The app never hardcodes which steps to show &mdash; it queries each registered module's <code>shouldActivate()</code> function against a context containing both the server response and the app's registration config.
 </div>
+
+<h3>Core Email-Verify Step in Registry</h3>
+<p>The core email verification step is registered in <span class="file-path">modules/_registry.ts</span> as a <code>CORE_REGISTRATION_STEPS</code> entry (not a module). It has <code>order: 10</code> and its <code>shouldActivate</code> checks for <code>submitResponse.email_verification_required</code> and <code>submitResponse.verification_token</code>. However, the register screen renders it directly via the <code>EmailVerifyStep</code> component (not through the registry component), filtering it out of the dynamic module step list by <code>id !== 'email-verify'</code>.</p>
 
 <!-- ================================================================== -->
 <h2 id="email-verify">5. Email Verification</h2>
@@ -245,74 +270,66 @@
   <li>Server returns <code>email_verification_required: true</code> + <code>verification_token</code> (signed JWT)</li>
   <li>App advances to step 3 (<code>EmailVerifyStep</code>)</li>
   <li>User checks email, enters 6-digit code</li>
-  <li>App re-submits registration with <code>__two_fa_code</code> + <code>__two_fa_signed_token</code></li>
-  <li>Server validates code → proceeds to module steps or user creation</li>
+  <li>App re-submits registration with <code>__two_fa_code</code> + <code>__two_fa_signed_token</code> merged into form data</li>
+  <li>Server validates code &rarr; proceeds to module steps or user creation</li>
 </ol>
 
 <h3>EmailVerifyStep Component</h3>
 <p><span class="file-path">components/register/EmailVerifyStep.tsx</span></p>
 <ul>
-  <li>6-digit code input with number-pad keyboard</li>
+  <li>6-digit code input with number-pad keyboard, digits-only filtering</li>
   <li>60-second resend countdown timer</li>
-  <li>Token passed as prop from parent (stored in <code>verificationToken</code> state)</li>
-  <li>On expired token → shows error, back button returns to previous step</li>
+  <li>Props: <code>email</code>, <code>verificationToken</code>, <code>submitting</code>, <code>onVerify(code, token)</code>, <code>onResend()</code>, <code>onBack()</code></li>
+  <li><code>onVerify</code> returns a Promise resolving to an error string or null</li>
+  <li><code>onResend</code> resubmits the form without the email code to trigger a new verification email</li>
 </ul>
+
+<h3>Token Expiry Handling</h3>
+<p>If the email verification token expires mid-flow (e.g., the user is on a module step past step 3), the register screen detects the <code>email_verification_required</code> response, clears accumulated verification extras, resets to step 3, and shows a "session expired" error prompting the user to re-verify.</p>
 
 <!-- ================================================================== -->
-<h2 id="profile-completion">6. Profile Completion</h2>
+<h2 id="profile-completion">6. Profile Completion (Add-on)</h2>
 
-<p>After registration (or on next login if skipped), users may be required to complete their profile. This feature is powered by an add-on module that uses the module system's <code>responseHeaders</code> mapping to detect incomplete profiles.</p>
+<p>Profile completion is <strong>not a core feature</strong> &mdash; it is provided by the optional <strong>profile-completion add-on module</strong>. The module uses the module system's <code>responseHeaders</code> mapping to detect incomplete profiles and the auth guard to redirect users.</p>
 
 <h3>How It Works</h3>
-<p>A profile completion add-on module registers a <code>responseHeaders</code> mapping in its manifest. The API client intercepts the header on every authenticated response and updates AuthContext. If the profile is incomplete, the auth guard redirects to <code>/profile-complete</code>.</p>
+<p>The profile-completion module registers a <code>responseHeaders</code> mapping in its manifest. The API client intercepts the header on every authenticated response and stores the value. If the profile is incomplete, the module's logic redirects to its screen.</p>
 
-<h3>Login-Time Gate</h3>
-<p><span class="file-path">app/profile-complete.tsx</span> — standalone screen shown to returning users whose profile is incomplete.</p>
-
-<ul>
-  <li>Fetches existing profile data via <code>checkProfileComplete()</code></li>
-  <li>Pre-populates form with existing bio, avatar, social links</li>
-  <li>Shows which fields are missing (<code>status.missing</code> array)</li>
-</ul>
-
-<h3>Completion API</h3>
-<pre><code>// Check profile status (authenticated)
-const status = await checkProfileComplete();
-// → { profile_complete: false, missing: ['avatar', 'bio'], existing: { bio: '', avatar: '', ... } }
-
-// After user finishes the steps:
-await completeRegistration();
-// → POST /auth/register/complete marks profile as complete
-markProfileComplete(); // Updates AuthContext
-router.replace('/(tabs)');</code></pre>
+<h3>Route Stub</h3>
+<p><span class="file-path">app/profile-complete.tsx</span> is a thin route stub that re-exports the module's screen:</p>
+<pre><code>export { default } from '@/modules/profile-completion/screens/LoginGateScreen';</code></pre>
 
 <h3>Response Header Pattern</h3>
 <p>Add-on modules can register response headers via the module system. The API client intercepts these headers on every authenticated response and stores the values for the module to act on. See <a href="module-system.html#registration-types">Module System &rarr; ResponseHeaderMapping</a> for details.</p>
 
+<div class="callout callout-warn">
+  <strong>Add-on, not core.</strong> The profile-completion endpoints (<code>/auth/register/status</code>, <code>/auth/register/complete</code>) and the login-time gate screen are provided by the profile-completion module and its companion WordPress plugin. They are not part of the base registration API.
+</div>
+
 <!-- ================================================================== -->
 <h2 id="password-recovery">7. Password Recovery</h2>
 
-<p>Password recovery endpoints are on the <code>tbc-ca/v1</code> prefix (tbc-community-app plugin). The server determines which verification method to use (email or add-on module verification).</p>
+<p>Password recovery endpoints are on the <code>tbc-ca/v1</code> prefix (tbc-community-app plugin).</p>
 
 <h3>Flow</h3>
 <ol>
-  <li>User enters username or email → <code>forgotPassword(login)</code></li>
-  <li>Server returns a verification method (e.g., <code>email_sent: true</code> for email link, or add-on-specific verification)</li>
-  <li>User completes verification → server returns <code>reset_token</code> + <code>login</code></li>
-  <li>User enters new password → <code>resetPassword(token, login, newPassword)</code></li>
+  <li>User enters username or email &rarr; <code>forgotPassword(login)</code></li>
+  <li>Server sends a reset email (returns <code>email_sent: true</code> on success)</li>
+  <li>User clicks link in email, gets a reset token</li>
+  <li>User enters new password &rarr; <code>resetPassword(token, login, newPassword)</code></li>
 </ol>
 
 <h3>Password Recovery API</h3>
 
 <table>
   <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
-  <tr><td><code>forgotPassword(login)</code></td><td>POST</td><td><code>tbc-ca/v1/password/forgot</code></td><td>Initiate password reset (sends verification)</td></tr>
+  <tr><td><code>forgotPassword(login)</code></td><td>POST</td><td><code>tbc-ca/v1/password/forgot</code></td><td>Initiate password reset (sends verification email)</td></tr>
   <tr><td><code>resetPassword(token, login, pwd)</code></td><td>POST</td><td><code>tbc-ca/v1/password/reset</code></td><td>Set new password with reset token</td></tr>
 </table>
 
-<div class="callout">
-  <strong>Extensible recovery:</strong> The server decides which verification method to use. Add-on modules can hook into the password recovery flow to provide additional verification methods beyond the default email reset.
-</div>
+<h3>Function Signatures</h3>
+<pre><code>forgotPassword(login: string): Promise&lt;ForgotPasswordResponse&gt;
+resetPassword(resetToken: string, login: string, newPassword: string): Promise&lt;PasswordResetResponse&gt;</code></pre>
 
 <!-- ================================================================== -->
 <h2 id="auth-guard">8. Auth Guard &amp; Route Protection</h2>
@@ -324,35 +341,49 @@ router.replace('/(tabs)');</code></pre>
   currentSegment === 'login' ||
   currentSegment === 'register' ||
   currentSegment === 'forgot-password' ||
-  currentSegment === 'webview' ||
-  currentSegment === 'profile-complete';</code></pre>
+  currentSegment === 'webview';</code></pre>
 
 <h3>Navigation Logic</h3>
 <ol>
-  <li><strong>Unauthenticated + NOT in auth group</strong> → redirect to <code>/login</code></li>
-  <li><strong>Authenticated + profile incomplete + NOT on gate</strong> → redirect to <code>/profile-complete</code></li>
-  <li><strong>Authenticated + profile complete + on login page</strong> → redirect to <code>/(tabs)</code></li>
+  <li><strong>Unauthenticated + NOT in auth group</strong> &rarr; redirect to <code>/login</code></li>
+  <li><strong>Authenticated + on login page</strong> &rarr; redirect to <code>/(tabs)</code></li>
 </ol>
 
 <div class="callout callout-warn">
-  <strong>Register stays accessible after auth.</strong> The <code>/register</code> route is in the auth group, so it remains accessible even after <code>registerAndLogin()</code> completes. This is intentional — the avatar upload step (step 5) happens after the user is already authenticated.
+  <strong>Register stays accessible after auth.</strong> The <code>/register</code> route is in the auth group, so it remains accessible even after <code>registerAndLogin()</code> completes. This is intentional &mdash; module steps (step 4+) may run after the user is already authenticated but still on the register screen.
+</div>
+
+<div class="callout">
+  <strong>Profile completion is not in the core auth guard.</strong> The <code>profile-complete</code> route is not in the core <code>inAuthGroup</code> list. Profile completion redirection is handled by the profile-completion add-on module's own logic, not by the core layout guard.
 </div>
 
 <h3>Auto-Login After Registration</h3>
 <pre><code>// In register.tsx, after successful registration:
-const response = await submitRegistration(formData);
+const result = await submitRegistration(payload);
 
-if (response.success &amp;&amp; response.access_token) {
+if (result.success &amp;&amp; result.access_token &amp;&amp; result.user) {
   // Store tokens + set isAuthenticated = true
-  await registerAndLogin(response.access_token, response.refresh_token!, response.user!);
-
-  // Then advance to next module step if enabled
-  if (hasPostLoginStep(fieldsConfig)) {
-    setStep(5);
-  } else {
-    router.replace('/(tabs)');
-  }
+  await registerAndLogin(
+    result.access_token,
+    result.refresh_token || '',
+    {
+      id: result.user.id,
+      username: result.user.username,
+      displayName: result.user.display_name,
+      email: result.user.email,
+    },
+  );
+  router.replace('/(tabs)');
 }</code></pre>
+
+<h3>registerAndLogin()</h3>
+<p><span class="file-path">contexts/AuthContext.tsx</span> &mdash; stores tokens via <code>storeAuthDirect()</code> from <code>services/auth.ts</code>, sets user state, sets <code>isAuthenticated = true</code>, and registers the device for push notifications.</p>
+
+<pre><code>registerAndLogin(
+  accessToken: string,
+  refreshToken: string,
+  userData: AuthUser,
+): Promise&lt;void&gt;</code></pre>
 
 <!-- ================================================================== -->
 <h2 id="custom-fields">9. Custom Profile Fields</h2>
@@ -371,33 +402,60 @@ if (response.success &amp;&amp; response.access_token) {
   required: boolean;
   options?: string[];      // For select/radio/checkbox/multiselect
   inline_label?: string;   // For inline_checkbox (e.g., terms text)
-  step: 1 | 2;            // Which wizard step to show this field on
+  step: number;            // Which wizard step to show this field on
 }</code></pre>
 
 <h3>Field Rendering</h3>
-<p>All custom fields are rendered via <code>DynamicFormField</code> (<span class="file-path">components/common/DynamicFormField.tsx</span>). This component maps the <code>type</code> to the appropriate input: text input, date picker, select modal, radio group, checkbox, textarea, etc.</p>
+<p>All custom fields are rendered via <code>DynamicFormField</code> (<span class="file-path">components/common/DynamicFormField.tsx</span>). This component maps the <code>type</code> to the appropriate input: text input, date picker, select modal, radio group, checkbox, textarea, etc. The <code>PasswordStrengthMeter</code> component is injected as <code>extraContent</code> for the password field.</p>
 
 <h3>Field Storage (WordPress)</h3>
 <ul>
-  <li>Definitions managed via Fluent Community admin → Custom Profile Fields (stored in <code>fcom_meta</code>)</li>
+  <li>Definitions managed via Fluent Community admin &rarr; Custom Profile Fields (stored in <code>fcom_meta</code>)</li>
   <li>User values stored in <code>fcom_xprofile.custom_fields</code> JSON column (FC native storage)</li>
 </ul>
 
 <!-- ================================================================== -->
-<h2 id="config">10. Configuration &amp; Feature Flags</h2>
+<h2 id="social-providers">10. Social Link Providers</h2>
+
+<p>Social link providers (Instagram, YouTube, Facebook, etc.) are configured on the server and define which social profile links users can add to their profiles. These are <strong>not social login providers</strong> &mdash; they are fields for users' social media profile URLs.</p>
+
+<h3>Architecture</h3>
+<ul>
+  <li><span class="file-path">services/api/socialProviders.ts</span> &mdash; types, icon mapping, module-level cache with listener pattern</li>
+  <li><span class="file-path">hooks/useSocialProviders.ts</span> &mdash; React hook that subscribes to provider updates</li>
+  <li>Data arrives via the <code>/app-config</code> endpoint (consumed by ThemeContext), not a separate API call</li>
+</ul>
+
+<h3>SocialProvider Type</h3>
+<pre><code>interface SocialProvider {
+  key: string;       // Provider key (e.g. 'instagram', 'youtube', 'fb')
+  title: string;     // Display name
+  placeholder: string;
+  domain: string;    // Base URL for the provider
+}</code></pre>
+
+<h3>Usage</h3>
+<pre><code>import { useSocialProviders, getProviderIcon } from '@/hooks/useSocialProviders';
+
+const providers = useSocialProviders();
+const icon = getProviderIcon('instagram'); // → 'logo-instagram'</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="config">11. Configuration &amp; Feature Flags</h2>
 
 <h3>API URL Constants</h3>
 <pre><code>// constants/config.ts
-TBC_CA_URL  = `${SITE_URL}/wp-json/tbc-ca/v1`    // Auth, registration, config</code></pre>
+const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL || Constants.expoConfig?.extra?.siteUrl;
+export const TBC_CA_URL = `${SITE_URL}/wp-json/tbc-ca/v1`;  // Auth, registration, config</code></pre>
 
 <h3>WordPress Admin Settings</h3>
 <p>Core settings are in Fluent Community and the tbc-community-app plugin. Add-on modules extend the registration config via WordPress filter hooks.</p>
 
 <table>
   <tr><th>Setting</th><th>Source</th><th>Effect on App</th></tr>
-  <tr><td>Registration Enabled</td><td>Fluent Community</td><td>If <code>false</code>, register screen shows "Registration Closed" message</td></tr>
+  <tr><td>Registration Enabled</td><td>Fluent Community</td><td>If <code>false</code>, register screen shows "Registration Closed" message with optional custom text from <code>fieldsConfig.message</code></td></tr>
   <tr><td>Email Verification</td><td>Fluent Community (2FA setting)</td><td>Enables email code step in wizard</td></tr>
-  <tr><td>Custom Profile Fields</td><td>Fluent Community</td><td>Fields shown on step 1/2 of wizard</td></tr>
+  <tr><td>Custom Profile Fields</td><td>Fluent Community</td><td>Fields shown on step 1/2 of wizard based on field's <code>step</code> value</td></tr>
   <tr><td><em>Add-on settings</em></td><td><em>Add-on plugins</em></td><td><em>Additional steps injected via <code>tbc_ca_registration_config</code> filter</em></td></tr>
 </table>
 
@@ -406,60 +464,68 @@ TBC_CA_URL  = `${SITE_URL}/wp-json/tbc-ca/v1`    // Auth, registration, config</
 </div>
 
 <!-- ================================================================== -->
-<h2 id="errors">11. Error Handling</h2>
+<h2 id="errors">12. Error Handling</h2>
 
 <table>
   <tr><th>Scenario</th><th>Client Behavior</th><th>Server Response</th></tr>
   <tr><td>Username taken</td><td>Shows field error, navigates back to step 1</td><td><code>errors.username: "This username is already taken."</code></td></tr>
   <tr><td>Email registered</td><td>Shows field error, navigates back to step 1</td><td><code>errors.email: "This email is already registered."</code></td></tr>
-  <tr><td>Module verification error</td><td>Shows error in module step, allows retry</td><td>HTTP 422 with module-specific message</td></tr>
-  <tr><td>Expired email token</td><td>Shows error, back button triggers re-send</td><td>HTTP 422 from FC 2FA module</td></tr>
-  <tr><td>Registration disabled</td><td>"Registration Closed" message with custom text</td><td><code>registration_enabled: false</code></td></tr>
-  <tr><td>Network error</td><td>"Network error. Check your connection." Form state preserved.</td><td>Fetch throws</td></tr>
-  <tr><td>Profile check fails</td><td>Defaults to <code>profile_complete: true</code> — doesn't block user</td><td>Any error from <code>/register/status</code></td></tr>
+  <tr><td>Step 1 field errors</td><td>Navigates back to step 1</td><td><code>errors</code> object with keys matching step 1 fields</td></tr>
+  <tr><td>Step 2 field errors</td><td>Navigates back to step 2</td><td><code>errors</code> object with keys not in step 1</td></tr>
+  <tr><td>Module verification error</td><td>Module step manages its own error UI (parent errors hidden on step 4+)</td><td>HTTP error with module-specific message</td></tr>
+  <tr><td>Expired email token</td><td>Clears verification extras, resets to step 3, shows "session expired" error</td><td><code>email_verification_required: true</code> after code already submitted</td></tr>
+  <tr><td>Registration disabled</td><td>"Registration Closed" message with custom text from server</td><td><code>registration_enabled: false</code></td></tr>
+  <tr><td>Fields load failure</td><td>"Unable to load registration form. Please try again."</td><td><code>getRegistrationFields()</code> returns null</td></tr>
+  <tr><td>Network error</td><td>"Network request failed" — form state preserved</td><td>Fetch throws</td></tr>
 </table>
 
 <div class="callout">
-  <strong>Graceful degradation:</strong> When <code>checkProfileComplete()</code> fails, it returns <code>{ profile_complete: true, missing: [] }</code> so users aren't blocked from the app by a transient API error.
+  <strong>Error display scoping:</strong> The parent error banner is only shown for steps 1-3. Module steps (4+) manage their own error UI via their component, so the parent error container is hidden when <code>step >= MODULE_STEPS_START</code>.
 </div>
 
 <!-- ================================================================== -->
-<h2 id="files">12. File Reference</h2>
+<h2 id="files">13. File Reference</h2>
 
 <h3>Mobile App</h3>
 
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
-  <tr><td><span class="file-path">app/register.tsx</span></td><td>5-step registration wizard screen</td></tr>
-  <tr><td><span class="file-path">app/profile-complete.tsx</span></td><td>Login-time profile completion gate</td></tr>
+  <tr><td><span class="file-path">app/register.tsx</span></td><td>Multi-step registration wizard screen</td></tr>
   <tr><td><span class="file-path">app/forgot-password.tsx</span></td><td>Password recovery screen</td></tr>
-  <tr><td><span class="file-path">services/api/registration.ts</span></td><td>Registration + profile completion API (all endpoints)</td></tr>
-  <tr><td><span class="file-path">contexts/AuthContext.tsx</span></td><td><code>registerAndLogin()</code>, <code>markProfileComplete()</code>, <code>needsProfileCompletion</code></td></tr>
+  <tr><td><span class="file-path">app/profile-complete.tsx</span></td><td>Route stub for profile-completion add-on module</td></tr>
+  <tr><td><span class="file-path">services/api/registration.ts</span></td><td>Registration + password reset API (public endpoints only)</td></tr>
+  <tr><td><span class="file-path">services/auth.ts</span></td><td><code>storeAuthDirect()</code> for auto-login after registration</td></tr>
+  <tr><td><span class="file-path">contexts/AuthContext.tsx</span></td><td><code>registerAndLogin()</code> method</td></tr>
   <tr><td><span class="file-path">components/register/EmailVerifyStep.tsx</span></td><td>Email verification code input UI</td></tr>
   <tr><td><span class="file-path">components/common/DynamicFormField.tsx</span></td><td>Dynamic field renderer for all custom field types</td></tr>
   <tr><td><span class="file-path">components/common/PasswordStrengthMeter.tsx</span></td><td>Password strength indicator</td></tr>
+  <tr><td><span class="file-path">modules/_types.ts</span></td><td><code>RegistrationStepRegistration</code>, <code>RegistrationStepProps</code>, <code>ResponseHeaderMapping</code> types</td></tr>
+  <tr><td><span class="file-path">modules/_registry.ts</span></td><td><code>getRegistrationSteps()</code>, core email-verify step definition</td></tr>
+  <tr><td><span class="file-path">services/api/socialProviders.ts</span></td><td>Social link provider types, icon mapping, cache</td></tr>
+  <tr><td><span class="file-path">hooks/useSocialProviders.ts</span></td><td>React hook for consuming social link providers</td></tr>
 </table>
 
 <h3>WordPress Backend</h3>
 
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
-  <tr><td><span class="file-path">tbc-community-app/includes/class-registration-api.php</span></td><td>Base registration REST API (fields, register, status, complete) + FC native field support</td></tr>
+  <tr><td><span class="file-path">tbc-community-app/includes/class-registration-api.php</span></td><td>Base registration REST API (fields, register) + FC native field support</td></tr>
   <tr><td><span class="file-path">tbc-community-app/includes/class-app-config.php</span></td><td>App config endpoint &mdash; includes registration config from add-on hooks</td></tr>
   <tr><td><span class="file-path">tbc-community-app/includes/class-response-headers.php</span></td><td>Response header injection for module-driven gates</td></tr>
 </table>
 
 <!-- ================================================================== -->
-<h2 id="rules">13. Rules</h2>
+<h2 id="rules">14. Rules</h2>
 
 <ol>
   <li><strong>All registration behavior is server-driven.</strong> The app reads <code>GET /register/fields</code> on mount and adapts the wizard steps. Don't hardcode which steps to show — let the server config decide.</li>
-  <li><strong>Re-submit the full form after verification.</strong> Email verification and module-injected verification steps are not standalone &mdash; the app re-calls <code>submitRegistration()</code> with the original form data plus verification tokens. The server creates the user on this second call.</li>
-  <li><strong>Keep the register route in the auth group.</strong> The avatar upload step (step 5) happens after <code>registerAndLogin()</code> — the user is already authenticated but still on the register screen.</li>
-  <li><strong>Default <code>checkProfileComplete</code> to true on error.</strong> If the profile status check fails, assume the profile is complete. Never block users from the app because of a transient API error.</li>
+  <li><strong>Re-submit the full form after verification.</strong> Email verification and module-injected verification steps are not standalone &mdash; the app re-calls <code>submitRegistration()</code> with the original form data plus accumulated verification extras. The server creates the user on the final successful call.</li>
+  <li><strong>Keep the register route in the auth group.</strong> Module steps (4+) may run after <code>registerAndLogin()</code> &mdash; the user is already authenticated but still on the register screen.</li>
   <li><strong>Registration endpoints are public.</strong> The <code>tbcPublicRequest</code> helper uses raw <code>fetch()</code>, not the authenticated API client. Don't add auth headers to registration calls.</li>
-  <li><strong>Field errors are keyed by field name.</strong> Server validation errors come back as <code>errors: { fieldKey: "message" }</code>. Display them inline next to the corresponding field, not as a generic banner.</li>
+  <li><strong>Field errors are keyed by field name.</strong> Server validation errors come back as <code>errors: { fieldKey: "message" }</code>. Display them inline next to the corresponding field, not as a generic banner. The register screen navigates back to the step containing the errored field.</li>
   <li><strong>Custom fields use <code>DynamicFormField</code>.</strong> All field types (text, select, radio, date, checkbox, textarea, etc.) are rendered by the same component. Don't create separate field components for registration.</li>
+  <li><strong><code>shouldActivate</code> receives a context object.</strong> The function signature is <code>shouldActivate(context: { submitResponse, registrationConfig })</code>, not just the submit response. Modules can check both the server response and the app's registration config.</li>
+  <li><strong>Profile completion is an add-on.</strong> Don't add profile completion logic (endpoints, auth guard checks, or context state) to core code. It belongs in the profile-completion module.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

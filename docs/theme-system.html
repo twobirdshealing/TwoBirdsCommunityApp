@@ -17,6 +17,7 @@
   <span class="file-path">constants/colors.ts</span> &mdash; ColorTheme interface, defaults, <code>mapFluentToAppColors()</code>, <code>withOpacity()</code><br>
   <span class="file-path">contexts/ThemeContext.tsx</span> &mdash; Provider, caches in AsyncStorage, background-refreshes from API<br>
   <span class="file-path">services/api/appConfig.ts</span> &mdash; Fetches <code>/tbc-ca/v1/app-config</code> (public, includes JWT when available)<br>
+  <span class="file-path">utils/webviewTheme.ts</span> &mdash; Theme CSS injection for WebViews (syncs dark mode to Fluent web views)<br>
   <span class="file-path">companion plugins/tbc-community-app/includes/class-app-config.php</span> &mdash; PHP REST endpoint
 </div>
 
@@ -32,6 +33,7 @@
     <li><a href="#api-endpoint">API Endpoint</a></li>
     <li><a href="#theme-context">ThemeContext &amp; Caching</a></li>
     <li><a href="#with-opacity">withOpacity Helper</a></li>
+    <li><a href="#webview-theme">WebView Theme Injection</a></li>
     <li><a href="#companion-plugins">Companion Plugin CSS</a></li>
     <li><a href="#intentional-static">Intentionally Static Colors</a></li>
     <li><a href="#rules">Rules</a></li>
@@ -326,7 +328,11 @@ useTheme().colors &rarr; All 137+ components</code></pre>
   "portal_slug": "portal",
   "branding": { "site_name": "...", "site_tagline": "...", "logo": "...", "logo_dark": "..." },
   "maintenance": { "enabled": false, "message": "..." },
-  "visibility": { "hide_menu": [] }  // only when authenticated
+  "visibility": { "hide_menu": [] },  // only when authenticated
+  "socket": { "enabled": true, "api_key": "...", "auth_endpoint": "...", "options": { ... } },
+  "registration": { ... },
+  "features": { ... },               // feature flags from wp-admin
+  "time_format": "g:i a"             // WordPress time format string
 }</code></pre>
 
 <h3>PHP implementation</h3>
@@ -350,10 +356,25 @@ useTheme().colors &rarr; All 137+ components</code></pre>
 
 <p><span class="file-path">contexts/ThemeContext.tsx</span> manages theme state and exposes <code>useTheme()</code>.</p>
 
+<h3>Types</h3>
+<pre><code>type ThemeMode = 'light' | 'dark';
+
+interface ThemeContextType {
+  theme: ThemeMode;
+  isDark: boolean;
+  colors: ColorTheme;
+  setTheme: (mode: ThemeMode) => void;
+  update: UpdateConfig | null;
+  maintenance: MaintenanceConfig | null;
+  branding: BrandingConfig | null;
+  refreshAppConfig: () => Promise&lt;void&gt;;
+  setFromBatch: (data: AppConfigResponse) => void;
+}</code></pre>
+
 <h3>What it provides</h3>
 <table>
   <tr><th>Property</th><th>Type</th><th>Purpose</th></tr>
-  <tr><td><code>theme</code></td><td><code>'light' | 'dark'</code></td><td>Current mode</td></tr>
+  <tr><td><code>theme</code></td><td><code>ThemeMode</code></td><td>Current mode (<code>'light' | 'dark'</code>)</td></tr>
   <tr><td><code>isDark</code></td><td><code>boolean</code></td><td>Shorthand for <code>theme === 'dark'</code></td></tr>
   <tr><td><code>colors</code></td><td><code>ColorTheme</code></td><td>Active color palette (defaults + Fluent overrides)</td></tr>
   <tr><td><code>setTheme(mode)</code></td><td><code>(mode) => void</code></td><td>Switch mode, persists to AsyncStorage</td></tr>
@@ -414,7 +435,27 @@ backgroundColor: withOpacity(colors.error, 0.1)</code></pre>
 </table>
 
 <!-- ================================================================== -->
-<h2 id="companion-plugins">10. Companion Plugin CSS</h2>
+<h2 id="webview-theme">10. WebView Theme Injection</h2>
+
+<p><span class="file-path">utils/webviewTheme.ts</span> provides <code>getThemeInjectionScript(isDark)</code>, which returns a JavaScript snippet injected into Fluent Community WebViews to sync the app's dark mode state.</p>
+
+<h3>What it does</h3>
+<ol>
+  <li>Sets <code>fcom_color_mode</code> in <code>localStorage</code> (Fluent's <code>fcom_global_storage</code> key)</li>
+  <li>Sets a <code>fcom_color_mode</code> cookie (1-year expiry)</li>
+  <li>Adds/removes the <code>dark</code> class on <code>&lt;html&gt;</code></li>
+  <li>Sets the <code>data-color-mode</code> attribute on <code>&lt;html&gt;</code></li>
+</ol>
+
+<p>This ensures that when a user opens a Fluent Community web view (profile editing, course content, etc.), the page matches the app's current dark/light mode without a flash of the wrong theme.</p>
+
+<pre><code>import { getThemeInjectionScript } from '@/utils/webviewTheme';
+
+// In a WebView component:
+injectedJavaScriptBeforeContentLoaded={getThemeInjectionScript(isDark)}</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="companion-plugins">11. Companion Plugin CSS</h2>
 
 <p>WordPress companion plugins and themes must use Fluent CSS variables with fallbacks to stay theme-compatible.</p>
 
@@ -467,15 +508,15 @@ html.dark .my-item:hover {
 </div>
 
 <!-- ================================================================== -->
-<h2 id="intentional-static">11. Intentionally Static Colors</h2>
+<h2 id="intentional-static">12. Intentionally Static Colors</h2>
 
 <p>Some colors are intentionally hardcoded and should <strong>not</strong> be converted to theme tokens:</p>
 
 <table>
   <tr><th>Context</th><th>Color</th><th>Why</th></tr>
   <tr><td>Video player backgrounds</td><td><code>#000</code></td><td>Video content requires black bg</td></tr>
-  <tr><td>YouTube play button</td><td><code>rgba(255, 0, 0, 0.85)</code></td><td>YouTube brand red (trademark)</td></tr>
-  <tr><td>Play button icon</td><td><code>#fff</code></td><td>White on red/dark overlay</td></tr>
+  <tr><td>Third-party brand colors</td><td>Various</td><td>Platform brand colors (e.g. video service brand red) are trademarked</td></tr>
+  <tr><td>Play button icon</td><td><code>#fff</code></td><td>White on dark overlay</td></tr>
   <tr><td>iOS shadow color</td><td><code>#000</code></td><td>RN iOS standard &mdash; shadowColor is always black, shadowOpacity controls intensity</td></tr>
   <tr><td>Media viewer backdrop</td><td><code>rgba(0, 0, 0, 0.95)</code></td><td>Full-screen media needs near-black</td></tr>
   <tr><td>Module status gradients</td><td>Various</td><td>Some modules use fixed status colors for consistency</td></tr>
@@ -484,7 +525,7 @@ html.dark .my-item:hover {
 </table>
 
 <!-- ================================================================== -->
-<h2 id="rules">12. Rules</h2>
+<h2 id="rules">13. Rules</h2>
 
 <ol>
   <li><strong>Always</strong> use <code>const { colors } = useTheme()</code> in components &mdash; never import <code>lightColors</code> or <code>darkColors</code> directly.</li>
@@ -494,7 +535,7 @@ html.dark .my-item:hover {
   <li>Use <code>colors.overlay</code> for modal/sheet backdrops &mdash; not <code>rgba(0,0,0,0.5)</code>.</li>
   <li>Use <code>withOpacity(color, opacity)</code> from <code>@/constants/colors</code> for transparent variants of theme colors.</li>
   <li><code>shadowColor: '#000'</code> is fine (iOS standard). No need to theme it.</li>
-  <li>Video/media black backgrounds, YouTube brand red, and module status gradients are intentionally static.</li>
+  <li>Video/media black backgrounds, third-party brand colors, and module status gradients are intentionally static.</li>
   <li>In companion plugin CSS, <strong>always</strong> use fallback values: <code>var(--fcom-primary-bg, #ffffff)</code>.</li>
   <li>Dark mode in CSS is activated via <code>html.dark</code> &mdash; only override shadows, overlays, and hover effects.</li>
   <li>When adding a new app color token, add it to the <code>ColorTheme</code> interface, both default objects, and update this doc.</li>

@@ -79,18 +79,33 @@
   <tr><td><code>first_name</code>, <code>last_name</code></td><td><code>string</code></td><td>Editable name fields</td></tr>
   <tr><td><code>email</code></td><td><code>string</code></td><td>Only if <code>can_change_email</code> is true</td></tr>
   <tr><td><code>cover_photo</code></td><td><code>string</code></td><td>Cover image URL (top-level on profile endpoint)</td></tr>
+  <tr><td><code>website</code></td><td><code>string</code></td><td>Website URL (top-level on profile endpoint)</td></tr>
   <tr><td><code>followers_count</code>, <code>followings_count</code></td><td><code>number</code></td><td>Stats displayed in header</td></tr>
-  <tr><td><code>follow</code></td><td><code>0 | 1 | 2</code></td><td>Current user's follow level (0=no, 1=follow, 2=follow+notify)</td></tr>
+  <tr><td><code>compilation_score</code></td><td><code>number</code></td><td>User's compilation score</td></tr>
+  <tr><td><code>last_activity</code></td><td><code>string</code></td><td>ISO timestamp of last activity (displayed as "Last seen" in About tab)</td></tr>
+  <tr><td><code>follow</code></td><td><code>number</code></td><td>Current user's follow level (0=no, 1=follow, 2=follow+notify)</td></tr>
   <tr><td><code>is_blocked_by_you</code></td><td><code>boolean</code></td><td>Whether current user has blocked this profile</td></tr>
   <tr><td><code>is_restricted</code></td><td><code>boolean</code></td><td>Profile privacy (FC 2.2.01+) — only About tab visible</td></tr>
   <tr><td><code>can_change_username</code></td><td><code>boolean</code></td><td>Permission to edit username</td></tr>
   <tr><td><code>can_change_email</code></td><td><code>boolean</code></td><td>Permission to edit email</td></tr>
-  <tr><td><code>profile_navs</code></td><td><code>ProfileNav[]</code></td><td>Server-defined tab config (slug, title)</td></tr>
+  <tr><td><code>canViewUserSpaces</code></td><td><code>boolean</code></td><td>Permission to view user's spaces</td></tr>
+  <tr><td><code>profile_navs</code></td><td><code>ProfileNav[]</code></td><td>Server-defined tab config (slug, title, url, route)</td></tr>
   <tr><td><code>social_links</code></td><td><code>Record&lt;string, string&gt;</code></td><td>At top level (not in meta) on profile endpoint</td></tr>
   <tr><td><code>badge_slugs</code></td><td><code>string[]</code></td><td>At top level on profile endpoint</td></tr>
-  <tr><td><code>custom_fields</code></td><td><code>Record&lt;string, CustomFieldValue&gt;</code></td><td>Fluent Community native custom profile fields</td></tr>
-  <tr><td><code>custom_field_configs</code></td><td><code>Record&lt;string, CustomFieldConfig&gt;</code></td><td>Field definitions for the edit form</td></tr>
+  <tr><td><code>custom_field_groups</code></td><td><code>CustomFieldGroup[]</code></td><td>FC native custom profile fields (2.3.0+) — grouped fields with values</td></tr>
+  <tr><td><code>custom_fields</code></td><td><code>Record&lt;string, CustomFieldValue&gt;</code></td><td>Legacy custom profile fields (pre-3.0, backwards compat)</td></tr>
+  <tr><td><code>custom_field_configs</code></td><td><code>Record&lt;string, CustomFieldConfig&gt;</code></td><td>Legacy field definitions for edit form (backwards compat)</td></tr>
 </table>
+
+<h3>ProfileNav</h3>
+<pre><code>interface ProfileNav {
+  slug: string;
+  title: string;
+  url: string;
+  route?: {
+    name: string;
+  };
+}</code></pre>
 
 <h3>Badge</h3>
 <pre><code>interface Badge {
@@ -130,7 +145,7 @@
   <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
   <tr><td><code>getProfile(username)</code></td><td>GET</td><td><code>/profile/{username}</code></td><td>Full profile with stats, follow state, custom fields</td></tr>
   <tr><td><code>updateProfile(username, data)</code></td><td>POST</td><td><code>/profile/{username}</code></td><td>Save profile changes (wraps data in <code>{ data }</code> envelope)</td></tr>
-  <tr><td><code>patchProfileMedia(username, data)</code></td><td>PUT</td><td><code>/profile/{username}</code></td><td>Upload avatar and/or cover photo</td></tr>
+  <tr><td><code>patchProfileMedia(username, data)</code></td><td>PUT</td><td><code>/profile/{username}</code></td><td>Upload avatar and/or cover photo (wraps in <code>{ data }</code> envelope)</td></tr>
   <tr><td><code>getUserFeeds(userId, page, perPage)</code></td><td>GET</td><td><code>/feeds?user_id={id}</code></td><td>User's posts (paginated)</td></tr>
   <tr><td><code>getUserSpaces(username)</code></td><td>GET</td><td><code>/profile/{username}/spaces</code></td><td>User's joined spaces</td></tr>
   <tr><td><code>getUserComments(username, page, perPage)</code></td><td>GET</td><td><code>/profile/{username}/comments</code></td><td>User's comments with parent post info (paginated)</td></tr>
@@ -144,8 +159,33 @@
 </table>
 
 <div class="callout callout-warn">
-  <strong>Update profile wraps data in an envelope.</strong> The <code>updateProfile</code> function sends <code>{ data: { first_name, ... } }</code> — the fields are nested inside a <code>data</code> key, matching the Fluent Community API format.
+  <strong>Both update and media endpoints wrap data in an envelope.</strong> <code>updateProfile</code> sends <code>{ data: { first_name, ... } }</code> and <code>patchProfileMedia</code> sends <code>{ data: { avatar, cover_photo } }</code> — the fields are nested inside a <code>data</code> key, matching the Fluent Community API format.
 </div>
+
+<h3>Return Types</h3>
+<pre><code>// getProfile
+{ profile: Profile }
+
+// updateProfile
+{ profile: Profile }
+
+// patchProfileMedia
+{ message: string }
+
+// getUserFeeds
+{ feeds: { data: Feed[]; has_more: boolean; total: number } }
+
+// getUserSpaces
+{ spaces: Space[] }
+
+// getUserComments
+{ comments: { data: ProfileComment[]; current_page: number; last_page: number; total: number } }
+
+// followUser, unfollowUser, toggleFollowNotification, unblockUser
+{ message: string }
+
+// blockUser
+{ follow: { status: string } | null; xprofile: XProfile }</code></pre>
 
 <h3>Follow Levels</h3>
 <table>
@@ -166,10 +206,10 @@
 
 <h3>Followers/Following Response</h3>
 <pre><code>// Followers: data[].follower is the XProfile
-{ followers: { data: [{ follower: XProfile &amp; { follow?: string; is_follower?: boolean } }], next_page_url: string | null } }
+{ followers: { data: [{ follower: XProfile &amp; { follow?: string | null; is_follower?: boolean } }], next_page_url: string | null } }
 
 // Following: data[].followed is the XProfile
-{ followings: { data: [{ followed: XProfile &amp; { follow?: string; is_follower?: boolean } }], next_page_url: string | null } }
+{ followings: { data: [{ followed: XProfile &amp; { follow?: string | null; is_follower?: boolean } }], next_page_url: string | null } }
 
 // is_follower (FC Pro 2.3.0+): true if this user follows the viewed profile back (mutual follow)</code></pre>
 
@@ -187,11 +227,12 @@
 <h3>Profile View Screen</h3>
 <p>The profile view screen handles both own and other users' profiles:</p>
 <ul>
-  <li><strong>Own profile:</strong> Shows edit button, 3-dot menu (Edit Profile, Deactivate, Delete Account)</li>
-  <li><strong>Other profile:</strong> Shows Follow/Unfollow, Notify toggle, Message, Block buttons</li>
-  <li><strong>Restricted profile:</strong> Only About tab visible, other tabs hidden</li>
-  <li><strong>Tabs:</strong> About (always), Posts, Spaces, Comments (configurable)</li>
+  <li><strong>Own profile:</strong> Shows settings gear icon. 3-dot menu opens <code>ProfileMenu</code> with Edit Profile, Deactivate, Delete Account options.</li>
+  <li><strong>Other profile:</strong> Shows Follow/Unfollow, Notify toggle, Chat button, and a separate dropdown with Block option.</li>
+  <li><strong>Restricted profile:</strong> Only About tab visible, shows "Profile is Private" lock icon message on About tab.</li>
+  <li><strong>Tabs:</strong> About (always), Posts, Spaces, Comments (configurable via feature flags + server navs)</li>
   <li>Tab data is <strong>lazy-loaded</strong> on first visit and paginated on scroll</li>
+  <li>Profile data uses <code>useCachedData</code> with <code>CACHE_EVENTS.PROFILE</code> invalidation</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -200,8 +241,8 @@
 <table>
   <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
   <tr><td><code>ProfileHeader</code></td><td><span class="file-path">components/profile/ProfileHeader.tsx</span></td><td>Cover photo, avatar (editable for own), name, verified badge, profile badges, social icons, follower/following counts</td></tr>
-  <tr><td><code>AboutTab</code></td><td><span class="file-path">components/profile/AboutTab.tsx</span></td><td>Bio, joined date, last activity, custom fields (with type-specific rendering), website</td></tr>
-  <tr><td><code>ProfileMenu</code></td><td><span class="file-path">components/profile/ProfileMenu.tsx</span></td><td>Own profile dropdown: Edit, Deactivate, Delete (with "type DELETE" confirmation)</td></tr>
+  <tr><td><code>AboutTab</code></td><td><span class="file-path">components/profile/AboutTab.tsx</span></td><td>Bio, joined date, last seen, custom fields (FC native <code>custom_field_groups</code>), website</td></tr>
+  <tr><td><code>ProfileMenu</code></td><td><span class="file-path">components/profile/ProfileMenu.tsx</span></td><td>Own profile dropdown: Edit, Deactivate, Delete (with "type DELETE" confirmation modal)</td></tr>
   <tr><td><code>CommentCard</code></td><td><span class="file-path">components/profile/CommentCard.tsx</span></td><td>Timeline-style comment card with dashed line, post title, space name, rendered content</td></tr>
   <tr><td><code>Avatar</code></td><td><span class="file-path">components/common/Avatar.tsx</span></td><td>User avatar with fallback initials, online indicator, size presets</td></tr>
   <tr><td><code>UserDisplayName</code></td><td><span class="file-path">components/common/UserDisplayName.tsx</span></td><td>Name + verified badge + profile badges (used everywhere)</td></tr>
@@ -257,7 +298,7 @@ const badges = useProfileBadges(xprofile.meta?.badge_slug);</code></pre>
 </ul>
 
 <h3>Verified Badge</h3>
-<p>Separate from profile badges. <code>is_verified: 1</code> shows a checkmark (✓) icon inline with the display name. Set by admins, not editable by users.</p>
+<p>Separate from profile badges. <code>is_verified: 1</code> shows a checkmark icon inline with the display name. Set by admins, not editable by users.</p>
 
 <!-- ================================================================== -->
 <h2 id="connections">6. Connections &amp; Following</h2>
@@ -278,12 +319,17 @@ await profilesApi.toggleFollowNotification('janedoe');</code></pre>
 <pre><code>const {
   followMap,             // Record&lt;userId, followLevel&gt;
   setFollowMap,          // Initialize from server data
-  handleFollowPress,     // Toggle follow with optimistic update
-  handleNotifyPress,     // Toggle notification level (1 ↔ 2)
+  followLoadingMap,      // Record&lt;userId, boolean&gt; — raw loading state map
+  handleFollowPress,     // Toggle follow with optimistic update (takes MemberCardData)
+  handleNotifyPress,     // Toggle notification level 1 ↔ 2 (takes MemberCardData)
   isFollowing,           // (userId) → boolean
   isNotifyOn,            // (userId) → boolean (level === 2)
   isFollowLoading,       // (userId) → boolean
 } = useFollowToggle();</code></pre>
+
+<div class="callout">
+  <strong>Note:</strong> <code>handleFollowPress</code> and <code>handleNotifyPress</code> accept a <code>MemberCardData</code> object (not a username string). They extract <code>user_id</code> and <code>username</code> from <code>member.xprofile</code> or the member object directly.
+</div>
 
 <h3>Connections Screen</h3>
 <p><span class="file-path">app/profile/[username]/connections.tsx</span> — two tabs (Followers / Following).</p>
@@ -309,11 +355,11 @@ await profilesApi.toggleFollowNotification('janedoe');</code></pre>
   <tr><td>First name</td><td>Required</td></tr>
   <tr><td>Last name</td><td>Optional</td></tr>
   <tr><td>Email</td><td>Only if <code>can_change_email: true</code></td></tr>
-  <tr><td>Username</td><td>Only if <code>can_change_username: true</code></td></tr>
-  <tr><td>Bio</td><td>Textarea, 500 char limit</td></tr>
+  <tr><td>Username</td><td>Only if <code>can_change_username: true</code> — lowercase letters, numbers, underscores only</td></tr>
+  <tr><td>Bio</td><td>Textarea (<code>short_description</code>)</td></tr>
   <tr><td>Website</td><td>URL field</td></tr>
-  <tr><td>Social links</td><td>Dynamic providers from <code>useSocialProviders()</code></td></tr>
-  <tr><td>Custom fields</td><td>From <code>custom_field_configs</code>, rendered via <code>DynamicFormField</code></td></tr>
+  <tr><td>Social links</td><td>Dynamic providers from <code>useSocialProviders()</code>, rendered via <code>SocialLinksForm</code></td></tr>
+  <tr><td>Custom fields</td><td>From <code>custom_field_groups</code>, rendered via <code>DynamicFormField</code> (adapts <code>NativeCustomField</code> to config shape)</td></tr>
   <tr><td>Avatar</td><td>Image picker + upload via <code>patchProfileMedia</code></td></tr>
   <tr><td>Cover photo</td><td>Image picker + upload via <code>patchProfileMedia</code></td></tr>
 </table>
@@ -322,9 +368,14 @@ await profilesApi.toggleFollowNotification('janedoe');</code></pre>
 <pre><code>// Single POST saves all field changes
 await updateProfile(username, {
   first_name: 'Jane',
+  last_name: 'Doe',
   short_description: 'Community member',
+  website: 'https://example.com',
   social_links: { twitter: 'janedoe' },
   custom_fields: { phone: '+15551234567' },
+  // Conditional fields
+  email: formData.email,        // only if can_change_email
+  username: formData.username,  // only if can_change_username
   // Preserve admin-managed fields
   is_verified: profile.is_verified,
   badge_slugs: profile.badge_slugs,
@@ -335,46 +386,52 @@ await updateProfile(username, {
   <strong>Always preserve admin fields on save.</strong> Include <code>is_verified</code>, <code>badge_slugs</code>, and <code>status</code> in the update payload with their current values. Otherwise, the Fluent Community API may clear them.
 </div>
 
-<h3>Phone Number Change Verification</h3>
-<p>If the profile update includes a phone number change and a verification module is active, the server may require additional verification before the change is applied. The edit screen handles this via the module system's verification hooks.</p>
+<h3>Post-Save</h3>
+<p>After a successful save, the edit screen updates the <code>AuthContext</code> user via <code>updateUser({ displayName })</code> and emits <code>CACHE_EVENTS.PROFILE</code> to invalidate cached profile data across the app.</p>
 
 <!-- ================================================================== -->
 <h2 id="custom-fields">8. Custom Profile Fields</h2>
 
-<p>Custom fields are defined in Fluent Community&rsquo;s native custom profile fields (FC 2.3.0+) and included in the profile response.</p>
+<p>Custom fields use Fluent Community's native <code>custom_field_groups</code> format (FC 2.3.0+). The profile response includes grouped fields with their current values.</p>
 
-<h3>CustomFieldValue (Display)</h3>
-<pre><code>interface CustomFieldValue {
-  value: string;
+<h3>NativeCustomField</h3>
+<pre><code>interface NativeCustomField {
+  slug: string;
   label: string;
-  type: string;          // text, phone, url, date, checkbox, multiselect, etc.
-  visibility: string;    // public, members, friends, admins
-}</code></pre>
-
-<h3>CustomFieldConfig (Editing)</h3>
-<pre><code>interface CustomFieldConfig {
-  label: string;
-  type: string;
+  type: 'text' | 'textarea' | 'number' | 'date' | 'select' | 'radio' | 'url' | 'multiselect';
   placeholder: string;
-  instructions: string;
-  required: boolean;
-  options: string[];            // For select/radio/checkbox/multiselect
-  visibility: string;           // Default visibility
-  allow_user_override: boolean; // Can user change visibility?
+  options: string[];            // For select/radio/multiselect
+  is_required: boolean;
+  is_enabled: boolean;
+  privacy: 'public' | 'logged_in' | 'private' | 'internal';
+  group: string;
+  value?: string | string[];    // Current value (string[] for multiselect)
 }</code></pre>
+
+<h3>CustomFieldGroup</h3>
+<pre><code>interface CustomFieldGroup {
+  slug: string;
+  label: string;
+  edit_description?: string;
+  is_system?: boolean;
+  fields: NativeCustomField[];
+}</code></pre>
+
+<h3>Legacy Types (Backwards Compatibility)</h3>
+<p>The legacy <code>CustomFieldValue</code> and <code>CustomFieldConfig</code> types still exist in <span class="file-path">types/user.ts</span> for backwards compatibility with older API responses, but the active UI code uses the native format above.</p>
 
 <h3>Display Rendering (AboutTab)</h3>
-<p>Custom fields are rendered with type-specific formatting:</p>
+<p>The <code>AboutTab</code> component iterates through <code>custom_field_groups</code>, flattening all enabled fields with non-empty values. Rendering is type-specific:</p>
 <ul>
-  <li><strong>Phone:</strong> Clickable <code>tel:</code> links</li>
-  <li><strong>URL:</strong> Clickable links (auto-prepends <code>https://</code> if missing)</li>
-  <li><strong>Date:</strong> Formatted to "Month Day, Year"</li>
-  <li><strong>Checkbox/Multiselect:</strong> Rendered as tag pills</li>
+  <li><strong>URL:</strong> Clickable links (auto-prepends <code>https://</code> if missing), displayed without protocol prefix</li>
+  <li><strong>Date:</strong> Formatted to locale string ("Month Day, Year")</li>
+  <li><strong>Multiselect:</strong> Rendered as tag pills in a wrapping row with a block layout (label above tags)</li>
+  <li><strong>Phone-like:</strong> Detected by slug containing "phone" — rendered as tappable <code>tel:</code> links</li>
   <li><strong>Other:</strong> Plain text</li>
 </ul>
 
-<h3>Visibility Control</h3>
-<p>Each field has a visibility setting. If <code>allow_user_override: true</code>, the edit form shows visibility chips (Everyone, Members, Friends, Admins) next to the field. Stored as <code>{key}_visibility</code> in custom_fields.</p>
+<h3>Edit Form Rendering</h3>
+<p>The edit screen flattens <code>custom_field_groups</code> into a slug-keyed map and renders each enabled field via <code>DynamicFormField</code>. The <code>NativeCustomField</code> is adapted to <code>DynamicFormField</code>'s config shape (e.g., <code>radio</code> type maps to <code>select</code> for mobile). Select/radio fields use <code>SelectModal</code> for option picking.</p>
 
 <!-- ================================================================== -->
 <h2 id="tabs">9. Profile Tabs</h2>
@@ -404,6 +461,9 @@ await updateProfile(username, {
   <li>Posts and Comments support <strong>pagination</strong> (load more on scroll)</li>
   <li>Spaces are loaded all at once (no pagination)</li>
   <li>All tabs support pull-to-refresh</li>
+  <li>Posts tab reuses <code>FeedList</code> with full feed actions (react, bookmark, edit, delete)</li>
+  <li>Comments tab uses <code>FlashList</code> with <code>CommentCard</code> (supports delete for own comments)</li>
+  <li>Spaces tab uses <code>FlashList</code> with <code>SpaceCard</code></li>
 </ul>
 
 <!-- ================================================================== -->
@@ -411,7 +471,16 @@ await updateProfile(username, {
 
 <p><span class="file-path">components/common/Avatar.tsx</span> — used everywhere a user image appears.</p>
 
+<h3>Props</h3>
+<pre><code>interface AvatarProps {
+  source?: string | null;              // Image URL
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';  // Default: 'md'
+  online?: boolean;                    // Show online indicator (default: false)
+  fallback?: string;                   // Fallback text for initials (default: '?')
+}</code></pre>
+
 <h3>Size Presets</h3>
+<p>Sizes are defined in <code>constants/layout.ts</code> via <code>sizing.avatar</code>. Exported as <code>AVATAR_SIZES</code>.</p>
 <table>
   <tr><th>Size</th><th>Usage</th></tr>
   <tr><td><code>xs</code></td><td>Tiny indicators</td></tr>
@@ -423,10 +492,10 @@ await updateProfile(username, {
 </table>
 
 <h3>Fallback</h3>
-<p>When <code>avatar</code> is <code>null</code> or the image fails to load, the component renders 2-letter initials (e.g., "JD" for "Jane Doe") in a colored circle using the primary theme color.</p>
+<p>When <code>source</code> is <code>null</code> or undefined, the component renders up to 2 uppercase characters from the <code>fallback</code> prop in a colored circle using the primary theme color.</p>
 
 <h3>Online Indicator</h3>
-<p>Optional green dot in the bottom-right corner. Shown when the <code>online</code> prop is true.</p>
+<p>Green dot in the bottom-right corner. Shown when the <code>online</code> prop is true. Uses <code>themeColors.success</code> for the dot color and <code>themeColors.surface</code> for the border.</p>
 
 <h3>Caching</h3>
 <p>Uses <code>expo-image</code> with <code>cachePolicy="memory-disk"</code> for fast loading across screens.</p>
@@ -439,7 +508,7 @@ await updateProfile(username, {
 <ul>
   <li>Only the About tab is visible</li>
   <li>Posts, Spaces, and Comments tabs are hidden</li>
-  <li>A "Profile is Private" message may be shown</li>
+  <li>A "Profile is Private" message is shown with a lock icon on the About tab</li>
 </ul>
 
 <h3>Blocking</h3>
@@ -451,17 +520,19 @@ await profilesApi.blockUser('spammer');
 await profilesApi.unblockUser('spammer');</code></pre>
 
 <ul>
-  <li>Block button appears in the profile screen's action buttons (other users only)</li>
-  <li>Confirmation alert before blocking</li>
+  <li>Block/Unblock option appears in a separate dropdown menu on other users' profiles (gear icon)</li>
+  <li>Confirmation alert before blocking with descriptive message</li>
   <li><code>is_blocked_by_you: true</code> on the profile response</li>
-  <li>Cannot block yourself</li>
+  <li>When blocked, the Follow/Notify/Chat buttons are replaced with a single "Blocked" button</li>
+  <li>Cannot block yourself (own profile shows <code>ProfileMenu</code> instead)</li>
 </ul>
 
 <h3>Account Management</h3>
-<p>From the own-profile menu (<code>ProfileMenu</code>):</p>
+<p>From the own-profile menu (<code>ProfileMenu</code>), accessible via the gear icon:</p>
 <ul>
-  <li><strong>Deactivate Account:</strong> Soft delete, reversible via web admin</li>
-  <li><strong>Delete Account:</strong> Two-step confirmation — user must type "DELETE" in a text input before the button becomes active. Permanent.</li>
+  <li><strong>Edit Profile:</strong> Opens the profile edit screen</li>
+  <li><strong>Deactivate Account:</strong> Soft delete with alert confirmation, reversible via web admin. Calls <code>POST /tbc-ca/v1/account/deactivate</code>. On success, logs out and redirects to login.</li>
+  <li><strong>Delete Account:</strong> Two-step confirmation — first an alert, then a modal where user must type "DELETE" in a text input before the button becomes active. Calls <code>DELETE /tbc-ca/v1/account/delete</code> with <code>{ confirm: 'DELETE' }</code>. Permanent. On success, logs out and redirects to login.</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -470,16 +541,18 @@ await profilesApi.unblockUser('spammer');</code></pre>
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
   <tr><td><span class="file-path">app/profile/[username]/index.tsx</span></td><td>Profile view screen (own + other)</td></tr>
+  <tr><td><span class="file-path">app/profile/[username]/connections.tsx</span></td><td>Followers/following lists</td></tr>
   <tr><td><span class="file-path">app/profile/edit.tsx</span></td><td>Profile editor with all fields + media upload</td></tr>
   <tr><td><span class="file-path">app/profile-complete.tsx</span></td><td>Login-time profile completion gate</td></tr>
-  <tr><td><span class="file-path">app/profile/[username]/connections.tsx</span></td><td>Followers/following lists</td></tr>
   <tr><td><span class="file-path">services/api/profiles.ts</span></td><td>All profile API endpoints</td></tr>
+  <tr><td><span class="file-path">services/api/account.ts</span></td><td>Account deactivation &amp; deletion (tbc-ca/v1/account/*)</td></tr>
   <tr><td><span class="file-path">services/api/badges.ts</span></td><td>Badge definitions (fetch, cache, resolve)</td></tr>
-  <tr><td><span class="file-path">types/user.ts</span></td><td>XProfile, Profile, Badge, CustomField types</td></tr>
+  <tr><td><span class="file-path">types/user.ts</span></td><td>XProfile, Profile, Badge, NativeCustomField, CustomFieldGroup, ProfileComment, AuthUser types</td></tr>
   <tr><td><span class="file-path">hooks/useFollowToggle.ts</span></td><td>Follow/unfollow with optimistic updates</td></tr>
   <tr><td><span class="file-path">hooks/useBadgeDefinitions.ts</span></td><td>Badge definitions hook (two-layer cache)</td></tr>
+  <tr><td><span class="file-path">contexts/AuthContext.tsx</span></td><td>Auth state, <code>updateUser()</code> for profile saves</td></tr>
   <tr><td><span class="file-path">components/profile/ProfileHeader.tsx</span></td><td>Cover, avatar, name, badges, social icons, stats</td></tr>
-  <tr><td><span class="file-path">components/profile/AboutTab.tsx</span></td><td>Bio, joined date, custom fields, website</td></tr>
+  <tr><td><span class="file-path">components/profile/AboutTab.tsx</span></td><td>Bio, joined date, last seen, custom fields (native format), website</td></tr>
   <tr><td><span class="file-path">components/profile/ProfileMenu.tsx</span></td><td>Own profile actions (edit, deactivate, delete)</td></tr>
   <tr><td><span class="file-path">components/profile/CommentCard.tsx</span></td><td>Timeline-style comment with post context</td></tr>
   <tr><td><span class="file-path">components/common/Avatar.tsx</span></td><td>Avatar with initials fallback and online indicator</td></tr>
@@ -495,13 +568,14 @@ await profilesApi.unblockUser('spammer');</code></pre>
   <li><strong>Always use <code>UserDisplayName</code> for rendering user names.</strong> It handles the verified badge and profile badges automatically. Don't manually render name + badge combinations.</li>
   <li><strong>Always use <code>Avatar</code> for user images.</strong> It handles null avatars (fallback initials), sizing, caching, and online indicators. Don't render avatar images manually.</li>
   <li><strong>Preserve admin fields on profile update.</strong> Include <code>is_verified</code>, <code>badge_slugs</code>, and <code>status</code> in the payload with their current values. The FC API may clear them otherwise.</li>
-  <li><strong>Use <code>useFollowToggle</code> for follow actions.</strong> It handles optimistic updates, loading state, and notification toggling. Don't call follow/unfollow APIs directly from components.</li>
-  <li><strong>Use <code>useProfileBadges</code> or <code>useBadgeDefinitions</code> for badge resolution.</strong> Don't fetch badge definitions yourself — the hooks share a two-layer cache.</li>
+  <li><strong>Use <code>useFollowToggle</code> for follow actions in list contexts.</strong> It handles optimistic updates, loading state, and notification toggling. The profile view screen manages follow state locally via <code>useCachedData</code> + <code>mutate</code> instead.</li>
+  <li><strong>Use <code>useProfileBadges</code> or <code>useBadgeDefinitions</code> for badge resolution.</strong> Don't fetch badge definitions yourself — the hooks share a two-layer cache (AsyncStorage + in-memory).</li>
   <li><strong>Check both feature flag AND server navs for profile tabs.</strong> A tab should only be shown if <code>features.profile_tabs.x</code> is true (via <code>useFeatures()</code>) AND the server's <code>profile_navs</code> includes the corresponding slug (or <code>profile_navs</code> is not provided).</li>
   <li><strong>Handle <code>is_restricted</code> profiles.</strong> When true, only show the About tab. Don't fetch posts/comments/spaces for restricted profiles.</li>
   <li><strong>Social links location differs between XProfile and Profile.</strong> On XProfile, social links are in <code>meta.social_links</code>. On the full Profile endpoint, they're at the top level: <code>profile.social_links</code>. Same for <code>badge_slugs</code> vs <code>meta.badge_slug</code>.</li>
   <li><strong>Navigate to profiles by username.</strong> Always use <code>router.push('/profile/{username}')</code> — never by user ID. The API uses username as the path parameter.</li>
-  <li><strong>Custom fields are server-defined.</strong> Don't hardcode field keys or types. Render all fields dynamically via <code>DynamicFormField</code> based on <code>custom_field_configs</code>.</li>
+  <li><strong>Custom fields are server-defined.</strong> Don't hardcode field keys or types. Render all fields dynamically based on <code>custom_field_groups</code>. Use <code>DynamicFormField</code> for edit forms.</li>
+  <li><strong>Emit <code>CACHE_EVENTS.PROFILE</code> after profile mutations.</strong> Both the edit screen and avatar/cover uploads emit this event so the profile view screen refreshes its cached data.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

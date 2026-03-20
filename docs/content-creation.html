@@ -45,21 +45,21 @@
 <pre><code>create-post.tsx (Screen)
   └── CreatePostContent (Main composer body)
         ├── SpaceSelector (where to post)
-        ├── Title input (optional)
+        ├── Title input (optional, max 200 chars)
         ├── RichText / 10tap editor (body text)
         ├── MediaPreview (image thumbnails)
         ├── VideoPreview / GifPreview / PollPreview
-        ├── ComposerToolbar (action buttons)
+        ├── ComposerToolbar (action buttons + submit)
         │     ├── Image picker trigger
-        │     ├── Video embed trigger
         │     ├── GIF picker trigger
         │     ├── Poll builder trigger
-        │     └── Character count
+        │     ├── Video embed trigger
+        │     └── Submit button (Post / Save)
         └── MarkdownToolbar (formatting buttons)
               ├── Bold, Italic, Strikethrough
               ├── H2, H3, H4
               ├── Bullet list, Ordered list, Blockquote
-              └── Code, Link, Horizontal rule</code></pre>
+              └── Code, Link</code></pre>
 
 <h3>Content Limits</h3>
 <table>
@@ -103,9 +103,10 @@ router.push({
 <h3>QuickPostBox</h3>
 <p><span class="file-path">components/composer/QuickPostBox.tsx</span> is the prompt shown in feeds that navigates to the composer:</p>
 <ul>
-  <li>Shows user avatar + placeholder text ("What's on your mind?")</li>
+  <li>Shows user avatar + placeholder text ("What's happening?")</li>
   <li>Tapping opens the create-post screen with the current space pre-selected</li>
   <li>Appears at the top of space feeds and the activity feed</li>
+  <li>Accepts a custom <code>placeholder</code> prop (defaults to "What's happening?")</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -116,46 +117,76 @@ router.push({
 <h3>Editor Setup</h3>
 <p><span class="file-path">hooks/useThemedEditor.ts</span> configures the editor bridge with theme-aware styling:</p>
 
-<pre><code>const editor = useEditorBridge({
-  autofocus: false,
-  avoidIosKeyboard: true,
-  bridgeExtensions: [...TenTapStartKit],
-  theme: {
-    webview: { backgroundColor: colors.background },
-  },
-});
+<pre><code>export function useThemedEditor({
+  placeholder = 'Write a comment...',
+  initialContent = '',
+  autofocus = false,
+}: UseThemedEditorOptions = {}) {
+  const { colors } = useTheme();
 
-// Apply theme colors via CSS injection
-useEffect(() => {
-  editor.injectCSS(`
-    body { color: ${colors.text}; }
+  // Theme CSS applied via BridgeExtension.extendCSS — runs on WebView load,
+  // no flash of unstyled content
+  const themeCSS = useMemo(() =&gt; `
+    body { color: ${colors.text}; background: ${colors.surface}; ... }
     a { color: ${colors.primary}; }
+    blockquote { border-left: 3px solid ${colors.primary}; ... }
+    code { background: ${colors.backgroundSecondary}; ... }
     /* ... more theme CSS ... */
-  `);
-}, [colors]);</code></pre>
+  `, [colors]);
+
+  const themeBridge = useMemo(
+    () =&gt; new BridgeExtension({ forceName: 'tbcTheme', extendCSS: themeCSS }),
+    [themeCSS],
+  );
+
+  const editor = useEditorBridge({
+    initialContent,
+    autofocus,
+    avoidIosKeyboard: true,
+    theme: { webview: { backgroundColor: colors.surface } },
+    bridgeExtensions: [...TenTapStartKit, themeBridge],
+  });
+
+  // Set placeholder once editor WebView is ready (single-fire subscription)
+  useEffect(() =&gt; {
+    const unsub = editor._subscribeToEditorStateUpdate(() =&gt; {
+      editor.setPlaceholder(placeholder);
+      unsub();
+    });
+    return unsub;
+  }, [editor, placeholder]);
+
+  return editor;
+}</code></pre>
 
 <div class="callout callout-error">
   <strong>Never use <code>PlaceholderBridge.configureExtension()</code>.</strong> It silently crashes the WebView. TenTapStartKit already includes PlaceholderBridge. Set the placeholder at runtime with <code>editor.setPlaceholder(text)</code> instead.
 </div>
 
 <h3>Dark Mode</h3>
-<p>The editor requires both a <code>theme.webview.backgroundColor</code> setting and CSS injection to match the app theme. Without the CSS injection, text and links won't match the app's dark mode colors.</p>
+<p>The editor uses a custom <code>BridgeExtension</code> with <code>extendCSS</code> to inject theme CSS at WebView load time. This avoids flash of unstyled content. The <code>theme.webview.backgroundColor</code> on the editor bridge handles the WebView container background.</p>
 
 <!-- ================================================================== -->
 <h2 id="markdown-toolbar">4. Markdown Toolbar</h2>
 
-<p><span class="file-path">components/composer/MarkdownToolbar.tsx</span> provides a horizontally scrollable formatting toolbar:</p>
+<p><span class="file-path">components/composer/MarkdownToolbar.tsx</span> provides a horizontally scrollable formatting toolbar with group separators:</p>
 
 <table>
   <tr><th>Group</th><th>Buttons</th><th>Function</th></tr>
   <tr><td>Inline</td><td>B, I, S</td><td>Bold, Italic, Strikethrough</td></tr>
   <tr><td>Headings</td><td>H2, H3, H4</td><td>Heading levels (H1 reserved for title)</td></tr>
   <tr><td>Block</td><td>Bullet, Ordered, Quote</td><td>Bullet list, Ordered list, Blockquote</td></tr>
-  <tr><td>Other</td><td>Code, Link, HR</td><td>Code formatting, Link insertion, Horizontal rule</td></tr>
+  <tr><td>Other</td><td>Code, Link</td><td>Code formatting, Link insertion</td></tr>
 </table>
 
+<h3>Active State</h3>
+<p>Each button reads the editor state via <code>useBridgeState(editor)</code> to highlight which formats are currently active. Active buttons get a primary-colored label/icon and a tinted background.</p>
+
 <h3>Link Insertion</h3>
-<p>Tapping the Link button opens a modal with a URL input field. The URL is validated and inserted as a markdown link wrapping the selected text.</p>
+<p>Tapping the Link button replaces the toolbar row with an inline URL input field (not a modal). The user pastes a URL, taps the checkmark button to insert, or taps X to cancel. If a link is already active at the cursor, tapping Link removes it.</p>
+
+<h3>Compact Mode</h3>
+<p>The toolbar accepts a <code>compact</code> prop (used in comment sheets) that reduces button and font sizes.</p>
 
 <!-- ================================================================== -->
 <h2 id="html-to-markdown">5. HTML-to-Markdown Conversion</h2>
@@ -165,65 +196,70 @@ useEffect(() => {
 <ul>
   <li><strong>Custom regex-based converter</strong> &mdash; no external dependencies (RN has no DOM, so <code>turndown</code> won't work)</li>
   <li>Handles only 10tap's limited HTML subset (not arbitrary HTML)</li>
-  <li>Preserves code blocks by protecting them before other conversions</li>
+  <li>Preserves code blocks by protecting them with placeholders before other conversions</li>
   <li>Converts headings, lists, blockquotes, links, inline formatting</li>
-  <li>Decodes HTML entities</li>
+  <li>Strips <code>&lt;p&gt;</code> tags inside <code>&lt;li&gt;</code> elements (10tap wraps li content in paragraphs)</li>
+  <li>Decodes HTML entities (<code>&amp;amp;</code>, <code>&amp;lt;</code>, <code>&amp;gt;</code>, <code>&amp;quot;</code>, <code>&amp;#39;</code>, <code>&amp;nbsp;</code>)</li>
   <li>Cleans up whitespace (collapses 3+ consecutive newlines to 2)</li>
 </ul>
 
 <div class="callout callout-warn">
-  <strong>10tap's HTML subset only.</strong> This converter handles the limited tags 10tap produces (<code>&lt;h2&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;em&gt;</code>, <code>&lt;ul&gt;</code>, <code>&lt;ol&gt;</code>, <code>&lt;blockquote&gt;</code>, <code>&lt;code&gt;</code>, <code>&lt;a&gt;</code>). It's not a general-purpose HTML-to-markdown converter.
+  <strong>10tap's HTML subset only.</strong> This converter handles the limited tags 10tap produces (<code>&lt;h2&gt;</code>, <code>&lt;h3&gt;</code>, <code>&lt;h4&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;em&gt;</code>, <code>&lt;del&gt;</code>, <code>&lt;ul&gt;</code>, <code>&lt;ol&gt;</code>, <code>&lt;blockquote&gt;</code>, <code>&lt;code&gt;</code>, <code>&lt;pre&gt;</code>, <code>&lt;a&gt;</code>, <code>&lt;hr&gt;</code>). It's not a general-purpose HTML-to-markdown converter.
 </div>
 
 <!-- ================================================================== -->
 <h2 id="attachments">6. Attachment Types</h2>
 
-<p>The composer supports four attachment types. Only one of video/GIF can be active at a time, but images can be combined with a poll.</p>
+<p>The composer supports four attachment types. All toolbar buttons are always visible; active attachments are indicated by highlighted icons.</p>
 
 <h3>Images</h3>
 <ul>
   <li><strong>Picker:</strong> <code>expo-image-picker</code> with multi-selection (up to 4)</li>
-  <li><strong>Upload:</strong> Each image uploaded via <code>uploadMedia(uri, type, fileName, 'feed')</code></li>
+  <li><strong>Upload:</strong> Each image uploaded via <code>mediaApi.uploadMedia(uri, type, fileName, 'feed')</code></li>
   <li><strong>Preview:</strong> <span class="file-path">components/composer/MediaPreview.tsx</span> shows horizontal thumbnail strip with remove buttons</li>
   <li><strong>Quality:</strong> 0.8 (80% JPEG compression)</li>
+  <li><strong>Selection limit:</strong> <code>4 - attachments.length</code> (accounts for already-attached images)</li>
 </ul>
 
 <h3>Video Embed</h3>
 <ul>
-  <li><strong>Input:</strong> <span class="file-path">components/composer/VideoAttachModal.tsx</span> &mdash; bottom sheet with URL input</li>
-  <li><strong>Validation:</strong> Fetches oembed data via <code>GET /feeds/oembed?url={url}</code></li>
+  <li><strong>Input:</strong> <span class="file-path">components/composer/VideoAttachModal.tsx</span> &mdash; BottomSheet with Oembed tab, URL input, and Embed button</li>
+  <li><strong>Validation:</strong> Fetches oembed data via <code>feedsApi.getOembed(url)</code> (<code>GET /feeds/oembed?url={url}</code>)</li>
   <li><strong>Preview:</strong> <span class="file-path">components/composer/VideoPreview.tsx</span> shows thumbnail + title + provider</li>
   <li><strong>Supports:</strong> YouTube, Vimeo, Wistia, and other oembed providers</li>
+  <li><strong>Behavior:</strong> Immediately attaches and closes the sheet after successful oembed fetch</li>
 </ul>
 
 <h3>GIF</h3>
 <ul>
-  <li><strong>Picker:</strong> <span class="file-path">components/composer/GifPickerModal.tsx</span> &mdash; Giphy search with 2-column grid</li>
+  <li><strong>Picker:</strong> <span class="file-path">components/composer/GifPickerModal.tsx</span> &mdash; BottomSheet (75% height) with search input, 2-column grid, trending on open, debounced search (400ms), infinite scroll pagination</li>
   <li><strong>Preview:</strong> <span class="file-path">components/composer/GifPreview.tsx</span> shows animated preview with remove button</li>
-  <li><strong>API:</strong> <code>searchGifs(query, offset)</code> from <span class="file-path">services/api/giphy.ts</span></li>
+  <li><strong>API:</strong> <code>giphyApi.searchGifs(query, offset)</code> from <span class="file-path">services/api/giphy.ts</span> &mdash; proxied through Fluent Community's <code>GET /giphy</code> endpoint</li>
+  <li><strong>Attribution:</strong> "Powered by GIPHY" text at bottom of picker</li>
 </ul>
 
 <h3>ComposerToolbar</h3>
-<p><span class="file-path">components/composer/ComposerToolbar.tsx</span> renders the bottom action bar:</p>
+<p><span class="file-path">components/composer/ComposerToolbar.tsx</span> renders the bottom action bar with attachment buttons on the left and a Submit button on the right:</p>
 <table>
-  <tr><th>Icon</th><th>Action</th><th>Condition</th></tr>
-  <tr><td>Image</td><td>Opens image picker</td><td>Hidden when video or GIF attached</td></tr>
-  <tr><td>Video</td><td>Opens video URL modal</td><td>Hidden when images or GIF attached</td></tr>
-  <tr><td>GIF</td><td>Opens GIF picker</td><td>Hidden when images or video attached</td></tr>
-  <tr><td>Poll</td><td>Opens poll builder</td><td>Always available</td></tr>
+  <tr><th>Button</th><th>Action</th><th>Active indicator</th></tr>
+  <tr><td>Image (icon)</td><td>Opens image picker</td><td>Shows spinner while uploading</td></tr>
+  <tr><td>GIF (text badge)</td><td>Opens GIF picker</td><td>Primary color when GIF attached</td></tr>
+  <tr><td>Poll (chart icon)</td><td>Opens poll builder</td><td>Filled icon + primary color when poll attached</td></tr>
+  <tr><td>Video (camera icon)</td><td>Opens video URL sheet</td><td>Primary color when video attached</td></tr>
+  <tr><td>Submit button</td><td>Posts or saves</td><td>Label: "Post" (new) or "Save" (edit)</td></tr>
 </table>
 
 <!-- ================================================================== -->
 <h2 id="polls">7. Polls &amp; Surveys</h2>
 
-<p><span class="file-path">components/composer/PollBuilderSheet.tsx</span> provides poll creation in a bottom sheet:</p>
+<p><span class="file-path">components/composer/PollBuilderSheet.tsx</span> provides poll creation in a BottomSheet:</p>
 
 <h3>Poll Configuration</h3>
 <table>
   <tr><th>Setting</th><th>Options</th></tr>
-  <tr><td>Type</td><td><code>single_choice</code> or <code>multi_choice</code> (toggle switch)</td></tr>
-  <tr><td>Options</td><td>2&ndash;4 text options (minimum 2 must be filled)</td></tr>
-  <tr><td>End date</td><td>Not yet implemented in UI</td></tr>
+  <tr><td>Type</td><td><code>single_choice</code> or <code>multi_choice</code> (toggle switch labeled "Allow multiple answers")</td></tr>
+  <tr><td>Options</td><td>2&ndash;4 text options (minimum 2 must be filled, max 100 chars each)</td></tr>
+  <tr><td>End date</td><td>Not yet implemented in UI (always sent as empty string)</td></tr>
 </table>
 
 <h3>Poll Preview</h3>
@@ -241,7 +277,7 @@ survey: {
 }</code></pre>
 
 <div class="callout">
-  <strong>Slugs are auto-generated.</strong> Option slugs follow the pattern <code>opt_1</code>, <code>opt_2</code>, etc. They're generated at submission time, not entered by the user. The server stores the poll configuration in <code>meta.survey_config</code>.
+  <strong>Slugs are auto-generated.</strong> Option slugs follow the pattern <code>opt_1</code>, <code>opt_2</code>, etc. They're generated at submission time from the filtered (non-empty) options array. The server stores the poll configuration in <code>meta.survey_config</code>.
 </div>
 
 <!-- ================================================================== -->
@@ -250,9 +286,10 @@ survey: {
 <p><span class="file-path">components/composer/SpaceSelector.tsx</span> lets users choose which space to post in:</p>
 
 <ul>
-  <li><strong>Trigger:</strong> Button showing selected space name or "Select Space" placeholder</li>
-  <li><strong>Modal:</strong> Searchable list grouped by space groups (hierarchical)</li>
-  <li><strong>Data:</strong> Fetches from <code>spacesApi.getSpaces()</code> + <code>spacesApi.getSpaceGroups()</code></li>
+  <li><strong>Trigger:</strong> Button showing selected space name or "Select a space..." placeholder</li>
+  <li><strong>Modal:</strong> Full-screen <code>pageSheet</code> modal with searchable list grouped by space groups</li>
+  <li><strong>Data:</strong> Fetches in parallel from <code>spacesApi.getSpaceGroups({ options_only: true })</code> and <code>spacesApi.getSpaces({ per_page: 100 })</code></li>
+  <li><strong>Grouping:</strong> Spaces organized by <code>parent_id</code> matching group IDs, sorted by <code>serial</code> within groups; ungrouped spaces appear under "Other Spaces"</li>
   <li><strong>Search:</strong> Filters by space title or slug</li>
   <li><strong>Privacy icons:</strong> Lock (secret), people (private), globe (public)</li>
   <li><strong>Output:</strong> Returns space slug + title to parent component</li>
@@ -262,55 +299,74 @@ survey: {
   <strong>Always send space slug, not ID.</strong> The Fluent Community API expects the space <strong>slug</strong> (e.g., <code>'general'</code>) in the <code>space</code> field, not the numeric ID. This matches the web app behavior.
 </div>
 
-<p>The space selector is hidden in edit mode (you can't move a post to a different space) and when a <code>spaceSlug</code> param is already provided.</p>
+<p>The space selector is hidden in edit mode (you can't move a post to a different space) and when a <code>spaceSlug</code> param is already provided. When a space is pre-selected, a read-only indicator shows the space name instead.</p>
 
 <!-- ================================================================== -->
 <h2 id="submission">9. Post Submission API</h2>
 
 <p><span class="file-path">services/api/feeds.ts</span> &rarr; <code>createFeed(data)</code></p>
 
-<h3>Request Payload</h3>
+<h3>ComposerSubmitData (what CreatePostContent builds)</h3>
+<pre><code>interface ComposerSubmitData {
+  message: string;           // Markdown content (converted from 10tap HTML)
+  content_type: 'text' | 'markdown';  // Always 'markdown' for rich text posts
+  title?: string;
+  space?: string;            // Space slug
+
+  // Images (up to 4)
+  media_images?: Array&lt;{
+    url: string;
+    type: string;       // always 'image'
+    width: number;
+    height: number;
+    provider: string;   // always 'uploader'
+  }&gt;;
+
+  // Video embed (one)
+  media?: { type: 'oembed'; url: string };
+
+  // GIF
+  meta?: {
+    media_preview: {
+      image: string;       // GIF URL
+      type: 'image';
+      provider: 'inline';  // Server converts 'inline' to 'giphy' on save
+      width: number;
+      height: number;
+    }
+  };
+
+  // Poll
+  survey?: {
+    type: 'single_choice' | 'multi_choice';
+    options: { label: string; slug: string }[];
+    end_date: string;       // Always '' (not yet implemented)
+  };
+}</code></pre>
+
+<h3>createFeed() request (what goes to the server)</h3>
+<p>The <code>createFeed()</code> function in <span class="file-path">services/api/feeds.ts</span> wraps the composer data with additional default fields to match the web app format:</p>
+
 <pre><code>POST /feeds
 
 {
-  type: 'text',
-  message: 'Markdown content here',    // Required
-  space: 'general',                     // Space slug (required)
-  content_type: 'markdown',             // or 'text', 'html', 'survey'
-  title: 'Optional Title',
-  privacy: 'public',
-  status: 'published',
+  type: 'text',                       // Default, set by createFeed()
+  message: 'Markdown content here',   // From ComposerSubmitData
+  space: 'general',                   // Space slug
+  content_type: 'markdown',           // From ComposerSubmitData
+  title: 'Optional Title',            // If provided
 
-  // Images (up to 4)
-  media_images: [
-    { url: '...', type: 'image/jpeg', width: 800, height: 600, provider: 'uploader' }
-  ],
-
-  // Video embed (one)
-  media: { type: 'oembed', url: 'https://youtube.com/watch?v=...' },
-
-  // GIF
-  meta: {
-    media_preview: {
-      image: 'https://giphy.com/...',
-      type: 'image',
-      provider: 'inline',
-      width: 480,
-      height: 270,
-    }
-  },
-
-  // Poll
-  survey: {
-    type: 'single_choice',
-    options: [{ label: 'Yes', slug: 'opt_1' }, { label: 'No', slug: 'opt_2' }],
-    end_date: '',
-  },
-
-  // Always included (defaults)
+  // Always-included defaults (added by createFeed)
+  media: null,                        // Overwritten if video attached
   media_image: '',
   topic_ids: [],
   send_announcement_email: 'no',
+
+  // Conditionally included from ComposerSubmitData:
+  media_images: [...],                // If images attached
+  media: { type: 'oembed', url: '...' },  // If video attached (replaces null)
+  meta: { media_preview: {...} },     // If GIF attached
+  survey: {...},                      // If poll attached
 }</code></pre>
 
 <h3>Response</h3>
@@ -320,7 +376,7 @@ survey: {
 }</code></pre>
 
 <h3>After Submission</h3>
-<p>On success, the composer emits <code>CACHE_EVENTS.FEEDS</code> to refresh the feed list, then navigates back. The new post appears at the top of the relevant feed.</p>
+<p>On success, the screen emits <code>CACHE_EVENTS.FEEDS</code> via <code>cacheEvents.emit()</code> to refresh the feed list, then the <code>CreatePostContent</code> component resets all state and calls <code>onClose()</code> which navigates back.</p>
 
 <!-- ================================================================== -->
 <h2 id="editing">10. Post Editing</h2>
@@ -330,22 +386,23 @@ survey: {
 <h3>Edit Flow</h3>
 <ol>
   <li>Screen receives <code>editId</code> route param</li>
-  <li>Fetches post via <code>feedsApi.getFeedById(editId)</code></li>
+  <li>Fetches post via <code>feedsApi.getFeedById(Number(editId))</code></li>
   <li>Populates editor with existing content:
     <ul>
-      <li>Title and message body loaded into editor</li>
-      <li>Existing images re-attached from <code>meta.media_items</code></li>
-      <li>Video/GIF previews restored from <code>meta.media_preview</code></li>
-      <li>Poll options extracted from <code>meta.survey_config</code></li>
+      <li>Title and message body loaded (uses <code>message_rendered</code> falling back to <code>message</code>)</li>
+      <li>Existing images re-attached from <code>meta.media_items</code> (filtered to type <code>'image'</code>)</li>
+      <li>Video preview restored if <code>meta.media_preview.provider</code> is <code>'youtube'</code></li>
+      <li>GIF preview restored if <code>meta.media_preview.provider</code> is <code>'giphy'</code></li>
+      <li>Poll options extracted from <code>meta.survey_config</code> (when <code>content_type</code> is <code>'survey'</code>)</li>
     </ul>
   </li>
   <li>Submit button label changes to "Save"</li>
-  <li>Space selector is hidden (can't change space)</li>
-  <li>On save: calls <code>feedsApi.updateFeed(id, data)</code></li>
+  <li>Space selector is hidden (shows read-only space indicator instead)</li>
+  <li>On save: calls <code>feedsApi.updateFeed(id, data)</code> (does not send <code>space</code> or <code>media</code> fields)</li>
 </ol>
 
 <div class="callout">
-  <strong>Same component, different mode.</strong> The composer doesn't have separate create/edit components. It's the same <code>CreatePostContent</code> with conditional behavior based on whether <code>editId</code> is present.
+  <strong>Same component, different mode.</strong> The composer doesn't have separate create/edit components. It's the same <code>CreatePostContent</code> with conditional behavior based on whether <code>editFeed</code> is present.
 </div>
 
 <!-- ================================================================== -->
@@ -356,7 +413,8 @@ survey: {
 <ul>
   <li><strong>KAV:</strong> <code>KeyboardAvoidingView</code> with <code>behavior="padding"</code></li>
   <li><strong>Toolbar position:</strong> Absolutely positioned at bottom with <code>bottom: insets.bottom</code></li>
-  <li><strong>Media previews:</strong> Rendered inside the KAV, above the keyboard</li>
+  <li><strong>Media previews:</strong> Rendered inside the KAV, above the toolbar</li>
+  <li><strong>Main content:</strong> Wrapped in a <code>SafeAreaView</code> with <code>edges={['top']}</code></li>
 </ul>
 
 <div class="callout callout-error">
@@ -370,30 +428,31 @@ survey: {
   <tr><th>File</th><th>Purpose</th></tr>
   <tr><td><span class="file-path">app/create-post.tsx</span></td><td>Screen entry point (new + edit, full-screen modal)</td></tr>
   <tr><td><span class="file-path">components/composer/CreatePostContent.tsx</span></td><td>Main composer body (editor, toolbar, attachments, space picker)</td></tr>
-  <tr><td><span class="file-path">components/composer/ComposerToolbar.tsx</span></td><td>Bottom action bar (image, video, GIF, poll buttons)</td></tr>
+  <tr><td><span class="file-path">components/composer/ComposerToolbar.tsx</span></td><td>Bottom action bar (image, GIF, poll, video buttons + submit)</td></tr>
   <tr><td><span class="file-path">components/composer/MarkdownToolbar.tsx</span></td><td>Horizontal formatting toolbar (bold, italic, headings, etc.)</td></tr>
-  <tr><td><span class="file-path">components/composer/SpaceSelector.tsx</span></td><td>Modal space picker with search and grouping</td></tr>
-  <tr><td><span class="file-path">components/composer/PollBuilderSheet.tsx</span></td><td>Poll creation bottom sheet (options, type toggle)</td></tr>
+  <tr><td><span class="file-path">components/composer/SpaceSelector.tsx</span></td><td>Full-screen modal space picker with search and grouping</td></tr>
+  <tr><td><span class="file-path">components/composer/PollBuilderSheet.tsx</span></td><td>Poll creation BottomSheet (options, type toggle)</td></tr>
   <tr><td><span class="file-path">components/composer/PollPreview.tsx</span></td><td>Poll preview card with edit/remove</td></tr>
   <tr><td><span class="file-path">components/composer/MediaPreview.tsx</span></td><td>Horizontal image thumbnail strip with remove buttons</td></tr>
-  <tr><td><span class="file-path">components/composer/VideoAttachModal.tsx</span></td><td>Video URL input bottom sheet</td></tr>
+  <tr><td><span class="file-path">components/composer/VideoAttachModal.tsx</span></td><td>Video URL input BottomSheet with oembed fetch</td></tr>
   <tr><td><span class="file-path">components/composer/VideoPreview.tsx</span></td><td>Video embed preview card</td></tr>
-  <tr><td><span class="file-path">components/composer/GifPickerModal.tsx</span></td><td>Giphy search grid with infinite scroll</td></tr>
+  <tr><td><span class="file-path">components/composer/GifPickerModal.tsx</span></td><td>Giphy search BottomSheet with 2-column grid and infinite scroll</td></tr>
   <tr><td><span class="file-path">components/composer/GifPreview.tsx</span></td><td>GIF preview card with remove button</td></tr>
   <tr><td><span class="file-path">components/composer/QuickPostBox.tsx</span></td><td>Feed prompt that navigates to composer</td></tr>
-  <tr><td><span class="file-path">hooks/useThemedEditor.ts</span></td><td>10tap editor bridge with theme CSS injection</td></tr>
+  <tr><td><span class="file-path">hooks/useThemedEditor.ts</span></td><td>10tap editor bridge with BridgeExtension theme CSS</td></tr>
   <tr><td><span class="file-path">utils/htmlToMarkdown.ts</span></td><td>Regex-based HTML-to-markdown for 10tap output</td></tr>
   <tr><td><span class="file-path">services/api/feeds.ts</span></td><td><code>createFeed()</code>, <code>updateFeed()</code>, <code>getOembed()</code></td></tr>
   <tr><td><span class="file-path">services/api/media.ts</span></td><td><code>uploadMedia()</code> for image uploads</td></tr>
-  <tr><td><span class="file-path">services/api/giphy.ts</span></td><td><code>searchGifs()</code> for GIF picker</td></tr>
+  <tr><td><span class="file-path">services/api/giphy.ts</span></td><td><code>searchGifs()</code> via Fluent Community's <code>/giphy</code> proxy</td></tr>
   <tr><td><span class="file-path">types/feed.ts</span></td><td><code>Feed</code>, <code>SurveyConfig</code>, <code>ContentType</code> definitions</td></tr>
+  <tr><td><span class="file-path">types/gif.ts</span></td><td><code>GifAttachment</code> type definition</td></tr>
 </table>
 
 <!-- ================================================================== -->
 <h2 id="rules">13. Rules</h2>
 
 <ol>
-  <li><strong>Always send <code>content_type: 'markdown'</code> for regular posts.</strong> The 10tap editor produces HTML, which <code>htmlToMarkdown()</code> converts before submission. The server expects markdown. Only use <code>'survey'</code> when a poll is attached.</li>
+  <li><strong>Always send <code>content_type: 'markdown'</code> for posts.</strong> The 10tap editor produces HTML, which <code>htmlToMarkdown()</code> converts before submission. The server expects markdown.</li>
 
   <li><strong>Never use <code>PlaceholderBridge.configureExtension()</code>.</strong> It crashes the 10tap WebView. Use <code>editor.setPlaceholder(text)</code> at runtime instead. TenTapStartKit already includes PlaceholderBridge.</li>
 
@@ -405,13 +464,15 @@ survey: {
 
   <li><strong>Max 4 images per post.</strong> The picker's <code>selectionLimit</code> accounts for already-attached images. This limit matches the Fluent Community web UI.</li>
 
-  <li><strong>Use <code>useThemedEditor()</code> for all 10tap instances.</strong> The hook handles theme CSS injection and dark mode. Don't set up the editor bridge manually. It's shared by the composer, comment sheet, and any module comment screens.</li>
+  <li><strong>Use <code>useThemedEditor()</code> for all 10tap instances.</strong> The hook handles theme CSS via <code>BridgeExtension.extendCSS</code> for flash-free theming. It's shared by the composer, comment sheet, and any module comment screens.</li>
 
   <li><strong>Emit <code>CACHE_EVENTS.FEEDS</code> after successful create/update.</strong> This triggers feed list refresh so the new or edited post appears immediately. Don't navigate back without emitting.</li>
 
   <li><strong><code>htmlToMarkdown()</code> handles only 10tap's HTML subset.</strong> It's not a general-purpose converter. Don't use it for arbitrary HTML from the server or external sources.</li>
 
-  <li><strong>Server enforces posting permissions.</strong> The composer doesn't pre-check whether the user can post in a space. If the user lacks permission, the API returns 403 and the composer shows an error. Don't add client-side permission checks that could get out of sync with the server.</li>
+  <li><strong>Server enforces posting permissions.</strong> The composer doesn't pre-check whether the user can post in a space. If the user lacks permission, the API returns an error and the composer shows an alert. Don't add client-side permission checks that could get out of sync with the server.</li>
+
+  <li><strong>GIF provider is <code>'inline'</code> on submit.</strong> The composer sends <code>provider: 'inline'</code> in <code>meta.media_preview</code>. The server converts this to <code>'giphy'</code> on save. When loading for edit, check for <code>provider === 'giphy'</code>.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

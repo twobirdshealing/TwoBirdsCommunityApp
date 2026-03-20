@@ -70,16 +70,15 @@
          ▼
 ┌────────────────────────────────────────┐
 │    FeedModalsContext (hoisted modals)   │
-│  Menu · ReactionPicker · Breakdown     │
-│  MediaViewer · ReportModal             │
+│  Menu · MediaViewer · ReportModal      │
 └────────────────────────────────────────┘</code></pre>
 
 <p>Each feed screen follows the same pattern:</p>
 <ol>
   <li>Fetch feeds via <code>useCachedData</code> (stale-while-revalidate from AsyncStorage)</li>
-  <li>Pass <code>feeds</code> + <code>setFeeds</code> to <code>useFeedReactions</code> and <code>useFeedActions</code></li>
+  <li>Adapt state with <code>useArrayMutate(mutate)</code> to get a <code>setFeeds</code> dispatcher, then pass to <code>useFeedReactions</code> and <code>useFeedActions</code></li>
   <li>Render with <code>FeedList</code> → <code>FeedCard</code> components</li>
-  <li>All modals (menu, picker, breakdown, media, report) are hoisted into <code>FeedModalsProvider</code> — one instance per screen, not per card</li>
+  <li>All modals (menu, media viewer, report) are hoisted into <code>FeedModalsProvider</code> — one instance per screen, not per card</li>
 </ol>
 
 <!-- ================================================================== -->
@@ -100,11 +99,18 @@
   <tr><td><code>message</code></td><td><code>string</code></td><td>Raw content (markdown/text)</td></tr>
   <tr><td><code>message_rendered</code></td><td><code>string</code></td><td>Server-rendered HTML</td></tr>
   <tr><td><code>is_sticky</code></td><td><code>boolean | number</code></td><td>Pinned post flag (0/1 or true/false)</td></tr>
+  <tr><td><code>featured_image</code></td><td><code>string | null</code></td><td>Featured image URL</td></tr>
+  <tr><td><code>privacy</code></td><td><code>'public' | 'private'</code></td><td>Post visibility</td></tr>
+  <tr><td><code>status</code></td><td><code>FeedStatus</code></td><td><code>'published' | 'draft' | 'scheduled' | 'pending' | 'spam'</code></td></tr>
+  <tr><td><code>comments_count</code></td><td><code>number | string</code></td><td>Comment count</td></tr>
+  <tr><td><code>reactions_count</code></td><td><code>number | string</code></td><td>Reaction count</td></tr>
+  <tr><td><code>scheduled_at</code></td><td><code>string | null</code></td><td>Scheduled publish date</td></tr>
   <tr><td><code>meta</code></td><td><code>object</code></td><td>Media, survey config, video URLs — see <a href="#media">Media</a></td></tr>
-  <tr><td><code>has_user_react</code></td><td><code>boolean</code></td><td>Whether current user has reacted</td></tr>
+  <tr><td><code>has_user_react</code></td><td><code>boolean</code></td><td>Whether current user has reacted (optional)</td></tr>
   <tr><td><code>user_reaction_type</code></td><td><code>ReactionType | null</code></td><td>Which reaction type the user chose</td></tr>
   <tr><td><code>reaction_breakdown</code></td><td><code>ReactionBreakdown[]</code></td><td>Per-type count + emoji (from tbc-multi-reactions)</td></tr>
-  <tr><td><code>bookmarked</code></td><td><code>boolean</code></td><td>Whether user bookmarked this post</td></tr>
+  <tr><td><code>reaction_total</code></td><td><code>number</code></td><td>Total reaction count from multi-reactions plugin</td></tr>
+  <tr><td><code>bookmarked</code></td><td><code>boolean</code></td><td>Whether user bookmarked this post (optional)</td></tr>
   <tr><td><code>xprofile</code></td><td><code>XProfile</code></td><td>Author profile (avatar, badges, verified)</td></tr>
   <tr><td><code>space</code></td><td><code>FeedSpace</code></td><td>Space info if posted in a space</td></tr>
 </table>
@@ -129,7 +135,7 @@
 
 <pre><code>interface ReactionBreakdown {
   type: ReactionType;    // 'like', 'love', 'custom_123', etc.
-  emoji: string;         // '👍', '❤️', etc.
+  emoji: string;         // emoji character
   icon_url?: string;     // Custom icon image (null for emoji-only)
   name: string;          // Display name
   count: number;         // How many users reacted with this type
@@ -170,8 +176,8 @@ interface SurveyOption {
   <tr><td><code>toggleBookmark(feedId, isBookmarked)</code></td><td>POST</td><td><code>/feeds/{id}/react</code></td><td>Bookmark/unbookmark (uses <code>react_type: 'bookmark'</code>)</td></tr>
   <tr><td><code>getBookmarks(options)</code></td><td>GET</td><td><code>/feeds/bookmarks</code></td><td>List user's bookmarked posts</td></tr>
   <tr><td><code>getFeedReactions(feedId, type?)</code></td><td>GET</td><td><code>/feeds/{id}/reactions</code></td><td>List reactions on a post</td></tr>
-  <tr><td><code>getReactionBreakdown(type, id)</code></td><td>GET</td><td><code>TBC_MR_URL/breakdown/{type}/{id}</code></td><td>Server-accurate reaction counts (for reconciliation)</td></tr>
-  <tr><td><code>getReactionBreakdownUsers(type, id)</code></td><td>GET</td><td><code>TBC_MR_URL/breakdown/{type}/{id}/users</code></td><td>Who reacted with what (for breakdown modal)</td></tr>
+  <tr><td><code>getReactionBreakdown(objectType, objectId)</code></td><td>GET</td><td><code>TBC_MR_URL/breakdown/{objectType}/{objectId}</code></td><td>Server-accurate reaction counts (for reconciliation)</td></tr>
+  <tr><td><code>getReactionBreakdownUsers(objectType, objectId)</code></td><td>GET</td><td><code>TBC_MR_URL/breakdown/{objectType}/{objectId}/users</code></td><td>Who reacted with what (for breakdown modal)</td></tr>
   <tr><td><code>castSurveyVote(feedId, slugs[])</code></td><td>POST</td><td><code>/feeds/{id}/apps/survey-vote</code></td><td>Cast or change survey vote</td></tr>
   <tr><td><code>getSurveyVoters(feedId, slug)</code></td><td>GET</td><td><code>/feeds/{id}/apps/survey-voters/{slug}</code></td><td>Who voted for a specific option</td></tr>
   <tr><td><code>getTicker(since?)</code></td><td>GET</td><td><code>/feeds/ticker</code></td><td>Keepalive for Pusher broadcast eligibility</td></tr>
@@ -204,6 +210,8 @@ interface SurveyOption {
   content_type?: 'text' | 'markdown' | 'html';
   privacy?: 'public' | 'private';
   status?: 'published' | 'draft';
+  featured_image?: string;
+  scheduled_at?: string;
   media_images?: Array&lt;{ url, type, width, height, provider }&gt;;
   media?: { type: 'oembed'; url: string };
   meta?: Record&lt;string, any&gt;;
@@ -286,18 +294,20 @@ interface SurveyOption {
 <p>All list screens (activity, space, bookmarks) follow the same pattern:</p>
 
 <pre><code>// 1. Fetch with SWR cache
-const { data: feeds, setData: setFeeds, refresh } = useCachedData&lt;Feed[]&gt;({
+const { data: feeds, mutate, refresh } = useCachedData&lt;Feed[]&gt;({
   cacheKey: 'tbc_activity_feeds',
   fetcher: () => getFeeds({ page: 1 }),
-  transform: (res) => mergeStickyFeeds(res),
   invalidateOn: CACHE_EVENTS.FEEDS,
 });
 
-// 2. Wire up shared hooks
-const handleReact = useFeedReactions(feeds, setFeeds);
+// 2. Adapt mutate into a standard setState dispatcher
+const setFeeds = useArrayMutate(mutate);
+
+// 3. Wire up shared hooks
+const handleReact = useFeedReactions(feeds ?? [], setFeeds);
 const actions = useFeedActions({ setFeeds, refresh });
 
-// 3. Render
+// 4. Render
 &lt;FeedModalsProvider&gt;
   &lt;FeedList
     feeds={feeds}
@@ -322,14 +332,14 @@ const actions = useFeedActions({ setFeeds, refresh });
   <tr><td><code>CommentItem</code></td><td><span class="file-path">components/feed/CommentItem.tsx</span></td><td>Single comment bubble — author, timestamp, content, reactions, images.</td></tr>
   <tr><td><code>SurveyCard</code></td><td><span class="file-path">components/feed/SurveyCard.tsx</span></td><td>Poll/survey renderer — options, vote toggle, percentage bars, expiration.</td></tr>
   <tr><td><code>ReactionPicker</code></td><td><span class="file-path">components/feed/ReactionPicker.tsx</span></td><td>Horizontal emoji picker popover — positioned near the reaction button, flips if near screen top.</td></tr>
-  <tr><td><code>ReactionBreakdownModal</code></td><td><span class="file-path">components/feed/ReactionBreakdownModal.tsx</span></td><td>Bottom sheet showing who reacted with what — "All" tab + per-reaction tabs with user list.</td></tr>
   <tr><td><code>ReactionIcon</code></td><td><span class="file-path">components/feed/ReactionIcon.tsx</span></td><td>Renders a reaction icon (custom image URL or emoji fallback).</td></tr>
+  <tr><td><code>WelcomeBanner</code></td><td><span class="file-path">components/feed/WelcomeBanner.tsx</span></td><td>Home page welcome banner with image/video, title, description, CTA buttons.</td></tr>
 </table>
 
 <h3>FeedCard Anatomy</h3>
 <pre><code>┌─────────────────────────────────────────────┐
 │ [Pin Badge]                                 │
-│ [Avatar] Author · Space · Time     [⋯ Menu] │
+│ [Avatar] Author · Space · Time     [... Menu] │
 │                                             │
 │ Post Title (if present)                     │
 │ Post content (collapsed at 132px, "More")   │
@@ -340,15 +350,15 @@ const actions = useFeedActions({ setFeeds, refresh });
 │                                             │
 │ [Survey Card] (if content_type = 'survey')  │
 │                                             │
-│ [🔖 Bookmark]                               │
-│ [👍 React] [💬 Comment]    [😍❤️👍 Breakdown]│
+│ [Bookmark]                                  │
+│ [React] [Comment]          [Reaction Icons] │
 └─────────────────────────────────────────────┘</code></pre>
 
 <ul>
   <li><strong>Compact mode:</strong> Content truncated at 132px height with "Show more" toggle</li>
   <li><strong>Full mode:</strong> Content always expanded (used in post detail screen)</li>
   <li><strong>Reaction button:</strong> Tap = default like, long-press = open picker</li>
-  <li><strong>Breakdown:</strong> Tappable emoji summary in footer → opens <code>ReactionBreakdownModal</code></li>
+  <li><strong>Reaction icons:</strong> Tappable emoji summary in footer showing top reaction types by count</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -362,7 +372,7 @@ const actions = useFeedActions({ setFeeds, refresh });
 <pre><code>interface ReactionConfig {
   id: string;              // 'like', 'love', 'laugh', 'wow', 'sad', 'angry', 'custom_123'
   name: string;            // Display name
-  emoji: string;           // '👍', '❤️', etc.
+  emoji: string;           // emoji character
   icon_url: string | null; // Custom icon URL (null = use emoji)
   color: string;           // Hex color
   order: number;           // Sort order in picker
@@ -472,15 +482,15 @@ const allFeeds = [...(sticky || []), ...feeds.data];</code></pre>
 
 <h3>Creating a Survey</h3>
 <pre><code>feedsApi.createFeed({
-  message: 'What should we study next?',
+  message: 'What topic should we cover next?',
   content_type: 'survey',
   space: 'general',
   survey: {
     type: 'single_choice',       // or 'multi_choice'
     options: [
-      { label: 'Romans', slug: 'opt_1' },
-      { label: 'Psalms', slug: 'opt_2' },
-      { label: 'Genesis', slug: 'opt_3' },
+      { label: 'Option A', slug: 'opt_1' },
+      { label: 'Option B', slug: 'opt_2' },
+      { label: 'Option C', slug: 'opt_3' },
     ],
     end_date: '2026-04-01',      // or '' for no expiration
   },
@@ -531,7 +541,7 @@ feedsApi.toggleBookmark(feedId, true);
 <table>
   <tr><th>Source</th><th>Field</th><th>Rendering</th></tr>
   <tr><td>Single image</td><td><code>meta.media_preview.image</code></td><td>Full-width image, tappable → MediaViewer</td></tr>
-  <tr><td>Multiple images</td><td><code>meta.media_items[]</code></td><td>Grid layout: 1, 2, or 2×2. 4+ images show "+N" overlay on last cell.</td></tr>
+  <tr><td>Multiple images</td><td><code>meta.media_items[]</code></td><td>Grid layout: 1, 2, or 2x2. 4+ images show "+N" overlay on last cell.</td></tr>
   <tr><td>Featured image</td><td><code>featured_image</code></td><td>Fallback if no media_preview/items</td></tr>
 </table>
 
@@ -564,12 +574,12 @@ feedsApi.toggleBookmark(feedId, true);
 
 <p><span class="file-path">contexts/FeedModalsContext.tsx</span> solves the "N modals per card" problem.</p>
 
-<p><strong>Problem:</strong> Each <code>FeedCard</code> in a FlashList would render its own menu, reaction picker, breakdown modal, media viewer, and report modal — that's 5 modal components × N visible cards.</p>
+<p><strong>Problem:</strong> Each <code>FeedCard</code> in a FlashList would render its own menu, media viewer, and report modal — that's 3 modal components x N visible cards.</p>
 
 <p><strong>Solution:</strong> <code>FeedModalsProvider</code> renders exactly one instance of each modal at the screen level. Cards call <code>useFeedModals()</code> to open them with parameters.</p>
 
 <pre><code>// Inside FeedCard:
-const { openMenu, openReactionPicker, openReactionBreakdown, openMediaViewer, openReport } = useFeedModals();
+const { openMenu, openMediaViewer, openReport } = useFeedModals();
 
 // Open menu from 3-dot button
 openMenu({
@@ -583,14 +593,14 @@ openMenu({
   onDelete: () => handleDelete(feed),
 });</code></pre>
 
-<p>The five hoisted modals:</p>
+<p>The three hoisted modals:</p>
 <ol>
   <li><code>DropdownMenu</code> — post options (copy link, pin, edit, delete, report)</li>
-  <li><code>ReactionPicker</code> — emoji reaction selector</li>
-  <li><code>ReactionBreakdownModal</code> — who reacted with what</li>
   <li><code>MediaViewer</code> — full-screen image gallery with swipe</li>
   <li><code>ReportModal</code> — report post/comment with reason picker</li>
 </ol>
+
+<p><code>ReactionPicker</code> is rendered directly in <code>FeedCard</code> / <code>CommentItem</code> rather than hoisted, since it needs precise positioning relative to the reaction button.</p>
 
 <!-- ================================================================== -->
 <h2 id="ticker">15. Ticker Polling</h2>
@@ -598,7 +608,7 @@ openMenu({
 <p><span class="file-path">hooks/useTickerPolling.ts</span> — keeps the user marked as "active" so the Fluent Community server doesn't skip Pusher broadcasts.</p>
 
 <ul>
-  <li>Polls <code>GET /feeds/ticker</code> every ~4 minutes (randomized 3.5–4.5 min to avoid thundering herd)</li>
+  <li>Polls <code>GET /feeds/ticker</code> every ~4 minutes (randomized 3.5-4.5 min to avoid thundering herd)</li>
   <li>Server skips Pusher message broadcasts to users inactive &gt;5 minutes</li>
   <li>Fires immediately on mount and on app foreground</li>
   <li>Pauses when app is backgrounded</li>
@@ -614,10 +624,11 @@ useTickerPolling(isAuthenticated);</code></pre>
 <table>
   <tr><th>Hook</th><th>File</th><th>Purpose</th></tr>
   <tr><td><code>useFeedReactions(feeds, setFeeds)</code></td><td><span class="file-path">hooks/useFeedReactions.ts</span></td><td>Returns <code>handleReact(feedId, type)</code>. Handles optimistic add/remove/swap with server reconciliation.</td></tr>
-  <tr><td><code>useFeedActions({ setFeeds, refresh, defaultSpace? })</code></td><td><span class="file-path">hooks/useFeedActions.ts</span></td><td>Returns navigation handlers (comment, author, space, composer), bookmark toggle, and delete with confirmation. Used by activity, bookmarks, and space screens.</td></tr>
+  <tr><td><code>useFeedActions({ setFeeds, refresh, defaultSpace?, defaultSpaceName? })</code></td><td><span class="file-path">hooks/useFeedActions.ts</span></td><td>Returns navigation handlers (comment, author, space, composer), bookmark toggle, edit, and delete with confirmation. Used by activity, bookmarks, and space screens.</td></tr>
   <tr><td><code>useReactionConfig()</code></td><td><span class="file-path">hooks/useReactionConfig.ts</span></td><td>Returns <code>{ reactions, display, loading, getReaction }</code>. Fetches config once from <code>TBC_MR_URL/config</code>, caches in memory. All components share the same cached result.</td></tr>
   <tr><td><code>useTickerPolling(enabled)</code></td><td><span class="file-path">hooks/useTickerPolling.ts</span></td><td>Background polling to keep user active for Pusher. See <a href="#ticker">Ticker Polling</a>.</td></tr>
-  <tr><td><code>useFeedModals()</code></td><td><span class="file-path">contexts/FeedModalsContext.tsx</span></td><td>Returns openers for all 5 hoisted modals. Must be inside <code>FeedModalsProvider</code>.</td></tr>
+  <tr><td><code>useFeedModals()</code></td><td><span class="file-path">contexts/FeedModalsContext.tsx</span></td><td>Returns openers for all 3 hoisted modals (<code>openMenu</code>, <code>openMediaViewer</code>, <code>openReport</code>). Must be inside <code>FeedModalsProvider</code>.</td></tr>
+  <tr><td><code>useArrayMutate(mutate)</code></td><td><span class="file-path">hooks/useCachedData.ts</span></td><td>Adapts <code>useCachedData</code>'s <code>mutate</code> into a standard <code>React.Dispatch&lt;SetStateAction&lt;T[]&gt;&gt;</code> for use with <code>useFeedReactions</code> and <code>useFeedActions</code>.</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -636,6 +647,7 @@ useTickerPolling(isAuthenticated);</code></pre>
   <li><strong>Emit cache events after mutations.</strong> After creating/editing/deleting a post, emit <code>CACHE_EVENTS.FEEDS</code>. After toggling a bookmark, emit <code>CACHE_EVENTS.BOOKMARKS</code>.</li>
   <li><strong>Check <code>features.multi_reactions</code></strong> (via <code>useFeatures()</code>) before showing reaction picker and breakdown. If the multi-reactions plugin isn't installed, only simple like/unlike is available.</li>
   <li><strong>Use <code>message_rendered</code> for display, <code>message</code> for editing.</strong> The server returns pre-rendered HTML in <code>message_rendered</code> — render it with <code>HtmlContent</code>. When editing, use <code>htmlToMarkdown(message_rendered)</code> to convert back for the editor.</li>
+  <li><strong>Use <code>useArrayMutate</code> to adapt <code>useCachedData</code>'s <code>mutate</code>.</strong> Feed hooks (<code>useFeedReactions</code>, <code>useFeedActions</code>) expect <code>React.Dispatch&lt;SetStateAction&lt;Feed[]&gt;&gt;</code>. The <code>useArrayMutate</code> adapter handles the null-to-empty-array conversion.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

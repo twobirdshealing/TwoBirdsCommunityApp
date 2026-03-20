@@ -54,7 +54,7 @@
   &darr;
   Parse JSON (fallback to text on parse failure)
   &darr;
-  Extract X-TBC-* response headers &rarr; callback to React
+  Extract X-TBC-* response headers &rarr; notify listeners
   &darr;
   Response OK? &rarr; return { success: true, data }
   &darr;
@@ -67,16 +67,15 @@
 <!-- ====================================================================== -->
 <h2 id="endpoints">2. API Endpoints &amp; Base URLs</h2>
 
-<p>All API URLs are derived from <code>SITE_URL</code> in <span class="file-path">constants/config.ts</span>. The site URL comes from <code>eas.json</code> environment variables via <code>app.config.ts</code>.</p>
+<p>All API URLs are derived from <code>SITE_URL</code> in <span class="file-path">constants/config.ts</span>. The site URL comes from the <code>EXPO_PUBLIC_SITE_URL</code> environment variable set in <code>eas.json</code>, read via <code>process.env</code> with a fallback to <code>app.config.ts</code> &rarr; <code>expo.extra.siteUrl</code>.</p>
 
 <h3>Base URLs</h3>
 <table>
   <tr><th>Constant</th><th>Path</th><th>Used For</th></tr>
   <tr><td><code>API_URL</code></td><td><code>/wp-json/fluent-community/v2</code></td><td>Core Fluent Community API (feeds, spaces, profiles, chat, courses, notifications)</td></tr>
-  <tr><td><code>TBC_CA_URL</code></td><td><code>/wp-json/tbc-ca/v1</code></td><td>TBC Community App plugin (auth, registration, batch, config, push, cart, account)</td></tr>
-  <tr><td><code>TBC_MR_URL</code></td><td><code>/wp-json/tbc-multi-reactions/v1</code></td><td>TBC Multi-Reactions plugin (reaction breakdowns)</td></tr>
+  <tr><td><code>TBC_CA_URL</code></td><td><code>/wp-json/tbc-ca/v1</code></td><td>TBC Community App plugin (auth, registration, batch, config, push, account)</td></tr>
   <tr><td><code>WP_REST_URL</code></td><td><code>/wp-json/wp/v2</code></td><td>WordPress core REST</td></tr>
-  <tr><td colspan="3"><em>Add-on modules define their own URL constants (e.g., <code>TBC_OTP_URL</code>, <code>TBC_YT_URL</code>) in their service files.</em></td></tr>
+  <tr><td colspan="3"><em>Some service files define their own URL constants locally (e.g., <code>TBC_MR_URL</code> in feeds.ts for multi-reactions). Add-on modules define their own URL constants in their service files.</em></td></tr>
 </table>
 
 <p>The HTTP client defaults to <code>API_URL</code> (Fluent Community). Services targeting other endpoints pass <code>baseUrl</code> in the request config:</p>
@@ -167,10 +166,12 @@ type ApiResponse&lt;T&gt; =
 
 // ApiError shape (types/api.ts)
 interface ApiError {
-  code: string;       // e.g. 'rest_forbidden', 'tbc_auth_expired_token'
-  message: string;    // Human-readable error message
+  code: string;           // e.g. 'rest_forbidden', 'tbc_auth_expired_token'
+  message: string;        // Human-readable error message
   data: {
-    status: number;   // HTTP status code (0 for network/timeout errors)
+    status: number;       // HTTP status code (0 for network/timeout errors)
+    field?: string;       // Optional: which field caused the error
+    allowed_values?: string[]; // Optional: valid values for the field
   };
 }</code></pre>
 
@@ -333,7 +334,7 @@ export async function silentRefresh(): Promise&lt;boolean&gt; {
 <!-- ====================================================================== -->
 <h2 id="response-headers">8. Response Headers</h2>
 
-<p>The TBC Community App plugin sends live counts and status flags in custom response headers on every authenticated response. The HTTP client extracts these and forwards them to React via a callback.</p>
+<p>The TBC Community App plugin sends live counts and status flags in custom response headers on every authenticated response. The HTTP client extracts these and forwards them to React via a listener pattern.</p>
 
 <h3>Core Header Constants</h3>
 <p>Core header names are defined as the <code>CORE_HEADERS</code> constant in <span class="file-path">services/api/client.ts</span>. Module headers are added dynamically via <code>registerModuleResponseHeaders()</code> during startup &mdash; modules don&rsquo;t need constants, their header names come from the module manifest.</p>
@@ -342,39 +343,54 @@ export async function silentRefresh(): Promise&lt;boolean&gt; {
 const CORE_HEADERS = {
   UNREAD_NOTIFICATIONS: 'X-TBC-Unread-Notifications',
   UNREAD_MESSAGES: 'X-TBC-Unread-Messages',
-  CART_COUNT: 'X-TBC-Cart-Count',
   MAINTENANCE: 'X-TBC-Maintenance',
   MIN_APP_VERSION: 'X-TBC-Min-App-Version',
 } as const;</code></pre>
 
-<h3>Custom Headers</h3>
+<h3>Core Headers</h3>
 <table>
   <tr><th>Header</th><th>Type</th><th>Purpose</th></tr>
   <tr><td><code>X-TBC-Unread-Notifications</code></td><td>number</td><td>Unread notification count &rarr; badge on bell icon</td></tr>
   <tr><td><code>X-TBC-Unread-Messages</code></td><td>number</td><td>Unread message thread count &rarr; badge on chat icon</td></tr>
-  <tr><td><code>X-TBC-Cart-Count</code></td><td>number</td><td>Cart item count &rarr; badge on cart icon</td></tr>
   <tr><td><code>X-TBC-Maintenance</code></td><td><code>'1'</code> or <code>'0'</code></td><td>Site in maintenance mode &rarr; show maintenance screen</td></tr>
-  <tr><td><code>X-TBC-Profile-Incomplete</code></td><td><code>'1'</code> or <code>'0'</code></td><td>User profile is incomplete &rarr; prompt to complete</td></tr>
   <tr><td><code>X-TBC-Min-App-Version</code></td><td>string</td><td>Minimum app version required &rarr; force update screen</td></tr>
 </table>
 
-<h3>How It Works</h3>
-<p>The callback is registered by <code>_layout.tsx</code> on mount using the same service &rarr; React bridge pattern as auth:</p>
-<pre><code>// client.ts — callback registration
-export function setOnResponseHeaders(
-  callback: ((data: ResponseHeaderData) =&gt; void) | null
-): void { ... }
+<p>Additional headers (e.g., <code>X-TBC-Profile-Incomplete</code>) can be injected by modules via <code>registerModuleResponseHeaders()</code>. See the <a href="module-system.html">Module System doc</a> for details on defining <code>responseHeaders</code> in a module manifest.</p>
 
-// _layout.tsx — registers the callback
+<h3>ResponseHeaderData Shape</h3>
+<pre><code>// services/api/client.ts
+export interface ResponseHeaderData {
+  unreadNotifications?: number;
+  unreadMessages?: number;
+  maintenance?: boolean;
+  minAppVersion?: string;
+  /** Module-injected header values (keyed by ResponseHeaderMapping.key) */
+  [key: string]: any;
+}</code></pre>
+
+<h3>How It Works</h3>
+<p>The client supports multiple listeners via <code>addResponseHeaderListener()</code>. Each listener receives a <code>ResponseHeaderData</code> object on every API response that contains at least one recognized header. The function returns an unsubscribe callback.</p>
+
+<pre><code>// client.ts — listener API
+export function addResponseHeaderListener(
+  listener: (data: ResponseHeaderData) =&gt; void
+): () =&gt; void;
+
+// _layout.tsx — registers the core listener
 useEffect(() =&gt; {
-  setOnResponseHeaders((data) =&gt; {
+  const unsubscribe = addResponseHeaderListener((data) =&gt; {
     if (data.unreadNotifications !== undefined) setNotifCount(data.unreadNotifications);
     if (data.unreadMessages !== undefined) setMessageCount(data.unreadMessages);
     if (data.maintenance !== undefined) setMaintenanceMode(data.maintenance);
     // etc.
   });
-  return () =&gt; setOnResponseHeaders(null);
+  return unsubscribe;
 }, []);</code></pre>
+
+<div class="callout callout-warn">
+  <strong>Deprecated:</strong> The older <code>setOnResponseHeaders(callback)</code> API still exists for backward compatibility but clears all listeners and sets a single one. New code should use <code>addResponseHeaderListener()</code>.
+</div>
 
 <div class="callout callout-success">
   <strong>Badges stay live without polling.</strong> Every API response piggybacks the latest counts, so badges update on every screen transition or data fetch &mdash; no dedicated polling or WebSocket channel needed for counts.
@@ -397,6 +413,16 @@ const responses = await batchRequest([
 // Find a specific response by path prefix
 const config = findBatchResponse&lt;AppConfigResponse&gt;(responses, '/tbc-ca/v1/app-config');
 const courses = findBatchResponse&lt;CoursesResponse&gt;(responses, '/fluent-community/v2/courses');</code></pre>
+
+<h3>BatchRequest Shape</h3>
+<pre><code>interface BatchRequest {
+  /** REST route path, e.g. "/fluent-community/v2/notifications/unread" */
+  path: string;
+  /** HTTP method (default: GET) */
+  method?: 'GET' | 'POST';
+  /** Body for POST requests */
+  body?: Record&lt;string, unknown&gt;;
+}</code></pre>
 
 <h3>Response Shape</h3>
 <pre><code>interface BatchResponseItem {
@@ -459,20 +485,27 @@ export const myFeatureApi = {
   <tr><td><span class="file-path">services/api/feeds.ts</span></td><td><code>feedsApi</code></td><td><code>API_URL</code> (default)</td></tr>
   <tr><td><span class="file-path">services/api/spaces.ts</span></td><td><code>spacesApi</code></td><td><code>API_URL</code></td></tr>
   <tr><td><span class="file-path">services/api/profiles.ts</span></td><td><code>profilesApi</code></td><td><code>API_URL</code></td></tr>
-  <tr><td><span class="file-path">services/api/messaging.ts</span></td><td><code>messagingApi</code></td><td><code>API_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/messages.ts</span></td><td><code>messagesApi</code></td><td><code>API_URL</code></td></tr>
   <tr><td><span class="file-path">services/api/notifications.ts</span></td><td><code>notificationsApi</code></td><td><code>API_URL</code></td></tr>
   <tr><td><span class="file-path">services/api/courses.ts</span></td><td><code>coursesApi</code></td><td><code>API_URL</code></td></tr>
   <tr><td><span class="file-path">services/api/members.ts</span></td><td><code>membersApi</code></td><td><code>API_URL</code></td></tr>
   <tr><td><span class="file-path">services/api/comments.ts</span></td><td><code>commentsApi</code></td><td><code>API_URL</code></td></tr>
-  <tr><td><span class="file-path">services/api/reactions.ts</span></td><td><code>reactionsApi</code></td><td><code>TBC_MR_URL</code></td></tr>
-  <tr><td><span class="file-path">services/api/appConfig.ts</span></td><td><code>getAppConfig()</code></td><td><code>TBC_CA_URL</code></td></tr>
-  <tr><td><span class="file-path">services/api/registration.ts</span></td><td><code>registrationApi</code></td><td><code>TBC_REG_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/media.ts</span></td><td><code>mediaApi</code></td><td><code>API_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/moderation.ts</span></td><td>(individual exports)</td><td><code>API_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/emailPrefs.ts</span></td><td><code>emailPrefsApi</code></td><td><code>API_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/giphy.ts</span></td><td><code>giphyApi</code></td><td><code>API_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/socialProviders.ts</span></td><td>(types + defaults)</td><td>&mdash;</td></tr>
+  <tr><td><span class="file-path">services/api/account.ts</span></td><td>(individual exports)</td><td><code>TBC_CA_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/app.ts</span></td><td><code>appApi</code></td><td><code>TBC_CA_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/appConfig.ts</span></td><td><code>getAppConfig()</code></td><td><code>TBC_CA_URL</code> (direct fetch)</td></tr>
+  <tr><td><span class="file-path">services/api/badges.ts</span></td><td>(individual exports)</td><td><code>TBC_CA_URL</code> (direct fetch)</td></tr>
+  <tr><td><span class="file-path">services/api/registration.ts</span></td><td><code>registrationApi</code></td><td><code>TBC_CA_URL</code> (direct fetch)</td></tr>
   <tr><td><span class="file-path">services/api/batch.ts</span></td><td><code>batchRequest()</code></td><td><code>TBC_CA_URL</code></td></tr>
-  <tr><td><span class="file-path">services/push.ts</span></td><td><code>registerDeviceToken()</code></td><td><code>TBC_CA_URL</code></td></tr>
+  <tr><td><span class="file-path">services/api/push.ts</span></td><td><code>pushApi</code></td><td><code>TBC_CA_URL</code> (direct fetch)</td></tr>
 </table>
 
 <div class="callout callout-warn">
-  <strong>Some services bypass the HTTP client.</strong> Registration, app config, and push use their own <code>fetch()</code> wrappers because they handle unauthenticated requests or receive tokens as parameters (before auth state is established). Add-on module services may also bypass the client for similar reasons. These are the only exceptions &mdash; all other services use the standard client.
+  <strong>Some services bypass the HTTP client.</strong> Registration, app config, badges, and push use their own <code>fetch()</code> wrappers because they handle unauthenticated requests or receive tokens as parameters (before auth state is established). Add-on module services may also bypass the client for similar reasons. These are the only exceptions &mdash; all other services use the standard client.
 </div>
 
 <!-- ====================================================================== -->

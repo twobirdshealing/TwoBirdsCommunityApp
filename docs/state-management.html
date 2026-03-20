@@ -30,6 +30,7 @@
     <li><a href="#bottomoffset">BottomOffsetContext</a></li>
     <li><a href="#feedmodals">FeedModalsContext</a></li>
     <li><a href="#module-providers">Module Providers</a></li>
+    <li><a href="#hooks">Hooks Reference</a></li>
     <li><a href="#bridges">Service &harr; React Bridges</a></li>
     <li><a href="#rules">Rules</a></li>
   </ol>
@@ -43,13 +44,13 @@
 <div class="flow-diagram">GestureHandlerRootView
 &boxur;&boxh; ErrorBoundary
    &boxur;&boxh; ThemeProvider              &larr; Colors, dark mode, maintenance, update, branding
-      &boxur;&boxh; AuthProvider             &larr; Login/logout, user state, post-login gates
-         &boxur;&boxh; AppConfigProvider     &larr; Visibility flags, portal slug, socket config
-            &boxur;&boxh; UnreadCountsProvider  &larr; Badge counts (notifications, messages, cart)
+      &boxur;&boxh; AuthProvider             &larr; Login/logout, user state
+         &boxur;&boxh; AppConfigProvider     &larr; Visibility flags, portal slug, socket config, features, registration
+            &boxur;&boxh; UnreadCountsProvider  &larr; Badge counts (notifications, messages)
                &boxur;&boxh; PusherProvider     &larr; Real-time WebSocket (needs Auth + AppConfig)
-                  &boxur;&boxh; ModuleProviders  &larr; Dynamic providers from module registry
-                     &boxur;&boxh; KeyboardProvider
-                        &boxur;&boxh; BottomSheetModalProvider
+                  &boxur;&boxh; BottomSheetModalProvider  &larr; Gorhom bottom sheet host
+                     &boxur;&boxh; ModuleProviders  &larr; Dynamic providers from module registry
+                        &boxur;&boxh; KeyboardProvider
                            &boxur;&boxh; RootLayoutNav (screens)</div>
 
 <p>Additional providers are nested <strong>inside tab screens</strong>, not in the root layout:</p>
@@ -71,25 +72,24 @@
   <tr><td><code>isAuthenticated</code></td><td><code>boolean</code></td><td>Whether user has a valid JWT</td></tr>
   <tr><td><code>isLoading</code></td><td><code>boolean</code></td><td>True during initial auth check on mount</td></tr>
   <tr><td><code>user</code></td><td><code>AuthUser | null</code></td><td>Current user profile (from SecureStore)</td></tr>
-  <tr><td><code>needsProfileCompletion</code></td><td><code>boolean</code></td><td>Set by response headers when profile is incomplete</td></tr>
 </table>
 
 <h3>Key Methods</h3>
-<pre><code>const { login, logout, refreshAuth, updateUser, registerAndLogin, markProfileComplete } = useAuth();</code></pre>
+<pre><code>const { login, logout, refreshAuth, updateUser, registerAndLogin } = useAuth();</code></pre>
 
 <table>
-  <tr><th>Method</th><th>Purpose</th></tr>
-  <tr><td><code>login(username, password)</code></td><td>Authenticate &rarr; store tokens &rarr; register push token</td></tr>
-  <tr><td><code>logout()</code></td><td>Revoke session &rarr; clear caches &rarr; unregister push &rarr; clear SecureStore</td></tr>
-  <tr><td><code>registerAndLogin(access, refresh, user)</code></td><td>Store tokens directly after registration (no login call needed)</td></tr>
-  <tr><td><code>updateUser(updates)</code></td><td>Merge partial updates into user state + SecureStore</td></tr>
-  <tr><td><code>refreshAuth()</code></td><td>Re-read user from SecureStore (after external changes)</td></tr>
+  <tr><th>Method</th><th>Signature</th><th>Purpose</th></tr>
+  <tr><td><code>login</code></td><td><code>(username: string, password: string) =&gt; Promise&lt;{ success: boolean; error?: string }&gt;</code></td><td>Authenticate &rarr; store tokens &rarr; set user state</td></tr>
+  <tr><td><code>logout</code></td><td><code>() =&gt; Promise&lt;void&gt;</code></td><td>Revoke session &rarr; clear all user caches &rarr; clear SecureStore</td></tr>
+  <tr><td><code>registerAndLogin</code></td><td><code>(accessToken: string, refreshToken: string, userData: AuthUser) =&gt; Promise&lt;void&gt;</code></td><td>Store tokens directly after registration (no login call needed)</td></tr>
+  <tr><td><code>updateUser</code></td><td><code>(updates: Partial&lt;AuthUser&gt;) =&gt; Promise&lt;void&gt;</code></td><td>Merge partial updates into user state + SecureStore</td></tr>
+  <tr><td><code>refreshAuth</code></td><td><code>() =&gt; Promise&lt;void&gt;</code></td><td>Re-read user from SecureStore (after external changes)</td></tr>
 </table>
 
 <h3>Startup Flow</h3>
 <ol>
   <li>Check <code>hasStoredAuth()</code> &mdash; is there a JWT in SecureStore?</li>
-  <li>If yes: load stored user, set <code>isAuthenticated = true</code>, re-register push token</li>
+  <li>If yes: load stored user, set <code>isAuthenticated = true</code>, re-register push token (if push feature flag enabled)</li>
   <li>If no: set <code>isLoading = false</code> (shows login screen)</li>
   <li>Register <code>onAuthCleared</code> callback so API client can force logout on refresh failure</li>
 </ol>
@@ -116,6 +116,14 @@
   <tr><td><code>branding</code></td><td><code>BrandingConfig | null</code></td><td>Server-synced logos and brand colors</td></tr>
 </table>
 
+<h3>Key Methods</h3>
+<table>
+  <tr><th>Method</th><th>Purpose</th></tr>
+  <tr><td><code>setTheme(mode)</code></td><td>Switch between <code>'light'</code> and <code>'dark'</code>; persists to AsyncStorage</td></tr>
+  <tr><td><code>refreshAppConfig()</code></td><td>Fetch fresh config from <code>/tbc-ca/v1/app-config</code> and apply (theme, maintenance, update, branding, social providers)</td></tr>
+  <tr><td><code>setFromBatch(data)</code></td><td>Accept pre-fetched <code>AppConfigResponse</code> from <code>_layout.tsx</code> startup batch</td></tr>
+</table>
+
 <h3>Usage</h3>
 <pre><code>const { colors, isDark, theme, setTheme, update, maintenance, branding } = useTheme();
 
@@ -135,10 +143,10 @@ if (update?.force) { /* show force update screen */ }</code></pre>
 <pre><code>// Base colors (constants/colors.ts)
 const base = isDark ? darkColors : lightColors;
 
-// Server overrides (from /app-config → theme_data)
+// Server overrides (from /app-config &rarr; theme_data)
 const overrides = fluentOverrides?.[isDark ? 'dark' : 'light'] || {};
 
-// Merged result
+// Merged result (with nested tabBar merge)
 const colors = { ...base, ...overrides };</code></pre>
 <p>See <a href="theme-system.html">Theme System</a> doc for full token reference and usage rules.</p>
 
@@ -150,12 +158,15 @@ const colors = { ...base, ...overrides };</code></pre>
 </ol>
 <p>Both paths extract theme colors, maintenance status, update info, branding, and social providers from the same <code>AppConfigResponse</code>.</p>
 
+<h3>Cache Persistence</h3>
+<p>Full app config response is cached to AsyncStorage (<code>tbc_app_config_cache</code>) so the app has correct theme colors on cold start before the batch response arrives. Theme preference (<code>theme_preference</code>) is also persisted.</p>
+
 <!-- ====================================================================== -->
 <h2 id="appconfig">4. AppConfigContext</h2>
 
 <p><span class="file-path">contexts/AppConfigContext.tsx</span></p>
 
-<p>Holds feature visibility flags, the portal slug, and socket provider configuration. This context is a <strong>passive state holder</strong> &mdash; it doesn&rsquo;t fetch data itself. All data is fed in from <code>_layout.tsx</code>.</p>
+<p>Holds feature visibility flags, the portal slug, socket config, registration capabilities, time format, and feature flags. This context is a <strong>passive state holder</strong> &mdash; it doesn&rsquo;t fetch data itself. All data is fed in from <code>_layout.tsx</code> via <code>setFromBatch()</code>.</p>
 
 <h3>State</h3>
 <table>
@@ -163,33 +174,51 @@ const colors = { ...base, ...overrides };</code></pre>
   <tr><td><code>visibility</code></td><td><code>VisibilityConfig | null</code></td><td>Feature visibility from server (<code>hide_menu[]</code> array)</td></tr>
   <tr><td><code>portalSlug</code></td><td><code>string</code></td><td>Fluent Community portal slug (used in deep link URL mapping)</td></tr>
   <tr><td><code>socketConfig</code></td><td><code>SocketConfig | null</code></td><td>Pusher/Soketi connection config (api_key, cluster, wsHost)</td></tr>
+  <tr><td><code>registration</code></td><td><code>RegistrationConfig | null</code></td><td>Registration capabilities from server (enabled methods, terms URL, etc.)</td></tr>
+  <tr><td><code>is24Hour</code></td><td><code>boolean</code></td><td>Whether the site uses 24-hour time format (derived from WordPress <code>time_format</code> setting)</td></tr>
+  <tr><td><code>features</code></td><td><code>FeaturesConfig | null</code></td><td>Feature flags from server (wp-admin controlled) &mdash; null until config loads</td></tr>
 </table>
 
-<h3>Usage</h3>
-<pre><code>const { visibility, portalSlug, socketConfig } = useAppConfig();
+<h3>Key Methods</h3>
+<table>
+  <tr><th>Method</th><th>Purpose</th></tr>
+  <tr><td><code>setFromBatch(data)</code></td><td>Accept pre-fetched <code>AppConfigResponse</code> and apply visibility, socket, registration, features, time format, and portal slug</td></tr>
+</table>
+
+<h3>Convenience Hooks</h3>
+<pre><code>import { useAppConfig, useFeatures } from '@/contexts/AppConfigContext';
+
+// Full context
+const { visibility, portalSlug, socketConfig, registration, is24Hour, features } = useAppConfig();
+
+// Feature flags with safe defaults (returns DEFAULT_FEATURES when config hasn't loaded yet)
+const features = useFeatures();
+if (features.courses) { /* show courses tab */ }
 
 // Check if a menu item should be hidden
-const showCourses = !visibility?.hide_menu?.includes('courses');
-
-// Portal slug for deep links
-const feedUrl = `${SITE_URL}/${portalSlug}/feeds/${slug}`;</code></pre>
+const showCourses = !visibility?.hide_menu?.includes('courses');</code></pre>
 
 <h3>Cache Persistence</h3>
-<p>Visibility and socket config are cached to AsyncStorage so the app has correct state on cold start before the batch response arrives:</p>
+<p>Several fields are cached to AsyncStorage so the app has correct state on cold start before the batch response arrives:</p>
 <ul>
   <li><code>tbc_app_visibility_cache</code> &mdash; survives logout (site-level, not user-specific)</li>
   <li><code>tbc_socket_config_cache</code> &mdash; survives logout</li>
+  <li><code>tbc_registration_config_cache</code> &mdash; survives logout</li>
+  <li><code>tbc_feature_flags_cache</code> &mdash; survives logout (via <code>featureFlags</code> utility)</li>
 </ul>
 
 <h3>Socket Config Stability</h3>
 <p>Socket config uses shallow comparison on key fields (<code>api_key</code>, <code>cluster</code>, <code>wsHost</code>) before updating state. This prevents unnecessary Pusher reconnections when the config hasn&rsquo;t actually changed.</p>
+
+<h3>Features Stability</h3>
+<p>Feature flags use JSON string comparison before updating state, preventing unnecessary re-renders when the same flags arrive from a refresh.</p>
 
 <!-- ====================================================================== -->
 <h2 id="unread">5. UnreadCountsContext</h2>
 
 <p><span class="file-path">contexts/UnreadCountsContext.tsx</span></p>
 
-<p>Single source of truth for badge counts displayed on notification bell, chat icon, and cart icon.</p>
+<p>Single source of truth for badge counts displayed on notification bell and chat icon.</p>
 
 <h3>State</h3>
 <table>
@@ -198,7 +227,14 @@ const feedUrl = `${SITE_URL}/${portalSlug}/feeds/${slug}`;</code></pre>
   <tr><td><code>unreadMessages</code></td><td><code>number</code></td><td>Startup batch, response headers, Pusher real-time</td></tr>
 </table>
 
-<p><strong>Note:</strong> Cart count was moved to the cart module (<code>modules/cart/CartContext.tsx</code>). Use <code>useCartCount()</code> from the cart module instead.</p>
+<h3>Full Interface</h3>
+<pre><code>const {
+  unreadNotifications,
+  unreadMessages,
+  setUnreadNotifications,   // (count | updater) for direct writes
+  setUnreadMessages,        // (count | updater) for direct writes
+  resetCounts,              // Zeros all counts (called on logout)
+} = useUnreadCounts();</code></pre>
 
 <h3>How Counts Stay Updated</h3>
 <ol>
@@ -223,16 +259,42 @@ resetCounts();</code></pre>
 
 <p>Manages the Pusher WebSocket connection for real-time messaging. See <a href="pusher.html">Pusher doc</a> for full details.</p>
 
+<h3>State</h3>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>isConnected</code></td><td><code>boolean</code></td><td>Whether the Pusher socket is currently connected</td></tr>
+</table>
+
+<h3>Methods</h3>
+<table>
+  <tr><th>Method</th><th>Purpose</th></tr>
+  <tr><td><code>subscribeToMessages(handler)</code></td><td>Register a callback for new message events; returns unsubscribe function</td></tr>
+  <tr><td><code>subscribeToReactions(handler)</code></td><td>Register a callback for reaction events; returns unsubscribe function</td></tr>
+</table>
+
 <h3>Dependencies</h3>
-<p>Requires both <code>AuthContext</code> (for user ID + auth state) and <code>AppConfigContext</code> (for socket config). Connects when both are available, disconnects on logout.</p>
+<p>Requires both <code>AuthContext</code> (for user ID + auth state) and <code>AppConfigContext</code> (for socket config). Connects only when all three conditions are met: authenticated, user ID available, and server provided socket config. Disconnects on logout.</p>
 
 <h3>Key Behavior</h3>
 <ul>
-  <li>Subscribes to <code>private-chat_user_{id}</code> for direct messages</li>
-  <li>Reconnects on app focus (via <code>useAppFocus</code>)</li>
-  <li>Falls back to polling via <code>useTickerPolling</code> when WebSocket fails</li>
-  <li>Bumps <code>unreadMessages</code> count on incoming message events</li>
+  <li>Reconnects on app foreground (via <code>useAppFocus</code>)</li>
+  <li>Polls <code>/feeds/ticker</code> every ~4 minutes via <code>useTickerPolling</code> to keep <code>last_activity</code> fresh (server skips broadcasts to inactive users)</li>
+  <li>Only activates ticker polling and foreground reconnect when socket config is present</li>
 </ul>
+
+<h3>Convenience Hooks</h3>
+<p>Two convenience hooks are exported from the same file for cleaner consumer code:</p>
+<pre><code>import { useNewMessageListener, useReactionListener } from '@/contexts/PusherContext';
+
+// Subscribe to new messages (auto-cleanup on unmount, stable handler via useEffectEvent)
+useNewMessageListener((message) =&gt; {
+  // handle incoming message
+});
+
+// Subscribe to reactions
+useReactionListener((reaction) =&gt; {
+  // handle reaction event
+});</code></pre>
 
 <!-- ====================================================================== -->
 <h2 id="tabbar">7. TabBarContext</h2>
@@ -240,6 +302,15 @@ resetCounts();</code></pre>
 <p><span class="file-path">contexts/TabBarContext.tsx</span></p>
 
 <p>Controls scroll-aware tab bar hiding. Only available inside <span class="file-path">app/(tabs)/_layout.tsx</span>.</p>
+
+<h3>Interface</h3>
+<table>
+  <tr><th>Field/Method</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td><code>translateY</code></td><td><code>SharedValue&lt;number&gt;</code></td><td>Reanimated shared value: 0 = visible, positive = hidden</td></tr>
+  <tr><td><code>handleScroll</code></td><td><code>(event) =&gt; void</code></td><td>Attach to FlashList/ScrollView <code>onScroll</code></td></tr>
+  <tr><td><code>showTabBar()</code></td><td><code>() =&gt; void</code></td><td>Force tab bar visible (e.g. on tab switch)</td></tr>
+  <tr><td><code>setLocked(locked)</code></td><td><code>(boolean) =&gt; void</code></td><td>Lock tab bar visible, disable scroll-hiding</td></tr>
+</table>
 
 <h3>How It Works</h3>
 <p>Tab bar visibility is driven by a Reanimated <code>SharedValue</code>. Scroll direction is detected via plain JS <code>onScroll</code> (FlashList compatible), and the animation runs on the UI thread.</p>
@@ -268,7 +339,15 @@ setLocked(true);</code></pre>
 
 <p><span class="file-path">contexts/BottomOffsetContext.tsx</span></p>
 
-<p>Tracks extra height above the tab bar from module addons (e.g., mini audio player, cart bar). Tab content screens use this to set correct bottom padding.</p>
+<p>Tracks extra height above the tab bar from module addons (e.g., mini audio player). Tab content screens use this to set correct bottom padding.</p>
+
+<h3>Exported Hooks</h3>
+<table>
+  <tr><th>Hook</th><th>Returns</th><th>Purpose</th></tr>
+  <tr><td><code>useBottomOffset()</code></td><td><code>number</code></td><td>Raw addon height (0 when no addon)</td></tr>
+  <tr><td><code>useSetAddonHeight()</code></td><td><code>(h: number) =&gt; void</code></td><td>Setter &mdash; only used by the tab bar layout</td></tr>
+  <tr><td><code>useTabContentPadding()</code></td><td><code>number</code></td><td>tab bar height + safe area + addon height + spacing</td></tr>
+</table>
 
 <h3>Usage</h3>
 <pre><code>import { useTabContentPadding } from '@/contexts/BottomOffsetContext';
@@ -279,20 +358,20 @@ const bottomPadding = useTabContentPadding();
 &lt;FlatList contentContainerStyle={{ paddingBottom: bottomPadding }} /&gt;</code></pre>
 
 <h3>How Addon Height Is Set</h3>
-<p>The tab bar layout measures the addon area via <code>onLayout</code> and calls <code>setAddonHeight()</code>. When no addon is rendered, height is 0.</p>
+<p>The tab bar layout measures the addon area via <code>onLayout</code> and calls <code>setAddonHeight()</code>. When no addon is rendered, height is 0. The setter uses stable-reference guard (<code>prev === h ? prev : h</code>) to avoid unnecessary re-renders.</p>
 
 <!-- ====================================================================== -->
 <h2 id="feedmodals">9. FeedModalsContext</h2>
 
 <p><span class="file-path">contexts/FeedModalsContext.tsx</span></p>
 
-<p>Hoists all feed card modals (menu, reaction picker, reaction breakdown, media viewer, report) into a single provider. Without this, every <code>FeedCard</code> in a FlashList would render its own 5 modals.</p>
+<p>Hoists all feed card modals (menu, media viewer, report) into a single provider. Without this, every <code>FeedCard</code> in a FlashList would render its own modals.</p>
 
 <h3>Where It Lives</h3>
 <p><code>FeedModalsProvider</code> wraps <code>FeedList</code> directly (not in the root layout). Each feed list has its own provider instance. It&rsquo;s also used in <span class="file-path">app/feed/[id].tsx</span> for the single-feed detail view.</p>
 
 <h3>Usage (from FeedCard)</h3>
-<pre><code>const { openMenu, openReactionPicker, openMediaViewer, openReport } = useFeedModals();
+<pre><code>const { openMenu, openMediaViewer, openReport } = useFeedModals();
 
 // Open the 3-dot menu
 openMenu({
@@ -310,10 +389,16 @@ openMenu({
 <table>
   <tr><th>Modal</th><th>Trigger</th><th>Component</th></tr>
   <tr><td>Feed menu</td><td><code>openMenu(params)</code></td><td><code>DropdownMenu</code></td></tr>
-  <tr><td>Reaction picker</td><td><code>openReactionPicker(params)</code></td><td><code>ReactionPicker</code></td></tr>
-  <tr><td>Reaction breakdown</td><td><code>openBreakdown(params)</code></td><td><code>ReactionBreakdownModal</code></td></tr>
   <tr><td>Media viewer</td><td><code>openMediaViewer(params)</code></td><td><code>MediaViewer</code></td></tr>
   <tr><td>Report</td><td><code>openReport(params)</code></td><td><code>ReportModal</code></td></tr>
+</table>
+
+<h3>Param Types</h3>
+<table>
+  <tr><th>Type</th><th>Key Fields</th></tr>
+  <tr><td><code>MenuParams</code></td><td><code>feed</code>, <code>anchor</code>, <code>isOwner</code>, <code>canEditOrDelete</code>, <code>canPin</code>, <code>isSticky</code>, <code>onEdit?</code>, <code>onDelete?</code>, <code>onPin?</code></td></tr>
+  <tr><td><code>MediaViewerParams</code></td><td><code>images: { url: string }[]</code>, <code>initialIndex: number</code></td></tr>
+  <tr><td><code>ReportParams</code></td><td><code>contentType: 'post' | 'comment'</code>, <code>postId</code>, <code>parentId?</code>, <code>userId</code></td></tr>
 </table>
 
 <!-- ====================================================================== -->
@@ -334,7 +419,36 @@ export const yourModule: ModuleManifest = {
 </div>
 
 <!-- ====================================================================== -->
-<h2 id="bridges">11. Service &harr; React Bridges</h2>
+<h2 id="hooks">11. Hooks Reference</h2>
+
+<p><span class="file-path">hooks/</span> &mdash; 16 custom hooks used across the app.</p>
+
+<table>
+  <tr><th>Hook</th><th>File</th><th>Purpose</th></tr>
+  <tr><td><code>useCachedData</code></td><td><code>useCachedData.ts</code></td><td>Universal stale-while-revalidate data fetching (AsyncStorage cache + background refresh + app focus + invalidation events + optimistic <code>mutate()</code>)</td></tr>
+  <tr><td><code>useStartupData</code></td><td><code>useStartupData.ts</code></td><td>Fires a single batch API call on authenticated startup; distributes results to AppConfig, Auth, and badge state</td></tr>
+  <tr><td><code>useAppFocus</code></td><td><code>useAppFocus.ts</code></td><td>Callback when app resumes from background (not on initial mount); gated by <code>enabled</code> flag</td></tr>
+  <tr><td><code>useTickerPolling</code></td><td><code>useTickerPolling.ts</code></td><td>Polls <code>/feeds/ticker</code> every ~4 minutes to keep <code>last_activity</code> fresh for Pusher broadcasts</td></tr>
+  <tr><td><code>useFeedActions</code></td><td><code>useFeedActions.ts</code></td><td>Navigation to composer/comments, bookmark, delete, profile/space navigation for feed-list screens</td></tr>
+  <tr><td><code>useFeedReactions</code></td><td><code>useFeedReactions.ts</code></td><td>Optimistic reaction updates with API sync and error reversion for feed cards</td></tr>
+  <tr><td><code>useFollowToggle</code></td><td><code>useFollowToggle.ts</code></td><td>Follow/unfollow with optimistic updates for member directory and space members</td></tr>
+  <tr><td><code>useChatMessages</code></td><td><code>useChatMessages.ts</code></td><td>Core chat state and logic: thread resolution, messages, Pusher real-time, send, block, delete</td></tr>
+  <tr><td><code>useChatReactions</code></td><td><code>useChatReactions.tsx</code></td><td>Reaction picker state, optimistic updates, and reaction helpers for the chat screen</td></tr>
+  <tr><td><code>useMessageMenu</code></td><td><code>useMessageMenu.ts</code></td><td>Message context menu, media viewer lightbox, and reply quote scroll for the chat screen</td></tr>
+  <tr><td><code>useReactionConfig</code></td><td><code>useReactionConfig.ts</code></td><td>Fetches and caches reaction config from <code>/tbc-multi-reactions/v1/config</code> (once per session, module-level cache)</td></tr>
+  <tr><td><code>useBadgeDefinitions</code></td><td><code>useBadgeDefinitions.ts</code></td><td>Fetch and resolve profile badge definitions (two-layer cache: SecureStore instant + background API refresh)</td></tr>
+  <tr><td><code>useSocialProviders</code></td><td><code>useSocialProviders.ts</code></td><td>Consume dynamic social link providers (data arrives via <code>/app-config</code>; subscribes to module-level cache)</td></tr>
+  <tr><td><code>useNotificationSettings</code></td><td><code>useNotificationSettings.ts</code></td><td>Push prefs, email prefs, permission state, toggle handlers, frequency changes, and space email prefs</td></tr>
+  <tr><td><code>useWidgetPreferences</code></td><td><code>useWidgetPreferences.ts</code></td><td>Persist widget order and visibility to AsyncStorage; handles forward compatibility for new/removed widgets</td></tr>
+  <tr><td><code>useThemedEditor</code></td><td><code>useThemedEditor.ts</code></td><td>Shared 10tap editor bridge with app theming (CSS, bridge extensions, placeholder) for post and comment editors</td></tr>
+</table>
+
+<div class="callout">
+  <strong>No React Query.</strong> This app uses <code>useCachedData</code> as its universal data fetching pattern instead of React Query / TanStack Query. Every screen and widget uses it for stale-while-revalidate behavior with AsyncStorage persistence.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="bridges">12. Service &harr; React Bridges</h2>
 
 <p>Several non-React services need to communicate with React contexts. Since services can&rsquo;t call hooks, they use a <strong>callback registration pattern</strong>:</p>
 
@@ -368,7 +482,7 @@ useEffect(() =&gt; {
 </div>
 
 <!-- ====================================================================== -->
-<h2 id="rules">12. Rules</h2>
+<h2 id="rules">13. Rules</h2>
 
 <ol>
   <li><strong>Use <code>useCachedData</code> for screen data, contexts for global state.</strong> Don&rsquo;t create a context to hold data that only one screen uses. Contexts are for state shared across multiple screens or the entire app.</li>
@@ -381,6 +495,7 @@ useEffect(() =&gt; {
   <li><strong>Never import <code>lightColors</code>/<code>darkColors</code> directly.</strong> Always use <code>const { colors } = useTheme()</code>. Direct imports bypass Fluent overrides. See <a href="theme-system.html">Theme System</a> rules.</li>
   <li><strong>Use <code>useUnreadCounts()</code> for badge counts.</strong> Don&rsquo;t fetch notification counts independently. The context is the single source of truth, updated by startup batch + response headers + real-time events.</li>
   <li><strong>Use <code>useTabContentPadding()</code> for bottom padding in tab screens.</strong> Don&rsquo;t manually calculate tab bar + safe area + addon height. The hook handles it.</li>
+  <li><strong>Use <code>useFeatures()</code> for feature flag checks.</strong> Returns safe defaults until config loads, so screens never need null guards on feature flags.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

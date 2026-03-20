@@ -74,19 +74,19 @@
     <span class="stat-label">UI Components</span>
   </div>
   <div class="stat-card">
-    <span class="stat-number">10</span>
-    <span class="stat-label">Modules</span>
+    <span class="stat-number">1+</span>
+    <span class="stat-label">Modules (extensible)</span>
   </div>
   <div class="stat-card">
-    <span class="stat-number">6</span>
-    <span class="stat-label">Companion Plugins</span>
+    <span class="stat-number">3</span>
+    <span class="stat-label">Core Companion Plugins</span>
   </div>
   <div class="stat-card">
     <span class="stat-number">17</span>
     <span class="stat-label">API Services</span>
   </div>
   <div class="stat-card">
-    <span class="stat-number">6</span>
+    <span class="stat-number">7</span>
     <span class="stat-label">Feature Flags</span>
   </div>
 </div>
@@ -1648,7 +1648,8 @@
 <h3>Module Architecture Highlights</h3>
 <ul>
   <li><strong>Zero-touch core:</strong> Modules never modify core files. Register once in <code>_registry.ts</code> and the system wires everything up.</li>
-  <li><strong>Server-driven visibility:</strong> The server's <code>hide_menu</code> array can hide module tabs and menu items without an app update.</li>
+  <li><strong>Server-driven visibility:</strong> The server's <code>hide_menu</code> array can hide module tabs, menu items, and header icons without an app update.</li>
+  <li><strong>Feature-flag-gated widgets:</strong> Widgets can declare a <code>featureFlag</code> key (e.g. <code>courses</code>, <code>messaging</code>) and are excluded entirely when that flag is disabled in wp-admin.</li>
   <li><strong>Forward-compatible widgets:</strong> When a new module is enabled, its widget auto-appears on the home screen in the next launch.</li>
   <li><strong>Push notification routing:</strong> Modules can register push handlers to intercept and route their own notification types.</li>
   <li><strong>Context providers:</strong> Modules can inject React context providers (e.g., an audio player state) into the app's provider tree.</li>

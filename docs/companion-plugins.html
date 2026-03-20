@@ -39,7 +39,7 @@
     <td><strong>tbc-community-app</strong></td>
     <td><code>tbc-ca/v1</code></td>
     <td><span class="tag required">Core</span></td>
-    <td>Auth, registration, batch API, push notifications, app config, WebView sessions</td>
+    <td>Auth, registration, batch API, push notifications, app config, WebView sessions, deep linking</td>
   </tr>
   <tr>
     <td><strong>tbc-multi-reactions</strong></td>
@@ -70,7 +70,38 @@
 
 <p><span class="file-path">companion plugins/tbc-community-app/</span> <span class="tag required">Core</span></p>
 
-<p>The main bridge plugin. Every app installation requires this. It provides JWT authentication, registration, the batch API, push notifications, app configuration delivery, and authenticated WebView sessions.</p>
+<p>The main bridge plugin. Every app installation requires this. It provides JWT authentication, registration, the batch API, push notifications (via Expo Push API), app configuration delivery, authenticated WebView sessions, deep linking, and response header injection.</p>
+
+<h3>Plugin Structure</h3>
+<p>Version <code>3.48.0</code> &mdash; REST namespace <code>tbc-ca/v1</code>. Classes are autoloaded from <span class="file-path">includes/</span>:</p>
+<table>
+  <tr><th>File</th><th>Class</th><th>Purpose</th></tr>
+  <tr><td><code>class-core.php</code></td><td>TBC_CA_Core</td><td>Initializes all components, settings management</td></tr>
+  <tr><td><code>class-api.php</code></td><td>TBC_CA_API</td><td>CORS handling for the tbc-ca/v1 namespace, REST index protection</td></tr>
+  <tr><td><code>class-auth.php</code></td><td>TBC_CA_Auth</td><td>JWT token generation, validation, session management</td></tr>
+  <tr><td><code>class-auth-api.php</code></td><td>TBC_CA_Auth_API</td><td>Login, refresh, logout REST endpoints</td></tr>
+  <tr><td><code>class-registration-api.php</code></td><td>TBC_CA_Registration_API</td><td>Registration REST endpoints, FC custom field injection</td></tr>
+  <tr><td><code>class-password-api.php</code></td><td>TBC_CA_Password_API</td><td>Password forgot/reset REST endpoints</td></tr>
+  <tr><td><code>class-account-api.php</code></td><td>TBC_CA_Account_API</td><td>Account deactivation &amp; deletion</td></tr>
+  <tr><td><code>class-app-config.php</code></td><td>TBC_CA_App_Config</td><td>App config endpoint (theme, features, branding, socket, maintenance)</td></tr>
+  <tr><td><code>class-batch-api.php</code></td><td>TBC_CA_Batch_API</td><td>Batch multiple REST requests into one HTTP call</td></tr>
+  <tr><td><code>class-badge-definitions.php</code></td><td>TBC_CA_Badge_Definitions</td><td>Badge definitions endpoint</td></tr>
+  <tr><td><code>class-rest-fields.php</code></td><td>TBC_CA_Rest_Fields</td><td>Embeds FC avatar, verified status, badge slugs into WP REST responses</td></tr>
+  <tr><td><code>class-response-headers.php</code></td><td>TBC_CA_Response_Headers</td><td>Injects custom headers into every authenticated response</td></tr>
+  <tr><td><code>class-deep-links.php</code></td><td>TBC_CA_Deep_Links</td><td>.well-known files, smart app banner</td></tr>
+  <tr><td><code>webview/class-web-session.php</code></td><td>TBC_CA_Web_Session</td><td>One-time login URLs for in-app WebView</td></tr>
+  <tr><td><code>webview/class-app-view.php</code></td><td>TBC_CA_App_View</td><td>App-specific WebView styling</td></tr>
+  <tr><td><code>push/class-registry.php</code></td><td>TBC_CA_Push_Registry</td><td>Notification type registry (categories, labels, defaults)</td></tr>
+  <tr><td><code>push/class-preferences.php</code></td><td>TBC_CA_Push_Preferences</td><td>Per-user notification preferences</td></tr>
+  <tr><td><code>push/class-devices.php</code></td><td>TBC_CA_Push_Devices</td><td>Device token storage (DB table)</td></tr>
+  <tr><td><code>push/class-firebase.php</code></td><td>TBC_CA_Push_Firebase</td><td>Push delivery via Expo Push API</td></tr>
+  <tr><td><code>push/class-api.php</code></td><td>TBC_CA_Push_API</td><td>Push REST endpoints (device registration, settings)</td></tr>
+  <tr><td><code>push/class-hooks.php</code></td><td>TBC_CA_Push_Hooks</td><td>WordPress/FC action hooks that trigger push notifications</td></tr>
+  <tr><td><code>push/class-log.php</code></td><td>TBC_CA_Push_Log</td><td>Push notification logging (DB table)</td></tr>
+  <tr><td><code>push/class-manual.php</code></td><td>TBC_CA_Push_Manual</td><td>Manual push notification form (admin)</td></tr>
+  <tr><td><code>admin/class-admin.php</code></td><td>TBC_CA_Admin</td><td>Admin menu registration</td></tr>
+  <tr><td><code>admin/class-settings.php</code></td><td>TBC_CA_Admin_Settings</td><td>Settings page (7 tabs)</td></tr>
+</table>
 
 <h3>Registration Endpoints</h3>
 <table>
@@ -94,59 +125,108 @@
 <h3>App Configuration</h3>
 <table>
   <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
-  <tr><td>GET</td><td><code>/app-config</code></td><td>Optional</td><td>Theme colors, branding, visibility flags, socket config, maintenance, update info, social providers</td></tr>
-  <tr><td>GET</td><td><code>/badge-definitions</code></td><td>Yes</td><td>Achievement badge definitions (slugs, labels, icons)</td></tr>
+  <tr><td>GET</td><td><code>/app-config</code></td><td>Optional</td><td>Theme colors, branding, feature flags, socket config, maintenance, update info, social providers, portal slug, registration capabilities, time format. When authenticated: UI visibility flags + maintenance bypass.</td></tr>
+  <tr><td>GET</td><td><code>/badge-definitions</code></td><td>No</td><td>Achievement badge definitions (slugs, labels, icons)</td></tr>
 </table>
 
 <h3>Batch API</h3>
 <table>
   <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
-  <tr><td>POST</td><td><code>/batch</code></td><td>Yes</td><td>Combine multiple REST requests into a single HTTP call</td></tr>
+  <tr><td>POST</td><td><code>/batch</code></td><td>Yes</td><td>Combine up to 20 REST requests into a single HTTP call</td></tr>
 </table>
 <p>See <a href="caching-system.html#batch-startup">Caching System &rarr; Batch Startup</a> for how the app uses this.</p>
 
 <h3>Push Notifications</h3>
 <table>
   <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
-  <tr><td>POST</td><td><code>/push/device</code></td><td>Yes</td><td>Register device token (FCM/APNs)</td></tr>
-  <tr><td>DELETE</td><td><code>/push/device</code></td><td>Yes</td><td>Unregister device token</td></tr>
-  <tr><td>GET</td><td><code>/push/settings</code></td><td>Yes</td><td>Get user&rsquo;s notification preferences</td></tr>
+  <tr><td>POST</td><td><code>/push/device</code></td><td>Yes</td><td>Register device token (Expo Push Token)</td></tr>
+  <tr><td>DELETE</td><td><code>/push/device</code></td><td>Yes</td><td>Unregister device token (specific token, or all for user)</td></tr>
+  <tr><td>GET</td><td><code>/push/settings</code></td><td>Yes</td><td>Get user&rsquo;s notification preferences (grouped by category)</td></tr>
   <tr><td>POST</td><td><code>/push/settings</code></td><td>Yes</td><td>Update notification preferences</td></tr>
 </table>
+<p>Push delivery uses <strong>Expo Push API</strong> (no Firebase service account needed on the server). The push feature flag must be enabled in the Features admin tab.</p>
 
 <h3>Account &amp; WebView</h3>
 <table>
   <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
-  <tr><td>POST</td><td><code>/account/deactivate</code></td><td>Yes</td><td>Deactivate user account</td></tr>
-  <tr><td>DELETE</td><td><code>/account/delete</code></td><td>Yes</td><td>Permanently delete user account</td></tr>
-  <tr><td>POST</td><td><code>/create-web-session</code></td><td>Yes</td><td>Create authenticated session for in-app WebView</td></tr>
-  <tr><td>GET</td><td><code>/cart/count</code></td><td>Yes</td><td>WooCommerce cart item count</td></tr>
+  <tr><td>POST</td><td><code>/account/deactivate</code></td><td>Yes</td><td>Soft-deactivate user profile (reversible via web login)</td></tr>
+  <tr><td>DELETE</td><td><code>/account/delete</code></td><td>Yes</td><td>Permanently delete user account (requires <code>{"confirm":"DELETE"}</code>)</td></tr>
+  <tr><td>POST</td><td><code>/create-web-session</code></td><td>Yes</td><td>Create one-time login URL for in-app WebView</td></tr>
 </table>
 
 <h3>Deep Link Files</h3>
 <table>
   <tr><th>Method</th><th>Path</th><th>Purpose</th></tr>
-  <tr><td>GET</td><td><code>/.well-known/apple-app-site-association</code></td><td>iOS Universal Links configuration</td></tr>
-  <tr><td>GET</td><td><code>/.well-known/assetlinks.json</code></td><td>Android App Links configuration</td></tr>
+  <tr><td>GET</td><td><code>/.well-known/apple-app-site-association</code></td><td>iOS Universal Links configuration (served via early <code>init</code> interception + REST fallback)</td></tr>
+  <tr><td>GET</td><td><code>/.well-known/assetlinks.json</code></td><td>Android App Links configuration (served via early <code>init</code> interception + REST fallback)</td></tr>
 </table>
+<p>Deep link settings (bundle ID, package name, Apple Team ID, Android SHA256, App Store ID, smart banner toggle) are configured in the admin General tab.</p>
 
 <h3>Response Headers</h3>
-<p>The plugin injects custom headers into every authenticated Fluent Community API response. See <a href="api-client.html#response-headers">API Client &rarr; Response Headers</a> for the full list (<code>X-TBC-Unread-Notifications</code>, <code>X-TBC-Cart-Count</code>, etc.).</p>
+<p>The plugin injects custom headers into every authenticated REST response (any namespace, not just <code>tbc-ca/v1</code>). The mobile app reads these via a global interceptor in <span class="file-path">services/api/client.ts</span>. See <a href="api-client.html#response-headers">API Client &rarr; Response Headers</a>.</p>
+<table>
+  <tr><th>Header</th><th>Value</th><th>Purpose</th></tr>
+  <tr><td><code>X-TBC-Unread-Notifications</code></td><td>Integer</td><td>Fluent Community unread notification count</td></tr>
+  <tr><td><code>X-TBC-Unread-Messages</code></td><td>Integer</td><td>Fluent Messaging unread thread count</td></tr>
+  <tr><td><code>X-TBC-Maintenance</code></td><td><code>0</code> or <code>1</code></td><td>Whether user should see maintenance screen</td></tr>
+  <tr><td><code>X-TBC-Profile-Incomplete</code></td><td><code>0</code> or <code>1</code></td><td>Whether user should be gated for profile completion</td></tr>
+  <tr><td><code>X-TBC-Min-App-Version</code></td><td>Semver string</td><td>Minimum app version (only sent when configured)</td></tr>
+</table>
+
+<h3>REST Fields</h3>
+<p>The plugin registers custom REST fields on WP REST API responses to embed Fluent Community data without extra API calls:</p>
+<ul>
+  <li><strong>User objects</strong> (posts via <code>_embed</code>): <code>fcom_avatar</code>, <code>fcom_is_verified</code>, <code>fcom_badge_slugs</code></li>
+  <li><strong>Comment objects</strong>: <code>fcom_author_avatar</code>, <code>fcom_author_is_verified</code>, <code>fcom_author_slug</code>, <code>fcom_author_badge_slugs</code></li>
+</ul>
+
+<h3>Admin Settings</h3>
+<p>The plugin adds a settings page under WP admin with 7 tabs:</p>
+<table>
+  <tr><th>Tab</th><th>Settings</th></tr>
+  <tr><td><strong>General</strong></td><td>App version control (min version, store URLs), maintenance mode (toggle, message, bypass roles), deep linking (bundle ID, package name, URL scheme, Apple Team ID, Android SHA256, App Store ID, smart banner), data management (delete on uninstall)</td></tr>
+  <tr><td><strong>Features</strong></td><td>Feature flags: dark mode, push notifications, messaging (requires Fluent Messaging), courses (requires FC Course module). Profile tabs: posts, spaces, comments.</td></tr>
+  <tr><td><strong>UI Visibility</strong></td><td>Role-based element hiding matrix (cart, blog, courses, bookmarks, directory, notification settings). Custom visibility elements for module integration.</td></tr>
+  <tr><td><strong>Notifications</strong></td><td>Push notification type management: enable/disable types, set defaults, control user visibility. Types are grouped by category.</td></tr>
+  <tr><td><strong>Push Log</strong></td><td>30-day push notification statistics and recent activity log (read-only).</td></tr>
+  <tr><td><strong>Statistics</strong></td><td>Device token counts (iOS/Android), JWT session counts (active/expired/per-user).</td></tr>
+  <tr><td><strong>Tools</strong></td><td>Session management (purge all, revoke per-user), manual push notification sender.</td></tr>
+</table>
+
+<h3>Global Helper Functions</h3>
+<p>The plugin exposes helper functions for use by other plugins:</p>
+<ul>
+  <li><code>tbc_register_push_notification($args)</code> &mdash; Register a push notification type</li>
+  <li><code>tbc_send_push_notification($user_id, $type, $data)</code> &mdash; Send push to a single user (synchronous)</li>
+  <li><code>tbc_send_push_to_users($user_ids, $type, $title, $body, $route, $exclude_id)</code> &mdash; Send push to multiple users via async Action Scheduler queue (recommended for external plugins)</li>
+</ul>
+
+<h3>Extension Hooks</h3>
+<p>Add-on plugins integrate via these filters:</p>
+<ul>
+  <li><code>tbc_ca_pre_register</code> &mdash; Intercept before user creation (e.g., OTP verification)</li>
+  <li><code>tbc_ca_post_register</code> &mdash; Act after user creation (e.g., mark profile incomplete)</li>
+  <li><code>tbc_ca_registration_config</code> &mdash; Advertise add-on capabilities in the registration config</li>
+  <li><code>tbc_ca_features_config</code> &mdash; Modify feature flags before sending to the app</li>
+  <li><code>tbc_ca_register_push_types</code> &mdash; Register custom push notification types</li>
+  <li><code>tbc_reg_registration_response</code> &mdash; Attach JWT tokens to registration responses</li>
+</ul>
 
 <!-- ====================================================================== -->
 <h2 id="tbc-multi-reactions">3. TBC Multi Reactions</h2>
 
 <p><span class="file-path">companion plugins/tbc-multi-reactions/</span> <span class="tag required">Core</span></p>
 
-<p>Replaces Fluent Community&rsquo;s default single-heart reaction with a multi-emoji reaction system. Supports posts, comments, and chat messages. Reaction icons can be customized in WP admin (PNG, SVG, GIF, WEBP).</p>
+<p>Version <code>1.5.5</code>. Replaces Fluent Community&rsquo;s default single-heart reaction with a multi-emoji reaction system. Supports posts, comments, and chat messages. Reaction icons can be customized in WP admin (PNG, SVG, GIF, WEBP).</p>
 
 <h3>Endpoints</h3>
+<p>Namespace: <code>tbc-multi-reactions/v1</code></p>
 <table>
   <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
   <tr><td>GET</td><td><code>/config</code></td><td>No</td><td>Get enabled reaction types and icon URLs</td></tr>
   <tr><td>POST</td><td><code>/swap</code></td><td>Yes</td><td>Swap reaction type on an existing reaction</td></tr>
-  <tr><td>GET</td><td><code>/breakdown/{type}/{id}</code></td><td>No</td><td>Get reaction counts by type for a post/comment</td></tr>
-  <tr><td>GET</td><td><code>/breakdown/{type}/{id}/users</code></td><td>No</td><td>Get reaction breakdown with user details</td></tr>
+  <tr><td>GET</td><td><code>/breakdown/{object_type}/{object_id}</code></td><td>No</td><td>Get reaction counts by type for a post/comment</td></tr>
+  <tr><td>GET</td><td><code>/breakdown/{object_type}/{object_id}/users</code></td><td>No</td><td>Get reaction breakdown with user details</td></tr>
 </table>
 
 <h3>How It Works</h3>
@@ -162,7 +242,7 @@
 
 <p><span class="file-path">companion plugins/tbc-starter-theme/</span> <span class="tag required">Core</span></p>
 
-<p>A lightweight WordPress theme designed for sites running Fluent Community. It stays out of the way on community portal pages (Fluent Community renders its own Vue.js SPA) while providing clean styling for regular WordPress pages.</p>
+<p>Version <code>1.0.51</code>. A lightweight WordPress theme (named &ldquo;Fluent Starter&rdquo;) designed for sites running Fluent Community. It stays out of the way on community portal pages (Fluent Community renders its own Vue.js SPA) while providing clean styling for regular WordPress pages.</p>
 
 <h3>Key Features</h3>
 <ul>
@@ -182,11 +262,18 @@
 
 <p>Each add-on module ships with a companion WordPress plugin that provides its REST endpoints. Add-on plugins are sold separately and come with their matching app module.</p>
 
+<h3>Available Add-ons</h3>
+<table>
+  <tr><th>Plugin</th><th>Namespace</th><th>App Module</th><th>Purpose</th></tr>
+  <tr><td>tbc-otp</td><td><code>tbc-otp/v1</code></td><td>otp</td><td>Phone OTP verification via Twilio. Adds a pre-creation registration step.</td></tr>
+  <tr><td>tbc-profile-completion</td><td><code>tbc-pcom/v1</code></td><td>profile-completion</td><td>Profile completion gate. Requires bio and/or avatar after registration.</td></tr>
+</table>
+
 <h3>How Add-on Plugins Work</h3>
 <ul>
-  <li>Each add-on plugin registers its own REST namespace (e.g., <code>tbc-yourplugin/v1</code>)</li>
-  <li>Plugins hook into the core plugin's filter system (<code>tbc_ca_registration_config</code>, <code>tbc_ca_pre_register</code>, etc.) to extend functionality</li>
-  <li>The matching app module communicates with the plugin's REST endpoints</li>
+  <li>Each add-on plugin registers its own REST namespace (e.g., <code>tbc-otp/v1</code>)</li>
+  <li>Plugins hook into the core plugin&rsquo;s filter system (<code>tbc_ca_registration_config</code>, <code>tbc_ca_pre_register</code>, etc.) to extend functionality</li>
+  <li>The matching app module communicates with the plugin&rsquo;s REST endpoints</li>
   <li>All add-on plugins are completely optional &mdash; the app adapts automatically based on which plugins are active</li>
 </ul>
 
@@ -199,7 +286,7 @@
 </ol>
 
 <div class="callout">
-  <strong>Completely optional.</strong> Without any add-on plugins, the core app works fully. Add-on plugins extend functionality &mdash; when they&rsquo;re not installed, the corresponding features simply don&rsquo;t appear. The app discovers available add-on capabilities via the server config.
+  <strong>Completely optional.</strong> Without any add-on plugins, the core app works fully. Add-on plugins extend functionality &mdash; when they&rsquo;re not installed, the corresponding features simply don&rsquo;t appear. The app discovers available add-on capabilities via the <code>/app-config</code> registration config.
 </div>
 
 <!-- ====================================================================== -->
@@ -214,7 +301,7 @@ export const TBC_CA_URL  = `${SITE_URL}/wp-json/tbc-ca/v1`;       // Auth, regis
 export const API_URL     = `${SITE_URL}/wp-json/fluent-community/v2`;
 export const WP_REST_URL = `${SITE_URL}/wp-json/wp/v2`;</code></pre>
 
-<p>Module-specific API URLs are defined locally in each module's service files (not as global constants). Each module constructs its own base URL from <code>SITE_URL</code>.</p>
+<p>Module-specific API URLs are defined locally in each module&rsquo;s service files (not as global constants). Each module constructs its own base URL from <code>SITE_URL</code>.</p>
 
 <p>Service files pass these as <code>baseUrl</code> to the <a href="api-client.html">HTTP client</a>:</p>
 <pre><code>// services/api/registration.ts

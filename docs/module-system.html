@@ -34,6 +34,7 @@
     <li><a href="#integration-points">Integration Points</a></li>
     <li><a href="#visibility">Visibility &amp; Feature Flags</a></li>
     <li><a href="#lifecycle">Lifecycle Hooks</a></li>
+    <li><a href="#notifications">Push Notification Handler</a></li>
     <li><a href="#create-module">Creating a Module (Step-by-Step)</a></li>
     <li><a href="#directory-structure">Directory Structure</a></li>
     <li><a href="#api-patterns">API Service Patterns</a></li>
@@ -98,14 +99,15 @@ components/
 <pre><code>// modules/_types.ts
 
 export interface ModuleManifest {
+  // Required identification
   id: string;              // Unique module ID (never change once shipped)
   name: string;            // Human-readable name
   version: string;         // Semver version
 
-  // Module metadata (WordPress-style headers)
+  // Module metadata (optional)
   description?: string;       // What the module does
   author?: string;            // Author name
-  authorUrl?: string;         // Author website
+  authorUrl?: string;         // Author website URL
   license?: string;           // License type (e.g. 'Proprietary', 'MIT')
   minAppVersion?: string;     // Minimum app version required
 
@@ -121,8 +123,8 @@ export interface ModuleManifest {
   tabBarAddon?: React.ComponentType;
   routePrefixes?: string[];
 
-  // Metadata (informational &mdash; not consumed by runtime code)
-  hideMenuKey?: string;       // Server visibility key
+  // Metadata (informational)
+  hideMenuKey?: string;       // Server visibility key (inherited by tab)
   companionPlugin?: string;   // WordPress plugin slug
   apiBase?: string;           // REST API base URL
 
@@ -161,7 +163,7 @@ export interface ModuleManifest {
     <tr><td><code>hideMenuKey</code></td><td>string</td><td>Server visibility key. Inherited by tab if tab doesn't set its own.</td></tr>
     <tr><td><code>companionPlugin</code></td><td>string</td><td>WordPress companion plugin slug (informational).</td></tr>
     <tr><td><code>apiBase</code></td><td>string</td><td>REST API base URL (informational).</td></tr>
-    <tr><td><code>onInit</code></td><td>() =&gt; void</td><td>Called once after authentication is confirmed.</td></tr>
+    <tr><td><code>onInit</code></td><td>() =&gt; void | Promise&lt;void&gt;</td><td>Called once after authentication is confirmed.</td></tr>
     <tr><td><code>onCleanup</code></td><td>() =&gt; void</td><td>Called on logout. Clear caches, reset state.</td></tr>
     <tr><td><code>notificationHandler</code></td><td>(data, router) =&gt; boolean</td><td>Handle push notification taps. Return <code>true</code> to stop fallthrough.</td></tr>
   </tbody>
@@ -170,105 +172,302 @@ export interface ModuleManifest {
 <!-- ================================================================== -->
 <h2 id="registration-types">4. Registration Types</h2>
 
-<h3>TabRegistration</h3>
+<h3 id="tab-registration">TabRegistration</h3>
 <p>Adds a bottom tab to the tab bar.</p>
 <pre><code>interface TabRegistration {
-  name: string;           // Must match filename in app/(tabs)/ (e.g. 'shop')
-  title: string;          // Label shown under the tab icon
-  icon: string;           // Ionicon name for focused state
-  iconOutline: string;    // Ionicon name for unfocused state
-  order: number;          // Sort position (core: Home=10, Activity=20, Spaces=30)
-  component: ComponentType;  // The tab screen component
-  hideMenuKey?: string;   // Server visibility key
-  interceptPress?: (router: any) =&gt; void;  // Override tab press behavior
-  tabBarIcon?: (props: { focused: boolean; color: string }) =&gt; ReactNode;  // Custom icon
-  tabColor?: ColorTokenKey;  // Override active/inactive color (theme token name)
+  /** Must match the filename in app/(tabs)/ (e.g. 'shop' &rarr; app/(tabs)/shop.tsx) */
+  name: string;
+  /** Display title shown under the tab icon */
+  title: string;
+  /** Ionicon name for focused state */
+  icon: keyof typeof Ionicons.glyphMap;
+  /** Ionicon name for unfocused state */
+  iconOutline: keyof typeof Ionicons.glyphMap;
+  /** Sort position (core tabs: Home=10, Activity=20, Spaces=30) */
+  order: number;
+  /** The tab screen component (re-exported from the route stub) */
+  component: React.ComponentType;
+  /** Server visibility key &mdash; tab hidden when this key is in hide_menu[] */
+  hideMenuKey?: string;
+  /** Intercept tab press (e.g. to open WebView instead of navigating) */
+  interceptPress?: (router: any) =&gt; void;
+  /** Custom tab icon component (overrides icon/iconOutline if provided) */
+  tabBarIcon?: (props: { focused: boolean; color: string }) =&gt; React.ReactNode;
+  /** Override tab color &mdash; use a theme token name (e.g. 'error' for red). Defaults to tabBar.active/inactive */
+  tabColor?: ColorTokenKey;
+}</code></pre>
+
+<p><strong>Example:</strong></p>
+<pre><code>tab: {
+  name: 'events',
+  title: 'Events',
+  icon: 'calendar',
+  iconOutline: 'calendar-outline',
+  order: 40,
+  component: EventsTab,
+  hideMenuKey: 'events',
 }</code></pre>
 
 <div class="callout callout-warn">
   <strong>Route stub required.</strong> If your module has a tab, you must create a one-line re-export file in <code>app/(tabs)/</code>. Expo Router requires a real file for each route.
 </div>
 
-<h3>WidgetRegistration</h3>
+<h3 id="widget-registration">WidgetRegistration</h3>
 <p>Adds a card to the home screen.</p>
 <pre><code>interface WidgetRegistration {
-  id: string;             // Stable ID (AsyncStorage key &mdash; never change once shipped)
-  title: string;          // Header text in HomeWidget wrapper
-  icon?: string;          // Ionicon name for header
-  seeAllRoute?: string;   // "See All" navigation target
-  featureFlag?: string;   // If set and server flag is off, widget is excluded entirely
-  defaultEnabled: boolean;   // Default visibility for new users
-  canDisable: boolean;       // Whether user can toggle in edit mode
-  externalWrapper: boolean;  // true = HomeWidget wraps it; false = widget handles own layout
-  component: ComponentType&lt;{ refreshKey: number }&gt;;  // Widget component
+  /** Unique stable ID &mdash; never change once shipped (used as AsyncStorage key) */
+  id: string;
+  /** Display title shown in HomeWidget header */
+  title: string;
+  /** Ionicon name for header */
+  icon?: keyof typeof Ionicons.glyphMap;
+  /** "See all" route &mdash; if undefined, no "See all" link */
+  seeAllRoute?: string;
+  /** Feature flag key &mdash; if set and false, widget is excluded entirely */
+  featureFlag?: BooleanFeatureKey;
+  /** Default enabled state for new users */
+  defaultEnabled: boolean;
+  /** Whether the user can disable this widget */
+  canDisable: boolean;
+  /** Whether the home screen wraps this in HomeWidget (true) or widget handles its own layout (false) */
+  externalWrapper: boolean;
+  /** The widget component &mdash; receives refreshKey prop */
+  component: React.ComponentType&lt;{ refreshKey: number }&gt;;
 }</code></pre>
+
+<p><strong>Example:</strong></p>
+<pre><code>widgets: [{
+  id: 'upcoming-event',
+  title: 'Upcoming Event',
+  icon: 'calendar-outline',
+  seeAllRoute: '/events',
+  featureFlag: 'events',     // Only shown if events feature is enabled
+  defaultEnabled: true,
+  canDisable: true,
+  externalWrapper: true,     // HomeWidget wrapper handles header/chrome
+  component: EventsWidget,
+}]</code></pre>
 
 <div class="callout">
   <strong>refreshKey prop.</strong> The home screen passes a <code>refreshKey</code> number that increments on pull-to-refresh. Use it to trigger data refetch. Return <code>null</code> from your widget if there's no data &mdash; never render an empty card.
 </div>
 
-<h3>ProviderRegistration</h3>
-<p>Injects a React context provider into the app tree.</p>
-<pre><code>interface ProviderRegistration {
-  id: string;       // Unique ID
-  order: number;    // Lower = wraps outer in the tree
-  component: ComponentType&lt;{ children: ReactNode }&gt;;
-}</code></pre>
-
-<h3>MenuItemRegistration</h3>
-<p>Adds an item to the avatar dropdown menu.</p>
-<pre><code>interface MenuItemRegistration {
-  id: string;
-  label: string;          // Display text
-  icon: string;           // Ionicon name
-  route: string | { pathname: string; params: Record&lt;string, string&gt; };
-  order: number;          // Core items use 10-90 &mdash; place yours in the gaps
-  hideMenuKey?: string;   // Server visibility key
-  iconColor?: string;     // Theme token for icon color override
-}</code></pre>
-
-<h3>HeaderIconRegistration</h3>
-<p>Adds an icon button to the top header.</p>
-<pre><code>interface HeaderIconRegistration {
-  id: string;
-  icon: string;                // Ionicon name
-  route: string | { pathname: string; params: Record&lt;string, string&gt; };
-  order: number;               // Core: Messages=10, Notifications=20, Cart=30
-  accessibilityLabel?: string;
-  hideMenuKey?: string;
-}</code></pre>
-
-<h3>RegistrationStepRegistration</h3>
-<p>Injects a step into the multi-step registration wizard. Currently only <code>pre-creation</code> phase is supported &mdash; the step runs before the user account is created.</p>
-<pre><code>interface RegistrationStepRegistration {
-  id: string;             // Unique step ID
-  order: number;          // Sort position (core email-verify = 10, place yours higher)
-  phase: 'pre-creation';  // When the step runs in the flow
-  title: string;          // Step title shown in the wizard
-  component: ComponentType&lt;RegistrationStepProps&gt;;  // Step UI component
-  shouldActivate: (submitResponse: Record&lt;string, unknown&gt;) =&gt; boolean;  // Gate function
-}</code></pre>
-
 <div class="callout">
-  <strong>shouldActivate:</strong> Called with the server's registration response. Return <code>true</code> if your step should be shown. For example, a verification module checks if <code>submitResponse.verification_required</code> is true.
+  <strong>externalWrapper explained.</strong> When <code>true</code>, the home screen wraps your widget in the standard <code>HomeWidget</code> chrome (header bar with title, icon, and "See All" link). When <code>false</code>, your widget component is responsible for its own layout &mdash; useful for full-bleed or custom-styled widgets.
 </div>
 
-<h3>ResponseHeaderMapping</h3>
-<p>Extracts custom HTTP response headers from API responses and stores them for the module to act on. Useful for server-driven gates (e.g., post-login completion checks).</p>
-<pre><code>interface ResponseHeaderMapping {
-  header: string;         // HTTP header name (e.g. 'X-My-Custom-Header')
-  key: string;            // Storage key for the extracted value
-  transform?: (value: string) =&gt; unknown;  // Optional transform (e.g. parse to boolean)
+<h3 id="provider-registration">ProviderRegistration</h3>
+<p>Injects a React context provider into the app tree.</p>
+<pre><code>interface ProviderRegistration {
+  /** Unique ID for the provider */
+  id: string;
+  /** Sort order &mdash; lower numbers wrap outer (rendered first in the tree) */
+  order: number;
+  /** The context provider component */
+  component: React.ComponentType&lt;{ children: React.ReactNode }&gt;;
 }</code></pre>
 
-<h3>SlotRegistration</h3>
+<p><strong>Example:</strong></p>
+<pre><code>providers: [{
+  id: 'polls-provider',
+  order: 50,
+  component: PollsProvider,   // Wraps app with polls context (state, modals)
+}]</code></pre>
+
+<div class="callout">
+  <strong>Provider ordering.</strong> Lower <code>order</code> values wrap outer in the React tree. If Provider A (order 10) needs to be available inside Provider B (order 20), give A the lower number. Module providers are injected after core providers (Auth, AppConfig, Pusher, BottomSheetModal) so they have access to all core contexts.
+</div>
+
+<h3 id="menu-item-registration">MenuItemRegistration</h3>
+<p>Adds an item to the avatar dropdown menu.</p>
+<pre><code>interface MenuItemRegistration {
+  /** Unique ID for this menu item */
+  id: string;
+  /** Display label */
+  label: string;
+  /** Ionicon name */
+  icon: keyof typeof Ionicons.glyphMap;
+  /** Route to navigate to (e.g. '/events' or { pathname: '/webview', params: {...} }) */
+  route: string | { pathname: string; params: Record&lt;string, string&gt; };
+  /** Sort position &mdash; core items use 10-90, place yours between them */
+  order: number;
+  /** Server visibility key &mdash; item hidden when this key is in hide_menu[] */
+  hideMenuKey?: string;
+  /** Override icon color &mdash; use a theme token name (e.g. 'error' for red). Defaults to textSecondary */
+  iconColor?: string;
+}</code></pre>
+
+<p><strong>Example &mdash; in-app route:</strong></p>
+<pre><code>menuItems: [{
+  id: 'events',
+  label: 'Events',
+  icon: 'calendar-outline',
+  route: '/events',
+  order: 50,
+  hideMenuKey: 'events',
+}]</code></pre>
+
+<p><strong>Example &mdash; WebView route:</strong></p>
+<pre><code>menuItems: [{
+  id: 'resources',
+  label: 'Resources',
+  icon: 'document-text-outline',
+  route: {
+    pathname: '/webview',
+    params: { url: `${SITE_URL}/resources/`, title: 'Resources' },
+  },
+  order: 55,
+}]</code></pre>
+
+<h3 id="header-icon-registration">HeaderIconRegistration</h3>
+<p>Adds an icon button to the top header bar.</p>
+<pre><code>interface HeaderIconRegistration {
+  /** Unique ID for this header icon */
+  id: string;
+  /** Ionicon name */
+  icon: keyof typeof Ionicons.glyphMap;
+  /** Route to navigate to */
+  route: string | { pathname: string; params: Record&lt;string, string&gt; };
+  /** Sort position &mdash; core icons: Messages=10, Notifications=20, Cart=30 */
+  order: number;
+  /** Accessibility label */
+  accessibilityLabel?: string;
+  /** Server visibility key &mdash; icon hidden when this key is in hide_menu[] */
+  hideMenuKey?: string;
+  /** React hook returning a badge count. Called inside a wrapper component so hook rules are safe. */
+  useBadgeCount?: () =&gt; number;
+}</code></pre>
+
+<p><strong>Example:</strong></p>
+<pre><code>headerIcons: [{
+  id: 'events-header',
+  icon: 'calendar-outline',
+  route: '/events',
+  order: 25,          // Between Notifications (20) and Cart (30)
+  accessibilityLabel: 'Events',
+  hideMenuKey: 'events',
+  useBadgeCount: () =&gt; {
+    // Custom hook that returns pending event count
+    const { pendingCount } = useEventNotifications();
+    return pendingCount;
+  },
+}]</code></pre>
+
+<div class="callout">
+  <strong>useBadgeCount is a React hook.</strong> The registry wraps each header icon in a component, so <code>useBadgeCount</code> is called in a valid React context. Return <code>0</code> to hide the badge. This lets modules display dynamic badge counts without the header knowing about module-specific state.
+</div>
+
+<h3 id="registration-step-registration">RegistrationStepRegistration</h3>
+<p>Injects a step into the multi-step registration wizard. Currently only <code>pre-creation</code> phase is supported &mdash; the step runs before the user account is created on the server.</p>
+<pre><code>interface RegistrationStepRegistration {
+  /** Unique step ID (e.g. 'phone-verify') */
+  id: string;
+  /** Sort order: core email-verify = 10. Module steps can use any value (e.g. 5, 20, 30). */
+  order: number;
+  /** Step runs before user account creation (all module steps are pre-creation) */
+  phase: 'pre-creation';
+  /** Step title shown in the register screen header */
+  title: string;
+  /** The component to render for this step (rendered inline in the register screen) */
+  component: React.ComponentType&lt;RegistrationStepProps&gt;;
+  /**
+   * Determines if this step is active for the current registration session.
+   * Called after form submission with the server response and app registration config.
+   */
+  shouldActivate: (context: {
+    submitResponse: Record&lt;string, any&gt;;
+    registrationConfig: RegistrationConfig | null;
+  }) =&gt; boolean;
+}</code></pre>
+
+<h4>RegistrationStepProps</h4>
+<p>Every registration step component receives these props, provided by the register screen:</p>
+<pre><code>interface RegistrationStepProps {
+  /** Current form data (name, email, etc.) */
+  formData: Record&lt;string, any&gt;;
+  /** Server's response from the initial registration submission */
+  submitResponse: Record&lt;string, any&gt;;
+  /** Whether a resubmission is currently in progress */
+  submitting: boolean;
+  /** Resubmit the registration form with verification extras merged in */
+  onResubmit: (extras: Record&lt;string, any&gt;) =&gt; Promise&lt;void&gt;;
+  /** Signal that this step is complete &mdash; advances to the next step */
+  onComplete: () =&gt; void;
+  /** Go back to the previous step */
+  onBack: () =&gt; void;
+}</code></pre>
+
+<p><strong>Example:</strong></p>
+<pre><code>registrationSteps: [{
+  id: 'phone-verify',
+  order: 5,             // Before core email-verify (order 10)
+  phase: 'pre-creation',
+  title: 'Verify Phone',
+  component: PhoneVerifyStep,
+  shouldActivate: ({ submitResponse, registrationConfig }) =&gt; {
+    // Only show if server says phone verification is required
+    return !!submitResponse?.phone_verification_required;
+  },
+}]</code></pre>
+
+<div class="callout">
+  <strong>shouldActivate context.</strong> The function receives an object with <code>submitResponse</code> (the server's response to the registration form submission) and <code>registrationConfig</code> (the app's registration configuration from <code>/app-config</code>). Return <code>true</code> if your step should be shown for this registration session.
+</div>
+
+<div class="callout callout-warn">
+  <strong>Core email-verify step.</strong> The registry includes a built-in email verification step at order 10. It activates when the server response includes <code>email_verification_required</code> and <code>verification_token</code>. Place your module steps before (order &lt; 10) or after (order &gt; 10) as needed.
+</div>
+
+<h3 id="response-header-mapping">ResponseHeaderMapping</h3>
+<p>Extracts custom HTTP response headers from every API response and stores them for the module to act on. Useful for server-driven gates (e.g., post-login profile completion checks).</p>
+<pre><code>interface ResponseHeaderMapping {
+  /** HTTP response header name (e.g. 'X-My-Custom-Header') */
+  header: string;
+  /** Key name in the header data object (e.g. 'profileIncomplete') */
+  key: string;
+  /** Transform the raw header string value. Default: pass through as-is. */
+  transform?: (value: string) =&gt; any;
+}</code></pre>
+
+<p><strong>Example:</strong></p>
+<pre><code>responseHeaders: [{
+  header: 'X-App-Maintenance-Mode',
+  key: 'maintenanceMode',
+  transform: (value) =&gt; value === '1',   // Convert "1"/"0" to boolean
+}]</code></pre>
+
+<div class="callout">
+  <strong>How it works.</strong> The API client (<code>services/api/client.ts</code>) checks every response for registered headers. When found, the value (optionally transformed) is stored and accessible to the module. Headers are registered at import time via <code>registerModuleResponseHeaders()</code> in the registry, so extraction is automatic for any authenticated API call.
+</div>
+
+<h3 id="slot-registration">SlotRegistration</h3>
 <p>Injects a UI component into a named area inside a core component. Used when a module needs to replace or enhance built-in UI (e.g., replacing the default like button with a multi-reaction picker).</p>
 <pre><code>interface SlotRegistration&lt;P = any&gt; {
-  id: string;             // Unique slot registration ID
-  slot: string;           // Named slot to fill (e.g. 'feedReactions')
-  priority: number;       // Lower number wins if multiple modules target the same slot
-  component: ComponentType&lt;P&gt;;  // Component to render (receives typed props from the host)
+  /** Unique slot registration ID */
+  id: string;
+  /** Named slot this fills (e.g. 'feedReactions', 'commentReactions') */
+  slot: string;
+  /** Priority &mdash; lower number wins if multiple modules target the same slot */
+  priority: number;
+  /** The component to render in this slot &mdash; receives typed props from the host */
+  component: React.ComponentType&lt;P&gt;;
 }</code></pre>
+
+<p><strong>Example:</strong></p>
+<pre><code>slots: [
+  {
+    id: 'my-feed-reactions',
+    slot: 'feedReactions',
+    priority: 10,
+    component: CustomFeedReactionButton,
+  },
+  {
+    id: 'my-feed-breakdown',
+    slot: 'feedReactionBreakdown',
+    priority: 10,
+    component: CustomFeedBreakdown,
+  },
+]</code></pre>
 
 <div class="callout">
   <strong>One winner per slot.</strong> If multiple modules register for the same slot, the lowest <code>priority</code> number wins. In dev mode, a warning is logged when slot conflicts occur.
@@ -277,32 +476,43 @@ export interface ModuleManifest {
 <h4>Available slots</h4>
 <table>
   <thead>
-    <tr><th>Slot Name</th><th>Host Component</th><th>Purpose</th></tr>
+    <tr><th>Slot Name</th><th>Host Component</th><th>Props From Host</th><th>Purpose</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>feedReactions</code></td><td>FeedCard footer</td><td>Reaction button (tap/long-press)</td></tr>
-    <tr><td><code>feedReactionBreakdown</code></td><td>FeedCard footer right</td><td>Emoji stack + count summary</td></tr>
-    <tr><td><code>commentReactions</code></td><td>CommentItem</td><td>Comment reaction button</td></tr>
-    <tr><td><code>commentReactionBreakdown</code></td><td>CommentItem</td><td>Comment emoji stack + count</td></tr>
+    <tr><td><code>feedReactions</code></td><td>FeedCard footer</td><td>objectId, hasReacted, onReact, etc.</td><td>Reaction button (tap/long-press)</td></tr>
+    <tr><td><code>feedReactionBreakdown</code></td><td>FeedCard footer right</td><td>objectId, reactions, etc.</td><td>Emoji stack + count summary</td></tr>
+    <tr><td><code>commentReactions</code></td><td>CommentItem</td><td>objectId, hasReacted, onReact, etc.</td><td>Comment reaction button</td></tr>
+    <tr><td><code>commentReactionBreakdown</code></td><td>CommentItem</td><td>objectId, reactions, etc.</td><td>Comment emoji stack + count</td></tr>
   </tbody>
 </table>
-<p>When no module fills a slot, the host component renders a default fallback (e.g., a simple heart like button).</p>
+<p>When no module fills a slot, the host component renders a default fallback (e.g., a simple heart like button). Slot resolution happens at module scope (outside the component body) via <code>getSlotComponent()</code>, so it's computed once at import time &mdash; not on every render.</p>
 
 <!-- ================================================================== -->
 <h2 id="registry">5. The Registry</h2>
 
 <p>The registry (<span class="file-path">modules/_registry.ts</span>) is where modules are activated. It's the only file you edit when adding or removing a module.</p>
 
+<h3>Structure</h3>
 <pre><code>// modules/_registry.ts
 
+// =============================================
+// YOUR MODULES &mdash; Import and register below.
+// This section is yours to edit. Core updates won't touch it.
+// =============================================
+
 import { eventsModule } from './events/module';
-import { shopModule } from './shop/module';
+import { pollsModule } from './polls/module';
 
 export const MODULES: ModuleManifest[] = [
   eventsModule,
-  shopModule,
+  pollsModule,
   // Add new modules here &mdash; comment out to disable
-];</code></pre>
+];
+
+// =============================================
+// END YOUR MODULES &mdash; Everything below is core. Do not edit.
+// =============================================
+</code></pre>
 
 <h3>Derived functions</h3>
 <p>The registry exports getter functions that core code calls. These sort by order, inherit visibility keys, and flatten nested arrays:</p>
@@ -317,25 +527,33 @@ export const MODULES: ModuleManifest[] = [
     <tr><td><code>getModuleProviders()</code></td><td>ProviderRegistration[] sorted by order</td><td><span class="file-path">app/_layout.tsx</span></td></tr>
     <tr><td><code>getModuleMenuItems()</code></td><td>MenuItemRegistration[] sorted by order</td><td><span class="file-path">components/navigation/UserMenu.tsx</span></td></tr>
     <tr><td><code>getModuleHeaderIcons()</code></td><td>HeaderIconRegistration[] sorted by order</td><td><span class="file-path">components/navigation/TopHeader.tsx</span></td></tr>
-    <tr><td><code>getTabBarAddons()</code></td><td>ComponentType[] in order</td><td><span class="file-path">app/(tabs)/_layout.tsx</span></td></tr>
+    <tr><td><code>getTabBarAddons()</code></td><td>ComponentType[] in module order</td><td><span class="file-path">app/(tabs)/_layout.tsx</span></td></tr>
     <tr><td><code>getModuleRoutePrefixes()</code></td><td>string[] flat list</td><td><span class="file-path">app/_layout.tsx</span></td></tr>
     <tr><td><code>getModuleResponseHeaders()</code></td><td>ResponseHeaderMapping[]</td><td><span class="file-path">services/api/client.ts</span></td></tr>
-    <tr><td><code>getRegistrationSteps()</code></td><td>RegistrationStepRegistration[] sorted by order</td><td><span class="file-path">app/register.tsx</span></td></tr>
-    <tr><td><code>getSlotComponent(name)</code></td><td>ComponentType | null</td><td>Any core component with a named slot</td></tr>
-    <tr><td><code>getWidgetComponentMap()</code></td><td>Record&lt;string, ComponentType&gt;</td><td><span class="file-path">app/(tabs)/index.tsx</span></td></tr>
+    <tr><td><code>getRegistrationSteps()</code></td><td>RegistrationStepRegistration[] sorted by order (core + module)</td><td><span class="file-path">app/register.tsx</span></td></tr>
+    <tr><td><code>getSlotComponent&lt;P&gt;(name)</code></td><td>ComponentType&lt;P&gt; | null</td><td>Any core component with a named slot</td></tr>
+    <tr><td><code>getWidgetComponentMap()</code></td><td>Record&lt;string, ComponentType&lt;{ refreshKey: number }&gt;&gt;</td><td><span class="file-path">app/(tabs)/index.tsx</span></td></tr>
     <tr><td><code>initModules()</code></td><td>Promise&lt;void&gt;</td><td><span class="file-path">app/_layout.tsx</span> (after auth)</td></tr>
     <tr><td><code>cleanupModules()</code></td><td>void</td><td>Cache registry (on logout)</td></tr>
-    <tr><td><code>handleModuleNotification()</code></td><td>boolean</td><td><span class="file-path">app/_layout.tsx</span> (notification tap)</td></tr>
+    <tr><td><code>handleModuleNotification(data, router)</code></td><td>boolean</td><td><span class="file-path">app/_layout.tsx</span> (notification tap)</td></tr>
   </tbody>
 </table>
+
+<h3>Key behaviors</h3>
+<ul>
+  <li><code>getModuleTabs()</code> inherits module-level <code>hideMenuKey</code> onto the tab registration (unless the tab sets its own).</li>
+  <li><code>getRegistrationSteps()</code> merges core steps (email-verify at order 10) with module steps, then sorts by order.</li>
+  <li><code>getModuleResponseHeaders()</code> also calls <code>registerModuleResponseHeaders()</code> at import time to wire headers into the API client.</li>
+  <li><code>cleanupModules()</code> is auto-registered with the cache registry so it runs automatically on logout.</li>
+</ul>
 
 <h3>Dev-mode validation</h3>
 <p>In <code>__DEV__</code> mode, the registry checks for:</p>
 <ul>
   <li>Duplicate module IDs</li>
   <li>Duplicate widget IDs</li>
-  <li>Multiple modules filling the same slot (lowest priority wins)</li>
-  <li>Multiple <code>tabBarAddon</code> registrations (warns they'll stack)</li>
+  <li>Multiple modules filling the same slot (warns; lowest priority wins)</li>
+  <li>Multiple <code>tabBarAddon</code> registrations (warns they'll stack vertically)</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -345,32 +563,45 @@ export const MODULES: ModuleManifest[] = [
 
 <h3>Bottom tabs</h3>
 <p><span class="file-path">app/(tabs)/_layout.tsx</span> calls <code>getModuleTabs()</code> and renders a <code>Tabs.Screen</code> for each. Module tabs appear after core tabs (Home, Activity, Spaces), sorted by <code>order</code>.</p>
-<pre><code>// How core code renders module tabs (simplified)
-{getModuleTabs().map((tab) =&gt; (
-  &lt;Tabs.Screen
-    key={tab.name}
-    name={tab.name}
-    options={{
-      title: tab.title,
-      href: isHidden(tab.hideMenuKey) ? null : undefined,
-      tabBarIcon: tab.tabBarIcon || (({ focused, color }) =&gt;
-        &lt;Ionicons name={focused ? tab.icon : tab.iconOutline} color={color} /&gt;
-      ),
-    }}
-    listeners={tab.interceptPress ? {
-      tabPress: (e) =&gt; { e.preventDefault(); tab.interceptPress!(router); }
-    } : undefined}
-  /&gt;
-))}</code></pre>
+<pre><code>// How core code renders module tabs (simplified from _layout.tsx)
+{moduleTabs.map((tab) =&gt; {
+  const isHidden = tab.hideMenuKey &amp;&amp; hideMenu.includes(tab.hideMenuKey);
+  return (
+    &lt;Tabs.Screen
+      key={tab.name}
+      name={tab.name}
+      options={{
+        title: tab.title,
+        href: isHidden ? null : undefined,
+        tabBarIcon: tab.tabBarIcon
+          ? tab.tabBarIcon
+          : ({ focused, color }) =&gt; (
+              &lt;TabIcon name={tab.icon} nameOutline={tab.iconOutline}
+                focused={focused} color={color} /&gt;
+            ),
+      }}
+      listeners={tab.interceptPress ? {
+        tabPress: (e) =&gt; {
+          e.preventDefault();
+          tab.interceptPress!(router);
+        },
+      } : undefined}
+    /&gt;
+  );
+})}</code></pre>
+
+<div class="callout">
+  <strong>tabColor support.</strong> Module tabs can override their active/inactive color using the <code>tabColor</code> field. This accepts a theme token name (e.g. <code>'error'</code> for red, <code>'success'</code> for green). The custom tab bar resolves the token against the current theme colors. If not set, the tab uses the standard <code>tabBar.active</code> / <code>tabBar.inactive</code> colors.
+</div>
 
 <h3>Home screen widgets</h3>
-<p><span class="file-path">app/(tabs)/index.tsx</span> merges core and module widgets into a single list. Users can reorder and toggle widgets in edit mode (long-press). Preferences persist in AsyncStorage.</p>
+<p><span class="file-path">components/home/widgetRegistry.ts</span> merges core and module widgets into a single <code>WIDGET_REGISTRY</code> array. Core widgets (like Courses) come first, then module widgets from <code>getModuleWidgets()</code>. The <code>getAvailableWidgets(features)</code> helper filters out widgets whose <code>featureFlag</code> is disabled. Users can reorder and toggle widgets in edit mode (long-press). Preferences persist in AsyncStorage.</p>
 
 <h3>Avatar dropdown menu</h3>
 <p><span class="file-path">components/navigation/UserMenu.tsx</span> renders module menu items after core items (Profile, Spaces, Bookmarks, etc.), sorted by <code>order</code>.</p>
 
 <h3>Top header icons</h3>
-<p><span class="file-path">components/navigation/TopHeader.tsx</span> renders module icons after core icons (Messages, Notifications, Cart) and before the avatar button.</p>
+<p><span class="file-path">components/navigation/TopHeader.tsx</span> renders module icons after core icons (Messages, Notifications) and before the avatar button, sorted by <code>order</code>.</p>
 
 <h3>Context providers</h3>
 <p><span class="file-path">app/_layout.tsx</span> wraps the app in module providers using <code>reduceRight</code>:</p>
@@ -405,11 +636,11 @@ function ModuleProviders({ children }) {
 </div>
 
 <h3>Tab bar addons</h3>
-<p><span class="file-path">app/(tabs)/_layout.tsx</span> renders addon components in a measured container above the tab buttons. The height is tracked via <code>BottomOffsetContext</code> so content below knows where the tab bar starts.</p>
+<p><span class="file-path">app/(tabs)/_layout.tsx</span> renders addon components in a measured container above the tab buttons. The height is tracked via <code>BottomOffsetContext</code> so content below knows where the tab bar starts. Multiple addons stack vertically.</p>
 
 <h3>Slots (injected UI)</h3>
 <p>Core components call <code>getSlotComponent(slotName)</code> at module scope (outside the component body) to resolve which module fills a named UI area. If no module fills it, the host renders its own default. Slot resolution is static &mdash; computed once at import time.</p>
-<pre><code>// How FeedCard resolves reaction slots (simplified)
+<pre><code>// How FeedCard resolves reaction slots (actual pattern from codebase)
 import { getSlotComponent } from '@/modules/_registry';
 
 const FeedReactionSlot = getSlotComponent('feedReactions');
@@ -423,8 +654,11 @@ function FeedCard({ feed }) {
   }
 }</code></pre>
 
+<h3>Response headers</h3>
+<p>Response header mappings are registered with the API client at import time via <code>registerModuleResponseHeaders()</code>. The client checks every authenticated response for registered headers and stores extracted values. Modules can then read these values to drive UI behavior (e.g., showing a profile completion gate when a header indicates the profile is incomplete).</p>
+
 <h3>Push notification routing</h3>
-<p><span class="file-path">app/_layout.tsx</span> calls <code>handleModuleNotification(data, router)</code> when a notification is tapped. Modules return <code>true</code> to claim the notification, <code>false</code> to let core handle it.</p>
+<p><span class="file-path">app/_layout.tsx</span> calls <code>handleModuleNotification(data, router)</code> when a notification is tapped. Modules are checked in array order &mdash; the first to return <code>true</code> claims the notification and stops further routing.</p>
 
 <!-- ================================================================== -->
 <h2 id="visibility">7. Visibility &amp; Feature Flags</h2>
@@ -475,21 +709,91 @@ export const eventsModule: ModuleManifest = {
 <h2 id="lifecycle">8. Lifecycle Hooks</h2>
 
 <h3>onInit</h3>
-<p>Called once per app session after authentication is confirmed. Fire-and-forget &mdash; errors are logged but don't crash the app.</p>
-<pre><code>// In app/_layout.tsx
+<p>Called once per app session after authentication is confirmed. Fire-and-forget &mdash; errors are caught, logged in dev mode, and never crash the app. Async functions are awaited sequentially (each module's <code>onInit</code> completes before the next runs).</p>
+<pre><code>// How the registry calls onInit (from _registry.ts)
+export async function initModules(): Promise&lt;void&gt; {
+  for (const mod of MODULES) {
+    try {
+      await mod.onInit?.();
+    } catch (e) {
+      if (__DEV__) console.warn(`[Modules] ${mod.id} onInit failed:`, e);
+    }
+  }
+}
+
+// Called in app/_layout.tsx after auth is confirmed
 useEffect(() =&gt; {
   if (isAuthenticated) {
-    initModules();  // calls onInit() on each module
+    initModules();
   }
 }, [isAuthenticated]);</code></pre>
 
+<p><strong>Use cases:</strong> Pre-fetch module data, initialize third-party SDKs, set up listeners.</p>
+
+<pre><code>// Example: pre-fetch events on app start
+onInit: async () =&gt; {
+  const log = createLogger('Events');
+  log('Initializing events module');
+  await prefetchUpcomingEvents();
+},</code></pre>
+
 <h3>onCleanup</h3>
-<p>Called automatically on logout via the cache registry system. Use it to clear module-specific caches, reset state, or tear down connections.</p>
-<pre><code>// _registry.ts self-registers with the cache system
+<p>Called automatically on logout via the cache registry system. The registry self-registers with <code>registerCache({ clearMemory: cleanupModules })</code>, so module cleanup runs alongside core cache clearing. Errors are caught and logged in dev mode.</p>
+<pre><code>// How the registry calls onCleanup (from _registry.ts)
+export function cleanupModules(): void {
+  for (const mod of MODULES) {
+    try {
+      mod.onCleanup?.();
+    } catch (e) {
+      if (__DEV__) console.warn(`[Modules] ${mod.id} onCleanup failed:`, e);
+    }
+  }
+}
+
+// Self-registered with cache system
 registerCache({ clearMemory: cleanupModules });</code></pre>
 
+<p><strong>Use cases:</strong> Clear module-specific AsyncStorage keys, reset in-memory state, disconnect websockets.</p>
+
+<pre><code>// Example: clear cached events on logout
+onCleanup: () =&gt; {
+  AsyncStorage.removeItem('tbc_events_cache');
+  eventsStore.reset();
+},</code></pre>
+
 <!-- ================================================================== -->
-<h2 id="create-module">9. Creating a Module (Step-by-Step)</h2>
+<h2 id="notifications">9. Push Notification Handler</h2>
+
+<p>Modules can handle push notification taps by providing a <code>notificationHandler</code> function. When a notification is tapped, the registry iterates through all modules in array order. The first module to return <code>true</code> claims the notification and prevents further routing.</p>
+
+<pre><code>// How the registry dispatches notifications (from _registry.ts)
+export function handleModuleNotification(
+  data: Record&lt;string, unknown&gt;,
+  router: Router
+): boolean {
+  for (const mod of MODULES) {
+    if (mod.notificationHandler?.(data, router)) return true;
+  }
+  return false;  // No module handled it &mdash; falls through to core routing
+}</code></pre>
+
+<p><strong>Example:</strong></p>
+<pre><code>// In your module manifest
+notificationHandler: (data, router) =&gt; {
+  // Check if this notification is for our module
+  if (data.type === 'new_event' &amp;&amp; data.event_id) {
+    router.push(`/events/${data.event_id}`);
+    return true;   // Claimed &mdash; stop checking other modules
+  }
+  return false;     // Not ours &mdash; let core or other modules handle it
+},</code></pre>
+
+<div class="callout">
+  <strong>Route prefixes.</strong> Set <code>routePrefixes</code> in your manifest (e.g. <code>['/events']</code>) to ensure push notification deep links for your module pass the route validation check. Without this, the app may reject the route as unrecognized.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="create-module">10. Creating a Module (Step-by-Step)</h2>
 
 <p>Let's build a module called "events" that registers a home widget and a menu item.</p>
 
@@ -670,7 +974,7 @@ export const MODULES: ModuleManifest[] = [
 <h3>Step 9: Add deep link path (if needed)</h3>
 <p>If your module handles deep links from your website (e.g. <code>https://yoursite.com/events/my-event</code>), add the path prefix to the <code>moduleDeepLinkPaths</code> array in <span class="file-path">app.config.ts</span>:</p>
 
-<pre><code>// app.config.ts — YOUR CONFIG section
+<pre><code>// app.config.ts &mdash; YOUR CONFIG section
 const moduleDeepLinkPaths: string[] = [
   '/events/',    // Add your module's path prefixes here
 ];</code></pre>
@@ -680,7 +984,7 @@ const moduleDeepLinkPaths: string[] = [
 <p>That's it. Your widget appears on the home screen, your menu item appears in the avatar dropdown, and <code>/events</code> routes to your screen.</p>
 
 <!-- ================================================================== -->
-<h2 id="directory-structure">10. Directory Structure</h2>
+<h2 id="directory-structure">11. Directory Structure</h2>
 
 <p>Recommended folder layout for a module. Only <code>module.ts</code> is required &mdash; everything else depends on what your module does.</p>
 
@@ -708,7 +1012,7 @@ const moduleDeepLinkPaths: string[] = [
 </div>
 
 <!-- ================================================================== -->
-<h2 id="api-patterns">11. API Service Patterns</h2>
+<h2 id="api-patterns">12. API Service Patterns</h2>
 
 <h3>Authenticated endpoints &mdash; use request()</h3>
 <p>For any endpoint that requires a logged-in user, use the centralized <code>request()</code> from <code>@/services/api/client</code>. It handles JWT injection, 401/403 retry, and silent token refresh.</p>
@@ -778,9 +1082,9 @@ export async function createEvent(data) {
 }</code></pre>
 
 <!-- ================================================================== -->
-<h2 id="examples">12. Examples</h2>
+<h2 id="examples">13. Examples</h2>
 
-<p>Practical examples of things a client might actually want. Each shows just the manifest and any required files &mdash; copy, adapt, register.</p>
+<p>Practical examples showing different module patterns. Each shows the manifest and any required files &mdash; copy, adapt, register.</p>
 
 <h3>Example A: Menu item that opens a WordPress page</h3>
 <p>The simplest possible module. No tab, no widget &mdash; just a link in the avatar dropdown that opens a WordPress page in the in-app browser.</p>
@@ -815,32 +1119,32 @@ export const resourcesModule: ModuleManifest = {
 <p><strong>Files needed:</strong> Just <code>modules/resources/module.ts</code> and the registry entry. No route stubs, no screens, no components.</p>
 
 <h3>Example B: Home screen widget</h3>
-<p>A widget that shows a daily verse or announcement on the home screen. Fetches from a simple REST endpoint on your WordPress site.</p>
-<pre><code>// modules/daily-verse/module.ts
+<p>A widget that shows an announcement on the home screen. Fetches from a simple REST endpoint on your WordPress site.</p>
+<pre><code>// modules/announcements/module.ts
 
 import type { ModuleManifest } from '@/modules/_types';
-import { DailyVerseWidget } from './widgets/DailyVerseWidget';
+import { AnnouncementWidget } from './widgets/AnnouncementWidget';
 
-export const dailyVerseModule: ModuleManifest = {
-  id: 'daily-verse',
-  name: 'Daily Verse',
+export const announcementsModule: ModuleManifest = {
+  id: 'announcements',
+  name: 'Announcements',
   version: '1.0.0',
-  description: 'Daily Bible verse widget from API',
+  description: 'Announcement widget on home screen',
   author: 'Your Name',
   license: 'Proprietary',
 
   widgets: [{
-    id: 'daily-verse',
-    title: 'Daily Verse',
-    icon: 'book-outline',
+    id: 'announcement',
+    title: 'Announcement',
+    icon: 'megaphone-outline',
     defaultEnabled: true,
     canDisable: true,
     externalWrapper: true,
-    component: DailyVerseWidget,
+    component: AnnouncementWidget,
   }],
 };</code></pre>
 
-<pre><code>// modules/daily-verse/widgets/DailyVerseWidget.tsx
+<pre><code>// modules/announcements/widgets/AnnouncementWidget.tsx
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
@@ -851,17 +1155,18 @@ import { request } from '@/services/api/client';
 
 const API_BASE = `${SITE_URL}/wp-json/my-plugin/v1`;
 
-async function fetchVerse() {
-  return request&lt;{ verse: string; reference: string }&gt;('/daily-verse', {
+async function fetchAnnouncement() {
+  return request&lt;{ message: string; author: string }&gt;('/announcement', {
     baseUrl: API_BASE,
   });
 }
 
-export function DailyVerseWidget({ refreshKey }: { refreshKey: number }) {
+export function AnnouncementWidget({ refreshKey }: { refreshKey: number }) {
   const { colors } = useTheme();
   const { data } = useCachedData({
-    cacheKey: 'tbc_widget_daily_verse',
-    fetcher: fetchVerse,
+    cacheKey: 'tbc_widget_announcement',
+    fetcher: fetchAnnouncement,
+    refreshKey,
     staleTime: WIDGET_STALE_TIME,
   });
 
@@ -869,11 +1174,11 @@ export function DailyVerseWidget({ refreshKey }: { refreshKey: number }) {
 
   return (
     &lt;View style={[styles.card, { backgroundColor: colors.surface }]}&gt;
-      &lt;Text style={[styles.verse, { color: colors.text }]}&gt;
-        &ldquo;{data.verse}&rdquo;
+      &lt;Text style={[styles.message, { color: colors.text }]}&gt;
+        {data.message}
       &lt;/Text&gt;
-      &lt;Text style={[styles.ref, { color: colors.textSecondary }]}&gt;
-        {data.reference}
+      &lt;Text style={[styles.author, { color: colors.textSecondary }]}&gt;
+        &mdash; {data.author}
       &lt;/Text&gt;
     &lt;/View&gt;
   );
@@ -881,10 +1186,10 @@ export function DailyVerseWidget({ refreshKey }: { refreshKey: number }) {
 
 const styles = StyleSheet.create({
   card: { padding: 20, borderRadius: 12, alignItems: 'center' },
-  verse: { fontSize: 16, fontStyle: 'italic', textAlign: 'center', lineHeight: 24 },
-  ref: { fontSize: 13, marginTop: 8 },
+  message: { fontSize: 16, textAlign: 'center', lineHeight: 24 },
+  author: { fontSize: 13, marginTop: 8 },
 });</code></pre>
-<p><strong>Files needed:</strong> <code>module.ts</code> + <code>widgets/DailyVerseWidget.tsx</code> + registry entry.</p>
+<p><strong>Files needed:</strong> <code>module.ts</code> + <code>widgets/AnnouncementWidget.tsx</code> + registry entry.</p>
 
 <h3>Example C: Bottom tab with a screen</h3>
 <p>Adds a "Shop" tab that shows a full-screen WebView of your WooCommerce store.</p>
@@ -955,7 +1260,7 @@ export const giveModule: ModuleManifest = {
   id: 'give',
   name: 'Give',
   version: '1.0.0',
-  description: 'Donation tab linking to external giving page',
+  description: 'Giving tab linking to external page',
   author: 'Your Name',
   license: 'Proprietary',
 
@@ -983,47 +1288,43 @@ export default () =&gt; &lt;View /&gt;;</code></pre>
 
 <h3>Example E: Tab bar addon (persistent banner above tabs)</h3>
 <p>A component that renders above the tab bar &mdash; visible on every screen. Useful for announcements, now-playing bars, active timers, or checkout prompts.</p>
-<pre><code>// modules/announcement/module.ts
+<pre><code>// modules/nowplaying/module.ts
 
 import type { ModuleManifest } from '@/modules/_types';
-import { AnnouncementBar } from './components/AnnouncementBar';
+import { NowPlayingBar } from './components/NowPlayingBar';
 
-export const announcementModule: ModuleManifest = {
-  id: 'announcement',
-  name: 'Announcement Bar',
+export const nowPlayingModule: ModuleManifest = {
+  id: 'nowplaying',
+  name: 'Now Playing',
   version: '1.0.0',
-  description: 'Dismissible announcement banner above the tab bar',
+  description: 'Persistent now-playing bar above the tab bar',
   author: 'Your Name',
   license: 'Proprietary',
 
-  tabBarAddon: AnnouncementBar,
+  tabBarAddon: NowPlayingBar,
 };</code></pre>
 
-<pre><code>// modules/announcement/components/AnnouncementBar.tsx
+<pre><code>// modules/nowplaying/components/NowPlayingBar.tsx
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 
-export function AnnouncementBar() {
+export function NowPlayingBar() {
   const { colors } = useTheme();
-  const [visible, setVisible] = useState(false);
-  const [message, setMessage] = useState('');
+  const [playing, setPlaying] = useState(false);
+  const [title, setTitle] = useState('');
 
-  useEffect(() =&gt; {
-    // Fetch announcement from your API, set visible + message
-    // Return null-equivalent by keeping visible=false if nothing to show
-  }, []);
-
-  if (!visible) return null;
+  // Return null when nothing is playing &mdash; bar disappears cleanly
+  if (!playing) return null;
 
   return (
     &lt;View style={[styles.bar, { backgroundColor: colors.primary }]}&gt;
       &lt;Text style={[styles.text, { color: colors.textInverse }]}&gt;
-        {message}
+        {title}
       &lt;/Text&gt;
-      &lt;TouchableOpacity onPress={() =&gt; setVisible(false)}&gt;
+      &lt;TouchableOpacity onPress={() =&gt; setPlaying(false)}&gt;
         &lt;Ionicons name="close" size={18} color={colors.textInverse} /&gt;
       &lt;/TouchableOpacity&gt;
     &lt;/View&gt;
@@ -1040,46 +1341,252 @@ const styles = StyleSheet.create({
   },
   text: { fontSize: 13, fontWeight: '600', flex: 1, marginRight: 8 },
 });</code></pre>
-<p><strong>Files needed:</strong> <code>module.ts</code> + <code>components/AnnouncementBar.tsx</code> + registry entry. No route stubs needed.</p>
+<p><strong>Files needed:</strong> <code>module.ts</code> + <code>components/NowPlayingBar.tsx</code> + registry entry. No route stubs needed.</p>
 
-<h3>Example F: Slot-based UI injection (multi-reactions pattern)</h3>
-<p>A module that replaces core UI via the slot system. No tab, no widget, no menu item &mdash; just injected components and a context provider for shared state (modals, pickers).</p>
-<pre><code>// modules/multi-reactions/module.ts
+<h3>Example F: Slot-based UI injection</h3>
+<p>A module that replaces core UI via the slot system. The multi-reactions module (which ships with the app) uses this pattern &mdash; it replaces the default like button with a multi-reaction picker. No tab, no widget, no menu item &mdash; just injected slot components and a context provider for shared state (modals, pickers).</p>
+<pre><code>// modules/reactions/module.ts
 
 import type { ModuleManifest } from '@/modules/_types';
 import { FeedReactionSlot } from './components/FeedReactionSlot';
 import { FeedBreakdownSlot } from './components/FeedBreakdownSlot';
 import { CommentReactionSlot } from './components/CommentReactionSlot';
 import { CommentBreakdownSlot } from './components/CommentBreakdownSlot';
-import { MultiReactionsProvider } from './MultiReactionsProvider';
+import { ReactionsProvider } from './ReactionsProvider';
 
-export const multiReactionsModule: ModuleManifest = {
-  id: 'multi-reactions',
-  name: 'Multi-Reactions',
+export const reactionsModule: ModuleManifest = {
+  id: 'reactions',
+  name: 'Reactions',
   version: '1.0.0',
-  companionPlugin: 'tbc-multi-reactions',
+  companionPlugin: 'my-reactions-plugin',
 
   slots: [
-    { id: 'mr-feed-btn', slot: 'feedReactions', priority: 10, component: FeedReactionSlot },
-    { id: 'mr-feed-bd', slot: 'feedReactionBreakdown', priority: 10, component: FeedBreakdownSlot },
-    { id: 'mr-comment-btn', slot: 'commentReactions', priority: 10, component: CommentReactionSlot },
-    { id: 'mr-comment-bd', slot: 'commentReactionBreakdown', priority: 10, component: CommentBreakdownSlot },
+    { id: 'rx-feed-btn', slot: 'feedReactions', priority: 10, component: FeedReactionSlot },
+    { id: 'rx-feed-bd', slot: 'feedReactionBreakdown', priority: 10, component: FeedBreakdownSlot },
+    { id: 'rx-comment-btn', slot: 'commentReactions', priority: 10, component: CommentReactionSlot },
+    { id: 'rx-comment-bd', slot: 'commentReactionBreakdown', priority: 10, component: CommentBreakdownSlot },
   ],
 
   providers: [{
-    id: 'multi-reactions-provider',
+    id: 'reactions-provider',
     order: 40,
-    component: MultiReactionsProvider,  // Renders picker &amp; breakdown modals
+    component: ReactionsProvider,  // Renders picker &amp; breakdown modals
   }],
 };</code></pre>
-<p><strong>Files needed:</strong> <code>module.ts</code> + <code>MultiReactionsProvider.tsx</code> (context + modals) + 4 slot components + registry entry. No route stubs needed.</p>
+<p><strong>Files needed:</strong> <code>module.ts</code> + <code>ReactionsProvider.tsx</code> (context + modals) + 4 slot components + registry entry. No route stubs needed.</p>
+
+<h3>Example G: Header icon with badge count</h3>
+<p>A module that adds a header icon with a live badge count.</p>
+<pre><code>// modules/polls/module.ts
+
+import type { ModuleManifest } from '@/modules/_types';
+import { usePollNotifications } from './hooks/usePollNotifications';
+
+export const pollsModule: ModuleManifest = {
+  id: 'polls',
+  name: 'Polls',
+  version: '1.0.0',
+  description: 'Community polls with live voting',
+  author: 'Your Name',
+  license: 'Proprietary',
+
+  headerIcons: [{
+    id: 'polls-header',
+    icon: 'bar-chart-outline',
+    route: '/polls',
+    order: 25,
+    accessibilityLabel: 'Active Polls',
+    useBadgeCount: () =&gt; {
+      const { activeCount } = usePollNotifications();
+      return activeCount;
+    },
+  }],
+
+  routePrefixes: ['/polls'],
+};</code></pre>
+<p><strong>Files needed:</strong> <code>module.ts</code> + <code>hooks/usePollNotifications.ts</code> + screen route stubs + registry entry.</p>
+
+<h3>Example H: Response header gate</h3>
+<p>A module that reads a custom HTTP header from every API response and uses it to show a completion gate.</p>
+<pre><code>// modules/onboarding/module.ts
+
+import type { ModuleManifest } from '@/modules/_types';
+import { OnboardingProvider } from './OnboardingProvider';
+
+export const onboardingModule: ModuleManifest = {
+  id: 'onboarding',
+  name: 'Onboarding Gate',
+  version: '1.0.0',
+  description: 'Post-login onboarding completion check',
+  author: 'Your Name',
+  license: 'Proprietary',
+
+  responseHeaders: [{
+    header: 'X-App-Onboarding-Required',
+    key: 'onboardingRequired',
+    transform: (value) =&gt; value === '1',
+  }],
+
+  providers: [{
+    id: 'onboarding-provider',
+    order: 30,
+    component: OnboardingProvider,  // Reads the stored header value and shows gate modal
+  }],
+};</code></pre>
+<p><strong>Files needed:</strong> <code>module.ts</code> + <code>OnboardingProvider.tsx</code> + registry entry. The provider reads the extracted header value and conditionally renders a full-screen gate modal.</p>
+
+<h3>Example I: Registration step</h3>
+<p>A module that adds a verification step to the registration flow.</p>
+<pre><code>// modules/age-verify/module.ts
+
+import type { ModuleManifest } from '@/modules/_types';
+import { AgeVerifyStep } from './components/AgeVerifyStep';
+
+export const ageVerifyModule: ModuleManifest = {
+  id: 'age-verify',
+  name: 'Age Verification',
+  version: '1.0.0',
+  description: 'Age verification step during registration',
+  author: 'Your Name',
+  license: 'Proprietary',
+  companionPlugin: 'my-age-verify',
+  apiBase: '/wp-json/age-verify/v1',
+
+  registrationSteps: [{
+    id: 'age-verify',
+    order: 5,             // Before core email-verify (order 10)
+    phase: 'pre-creation',
+    title: 'Verify Age',
+    component: AgeVerifyStep,
+    shouldActivate: ({ submitResponse }) =&gt; {
+      return !!submitResponse?.age_verification_required;
+    },
+  }],
+};</code></pre>
+
+<pre><code>// modules/age-verify/components/AgeVerifyStep.tsx
+
+import React, { useState } from 'react';
+import { View, Text, TextInput } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
+import type { RegistrationStepProps } from '@/modules/_types';
+
+export function AgeVerifyStep({
+  formData,
+  submitResponse,
+  submitting,
+  onResubmit,
+  onComplete,
+  onBack,
+}: RegistrationStepProps) {
+  const { colors } = useTheme();
+  const [birthYear, setBirthYear] = useState('');
+
+  const handleVerify = async () =&gt; {
+    await onResubmit({ birth_year: birthYear });
+    onComplete();
+  };
+
+  return (
+    &lt;View style={{ padding: 20 }}&gt;
+      &lt;Text style={{ color: colors.text }}&gt;
+        Please enter your birth year to continue.
+      &lt;/Text&gt;
+      &lt;TextInput
+        value={birthYear}
+        onChangeText={setBirthYear}
+        placeholder="1990"
+        keyboardType="numeric"
+        style={{ color: colors.text, borderColor: colors.border }}
+      /&gt;
+      {/* Submit and back buttons */}
+    &lt;/View&gt;
+  );
+}</code></pre>
+<p><strong>Files needed:</strong> <code>module.ts</code> + <code>components/AgeVerifyStep.tsx</code> + companion WordPress plugin + registry entry.</p>
+
+<h3>Example J: Full-featured module (combining multiple extension points)</h3>
+<p>A module that uses tab, widget, menu item, provider, lifecycle, and notifications together.</p>
+<pre><code>// modules/events/module.ts (full-featured version)
+
+import type { ModuleManifest } from '@/modules/_types';
+import EventsTab from './screens/EventsTab';
+import { EventsWidget } from './widgets/EventsWidget';
+import { EventsProvider } from './contexts/EventsProvider';
+import { prefetchEvents, clearEventsCache } from './services/eventsApi';
+
+export const eventsModule: ModuleManifest = {
+  id: 'events',
+  name: 'Events',
+  version: '1.0.0',
+  description: 'Community events with RSVP and notifications',
+  author: 'Your Name',
+  authorUrl: 'https://yoursite.com',
+  license: 'Proprietary',
+  companionPlugin: 'my-events-plugin',
+  apiBase: '/wp-json/my-events/v1',
+
+  tab: {
+    name: 'events',
+    title: 'Events',
+    icon: 'calendar',
+    iconOutline: 'calendar-outline',
+    order: 40,
+    component: EventsTab,
+  },
+
+  widgets: [{
+    id: 'upcoming-event',
+    title: 'Upcoming Event',
+    icon: 'calendar-outline',
+    seeAllRoute: '/events',
+    defaultEnabled: true,
+    canDisable: true,
+    externalWrapper: true,
+    component: EventsWidget,
+  }],
+
+  menuItems: [{
+    id: 'events-menu',
+    label: 'Events',
+    icon: 'calendar-outline',
+    route: '/events',
+    order: 50,
+  }],
+
+  providers: [{
+    id: 'events-provider',
+    order: 50,
+    component: EventsProvider,
+  }],
+
+  hideMenuKey: 'events',
+  routePrefixes: ['/events'],
+
+  onInit: async () =&gt; {
+    await prefetchEvents();
+  },
+
+  onCleanup: () =&gt; {
+    clearEventsCache();
+  },
+
+  notificationHandler: (data, router) =&gt; {
+    if (data.type === 'new_event' &amp;&amp; data.event_id) {
+      router.push(`/events/${data.event_id}`);
+      return true;
+    }
+    return false;
+  },
+};</code></pre>
+<p><strong>Files needed:</strong> <code>module.ts</code> + <code>screens/EventsTab.tsx</code> + <code>widgets/EventsWidget.tsx</code> + <code>contexts/EventsProvider.tsx</code> + <code>services/eventsApi.ts</code> + <code>app/(tabs)/events.tsx</code> route stub + registry entry.</p>
 
 <div class="callout callout-success">
   <strong>Mix and match.</strong> A single module can combine any of these patterns. Want a tab with a widget and a menu item and a tab bar addon? Just fill in the relevant manifest fields. The registry handles the rest.
 </div>
 
 <!-- ================================================================== -->
-<h2 id="rules">13. Rules</h2>
+<h2 id="rules">14. Rules</h2>
 
 <div class="callout callout-error">
   <strong>Modules never import core layouts or navigation files.</strong> The dependency arrow is always core &rarr; registry &rarr; module. If you need to render something in a specific location, register it via the manifest.

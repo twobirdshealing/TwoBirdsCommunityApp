@@ -77,7 +77,7 @@ Widget Registry (core + modules)
   <tr><th>Field</th><th>Description</th></tr>
   <tr><td><code>id</code></td><td>Must be stable across app updates. Used as AsyncStorage preference key. Never change once shipped.</td></tr>
   <tr><td><code>featureFlag</code></td><td>If set, widget only included when the server-controlled flag is enabled (checked via <code>useFeatures()</code>). Excluded entirely when flag is off.</td></tr>
-  <tr><td><code>externalWrapper</code></td><td>When <code>true</code>, HomeWidget provides header, icon, and "See all" link. When <code>false</code>, widget handles its own layout.</td></tr>
+  <tr><td><code>externalWrapper</code></td><td>When <code>true</code>, HomeWidget provides header, icon, and "See all" link. When <code>false</code>, widget handles its own layout (use <code>EditableWidgetWrapper</code> for edit-mode support).</td></tr>
   <tr><td><code>seeAllRoute</code></td><td>Tapping "See all" navigates to this route. If undefined, no link shown.</td></tr>
 </table>
 
@@ -105,6 +105,13 @@ export const WIDGET_REGISTRY: WidgetRegistration[] = [
   ...getModuleWidgets(),  // From modules/_registry.ts
 ];</code></pre>
 
+<h3>Helper Functions</h3>
+<table>
+  <tr><th>Function</th><th>Description</th></tr>
+  <tr><td><code>getAvailableWidgets(features)</code></td><td>Filters <code>WIDGET_REGISTRY</code> to only widgets whose <code>featureFlag</code> (if set) is enabled in the provided <code>FeaturesConfig</code>. Widgets without a <code>featureFlag</code> always pass.</td></tr>
+  <tr><td><code>getCoreWidgetComponentMap()</code></td><td>Returns a <code>Record&lt;string, Component&gt;</code> mapping core widget IDs to their components.</td></tr>
+</table>
+
 <h3>Module Widget Registration</h3>
 <p>Modules register widgets in their manifest:</p>
 <pre><code>// modules/yourmodule/module.ts
@@ -120,6 +127,13 @@ export const yourModule: ModuleManifest = {
     externalWrapper: true,
     component: YourModuleWidget,
   }],
+};</code></pre>
+
+<p><span class="file-path">modules/_registry.ts</span> collects all module widgets via <code>getModuleWidgets()</code> and provides <code>getWidgetComponentMap()</code> (module widget ID &rarr; component). The home screen merges both maps into a single <code>WIDGET_COMPONENTS</code> lookup:</p>
+
+<pre><code>const WIDGET_COMPONENTS = {
+  ...getCoreWidgetComponentMap(),   // from widgetRegistry.ts
+  ...getWidgetComponentMap(),       // from _registry.ts (modules)
 };</code></pre>
 
 <div class="callout callout-warn">
@@ -142,53 +156,85 @@ export const yourModule: ModuleManifest = {
   ]
 }</code></pre>
 
-<h3>Operations</h3>
+<h3>Hook Return Values</h3>
 <table>
-  <tr><th>Function</th><th>Description</th></tr>
+  <tr><th>Property / Function</th><th>Description</th></tr>
+  <tr><td><code>preferences</code></td><td>Current <code>WidgetPreferences</code> object (or <code>null</code> while loading)</td></tr>
+  <tr><td><code>isLoading</code></td><td>True while loading from AsyncStorage on mount</td></tr>
   <tr><td><code>reorder(newOrder)</code></td><td>Save new order after drag-and-drop</td></tr>
   <tr><td><code>toggleWidget(id)</code></td><td>Flip enabled/disabled state</td></tr>
   <tr><td><code>resetToDefaults()</code></td><td>Restore all widgets to default order and enabled state</td></tr>
 </table>
 
 <h3>Forward Compatibility</h3>
-<p>When loading saved preferences, the hook merges them with the current widget registry:</p>
+<p>When loading saved preferences, the hook merges them with the current widget registry (via <code>getAvailableWidgets(features)</code>):</p>
 <ul>
   <li><strong>New widgets</strong> (added since last save) are appended to the end with their <code>defaultEnabled</code> state</li>
   <li><strong>Removed widgets</strong> (no longer in registry) are silently dropped</li>
-  <li><strong>Disabled feature flags</strong> (server-controlled, fetched via <code>/app-config</code>) exclude widgets entirely</li>
+  <li><strong>Disabled feature flags</strong> (server-controlled, fetched via <code>/app-config</code>) exclude widgets entirely &mdash; they never appear in preferences</li>
   <li><strong>Existing order</strong> is preserved across app updates</li>
 </ul>
+
+<p>The hook re-runs when <code>features</code> changes (via <code>useFeatures()</code>), so toggling a feature flag in wp-admin takes effect on next app config fetch.</p>
 
 <!-- ================================================================== -->
 <h2 id="rendering">5. Rendering Pipeline</h2>
 
 <ol>
   <li>Load preferences from AsyncStorage via <code>useWidgetPreferences()</code></li>
-  <li>Merge with current <code>WIDGET_REGISTRY</code> (forward compatibility)</li>
-  <li>Build <code>WidgetItem[]</code> list (preference + registration config)</li>
-  <li>Filter: only enabled widgets in normal mode, all widgets in edit mode</li>
-  <li>Render each widget through <code>HomeWidget</code> wrapper (or raw if <code>externalWrapper: false</code>)</li>
+  <li>Get available widgets via <code>getAvailableWidgets(features)</code> (feature-flag filtering)</li>
+  <li>Build <code>WidgetItem[]</code> list by matching each preference entry to its registry config. Items with no matching config (removed widgets) are dropped.</li>
+  <li>Pass all <code>WidgetItem[]</code> to the list component (both modes receive the full list)</li>
+  <li>Each item renders through <code>renderWidget()</code>:
+    <ul>
+      <li>Looks up the component from the merged <code>WIDGET_COMPONENTS</code> map</li>
+      <li>In normal mode, disabled widgets return <code>null</code> (skipped entirely)</li>
+      <li>In edit mode, disabled widgets render with 0.4 opacity and hidden content</li>
+      <li>Wraps the component in <code>HomeWidget</code> which provides header, icon, "See all" link, drag handle, and toggle switch</li>
+    </ul>
+  </li>
 </ol>
 
 <h3>HomeWidget Wrapper</h3>
 <p><span class="file-path">components/home/HomeWidget.tsx</span> provides consistent UI for each widget:</p>
 <ul>
-  <li>Header row with icon + title + "See all" link</li>
-  <li>In edit mode: drag handle (left) + toggle switch (right)</li>
+  <li>Header row with icon + title + "See all" link (configurable label via <code>seeAllLabel</code> prop, defaults to "See all")</li>
+  <li>In edit mode: drag handle (left) + toggle switch (right), "See all" link hidden</li>
   <li>Disabled widgets show at 0.4 opacity in edit mode</li>
+  <li><strong>Content detection:</strong> Uses <code>onLayout</code> to measure children height. When a widget renders no visible content (height = 0), the header is hidden too &mdash; prevents orphaned headers for empty widgets</li>
+  <li>Long-press header (400ms) enters edit mode with medium haptic feedback</li>
 </ul>
+
+<h3>HomeWidget Props</h3>
+<pre><code>interface HomeWidgetProps {
+  title: string;
+  icon?: keyof typeof Ionicons.glyphMap;
+  seeAllLabel?: string;          // defaults to 'See all'
+  onSeeAll?: () => void;
+  children: React.ReactNode;
+  hidden?: boolean;
+  // Edit mode
+  isEditing?: boolean;
+  isEnabled?: boolean;
+  canDisable?: boolean;
+  onToggle?: () => void;
+  drag?: () => void;
+  isActive?: boolean;
+  onEnterEditMode?: () => void;
+}</code></pre>
 
 <!-- ================================================================== -->
 <h2 id="edit-mode">6. Edit Mode &amp; Drag-and-Drop</h2>
 
 <h3>Entering Edit Mode</h3>
-<p>Long-press (400ms) on any widget header enters edit mode. Medium haptic feedback fires on entry.</p>
+<p>Long-press (400ms) on any widget header enters edit mode. Medium haptic feedback fires on entry. The tab bar is locked visible (via <code>setLocked(true)</code>) for the duration of edit mode.</p>
 
 <h3>Drag-and-Drop</h3>
 <table>
   <tr><th>Aspect</th><th>Details</th></tr>
   <tr><td>Library</td><td><code>react-native-draggable-flatlist</code></td></tr>
   <tr><td>Visual feedback</td><td><code>ScaleDecorator</code> (1.02x scale + shadow when dragging)</td></tr>
+  <tr><td>Haptic</td><td>Medium haptic fires on <code>onDragBegin</code></td></tr>
   <tr><td>Persist</td><td><code>onDragEnd</code> &rarr; <code>reorder()</code> &rarr; AsyncStorage</td></tr>
 </table>
 
@@ -197,8 +243,11 @@ export const yourModule: ModuleManifest = {
 <ul>
   <li><strong>Reset</strong> (left) &mdash; restores default order and visibility</li>
   <li><strong>"Edit Widgets"</strong> (center) &mdash; title</li>
-  <li><strong>Done</strong> (right) &mdash; exits edit mode</li>
+  <li><strong>Done</strong> (right) &mdash; exits edit mode and unlocks the tab bar</li>
 </ul>
+
+<h3>EditableWidgetWrapper</h3>
+<p><span class="file-path">components/home/EditableWidgetWrapper.tsx</span> provides a minimal edit overlay for widgets that set <code>externalWrapper: false</code>. In normal mode it renders children directly. In edit mode it adds a drag handle, title label, and toggle switch above the widget content. Use this when your widget manages its own header/layout but still needs edit-mode controls.</p>
 
 <!-- ================================================================== -->
 <h2 id="refresh">7. Data Refresh</h2>
@@ -221,7 +270,7 @@ export const yourModule: ModuleManifest = {
 <table>
   <tr><th>Trigger</th><th>Mechanism</th></tr>
   <tr><td>Pull-to-refresh</td><td><code>setRefreshKey(prev + 1)</code> &mdash; all widgets update</td></tr>
-  <tr><td>App returns from background</td><td><code>useAppFocus</code> increments refreshKey</td></tr>
+  <tr><td>App returns from background</td><td><code>useAppFocus</code> callback increments refreshKey</td></tr>
   <tr><td>Cache event</td><td>Specific widgets listen for events like <code>CACHE_EVENTS.FEEDS</code></td></tr>
 </table>
 
@@ -248,10 +297,11 @@ export const yourModule: ModuleManifest = {
 
 <ul>
   <li><strong>Not in the widget registry</strong> &mdash; always shown first, not reorderable or toggleable</li>
-  <li><strong>Server-driven:</strong> Fetches from <code>/feeds/welcome-banner</code> REST endpoint</li>
+  <li><strong>Rendered as ListHeaderComponent</strong> in both FlashList and DraggableFlatList</li>
+  <li><strong>Server-driven:</strong> Fetches from <code>/feeds/welcome-banner</code> REST endpoint via <code>useCachedData</code></li>
   <li><strong>Dismissible:</strong> Users can dismiss for 7 days (or until content changes)</li>
-  <li><strong>Fingerprint-based:</strong> Content hash detects changes; changed banner re-shows after dismissal</li>
-  <li><strong>Returns null</strong> if disabled by admin or already dismissed within expiry</li>
+  <li><strong>Fingerprint-based:</strong> Content hash (title, description, media, CTA buttons) detects changes; changed banner re-shows after dismissal</li>
+  <li><strong>Returns null</strong> if disabled by admin, already dismissed within expiry, or fetch returns no data</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -259,16 +309,16 @@ export const yourModule: ModuleManifest = {
 
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
-  <tr><td><span class="file-path">components/home/widgetRegistry.ts</span></td><td>Core widget definitions + registry merging with modules</td></tr>
+  <tr><td><span class="file-path">components/home/widgetRegistry.ts</span></td><td>Core widget definitions, <code>WIDGET_REGISTRY</code> array, <code>getAvailableWidgets()</code>, <code>getCoreWidgetComponentMap()</code></td></tr>
   <tr><td><span class="file-path">hooks/useWidgetPreferences.ts</span></td><td>AsyncStorage preferences (order, enabled/disabled, merge logic)</td></tr>
-  <tr><td><span class="file-path">app/(tabs)/index.tsx</span></td><td>Home screen: renders widgets, manages edit mode, refresh</td></tr>
-  <tr><td><span class="file-path">components/home/HomeWidget.tsx</span></td><td>Widget wrapper (header, icon, "See all", drag handle, toggle)</td></tr>
+  <tr><td><span class="file-path">app/(tabs)/index.tsx</span></td><td>Home screen: merges core + module widget component maps, renders widgets, manages edit mode and refresh</td></tr>
+  <tr><td><span class="file-path">components/home/HomeWidget.tsx</span></td><td>Widget wrapper (header, icon, "See all", drag handle, toggle, content detection)</td></tr>
   <tr><td><span class="file-path">components/home/EditModeBar.tsx</span></td><td>Top bar in edit mode (Reset / Done buttons)</td></tr>
-  <tr><td><span class="file-path">components/home/EditableWidgetWrapper.tsx</span></td><td>Minimal edit overlay for headerless widgets</td></tr>
-  <tr><td><span class="file-path">components/home/WelcomeBannerWidget.tsx</span></td><td>Pinned welcome banner with server-driven content</td></tr>
+  <tr><td><span class="file-path">components/home/EditableWidgetWrapper.tsx</span></td><td>Minimal edit overlay for widgets with <code>externalWrapper: false</code></td></tr>
+  <tr><td><span class="file-path">components/home/WelcomeBannerWidget.tsx</span></td><td>Pinned welcome banner with server-driven content and dismiss logic</td></tr>
   <tr><td><span class="file-path">components/home/CoursesWidget.tsx</span></td><td>My Courses carousel (core widget)</td></tr>
   <tr><td><span class="file-path">modules/_types.ts</span></td><td><code>WidgetRegistration</code> interface</td></tr>
-  <tr><td><span class="file-path">modules/_registry.ts</span></td><td><code>getModuleWidgets()</code> collector + dev duplicate detection</td></tr>
+  <tr><td><span class="file-path">modules/_registry.ts</span></td><td><code>getModuleWidgets()</code>, <code>getWidgetComponentMap()</code>, dev duplicate detection</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -289,9 +339,9 @@ export const yourModule: ModuleManifest = {
 
   <li><strong>Don't use DraggableFlatList in normal mode.</strong> It conflicts with RefreshControl (steals the vertical pan gesture). The home screen uses FlashList for normal mode and only switches to DraggableFlatList in edit mode.</li>
 
-  <li><strong>The welcome banner is NOT in the registry.</strong> It's hardcoded as the first item in the home screen list. Don't try to register it as a widget &mdash; it has special dismissal and fingerprint logic that the registry doesn't support.</li>
+  <li><strong>The welcome banner is NOT in the registry.</strong> It's rendered as <code>ListHeaderComponent</code> in both list modes. Don't try to register it as a widget &mdash; it has special dismissal and fingerprint logic that the registry doesn't support.</li>
 
-  <li><strong>Widgets should return null when empty.</strong> If a widget has no data to show (e.g., no enrolled courses), return <code>null</code>. The HomeWidget wrapper handles the absence gracefully.</li>
+  <li><strong>Widgets should return null when empty.</strong> If a widget has no data to show (e.g., no enrolled courses), return <code>null</code>. The HomeWidget wrapper detects empty content via <code>onLayout</code> and hides its header automatically.</li>
 
   <li><strong>Use <code>WIDGET_STALE_TIME</code> (120s) for all widget fetches.</strong> This prevents rapid pull-to-refresh from hammering the API. Don't use shorter intervals for widgets &mdash; they stay mounted on the home screen.</li>
 </ol>

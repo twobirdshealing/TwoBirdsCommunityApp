@@ -2075,6 +2075,11 @@ function getDashboardHTML() {
   .field input, .field select { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-primary); font-size: 14px; font-family: var(--font-sans); transition: border-color 0.15s; }
   .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
   .field .derive-hint { font-size: 11px; color: var(--text-muted); font-style: italic; }
+  .input-with-copy { display: flex; gap: 6px; align-items: center; }
+  .input-with-copy input { flex: 1; }
+  .copy-btn { padding: 6px 12px; font-size: 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-primary); color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+  .copy-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+  .wp-sync-hint { display: block; font-size: 11px; color: var(--accent); margin-top: 4px; }
   .field .input-lock-wrap { position: relative; display: flex; align-items: center; }
   .field .input-lock-wrap input { flex: 1; padding-right: 36px; }
   .field .lock-btn { position: absolute; right: 8px; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; display: flex; align-items: center; transition: color 0.15s; }
@@ -2331,7 +2336,8 @@ function getDashboardHTML() {
       <div class="field-group">
         <div class="field">
           <label>App Name <span class="file-hint">app.json > expo.name</span></label>
-          <input type="text" id="cfg-appName" data-key="appName" placeholder="My Community">
+          <div class="input-with-copy"><input type="text" id="cfg-appName" data-key="appName" placeholder="My Community"><button type="button" class="copy-btn" data-copy-from="cfg-appName" title="Copy for wp-admin Deep Linking">Copy</button></div>
+          <span class="wp-sync-hint">&#x1F517; Copy this into wp-admin &rarr; TBC Community App &rarr; Deep Linking</span>
         </div>
         <div class="field">
           <label>Slug <span class="file-hint">app.json > expo.slug</span></label>
@@ -2340,8 +2346,9 @@ function getDashboardHTML() {
         </div>
         <div class="field">
           <label>URL Scheme <span class="file-hint">app.json > expo.scheme</span></label>
-          <input type="text" id="cfg-scheme" data-key="scheme" placeholder="mycommunity">
+          <div class="input-with-copy"><input type="text" id="cfg-scheme" data-key="scheme" placeholder="mycommunity"><button type="button" class="copy-btn" data-copy-from="cfg-scheme" title="Copy for wp-admin Deep Linking">Copy</button></div>
           <span class="derive-hint">Auto-derived from slug if blank</span>
+          <span class="wp-sync-hint">&#x1F517; Copy this into wp-admin &rarr; TBC Community App &rarr; Deep Linking</span>
         </div>
         <div class="field">
           <label>App Version <span class="file-hint">app.json + package.json (4 places)</span></label>
@@ -2365,16 +2372,19 @@ function getDashboardHTML() {
       <div class="field-group">
         <div class="field">
           <label>iOS Bundle ID <span class="file-hint">ios.bundleIdentifier</span></label>
-          <input type="text" id="cfg-iosBundleId" data-key="iosBundleId" placeholder="com.yourcompany.communityapp">
+          <div class="input-with-copy"><input type="text" id="cfg-iosBundleId" data-key="iosBundleId" placeholder="com.yourcompany.communityapp"><button type="button" class="copy-btn" data-copy-from="cfg-iosBundleId" title="Copy for wp-admin Deep Linking">Copy</button></div>
+          <span class="wp-sync-hint">&#x1F517; Copy this into wp-admin &rarr; TBC Community App &rarr; Deep Linking</span>
         </div>
         <div class="field">
           <label>Android Package <span class="file-hint">android.package</span></label>
-          <input type="text" id="cfg-androidPackage" data-key="androidPackage" placeholder="com.yourcompany.communityapp">
+          <div class="input-with-copy"><input type="text" id="cfg-androidPackage" data-key="androidPackage" placeholder="com.yourcompany.communityapp"><button type="button" class="copy-btn" data-copy-from="cfg-androidPackage" title="Copy for wp-admin Deep Linking">Copy</button></div>
           <span class="derive-hint">Auto-derived from iOS bundle ID if blank</span>
+          <span class="wp-sync-hint">&#x1F517; Copy this into wp-admin &rarr; TBC Community App &rarr; Deep Linking</span>
         </div>
       </div>
     </div>
   </div>
+
 
   <div class="card">
     <div class="card-header"><h3>Site URLs</h3><span class="badge" style="color:var(--text-muted)">eas.json + app.config.ts</span></div>
@@ -2829,6 +2839,20 @@ function updateStagingCmdVisibility() {
   }
 }
 
+function initCopyButtons() {
+  document.querySelectorAll('.copy-btn[data-copy-from]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var input = document.getElementById(btn.getAttribute('data-copy-from'));
+      if (!input || !input.value) return;
+      navigator.clipboard.writeText(input.value).then(function() {
+        btn.textContent = 'Copied!';
+        btn.style.color = 'var(--accent)';
+        setTimeout(function() { btn.textContent = 'Copy'; btn.style.color = ''; }, 1500);
+      });
+    });
+  });
+}
+
 // ---------- Auto-derive ----------
 const deriveMap = {
   appName: (val) => {
@@ -2995,6 +3019,8 @@ function populateConfig(config) {
   lockDerivedFields();
   // Show/hide staging command based on whether staging URL is set
   updateStagingCmdVisibility();
+  // Wire up copy buttons (idempotent — safe to call on reload)
+  initCopyButtons();
 }
 
 /** Inject or update the help element for a field */
