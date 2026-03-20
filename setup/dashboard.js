@@ -2099,10 +2099,11 @@ function getDashboardHTML() {
   .rebuild-notice { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--yellow); margin-top: 3px; }
   .rebuild-notice::before { content: '\u26A0'; font-size: 10px; }
 
-  .cmd-row { display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 8px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: border-color 0.15s; }
-  .cmd-row:hover { border-color: var(--accent); }
-  .cmd-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-  .cmd-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .cmd-toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 24px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .cmd-toolbar-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px; }
+  .cmd-row { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+  .cmd-row:hover { border-color: var(--accent); background: var(--bg-secondary); }
+  .cmd-label { font-size: 12px; font-weight: 600; color: var(--text-primary); }
   .build-version-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; }
   .build-version-label { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
   .build-version-input { width: 80px; text-align: center; font-family: var(--font-mono); font-size: 13px; padding: 4px 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); }
@@ -2303,29 +2304,29 @@ function getDashboardHTML() {
   <button class="tab-btn" data-tab="status">Status</button>
 </div>
 
+<div class="cmd-toolbar">
+  <span class="cmd-toolbar-label">Quick Commands</span>
+  <button class="help-toggle" type="button" id="cmd-help-toggle" title="Toggle help">?</button>
+  <button class="btn btn-sm cmd-copy cmd-row" data-cmd="npm run dev">
+    <span class="cmd-label">Dev Server</span>
+  </button>
+  <button class="btn btn-sm cmd-copy cmd-row" data-cmd="npm run dev:staging" id="cmd-dev-staging">
+    <span class="cmd-label">Dev Server (Staging)</span>
+  </button>
+  <button class="btn btn-sm cmd-copy cmd-row" data-cmd="npm run dashboard">
+    <span class="cmd-label">Open Dashboard</span>
+  </button>
+  <div id="cmd-toast" style="display:none;font-size:11px;color:var(--accent);margin-left:8px"></div>
+</div>
+<div class="field-help collapsed" id="cmd-help-panel" style="margin:0;border-radius:0;border-left:0;border-right:0">
+  Click any command to copy it to your clipboard, then paste into your terminal to run.<br>
+  <strong>Dev Server</strong> — <code>npm run dev</code> — starts Expo against your production site.<br>
+  <strong>Dev Server (Staging)</strong> — <code>npm run dev:staging</code> — starts Expo against your staging site (shows red STAGING indicator).<br>
+  <strong>Open Dashboard</strong> — <code>npm run dashboard</code> — launches this setup dashboard in your browser.
+</div>
+
 <!-- ============== Config Tab ============== -->
 <div class="tab-content active" id="tab-config">
-  <div class="card">
-    <div class="card-header"><h3>Quick Commands</h3></div>
-    <div class="card-body">
-      <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px">Click to copy a command, then paste into your terminal to run.</p>
-      <div style="display:flex;flex-direction:column;gap:6px;max-width:480px">
-        <button class="btn btn-sm cmd-copy cmd-row" data-cmd="npm run dev">
-          <span class="cmd-label">Start Dev Server</span>
-          <span class="cmd-desc">Run app locally against your production site</span>
-        </button>
-        <button class="btn btn-sm cmd-copy cmd-row" data-cmd="npm run dev:staging" id="cmd-dev-staging">
-          <span class="cmd-label">Start Dev Server (Staging)</span>
-          <span class="cmd-desc">Run app locally against your staging site</span>
-        </button>
-        <button class="btn btn-sm cmd-copy cmd-row" data-cmd="npm run dashboard">
-          <span class="cmd-label">Open Dashboard</span>
-          <span class="cmd-desc">Launch this setup dashboard in your browser</span>
-        </button>
-      </div>
-      <div id="cmd-toast" style="display:none;margin-top:8px;font-size:12px;color:var(--accent)"></div>
-    </div>
-  </div>
 
   <div class="card">
     <div class="card-header">
@@ -2836,6 +2837,14 @@ document.querySelectorAll('.cmd-copy').forEach(btn => {
       setTimeout(() => { toast.style.display = 'none'; }, 2000);
     });
   });
+});
+
+// ---------- Quick Commands help toggle ----------
+document.getElementById('cmd-help-toggle').addEventListener('click', function() {
+  const panel = document.getElementById('cmd-help-panel');
+  const isCollapsed = panel.classList.contains('collapsed');
+  panel.classList.toggle('collapsed', !isCollapsed);
+  panel.classList.toggle('expanded', isCollapsed);
 });
 
 // Hide dev:staging button if no staging URL configured
