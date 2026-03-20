@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "dev": "npx expo start --dev-client --clear",
-    "dev:staging": "cross-env USE_STAGING=1 npx expo start --dev-client --clear",
+    "dev:staging": "cross-env EXPO_PUBLIC_SITE_URL=https://staging.twobirdschurch.com EXPO_PUBLIC_USE_STAGING=1 npx expo start --dev-client --clear",
     "dashboard": "node setup/dashboard.js",
     "snapshot": "bash scripts/create-white-label.sh"
   },

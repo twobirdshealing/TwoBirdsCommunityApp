@@ -194,6 +194,7 @@ sed -i \
 sed -i \
   -e 's|"name": "twobirdscommunity"|"name": "community-app"|' \
   -e 's|"version": "[^"]*"|"version": "1.0.0"|' \
+  -e 's|https://staging.twobirdschurch.com|https://staging.yoursite.com|g' \
   "$TARGET_DIR/package.json"
 
 echo "  Done."

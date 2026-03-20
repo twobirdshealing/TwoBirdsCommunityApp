@@ -19,13 +19,13 @@ export const APP_NAME = 'Two Birds Community';          // Your app name
 export const APP_USER_AGENT = 'TBCCommunityApp/1.0';   // User agent for API requests
 
 // --- Site URL ----------------------------------------------------------------
-// Set your WordPress site URL in eas.json (env.SITE_URL).
+// Set your WordPress site URL in eas.json (env.EXPO_PUBLIC_SITE_URL).
 // app.config.ts reads it and passes it via expo.extra.siteUrl.
 
-export const SITE_URL: string = Constants.expoConfig?.extra?.siteUrl;
+export const SITE_URL: string = process.env.EXPO_PUBLIC_SITE_URL || Constants.expoConfig?.extra?.siteUrl;
 
-// Dev-only: true when connected to a non-production URL (staging, local, etc.)
-export const IS_STAGING: boolean = __DEV__ && (Constants.expoConfig?.extra?.isStaging ?? false);
+// Dev-only: true when running npm run dev:staging
+export const IS_STAGING: boolean = __DEV__ && process.env.EXPO_PUBLIC_USE_STAGING === '1';
 
 // --- Feature Flags -----------------------------------------------------------
 // Feature flags are now controlled from wp-admin → TBC Community App → Features tab.

@@ -144,11 +144,11 @@ function getSiteUrl(easJson) {
   if (!easJson) return '';
   const profiles = easJson.build || {};
   // Prefer production, then preview, then first non-development profile
-  const preferred = profiles.production?.env?.SITE_URL || profiles.preview?.env?.SITE_URL;
+  const preferred = profiles.production?.env?.EXPO_PUBLIC_SITE_URL || profiles.preview?.env?.EXPO_PUBLIC_SITE_URL;
   if (preferred) return preferred;
   for (const key of Object.keys(profiles)) {
     if (key === 'development') continue;
-    if (profiles[key]?.env?.SITE_URL) return profiles[key].env.SITE_URL;
+    if (profiles[key]?.env?.EXPO_PUBLIC_SITE_URL) return profiles[key].env.EXPO_PUBLIC_SITE_URL;
   }
   return '';
 }
@@ -316,7 +316,7 @@ function runValidation(state) {
   check(!isPlaceholder(c.easOwner), 'EAS owner is set', 'app.json', 'eas-config');
 
   // eas.json
-  check(!isPlaceholder(c.siteUrl), 'SITE_URL is set', 'eas.json', 'site-url');
+  check(!isPlaceholder(c.siteUrl), 'EXPO_PUBLIC_SITE_URL is set', 'eas.json', 'site-url');
   checkWarn(isPlaceholder(c.appleId), 'Apple ID not set (needed for iOS submit)', 'eas.json', 'apple-submit');
   checkWarn(isPlaceholder(c.ascAppId), 'ASC App ID not set (needed for iOS submit)', 'eas.json', 'apple-submit');
 
@@ -331,7 +331,7 @@ function runValidation(state) {
     checks.push({ pass: 'warn', label: `App name mismatch: app.json="${c.appName}" vs config.ts="${c.appNameConfig}"`, category: 'consistency', ref: 'config-ts' });
   }
   if (c.siteUrl && c.productionUrl && c.siteUrl !== c.productionUrl) {
-    checks.push({ pass: 'warn', label: `SITE_URL mismatch: eas.json="${c.siteUrl}" vs app.config.ts="${c.productionUrl}"`, category: 'consistency', ref: 'site-url' });
+    checks.push({ pass: 'warn', label: `EXPO_PUBLIC_SITE_URL mismatch: eas.json="${c.siteUrl}" vs app.config.ts="${c.productionUrl}"`, category: 'consistency', ref: 'site-url' });
   }
   if (c.version && c.packageVersion && c.version !== c.packageVersion) {
     checks.push({ pass: 'warn', label: `Version mismatch: app.json="${c.version}" vs package.json="${c.packageVersion}"`, category: 'consistency', ref: 'pre-launch' });
@@ -422,7 +422,7 @@ function writeConfigValues(changes) {
           // Skip development profile — it uses staging URL, not production
           if (key === 'development') continue;
           if (!profiles[key].env) profiles[key].env = {};
-          profiles[key].env.SITE_URL = changes.siteUrl;
+          profiles[key].env.EXPO_PUBLIC_SITE_URL = changes.siteUrl;
         }
       }
       // Helper: ensure nested path exists in eas.json
@@ -498,7 +498,7 @@ function writeConfigValues(changes) {
 // ---------------------------------------------------------------------------
 
 async function checkConnectivity(siteUrl) {
-  if (!siteUrl) return { error: 'No SITE_URL configured' };
+  if (!siteUrl) return { error: 'No EXPO_PUBLIC_SITE_URL configured' };
   const results = {};
   const endpoints = [
     { key: 'site', url: siteUrl, label: 'Site root' },
@@ -2370,7 +2370,7 @@ function getDashboardHTML() {
     <div class="card-body">
       <div class="field-group single">
         <div class="field">
-          <label>Production URL <span class="file-hint">eas.json > build.*.env.SITE_URL</span></label>
+          <label>Production URL <span class="file-hint">eas.json</span></label>
           <input type="url" id="cfg-siteUrl" data-key="siteUrl" placeholder="https://your-community-site.com">
           <span class="derive-hint">Used by preview and production builds</span>
         </div>

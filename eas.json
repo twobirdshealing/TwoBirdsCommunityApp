@@ -8,13 +8,13 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "SITE_URL": "https://staging.twobirdschurch.com"
+        "EXPO_PUBLIC_SITE_URL": "https://staging.twobirdschurch.com"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "SITE_URL": "https://community.twobirdschurch.com"
+        "EXPO_PUBLIC_SITE_URL": "https://community.twobirdschurch.com"
       }
     },
     "simulator": {
@@ -23,13 +23,13 @@
         "simulator": true
       },
       "env": {
-        "SITE_URL": "https://community.twobirdschurch.com"
+        "EXPO_PUBLIC_SITE_URL": "https://community.twobirdschurch.com"
       }
     },
     "production": {
       "autoIncrement": false,
       "env": {
-        "SITE_URL": "https://community.twobirdschurch.com"
+        "EXPO_PUBLIC_SITE_URL": "https://community.twobirdschurch.com"
       }
     }
   },

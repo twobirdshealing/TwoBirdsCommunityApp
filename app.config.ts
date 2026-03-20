@@ -20,8 +20,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const stagingUrl = 'https://staging.twobirdschurch.com';
 
   const siteUrl =
-    process.env.SITE_URL ||
-    (process.env.USE_STAGING === '1' && stagingUrl ? stagingUrl : productionUrl);
+    process.env.EXPO_PUBLIC_SITE_URL ||
+    (process.env.EXPO_PUBLIC_USE_STAGING === '1' && stagingUrl ? stagingUrl : productionUrl);
 
   // Fallback values for local dev (EAS builds use app.json instead)
   const name = config.name ?? 'Two Birds';
@@ -71,7 +71,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       ...config.extra,
       siteUrl,
-      isStaging: siteUrl !== productionUrl,
     },
   };
 };
