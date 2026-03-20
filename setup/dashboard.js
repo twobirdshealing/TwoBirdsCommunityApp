@@ -480,11 +480,15 @@ function writeConfigValues(changes) {
   }
 
   // --- package.json ---
-  if (changes.packageName !== undefined || changes.version !== undefined) {
+  if (changes.packageName !== undefined || changes.version !== undefined || changes.stagingUrl !== undefined) {
     const pkgJson = readJsonSafe(PATHS.packageJson);
     if (pkgJson) {
       if (changes.packageName !== undefined) pkgJson.name = changes.packageName;
       if (changes.version !== undefined) pkgJson.version = changes.version;
+      if (changes.stagingUrl !== undefined && pkgJson.scripts?.['dev:staging']) {
+        pkgJson.scripts['dev:staging'] = pkgJson.scripts['dev:staging']
+          .replace(/EXPO_PUBLIC_SITE_URL=[^\s]*/, `EXPO_PUBLIC_SITE_URL=${changes.stagingUrl}`);
+      }
       fs.writeFileSync(PATHS.packageJson, JSON.stringify(pkgJson, null, 2) + '\n');
       results.push('package.json updated');
     }
