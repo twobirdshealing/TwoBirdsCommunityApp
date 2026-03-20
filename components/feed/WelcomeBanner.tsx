@@ -27,7 +27,6 @@ import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_WIDTH = SCREEN_WIDTH - (spacing.md * 2);
-const IMAGE_HEIGHT = 200;
 
 // -----------------------------------------------------------------------------
 // Props
@@ -152,7 +151,7 @@ export function WelcomeBanner({ banner, onClose }: WelcomeBannerProps) {
         <Image
           source={{ uri: banner.bannerImage }}
           style={styles.bannerImage}
-          contentFit="cover"
+          contentFit="contain"
           transition={200}
           cachePolicy="memory-disk"
         />
@@ -219,7 +218,7 @@ const styles = StyleSheet.create({
   // Image
   bannerImage: {
     width: '100%',
-    height: IMAGE_HEIGHT,
+    aspectRatio: 1,
   },
 
   // Content
