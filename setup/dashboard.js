@@ -2033,7 +2033,7 @@ function getDashboardHTML() {
     --purple-bg: rgba(188, 140, 255, 0.1);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; min-height: 100vh; }
+  body { font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; min-height: 100vh; padding-bottom: 70px; }
 
   .header { background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
   .header h1 { font-size: 20px; font-weight: 600; }
@@ -2127,6 +2127,21 @@ function getDashboardHTML() {
   .btn-danger-subtle:hover { background: rgba(248,81,73,0.1); border-color: var(--red); }
   .btn-sm { padding: 4px 10px; font-size: 12px; }
   .btn-group { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+  /* Floating save bar */
+  .save-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 101;
+    background: var(--bg-secondary); border-top: 1px solid var(--border);
+    padding: 12px 24px; display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.15);
+  }
+  .save-bar .unsaved-msg {
+    font-size: 13px; color: var(--yellow); font-weight: 500;
+    display: none; align-items: center; gap: 6px; margin-right: auto;
+  }
+  .save-bar.dirty .unsaved-msg { display: flex; }
+  .save-bar .unsaved-msg svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .save-bar .btn-group { margin-top: 0; }
 
   .status-icon { font-size: 14px; }
   .status-pass { color: var(--green); }
@@ -2506,6 +2521,14 @@ function getDashboardHTML() {
     </div>
   </div>
 
+</div>
+
+<!-- Floating save bar -->
+<div class="save-bar" id="save-bar">
+  <span class="unsaved-msg">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    You have unsaved changes
+  </span>
   <div class="btn-group">
     <button class="btn btn-primary" id="save-config-btn" onclick="saveConfig()">Save Changes</button>
     <button class="btn" onclick="loadState()">Reload from Files</button>
@@ -2581,6 +2604,10 @@ function getDashboardHTML() {
       <div id="build-warnings-banner" style="display:none;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin-bottom:16px">
         <div style="font-weight:600;color:#92400e;margin-bottom:4px">Heads up — you can still build, but:</div>
         <ul id="build-warnings-list" style="margin:0;padding-left:20px;font-size:13px;color:#92400e"></ul>
+      </div>
+      <div id="build-queued-banner" style="display:none;background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:12px 16px;margin-bottom:16px">
+        <div style="font-weight:600;color:#1d4ed8;margin-bottom:2px" id="build-queued-text"></div>
+        <div style="font-size:13px;color:#1e40af">The build list below will refresh automatically in about a minute.</div>
       </div>
       <div class="build-version-bar">
         <span class="build-version-label">App Version</span>
@@ -2889,14 +2916,30 @@ const deriveMap = {
   siteUrl: (val) => ({ productionUrl: val }),
 };
 
-function markDirty() {
-  dirty = true;
-  document.getElementById('save-config-btn').textContent = 'Save Changes *';
+function checkDirty() {
+  var hasChanges = false;
+  for (var i = 0; i < CONFIG_FIELDS.length; i++) {
+    var el = document.getElementById('cfg-' + CONFIG_FIELDS[i]);
+    if (el && el.value !== (originalValues[CONFIG_FIELDS[i]] || '')) { hasChanges = true; break; }
+  }
+  var trackEl = document.getElementById('cfg-googlePlayTrack');
+  if (trackEl && trackEl.value !== (originalValues.googlePlayTrack || 'production')) hasChanges = true;
+  dirty = hasChanges;
+  document.getElementById('save-bar').classList.toggle('dirty', hasChanges);
 }
+
+function clearDirty() {
+  dirty = false;
+  document.getElementById('save-bar').classList.remove('dirty');
+}
+
+window.addEventListener('beforeunload', function(e) {
+  if (dirty) e.preventDefault();
+});
 
 document.querySelectorAll('#tab-config input[data-key]').forEach(input => {
   input.addEventListener('input', () => {
-    markDirty();
+    checkDirty();
     updateFieldHelp(input);
     const key = input.dataset.key;
     if (key === 'stagingUrl') updateStagingCmdVisibility();
@@ -2918,7 +2961,7 @@ document.querySelectorAll('#tab-config input[data-key]').forEach(input => {
 
 // Also track select changes
 document.querySelectorAll('#tab-config select[data-key]').forEach(sel => {
-  sel.addEventListener('change', markDirty);
+  sel.addEventListener('change', checkDirty);
 });
 
 // ---------- Derived-field lock ----------
@@ -2945,7 +2988,7 @@ function setupFieldLock(input) {
     if (locked) { input.classList.add('locked'); btn.innerHTML = LOCK_SVG; btn.title = 'Click to edit'; }
     else { input.classList.remove('locked'); btn.innerHTML = UNLOCK_SVG; btn.title = 'Click to lock'; input.focus(); }
   }
-  btn.addEventListener('click', () => { setLocked(!input.readOnly); if (!input.readOnly) markDirty(); });
+  btn.addEventListener('click', () => { setLocked(!input.readOnly); if (!input.readOnly) checkDirty(); });
   // Lock if field has a value
   setLocked(!!input.value);
   input._setLocked = setLocked;
@@ -2986,8 +3029,7 @@ async function loadState() {
     updateProgress(state.validation);
     populateGooglePlayKey(state.config);
     showDepsBanner(state.dependencies && !state.dependencies.nodeModules);
-    dirty = false;
-    document.getElementById('save-config-btn').textContent = 'Save Changes';
+    clearDirty();
     // Personalize header with app name
     var appName = (state.config.appName || '').trim();
     var isDefault = !appName || PLACEHOLDERS.indexOf(appName) !== -1;
@@ -3321,6 +3363,7 @@ async function saveConfig() {
     if (data.ok) results.push(...data.results);
     else { showToast('Save failed: ' + JSON.stringify(data), 'error'); return; }
     showToast('Saved: ' + results.join(', '), 'success');
+    clearDirty();
     await loadState();
   } catch (err) { showToast('Save error: ' + err.message, 'error'); }
 }
@@ -3339,7 +3382,7 @@ function bumpVersion(type) {
   else if (type === 'minor') { parts[1]++; parts[2] = 0; }
   else { parts[2]++; }
   el.value = parts.join('.');
-  markDirty();
+  checkDirty();
   syncBuildVersion();
 }
 
@@ -3583,8 +3626,20 @@ async function startBuild(platform, profile) {
     });
     const data = await res.json();
     if (data.ok) {
-      showToast('Build started! Check the Builds tab for progress.', 'success');
-      setTimeout(loadBuilds, 2000);
+      showToast('Build queued! The list will refresh automatically.', 'success');
+      // Show queued banner
+      var platformLabel = platform === 'ios' ? 'iOS' : 'Android';
+      document.getElementById('build-queued-text').textContent = '\u2713 ' + platformLabel + ' ' + profile + ' build queued successfully';
+      document.getElementById('build-queued-banner').style.display = '';
+      // Disable all build buttons to prevent double-clicks
+      var buildBtns = document.querySelectorAll('.new-build-grid .btn');
+      buildBtns.forEach(function(btn) { btn.disabled = true; });
+      // Refresh build list after 60s, then clean up
+      setTimeout(async function() {
+        try { await loadBuilds(); } catch (e) { /* ignore */ }
+        document.getElementById('build-queued-banner').style.display = 'none';
+        syncBuildVersion(); // Re-check blockers instead of blindly re-enabling
+      }, 60000);
     } else {
       showToast('Build failed: ' + data.error, 'error');
     }
