@@ -250,11 +250,11 @@ export interface ModuleManifest {
 }</code></pre>
 
 <div class="callout">
-  <strong>shouldActivate:</strong> Called with the server's registration response. Return <code>true</code> if your step should be shown. For example, an OTP module checks if <code>submitResponse.otp_required</code> is true.
+  <strong>shouldActivate:</strong> Called with the server's registration response. Return <code>true</code> if your step should be shown. For example, a verification module checks if <code>submitResponse.verification_required</code> is true.
 </div>
 
 <h3>ResponseHeaderMapping</h3>
-<p>Extracts custom HTTP response headers from API responses and stores them for the module to act on. Useful for server-driven gates (e.g., profile completion checks).</p>
+<p>Extracts custom HTTP response headers from API responses and stores them for the module to act on. Useful for server-driven gates (e.g., post-login completion checks).</p>
 <pre><code>interface ResponseHeaderMapping {
   header: string;         // HTTP header name (e.g. 'X-My-Custom-Header')
   key: string;            // Storage key for the extracted value

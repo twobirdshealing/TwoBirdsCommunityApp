@@ -195,7 +195,24 @@ sed -i \
   -e 's|"name": "twobirdscommunity"|"name": "community-app"|' \
   -e 's|"version": "[^"]*"|"version": "1.0.0"|' \
   -e 's|https://staging.twobirdschurch.com|https://staging.yoursite.com|g' \
+  -e '/"snapshot":/d' \
   "$TARGET_DIR/package.json"
+
+# --- package-lock.json ---
+sed -i \
+  -e 's|"name": "twobirdscommunity"|"name": "community-app"|g' \
+  "$TARGET_DIR/package-lock.json"
+
+# --- tbc-community-app plugin: replace hardcoded user agent ---
+sed -i \
+  -e "s|define('TBC_CA_APP_USER_AGENT', 'TBCCommunityApp');|define('TBC_CA_APP_USER_AGENT', 'CommunityApp');|" \
+  "$TARGET_DIR/companion plugins/tbc-community-app/tbc-community-app.php"
+
+# --- tbc-multi-reactions: replace contributor name ---
+if [ -f "$TARGET_DIR/companion plugins/tbc-multi-reactions/readme.txt" ]; then
+  sed -i 's|Contributors: twobirdscommunity|Contributors: twobirdscode|' \
+    "$TARGET_DIR/companion plugins/tbc-multi-reactions/readme.txt"
+fi
 
 echo "  Done."
 
@@ -288,6 +305,9 @@ if [ -f "$TARGET_DIR/CLAUDE.md" ]; then
   sed -i '/<!-- CUSTOM_INSTRUCTIONS_BELOW -->/q' "$TARGET_DIR/CLAUDE.md"
   echo "" >> "$TARGET_DIR/CLAUDE.md"
 fi
+
+# Remove .claude directories from companion plugins (dev-only)
+find "$TARGET_DIR/companion plugins" -name ".claude" -type d -exec rm -rf {} + 2>/dev/null || true
 
 # Remove any backup or temp files (single find traversal)
 find "$TARGET_DIR" \( -name "*.orig" -o -name ".DS_Store" -o -name "nul" \) -delete 2>/dev/null || true

@@ -74,10 +74,9 @@
   <tr><th>Constant</th><th>Path</th><th>Used For</th></tr>
   <tr><td><code>API_URL</code></td><td><code>/wp-json/fluent-community/v2</code></td><td>Core Fluent Community API (feeds, spaces, profiles, chat, courses, notifications)</td></tr>
   <tr><td><code>TBC_CA_URL</code></td><td><code>/wp-json/tbc-ca/v1</code></td><td>TBC Community App plugin (auth, registration, batch, config, push, cart, account)</td></tr>
-  <tr><td><code>TBC_OTP_URL</code></td><td><code>/wp-json/tbc-otp/v1</code></td><td>TBC OTP plugin (phone verification) &mdash; addon</td></tr>
   <tr><td><code>TBC_MR_URL</code></td><td><code>/wp-json/tbc-multi-reactions/v1</code></td><td>TBC Multi-Reactions plugin (reaction breakdowns)</td></tr>
-  <tr><td><code>TBC_YT_URL</code></td><td><code>/wp-json/tbc-yt/v1</code></td><td>TBC YouTube plugin (channel videos, playlists)</td></tr>
-  <tr><td><code>WP_REST_URL</code></td><td><code>/wp-json/wp/v2</code></td><td>WordPress core REST (blog posts, comments)</td></tr>
+  <tr><td><code>WP_REST_URL</code></td><td><code>/wp-json/wp/v2</code></td><td>WordPress core REST</td></tr>
+  <tr><td colspan="3"><em>Add-on modules define their own URL constants (e.g., <code>TBC_OTP_URL</code>, <code>TBC_YT_URL</code>) in their service files.</em></td></tr>
 </table>
 
 <p>The HTTP client defaults to <code>API_URL</code> (Fluent Community). Services targeting other endpoints pass <code>baseUrl</code> in the request config:</p>
@@ -468,13 +467,12 @@ export const myFeatureApi = {
   <tr><td><span class="file-path">services/api/reactions.ts</span></td><td><code>reactionsApi</code></td><td><code>TBC_MR_URL</code></td></tr>
   <tr><td><span class="file-path">services/api/appConfig.ts</span></td><td><code>getAppConfig()</code></td><td><code>TBC_CA_URL</code></td></tr>
   <tr><td><span class="file-path">services/api/registration.ts</span></td><td><code>registrationApi</code></td><td><code>TBC_REG_URL</code></td></tr>
-  <tr><td><span class="file-path">modules/otp/services/otp.ts</span></td><td><code>otpApi</code></td><td><code>TBC_OTP_URL</code></td></tr>
   <tr><td><span class="file-path">services/api/batch.ts</span></td><td><code>batchRequest()</code></td><td><code>TBC_CA_URL</code></td></tr>
   <tr><td><span class="file-path">services/push.ts</span></td><td><code>registerDeviceToken()</code></td><td><code>TBC_CA_URL</code></td></tr>
 </table>
 
 <div class="callout callout-warn">
-  <strong>Some services bypass the HTTP client.</strong> Registration, OTP, app config, and push use their own <code>fetch()</code> wrappers because they handle unauthenticated requests or receive tokens as parameters (before auth state is established). These are the only exceptions &mdash; all other services use the standard client.
+  <strong>Some services bypass the HTTP client.</strong> Registration, app config, and push use their own <code>fetch()</code> wrappers because they handle unauthenticated requests or receive tokens as parameters (before auth state is established). Add-on module services may also bypass the client for similar reasons. These are the only exceptions &mdash; all other services use the standard client.
 </div>
 
 <!-- ====================================================================== -->

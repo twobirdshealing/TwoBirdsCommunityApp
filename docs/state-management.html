@@ -43,7 +43,7 @@
 <div class="flow-diagram">GestureHandlerRootView
 &boxur;&boxh; ErrorBoundary
    &boxur;&boxh; ThemeProvider              &larr; Colors, dark mode, maintenance, update, branding
-      &boxur;&boxh; AuthProvider             &larr; Login/logout, user state, profile completion
+      &boxur;&boxh; AuthProvider             &larr; Login/logout, user state, post-login gates
          &boxur;&boxh; AppConfigProvider     &larr; Visibility flags, portal slug, socket config
             &boxur;&boxh; UnreadCountsProvider  &larr; Badge counts (notifications, messages, cart)
                &boxur;&boxh; PusherProvider     &larr; Real-time WebSocket (needs Auth + AppConfig)
@@ -321,9 +321,9 @@ openMenu({
 
 <p>Modules can register their own context providers via the module manifest. These are dynamically nested inside <code>ModuleProviders</code> in <span class="file-path">app/_layout.tsx</span>.</p>
 
-<pre><code>// modules/bookclub/module.ts
-export const bookclubModule: ModuleManifest = {
-  providers: [{ component: AudioPlayerProvider }],
+<pre><code>// modules/yourmodule/module.ts
+export const yourModule: ModuleManifest = {
+  providers: [{ component: YourModuleProvider }],
   // ...
 };</code></pre>
 

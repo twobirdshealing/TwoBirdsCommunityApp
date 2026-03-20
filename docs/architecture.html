@@ -67,12 +67,7 @@ hooks/                  Custom hooks (data fetching, actions, etc.)
 modules/                Self-contained add-on features
   _registry.ts          Module registration (one line to enable/disable)
   _types.ts             ModuleManifest interface
-  blog/                 Blog module (add-on)
-  bookclub/             Book club module (add-on)
-  youtube/              YouTube module (add-on)
-  calendar/             Calendar module (site-specific)
-  donate/               Donate module (site-specific)
-  donor/                Donor module (site-specific)
+  yourmodule/           Your custom modules (add-ons, site-specific features)
 services/               Core services
   api/                  API client + endpoint functions
   auth.ts               JWT token management
@@ -185,7 +180,6 @@ Logout:
   <tr><td><span class="file-path">services/auth.ts</span></td><td>Token storage, silent refresh, credential management</td></tr>
   <tr><td><span class="file-path">contexts/AuthContext.tsx</span></td><td>React context: login(), logout(), registerAndLogin(), user state</td></tr>
   <tr><td><span class="file-path">services/api/registration.ts</span></td><td>Registration API (getFields, submit, resetPassword)</td></tr>
-  <tr><td><span class="file-path">modules/otp/services/otp.ts</span></td><td>OTP verification — send, verify, resend, voice call (add-on module)</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -220,7 +214,7 @@ Logout:
   <tr><td><code>X-TBC-Unread-Messages</code></td><td>Message badge count</td><td>UnreadCountsContext</td></tr>
   <tr><td><code>X-TBC-Cart-Count</code></td><td>Cart item count</td><td>UnreadCountsContext</td></tr>
   <tr><td><code>X-TBC-Maintenance</code></td><td>Maintenance mode flag</td><td>ThemeContext</td></tr>
-  <tr><td><code>X-TBC-Profile-Incomplete</code></td><td>Profile completion gate</td><td>AuthContext</td></tr>
+  <tr><td><code>X-TBC-Profile-Incomplete</code></td><td>Profile completion gate (add-on module)</td><td>AuthContext</td></tr>
   <tr><td><code>X-TBC-Min-App-Version</code></td><td>Force update gate</td><td>ThemeContext</td></tr>
 </table>
 
@@ -299,7 +293,7 @@ markBatchFresh(['tbc_widget_enrolled_courses']);
 </table>
 
 <div class="callout">
-  <strong>Modules don't use the batch.</strong> Module widgets (calendar, bookclub, etc.) self-fetch via <code>useCachedData</code> when they mount. This keeps the batch lean and avoids coupling modules to core startup.
+  <strong>Modules don't use the batch.</strong> Module widgets self-fetch via <code>useCachedData</code> when they mount. This keeps the batch lean and avoids coupling modules to core startup.
 </div>
 
 <h3>Lifecycle</h3>
@@ -369,7 +363,7 @@ useReactionListener((data) =&gt; {
   <tr><th>Route</th><th>Screen</th><th>Auth Required</th></tr>
   <tr><td><code>/login</code></td><td>Login</td><td>No</td></tr>
   <tr><td><code>/register</code></td><td>Multi-step registration</td><td>No (stays accessible post-auth for avatar step)</td></tr>
-  <tr><td><code>/forgot-password</code></td><td>OTP-based password reset</td><td>No</td></tr>
+  <tr><td><code>/forgot-password</code></td><td>Password reset</td><td>No</td></tr>
   <tr><td><code>/(tabs)</code></td><td>Home (bottom tab container)</td><td>Yes</td></tr>
   <tr><td><code>/(tabs)/activity</code></td><td>Activity / Notifications feed</td><td>Yes</td></tr>
   <tr><td><code>/(tabs)/spaces</code></td><td>Spaces directory</td><td>Yes</td></tr>
@@ -591,7 +585,6 @@ useCachedData({
   <tr><td><span class="file-path">hooks/useStartupData.ts</span></td><td>Startup batch: 7 API paths in one request</td></tr>
   <tr><td><span class="file-path">hooks/useFeedActions.ts</span></td><td>Feed CRUD: react, bookmark, pin, edit, delete</td></tr>
   <tr><td><span class="file-path">hooks/useChatMessages.ts</span></td><td>Chat: messages, pagination, optimistic send, Pusher sync</td></tr>
-  <tr><td><span class="file-path">modules/otp/hooks/useOtpVerification.ts</span></td><td>Shared OTP state: code, timer, verify, resend, voice call (add-on module)</td></tr>
   <tr><td><span class="file-path">hooks/useTickerPolling.ts</span></td><td>Background polling for unread counts + activity ping</td></tr>
 </table>
 

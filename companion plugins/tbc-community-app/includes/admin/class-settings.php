@@ -103,6 +103,10 @@ class TBC_CA_Admin_Settings {
         }
 
         // Deep Linking
+        $sanitized['bundle_id']            = sanitize_text_field($input['bundle_id'] ?? '');
+        $sanitized['package_name']         = sanitize_text_field($input['package_name'] ?? '');
+        $sanitized['url_scheme']           = sanitize_text_field($input['url_scheme'] ?? '');
+        $sanitized['app_name']             = sanitize_text_field($input['app_name'] ?? '');
         $sanitized['apple_team_id']        = sanitize_text_field($input['apple_team_id'] ?? '');
         $sanitized['android_sha256']       = sanitize_text_field($input['android_sha256'] ?? '');
         $sanitized['app_store_id']         = sanitize_text_field($input['app_store_id'] ?? '');
@@ -318,6 +322,50 @@ class TBC_CA_Admin_Settings {
                     <p class="description"><?php _e('Configure Universal Links (iOS) and App Links (Android) so website URLs open directly in the app. Also controls the Smart App Banner shown to website visitors.', 'tbc-ca'); ?></p>
 
                     <table class="form-table">
+                        <tr>
+                            <th scope="row"><?php _e('App Name', 'tbc-ca'); ?></th>
+                            <td>
+                                <input type="text"
+                                       name="tbc_ca_settings[app_name]"
+                                       value="<?php echo esc_attr($settings['app_name'] ?? ''); ?>"
+                                       class="regular-text"
+                                       placeholder="<?php esc_attr_e('e.g. My Community', 'tbc-ca'); ?>" />
+                                <p class="description"><?php _e('Display name shown in the Smart App Banner. Should match your app name.', 'tbc-ca'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Bundle Identifier (iOS)', 'tbc-ca'); ?></th>
+                            <td>
+                                <input type="text"
+                                       name="tbc_ca_settings[bundle_id]"
+                                       value="<?php echo esc_attr($settings['bundle_id'] ?? ''); ?>"
+                                       class="regular-text"
+                                       placeholder="<?php esc_attr_e('e.g. com.example.community', 'tbc-ca'); ?>" />
+                                <p class="description"><?php _e('iOS bundle identifier from app.json. Used in the AASA file for Universal Links.', 'tbc-ca'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('Package Name (Android)', 'tbc-ca'); ?></th>
+                            <td>
+                                <input type="text"
+                                       name="tbc_ca_settings[package_name]"
+                                       value="<?php echo esc_attr($settings['package_name'] ?? ''); ?>"
+                                       class="regular-text"
+                                       placeholder="<?php esc_attr_e('e.g. com.example.community', 'tbc-ca'); ?>" />
+                                <p class="description"><?php _e('Android package name from app.json. Used in the Asset Links file for App Links.', 'tbc-ca'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><?php _e('URL Scheme', 'tbc-ca'); ?></th>
+                            <td>
+                                <input type="text"
+                                       name="tbc_ca_settings[url_scheme]"
+                                       value="<?php echo esc_attr($settings['url_scheme'] ?? ''); ?>"
+                                       class="regular-text"
+                                       placeholder="<?php esc_attr_e('e.g. mycommunity', 'tbc-ca'); ?>" />
+                                <p class="description"><?php _e('Custom URL scheme (without ://) from app.json. Used by the Smart App Banner to open the app directly.', 'tbc-ca'); ?></p>
+                            </td>
+                        </tr>
                         <tr>
                             <th scope="row"><?php _e('Apple Team ID', 'tbc-ca'); ?></th>
                             <td>

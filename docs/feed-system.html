@@ -192,7 +192,7 @@ interface SurveyOption {
 }</code></pre>
 
 <div class="callout-error callout">
-  <strong>Use <code>space</code> (slug), not <code>space_id</code>.</strong> The Fluent Community web app sends <code>{"space": "book-club"}</code>, not <code>{"space_id": 50}</code>. Using <code>space_id</code> will silently fail.
+  <strong>Use <code>space</code> (slug), not <code>space_id</code>.</strong> The Fluent Community web app sends <code>{"space": "general"}</code>, not <code>{"space_id": 50}</code>. Using <code>space_id</code> will silently fail.
 </div>
 
 <h3>CreateFeedData</h3>
@@ -474,7 +474,7 @@ const allFeeds = [...(sticky || []), ...feeds.data];</code></pre>
 <pre><code>feedsApi.createFeed({
   message: 'What should we study next?',
   content_type: 'survey',
-  space: 'book-club',
+  space: 'general',
   survey: {
     type: 'single_choice',       // or 'multi_choice'
     options: [

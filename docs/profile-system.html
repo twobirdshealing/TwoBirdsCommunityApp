@@ -179,7 +179,7 @@
 <table>
   <tr><th>Screen</th><th>File</th><th>Purpose</th></tr>
   <tr><td>Profile View</td><td><span class="file-path">app/profile/[username]/index.tsx</span></td><td>Unified view for own and other profiles — header, tabs, actions</td></tr>
-  <tr><td>Profile Edit</td><td><span class="file-path">app/profile/edit.tsx</span></td><td>Full profile editor with all fields, media upload, OTP for phone</td></tr>
+  <tr><td>Profile Edit</td><td><span class="file-path">app/profile/edit.tsx</span></td><td>Full profile editor with all fields and media upload</td></tr>
   <tr><td>Profile Complete</td><td><span class="file-path">app/profile-complete.tsx</span></td><td>Login-time gate for incomplete profiles (see <a href="registration.html">Registration</a>)</td></tr>
   <tr><td>Connections</td><td><span class="file-path">app/profile/[username]/connections.tsx</span></td><td>Followers/following lists with follow/notify/message actions</td></tr>
 </table>
@@ -203,7 +203,6 @@
   <tr><td><code>AboutTab</code></td><td><span class="file-path">components/profile/AboutTab.tsx</span></td><td>Bio, joined date, last activity, custom fields (with type-specific rendering), website</td></tr>
   <tr><td><code>ProfileMenu</code></td><td><span class="file-path">components/profile/ProfileMenu.tsx</span></td><td>Own profile dropdown: Edit, Deactivate, Delete (with "type DELETE" confirmation)</td></tr>
   <tr><td><code>CommentCard</code></td><td><span class="file-path">components/profile/CommentCard.tsx</span></td><td>Timeline-style comment card with dashed line, post title, space name, rendered content</td></tr>
-  <tr><td><code>ProfileCompletionSteps</code></td><td><span class="file-path">modules/profile-completion/components/ProfileCompletionSteps.tsx</span></td><td>Bio + avatar upload steps (shared by registration and profile-complete gate) — add-on module</td></tr>
   <tr><td><code>Avatar</code></td><td><span class="file-path">components/common/Avatar.tsx</span></td><td>User avatar with fallback initials, online indicator, size presets</td></tr>
   <tr><td><code>UserDisplayName</code></td><td><span class="file-path">components/common/UserDisplayName.tsx</span></td><td>Name + verified badge + profile badges (used everywhere)</td></tr>
   <tr><td><code>VerifiedBadge</code></td><td><span class="file-path">components/common/VerifiedBadge.tsx</span></td><td>Checkmark icon inline with name</td></tr>
@@ -336,8 +335,8 @@ await updateProfile(username, {
   <strong>Always preserve admin fields on save.</strong> Include <code>is_verified</code>, <code>badge_slugs</code>, and <code>status</code> in the update payload with their current values. Otherwise, the Fluent Community API may clear them.
 </div>
 
-<h3>Phone Number Change → OTP</h3>
-<p>If the profile update includes a phone number change and OTP is enabled, the server returns <code>otp_required: true</code>. The edit screen opens an OTP modal (same <code>useOtpVerification</code> hook as registration), verifies the code, then retries the save with <code>tbc_otp_session_key</code> in the payload.</p>
+<h3>Phone Number Change Verification</h3>
+<p>If the profile update includes a phone number change and a verification module is active, the server may require additional verification before the change is applied. The edit screen handles this via the module system's verification hooks.</p>
 
 <!-- ================================================================== -->
 <h2 id="custom-fields">8. Custom Profile Fields</h2>

@@ -10,21 +10,17 @@
 <body>
 
 <h1>Registration &amp; Onboarding</h1>
-<p class="subtitle">5-step wizard, OTP verification, email verification, profile completion, and password recovery.</p>
+<p class="subtitle">Multi-step wizard, email verification, module-injected verification steps, and password recovery.</p>
 
 <div class="callout">
   <strong>Key files:</strong>
   <span class="file-path">app/register.tsx</span> (wizard screen),
   <span class="file-path">app/profile-complete.tsx</span> (login-time gate),
   <span class="file-path">services/api/registration.ts</span> (all registration + profile APIs),
-  <span class="file-path">modules/otp/services/otp.ts</span> (OTP service — add-on module),
-  <span class="file-path">modules/otp/hooks/useOtpVerification.ts</span> (OTP state management — add-on module),
-  <span class="file-path">components/register/</span> (step components),
-  <span class="file-path">modules/profile-completion/components/ProfileCompletionSteps.tsx</span> (bio + avatar — add-on module).
+  <span class="file-path">components/register/</span> (step components).
   <br><br>
-  WordPress backend: <span class="file-path">companion plugins/tbc-community-app/</span> — base registration REST API,
-  <span class="file-path">companion plugins/tbc-otp/</span> — OTP/Twilio (add-on),
-  <span class="file-path">companion plugins/tbc-profile-completion/</span> — profile completion gate (add-on).
+  WordPress backend: <span class="file-path">companion plugins/tbc-community-app/</span> — base registration REST API.
+  Add-on modules can inject additional steps (verification, profile completion) via the module system's <code>registrationSteps</code> and <code>responseHeaders</code> manifest fields.
 </div>
 
 <div class="toc">
@@ -33,7 +29,7 @@
     <li><a href="#flow">Registration Flow Overview</a></li>
     <li><a href="#wizard">The 5-Step Wizard</a></li>
     <li><a href="#registration-api">Registration API</a></li>
-    <li><a href="#otp">OTP Verification (Twilio)</a></li>
+    <li><a href="#module-steps">Module-Injected Verification Steps</a></li>
     <li><a href="#email-verify">Email Verification</a></li>
     <li><a href="#profile-completion">Profile Completion</a></li>
     <li><a href="#password-recovery">Password Recovery</a></li>
@@ -51,8 +47,8 @@
 
 <pre><code>┌──────────────────────────────────────────────────────────────────┐
 │                     GET /register/fields                         │
-│  → registration_enabled, otp_required, email_verification_       │
-│    required, profile_completion settings, field definitions       │
+│  → registration_enabled, email_verification_required,            │
+│    field definitions, add-on capabilities (via hooks)            │
 └──────────────────────────┬───────────────────────────────────────┘
                            │
         ┌──────────────────▼──────────────────┐
@@ -68,8 +64,8 @@
                            │
               ┌────────────┼────────────┐
               ▼            ▼            ▼
-     email_verification  otp_required  success
-     _required: true     : true        (tokens)
+     email_verification  module steps  success
+     _required: true     activated     (tokens)
               │            │            │
               ▼            │            │
         ┌─────────────┐   │            │
@@ -79,18 +75,16 @@
               │                         │
               ▼                         │
         ┌─────────────┐                 │
-        │  Step 4:     │                │
-        │  Phone OTP   │────────────────┤
+        │  Module      │                │
+        │  Steps (N)   │────────────────┤
         └─────────────┘                 │
                                         │
                     registerAndLogin()  ◄┘
                            │
               ┌────────────▼────────────┐
-              │  profile_completion     │
-              │  .enabled: true ?       │
-              ├─── yes ──► Step 5       │
-              │            Bio + Avatar │
-              │            POST /complete│
+              │  Post-login gates?      │
+              ├─── yes ──► Completion   │
+              │            steps        │
               └─── no ──► Main App      │
               └─────────────────────────┘</code></pre>
 
@@ -106,8 +100,8 @@
   <tr><td>1</td><td>Inline (renderStep1)</td><td>Name, email, username, password</td><td>Always shown</td></tr>
   <tr><td>2</td><td>Inline (renderStep2)</td><td>Custom profile fields + terms checkbox</td><td>Skipped if no custom fields</td></tr>
   <tr><td>3</td><td><code>EmailVerifyStep</code></td><td>6-digit email verification code</td><td>Only if <code>email_verification_required: true</code></td></tr>
-  <tr><td>4</td><td><code>PhoneOtpStep</code></td><td>SMS/voice OTP code</td><td>Only if <code>otp_required: true</code></td></tr>
-  <tr><td>5</td><td><code>ProfileCompletionSteps</code></td><td>Bio, social links, avatar, cover photo</td><td>Only if <code>profile_completion.enabled: true</code></td></tr>
+  <tr><td>4+</td><td><em>Module-injected steps</em></td><td>Verification steps from add-on modules</td><td>Only if module's <code>shouldActivate()</code> returns true</td></tr>
+  <tr><td>Last</td><td><em>Post-login steps</em></td><td>Profile completion, onboarding gates</td><td>Only if server config enables them</td></tr>
 </table>
 
 <h3>Step 1: Basic Information</h3>
@@ -128,7 +122,7 @@
 <p>After step 1 (or step 2 if custom fields exist), <code>handleSubmitRegistration()</code> sends a <code>POST /register</code> request. The server response determines what happens next:</p>
 <ul>
   <li><code>email_verification_required: true</code> → advance to step 3</li>
-  <li><code>otp_required: true</code> → advance to step 4</li>
+  <li>Module-specific flags (e.g., <code>verification_required: true</code>) → advance to module steps</li>
   <li><code>success: true</code> with tokens → auto-login, then step 5 or main app</li>
 </ul>
 
@@ -141,9 +135,9 @@
 
 <table>
   <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
-  <tr><td><code>getRegistrationFields()</code></td><td>GET</td><td><code>tbc-ca/v1/auth/register/fields</code></td><td>Field definitions + server config (OTP, email verify, profile completion)</td></tr>
+  <tr><td><code>getRegistrationFields()</code></td><td>GET</td><td><code>tbc-ca/v1/auth/register/fields</code></td><td>Field definitions + server config (email verify, module flags)</td></tr>
   <tr><td><code>submitRegistration(data)</code></td><td>POST</td><td><code>tbc-ca/v1/auth/register</code></td><td>Submit registration form. Returns tokens OR verification requirement.</td></tr>
-  <tr><td><code>forgotPassword(login)</code></td><td>POST</td><td><code>tbc-ca/v1/password/forgot</code></td><td>Initiate password reset (sends OTP or email)</td></tr>
+  <tr><td><code>forgotPassword(login)</code></td><td>POST</td><td><code>tbc-ca/v1/password/forgot</code></td><td>Initiate password reset (sends verification email)</td></tr>
   <tr><td><code>resetPassword(token, login, pwd)</code></td><td>POST</td><td><code>tbc-ca/v1/password/reset</code></td><td>Set new password with reset token</td></tr>
 </table>
 
@@ -160,14 +154,10 @@
   registration_enabled: boolean;
   email_verification_required: boolean;
   fields: Record&lt;string, RegistrationField&gt;;
-  // These are populated via add-on plugin hooks (tbc_ca_registration_config):
-  otp_required?: boolean;       // From tbc-otp add-on
-  voice_fallback?: boolean;     // From tbc-otp add-on
-  profile_completion?: {        // From tbc-profile-completion add-on
-    enabled: boolean;
-    require_bio: boolean;
-    require_avatar: boolean;
-  };
+  // Add-on plugins extend this via the tbc_ca_registration_config filter hook:
+  // Add-on modules extend this with their own flags (e.g., verification settings)
+  // Each add-on advertises its capabilities here so the app adapts dynamically.
+  [key: string]: unknown;  // Extensible via add-on hooks
 }</code></pre>
 
 <h3>RegisterResponse</h3>
@@ -189,15 +179,14 @@
   message: "Please check your email for a verification code."
 }
 
-// → Phone OTP needed (verify, then re-submit with session key)
-// IMPORTANT: Both otp_required AND session_key must be present.
-// If session_key is missing, the OTP step won't activate.
+// → Module verification needed (add-on plugins can return custom verification requirements)
+// The app checks each registered module's shouldActivate() against this response.
 {
   success: false,
-  otp_required: true,
-  session_key: "abc123",
-  phone_masked: "+1 (555) 1**-****",
-  message: "..."
+  // Add-on-specific fields, e.g.:
+  // my_verification_required: true,
+  // session_key: "abc123",
+  message: "Additional verification required."
 }
 
 // ✗ Validation errors
@@ -211,62 +200,38 @@
 }</code></pre>
 
 <div class="callout callout-warn">
-  <strong>Re-submission pattern:</strong> After email verification or OTP, the app re-calls <code>submitRegistration()</code> with the original form data plus the verification data (<code>__two_fa_code</code> / <code>__two_fa_signed_token</code> for email, or <code>tbc_otp_session_key</code> for OTP). The server validates the verification and creates the user.
+  <strong>Re-submission pattern:</strong> After email verification or module-injected verification steps, the app re-calls <code>submitRegistration()</code> with the original form data plus the verification data (e.g., <code>__two_fa_code</code> / <code>__two_fa_signed_token</code> for email). The server validates the verification and creates the user.
 </div>
 
 <!-- ================================================================== -->
-<h2 id="otp">4. OTP Verification (Twilio)</h2>
+<h2 id="module-steps">4. Module-Injected Verification Steps</h2>
 
-<p>Phone verification via Twilio SMS or voice call. The OTP service in <span class="file-path">modules/otp/services/otp.ts</span> handles all OTP contexts (registration, password recovery, profile). This is an <strong>add-on module</strong> — requires the <code>tbc-otp</code> companion plugin.</p>
+<p>Add-on modules can inject verification steps into the registration wizard using the <code>registrationSteps</code> manifest field. These steps appear after the core email verification step and before user creation completes.</p>
 
-<h3>OTP Endpoints</h3>
-
-<table>
-  <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
-  <tr><td><code>verifyOtp(sessionKey, code)</code></td><td>POST</td><td><code>tbc-otp/v1/otp/verify</code></td><td>Verify the code entered by the user</td></tr>
-  <tr><td><code>resendOtp(sessionKey)</code></td><td>POST</td><td><code>tbc-otp/v1/otp/resend</code></td><td>Resend SMS (60-second cooldown)</td></tr>
-  <tr><td><code>requestVoiceCall(sessionKey)</code></td><td>POST</td><td><code>tbc-otp/v1/otp/voice</code></td><td>Request voice call instead of SMS (if enabled)</td></tr>
-</table>
-
-<h3>OTP Flow</h3>
+<h3>How It Works</h3>
 <ol>
-  <li>User submits registration form with phone number</li>
-  <li>Server initiates Twilio verification → returns <code>session_key</code> + <code>phone_masked</code></li>
-  <li>App advances to step 4 (<code>PhoneOtpStep</code>), starts 60-second resend timer</li>
-  <li>User enters the 4–8 digit code from SMS</li>
-  <li>App calls <code>verifyOtp(sessionKey, code)</code></li>
-  <li>On success → app re-submits registration with <code>tbc_otp_session_key</code></li>
-  <li>Server sees verified session → creates user and returns tokens</li>
+  <li>User submits the registration form</li>
+  <li>Server returns a response with add-on-specific fields (via <code>tbc_ca_registration_config</code> hooks)</li>
+  <li>The app checks each registered module step's <code>shouldActivate(submitResponse)</code></li>
+  <li>If a step activates, the wizard advances to show that module's verification UI</li>
+  <li>After the module step completes, the app re-submits registration with the verification data</li>
+  <li>Server validates and creates the user</li>
 </ol>
 
-<h3>useOtpVerification Hook</h3>
-<p><span class="file-path">modules/otp/hooks/useOtpVerification.ts</span> — shared state management for OTP across registration and password recovery.</p>
+<h3>RegistrationStepRegistration</h3>
+<pre><code>interface RegistrationStepRegistration {
+  id: string;             // Unique step ID
+  order: number;          // Sort position (core email-verify = 10)
+  phase: 'pre-creation';  // When the step runs
+  title: string;          // Step title in wizard
+  component: ComponentType&lt;RegistrationStepProps&gt;;
+  shouldActivate: (submitResponse: Record&lt;string, unknown&gt;) =&gt; boolean;
+}</code></pre>
 
-<pre><code>const otp = useOtpVerification({
-  onVerified: (sessionKey) =&gt; handleSubmitRegistration(sessionKey),
-});
-
-// Initialize when server returns OTP data
-otp.start({ sessionKey: 'abc123', phoneMasked: '+1 (555) 1**-****', voiceFallback: true });
-
-// State
-otp.code           // Current input value
-otp.setCode        // Update input
-otp.sessionKey     // Server session identifier
-otp.phoneMasked    // Masked phone for display
-otp.resendTimer    // Seconds until resend is allowed (60 → 0)
-otp.voiceFallback  // Whether voice call option is available
-otp.error          // Error message to display
-otp.verifying      // Loading state during verification
-
-// Actions
-otp.handleVerify()    // POST /otp/verify
-otp.handleResend()    // POST /otp/resend (blocked if resendTimer &gt; 0)
-otp.handleVoiceCall() // POST /otp/voice
-otp.reset()           // Clear all state</code></pre>
+<p>See <a href="module-system.html#registration-types">Module System &rarr; Registration Types</a> for full details on building custom verification steps.</p>
 
 <div class="callout">
-  <strong>Session lifecycle:</strong> OTP sessions are stored in the WordPress <code>wp_options</code> table and expire after 5 minutes. If the session expires, the user must go back and re-submit the form to get a new session.
+  <strong>Server-driven activation.</strong> The server response determines which module steps activate. The app never hardcodes which steps to show &mdash; it queries each registered module's <code>shouldActivate()</code> function against the server response.
 </div>
 
 <!-- ================================================================== -->
@@ -281,7 +246,7 @@ otp.reset()           // Clear all state</code></pre>
   <li>App advances to step 3 (<code>EmailVerifyStep</code>)</li>
   <li>User checks email, enters 6-digit code</li>
   <li>App re-submits registration with <code>__two_fa_code</code> + <code>__two_fa_signed_token</code></li>
-  <li>Server validates code → proceeds to OTP or user creation</li>
+  <li>Server validates code → proceeds to module steps or user creation</li>
 </ol>
 
 <h3>EmailVerifyStep Component</h3>
@@ -296,10 +261,10 @@ otp.reset()           // Clear all state</code></pre>
 <!-- ================================================================== -->
 <h2 id="profile-completion">6. Profile Completion</h2>
 
-<p>After registration (or on next login if skipped), users may be required to complete their profile with bio, social links, and avatar.</p>
+<p>After registration (or on next login if skipped), users may be required to complete their profile. This feature is powered by an add-on module that uses the module system's <code>responseHeaders</code> mapping to detect incomplete profiles.</p>
 
-<h3>Step 5 During Registration</h3>
-<p>When <code>profile_completion.enabled: true</code>, the registration wizard shows <code>ProfileCompletionSteps</code> after auto-login.</p>
+<h3>How It Works</h3>
+<p>A profile completion add-on module registers a <code>responseHeaders</code> mapping in its manifest. The API client intercepts the header on every authenticated response and updates AuthContext. If the profile is incomplete, the auth guard redirects to <code>/profile-complete</code>.</p>
 
 <h3>Login-Time Gate</h3>
 <p><span class="file-path">app/profile-complete.tsx</span> — standalone screen shown to returning users whose profile is incomplete.</p>
@@ -308,23 +273,6 @@ otp.reset()           // Clear all state</code></pre>
   <li>Fetches existing profile data via <code>checkProfileComplete()</code></li>
   <li>Pre-populates form with existing bio, avatar, social links</li>
   <li>Shows which fields are missing (<code>status.missing</code> array)</li>
-</ul>
-
-<h3>ProfileCompletionSteps Component</h3>
-<p><span class="file-path">modules/profile-completion/components/ProfileCompletionSteps.tsx</span> — used by both register.tsx and profile-complete.tsx. This is an <strong>add-on module</strong> — requires the <code>tbc-profile-completion</code> companion plugin.</p>
-
-<p><strong>Internal Step 1: Bio + Social</strong></p>
-<ul>
-  <li><code>bio</code> — textarea, max 500 chars. Required if <code>profile_completion.require_bio: true</code>.</li>
-  <li><code>website</code> — URL field, optional</li>
-  <li>Social links — configurable providers (Instagram, Twitter, LinkedIn, etc.)</li>
-</ul>
-
-<p><strong>Internal Step 2: Avatar + Cover</strong></p>
-<ul>
-  <li><code>avatar</code> — image picker (library/camera) + upload. Required if <code>profile_completion.require_avatar: true</code>.</li>
-  <li><code>cover_photo</code> — optional cover image upload</li>
-  <li>Shows upload progress indicator</li>
 </ul>
 
 <h3>Completion API</h3>
@@ -338,30 +286,19 @@ await completeRegistration();
 markProfileComplete(); // Updates AuthContext
 router.replace('/(tabs)');</code></pre>
 
-<h3>X-TBC-Profile-Incomplete Header</h3>
-<p>Every authenticated API response includes this header (set by <code>class-response-headers.php</code>). The API client intercepts it and updates AuthContext:</p>
-
-<pre><code>// In services/api/client.ts:
-const hProfile = response.headers.get('X-TBC-Profile-Incomplete');
-if (hProfile !== null) {
-  onResponseHeaders({ profileIncomplete: hProfile === '1' });
-}
-
-// In AuthContext — the callback:
-// profileIncomplete → markProfileIncomplete() → needsProfileCompletion = true
-// !profileIncomplete → markProfileComplete()  → needsProfileCompletion = false</code></pre>
+<h3>Response Header Pattern</h3>
+<p>Add-on modules can register response headers via the module system. The API client intercepts these headers on every authenticated response and stores the values for the module to act on. See <a href="module-system.html#registration-types">Module System &rarr; ResponseHeaderMapping</a> for details.</p>
 
 <!-- ================================================================== -->
 <h2 id="password-recovery">7. Password Recovery</h2>
 
-<p>Password recovery uses the same OTP infrastructure as registration. Endpoints are on the <code>tbc-ca/v1</code> prefix (tbc-community-app plugin).</p>
+<p>Password recovery endpoints are on the <code>tbc-ca/v1</code> prefix (tbc-community-app plugin). The server determines which verification method to use (email or add-on module verification).</p>
 
 <h3>Flow</h3>
 <ol>
   <li>User enters username or email → <code>forgotPassword(login)</code></li>
-  <li>Server returns either <code>otp_sent: true</code> (SMS) or <code>email_sent: true</code> (email link)</li>
-  <li>If OTP → same <code>PhoneOtpStep</code> UI, same <code>useOtpVerification</code> hook</li>
-  <li>OTP verified → server returns <code>reset_token</code> + <code>login</code></li>
+  <li>Server returns a verification method (e.g., <code>email_sent: true</code> for email link, or add-on-specific verification)</li>
+  <li>User completes verification → server returns <code>reset_token</code> + <code>login</code></li>
   <li>User enters new password → <code>resetPassword(token, login, newPassword)</code></li>
 </ol>
 
@@ -369,13 +306,12 @@ if (hProfile !== null) {
 
 <table>
   <tr><th>Function</th><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
-  <tr><td><code>forgotPassword(login)</code></td><td>POST</td><td><code>tbc-ca/v1/password/forgot</code></td><td>Send OTP or email reset link</td></tr>
-  <tr><td><code>verifyPasswordOtp(session, code)</code></td><td>POST</td><td><code>tbc-otp/v1/otp/verify</code></td><td>Verify OTP (returns reset_token)</td></tr>
-  <tr><td><code>resetPassword(token, login, pwd)</code></td><td>POST</td><td><code>tbc-ca/v1/password/reset</code></td><td>Set new password</td></tr>
+  <tr><td><code>forgotPassword(login)</code></td><td>POST</td><td><code>tbc-ca/v1/password/forgot</code></td><td>Initiate password reset (sends verification)</td></tr>
+  <tr><td><code>resetPassword(token, login, pwd)</code></td><td>POST</td><td><code>tbc-ca/v1/password/reset</code></td><td>Set new password with reset token</td></tr>
 </table>
 
 <div class="callout">
-  <strong>OTP vs Email:</strong> The server decides which method to use based on whether the user has a phone number on file. If they do, OTP is sent via SMS. Otherwise, a password reset email is sent.
+  <strong>Extensible recovery:</strong> The server decides which verification method to use. Add-on modules can hook into the password recovery flow to provide additional verification methods beyond the default email reset.
 </div>
 
 <!-- ================================================================== -->
@@ -410,8 +346,8 @@ if (response.success &amp;&amp; response.access_token) {
   // Store tokens + set isAuthenticated = true
   await registerAndLogin(response.access_token, response.refresh_token!, response.user!);
 
-  // Then advance to step 5 (profile completion) if enabled
-  if (fieldsConfig?.profile_completion?.enabled) {
+  // Then advance to next module step if enabled
+  if (hasPostLoginStep(fieldsConfig)) {
     setStep(5);
   } else {
     router.replace('/(tabs)');
@@ -452,26 +388,21 @@ if (response.success &amp;&amp; response.access_token) {
 
 <h3>API URL Constants</h3>
 <pre><code>// constants/config.ts
-TBC_CA_URL  = `${SITE_URL}/wp-json/tbc-ca/v1`    // Auth, registration, config
-TBC_OTP_URL = `${SITE_URL}/wp-json/tbc-otp/v1`   // OTP (add-on, requires tbc-otp plugin)</code></pre>
+TBC_CA_URL  = `${SITE_URL}/wp-json/tbc-ca/v1`    // Auth, registration, config</code></pre>
 
 <h3>WordPress Admin Settings</h3>
-<p>Settings are split across plugins:</p>
+<p>Core settings are in Fluent Community and the tbc-community-app plugin. Add-on modules extend the registration config via WordPress filter hooks.</p>
 
 <table>
-  <tr><th>Setting</th><th>Plugin</th><th>Effect on App</th></tr>
+  <tr><th>Setting</th><th>Source</th><th>Effect on App</th></tr>
   <tr><td>Registration Enabled</td><td>Fluent Community</td><td>If <code>false</code>, register screen shows "Registration Closed" message</td></tr>
   <tr><td>Email Verification</td><td>Fluent Community (2FA setting)</td><td>Enables email code step in wizard</td></tr>
   <tr><td>Custom Profile Fields</td><td>Fluent Community</td><td>Fields shown on step 1/2 of wizard</td></tr>
-  <tr><td>OTP Verification</td><td>tbc-otp (add-on)</td><td>Enables phone OTP step in wizard</td></tr>
-  <tr><td>Voice Fallback</td><td>tbc-otp (add-on)</td><td>Shows "Try voice call" button in OTP step</td></tr>
-  <tr><td>Profile Completion Enabled</td><td>tbc-profile-completion (add-on)</td><td>Forces step 5 after registration + login-time gate</td></tr>
-  <tr><td>Require Bio</td><td>tbc-profile-completion (add-on)</td><td>Bio field marked required in profile completion</td></tr>
-  <tr><td>Require Avatar</td><td>tbc-profile-completion (add-on)</td><td>Avatar upload marked required in profile completion</td></tr>
+  <tr><td><em>Add-on settings</em></td><td><em>Add-on plugins</em></td><td><em>Additional steps injected via <code>tbc_ca_registration_config</code> filter</em></td></tr>
 </table>
 
 <div class="callout callout-success">
-  <strong>Server-driven behavior.</strong> Buyers configure all registration behavior from WordPress admin. The mobile app adapts dynamically — no code changes needed to enable/disable OTP, email verification, or profile completion.
+  <strong>Server-driven behavior.</strong> Buyers configure all registration behavior from WordPress admin. The mobile app adapts dynamically &mdash; no code changes needed. Add-on modules advertise their capabilities via server config hooks, and the app discovers them automatically.
 </div>
 
 <!-- ================================================================== -->
@@ -481,9 +412,7 @@ TBC_OTP_URL = `${SITE_URL}/wp-json/tbc-otp/v1`   // OTP (add-on, requires tbc-ot
   <tr><th>Scenario</th><th>Client Behavior</th><th>Server Response</th></tr>
   <tr><td>Username taken</td><td>Shows field error, navigates back to step 1</td><td><code>errors.username: "This username is already taken."</code></td></tr>
   <tr><td>Email registered</td><td>Shows field error, navigates back to step 1</td><td><code>errors.email: "This email is already registered."</code></td></tr>
-  <tr><td>Phone number in use</td><td>Shows error during OTP step</td><td><code>errors.phone: "This phone number is already in use."</code></td></tr>
-  <tr><td>Invalid OTP code</td><td>Shows error, allows retry without re-sending</td><td>HTTP 422, <code>message: "Invalid code."</code></td></tr>
-  <tr><td>Expired OTP session</td><td>Shows error, back button returns to previous step</td><td>HTTP 422, <code>message: "Session expired."</code></td></tr>
+  <tr><td>Module verification error</td><td>Shows error in module step, allows retry</td><td>HTTP 422 with module-specific message</td></tr>
   <tr><td>Expired email token</td><td>Shows error, back button triggers re-send</td><td>HTTP 422 from FC 2FA module</td></tr>
   <tr><td>Registration disabled</td><td>"Registration Closed" message with custom text</td><td><code>registration_enabled: false</code></td></tr>
   <tr><td>Network error</td><td>"Network error. Check your connection." Form state preserved.</td><td>Fetch throws</td></tr>
@@ -505,14 +434,8 @@ TBC_OTP_URL = `${SITE_URL}/wp-json/tbc-otp/v1`   // OTP (add-on, requires tbc-ot
   <tr><td><span class="file-path">app/profile-complete.tsx</span></td><td>Login-time profile completion gate</td></tr>
   <tr><td><span class="file-path">app/forgot-password.tsx</span></td><td>Password recovery screen</td></tr>
   <tr><td><span class="file-path">services/api/registration.ts</span></td><td>Registration + profile completion API (all endpoints)</td></tr>
-  <tr><td><span class="file-path">modules/otp/services/otp.ts</span></td><td>OTP service — verify, resend, voice (add-on module)</td></tr>
-  <tr><td><span class="file-path">modules/otp/hooks/useOtpVerification.ts</span></td><td>OTP state management hook (add-on module)</td></tr>
   <tr><td><span class="file-path">contexts/AuthContext.tsx</span></td><td><code>registerAndLogin()</code>, <code>markProfileComplete()</code>, <code>needsProfileCompletion</code></td></tr>
   <tr><td><span class="file-path">components/register/EmailVerifyStep.tsx</span></td><td>Email verification code input UI</td></tr>
-  <tr><td><span class="file-path">modules/otp/components/PhoneOtpStep.tsx</span></td><td>Phone OTP code input UI (otp module)</td></tr>
-  <tr><td><span class="file-path">modules/otp/components/OtpRegistrationStep.tsx</span></td><td>OTP registration step wrapper (otp module)</td></tr>
-  <tr><td><span class="file-path">modules/profile-completion/components/ProfileCompletionSteps.tsx</span></td><td>Bio + social + avatar upload (profile-completion module)</td></tr>
-  <tr><td><span class="file-path">modules/profile-completion/components/ProfileIncompleteProvider.tsx</span></td><td>Detects incomplete profiles via response header (profile-completion module)</td></tr>
   <tr><td><span class="file-path">components/common/DynamicFormField.tsx</span></td><td>Dynamic field renderer for all custom field types</td></tr>
   <tr><td><span class="file-path">components/common/PasswordStrengthMeter.tsx</span></td><td>Password strength indicator</td></tr>
 </table>
@@ -522,12 +445,8 @@ TBC_OTP_URL = `${SITE_URL}/wp-json/tbc-otp/v1`   // OTP (add-on, requires tbc-ot
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
   <tr><td><span class="file-path">tbc-community-app/includes/class-registration-api.php</span></td><td>Base registration REST API (fields, register, status, complete) + FC native field support</td></tr>
-  <tr><td><span class="file-path">tbc-community-app/includes/class-app-config.php</span></td><td>App config endpoint — includes registration config from add-on hooks</td></tr>
-  <tr><td><span class="file-path">tbc-community-app/includes/class-response-headers.php</span></td><td><code>X-TBC-Profile-Incomplete</code> header injection</td></tr>
-  <tr><td><span class="file-path">tbc-otp/includes/class-otp-api.php</span></td><td>OTP REST API (verify, resend, voice) — add-on</td></tr>
-  <tr><td><span class="file-path">tbc-otp/includes/class-twilio.php</span></td><td>Twilio integration (SMS + voice verification) — add-on</td></tr>
-  <tr><td><span class="file-path">tbc-otp/includes/class-registration-hook.php</span></td><td>Hooks <code>tbc_ca_pre_register</code> to intercept registration for OTP — add-on</td></tr>
-  <tr><td><span class="file-path">tbc-profile-completion/includes/class-profile-gate.php</span></td><td>Profile completion gate logic — add-on</td></tr>
+  <tr><td><span class="file-path">tbc-community-app/includes/class-app-config.php</span></td><td>App config endpoint &mdash; includes registration config from add-on hooks</td></tr>
+  <tr><td><span class="file-path">tbc-community-app/includes/class-response-headers.php</span></td><td>Response header injection for module-driven gates</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -535,13 +454,10 @@ TBC_OTP_URL = `${SITE_URL}/wp-json/tbc-otp/v1`   // OTP (add-on, requires tbc-ot
 
 <ol>
   <li><strong>All registration behavior is server-driven.</strong> The app reads <code>GET /register/fields</code> on mount and adapts the wizard steps. Don't hardcode which steps to show — let the server config decide.</li>
-  <li><strong>Use <code>useOtpVerification</code> for all OTP flows.</strong> Don't implement OTP state inline. The hook handles countdown timers, deduplication, and error clearing.</li>
-  <li><strong>Re-submit the full form after verification.</strong> Email verification and OTP verification are not standalone — the app re-calls <code>submitRegistration()</code> with the original form data plus verification tokens. The server creates the user on this second call.</li>
+  <li><strong>Re-submit the full form after verification.</strong> Email verification and module-injected verification steps are not standalone &mdash; the app re-calls <code>submitRegistration()</code> with the original form data plus verification tokens. The server creates the user on this second call.</li>
   <li><strong>Keep the register route in the auth group.</strong> The avatar upload step (step 5) happens after <code>registerAndLogin()</code> — the user is already authenticated but still on the register screen.</li>
   <li><strong>Default <code>checkProfileComplete</code> to true on error.</strong> If the profile status check fails, assume the profile is complete. Never block users from the app because of a transient API error.</li>
-  <li><strong><code>ProfileCompletionSteps</code> is shared.</strong> The same component is used by both the registration wizard (step 5) and the login-time gate screen (<code>profile-complete.tsx</code>). Don't duplicate this UI.</li>
   <li><strong>Registration endpoints are public.</strong> The <code>tbcPublicRequest</code> helper uses raw <code>fetch()</code>, not the authenticated API client. Don't add auth headers to registration calls.</li>
-  <li><strong>OTP sessions expire after 5 minutes.</strong> If the session expires during verification, the user must go back and re-submit the form to get a new session. Don't cache or reuse expired sessions.</li>
   <li><strong>Field errors are keyed by field name.</strong> Server validation errors come back as <code>errors: { fieldKey: "message" }</code>. Display them inline next to the corresponding field, not as a generic banner.</li>
   <li><strong>Custom fields use <code>DynamicFormField</code>.</strong> All field types (text, select, radio, date, checkbox, textarea, etc.) are rendered by the same component. Don't create separate field components for registration.</li>
 </ol>

@@ -38,7 +38,7 @@
   <div class="stat-card">
     <div class="stat-number">$99</div>
     <div class="stat-label">Per Module</div>
-    <p style="font-size: 0.85em; color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary)); margin-top: 8px;">Blog, YouTube, Book Club. Each includes app module + WordPress companion plugin.</p>
+    <p style="font-size: 0.85em; color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary)); margin-top: 8px;">Add-on modules sold separately. Each includes app module + WordPress companion plugin.</p>
   </div>
   <div class="stat-card">
     <div class="stat-number">$0</div>
@@ -69,7 +69,7 @@
     <td><strong>Pricing model</strong></td>
     <td>
       <strong>Core app: $499 one-time.</strong> Full source code, companion WordPress plugins, setup documentation. It's yours &mdash; use it for yourself or build it for a client. One purchase, no domain limits, no seat counts.<br><br>
-      <strong>Modules: $99 each.</strong> Blog, YouTube, Book Club &mdash; each includes the app module + companion WordPress plugin. Buy only what you need. More modules added over time.<br><br>
+      <strong>Modules: $99 each.</strong> Add-on modules &mdash; each includes the app module + companion WordPress plugin. Buy only what you need. More modules added over time.<br><br>
       Updates are included &mdash; when we release a new snapshot, past buyers get access. No subscription required.
     </td>
     <td>$149&ndash;$419/year or $199&ndash;$499 lifetime. Domain-licensed (1, 5, or 25 sites). Builds and updates tied to active license.</td>
@@ -106,7 +106,7 @@
   </tr>
   <tr>
     <td><strong>Extensibility</strong></td>
-    <td>Module system with companion WordPress plugins. Add-on marketplace (Blog, YouTube, Book Club). Build your own modules &mdash; documented architecture.</td>
+    <td>Module system with companion WordPress plugins. Add-on module marketplace. Build your own modules &mdash; documented architecture.</td>
     <td>No module or extension system documented.</td>
   </tr>
   <tr>
@@ -172,12 +172,12 @@
   </tr>
   <tr>
     <td><strong>Registration flow</strong></td>
-    <td><span class="check">&#10003;</span> Native multi-step wizard &mdash; email, OTP verification (SMS via Twilio + voice call fallback), password with strength meter, profile completion. All native screens, not a WebView.</td>
+    <td><span class="check">&#10003;</span> Native multi-step wizard &mdash; email verification, password with strength meter, module-injectable verification steps. All native screens, not a WebView.</td>
     <td><span class="na">Unknown</span> &mdash; no registration details documented</td>
   </tr>
   <tr>
     <td><strong>Authentication</strong></td>
-    <td><span class="check">&#10003;</span> JWT with silent refresh. Tokens in OS secure storage (Keychain / Keystore). Credential-based re-auth on expiry. Password reset via OTP.</td>
+    <td><span class="check">&#10003;</span> JWT with silent refresh. Tokens in OS secure storage (Keychain / Keystore). Credential-based re-auth on expiry. In-app password reset.</td>
     <td><span class="na">Unknown</span></td>
   </tr>
   <tr>
@@ -294,12 +294,12 @@
   <li><strong>Self-publishing</strong> &mdash; you publish to your own App Store and Play Store accounts. Full control over release timing, listing content, and update schedule. No waiting on a vendor to push your build.</li>
   <li><strong>No vendor lock-in</strong> &mdash; if we stop existing, your code still runs. You can maintain and extend it independently.</li>
   <li><strong>Companion WordPress plugins included</strong> &mdash; server-side code ships with the app. You control both sides of the stack.</li>
-  <li><strong>Add-on module ecosystem</strong> &mdash; buy only the features you need. Blog, YouTube, Book Club available separately with companion WordPress plugins.</li>
+  <li><strong>Add-on module ecosystem</strong> &mdash; buy only the features you need. Add-on modules available separately, each with companion WordPress plugins.</li>
 </ul>
 
 <h3>Native App Quality</h3>
 <ul>
-  <li><strong>Native multi-step registration</strong> &mdash; OTP verification via SMS (Twilio) with voice call fallback. Password strength meter. Profile completion wizard. Not a WebView form.</li>
+  <li><strong>Native multi-step registration</strong> &mdash; email verification, password strength meter, module-injectable verification steps. Not a WebView form.</li>
   <li><strong>JWT with silent refresh</strong> &mdash; tokens in OS secure storage (Keychain / Keystore). Automatic re-authentication on expiry. No login prompts during normal use.</li>
   <li><strong>Real-time WebSocket messaging</strong> &mdash; Pusher integration with private channels. Messages appear instantly, not on a polling interval.</li>
   <li><strong>Deep linking throughout</strong> &mdash; push notifications route to the exact screen. Web URLs map to app routes. Custom URL scheme for cross-app linking.</li>
@@ -311,7 +311,7 @@
 <h3>Extensibility</h3>
 <ul>
   <li><strong>Module system</strong> &mdash; add features without touching core code. Each module can register tabs, widgets, menu items, header icons, context providers, and tab bar addons.</li>
-  <li><strong>Add-on marketplace</strong> &mdash; Blog, YouTube channel integration (with server-side caching plugin), Book Club (audiobook player with chapters, bookmarks, mini player).</li>
+  <li><strong>Add-on marketplace</strong> &mdash; growing collection of add-on modules, each with companion WordPress plugins.</li>
   <li><strong>Build your own modules</strong> &mdash; the module system is documented and designed for third-party development.</li>
   <li><strong>Companion plugin architecture</strong> &mdash; each feature has matching WordPress plugin(s). You control server and client.</li>
 </ul>

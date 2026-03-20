@@ -54,31 +54,15 @@ class TBC_CA_Deep_Links {
      * Serve AASA as raw JSON and exit
      */
     private function serve_aasa_json() {
-        $settings = TBC_CA_Core::get_settings();
-        $team_id  = $settings['apple_team_id'] ?? '';
-
-        if (empty($team_id)) {
-            status_header(503);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => 'Apple Team ID not configured']);
-            exit;
-        }
-
-        $bundle_id = 'com.twobirdschurch.community';
-        $paths     = $this->get_portal_paths();
+        $result = $this->build_aasa_data();
 
         header('Content-Type: application/json');
-        echo json_encode([
-            'applinks' => [
-                'apps'    => [],
-                'details' => [
-                    [
-                        'appID' => "{$team_id}.{$bundle_id}",
-                        'paths' => $paths,
-                    ],
-                ],
-            ],
-        ], JSON_UNESCAPED_SLASHES);
+        if ($result['error']) {
+            status_header(503);
+            echo json_encode(['error' => $result['error']]);
+        } else {
+            echo json_encode($result['data'], JSON_UNESCAPED_SLASHES);
+        }
         exit;
     }
 
@@ -86,27 +70,15 @@ class TBC_CA_Deep_Links {
      * Serve Asset Links as raw JSON and exit
      */
     private function serve_asset_links_json() {
-        $settings = TBC_CA_Core::get_settings();
-        $sha256   = $settings['android_sha256'] ?? '';
-
-        if (empty($sha256)) {
-            status_header(503);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => 'Android SHA256 fingerprint not configured']);
-            exit;
-        }
+        $result = $this->build_asset_links_data();
 
         header('Content-Type: application/json');
-        echo json_encode([
-            [
-                'relation' => ['delegate_permission/common.handle_all_urls'],
-                'target'   => [
-                    'namespace'                => 'android_app',
-                    'package_name'             => 'com.community.twobirdschurch',
-                    'sha256_cert_fingerprints' => [$sha256],
-                ],
-            ],
-        ], JSON_UNESCAPED_SLASHES);
+        if ($result['error']) {
+            status_header(503);
+            echo json_encode(['error' => $result['error']]);
+        } else {
+            echo json_encode($result['data'], JSON_UNESCAPED_SLASHES);
+        }
         exit;
     }
 
@@ -129,53 +101,88 @@ class TBC_CA_Deep_Links {
     }
 
     public function get_aasa() {
-        $settings = TBC_CA_Core::get_settings();
-        $team_id  = $settings['apple_team_id'] ?? '';
+        $result = $this->build_aasa_data();
 
-        if (empty($team_id)) {
-            return new WP_REST_Response(['error' => 'Apple Team ID not configured'], 503);
+        if ($result['error']) {
+            return new WP_REST_Response(['error' => $result['error']], 503);
         }
 
-        $bundle_id = 'com.twobirdschurch.community';
-        $paths     = $this->get_portal_paths();
-
-        $response = new WP_REST_Response([
-            'applinks' => [
-                'apps'    => [],
-                'details' => [
-                    [
-                        'appID' => "{$team_id}.{$bundle_id}",
-                        'paths' => $paths,
-                    ],
-                ],
-            ],
-        ], 200);
-
+        $response = new WP_REST_Response($result['data'], 200);
         $response->header('Content-Type', 'application/json');
         return $response;
     }
 
     public function get_asset_links() {
-        $settings = TBC_CA_Core::get_settings();
-        $sha256   = $settings['android_sha256'] ?? '';
+        $result = $this->build_asset_links_data();
 
-        if (empty($sha256)) {
-            return new WP_REST_Response(['error' => 'Android SHA256 fingerprint not configured'], 503);
+        if ($result['error']) {
+            return new WP_REST_Response(['error' => $result['error']], 503);
         }
 
-        $response = new WP_REST_Response([
-            [
-                'relation' => ['delegate_permission/common.handle_all_urls'],
-                'target'   => [
-                    'namespace'                => 'android_app',
-                    'package_name'             => 'com.community.twobirdschurch',
-                    'sha256_cert_fingerprints' => [$sha256],
-                ],
-            ],
-        ], 200);
-
+        $response = new WP_REST_Response($result['data'], 200);
         $response->header('Content-Type', 'application/json');
         return $response;
+    }
+
+    // =========================================================================
+    // Data Builders (shared by early-intercept and REST fallback)
+    // =========================================================================
+
+    /**
+     * Build AASA payload for iOS Universal Links.
+     * @return array{data: array|null, error: string|null}
+     */
+    private function build_aasa_data() {
+        $settings  = TBC_CA_Core::get_settings();
+        $team_id   = $settings['apple_team_id'] ?? '';
+        $bundle_id = $settings['bundle_id'] ?? '';
+
+        if (empty($team_id) || empty($bundle_id)) {
+            return ['data' => null, 'error' => 'Apple Team ID or Bundle Identifier not configured'];
+        }
+
+        return [
+            'error' => null,
+            'data'  => [
+                'applinks' => [
+                    'apps'    => [],
+                    'details' => [
+                        [
+                            'appID' => "{$team_id}.{$bundle_id}",
+                            'paths' => $this->get_portal_paths(),
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * Build Asset Links payload for Android App Links.
+     * @return array{data: array|null, error: string|null}
+     */
+    private function build_asset_links_data() {
+        $settings     = TBC_CA_Core::get_settings();
+        $sha256       = $settings['android_sha256'] ?? '';
+        $package_name = $settings['package_name'] ?? '';
+
+        if (empty($sha256) || empty($package_name)) {
+            return ['data' => null, 'error' => 'Android SHA256 fingerprint or Package Name not configured'];
+        }
+
+        return [
+            'error' => null,
+            'data'  => [
+                [
+                    'relation' => ['delegate_permission/common.handle_all_urls'],
+                    'target'   => [
+                        'namespace'                => 'android_app',
+                        'package_name'             => $package_name,
+                        'sha256_cert_fingerprints' => [$sha256],
+                    ],
+                ],
+            ],
+        ];
     }
 
     // =========================================================================
@@ -191,8 +198,9 @@ class TBC_CA_Deep_Links {
 
         $current_uri  = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
         $current_url  = home_url($current_uri);
-        $package_name = 'com.community.twobirdschurch';
-        $app_name     = 'Two Birds Community';
+        $package_name = $settings['package_name'] ?? '';
+        $app_name     = $settings['app_name'] ?? get_bloginfo('name');
+        $url_scheme   = $settings['url_scheme'] ?? '';
         $app_store_id = $settings['app_store_id'] ?? '';
         $store_urls   = $settings['store_urls'] ?? [];
         $android_url  = $store_urls['android'] ?? '';
@@ -236,7 +244,7 @@ class TBC_CA_Deep_Links {
     var storeUrl='<?php echo esc_js($android_url ?: 'https://play.google.com/store/apps/details?id=' . $package_name); ?>';
     b.querySelector('#tbc-app-open').addEventListener('click',function(e){
       e.preventDefault();
-      var appUrl='twobirdscommunity://';
+      var appUrl='<?php echo esc_js($url_scheme ? $url_scheme . '://' : ''); ?>';
       var opened=false;
       window.location=appUrl;
       setTimeout(function(){if(!opened)window.location=storeUrl;},1500);
@@ -256,34 +264,6 @@ class TBC_CA_Deep_Links {
     // =========================================================================
     // Helpers
     // =========================================================================
-
-    /**
-     * Check if a URI is a community page.
-     * When portal is at root, checks against known community path prefixes + root itself.
-     */
-    private function is_community_page($uri, $portal_slug) {
-        if (!empty($portal_slug)) {
-            return strpos($uri, "/{$portal_slug}") !== false;
-        }
-
-        // Portal at root — Fluent Community SPA renders all community pages
-        // from portal_page.php which calls wp_head(). Check known paths + root.
-        $path = parse_url($uri, PHP_URL_PATH);
-        $path = rtrim($path, '/');
-
-        // Root path = community homepage
-        if ($path === '' || $path === '/') {
-            return true;
-        }
-
-        $community_prefixes = ['/spaces', '/u/', '/courses', '/notifications', '/leaderboard'];
-        foreach ($community_prefixes as $prefix) {
-            if (strpos($uri, $prefix) !== false) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     /**
      * Get portal paths for AASA.

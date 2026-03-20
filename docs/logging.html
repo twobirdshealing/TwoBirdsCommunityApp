@@ -162,8 +162,8 @@ export async function getThreads() {
     <tr><td>Hook</td><td><code>{Name}</code></td><td><code>FeedActions</code>, <code>ChatMessages</code>, <code>Ticker</code></td></tr>
     <tr><td>Component</td><td><code>{Name}</code></td><td><code>CreatePost</code>, <code>Comments</code>, <code>MediaViewer</code></td></tr>
     <tr><td>Screen</td><td><code>{Name}</code></td><td><code>Profile</code>, <code>Activity</code>, <code>SpacePage</code></td></tr>
-    <tr><td>Module service</td><td><code>{Module}API</code></td><td><code>YouTubeAPI</code></td></tr>
-    <tr><td>Module component</td><td><code>{Module}{Name}</code></td><td><code>BlogComments</code>, <code>AudioPlayer</code></td></tr>
+    <tr><td>Module service</td><td><code>{Module}API</code></td><td><code>WeatherAPI</code></td></tr>
+    <tr><td>Module component</td><td><code>{Module}{Name}</code></td><td><code>EventList</code>, <code>GalleryViewer</code></td></tr>
   </tbody>
 </table>
 
@@ -196,7 +196,6 @@ export async function getThreads() {
     <tr><td><code>MediaAPI</code></td><td>services/api/media.ts</td><td>Media uploads</td></tr>
     <tr><td><code>PushAPI</code></td><td>services/api/push.ts</td><td>Push token registration API calls</td></tr>
     <tr><td><code>RegistrationAPI</code></td><td>services/api/registration.ts</td><td>Registration flow API calls</td></tr>
-    <tr><td><code>OtpAPI</code></td><td>modules/otp/services/otp.ts</td><td>OTP send/verify (add-on module)</td></tr>
     <tr><td><code>BadgeAPI</code></td><td>services/api/badges.ts</td><td>Badge data fetching</td></tr>
     <tr><td><code>EmailPrefsAPI</code></td><td>services/api/emailPrefs.ts</td><td>Email preference updates</td></tr>
     <tr><td><code>AppConfigAPI</code></td><td>services/api/theme.ts</td><td>Theme/config fetch from server</td></tr>
@@ -278,10 +277,7 @@ export async function getThreads() {
     <tr><th>Tag</th><th>Module</th><th>File</th></tr>
   </thead>
   <tbody>
-    <tr><td><code>YouTubeAPI</code></td><td>YouTube</td><td>modules/youtube/services/youtubeApi.ts</td></tr>
-    <tr><td><code>BlogComments</code></td><td>Blog</td><td>modules/blog/components/BlogCommentSheet.tsx</td></tr>
-    <tr><td><code>AudioPlayer</code></td><td>Book Club</td><td>modules/bookclub/contexts/AudioPlayerContext.tsx</td></tr>
-    <tr><td><code>EventWebView</code></td><td>Calendar</td><td>modules/calendar/hooks/useEventWebView.ts</td></tr>
+    <tr><td colspan="3"><em>Module tags vary by installed modules. Each module uses its own tags following the naming conventions above.</em></td></tr>
   </tbody>
 </table>
 
@@ -346,7 +342,7 @@ const log = createLogger('MyModuleAPI');
   <div class="log"><span class="tag">[ProfilesAPI]</span> patchProfileMedia: johndoe avatar</div>
   <div class="error"><span class="tag">[API]</span> 401 on /feeds — refreshing token</div>
   <div class="log"><span class="tag">[Auth]</span> token refreshed successfully</div>
-  <div class="log"><span class="tag">[SpacesAPI]</span> joinSpace: book-club</div>
+  <div class="log"><span class="tag">[SpacesAPI]</span> joinSpace: general</div>
 </div>
 
 <p>Use your terminal's search/filter to isolate a specific tag when debugging. For example, search <code>[Pusher]</code> to see only WebSocket events.</p>

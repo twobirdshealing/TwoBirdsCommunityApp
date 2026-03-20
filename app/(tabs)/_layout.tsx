@@ -2,7 +2,7 @@
 // TAB LAYOUT - Bottom tab navigation + Top Header
 // =============================================================================
 // Core tabs: Home, Activity, Spaces (always present)
-// Module tabs: Registered via modules/_registry.ts (Calendar, Donate, etc.)
+// Module tabs: Registered via modules/_registry.ts
 // Header: Logo + Messages + Notifications + Avatar Menu
 // =============================================================================
 

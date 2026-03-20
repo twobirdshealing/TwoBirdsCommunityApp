@@ -245,7 +245,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>TextInputField <span class="tag core">Core</span></h4>
   <span class="file-path">components/common/TextInputField.tsx</span>
-  <p>Themed form input with optional label, error state, and password toggle. For standard forms (login, registration, profile edit). <em>Not</em> for chat inputs, search bars, or OTP codes.</p>
+  <p>Themed form input with optional label, error state, and password toggle. For standard forms (login, registration, profile edit). <em>Not</em> for chat inputs, search bars, or verification code inputs.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
@@ -787,7 +787,6 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <table>
   <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
   <tr><td>ProfileHeader</td><td><span class="file-path">components/profile/ProfileHeader.tsx</span></td><td>Hero section: cover, avatar, name, bio, actions</td></tr>
-  <tr><td>ProfileCompletionSteps</td><td><span class="file-path">modules/profile-completion/components/ProfileCompletionSteps.tsx</span></td><td>Onboarding: bio + avatar steps after registration (add-on module)</td></tr>
   <tr><td>ProfileMenu</td><td><span class="file-path">components/profile/ProfileMenu.tsx</span></td><td>Actions menu (edit, message, block, report)</td></tr>
   <tr><td>AboutTab</td><td><span class="file-path">components/profile/AboutTab.tsx</span></td><td>About section with custom fields</td></tr>
 </table>
@@ -831,12 +830,11 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <h3>Register</h3>
 <table>
   <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
-  <tr><td>EmailVerifyStep</td><td><span class="file-path">components/register/EmailVerifyStep.tsx</span></td><td>Step 3: email verification code input with resend timer</td></tr>
-  <tr><td>PhoneOtpStep</td><td><span class="file-path">modules/otp/components/PhoneOtpStep.tsx</span></td><td>Step 4: phone OTP verification with voice call fallback (add-on module)</td></tr>
+  <tr><td>EmailVerifyStep</td><td><span class="file-path">components/register/EmailVerifyStep.tsx</span></td><td>Email verification code input with resend timer</td></tr>
 </table>
-<p>Both steps use shared styles from <span class="file-path">components/register/styles.ts</span> (<code>verificationStyles</code>).
-PhoneOtpStep receives the full <code>OtpVerificationState</code> type (exported from <span class="file-path">modules/otp/hooks/useOtpVerification.ts</span>) as its <code>otp</code> prop.
-Steps 1&ndash;2 (account info, profile fields) remain inline in <span class="file-path">app/register.tsx</span> as they are thin dynamic field lists.</p>
+<p>Core verification steps use shared styles from <span class="file-path">components/register/styles.ts</span> (<code>verificationStyles</code>).
+Steps 1&ndash;2 (account info, profile fields) remain inline in <span class="file-path">app/register.tsx</span> as they are thin dynamic field lists.
+Add-on modules can inject additional registration steps via the module system's <code>registrationSteps</code> manifest field.</p>
 
 <!-- ================================================================== -->
 <h2 id="import-rules">10. Import Rules &amp; Conventions</h2>
@@ -883,7 +881,7 @@ backgroundColor: withOpacity(colors.primary, 0.12)</code></pre>
 
 // TextInputField: for forms only
 &lt;TextInputField label="Name" ... /&gt;   // form input — use TextInputField
-// Chat input, search bar, OTP — use raw TextInput (specialized UX)</code></pre>
+// Chat input, search bar, verification codes — use raw TextInput (specialized UX)</code></pre>
 
 <h3>File Organization</h3>
 <table>

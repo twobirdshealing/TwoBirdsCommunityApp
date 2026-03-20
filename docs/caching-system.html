@@ -296,7 +296,7 @@ if (hasCachedData && isBatchFresh(cacheKey)) {
 <p>Batch-fresh status auto-expires after 30 seconds, so subsequent focus/refresh cycles still work normally.</p>
 
 <div class="callout">
-  <strong>Modules don't use the batch.</strong> Module widgets (calendar, bookclub, YouTube, blog) self-fetch via <code>useCachedData</code> when they mount. Only core widgets participate in the batch to keep it lean and avoid coupling modules to core startup.
+  <strong>Modules don't use the batch.</strong> Module widgets self-fetch via <code>useCachedData</code> when they mount. Only core widgets participate in the batch to keep it lean and avoid coupling modules to core startup.
 </div>
 
 <!-- ====================================================================== -->

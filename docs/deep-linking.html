@@ -71,8 +71,8 @@
 
 <h3>Custom Scheme</h3>
 <p>Defined in <span class="file-path">app.json</span>:</p>
-<pre><code>"scheme": "twobirdscommunity"</code></pre>
-<p>Allows links like <code>twobirdscommunity://spaces/general</code>. Used mainly for web-to-app redirects. The constant <code>APP_SCHEME</code> in <span class="file-path">constants/config.ts</span> mirrors this value.</p>
+<pre><code>"scheme": "yourappscheme"</code></pre>
+<p>Allows links like <code>yourappscheme://spaces/general</code>. Used mainly for web-to-app redirects. The constant <code>APP_SCHEME</code> in <span class="file-path">constants/config.ts</span> mirrors this value.</p>
 
 <h3>iOS Universal Links</h3>
 <p>Generated dynamically in <span class="file-path">app.config.ts</span>:</p>
@@ -124,8 +124,7 @@
   <tr><td><code>app/(tabs)/index.tsx</code></td><td><code>/(tabs)</code></td><td>Core (Home)</td></tr>
   <tr><td><code>app/(tabs)/activity.tsx</code></td><td><code>/(tabs)/activity</code></td><td>Core (Feed)</td></tr>
   <tr><td><code>app/(tabs)/spaces.tsx</code></td><td><code>/(tabs)/spaces</code></td><td>Core (Spaces)</td></tr>
-  <tr><td><code>app/(tabs)/calendar.tsx</code></td><td><code>/(tabs)/calendar</code></td><td>Module (Calendar)</td></tr>
-  <tr><td><code>app/(tabs)/donate.tsx</code></td><td><code>/(tabs)/donate</code></td><td>Module (Donate &mdash; intercepted)</td></tr>
+  <tr><td><code>app/(tabs)/yourmodule.tsx</code></td><td><code>/(tabs)/yourmodule</code></td><td>Module (tab stubs for registered modules)</td></tr>
 </table>
 
 <h3>Stack Routes</h3>
@@ -134,7 +133,7 @@
   <tr><td><code>/feed/[id]</code></td><td>Card (with header)</td><td>Single post view</td></tr>
   <tr><td><code>/create-post</code></td><td>Full-screen modal</td><td>Post composer</td></tr>
   <tr><td><code>/comments/[postId]</code></td><td>Full-screen modal</td><td>Post comments</td></tr>
-  <tr><td><code>/blog-comments/[postId]</code></td><td>Full-screen modal</td><td>Blog comments</td></tr>
+  <tr><td><code>/blog-comments/[postId]</code></td><td>Full-screen modal</td><td>Module comments (e.g., blog)</td></tr>
   <tr><td><code>/webview</code></td><td>Full-screen modal</td><td>Authenticated WebView</td></tr>
   <tr><td><code>/profile/[username]</code></td><td>Card</td><td>User profile</td></tr>
   <tr><td><code>/profile/[username]/connections</code></td><td>Card</td><td>User connections</td></tr>
@@ -158,20 +157,17 @@
   <tr><td><code>/login</code></td><td>Login screen</td></tr>
   <tr><td><code>/register</code></td><td>Registration wizard</td></tr>
   <tr><td><code>/forgot-password</code></td><td>Password recovery</td></tr>
-  <tr><td><code>/profile-complete</code></td><td>Post-login profile completion gate</td></tr>
+  <tr><td><code>/profile-complete</code></td><td>Post-login completion gate (module-driven)</td></tr>
 </table>
 
 <h3>Module Routes</h3>
+<p>Modules register their own routes via file stubs in <code>app/</code> and route prefixes in their manifest. Examples:</p>
 <table>
   <tr><th>Route</th><th>Module</th></tr>
-  <tr><td><code>/blog</code></td><td>Blog</td></tr>
-  <tr><td><code>/blog/[id]</code></td><td>Blog</td></tr>
-  <tr><td><code>/blog-comments/[postId]</code></td><td>Blog</td></tr>
-  <tr><td><code>/bookclub</code></td><td>Book Club</td></tr>
-  <tr><td><code>/bookclub/[id]</code></td><td>Book Club</td></tr>
-  <tr><td><code>/youtube</code></td><td>YouTube</td></tr>
-  <tr><td><code>/youtube/playlist/[id]</code></td><td>YouTube</td></tr>
+  <tr><td><code>/yourmodule</code></td><td>Module list screen</td></tr>
+  <tr><td><code>/yourmodule/[id]</code></td><td>Module detail screen</td></tr>
 </table>
+<p>See each module's documentation in <code>docs/modules/</code> for its specific routes.</p>
 
 <!-- ================================================================== -->
 <h2 id="deep-link-mapper">4. Deep Link Mapper</h2>
@@ -179,7 +175,7 @@
 <p>The mapper in <span class="file-path">utils/deepLinkMapper.ts</span> converts web URLs to app routes in three steps:</p>
 
 <ol>
-  <li><strong>Extract path</strong> &mdash; strips the site origin, handles custom scheme (<code>twobirdscommunity://</code>), and relative paths</li>
+  <li><strong>Extract path</strong> &mdash; strips the site origin, handles custom scheme (<code>yourappscheme://</code>), and relative paths</li>
   <li><strong>Strip portal prefix</strong> &mdash; removes the Fluent Community portal slug (e.g., <code>/community</code>) to get the community-relative path</li>
   <li><strong>Match route</strong> &mdash; pattern-matches against known app routes</li>
 </ol>
@@ -281,7 +277,7 @@ useEffect(() => {
 
 const VALID_ROUTE_PREFIXES = [
   ...CORE_ROUTE_PREFIXES,
-  ...getModuleRoutePrefixes(),  // e.g. ['/blog', '/bookclub', '/youtube']
+  ...getModuleRoutePrefixes(),  // e.g. ['/yourmodule', '/another-module']
 ];</code></pre>
 
 <div class="callout callout-error">
@@ -322,16 +318,16 @@ const VALID_ROUTE_PREFIXES = [
 <h3>Route Stubs</h3>
 <p>Each module route needs a thin file stub in <span class="file-path">app/</span> that re-exports the module's screen component. Expo Router discovers routes from the file system, so the stub must exist:</p>
 
-<pre><code>// app/bookclub/index.tsx — one-line re-export
-export { default } from '@/modules/bookclub/screens/BookListScreen';</code></pre>
+<pre><code>// app/yourmodule/index.tsx — one-line re-export
+export { default } from '@/modules/yourmodule/screens/ListScreen';</code></pre>
 
 <h3>Route Prefixes for Validation</h3>
 <p>Modules register their route prefixes in the manifest for push notification validation:</p>
-<pre><code>// modules/bookclub/module.ts
-export const bookclubModule: ModuleManifest = {
-  id: 'bookclub',
-  name: 'Book Club',
-  routePrefixes: ['/bookclub'],  // Added to VALID_ROUTE_PREFIXES
+<pre><code>// modules/yourmodule/module.ts
+export const yourModule: ModuleManifest = {
+  id: 'yourmodule',
+  name: 'Your Module',
+  routePrefixes: ['/yourmodule'],  // Added to VALID_ROUTE_PREFIXES
   // ...
 };</code></pre>
 
@@ -339,17 +335,17 @@ export const bookclubModule: ModuleManifest = {
 
 <h3>Tab Press Interception</h3>
 <p>Some modules intercept their tab press to open a WebView instead of navigating to a screen:</p>
-<pre><code>// Donate module — tab press opens external payment page in WebView
+<pre><code>// Example — tab press opens external page in WebView instead of navigating
 tab: {
-  name: 'donate',
+  name: 'yourmodule',
   interceptPress: (router) => {
     router.push({
       pathname: '/webview',
-      params: { url: DONATE_URL, title: 'Give' },
+      params: { url: MODULE_URL, title: 'External Page' },
     });
   },
 }</code></pre>
-<p>The <code>app/(tabs)/donate.tsx</code> file exists as a placeholder (never renders) but is required for Expo Router to register the route.</p>
+<p>The tab file in <code>app/(tabs)/</code> exists as a placeholder (never renders) but is required for Expo Router to register the route.</p>
 
 <!-- ================================================================== -->
 <h2 id="auth-guard">9. Auth Guard &amp; Navigation</h2>

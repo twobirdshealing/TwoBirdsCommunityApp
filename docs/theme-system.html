@@ -478,7 +478,7 @@ html.dark .my-item:hover {
   <tr><td>Play button icon</td><td><code>#fff</code></td><td>White on red/dark overlay</td></tr>
   <tr><td>iOS shadow color</td><td><code>#000</code></td><td>RN iOS standard &mdash; shadowColor is always black, shadowOpacity controls intensity</td></tr>
   <tr><td>Media viewer backdrop</td><td><code>rgba(0, 0, 0, 0.95)</code></td><td>Full-screen media needs near-black</td></tr>
-  <tr><td>Calendar status gradients</td><td>Various</td><td>Status colors are fixed for consistency</td></tr>
+  <tr><td>Module status gradients</td><td>Various</td><td>Some modules use fixed status colors for consistency</td></tr>
   <tr><td>Space lock/info overlays</td><td><code>#fff</code></td><td>Text on server-driven gradient backgrounds</td></tr>
   <tr><td>ErrorBoundary fallback</td><td>Hardcoded light/dark</td><td>Renders outside ThemeProvider when provider crashes</td></tr>
 </table>
@@ -494,7 +494,7 @@ html.dark .my-item:hover {
   <li>Use <code>colors.overlay</code> for modal/sheet backdrops &mdash; not <code>rgba(0,0,0,0.5)</code>.</li>
   <li>Use <code>withOpacity(color, opacity)</code> from <code>@/constants/colors</code> for transparent variants of theme colors.</li>
   <li><code>shadowColor: '#000'</code> is fine (iOS standard). No need to theme it.</li>
-  <li>Video/media black backgrounds, YouTube brand red, and calendar gradients are intentionally static.</li>
+  <li>Video/media black backgrounds, YouTube brand red, and module status gradients are intentionally static.</li>
   <li>In companion plugin CSS, <strong>always</strong> use fallback values: <code>var(--fcom-primary-bg, #ffffff)</code>.</li>
   <li>Dark mode in CSS is activated via <code>html.dark</code> &mdash; only override shadows, overlays, and hover effects.</li>
   <li>When adding a new app color token, add it to the <code>ColorTheme</code> interface, both default objects, and update this doc.</li>

@@ -10,7 +10,7 @@
 <body>
 
 <h1>Forms &amp; Field Validation</h1>
-<p class="subtitle">DynamicFormField, server-driven configs, validation patterns, OTP, and password strength</p>
+<p class="subtitle">DynamicFormField, server-driven configs, validation patterns, and password strength</p>
 
 <nav class="toc">
   <strong>Contents</strong>
@@ -25,7 +25,7 @@
     <li><a href="#profile-edit-form">Profile Edit Form</a></li>
     <li><a href="#password-strength">Password Strength Meter</a></li>
     <li><a href="#phone-input">Phone Input &amp; Country Picker</a></li>
-    <li><a href="#otp-verification">OTP Verification</a></li>
+    <li><a href="#module-verification">Module-Injected Verification</a></li>
     <li><a href="#select-modal">Select Modal</a></li>
     <li><a href="#file-reference">File Reference</a></li>
     <li><a href="#rules">Rules</a></li>
@@ -41,7 +41,7 @@
 
 <table>
   <tr><th>Screen</th><th>File</th><th>Purpose</th></tr>
-  <tr><td>Registration Wizard</td><td><code>app/register.tsx</code></td><td>Multi-step signup with dynamic fields, OTP, email verify</td></tr>
+  <tr><td>Registration Wizard</td><td><code>app/register.tsx</code></td><td>Multi-step signup with dynamic fields, email verify, module-injectable steps</td></tr>
   <tr><td>Profile Edit</td><td><code>app/profile/edit.tsx</code></td><td>Edit name, bio, social links, custom fields with visibility</td></tr>
 </table>
 
@@ -117,14 +117,8 @@ const [fieldErrors, setFieldErrors] = useState&lt;Record&lt;string, string&gt;&g
 
 <pre><code>export interface FieldsResponse {
   registration_enabled: boolean;
-  otp_required: boolean;
-  voice_fallback: boolean;
   email_verification_required: boolean;
-  profile_completion?: {
-    enabled: boolean;
-    require_bio: boolean;
-    require_avatar: boolean;
-  };
+  [key: string]: unknown;  // Extensible via add-on module hooks
   fields: Record&lt;string, RegistrationField&gt;;
   message?: string;
 }</code></pre>
@@ -253,13 +247,9 @@ if (result.errors) {
 
 <p>Shown only if <code>email_verification_required: true</code> in the fields response. Uses <code>EmailVerifyStep</code> component &mdash; a 6-digit code input that the user receives by email.</p>
 
-<h3>Step 4: Phone OTP <span class="tag auto">conditional</span></h3>
+<h3>Steps 4+: Module-Injected Steps <span class="tag auto">conditional</span></h3>
 
-<p>Shown only if <code>otp_required: true</code>. Uses <code>PhoneOtpStep</code> component with the <code>useOtpVerification</code> hook. Variable-length numeric code (max 8 digits).</p>
-
-<h3>Step 5: Profile Completion <span class="tag auto">conditional</span></h3>
-
-<p>Shown only if <code>profile_completion.enabled: true</code>. Uses <code>ProfileCompletionSteps</code> component. Sub-fields: bio (textarea), website, social links (dynamic providers), avatar + cover photo. Avatar and bio can be independently required via <code>require_avatar</code> and <code>require_bio</code>.</p>
+<p>Add-on modules can inject additional steps into the registration wizard via the <code>registrationSteps</code> manifest field. Each step has a <code>shouldActivate()</code> gate that checks the server response to determine if the step should be shown. See <a href="module-system.html">Module System</a> for details.</p>
 
 <div class="callout">
   <strong>Auth guard note:</strong> The <code>register</code> route stays accessible even after authentication so users can complete the profile step (avatar upload) after their account is created. See <a href="registration.html">Registration &amp; Onboarding</a> for the full flow.
@@ -354,51 +344,19 @@ if (result.errors) {
 <p>Country state is managed locally within <code>DynamicFormField</code> as <code>[phoneCountry, setPhoneCountry]</code>.</p>
 
 <!-- ================================================================== -->
-<h2 id="otp-verification">11. OTP Verification</h2>
+<h2 id="module-verification">11. Module-Injected Verification</h2>
 
-<p>The <code>useOtpVerification</code> hook (<code>modules/otp/hooks/useOtpVerification.ts</code>) manages the complete OTP flow. It is used by registration, profile edit (phone change), and password recovery. Part of the <strong>otp add-on module</strong>.</p>
+<p>Add-on modules can inject verification steps into the registration wizard and login flow. Each module provides its own UI component, hook, and API service. The module system's <code>registrationSteps</code> manifest field controls when steps appear.</p>
 
-<h3>Hook State</h3>
-
-<table>
-  <tr><th>Field</th><th>Type</th><th>Purpose</th></tr>
-  <tr><td><code>code</code></td><td><code>string</code></td><td>Current code input</td></tr>
-  <tr><td><code>sessionKey</code></td><td><code>string</code></td><td>Unique OTP session identifier</td></tr>
-  <tr><td><code>phoneMasked</code></td><td><code>string</code></td><td>Masked phone (e.g., +1 *** *** 1234)</td></tr>
-  <tr><td><code>resendCountdown</code></td><td><code>number</code></td><td>Seconds until resend allowed (starts at 60)</td></tr>
-  <tr><td><code>voiceFallback</code></td><td><code>boolean</code></td><td>Whether voice call option is available</td></tr>
-  <tr><td><code>error</code></td><td><code>string</code></td><td>Error message from verification attempt</td></tr>
-  <tr><td><code>verifying</code></td><td><code>boolean</code></td><td>Loading state during verify API call</td></tr>
-</table>
-
-<h3>Hook Handlers</h3>
-
-<table>
-  <tr><th>Method</th><th>Action</th></tr>
-  <tr><td><code>start(opts)</code></td><td>Initialize session: sets sessionKey, phoneMasked, starts 60s timer</td></tr>
-  <tr><td><code>handleVerify()</code></td><td>Calls <code>verifyOtp(sessionKey, code)</code>, invokes <code>onVerified</code> callback on success</td></tr>
-  <tr><td><code>handleResend()</code></td><td>Calls <code>resendOtp(sessionKey)</code>, resets 60s timer</td></tr>
-  <tr><td><code>handleVoiceCall()</code></td><td>Calls <code>requestVoiceCall(sessionKey)</code>, resets timer (only if <code>voiceFallback</code>)</td></tr>
-</table>
-
-<h3>OTP API Endpoints</h3>
-
-<p>All at <code>tbc-otp/v1/otp/*</code> (tbc-otp plugin, addon):</p>
-
-<table>
-  <tr><th>Endpoint</th><th>Method</th><th>Purpose</th></tr>
-  <tr><td><code>/otp/verify</code></td><td>POST</td><td>Verify code against session</td></tr>
-  <tr><td><code>/otp/resend</code></td><td>POST</td><td>Resend SMS to same number</td></tr>
-  <tr><td><code>/otp/voice</code></td><td>POST</td><td>Request voice call fallback (Twilio)</td></tr>
-</table>
-
-<h3>Where OTP Is Used</h3>
+<h3>How It Works</h3>
 
 <ul>
-  <li><strong>Registration</strong> (step 4) &mdash; <code>PhoneOtpStep</code> component, inline form</li>
-  <li><strong>Profile edit</strong> &mdash; OTP modal when phone number changes</li>
-  <li><strong>Forgot password</strong> &mdash; Phone-based password recovery</li>
+  <li><strong>Registration steps</strong> &mdash; modules register steps with a <code>shouldActivate(fieldsResponse)</code> gate that checks server config to decide if the step appears</li>
+  <li><strong>Post-login gates</strong> &mdash; modules use <code>responseHeaders</code> mapping to detect server headers and redirect users (e.g., to a completion screen)</li>
+  <li><strong>Each module owns its own endpoints, hooks, and UI</strong> &mdash; the core registration system just provides the injection points</li>
 </ul>
+
+<p>See <a href="module-system.html">Module System</a> and <a href="registration.html">Registration &amp; Onboarding</a> for full details on the injection mechanism.</p>
 
 <!-- ================================================================== -->
 <h2 id="select-modal">12. Select Modal</h2>
@@ -421,11 +379,7 @@ if (result.errors) {
   <tr><td><code>components/common/SocialLinksForm.tsx</code></td><td>Social link inputs for profile</td></tr>
   <tr><td><code>components/common/ProfilePhotoPicker.tsx</code></td><td>Avatar + cover photo picker</td></tr>
   <tr><td><code>components/register/EmailVerifyStep.tsx</code></td><td>Email verification code entry</td></tr>
-  <tr><td><code>modules/otp/components/PhoneOtpStep.tsx</code></td><td>Phone OTP code entry (add-on module)</td></tr>
-  <tr><td><code>modules/profile-completion/components/ProfileCompletionSteps.tsx</code></td><td>Bio + avatar completion step (add-on module)</td></tr>
-  <tr><td><code>modules/otp/hooks/useOtpVerification.ts</code></td><td>OTP state machine + handlers (add-on module)</td></tr>
   <tr><td><code>services/api/registration.ts</code></td><td>GET fields, POST register</td></tr>
-  <tr><td><code>modules/otp/services/otp.ts</code></td><td>Verify, resend, voice call (add-on module)</td></tr>
   <tr><td><code>services/api/profiles.ts</code></td><td>GET/POST profile, PATCH media</td></tr>
   <tr><td><code>types/user.ts</code></td><td>User, Profile, CustomFieldConfig types</td></tr>
 </table>

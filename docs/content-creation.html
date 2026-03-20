@@ -405,7 +405,7 @@ survey: {
 
   <li><strong>Max 4 images per post.</strong> The picker's <code>selectionLimit</code> accounts for already-attached images. This limit matches the Fluent Community web UI.</li>
 
-  <li><strong>Use <code>useThemedEditor()</code> for all 10tap instances.</strong> The hook handles theme CSS injection and dark mode. Don't set up the editor bridge manually. It's shared by the composer, comment sheet, and blog comments.</li>
+  <li><strong>Use <code>useThemedEditor()</code> for all 10tap instances.</strong> The hook handles theme CSS injection and dark mode. Don't set up the editor bridge manually. It's shared by the composer, comment sheet, and any module comment screens.</li>
 
   <li><strong>Emit <code>CACHE_EVENTS.FEEDS</code> after successful create/update.</strong> This triggers feed list refresh so the new or edited post appears immediately. Don't navigate back without emitting.</li>
 

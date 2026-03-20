@@ -107,18 +107,18 @@ export const WIDGET_REGISTRY: WidgetRegistration[] = [
 
 <h3>Module Widget Registration</h3>
 <p>Modules register widgets in their manifest:</p>
-<pre><code>// modules/blog/module.ts
-export const blogModule: ModuleManifest = {
-  id: 'blog',
+<pre><code>// modules/yourmodule/module.ts
+export const yourModule: ModuleManifest = {
+  id: 'yourmodule',
   widgets: [{
-    id: 'latest-blog',
-    title: 'Latest Blog',
-    icon: 'newspaper-outline',
-    seeAllRoute: '/blog',
+    id: 'yourmodule-widget',
+    title: 'Your Module',
+    icon: 'grid-outline',
+    seeAllRoute: '/yourmodule',
     defaultEnabled: true,
     canDisable: true,
     externalWrapper: true,
-    component: BlogWidget,
+    component: YourModuleWidget,
   }],
 };</code></pre>
 
@@ -137,8 +137,8 @@ export const blogModule: ModuleManifest = {
   "version": 1,
   "order": [
     { "id": "my-courses", "enabled": true },
-    { "id": "latest-blog", "enabled": true },
-    { "id": "latest-youtube", "enabled": false }
+    { "id": "module-widget-a", "enabled": true },
+    { "id": "module-widget-b", "enabled": false }
   ]
 }</code></pre>
 
@@ -239,14 +239,7 @@ export const blogModule: ModuleManifest = {
 </table>
 
 <h3>Module Widgets</h3>
-<table>
-  <tr><th>ID</th><th>Title</th><th>Module</th><th>See All</th></tr>
-  <tr><td><code>upcoming-booking</code></td><td>Upcoming Booking</td><td>Calendar</td><td><code>/(tabs)/calendar</code></td></tr>
-  <tr><td><code>featured-events</code></td><td>Featured Events</td><td>Calendar</td><td><code>/(tabs)/calendar</code></td></tr>
-  <tr><td><code>latest-blog</code></td><td>Latest Blog</td><td>Blog</td><td><code>/blog</code></td></tr>
-  <tr><td><code>latest-youtube</code></td><td>YouTube</td><td>YouTube</td><td><code>/youtube</code></td></tr>
-  <tr><td><code>book-club</code></td><td>Book Club</td><td>Book Club</td><td><code>/bookclub</code></td></tr>
-</table>
+<p>Each add-on module can register its own widgets. Module widgets appear in the same list and are managed via the same preferences system. See individual module docs in <code>docs/modules/</code> for their specific widget IDs and configurations.</p>
 
 <!-- ================================================================== -->
 <h2 id="welcome-banner">9. Welcome Banner</h2>

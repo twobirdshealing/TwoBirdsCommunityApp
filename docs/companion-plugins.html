@@ -24,11 +24,7 @@
     <li><a href="#tbc-community-app">TBC Community App</a> <span class="tag required">Core</span></li>
     <li><a href="#tbc-multi-reactions">TBC Multi Reactions</a> <span class="tag required">Core</span></li>
     <li><a href="#tbc-starter-theme">TBC Starter Theme</a> <span class="tag required">Core</span></li>
-    <li><a href="#tbc-otp">TBC OTP</a> <span class="tag optional">Addon</span></li>
-    <li><a href="#tbc-profile-completion">TBC Profile Completion</a> <span class="tag optional">Addon</span></li>
-    <li><a href="#tbc-youtube">TBC YouTube</a> <span class="tag optional">Addon</span></li>
-    <li><a href="#tbc-book-club">TBC Book Club</a> <span class="tag optional">Addon</span></li>
-    <li><a href="#tbc-license-server">TBC License Server</a> <span class="tag auto">Infra</span></li>
+    <li><a href="#addon-plugins">Add-on Plugins</a> <span class="tag optional">Addon</span></li>
     <li><a href="#app-constants">App-Side URL Constants</a></li>
     <li><a href="#installation">Installation</a></li>
   </ol>
@@ -58,34 +54,10 @@
     <td>Lightweight WordPress theme optimized for Fluent Community</td>
   </tr>
   <tr>
-    <td><strong>tbc-otp</strong></td>
-    <td><code>tbc-otp/v1</code></td>
+    <td><em>Add-on plugins</em></td>
+    <td><em>Varies</em></td>
     <td><span class="tag optional">Addon</span></td>
-    <td>Phone OTP verification via Twilio (registration + password recovery)</td>
-  </tr>
-  <tr>
-    <td><strong>tbc-profile-completion</strong></td>
-    <td><code>tbc-pcom/v1</code></td>
-    <td><span class="tag optional">Addon</span></td>
-    <td>Profile completion gate (require bio/avatar after registration)</td>
-  </tr>
-  <tr>
-    <td><strong>tbc-youtube</strong></td>
-    <td><code>tbc-yt/v1</code></td>
-    <td><span class="tag optional">Addon</span></td>
-    <td>YouTube channel integration with server-side caching</td>
-  </tr>
-  <tr>
-    <td><strong>tbc-book-club</strong></td>
-    <td><code>tbc-bc/v1</code></td>
-    <td><span class="tag optional">Addon</span></td>
-    <td>Audiobook player with chapters, bookmarks, and progress</td>
-  </tr>
-  <tr>
-    <td><strong>tbc-license-server</strong></td>
-    <td><code>tbc-license/v1</code></td>
-    <td><span class="tag auto">Infra</span></td>
-    <td>License validation and update delivery (FluentCart Pro bridge)</td>
+    <td>Each add-on module ships with a companion WordPress plugin that provides its REST endpoints. Purchased separately.</td>
   </tr>
 </table>
 
@@ -115,7 +87,7 @@
   <tr><td>POST</td><td><code>/auth/login</code></td><td>No</td><td>Login &rarr; returns access + refresh tokens + user profile</td></tr>
   <tr><td>POST</td><td><code>/auth/refresh</code></td><td>No</td><td>Exchange refresh token for new access token</td></tr>
   <tr><td>POST</td><td><code>/auth/logout</code></td><td>Yes</td><td>Revoke server session</td></tr>
-  <tr><td>POST</td><td><code>/password/forgot</code></td><td>No</td><td>Send password reset email/OTP</td></tr>
+  <tr><td>POST</td><td><code>/password/forgot</code></td><td>No</td><td>Send password reset email</td></tr>
   <tr><td>POST</td><td><code>/password/reset</code></td><td>No</td><td>Set new password with reset token</td></tr>
 </table>
 
@@ -206,206 +178,54 @@
 </div>
 
 <!-- ====================================================================== -->
-<h2 id="tbc-otp">5. TBC OTP</h2>
+<h2 id="addon-plugins">5. Add-on Plugins</h2>
 
-<p><span class="file-path">companion plugins/tbc-otp/</span> <span class="tag optional">Addon</span></p>
+<p>Each add-on module ships with a companion WordPress plugin that provides its REST endpoints. Add-on plugins are sold separately and come with their matching app module.</p>
 
-<p>Phone OTP verification via Twilio SMS or voice call. Hooks into <code>tbc-community-app</code>&rsquo;s registration flow to add a phone verification step. Paired with the <code>otp</code> app module.</p>
-
-<h3>Endpoints</h3>
-<table>
-  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
-  <tr><td>POST</td><td><code>/otp/send</code></td><td>No</td><td>Validate phone + start Twilio verification, return session key</td></tr>
-  <tr><td>POST</td><td><code>/otp/verify</code></td><td>No</td><td>Verify the OTP code</td></tr>
-  <tr><td>POST</td><td><code>/otp/resend</code></td><td>No</td><td>Resend OTP via SMS (60-second cooldown)</td></tr>
-  <tr><td>POST</td><td><code>/otp/voice</code></td><td>No</td><td>Send code via voice call (Twilio fallback)</td></tr>
-</table>
-
-<h3>How It Works</h3>
+<h3>How Add-on Plugins Work</h3>
 <ul>
-  <li>Hooks <code>tbc_ca_pre_register</code> filter to intercept registration before user creation</li>
-  <li>Advertises OTP capability via <code>tbc_ca_registration_config</code> filter (app discovers it via <code>/app-config</code>)</li>
-  <li>Web registration: JS pre-submits OTP verification before form submission</li>
-  <li>App registration: Returns <code>otp_required</code> response &mdash; mobile app shows OTP step</li>
+  <li>Each add-on plugin registers its own REST namespace (e.g., <code>tbc-yourplugin/v1</code>)</li>
+  <li>Plugins hook into the core plugin's filter system (<code>tbc_ca_registration_config</code>, <code>tbc_ca_pre_register</code>, etc.) to extend functionality</li>
+  <li>The matching app module communicates with the plugin's REST endpoints</li>
+  <li>All add-on plugins are completely optional &mdash; the app adapts automatically based on which plugins are active</li>
 </ul>
 
-<h3>Setup</h3>
+<h3>Setup Pattern</h3>
 <ol>
-  <li>Install the plugin on WordPress</li>
-  <li>In WP admin &rarr; TBC Community App &rarr; OTP Settings: enter your Twilio Account SID, Auth Token, and phone number or Messaging Service SID</li>
-  <li>Enable the <code>otp</code> module in the app&rsquo;s <span class="file-path">modules/_registry.ts</span></li>
+  <li>Install the companion plugin on WordPress and activate it</li>
+  <li>Configure the plugin in WP admin (API keys, content, etc.)</li>
+  <li>Enable the matching app module in <span class="file-path">modules/_registry.ts</span></li>
+  <li>Rebuild the app</li>
 </ol>
 
 <div class="callout">
-  <strong>Completely optional.</strong> Without this plugin, registration works normally &mdash; the phone verification step simply won&rsquo;t appear. The app adapts automatically via server config.
+  <strong>Completely optional.</strong> Without any add-on plugins, the core app works fully. Add-on plugins extend functionality &mdash; when they&rsquo;re not installed, the corresponding features simply don&rsquo;t appear. The app discovers available add-on capabilities via the server config.
 </div>
 
 <!-- ====================================================================== -->
-<h2 id="tbc-profile-completion">6. TBC Profile Completion</h2>
-
-<p><span class="file-path">companion plugins/tbc-profile-completion/</span> <span class="tag optional">Addon</span></p>
-
-<p>Profile completion gate that requires users to fill in bio and/or avatar after registration before accessing the community. Works for both new registrations and returning users with incomplete profiles. Paired with the <code>profile-completion</code> app module.</p>
-
-<h3>How It Works</h3>
-<ul>
-  <li>Hooks <code>tbc_ca_post_register</code> to mark new users as incomplete after registration</li>
-  <li>Returns <code>X-TBC-Profile-Incomplete</code> response header on API calls if profile is incomplete</li>
-  <li>Re-evaluates completion on every profile save (catches avatar/bio updates from any source)</li>
-  <li>Advertises capability via <code>tbc_ca_registration_config</code> filter</li>
-  <li>Web: redirects incomplete users to a full-page profile completion overlay on FC portal</li>
-</ul>
-
-<h3>Setup</h3>
-<ol>
-  <li>Install the plugin on WordPress</li>
-  <li>In WP admin &rarr; TBC Community App &rarr; Profile Completion: configure which fields are required (bio, avatar)</li>
-  <li>Enable the <code>profile-completion</code> module in the app&rsquo;s <span class="file-path">modules/_registry.ts</span></li>
-</ol>
-
-<div class="callout">
-  <strong>Completely optional.</strong> Without this plugin, users go straight to the community after registration. The app adapts automatically via server config.
-</div>
-
-<!-- ====================================================================== -->
-<h2 id="tbc-youtube">7. TBC YouTube</h2>
-
-<p><span class="file-path">companion plugins/tbc-youtube/</span> <span class="tag optional">Addon</span></p>
-
-<p>YouTube channel integration. Fetches videos and playlists via the YouTube Data API v3, caches results server-side (6 hours), and serves them to the app. Paired with the <code>youtube</code> app module.</p>
-
-<h3>Endpoints</h3>
-<table>
-  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
-  <tr><td>GET</td><td><code>/latest</code></td><td>Yes</td><td>Latest uploads from channel (param: <code>limit=1-15</code>)</td></tr>
-  <tr><td>GET</td><td><code>/playlists</code></td><td>Yes</td><td>All channel playlists</td></tr>
-  <tr><td>GET</td><td><code>/playlists/{id}/videos</code></td><td>Yes</td><td>Videos in a playlist (params: <code>limit</code>, <code>pageToken</code>)</td></tr>
-  <tr><td>GET</td><td><code>/config</code></td><td>Yes</td><td>Module config (channel URL)</td></tr>
-</table>
-
-<h3>Setup</h3>
-<ol>
-  <li>Install the plugin on WordPress</li>
-  <li>In WP admin &rarr; Settings &rarr; TBC YouTube: enter your YouTube Data API v3 key and channel ID</li>
-  <li>Enable the <code>youtube</code> module in the app&rsquo;s <span class="file-path">modules/_registry.ts</span></li>
-</ol>
-
-<h3>Caching</h3>
-<p>All YouTube API responses are cached via WordPress transients (6-hour TTL). The cache warms automatically when admin settings change. This keeps YouTube API quota usage low.</p>
-
-<!-- ====================================================================== -->
-<h2 id="tbc-book-club">8. TBC Book Club</h2>
-
-<p><span class="file-path">companion plugins/tbc-book-club/</span> <span class="tag optional">Addon</span></p>
-
-<p>Audiobook player backend. Manages books with chapters, audio URLs, and per-user bookmarks. Paired with the <code>bookclub</code> app module which provides the audio player UI.</p>
-
-<h3>Endpoints</h3>
-<table>
-  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
-  <tr><td>GET</td><td><code>/books</code></td><td>Yes</td><td>List all books (param: <code>current=1</code> for current book only)</td></tr>
-  <tr><td>GET</td><td><code>/books/{id}</code></td><td>Yes</td><td>Get single book with chapters and audio URL</td></tr>
-  <tr><td>POST</td><td><code>/books/{id}/bookmarks</code></td><td>Yes</td><td>Create bookmark (params: <code>timestamp</code>, <code>title</code>)</td></tr>
-  <tr><td>DELETE</td><td><code>/books/{id}/bookmarks/{bid}</code></td><td>Yes</td><td>Delete a bookmark</td></tr>
-</table>
-
-<h3>Setup</h3>
-<ol>
-  <li>Install the plugin on WordPress</li>
-  <li>In WP admin &rarr; Book Club: add books with chapters and audio file URLs</li>
-  <li>Enable the <code>bookclub</code> module in the app&rsquo;s <span class="file-path">modules/_registry.ts</span></li>
-</ol>
-
-<!-- ====================================================================== -->
-<h2 id="tbc-license-server">9. TBC License Server</h2>
-
-<p><span class="file-path">companion plugins/tbc-license-server/</span> <span class="tag auto">Infra</span> &mdash; v2.2.0</p>
-
-<p>Thin bridge between the buyer&rsquo;s setup dashboard and <strong>FluentCart Pro&rsquo;s licensing module</strong>. This plugin lives on the <em>seller&rsquo;s</em> WordPress site (twobirdscode.com), not on buyer sites. It validates license keys, auto-activates them on first use, and returns update info in the format the dashboard expects.</p>
-
-<div class="callout callout-warn">
-  <strong>Requires FluentCart Pro</strong> with the Licensing module enabled. FluentCart handles all license management (key generation, subscription sync, admin UI, customer portal, file hosting). This plugin only exposes the REST endpoint and handles auto-activation.
-</div>
-
-<h3>Endpoint</h3>
-<table>
-  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
-  <tr><td>POST</td><td><code>/check</code></td><td>No</td><td>Validate license key, auto-activate on first use, return plan + expiry + latest version info</td></tr>
-</table>
-
-<h3>Request</h3>
-<pre><code>POST /wp-json/tbc-license/v1/check
-{
-  "licenseKey": "TBC-XXXX-XXXX-XXXX",
-  "currentVersion": "3.0.6",
-  "product": "tbc-community-app",
-  "siteUrl": "https://example.com"
-}</code></pre>
-
-<p>The <code>siteUrl</code> field is the buyer&rsquo;s site URL (from <code>eas.json</code> <code>SITE_URL</code>). It is sent with each validation request and used for auto-activation.</p>
-
-<h3>Response (valid, update available)</h3>
-<pre><code>{
-  "valid": true,
-  "plan": "core",
-  "expiresAt": "2027-03-16",
-  "latest": {
-    "version": "3.1.0",
-    "date": "2026-03-20",
-    "changelog": "### v3.1.0\n- Fluent Community 1.9 support",
-    "downloadUrl": "https://twobirdscode.com/?fct-download=...",
-    "size": 2048000
-  }
-}</code></pre>
-
-<h3>Response (up to date)</h3>
-<pre><code>{ "valid": true, "plan": "core", "expiresAt": "2027-03-16", "latest": null }</code></pre>
-
-<h3>How It Works</h3>
-<ol>
-  <li>Looks up the license key in FluentCart&rsquo;s <code>fct_licenses</code> table</li>
-  <li>Checks expiration via FluentCart&rsquo;s License model</li>
-  <li><strong>Auto-activation:</strong> if the license is <code>inactive</code> and has activations remaining, automatically activates it for the buyer&rsquo;s site URL &mdash; creates records in <code>fct_license_sites</code> and <code>fct_license_activations</code>, then calls <code>recountActivations()</code> so the license shows as Active with the buyer&rsquo;s site URL in FluentCart admin</li>
-  <li>Checks active status (license must be active after auto-activation or already active)</li>
-  <li>Reads version info from the product&rsquo;s <code>license_settings</code> meta</li>
-  <li>Generates a time-limited signed download URL via FluentCart&rsquo;s Helper class (60 min validity)</li>
-  <li>Returns the response in the dashboard&rsquo;s expected format</li>
-</ol>
-
-<h3>MIME Type Support</h3>
-<p>The plugin registers <code>tar.gz</code> and <code>gz</code> MIME types (<code>application/gzip</code>) in WordPress so FluentCart update packages can be uploaded via the media library. Added in v2.1.0.</p>
-
-<div class="callout">
-  <strong>Not a buyer plugin.</strong> This is infrastructure for the TBC product &mdash; it runs on the seller&rsquo;s server only. Buyers interact with it indirectly through their setup dashboard&rsquo;s Updates tab. On first validation, their license is automatically activated &mdash; no manual activation step needed in FluentCart admin.
-</div>
-
-<!-- ====================================================================== -->
-<h2 id="app-constants">10. App-Side URL Constants</h2>
+<h2 id="app-constants">6. App-Side URL Constants</h2>
 
 <p>The app references plugin APIs via URL constants defined in <span class="file-path">constants/config.ts</span>. All are derived from <code>SITE_URL</code>.</p>
 
 <pre><code>// Core plugin APIs
 export const TBC_CA_URL  = `${SITE_URL}/wp-json/tbc-ca/v1`;       // Auth, registration, config
 
-// Addon plugin APIs
-export const TBC_OTP_URL = `${SITE_URL}/wp-json/tbc-otp/v1`;      // OTP (requires tbc-otp)
-
 // Also used:
 export const API_URL     = `${SITE_URL}/wp-json/fluent-community/v2`;
 export const WP_REST_URL = `${SITE_URL}/wp-json/wp/v2`;</code></pre>
 
-<p>Multi-reactions API URLs are defined locally in the service files that use them (not as a global constant), since the plugin is module-controlled.</p>
+<p>Module-specific API URLs are defined locally in each module's service files (not as global constants). Each module constructs its own base URL from <code>SITE_URL</code>.</p>
 
 <p>Service files pass these as <code>baseUrl</code> to the <a href="api-client.html">HTTP client</a>:</p>
 <pre><code>// services/api/registration.ts
 const response = await fetch(`${TBC_CA_URL}/auth/register`, { ... });
 
-// services/api/feeds.ts — multi-reaction endpoints use a local constant
-const TBC_MR_URL = `${SITE_URL}/wp-json/tbc-multi-reactions/v1`;
-const response = await request('/breakdown/feed/42', { baseUrl: TBC_MR_URL });</code></pre>
+// modules/yourmodule/services/yourApi.ts — module-local constant
+const API_BASE = `${SITE_URL}/wp-json/your-plugin/v1`;
+const response = await request('/items', { baseUrl: API_BASE });</code></pre>
 
 <!-- ====================================================================== -->
-<h2 id="installation">11. Installation</h2>
+<h2 id="installation">7. Installation</h2>
 
 <h3>For Buyers (White-Label Setup)</h3>
 <ol>

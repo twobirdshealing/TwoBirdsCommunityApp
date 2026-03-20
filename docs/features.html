@@ -15,7 +15,7 @@
 <div class="callout">
   This document provides a full audit of every feature in the Fluent Community plugin ecosystem (Free, Pro, Messages)
   and maps them against what the TBC Community App supports, where we go beyond, and where we have gaps for the roadmap.
-  Module-specific features (Blog, YouTube, Book Club, Calendar) have their own dedicated docs.
+  Module-specific features have their own dedicated docs in <code>docs/modules/</code>.
 </div>
 
 <div class="legend">
@@ -141,7 +141,7 @@
   </tr>
   <tr class="row-app">
     <td>Custom Tab Bar Navigation <span class="tag tag-app">APP EXTRA</span></td>
-    <td>Fully custom bottom tab bar with centered layout, haptic feedback, module-injected tabs, animated icons (pulsing donate heart), tab bar addons (mini audio player), and server-driven tab visibility. Not achievable in web.</td>
+    <td>Fully custom bottom tab bar with centered layout, haptic feedback, module-injected tabs, animated icons, tab bar addons, and server-driven tab visibility. Not achievable in web.</td>
     <td>UX</td>
   </tr>
   <tr class="row-app">
@@ -161,17 +161,17 @@
   </tr>
   <tr class="row-app">
     <td>Module System <span class="tag tag-app">APP EXTRA</span></td>
-    <td>Self-contained feature modules that plug in without touching core code. Register tabs, widgets, menu items, header icons, context providers, and UI slots. Enable/disable with one line. Powers multi-reactions, blog, YouTube, book club, calendar, donate, and donor modules.</td>
+    <td>Self-contained feature modules that plug in without touching core code. Register tabs, widgets, menu items, header icons, context providers, and UI slots. Enable/disable with one line. Powers core features and add-on modules.</td>
     <td>Architecture</td>
   </tr>
   <tr class="row-app">
     <td>Multi-Step Registration Wizard <span class="tag tag-app">APP EXTRA</span></td>
-    <td>Server-driven dynamic form with phone OTP verification (Twilio SMS + voice fallback), email verification, password strength meter, and profile completion gate. Far beyond Fluent's default registration.</td>
+    <td>Server-driven dynamic form with email verification, password strength meter, and module-injectable verification steps. Far beyond Fluent's default registration.</td>
     <td>Onboarding</td>
   </tr>
   <tr class="row-app">
     <td>Authenticated WebView Bridge <span class="tag tag-app">APP EXTRA</span></td>
-    <td>Seamless SSO into any WordPress page (donations, WooCommerce checkout, event booking, donor dashboard) via one-time login URL. Theme CSS auto-injected for dark mode parity.</td>
+    <td>Seamless SSO into any WordPress page (WooCommerce checkout, event booking, etc.) via one-time login URL. Theme CSS auto-injected for dark mode parity.</td>
     <td>Integration</td>
   </tr>
   <tr class="row-app">
@@ -205,8 +205,8 @@
     <td>UX</td>
   </tr>
   <tr class="row-app">
-    <td>Profile Completion Flow <span class="tag tag-app">APP EXTRA</span></td>
-    <td>Server-driven profile completion requirements (bio, avatar). Gated navigation redirects incomplete profiles to completion screen after login.</td>
+    <td>Post-Login Gates <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Module-driven post-login gates via response header mapping. Modules can intercept login and require additional steps before granting full access.</td>
     <td>Onboarding</td>
   </tr>
   <tr class="row-app">
@@ -215,8 +215,8 @@
     <td>Compliance</td>
   </tr>
   <tr class="row-app">
-    <td>Password Recovery with OTP <span class="tag tag-app">APP EXTRA</span></td>
-    <td>Forgot password flow with OTP verification and reset token, entirely within the app.</td>
+    <td>Password Recovery</td>
+    <td>Forgot password flow &mdash; sends a reset email via WordPress, user sets new password in-app with the reset token.</td>
     <td>Auth</td>
   </tr>
   <tr class="row-app">
@@ -1248,7 +1248,7 @@
     <td>Registration</td>
     <td><span class="tag tag-free">FREE</span></td>
     <td><span class="check">&#10003;</span></td>
-    <td>Multi-step wizard with server-driven fields, OTP, email verify, profile completion</td>
+    <td>Multi-step wizard with server-driven fields, email verify, module-injectable steps</td>
   </tr>
   <tr>
     <td>Access role configuration</td>
@@ -1269,10 +1269,10 @@
     <td><span class="tag tag-roadmap">ROADMAP</span> Share invite links from the app</td>
   </tr>
   <tr class="row-app">
-    <td>Phone OTP verification (Twilio) <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Module-injectable verification steps <span class="tag tag-app">APP EXTRA</span></td>
     <td>&mdash;</td>
     <td><span class="check">&#10003;</span></td>
-    <td>SMS + voice call fallback, powered by tbc-otp plugin (addon)</td>
+    <td>Add-on modules can inject custom verification steps (e.g., phone OTP, profile completion) into registration and login flows</td>
   </tr>
   <tr class="row-app">
     <td>Silent token refresh <span class="tag tag-app">APP EXTRA</span></td>
@@ -1281,10 +1281,10 @@
     <td>Auto re-authenticates on 401/403 using stored credentials. Prevents infinite loops with _isRetry flag.</td>
   </tr>
   <tr class="row-app">
-    <td>Password recovery with OTP <span class="tag tag-app">APP EXTRA</span></td>
+    <td>Password Recovery</td>
     <td>&mdash;</td>
     <td><span class="check">&#10003;</span></td>
-    <td>In-app forgot password flow with OTP verification</td>
+    <td>In-app forgot password flow (sends email, reset with token)</td>
   </tr>
   <tr class="row-app">
     <td>Password strength meter <span class="tag tag-app">APP EXTRA</span></td>
@@ -1557,7 +1557,7 @@
   </tr>
   <tr class="row-app">
     <td>Custom bottom tab bar <span class="tag tag-app">APP EXTRA</span></td>
-    <td>Fully custom tab bar with centered layout, module-injected tabs, animated icons (pulsing donate heart), tab bar addons (mini audio player). Server-driven visibility toggles tabs without app updates.</td>
+    <td>Fully custom tab bar with centered layout, module-injected tabs, animated icons, tab bar addons. Server-driven visibility toggles tabs without app updates.</td>
   </tr>
   <tr class="row-app">
     <td>Haptic feedback system <span class="tag tag-app">APP EXTRA</span></td>
@@ -1636,52 +1636,12 @@
     <td>Multi-emoji reaction system via slot injection (picker, breakdown modal, swap). Replaces default like button. Companion plugin: tbc-multi-reactions</td>
   </tr>
   <tr>
-    <td><strong>Blog</strong></td>
+    <td><em>Add-on modules</em></td>
     <td><span class="tag tag-addon">ADD-ON</span></td>
-    <td><span class="cross">&#10005;</span></td>
-    <td><span class="check">&#10003;</span></td>
-    <td><span class="check">&#10003;</span></td>
-    <td>WordPress blog integration with post listing, full content view, and WP comment system</td>
-  </tr>
-  <tr>
-    <td><strong>YouTube</strong></td>
-    <td><span class="tag tag-addon">ADD-ON</span></td>
-    <td><span class="cross">&#10005;</span></td>
-    <td><span class="check">&#10003;</span></td>
-    <td><span class="cross">&#10005;</span></td>
-    <td>YouTube channel videos and playlists with server-side caching. Companion plugin: tbc-youtube</td>
-  </tr>
-  <tr>
-    <td><strong>Book Club</strong></td>
-    <td><span class="tag tag-addon">ADD-ON</span></td>
-    <td><span class="cross">&#10005;</span></td>
-    <td><span class="check">&#10003;</span></td>
-    <td><span class="check">&#10003;</span></td>
-    <td>Audiobook library with full player, chapter navigation, bookmarks, meeting schedule, persistent mini player. Companion plugin: tbc-book-club</td>
-  </tr>
-  <tr>
-    <td><strong>Calendar</strong></td>
-    <td>Site-specific</td>
-    <td><span class="check">&#10003;</span></td>
-    <td><span class="check">&#10003;</span></td>
-    <td><span class="cross">&#10005;</span></td>
-    <td>Month grid calendar with event listing, WooCommerce booking integration, RSVP/waitlist. Two home widgets. Companion plugin: tbc-calendar-fluent</td>
-  </tr>
-  <tr>
-    <td><strong>Donate</strong></td>
-    <td>Site-specific</td>
-    <td><span class="check">&#10003;</span></td>
-    <td><span class="cross">&#10005;</span></td>
-    <td><span class="check">&#10003;</span></td>
-    <td>Animated heart tab icon that opens WooCommerce donation page in authenticated WebView</td>
-  </tr>
-  <tr>
-    <td><strong>Donor Dashboard</strong></td>
-    <td>Site-specific</td>
-    <td><span class="cross">&#10005;</span></td>
-    <td><span class="cross">&#10005;</span></td>
-    <td><span class="check">&#10003;</span></td>
-    <td>Menu item that opens donor dashboard in authenticated WebView</td>
+    <td>Varies</td>
+    <td>Varies</td>
+    <td>Varies</td>
+    <td>Additional modules available as add-ons or custom builds. Each can register tabs, widgets, menu items, and more. See <a href="modules/">module docs</a> for details.</td>
   </tr>
 </table>
 
@@ -1691,9 +1651,9 @@
   <li><strong>Server-driven visibility:</strong> The server's <code>hide_menu</code> array can hide module tabs and menu items without an app update.</li>
   <li><strong>Forward-compatible widgets:</strong> When a new module is enabled, its widget auto-appears on the home screen in the next launch.</li>
   <li><strong>Push notification routing:</strong> Modules can register push handlers to intercept and route their own notification types.</li>
-  <li><strong>Context providers:</strong> Modules can inject React context providers (e.g., Book Club's audio player state) into the app's provider tree.</li>
-  <li><strong>Tab bar addons:</strong> Modules can inject persistent UI above the tab bar (e.g., Book Club's mini player).</li>
-  <li><strong>Slot injection:</strong> Modules can replace core UI components via named slots (e.g., Multi-Reactions replaces the default like button with a multi-emoji picker).</li>
+  <li><strong>Context providers:</strong> Modules can inject React context providers (e.g., an audio player state) into the app's provider tree.</li>
+  <li><strong>Tab bar addons:</strong> Modules can inject persistent UI above the tab bar (e.g., a mini player).</li>
+  <li><strong>Slot injection:</strong> Modules can replace core UI components via named slots (e.g., replacing the default like button with a custom reaction picker).</li>
 </ul>
 
 <!-- ================================================================ -->

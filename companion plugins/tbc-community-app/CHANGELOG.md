@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.48.0
+- **Dynamic deep linking settings**: Removed all hardcoded Two Birds-specific values from deep links (bundle ID, package name, URL scheme, app name). Added Bundle Identifier, Package Name, URL Scheme, and App Name fields to the Deep Linking section in wp-admin. The AASA file, Asset Links file, and Smart App Banner now read all values from settings. Updated plugin description to be generic.
+
 ## v3.47.0
 - **Remove multi_reactions feature flag**: Multi-reactions is now controlled entirely by the app module system (register/unregister in `modules/_registry.ts`). Removed `multi_reactions` from Features tab, default settings, sanitization, and auto-detect logic. No server-side feature flag needed — the tbc-multi-reactions companion plugin is still required on the WordPress side.
 
