@@ -136,7 +136,6 @@ function RootLayoutNav() {
     onUnreadNotifications: setUnreadNotifications,
     onUnreadMessages: setUnreadMessages,
   });
-  const [isStartupRetrying, setIsStartupRetrying] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Module Lifecycle — init modules after auth is confirmed
@@ -316,19 +315,6 @@ function RootLayoutNav() {
     );
   }
 
-  // Startup error handler
-  const handleStartupRetry = useCallback(async () => {
-    setIsStartupRetrying(true);
-    retryStartup();
-  }, [retryStartup]);
-
-  // Clear retrying spinner when status changes from loading
-  useEffect(() => {
-    if (startupStatus !== 'loading') {
-      setIsStartupRetrying(false);
-    }
-  }, [startupStatus]);
-
   // Maintenance gate
   if (maintenance?.enabled) {
     // Authenticated but bypass status not yet known — show loading
@@ -358,8 +344,9 @@ function RootLayoutNav() {
     }
   }
 
-  // Startup gate — authenticated users must have config loaded before entering the app
-  if (isAuthenticated && startupStatus === 'loading') {
+  // Startup gate — authenticated users must have config loaded before entering the app.
+  // Skip if features are already hydrated from cache (returning users) — batch refreshes in background.
+  if (isAuthenticated && startupStatus === 'loading' && !features) {
     return (
       <View style={[styles.loading, { backgroundColor: themeColors.background }]}>
         <ActivityIndicator size="large" color={themeColors.primary} />
@@ -370,7 +357,7 @@ function RootLayoutNav() {
   if (isAuthenticated && startupStatus === 'error') {
     return (
       <View style={[styles.flex, { backgroundColor: themeColors.background }]}>
-        <StartupErrorScreen onRetry={handleStartupRetry} isRetrying={isStartupRetrying} />
+        <StartupErrorScreen onRetry={retryStartup} isRetrying={startupStatus === 'loading'} />
         <StatusBar style={isDark ? 'light' : 'dark'} />
       </View>
     );

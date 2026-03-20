@@ -155,10 +155,6 @@ sed -i \
   -e "s|export const APP_NAME = 'Two Birds Community';|export const APP_NAME = 'My Community';|" \
   -e "s|export const APP_USER_AGENT = 'TBCCommunityApp/1.0';|export const APP_USER_AGENT = 'CommunityApp/1.0';|" \
   -e "/export const TBC_YT_URL/d" \
-  -e "s|DARK_MODE: true,|DARK_MODE: false,|" \
-  -e "s|PUSH_NOTIFICATIONS: true,|PUSH_NOTIFICATIONS: false,|" \
-  -e "s|MESSAGING: true,|MESSAGING: false,|" \
-  -e "s|COURSES: true,|COURSES: false,|" \
   "$TARGET_DIR/constants/config.ts"
 
 # --- app.json ---
@@ -179,6 +175,7 @@ sed -i \
 # --- eas.json ---
 sed -i \
   -e 's|https://community.twobirdschurch.com|https://community.yoursite.com|g' \
+  -e 's|https://staging.twobirdschurch.com|https://community.yoursite.com|g' \
   -e 's|"appleId": "[^"]*"|"appleId": "your-apple-id@example.com"|' \
   -e 's|"ascAppId": "[^"]*"|"ascAppId": "YOUR_ASC_APP_ID"|' \
   "$TARGET_DIR/eas.json"
@@ -186,6 +183,7 @@ sed -i \
 # --- app.config.ts ---
 sed -i \
   -e "s|'https://community.twobirdschurch.com'|'https://community.yoursite.com'|" \
+  -e "s|const stagingUrl = '.*'|const stagingUrl = ''|" \
   -e "s|config.name ?? 'Two Birds'|config.name ?? 'My Community'|" \
   -e "s|config.slug ?? 'twobirdscommunityapp'|config.slug ?? 'mycommunityapp'|" \
   -e "/'\\/blog\\//d" \
@@ -230,6 +228,8 @@ sed -i \
   -e "/^  blogModule,$/d" \
   -e "/^  otpModule,$/d" \
   -e "/^  profileCompletionModule,$/d" \
+  -e "/^  cartModule,$/d" \
+  -e "/^  multiReactionsModule,$/d" \
   "$TARGET_DIR/modules/_registry.ts"
 
 echo "  Done."

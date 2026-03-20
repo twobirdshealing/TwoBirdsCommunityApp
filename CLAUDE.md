@@ -19,7 +19,8 @@ This is a white-label community app powered by [Fluent Community](https://fluent
 | Command | What it does |
 |---|---|
 | `npm run dashboard` | Launch setup dashboard (browser UI for all configuration) |
-| `npx expo start --dev-client --clear` | Start local dev server (clears Metro cache) |
+| `npm run dev` | Start local dev server (production URL) |
+| `npm run dev:staging` | Start local dev server (staging URL — shows red STAGING indicator in header) |
 | `eas build --platform ios --profile production` | Build iOS via EAS |
 | `eas build --platform android --profile production` | Build Android via EAS |
 | `eas submit --platform ios --latest` | Submit latest iOS build to App Store Connect |

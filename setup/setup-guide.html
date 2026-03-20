@@ -778,17 +778,20 @@
   </div>
 </div>
 
-<!-- Step 6: Site URL -->
+<!-- Step 6: Site URLs -->
 <div class="step-card">
   <div class="step-header">
     <span class="step-number">6</span>
-    <span class="step-title">Site URL</span>
+    <span class="step-title">Site URLs</span>
   </div>
   <div class="step-body">
     <p>
-      Your WordPress + Fluent Community site URL (<strong>no trailing slash</strong>). This is the server your app talks to for everything &mdash; login, feed, profiles, messaging. It must have the <code>tbc-community-app</code> companion plugin installed.
+      <strong>Production URL</strong> &mdash; Your WordPress + Fluent Community site URL (<strong>no trailing slash</strong>). This is the server your app talks to for everything &mdash; login, feed, profiles, messaging. It must have the <code>tbc-community-app</code> companion plugin installed.
     </p>
-    <img class="step-img" src="images/step6-siteurl.webp" alt="Site URL card showing URL input field">
+    <p>
+      <strong>Staging URL</strong> (optional) &mdash; If you have a staging/test site, enter its URL here. Run <code>npm run dev:staging</code> to test locally against your staging server instead of production. Leave empty if you don't have one. When connected to staging, the app shows a red <strong>STAGING</strong> label in the header so you always know which environment you're on.
+    </p>
+    <img class="step-img" src="images/step6-siteurl.webp" alt="Site URLs card showing production and staging URL fields">
   </div>
 </div>
 

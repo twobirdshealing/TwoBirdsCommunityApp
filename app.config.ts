@@ -12,9 +12,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   // This section is yours to edit. Core updates won't touch it.
   // =========================================================================
 
-  // Change the fallback URL to your site. EAS builds use eas.json env instead.
+  // Production site URL (EAS builds use eas.json env instead)
+  const productionUrl = 'https://community.twobirdschurch.com';
+
+  // Staging site URL (optional — for local dev testing against a staging server)
+  // Leave empty if you don't have a staging site. Run: npm run dev:staging
+  const stagingUrl = 'https://staging.twobirdschurch.com';
+
   const siteUrl =
-    process.env.SITE_URL || 'https://community.twobirdschurch.com';
+    process.env.SITE_URL ||
+    (process.env.USE_STAGING === '1' && stagingUrl ? stagingUrl : productionUrl);
 
   // Fallback values for local dev (EAS builds use app.json instead)
   const name = config.name ?? 'Two Birds';
@@ -64,6 +71,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       ...config.extra,
       siteUrl,
+      isStaging: siteUrl !== productionUrl,
     },
   };
 };

@@ -8,7 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "SITE_URL": "https://community.twobirdschurch.com"
+        "SITE_URL": "https://staging.twobirdschurch.com"
       }
     },
     "preview": {

@@ -65,7 +65,7 @@ Widget Registry (core + modules)
   title: string;                 // Display title in header
   icon?: keyof typeof Ionicons.glyphMap;  // Header icon
   seeAllRoute?: string;          // Navigation route for "See all"
-  featureFlag?: keyof FeaturesConfig;      // Conditional inclusion (server-controlled)
+  featureFlag?: BooleanFeatureKey;          // Conditional inclusion (server-controlled)
   defaultEnabled: boolean;       // Default state for new users
   canDisable: boolean;           // Whether user can toggle
   externalWrapper: boolean;      // true = wrapped in HomeWidget

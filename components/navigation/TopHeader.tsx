@@ -8,7 +8,7 @@
 // 4. Push notifications (instant notification badge bump)
 // =============================================================================
 
-import { getHeaderLogoSource } from '@/constants/config';
+import { getHeaderLogoSource, IS_STAGING } from '@/constants/config';
 import { spacing, shadows, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -164,7 +164,9 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
       <View style={styles.content}>
         {/* Left: Logo or Title */}
         <View style={styles.leftSection}>
-          {showLogo && logoSource ? (
+          {IS_STAGING ? (
+            <Text style={{ color: themeColors.error, fontWeight: '800', fontSize: 16, letterSpacing: 1 }}>STAGING</Text>
+          ) : showLogo && logoSource ? (
             <Image
               source={logoSource}
               style={styles.logo}

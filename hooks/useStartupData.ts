@@ -197,10 +197,6 @@ export function useStartupData({
     }
   }, [username, onAppConfig, onProfileUpdate, onUnreadNotifications, onUnreadMessages]);
 
-  const retry = useCallback(() => {
-    runBatch();
-  }, [runBatch]);
-
   // Fire once when authenticated with a username
   useEffect(() => {
     if (isAuthenticated && username && !hasRun.current) {
@@ -214,5 +210,5 @@ export function useStartupData({
     }
   }, [isAuthenticated, username, runBatch]);
 
-  return { status, retry };
+  return { status, retry: runBatch };
 }

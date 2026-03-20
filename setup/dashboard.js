@@ -143,8 +143,12 @@ function extractTsValue(content, pattern) {
 function getSiteUrl(easJson) {
   if (!easJson) return '';
   const profiles = easJson.build || {};
+  // Prefer production, then preview, then first non-development profile
+  const preferred = profiles.production?.env?.SITE_URL || profiles.preview?.env?.SITE_URL;
+  if (preferred) return preferred;
   for (const key of Object.keys(profiles)) {
-    if (profiles[key].env?.SITE_URL) return profiles[key].env.SITE_URL;
+    if (key === 'development') continue;
+    if (profiles[key]?.env?.SITE_URL) return profiles[key].env.SITE_URL;
   }
   return '';
 }
@@ -222,7 +226,8 @@ function readProjectState() {
   // --- app.config.ts ---
   if (fileExists(PATHS.appConfigTs)) {
     const content = fs.readFileSync(PATHS.appConfigTs, 'utf8');
-    state.config.fallbackSiteUrl = extractTsValue(content, /process\.env\.SITE_URL \|\| '([^']*)'/);
+    state.config.productionUrl = extractTsValue(content, /const productionUrl = '([^']*)'/);
+    state.config.stagingUrl = extractTsValue(content, /const stagingUrl = '([^']*)'/);
     state.config.fallbackName = extractTsValue(content, /config\.name \?\? '([^']*)'/);
     state.config.fallbackSlug = extractTsValue(content, /config\.slug \?\? '([^']*)'/);
   }
@@ -319,14 +324,14 @@ function runValidation(state) {
   check(!isPlaceholder(c.appNameConfig), 'APP_NAME is set in config.ts', 'config.ts', 'config-ts');
   check(!isPlaceholder(c.userAgent), 'APP_USER_AGENT is set', 'config.ts', 'config-ts');
   // app.config.ts
-  check(!isPlaceholder(c.fallbackSiteUrl), 'Fallback SITE_URL is set', 'app.config.ts', 'site-url');
+  check(!isPlaceholder(c.productionUrl), 'Production URL is set', 'app.config.ts', 'site-url');
 
   // Consistency
   if (c.appName && c.appNameConfig && c.appName !== c.appNameConfig) {
     checks.push({ pass: 'warn', label: `App name mismatch: app.json="${c.appName}" vs config.ts="${c.appNameConfig}"`, category: 'consistency', ref: 'config-ts' });
   }
-  if (c.siteUrl && c.fallbackSiteUrl && c.siteUrl !== c.fallbackSiteUrl) {
-    checks.push({ pass: 'warn', label: `SITE_URL mismatch: eas.json="${c.siteUrl}" vs app.config.ts="${c.fallbackSiteUrl}"`, category: 'consistency', ref: 'site-url' });
+  if (c.siteUrl && c.productionUrl && c.siteUrl !== c.productionUrl) {
+    checks.push({ pass: 'warn', label: `SITE_URL mismatch: eas.json="${c.siteUrl}" vs app.config.ts="${c.productionUrl}"`, category: 'consistency', ref: 'site-url' });
   }
   if (c.version && c.packageVersion && c.version !== c.packageVersion) {
     checks.push({ pass: 'warn', label: `Version mismatch: app.json="${c.version}" vs package.json="${c.packageVersion}"`, category: 'consistency', ref: 'pre-launch' });
@@ -414,6 +419,8 @@ function writeConfigValues(changes) {
       if (changes.siteUrl !== undefined) {
         const profiles = easJson.build || {};
         for (const key of Object.keys(profiles)) {
+          // Skip development profile — it uses staging URL, not production
+          if (key === 'development') continue;
           if (!profiles[key].env) profiles[key].env = {};
           profiles[key].env.SITE_URL = changes.siteUrl;
         }
@@ -454,10 +461,13 @@ function writeConfigValues(changes) {
   }
 
   // --- app.config.ts ---
-  if (changes.fallbackSiteUrl !== undefined || changes.fallbackName !== undefined || changes.fallbackSlug !== undefined) {
+  if (changes.productionUrl !== undefined || changes.stagingUrl !== undefined || changes.fallbackName !== undefined || changes.fallbackSlug !== undefined) {
     let content = fs.readFileSync(PATHS.appConfigTs, 'utf8');
-    if (changes.fallbackSiteUrl !== undefined) {
-      content = content.replace(/process\.env\.SITE_URL \|\| '[^']*'/, `process.env.SITE_URL || '${changes.fallbackSiteUrl}'`);
+    if (changes.productionUrl !== undefined) {
+      content = content.replace(/const productionUrl = '[^']*'/, `const productionUrl = '${changes.productionUrl}'`);
+    }
+    if (changes.stagingUrl !== undefined) {
+      content = content.replace(/const stagingUrl = '[^']*'/, `const stagingUrl = '${changes.stagingUrl}'`);
     }
     if (changes.fallbackName !== undefined) {
       content = content.replace(/config\.name \?\? '[^']*'/, `config.name ?? '${changes.fallbackName}'`);
@@ -2073,6 +2083,10 @@ function getDashboardHTML() {
   .rebuild-notice { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--yellow); margin-top: 3px; }
   .rebuild-notice::before { content: '\u26A0'; font-size: 10px; }
 
+  .cmd-row { display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 8px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: border-color 0.15s; }
+  .cmd-row:hover { border-color: var(--accent); }
+  .cmd-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .cmd-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
   .build-version-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; }
   .build-version-label { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
   .build-version-input { width: 80px; text-align: center; font-family: var(--font-mono); font-size: 13px; padding: 4px 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); }
@@ -2276,6 +2290,28 @@ function getDashboardHTML() {
 <!-- ============== Config Tab ============== -->
 <div class="tab-content active" id="tab-config">
   <div class="card">
+    <div class="card-header"><h3>Quick Commands</h3></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px">Click to copy a command, then paste into your terminal to run.</p>
+      <div style="display:flex;flex-direction:column;gap:6px;max-width:480px">
+        <button class="btn btn-sm cmd-copy cmd-row" data-cmd="npm run dev">
+          <span class="cmd-label">Start Dev Server</span>
+          <span class="cmd-desc">Run app locally against your production site</span>
+        </button>
+        <button class="btn btn-sm cmd-copy cmd-row" data-cmd="npm run dev:staging" id="cmd-dev-staging">
+          <span class="cmd-label">Start Dev Server (Staging)</span>
+          <span class="cmd-desc">Run app locally against your staging site</span>
+        </button>
+        <button class="btn btn-sm cmd-copy cmd-row" data-cmd="npm run dashboard">
+          <span class="cmd-label">Open Dashboard</span>
+          <span class="cmd-desc">Launch this setup dashboard in your browser</span>
+        </button>
+      </div>
+      <div id="cmd-toast" style="display:none;margin-top:8px;font-size:12px;color:var(--accent)"></div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-header">
       <h3>App Identity</h3>
       <span class="badge" style="color:var(--text-muted)">app.json</span>
@@ -2330,13 +2366,18 @@ function getDashboardHTML() {
   </div>
 
   <div class="card">
-    <div class="card-header"><h3>Site URL</h3><span class="badge" style="color:var(--text-muted)">eas.json + app.config.ts</span></div>
+    <div class="card-header"><h3>Site URLs</h3><span class="badge" style="color:var(--text-muted)">eas.json + app.config.ts</span></div>
     <div class="card-body">
       <div class="field-group single">
         <div class="field">
-          <label>Site URL <span class="file-hint">eas.json > build.*.env.SITE_URL</span></label>
+          <label>Production URL <span class="file-hint">eas.json > build.*.env.SITE_URL</span></label>
           <input type="url" id="cfg-siteUrl" data-key="siteUrl" placeholder="https://your-community-site.com">
-          <span class="derive-hint">Also updates app.config.ts fallback URL</span>
+          <span class="derive-hint">Used by preview and production builds</span>
+        </div>
+        <div class="field">
+          <label>Staging URL <span class="file-hint">app.config.ts (optional)</span></label>
+          <input type="url" id="cfg-stagingUrl" data-key="stagingUrl" placeholder="https://staging.your-site.com (optional)">
+          <span class="derive-hint">Used by <code>npm run dev:staging</code> — leave empty if no staging site</span>
         </div>
       </div>
     </div>
@@ -2660,7 +2701,7 @@ let originalValues = {};
 let lastDerived = {};
 let dirty = false;
 const CONFIG_FIELDS = ['appName', 'slug', 'scheme', 'version', 'iosBundleId', 'androidPackage',
-  'siteUrl', 'easOwner', 'easProjectId', 'appNameConfig', 'userAgent',
+  'siteUrl', 'stagingUrl', 'easOwner', 'easProjectId', 'appNameConfig', 'userAgent',
   'appleId', 'ascAppId', 'packageName', 'appToken'];
 const PLACEHOLDERS = ${JSON.stringify(PLACEHOLDERS)};
 
@@ -2697,8 +2738,11 @@ const FIELD_HELP = {
     rebuild: true,
   },
   siteUrl: {
-    text: 'Your WordPress + Fluent Community site URL (<strong>no trailing slash</strong>). The app connects to this URL for all API calls. Must have the <code>tbc-community-app</code> plugin installed.',
+    text: 'Your live WordPress + Fluent Community site URL (<strong>no trailing slash</strong>). Used by all app builds and <code>npm run dev</code>. Must have the <code>tbc-community-app</code> plugin installed.',
     rebuild: true,
+  },
+  stagingUrl: {
+    text: 'Optional staging/test site URL for local development. Run <code>npm run dev:staging</code> to use this URL instead of production. Leave empty if no staging site.',
   },
   easOwner: {
     text: 'Your Expo account username. Use the <strong>Log In to EAS</strong> button above to connect your account — the owner will auto-fill.',
@@ -2752,6 +2796,28 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
+// ---------- Quick Commands (click to copy) ----------
+document.querySelectorAll('.cmd-copy').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const cmd = btn.dataset.cmd;
+    navigator.clipboard.writeText(cmd).then(() => {
+      const toast = document.getElementById('cmd-toast');
+      toast.textContent = 'Copied: ' + cmd;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 2000);
+    });
+  });
+});
+
+// Hide dev:staging button if no staging URL configured
+function updateStagingCmdVisibility() {
+  const stagingBtn = document.getElementById('cmd-dev-staging');
+  const stagingInput = document.getElementById('cfg-stagingUrl');
+  if (stagingBtn && stagingInput) {
+    stagingBtn.style.display = stagingInput.value ? '' : 'none';
+  }
+}
+
 // ---------- Auto-derive ----------
 const deriveMap = {
   appName: (val) => {
@@ -2768,7 +2834,7 @@ const deriveMap = {
     };
   },
   iosBundleId: (val) => ({ androidPackage: val }),
-  siteUrl: (val) => ({ fallbackSiteUrl: val }),
+  siteUrl: (val) => ({ productionUrl: val }),
 };
 
 function markDirty() {
@@ -2781,6 +2847,7 @@ document.querySelectorAll('#tab-config input[data-key]').forEach(input => {
     markDirty();
     updateFieldHelp(input);
     const key = input.dataset.key;
+    if (key === 'stagingUrl') updateStagingCmdVisibility();
     if (deriveMap[key]) {
       const derived = deriveMap[key](input.value);
       for (const [dk, dv] of Object.entries(derived)) {
@@ -2915,6 +2982,8 @@ function populateConfig(config) {
   syncBuildVersion();
   // Lock auto-derived fields
   lockDerivedFields();
+  // Show/hide staging command based on whether staging URL is set
+  updateStagingCmdVisibility();
 }
 
 /** Inject or update the help element for a field */
@@ -3176,7 +3245,7 @@ async function saveConfig() {
     changes.googlePlayTrack = trackEl.value;
   }
   // Sync derived values
-  if (changes.siteUrl !== undefined) changes.fallbackSiteUrl = changes.siteUrl;
+  if (changes.siteUrl !== undefined) changes.productionUrl = changes.siteUrl;
   if (changes.appName !== undefined) changes.fallbackName = changes.appName;
   if (changes.slug !== undefined) changes.fallbackSlug = changes.slug.toLowerCase();
 

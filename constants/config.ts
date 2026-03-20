@@ -24,6 +24,9 @@ export const APP_USER_AGENT = 'TBCCommunityApp/1.0';   // User agent for API req
 
 export const SITE_URL: string = Constants.expoConfig?.extra?.siteUrl;
 
+// Dev-only: true when connected to a non-production URL (staging, local, etc.)
+export const IS_STAGING: boolean = __DEV__ && (Constants.expoConfig?.extra?.isStaging ?? false);
+
 // --- Feature Flags -----------------------------------------------------------
 // Feature flags are now controlled from wp-admin → TBC Community App → Features tab.
 // The app fetches them via /app-config on startup (see AppConfigContext + useFeatures hook).
