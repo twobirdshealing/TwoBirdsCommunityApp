@@ -52,6 +52,7 @@ companion plugins/Refrence plugins ONLY/
 setup/.license
 setup/.backups/
 setup/.temp/
+setup/logs/
 setup/dashboard.next.js
 
 # Firebase config files (client-side by design, but API keys MUST be restricted in Google Cloud Console)
