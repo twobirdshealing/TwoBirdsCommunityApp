@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.48.1
+- **Fix space feed visibility for app users**: Fluent Community caches each user's space IDs in `_fcom_space_ids` user meta for feed queries. The web portal rebuilds this cache on every page load (PortalHandler), but JWT auth never triggered a rebuild — so users migrated from BuddyBoss (or anyone whose cache went stale) only saw their own posts in private spaces. Now calls `cacheAccessSpaces()` on JWT login, mirroring the web portal behavior. Fixes 86+ affected users.
+
 ## v3.48.0
 - **Dynamic deep linking settings**: Removed all hardcoded Two Birds-specific values from deep links (bundle ID, package name, URL scheme, app name). Added Bundle Identifier, Package Name, URL Scheme, and App Name fields to the Deep Linking section in wp-admin. The AASA file, Asset Links file, and Smart App Banner now read all values from settings. Updated plugin description to be generic.
 

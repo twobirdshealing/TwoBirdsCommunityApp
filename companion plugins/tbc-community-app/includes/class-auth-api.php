@@ -234,11 +234,23 @@ class TBC_CA_Auth_API {
         if (class_exists('FluentCommunity\App\Models\User')) {
             try {
                 $fc_user = \FluentCommunity\App\Models\User::find($user->ID);
-                if ($fc_user && !empty($fc_user->photo)) {
-                    $avatar = $fc_user->photo;
-                }
             } catch (\Exception $e) {
-                // Fallback to WordPress avatar
+                // FC not available — fall through to WordPress avatar
+            }
+        }
+
+        if ($fc_user) {
+            // Rebuild cached space IDs on login (mirrors web portal behavior).
+            // The web SPA calls this on every page load via PortalHandler,
+            // but JWT auth never hits that path — so we do it here.
+            try {
+                $fc_user->cacheAccessSpaces();
+            } catch (\Exception $e) {
+                // Non-critical — cache will rebuild on next web visit
+            }
+
+            if (!empty($fc_user->photo)) {
+                $avatar = $fc_user->photo;
             }
         }
 
