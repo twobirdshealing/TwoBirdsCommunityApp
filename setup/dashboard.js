@@ -613,6 +613,20 @@ async function submitBuild(platform, buildId) {
     );
     return { ok: true, output };
   } catch (err) {
+    // Extract last meaningful line from stderr for a cleaner error message
+    const lines = (err.message || '').split('\n').map(l => l.trim()).filter(Boolean);
+    const error = lines[lines.length - 1] || 'Unknown error';
+    return { ok: false, error };
+  }
+}
+
+/** Cancel an in-progress EAS build */
+async function cancelBuild(buildId) {
+  if (!BUILD_ID_PATTERN.test(buildId)) return { ok: false, error: 'Invalid build ID format' };
+  try {
+    await runCommand(['eas', 'build:cancel', buildId, '--non-interactive'], 30000);
+    return { ok: true };
+  } catch (err) {
     return { ok: false, error: err.message };
   }
 }
@@ -1709,6 +1723,16 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (pathname === '/api/builds/cancel' && req.method === 'POST') {
+      const body = await readBody(req);
+      const { buildId } = JSON.parse(body);
+      if (!buildId || !BUILD_ID_PATTERN.test(buildId)) { jsonResponse(res, { ok: false, error: 'Missing or invalid buildId' }, 400); return; }
+      console.log(`  Cancelling build ${buildId}...`);
+      const result = await cancelBuild(buildId);
+      jsonResponse(res, result);
+      return;
+    }
+
     if (pathname === '/api/builds/submit' && req.method === 'POST') {
       const body = await readBody(req);
       const { platform, buildId } = JSON.parse(body);
@@ -2230,6 +2254,19 @@ function getDashboardHTML() {
   .new-build-card p { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
   .new-build-card .btn-group { justify-content: center; margin-top: 8px; }
 
+  .build-banner { display: none; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+  .build-banner-title { font-weight: 600; margin-bottom: 4px; }
+  .build-banner-list { margin: 0; padding-left: 20px; font-size: 13px; }
+  .build-banner.blocker { background: var(--error-bg, #fef2f2); border: 1px solid var(--error-border, #fca5a5); }
+  .build-banner.blocker .build-banner-title,
+  .build-banner.blocker .build-banner-list { color: var(--error-text, #dc2626); }
+  .build-banner.warning { background: #fffbeb; border: 1px solid #fcd34d; }
+  .build-banner.warning .build-banner-title,
+  .build-banner.warning .build-banner-list { color: #92400e; }
+  .build-banner.queued { background: #eff6ff; border: 1px solid #93c5fd; }
+  .build-banner.queued .build-banner-title { color: #1d4ed8; margin-bottom: 2px; }
+  .build-banner.queued .build-banner-hint { font-size: 13px; color: #1e40af; }
+
   .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: var(--radius); font-size: 14px; font-weight: 500; z-index: 1000; animation: slideUp 0.3s ease; max-width: 400px; }
   .toast.success { background: var(--green); color: #fff; }
   .toast.error { background: var(--red); color: #fff; }
@@ -2640,17 +2677,22 @@ function getDashboardHTML() {
   <div class="card">
     <div class="card-header"><h3>New Build</h3></div>
     <div class="card-body">
-      <div id="build-blockers-banner" style="display:none;background:var(--error-bg,#fef2f2);border:1px solid var(--error-border,#fca5a5);border-radius:8px;padding:12px 16px;margin-bottom:16px">
-        <div style="font-weight:600;color:var(--error-text,#dc2626);margin-bottom:4px">Cannot build — fix these issues first:</div>
-        <ul id="build-blockers-list" style="margin:0;padding-left:20px;font-size:13px;color:var(--error-text,#dc2626)"></ul>
+      <div id="build-blockers-banner" class="build-banner blocker">
+        <div class="build-banner-title">Cannot build — fix these issues first:</div>
+        <ul id="build-blockers-list" class="build-banner-list"></ul>
       </div>
-      <div id="build-warnings-banner" style="display:none;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin-bottom:16px">
-        <div style="font-weight:600;color:#92400e;margin-bottom:4px">Heads up — you can still build, but:</div>
-        <ul id="build-warnings-list" style="margin:0;padding-left:20px;font-size:13px;color:#92400e"></ul>
+      <div id="build-warnings-banner" class="build-banner warning">
+        <div class="build-banner-title">Heads up — you can still build, but:</div>
+        <ul id="build-warnings-list" class="build-banner-list"></ul>
       </div>
-      <div id="build-queued-banner" style="display:none;background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:12px 16px;margin-bottom:16px">
-        <div style="font-weight:600;color:#1d4ed8;margin-bottom:2px" id="build-queued-text"></div>
-        <div style="font-size:13px;color:#1e40af">EAS builds take a few minutes to queue. Hit Refresh on the build list below to check progress.</div>
+      <div id="build-queued-banner" class="build-banner queued">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="flex:1">
+            <div class="build-banner-title" id="build-queued-text"></div>
+            <div class="build-banner-hint" id="build-queued-hint"></div>
+          </div>
+          <button class="btn btn-sm" onclick="loadBuilds()">Refresh</button>
+        </div>
       </div>
       <div class="build-version-bar">
         <span class="build-version-label">App Version</span>
@@ -3552,81 +3594,131 @@ let buildSubmissions = {};
 const BUILDS_PAGE_SIZE = 10;
 let buildsShown = 0;
 
-function renderBuildCard(build) {
-  const card = document.createElement('div');
-  card.className = 'build-card';
-  const isIos = build.platform === 'IOS' || build.platform === 'ios';
-  const isAndroid = build.platform === 'ANDROID' || build.platform === 'android';
-  const platformIcon = isIos ? '\\uD83C\\uDF4F' : '\\uD83E\\uDD16';
-  const platformLabel = isIos ? 'iOS' : 'Android';
-  const statusClass = (build.status || '').toLowerCase().replace(/_/g, '-');
-  const statusLabel = (build.status || 'unknown').toLowerCase().replace(/_/g, ' ');
-  const version = build.appVersion || build.version || '?';
-  const profile = build.buildProfile || build.profile || '';
-  const createdAt = build.createdAt ? new Date(build.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-  const buildId = build.id || '';
-  const isFinished = statusClass === 'finished';
+function normStatus(build) {
+  return (build.status || '').toLowerCase().replace(/_/g, '-');
+}
 
-  const isInternal = (build.distribution || '').toUpperCase() === 'INTERNAL' || profile === 'development' || profile === 'preview';
-  const buildPageUrl = build.buildDetailsPageUrl ||
-    (build.project && build.project.ownerAccount && build.project.slug && buildId
-      ? 'https://expo.dev/accounts/' + build.project.ownerAccount.name + '/projects/' + build.project.slug + '/builds/' + buildId
-      : '');
+function isIosBuild(build) {
+  return (build.platform || '').toUpperCase() === 'IOS';
+}
 
-  const googlePlayConfigured = state && state.config.googlePlayKeyExists;
-  const iosSubmitConfigured = state && state.config.appleId && state.config.ascAppId;
-  const submission = buildSubmissions[buildId];
-  const submittedDateStr = submission ? new Date(submission.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+function formatDate(dateStr) {
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 
-  let actionsHtml = '';
-  if (isFinished) {
+function getBuildPageUrl(build) {
+  if (build.buildDetailsPageUrl) return build.buildDetailsPageUrl;
+  if (build.project && build.project.ownerAccount && build.project.slug && build.id) {
+    return 'https://expo.dev/accounts/' + build.project.ownerAccount.name + '/projects/' + build.project.slug + '/builds/' + build.id;
+  }
+  return '';
+}
+
+function getSubmitButton(buildId, isIos) {
+  var submission = buildSubmissions[buildId];
+  if (submission && submission.ok) return '';
+  var configured, store, configHint;
+  if (isIos) {
+    configured = state && state.config.appleId && state.config.ascAppId;
+    store = 'App Store';
+    configHint = 'Set Apple ID and ASC App ID in Config tab first';
+  } else {
+    configured = state && state.config.googlePlayKeyExists;
+    store = 'Google Play';
+    configHint = 'Upload Google Play service account key in Config tab first';
+  }
+  return configured
+    ? '<button class="btn btn-sm btn-success" onclick="submitToStore(\\x27' + (isIos ? 'ios' : 'android') + '\\x27,\\x27' + buildId + '\\x27)">Submit to ' + store + '</button>'
+    : '<button class="btn btn-sm" disabled title="' + configHint + '">Submit (not configured)</button>';
+}
+
+function getBuildActions(build) {
+  var buildId = build.id || '';
+  var isIos = isIosBuild(build);
+  var version = build.appVersion || build.version || '?';
+  var profile = build.buildProfile || build.profile || '';
+  var isInternal = (build.distribution || '').toUpperCase() === 'INTERNAL' || profile === 'development' || profile === 'preview';
+  var status = normStatus(build);
+  var buildPageUrl = getBuildPageUrl(build);
+  var btns = [];
+
+  if (status === 'new' || status === 'in-progress') {
+    btns.push('<button class="btn btn-sm btn-danger-subtle" onclick="cancelEasBuild(\\x27' + buildId + '\\x27)">Cancel</button>');
+  }
+  if (status === 'finished') {
     if (isInternal && buildPageUrl) {
-      actionsHtml += '<button class="btn btn-sm btn-primary" onclick="showInstallQR(\\'' + buildPageUrl + '\\',\\'' + platformLabel + '\\',\\'' + version + '\\',\\'' + profile + '\\')">\\uD83D\\uDCF2 Install</button>';
+      var platformLabel = isIos ? 'iOS' : 'Android';
+      btns.push('<button class="btn btn-sm btn-primary" onclick="showInstallQR(\\x27' + buildPageUrl + '\\x27,\\x27' + platformLabel + '\\x27,\\x27' + version + '\\x27,\\x27' + profile + '\\x27)">\\uD83D\\uDCF2 Install</button>');
     }
     if (build.artifacts && build.artifacts.buildUrl) {
-      const dlLabel = isIos ? 'Download .ipa' : 'Download .aab';
-      actionsHtml += '<a class="btn btn-sm" href="' + build.artifacts.buildUrl + '" target="_blank" rel="noopener">' + dlLabel + '</a>';
+      btns.push('<a class="btn btn-sm" href="' + build.artifacts.buildUrl + '" target="_blank" rel="noopener">' + (isIos ? 'Download .ipa' : 'Download .aab') + '</a>');
     }
-    if (!isInternal && !(submission && submission.ok)) {
-      if (isIos) {
-        if (iosSubmitConfigured) {
-          actionsHtml += '<button class="btn btn-sm btn-success" onclick="submitToStore(\\'ios\\',\\'' + buildId + '\\')">Submit to App Store</button>';
-        } else {
-          actionsHtml += '<button class="btn btn-sm" disabled title="Set Apple ID and ASC App ID in Config tab first">Submit (not configured)</button>';
-        }
-      } else if (isAndroid) {
-        if (googlePlayConfigured) {
-          actionsHtml += '<button class="btn btn-sm btn-success" onclick="submitToStore(\\'android\\',\\'' + buildId + '\\')">Submit to Google Play</button>';
-        } else {
-          actionsHtml += '<button class="btn btn-sm" disabled title="Upload Google Play service account key in Config tab first">Submit (not configured)</button>';
-        }
-      }
-    }
+    if (!isInternal) btns.push(getSubmitButton(buildId, isIos));
   }
   if (buildPageUrl) {
-    actionsHtml += '<a class="btn btn-sm" href="' + buildPageUrl + '" target="_blank" rel="noopener">View on EAS</a>';
+    btns.push('<a class="btn btn-sm" href="' + buildPageUrl + '" target="_blank" rel="noopener">View on EAS</a>');
+  }
+  return btns.join('');
+}
+
+function getBuildLog(build) {
+  var buildId = build.id || '';
+  var isIos = isIosBuild(build);
+  var status = normStatus(build);
+  var lines = [];
+
+  if (status === 'new') {
+    lines.push('<div class="build-log">Queued · ' + formatDate(build.createdAt) + '</div>');
+  } else if (status === 'in-progress') {
+    lines.push('<div class="build-log">Building · started ' + formatDate(build.createdAt) + '</div>');
+  } else if (status === 'finished') {
+    var duration = '';
+    if (build.createdAt && build.updatedAt) {
+      var mins = Math.round((new Date(build.updatedAt) - new Date(build.createdAt)) / 60000);
+      if (mins > 0 && mins < 120) duration = ' · ' + mins + ' min';
+    }
+    lines.push('<div class="build-log build-log-ok">Built · ' + formatDate(build.createdAt) + duration + '</div>');
+  } else if (status === 'errored') {
+    lines.push('<div class="build-log build-log-fail">Build failed · ' + formatDate(build.createdAt) + '</div>');
+  } else if (status === 'canceled') {
+    lines.push('<div class="build-log">Cancelled · ' + formatDate(build.createdAt) + '</div>');
   }
 
-  let logHtml = '';
+  var submission = buildSubmissions[buildId];
   if (submission) {
-    const storeLabel = isIos ? 'App Store' : 'Google Play';
+    var store = isIos ? 'App Store' : 'Google Play';
     if (submission.ok) {
-      logHtml = '<div class="build-log build-log-ok">Submitted to ' + storeLabel + ' on ' + submittedDateStr + '</div>';
+      lines.push('<div class="build-log build-log-ok">Sent to ' + store + ' · ' + formatDate(submission.date) + '</div>');
     } else {
-      logHtml = '<div class="build-log build-log-fail">Submit to ' + storeLabel + ' failed ' + submittedDateStr + '</div>';
+      var errorText = submission.error && submission.error !== 'Exit code 1' ? ' — ' + submission.error : '';
+      lines.push('<div class="build-log build-log-fail">' + store + ' failed · ' + formatDate(submission.date) + errorText + '</div>');
     }
   }
+
+  return lines.join('');
+}
+
+function renderBuildCard(build) {
+  var card = document.createElement('div');
+  card.className = 'build-card';
+  var buildId = build.id || '';
+  card.setAttribute('data-build-id', buildId);
+  var isIos = isIosBuild(build);
+  var platformIcon = isIos ? '\\uD83C\\uDF4F' : '\\uD83E\\uDD16';
+  var platformLabel = isIos ? 'iOS' : 'Android';
+  var status = normStatus(build);
+  var version = build.appVersion || build.version || '?';
+  var profile = build.buildProfile || build.profile || '';
 
   card.innerHTML =
     '<div class="build-platform">' + platformIcon + '</div>' +
     '<div class="build-info">' +
       '<div class="build-version">' + platformLabel + ' v' + version + (profile ? ' (' + profile + ')' : '') + '</div>' +
-      '<div class="build-meta">' + createdAt + '</div>' +
       '<div class="build-id">' + buildId.substring(0, 12) + '</div>' +
-      logHtml +
+      getBuildLog(build) +
     '</div>' +
-    '<span class="build-status ' + statusClass + '">' + statusLabel + '</span>' +
-    '<div class="build-actions">' + actionsHtml + '</div>';
+    '<span class="build-status ' + status + '">' + status.replace(/-/g, ' ') + '</span>' +
+    '<div class="build-actions">' + getBuildActions(build) + '</div>';
   return card;
 }
 
@@ -3679,6 +3771,25 @@ async function loadBuilds() {
 
     // Render first page
     showMoreBuilds();
+
+    // Update queued banner based on active build status
+    var queuedBanner = document.getElementById('build-queued-banner');
+    if (queuedBanner.style.display === 'block') {
+      var hasActive = allBuilds.some(function(b) {
+        var s = normStatus(b);
+        return s === 'new' || s === 'in-progress';
+      });
+      if (hasActive) {
+        // Build appeared — switch to queued state with average wait time
+        var avg = getAverageWaitTime();
+        var waitText = avg ? 'Average build time: ~' + avg + ' min.' : 'Builds typically take 10–20 minutes.';
+        document.getElementById('build-queued-text').textContent = '\u23F3 Build is queued';
+        document.getElementById('build-queued-hint').textContent = waitText + ' Check back and hit Refresh.';
+      } else {
+        // No active builds — dismiss banner
+        queuedBanner.style.display = 'none';
+      }
+    }
   } catch (err) {
     list.innerHTML = '<div style="padding:16px;color:var(--red)">Error loading builds: ' + err.message + '</div>';
   }
@@ -3697,11 +3808,22 @@ function updateBannerList(bannerId, listId, items) {
   if (banner && list) {
     if (items.length > 0) {
       list.innerHTML = items.map(function(i) { return '<li>' + i + '</li>'; }).join('');
-      banner.style.display = '';
+      banner.style.display = 'block';
     } else {
       banner.style.display = 'none';
     }
   }
+}
+
+function getAverageWaitTime() {
+  var durations = allBuilds.filter(function(b) {
+    return normStatus(b) === 'finished' && b.createdAt && b.updatedAt;
+  }).map(function(b) {
+    return (new Date(b.updatedAt) - new Date(b.createdAt)) / 60000;
+  }).filter(function(d) { return d > 0 && d < 120; });
+  if (durations.length === 0) return null;
+  var avg = Math.round(durations.reduce(function(a, b) { return a + b; }, 0) / durations.length);
+  return avg;
 }
 
 async function startBuild(platform, profile) {
@@ -3720,10 +3842,10 @@ async function startBuild(platform, profile) {
     });
     const data = await res.json();
     if (data.ok) {
-      // Show queued banner — build runs in background on EAS
       var platformLabel = platform === 'ios' ? 'iOS' : 'Android';
       document.getElementById('build-queued-text').textContent = '\u2713 ' + platformLabel + ' ' + profile + ' build started';
-      document.getElementById('build-queued-banner').style.display = '';
+      document.getElementById('build-queued-hint').textContent = 'It may take a minute to appear. Hit Refresh to check.';
+      document.getElementById('build-queued-banner').style.display = 'block';
     } else {
       showToast('Build failed: ' + data.error, 'error');
     }
@@ -3748,14 +3870,32 @@ async function submitToStore(platform, buildId) {
       showToast('Submit failed: ' + data.error, 'error');
       buildSubmissions[buildId] = { platform, date: new Date().toISOString(), ok: false, error: data.error };
     }
-    // Re-render cards in-memory (avoids slow EAS re-fetch)
-    var list = document.getElementById('builds-list');
-    var showMoreBtn = document.getElementById('builds-show-more');
-    list.innerHTML = '';
-    list.appendChild(showMoreBtn);
-    buildsShown = 0;
-    showMoreBuilds();
+    // Re-render just the affected card
+    var oldCard = document.querySelector('[data-build-id="' + buildId + '"]');
+    if (oldCard) {
+      var build = allBuilds.find(function(b) { return b.id === buildId; });
+      if (build) oldCard.replaceWith(renderBuildCard(build));
+    }
   } catch (err) { showToast('Submit error: ' + err.message, 'error'); }
+}
+
+async function cancelEasBuild(buildId) {
+  if (!confirm('Cancel this build?')) return;
+  showToast('Cancelling build...', 'info');
+  try {
+    const res = await fetch('/api/builds/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ buildId }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('Build cancelled', 'success');
+      loadBuilds();
+    } else {
+      showToast('Cancel failed: ' + data.error, 'error');
+    }
+  } catch (err) { showToast('Cancel error: ' + err.message, 'error'); }
 }
 
 // ---------- Modules ----------
