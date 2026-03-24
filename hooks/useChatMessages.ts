@@ -332,7 +332,7 @@ export function useChatMessages({
           lastMessageIdRef.current = response.data.message.id;
           setTimeout(() => { listRef.current?.scrollToEnd({ animated: true }); }, 100);
         } else {
-          Alert.alert('Error', 'Failed to send message');
+          Alert.alert('Error', response.error?.message || 'Failed to send message');
         }
       } else {
         // No thread yet — create one
@@ -359,12 +359,12 @@ export function useChatMessages({
 
           setTimeout(() => { listRef.current?.scrollToEnd({ animated: true }); }, 100);
         } else {
-          Alert.alert('Error', 'Failed to start conversation');
+          Alert.alert('Error', response.error?.message || 'Failed to start conversation');
         }
       }
     } catch (err) {
       log.error('Send error:', err);
-      Alert.alert('Error', 'Failed to send message');
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to send message');
     } finally {
       setSending(false);
     }
