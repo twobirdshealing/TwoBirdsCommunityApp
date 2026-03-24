@@ -17,6 +17,7 @@ import { PusherProvider } from '@/contexts/PusherContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { UnreadCountsProvider, useUnreadCounts } from '@/contexts/UnreadCountsContext';
 import { useAppFocus } from '@/hooks/useAppFocus';
+import { useOTAUpdates } from '@/hooks/useOTAUpdates';
 import { useStartupData } from '@/hooks/useStartupData';
 import { addResponseHeaderListener } from '@/services/api/client';
 import { getAppConfig, AppConfigResponse } from '@/services/api/appConfig';
@@ -100,6 +101,7 @@ function sanitizeParam(value: unknown): string {
 function RootLayoutNav() {
   const { isAuthenticated, isLoading, user, logout, updateUser } = useAuth();
   const { isDark, colors: themeColors, update, maintenance, setFromBatch: setThemeFromBatch } = useTheme();
+  useOTAUpdates();
   const { portalSlug, features, setFromBatch: setAppConfigFromBatch } = useAppConfig();
   const { setUnreadNotifications, setUnreadMessages } = useUnreadCounts();
   const segments = useSegments();

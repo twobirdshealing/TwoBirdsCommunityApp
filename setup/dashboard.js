@@ -549,6 +549,15 @@ const VALID_PLATFORMS = ['ios', 'android'];
 const VALID_PROFILES = ['development', 'preview', 'simulator', 'production'];
 const BUILD_ID_PATTERN = /^[0-9a-f-]{36}$/i;
 
+/** Diagnose EAS CLI errors — checks if eas is installed and logged in */
+async function diagnoseEasError(originalError) {
+  try { await runCommand(['eas', '--version'], 5000); }
+  catch { return { ok: false, error: 'EAS CLI not installed. Run: npm install -g eas-cli' }; }
+  try { await runCommand(['eas', 'whoami'], 5000); }
+  catch { return { ok: false, error: 'Not logged into EAS. Run: eas login' }; }
+  return { ok: false, error: originalError.message };
+}
+
 /** Track npm install process state */
 let installProcess = { status: 'idle', output: '', exitCode: null };
 
@@ -578,12 +587,7 @@ async function getEasBuilds() {
     const output = await runCommand(['eas', 'build:list', '--json', '--limit', '50', '--non-interactive'], 30000);
     return { ok: true, builds: JSON.parse(output) };
   } catch (err) {
-    // Quick diagnostics (short timeouts)
-    try { await runCommand(['eas', '--version'], 5000); }
-    catch { return { ok: false, error: 'EAS CLI not installed. Run: npm install -g eas-cli' }; }
-    try { await runCommand(['eas', 'whoami'], 5000); }
-    catch { return { ok: false, error: 'Not logged into EAS. Run: eas login' }; }
-    return { ok: false, error: 'Failed to list builds: ' + err.message };
+    return diagnoseEasError(err);
   }
 }
 
@@ -642,6 +646,98 @@ function saveSubmission(buildId, platform, ok, error) {
   const subs = getSubmissions();
   subs[buildId] = { platform, date: new Date().toISOString(), ok, ...(error ? { error } : {}) };
   fs.writeFileSync(PATHS.submissionsLog, JSON.stringify(subs, null, 2));
+}
+
+// ---------------------------------------------------------------------------
+// OTA Updates — check config, push updates, list history
+// ---------------------------------------------------------------------------
+
+const OTA_GROUP_ID_PATTERN = /^[0-9a-f-]{36}$/i;
+const VALID_OTA_CHANNELS = ['development', 'preview', 'simulator', 'production'];
+const VALID_OTA_PLATFORMS = ['ios', 'android', 'all'];
+
+/** Check if OTA updates are properly configured */
+async function getOTAStatus() {
+  const appJson = readJsonSafe(PATHS.appJson);
+  const easJson = readJsonSafe(PATHS.easJson);
+  const pkgJson = readJsonSafe(PATHS.packageJson);
+  const expo = appJson?.expo || {};
+
+  // Check channels in eas.json (local config)
+  const channels = {};
+  if (easJson?.build) {
+    for (const [profile, config] of Object.entries(easJson.build)) {
+      channels[profile] = config.channel || null;
+    }
+  }
+
+  // Check if channels exist on EAS (created after first build)
+  let liveChannels = [];
+  try {
+    const output = await runCommand(['eas', 'channel:list', '--json', '--non-interactive'], 15000);
+    const parsed = JSON.parse(output);
+    liveChannels = (parsed?.currentPage || []).map(c => c.name);
+  } catch (_) {}
+
+  return {
+    channels,
+    liveChannels,
+    hasBuilt: liveChannels.length > 0,
+    currentVersion: expo.version || '',
+  };
+}
+
+/** Push an OTA update via eas update */
+async function pushOTAUpdate(channel, message, platform) {
+  if (!VALID_OTA_CHANNELS.includes(channel)) return { ok: false, error: 'Invalid channel' };
+  if (!VALID_OTA_PLATFORMS.includes(platform)) return { ok: false, error: 'Invalid platform' };
+  if (!message || typeof message !== 'string' || message.length > 500) return { ok: false, error: 'Message is required (max 500 chars)' };
+
+  const args = ['eas', 'update', '--channel', channel, '--message', JSON.stringify(message), '--non-interactive'];
+  if (platform !== 'all') {
+    args.push('--platform', platform);
+  }
+  try {
+    args.push('--json');
+    const output = await runCommand(args, 300000);
+    try {
+      const parsed = JSON.parse(output);
+      const items = Array.isArray(parsed) ? parsed : [];
+      const first = items[0] || {};
+      return {
+        ok: true,
+        runtimeVersion: first.runtimeVersion || null,
+        platforms: items.map(i => i.platform).filter(Boolean),
+        group: first.group || null,
+        gitCommit: first.gitCommitHash || null,
+      };
+    } catch (_) {
+      return { ok: true };
+    }
+  } catch (err) {
+    return diagnoseEasError(err);
+  }
+}
+
+/** List recent OTA updates */
+async function listOTAUpdates() {
+  try {
+    const output = await runCommand(['eas', 'update:list', '--all', '--json', '--non-interactive'], 30000);
+    return { ok: true, updates: JSON.parse(output) };
+  } catch (err) {
+    return diagnoseEasError(err);
+  }
+}
+
+/** Delete an OTA update group */
+async function deleteOTAUpdate(groupId) {
+  if (!OTA_GROUP_ID_PATTERN.test(groupId)) return { ok: false, error: 'Invalid group ID' };
+  try {
+    await runCommand(['eas', 'update:delete', '--group', groupId, '--non-interactive'], 30000);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1749,6 +1845,37 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // --- OTA Updates ---
+    if (pathname === '/api/ota/status' && req.method === 'GET') {
+      const otaStatus = await getOTAStatus();
+      jsonResponse(res, { ok: true, ...otaStatus });
+      return;
+    }
+
+    if (pathname === '/api/ota/push' && req.method === 'POST') {
+      const body = await readBody(req);
+      const { channel, message, platform } = body;
+      console.log(`  Pushing OTA update to ${channel} (${platform || 'all'})...`);
+      const result = await pushOTAUpdate(channel, message || '', platform || 'all');
+      jsonResponse(res, result);
+      return;
+    }
+
+    if (pathname === '/api/ota/history' && req.method === 'GET') {
+      const result = await listOTAUpdates();
+      jsonResponse(res, result);
+      return;
+    }
+
+    if (pathname === '/api/ota/delete' && req.method === 'POST') {
+      const body = await readBody(req);
+      const { groupId } = body;
+      console.log(`  Deleting OTA update group ${groupId}...`);
+      const result = await deleteOTAUpdate(groupId || '');
+      jsonResponse(res, result);
+      return;
+    }
+
     if (pathname.startsWith('/api/upload/') && req.method === 'POST') {
       const target = pathname.replace('/api/upload/', '');
       const parts = await parseMultipart(req);
@@ -2123,8 +2250,8 @@ function getDashboardHTML() {
   .field { display: flex; flex-direction: column; gap: 4px; }
   .field label { font-size: 12px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
   .field label .file-hint { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
-  .field input, .field select { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-primary); font-size: 14px; font-family: var(--font-sans); transition: border-color 0.15s; }
-  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+  .field input, .field select, .field textarea { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-primary); font-size: 14px; font-family: var(--font-sans); transition: border-color 0.15s; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
   .field .derive-hint { font-size: 11px; color: var(--text-muted); font-style: italic; }
   .input-with-copy { display: flex; gap: 6px; align-items: center; }
   .input-with-copy input { flex: 1; }
@@ -2351,6 +2478,13 @@ function getDashboardHTML() {
   .qr-modal .qr-link-row { display:flex; gap:6px; align-items:center; }
   .qr-modal .qr-link-input { flex:1; font-family:var(--font-mono); font-size:11px; padding:6px 8px; border:1px solid var(--border); border-radius:4px; background:var(--bg-secondary); color:var(--text-primary); }
   .qr-modal .qr-hint { font-size:11px; color:var(--text-muted); margin-top:12px; }
+
+  /* OTA banners */
+  .ota-banner { border-radius: var(--radius); padding: 12px 16px; font-size: 13px; margin-bottom: 0; }
+  .ota-banner.success { background: var(--green-bg); color: var(--green); border: 1px solid var(--green); }
+  .ota-banner.error { background: var(--red-bg); color: var(--red); border: 1px solid var(--red); }
+  .ota-banner.warning { background: var(--yellow-bg); color: var(--yellow); border: 1px solid var(--yellow); }
+  .ota-banner.info { background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border); }
 </style>
 <script async src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
@@ -2395,6 +2529,7 @@ function getDashboardHTML() {
   <button class="tab-btn" data-tab="plugins">Plugins & Firebase</button>
   <button class="tab-btn" data-tab="modules">Modules</button>
   <button class="tab-btn" data-tab="builds">Builds</button>
+  <button class="tab-btn" data-tab="ota">OTA Updates</button>
   <button class="tab-btn" data-tab="updates">Updates</button>
   <button class="tab-btn" data-tab="status">Status</button>
 </div>
@@ -2738,6 +2873,83 @@ function getDashboardHTML() {
   </div>
 </div>
 
+<!-- ============== OTA Updates Tab ============== -->
+<div class="tab-content" id="tab-ota">
+
+  <!-- Info / Explainer Card -->
+  <div class="card">
+    <div class="card-header"><h3>About OTA Updates</h3></div>
+    <div class="card-body">
+      <p style="margin:0 0 12px">Push JavaScript-layer changes directly to your users without a store build. Updates download silently and apply on the next app launch.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="padding:12px;border-radius:8px;background:var(--bg-tertiary)">
+          <strong style="color:var(--green)">Works with OTA</strong>
+          <ul style="margin:8px 0 0;padding-left:20px;font-size:13px;color:var(--text-secondary)">
+            <li>Custom modules &amp; screens</li>
+            <li>Styling &amp; theme changes</li>
+            <li>Config changes</li>
+            <li>Images &amp; assets</li>
+            <li>Bug fixes in JS/TS code</li>
+          </ul>
+        </div>
+        <div style="padding:12px;border-radius:8px;background:var(--bg-tertiary)">
+          <strong style="color:var(--yellow)">Requires Store Build</strong>
+          <ul style="margin:8px 0 0;padding-left:20px;font-size:13px;color:var(--text-secondary)">
+            <li>New native modules</li>
+            <li>Permission changes</li>
+            <li>Expo SDK upgrades</li>
+            <li>Native config in app.json</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Push Update Card -->
+  <div class="card">
+    <div class="card-header"><h3>Push Update</h3></div>
+    <div class="card-body">
+      <div id="ota-push-banner" style="display:none"></div>
+      <div class="field-group" style="margin-bottom:16px">
+        <div class="field">
+          <label>Channel</label>
+          <select id="ota-channel">
+            <option value="production">Production</option>
+            <option value="preview">Preview</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Platform</label>
+          <select id="ota-platform">
+            <option value="all">All (iOS + Android)</option>
+            <option value="ios">iOS only</option>
+            <option value="android">Android only</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-group single" style="margin-bottom:16px">
+        <div class="field">
+          <label>Message <span class="file-hint">(describes what changed)</span></label>
+          <textarea id="ota-message" rows="2" placeholder="e.g. Fixed login button color, updated welcome screen" style="resize:vertical"></textarea>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="ota-push-btn" onclick="pushOTA()">Push Update</button>
+      <p style="margin:12px 0 0;font-size:12px;color:var(--text-muted)">This pushes your current JS code to all users on the selected channel. Changes take effect on their next app launch.</p>
+    </div>
+  </div>
+
+  <!-- Update History Card -->
+  <div class="card">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+      <h3>Update History</h3>
+      <button class="btn btn-sm" onclick="loadOTAHistory()">Refresh</button>
+    </div>
+    <div class="card-body" id="ota-history-body">
+      <div class="loading"><span class="spinner"></span> Loading updates...</div>
+    </div>
+  </div>
+</div>
+
 <!-- ============== Updates Tab ============== -->
 <div class="tab-content" id="tab-updates">
   <!-- License Section -->
@@ -2933,6 +3145,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     // Lazy load builds
     if (btn.dataset.tab === 'builds' && !buildsLoaded) loadBuilds();
+    if (btn.dataset.tab === 'ota' && !otaLoaded) loadOTATab();
     if (btn.dataset.tab === 'modules' && !modulesLoaded) loadModules();
     if (btn.dataset.tab === 'updates' && !updatesLoaded) loadUpdatesTab();
   });
@@ -4024,6 +4237,13 @@ setupDropZone(
   importModuleFile
 );
 
+// ---------- HTML Escape ----------
+function esc(str) {
+  const d = document.createElement('div');
+  d.textContent = String(str ?? '');
+  return d.innerHTML;
+}
+
 // ---------- Toast ----------
 function showToast(msg, type) {
   const existing = document.querySelector('.toast');
@@ -4329,6 +4549,166 @@ async function pollInstallStatus() {
     clearInterval(depsPolling);
     depsPolling = null;
     showToast('Lost connection to dashboard', 'error');
+  }
+}
+
+// ---------- OTA Updates ----------
+let otaLoaded = false;
+
+async function loadOTATab() {
+  otaLoaded = true;
+  await Promise.all([loadOTAChannels(), loadOTAHistory()]);
+}
+
+async function loadOTAChannels() {
+  try {
+    const res = await fetch('/api/ota/status');
+    const data = await res.json();
+    if (!data.ok || !data.channels) return;
+
+    // Show warning if no builds have been made yet (channels not on EAS)
+    var banner = document.getElementById('ota-push-banner');
+    if (!data.hasBuilt) {
+      banner.style.display = 'block';
+      banner.className = 'ota-banner warning';
+      banner.innerHTML = '<strong>No store builds yet.</strong> OTA updates require at least one build with channels configured. Push a build from the Builds tab first, then you can push OTA updates here.';
+      document.getElementById('ota-push-btn').disabled = true;
+    }
+
+    // Populate channel dropdown from eas.json config
+    var sel = document.getElementById('ota-channel');
+    sel.innerHTML = '';
+    Object.entries(data.channels).forEach(function(entry) {
+      var profile = entry[0], channel = entry[1];
+      if (channel && profile !== 'simulator') {
+        var opt = document.createElement('option');
+        opt.value = channel;
+        opt.textContent = channel.charAt(0).toUpperCase() + channel.slice(1);
+        if (channel === 'production') opt.selected = true;
+        sel.appendChild(opt);
+      }
+    });
+  } catch (_) {}
+}
+
+async function loadOTAHistory() {
+  const el = document.getElementById('ota-history-body');
+  el.innerHTML = '<div class="loading"><span class="spinner"></span> Loading updates...</div>';
+  try {
+    const res = await fetch('/api/ota/history');
+    const data = await res.json();
+    if (!data.ok) {
+      // "Branch name may not be empty" means no updates have been pushed yet
+      var errMsg = data.error || '';
+      if (errMsg.toLowerCase().includes('branch') || errMsg.toLowerCase().includes('update:list')) {
+        el.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:24px 0">No OTA updates yet. Push your first update above.</p>';
+      } else {
+        el.innerHTML = '<div class="ota-banner error">' + esc(errMsg || 'Failed to load history') + '</div>';
+      }
+      return;
+    }
+
+    const raw = data.updates?.currentPage || data.updates;
+    const items = Array.isArray(raw) ? raw : [];
+    if (items.length === 0) {
+      el.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:24px 0">No OTA updates yet. Push your first update above.</p>';
+      return;
+    }
+
+    let html = '<div style="display:grid;gap:8px">';
+    items.forEach(group => {
+      const id = group.group || group.id || '?';
+      const rawMsg = group.message || '(no message)';
+      // eas update:list pre-formats message as: "msg" (age by actor) — extract just the message
+      const msgMatch = rawMsg.match(/^"(.+?)"\\s*\\(/);
+      const msg = msgMatch ? msgMatch[1] : rawMsg.replace(/^"|"$/g, '');
+      const branch = group.branch || group.channel || '?';
+      const runtime = group.runtimeVersion || '';
+      const platforms = typeof group.platforms === 'string' ? group.platforms : (Array.isArray(group.platforms) ? group.platforms.join(', ') : group.platform || '?');
+      const date = group.createdAt || group.updatedAt || '';
+      const dateStr = date ? formatDate(date) : '?';
+
+      html += '<div style="padding:12px;border-radius:8px;background:var(--bg-tertiary);display:flex;justify-content:space-between;align-items:flex-start;gap:12px">';
+      html += '<div style="flex:1;min-width:0">';
+      html += '<div style="font-weight:600;margin-bottom:4px">' + esc(msg) + '</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--text-muted)">';
+      html += '<span style="background:var(--accent);color:#fff;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:500">' + esc(branch) + '</span>';
+      if (runtime) html += '<span style="background:var(--bg-primary);padding:1px 8px;border-radius:10px;font-size:11px;border:1px solid var(--border)">v' + esc(runtime) + '</span>';
+      html += '<span>' + esc(platforms) + '</span>';
+      html += '<span>' + esc(dateStr) + '</span>';
+      html += '</div>';
+      html += '</div>';
+      html += '<button class="btn btn-sm btn-danger-subtle" onclick="deleteOTA(&quot;' + esc(id) + '&quot;)">Delete</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  } catch (err) {
+    el.innerHTML = '<div class="ota-banner error">Failed to load history: ' + esc(err.message) + '</div>';
+  }
+}
+
+async function pushOTA() {
+  const channel = document.getElementById('ota-channel').value;
+  const platform = document.getElementById('ota-platform').value;
+  const message = document.getElementById('ota-message').value.trim();
+  const banner = document.getElementById('ota-push-banner');
+  const btn = document.getElementById('ota-push-btn');
+
+  if (!message) { showToast('Please enter a message describing what changed', 'error'); return; }
+  if (!confirm('Push an OTA update to the "' + channel + '" channel (' + platform + ')?\\n\\nThis will immediately push your current code to all users on this channel.')) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Pushing...';
+  banner.style.display = 'block';
+  banner.className = 'ota-banner info';
+  banner.innerHTML = '<span class="spinner"></span> Pushing OTA update... This may take 30-60 seconds.';
+
+  try {
+    const res = await fetch('/api/ota/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel, message, platform }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      banner.className = 'ota-banner success';
+      var detail = '';
+      if (data.runtimeVersion) detail += ' targeting v' + esc(data.runtimeVersion);
+      if (data.platforms && data.platforms.length) detail += ' on ' + esc(data.platforms.join(' + '));
+      banner.innerHTML = '<strong>OTA update pushed!</strong>' + detail + '. Users will receive it on their next app launch.';
+      document.getElementById('ota-message').value = '';
+      loadOTAHistory();
+    } else {
+      banner.className = 'ota-banner error';
+      banner.textContent = 'Push failed: ' + (data.error || 'Unknown error');
+    }
+  } catch (err) {
+    banner.className = 'ota-banner error';
+    banner.textContent = 'Push failed: ' + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Push Update';
+  }
+}
+
+async function deleteOTA(groupId) {
+  if (!confirm('Delete this OTA update group?\\n\\nUsers who already downloaded it will not be affected, but new users will not receive it.')) return;
+  try {
+    const res = await fetch('/api/ota/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ groupId }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showToast('Update deleted', 'success');
+      loadOTAHistory();
+    } else {
+      showToast('Delete failed: ' + (data.error || 'Unknown error'), 'error');
+    }
+  } catch (err) {
+    showToast('Delete failed: ' + err.message, 'error');
   }
 }
 

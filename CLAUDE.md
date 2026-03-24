@@ -24,6 +24,7 @@ This is a white-label community app powered by [Fluent Community](https://fluent
 | `eas build --platform ios --profile production` | Build iOS via EAS |
 | `eas build --platform android --profile production` | Build Android via EAS |
 | `eas submit --platform ios --latest` | Submit latest iOS build to App Store Connect |
+| `eas update --channel production --message "..."` | Push OTA update to production users (JS-layer only) |
 
 ## Core Files — Do Not Edit Without Permission
 

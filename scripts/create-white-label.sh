@@ -170,6 +170,7 @@ sed -i \
   -e 's|"projectId": "[^"]*"|"projectId": "YOUR_EAS_PROJECT_ID"|' \
   -e 's|"owner": "twobirdschurch"|"owner": "your-expo-account"|' \
   -e 's|Allow Two Birds Community to|Allow this app to|g' \
+  -e 's|https://u.expo.dev/[^"]*|https://u.expo.dev/YOUR_EAS_PROJECT_ID|' \
   "$TARGET_DIR/app.json"
 
 # --- eas.json ---

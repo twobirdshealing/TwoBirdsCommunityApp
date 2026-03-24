@@ -1043,6 +1043,35 @@
   </div>
 </div>
 
+<!-- OTA Updates Tab heading -->
+<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">OTA Updates Tab</h3>
+
+<!-- Step 16.5: OTA Updates -->
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-number">16.5</span>
+    <span class="step-title">OTA Updates (Over-the-Air)</span>
+  </div>
+  <div class="step-body">
+    <p>Push JavaScript-layer changes directly to your users without a store build. Updates are downloaded silently in the background and applied on the next app launch.</p>
+
+    <p><strong>What can be updated via OTA:</strong> Custom modules, screens, styling, config changes, images/assets, bug fixes &mdash; any JS/TS code.</p>
+
+    <p><strong>What requires a store build:</strong> New native modules, permission changes, Expo SDK upgrades, native config changes in app.json.</p>
+
+    <p><strong>How to use:</strong></p>
+    <ol>
+      <li>Make your code changes locally</li>
+      <li>Open the dashboard &rarr; OTA Updates tab</li>
+      <li>Select a channel (production or preview), platform, and describe your changes</li>
+      <li>Click "Push Update" &mdash; takes about 30&ndash;60 seconds</li>
+      <li>Users receive the update on their next app launch</li>
+    </ol>
+
+    <p><strong>Important:</strong> You need at least one store build after initial setup before OTA updates can reach users. The first build bakes in the OTA update infrastructure. The dashboard will show a warning and disable pushing until your first build is complete.</p>
+  </div>
+</div>
+
 <!-- Updates Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Updates Tab</h3>
 

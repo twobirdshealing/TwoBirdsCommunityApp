@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.48.2
+- **Add automated notification push support**: Wired up the `fluent_community/notification/automated` hook so automated notifications (e.g. from Uncanny Automator) trigger push notifications. Registered new `automated_notification` type in the push registry (community category, user-configurable, default on). Users can toggle these in their notification preferences.
+
 ## v3.48.1
 - **Fix space feed visibility for app users**: Fluent Community caches each user's space IDs in `_fcom_space_ids` user meta for feed queries. The web portal rebuilds this cache on every page load (PortalHandler), but JWT auth never triggered a rebuild — so users migrated from BuddyBoss (or anyone whose cache went stale) only saw their own posts in private spaces. Now calls `cacheAccessSpaces()` on JWT login, mirroring the web portal behavior. Fixes 86+ affected users.
 

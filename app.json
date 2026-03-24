@@ -7,6 +7,15 @@
     "icon": "./assets/images/app_icon_ios.png",
     "scheme": "twobirdscommunity",
     "userInterfaceStyle": "automatic",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/65cb660f-a72f-4737-844b-39db0aef9dd4",
+      "enabled": true,
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD"
+    },
     "ios": {
       "bundleIdentifier": "com.twobirdschurch.community",
       "buildNumber": "3.2.0",
@@ -82,6 +91,7 @@
       "expo-image",
       "expo-sharing",
       "expo-video",
+      "expo-updates",
       [
         "expo-build-properties",
         {

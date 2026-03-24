@@ -57,6 +57,9 @@ class TBC_CA_Push_Hooks {
         // Invitation notification — FC passes 1 arg: $invitation (inviter is $invitation->user_id)
         add_action('fluent_community/invitation_created', [$this, 'on_invitation'], 10, 1);
 
+        // Automated notifications (Uncanny Automator, etc.)
+        add_action('fluent_community/notification/automated', [$this, 'on_automated_notification'], 10, 1);
+
         // Direct message notification (Fluent Messaging)
         // fluent_messaging/after_add_message: passes ($message) - 1 arg
         add_action('fluent_messaging/after_add_message', [$this, 'on_new_direct_message'], 10, 1);
@@ -568,6 +571,35 @@ class TBC_CA_Push_Hooks {
             'Invitation Received',
             "{$inviter_name} invited you to join the community",
             "/notifications"
+        );
+    }
+
+    // =========================================================================
+    // AUTOMATED NOTIFICATIONS
+    // =========================================================================
+
+    /**
+     * Automated notification (Uncanny Automator, etc.)
+     * Hook data includes push_title and push_body pre-split so we don't need
+     * to parse them back out of the bell content (which has the title merged in).
+     */
+    public function on_automated_notification($data) {
+        $user_ids = $data['user_ids'] ?? [];
+
+        if (empty($user_ids)) {
+            return;
+        }
+
+        $title = !empty($data['push_title']) ? $data['push_title'] : 'New Notification';
+        $body  = !empty($data['push_body']) ? wp_trim_words($data['push_body'], 15) : $title;
+        $route = '/notifications';
+
+        $this->send_to_users(
+            $user_ids,
+            'automated_notification',
+            $title,
+            $body,
+            $route
         );
     }
 

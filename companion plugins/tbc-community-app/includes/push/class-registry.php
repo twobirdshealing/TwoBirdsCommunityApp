@@ -241,6 +241,16 @@ class TBC_CA_Push_Registry {
             'hook' => 'fluent_community/space/join_requested',
         ]);
 
+        // Automated notifications (Uncanny Automator, etc.)
+        $this->register([
+            'id'                => 'automated_notification',
+            'label'             => __('Automated notifications', 'tbc-ca'),
+            'description'       => __('Automated notifications from community actions', 'tbc-ca'),
+            'category'          => 'community',
+            'default'           => true,
+            'hook'              => 'fluent_community/notification/automated',
+        ]);
+
         // Allow other plugins to register types
         do_action('tbc_ca_register_push_types', $this);
     }
