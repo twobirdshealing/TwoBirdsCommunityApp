@@ -1,0 +1,153 @@
+'use strict';
+
+const fs = require('fs');
+const { PATHS } = require('./paths');
+const { readJsonSafe } = require('./file-utils');
+
+// ---------------------------------------------------------------------------
+// Config Writer
+// ---------------------------------------------------------------------------
+
+function writeConfigValues(changes) {
+  const results = [];
+
+  // --- app.json ---
+  if (changes.appName !== undefined || changes.slug !== undefined || changes.scheme !== undefined ||
+      changes.version !== undefined || changes.iosBundleId !== undefined || changes.androidPackage !== undefined ||
+      changes.easOwner !== undefined || changes.easProjectId !== undefined) {
+    const appJson = readJsonSafe(PATHS.appJson);
+    if (appJson) {
+      const expo = appJson.expo;
+      if (changes.appName !== undefined) {
+        expo.name = changes.appName;
+        if (expo.plugins) {
+          for (const plugin of expo.plugins) {
+            if (Array.isArray(plugin) && plugin[0] === 'expo-image-picker' && plugin[1]) {
+              plugin[1].cameraPermission = `Allow ${changes.appName} to access your camera to take a profile photo.`;
+              plugin[1].photosPermission = `Allow ${changes.appName} to access your photos to share images and set your profile picture.`;
+            }
+            if (Array.isArray(plugin) && plugin[0] === 'expo-media-library' && plugin[1]) {
+              plugin[1].photosPermission = `Allow ${changes.appName} to save images to your photo library.`;
+              plugin[1].savePhotosPermission = `Allow ${changes.appName} to save images to your photo library.`;
+            }
+          }
+        }
+      }
+      if (changes.slug !== undefined) expo.slug = changes.slug;
+      if (changes.scheme !== undefined) expo.scheme = changes.scheme;
+      if (changes.version !== undefined) {
+        const v = changes.version;
+        expo.version = v;
+        if (!expo.ios) expo.ios = {};
+        expo.ios.buildNumber = v;
+        if (!expo.android) expo.android = {};
+        const parts = v.split('.').map(Number);
+        expo.android.versionCode = (parts[0] || 0) * 100 + (parts[1] || 0) * 10 + (parts[2] || 0);
+      }
+      if (changes.iosBundleId !== undefined) expo.ios.bundleIdentifier = changes.iosBundleId;
+      if (changes.androidPackage !== undefined) expo.android.package = changes.androidPackage;
+      if (changes.easOwner !== undefined) expo.owner = changes.easOwner;
+      if (changes.easProjectId !== undefined) {
+        if (!expo.extra) expo.extra = {};
+        if (!expo.extra.eas) expo.extra.eas = {};
+        expo.extra.eas.projectId = changes.easProjectId;
+      }
+      fs.writeFileSync(PATHS.appJson, JSON.stringify(appJson, null, 2) + '\n');
+      results.push('app.json updated');
+    }
+  }
+
+  // --- eas.json ---
+  if (changes.siteUrl !== undefined || changes.stagingUrl !== undefined || changes.appleId !== undefined || changes.ascAppId !== undefined ||
+      changes.googlePlayTrack !== undefined || changes.googlePlayServiceAccountKeyPath !== undefined) {
+    const easJson = readJsonSafe(PATHS.easJson);
+    if (easJson) {
+      if (changes.siteUrl !== undefined) {
+        const profiles = easJson.build || {};
+        for (const key of Object.keys(profiles)) {
+          // Skip development profile — it uses staging URL, not production
+          if (key === 'development') continue;
+          if (!profiles[key].env) profiles[key].env = {};
+          profiles[key].env.EXPO_PUBLIC_SITE_URL = changes.siteUrl;
+        }
+      }
+      if (changes.stagingUrl !== undefined) {
+        // Update development profile with staging URL
+        if (!easJson.build) easJson.build = {};
+        if (!easJson.build.development) easJson.build.development = {};
+        if (!easJson.build.development.env) easJson.build.development.env = {};
+        easJson.build.development.env.EXPO_PUBLIC_SITE_URL = changes.stagingUrl;
+      }
+      // Helper: ensure nested path exists in eas.json
+      const ensurePath = (...keys) => {
+        let obj = easJson;
+        for (const k of keys) { if (!obj[k]) obj[k] = {}; obj = obj[k]; }
+        return obj;
+      };
+      if (changes.appleId !== undefined) {
+        ensurePath('submit', 'production', 'ios').appleId = changes.appleId;
+      }
+      if (changes.ascAppId !== undefined) {
+        ensurePath('submit', 'production', 'ios').ascAppId = changes.ascAppId;
+      }
+      if (changes.googlePlayTrack !== undefined || changes.googlePlayServiceAccountKeyPath !== undefined) {
+        const android = ensurePath('submit', 'production', 'android');
+        if (changes.googlePlayTrack !== undefined) android.track = changes.googlePlayTrack;
+        if (changes.googlePlayServiceAccountKeyPath !== undefined) android.serviceAccountKeyPath = changes.googlePlayServiceAccountKeyPath;
+      }
+      fs.writeFileSync(PATHS.easJson, JSON.stringify(easJson, null, 2) + '\n');
+      results.push('eas.json updated');
+    }
+  }
+
+  // --- constants/config.ts ---
+  if (changes.appNameConfig !== undefined || changes.userAgent !== undefined || changes.appToken !== undefined) {
+    let content = fs.readFileSync(PATHS.configTs, 'utf8');
+    if (changes.appNameConfig !== undefined) {
+      content = content.replace(/export const APP_NAME = '[^']*'/, `export const APP_NAME = '${changes.appNameConfig}'`);
+    }
+    if (changes.userAgent !== undefined) {
+      content = content.replace(/export const APP_USER_AGENT = '[^']*'/, `export const APP_USER_AGENT = '${changes.userAgent}'`);
+    }
+    fs.writeFileSync(PATHS.configTs, content);
+    results.push('constants/config.ts updated');
+  }
+
+  // --- app.config.ts ---
+  if (changes.productionUrl !== undefined || changes.stagingUrl !== undefined || changes.fallbackName !== undefined || changes.fallbackSlug !== undefined) {
+    let content = fs.readFileSync(PATHS.appConfigTs, 'utf8');
+    if (changes.productionUrl !== undefined) {
+      content = content.replace(/const productionUrl = '[^']*'/, `const productionUrl = '${changes.productionUrl}'`);
+    }
+    if (changes.stagingUrl !== undefined) {
+      content = content.replace(/const stagingUrl = '[^']*'/, `const stagingUrl = '${changes.stagingUrl}'`);
+    }
+    if (changes.fallbackName !== undefined) {
+      content = content.replace(/config\.name \?\? '[^']*'/, `config.name ?? '${changes.fallbackName}'`);
+    }
+    if (changes.fallbackSlug !== undefined) {
+      content = content.replace(/config\.slug \?\? '[^']*'/, `config.slug ?? '${changes.fallbackSlug}'`);
+    }
+    fs.writeFileSync(PATHS.appConfigTs, content);
+    results.push('app.config.ts updated');
+  }
+
+  // --- package.json ---
+  if (changes.packageName !== undefined || changes.version !== undefined || changes.stagingUrl !== undefined) {
+    const pkgJson = readJsonSafe(PATHS.packageJson);
+    if (pkgJson) {
+      if (changes.packageName !== undefined) pkgJson.name = changes.packageName;
+      if (changes.version !== undefined) pkgJson.version = changes.version;
+      if (changes.stagingUrl !== undefined && pkgJson.scripts?.['dev:staging']) {
+        pkgJson.scripts['dev:staging'] = pkgJson.scripts['dev:staging']
+          .replace(/EXPO_PUBLIC_SITE_URL=[^\s]*/, `EXPO_PUBLIC_SITE_URL=${changes.stagingUrl}`);
+      }
+      fs.writeFileSync(PATHS.packageJson, JSON.stringify(pkgJson, null, 2) + '\n');
+      results.push('package.json updated');
+    }
+  }
+
+  return results;
+}
+
+module.exports = { writeConfigValues };
