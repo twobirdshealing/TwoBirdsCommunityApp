@@ -58,19 +58,6 @@ function fluent_starter_scripts() {
         );
     }
 
-    // WooCommerce styles (shop, product, cart, checkout pages)
-    if (class_exists('WooCommerce')) {
-        if (is_woocommerce() || is_cart() || is_checkout() || is_account_page()) {
-            wp_enqueue_style(
-                'fluent-starter-woocommerce',
-                FLUENT_STARTER_URI . '/assets/css/woocommerce.css',
-                array('fluent-starter-base', 'fluent-starter-components'),
-                FLUENT_STARTER_VERSION
-            );
-
-        }
-    }
-
     // Dark mode sync script (very small - just syncs dark mode state)
     wp_enqueue_script(
         'fluent-starter-theme',
@@ -89,54 +76,6 @@ function fluent_starter_scripts() {
     }
 }
 add_action('wp_enqueue_scripts', 'fluent_starter_scripts', 5);
-
-/**
- * Product gallery thumbnail sync
- *
- * Scrolls the thumbnail filmstrip to keep the active thumb visible
- * when the main image changes (swipe, arrow keys, etc.).
- * Uses MutationObserver on .flex-active class changes.
- */
-function fluent_starter_gallery_thumb_sync() {
-    if (fluent_starter_is_portal_page()) {
-        return;
-    }
-    if (!function_exists('is_product') || !is_product()) {
-        return;
-    }
-    ?>
-    <script>
-    (function(){
-        function initThumbSync() {
-            var thumbs = document.querySelector('.flex-control-thumbs');
-            if (!thumbs) return false;
-
-            // Sync: when main image changes, scroll strip to keep active thumb visible
-            var observer = new MutationObserver(function() {
-                var active = thumbs.querySelector('.flex-active');
-                if (active) {
-                    var li = active.parentElement;
-                    var scrollTarget = li.offsetLeft - (thumbs.offsetWidth / 2) + (li.offsetWidth / 2);
-                    thumbs.scrollTo({ left: scrollTarget, behavior: 'smooth' });
-                }
-            });
-            thumbs.querySelectorAll('img').forEach(function(img) {
-                observer.observe(img, { attributes: true, attributeFilter: ['class'] });
-            });
-
-            return true;
-        }
-
-        // FlexSlider creates .flex-control-thumbs dynamically — wait for it
-        var attempts = 0;
-        var interval = setInterval(function(){
-            if (initThumbSync() || ++attempts >= 20) clearInterval(interval);
-        }, 250);
-    })();
-    </script>
-    <?php
-}
-add_action('wp_footer', 'fluent_starter_gallery_thumb_sync', 20);
 
 /**
  * Enqueue editor styles

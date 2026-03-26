@@ -34,29 +34,6 @@ add_filter('fluent_community/is_supported_theme', function($supported, $themeNam
 }, 10, 2);
 
 /**
- * Force Fluent Community frame template on blog pages
- *
- * Uses customizer settings to determine which template to use
- */
-add_filter('fluent_community/template_slug', function($templateSlug) {
-    // Blog integration
-    if (fluent_starter_blog_integration_enabled()) {
-        if (is_singular('post') || is_home() || is_category() || is_tag() || is_author()) {
-            return fluent_starter_get_blog_template();
-        }
-    }
-
-    // WooCommerce integration - shop, product, cart, checkout, and account pages
-    if (fluent_starter_wc_integration_enabled() && function_exists('is_woocommerce')) {
-        if (is_woocommerce() || is_cart() || is_checkout() || is_account_page()) {
-            return fluent_starter_get_wc_template();
-        }
-    }
-
-    return $templateSlug;
-});
-
-/**
  * Dark mode cookie synchronization
  *
  * Ensures dark mode state is shared between Fluent Community portal and theme pages
@@ -273,28 +250,44 @@ add_action('wp_loaded', function() {
 }, 20);
 
 /**
+ * Blog template routing for Fluent Community frame
+ *
+ * Forces blog pages (posts, archives) into the Fluent Community frame
+ * when blog integration is enabled in the Customizer.
+ */
+add_filter('fluent_community/template_slug', function ($templateSlug) {
+    if (fluent_starter_blog_integration_enabled()) {
+        if (is_singular('post') || is_home() || is_category() || is_tag() || is_author()) {
+            return fluent_starter_get_blog_template();
+        }
+    }
+    return $templateSlug;
+});
+
+/**
  * Render theme content when using FluentCommunity Frame template
  *
- * This is called when a page uses the "FluentCommunity Frame" template
- * Handles blog archives, single posts, and regular pages
+ * Handles blog and regular page content. Plugins like tbc-cart hook
+ * directly into FC's theme_content action at an earlier priority to
+ * handle their own page types (e.g., WooCommerce).
  *
  * @param string $themeName The active theme name
  * @param string $wrapperType The wrapper type ('default' or 'full')
  */
 function fluent_starter_render_theme_content($themeName, $wrapperType = 'default') {
     // Blog archive (home, category, tag, author)
-    if (is_home() || is_category() || is_tag() || is_author()) {
+    if (fluent_starter_blog_integration_enabled() && (is_home() || is_category() || is_tag() || is_author())) {
         echo do_shortcode('[fluent_blog posts_per_page="12"]');
         return;
     }
 
     // Single blog post
-    if (is_singular('post')) {
+    if (fluent_starter_blog_integration_enabled() && is_singular('post')) {
         fluent_starter_render_single_post();
         return;
     }
 
-    // Regular page content
+    // Regular page content (fallback)
     if (have_posts()) {
         while (have_posts()) {
             the_post();
@@ -325,6 +318,7 @@ function fluent_starter_render_single_post() {
     while (have_posts()) {
         the_post();
         $categories = get_the_category();
+        $author_id = get_the_author_meta('ID');
         ?>
         <article <?php post_class('fs-single-post'); ?>>
             <?php if (has_post_thumbnail()) : ?>
@@ -345,9 +339,9 @@ function fluent_starter_render_single_post() {
                         <?php the_title('<h1 class="fs-single-title">', '</h1>'); ?>
                         <div class="fs-single-meta">
                             <div class="fs-single-author">
-                                <?php echo get_avatar(get_the_author_meta('ID'), 40, '', '', ['class' => 'fs-single-avatar']); ?>
+                                <?php echo get_avatar($author_id, 40, '', '', ['class' => 'fs-single-avatar']); ?>
                                 <div class="fs-single-author-info">
-                                    <span class="fs-single-author-name"><?php the_author(); ?><?php echo fluent_starter_verified_mark(get_the_author_meta('ID')); ?><?php echo fluent_starter_author_badges(get_the_author_meta('ID')); ?></span>
+                                    <span class="fs-single-author-name"><?php the_author(); ?><?php echo fluent_starter_verified_mark($author_id); ?><?php echo fluent_starter_author_badges($author_id); ?></span>
                                     <span class="fs-single-date-read">
                                         <?php echo esc_html(get_the_date()); ?>
                                     </span>
@@ -361,12 +355,12 @@ function fluent_starter_render_single_post() {
                 <header class="fs-single-header-simple">
                     <div class="fs-single-meta-simple">
                         <div class="fs-single-author">
-                            <?php echo get_avatar(get_the_author_meta('ID'), 40, '', '', ['class' => 'fs-single-avatar']); ?>
+                            <?php echo get_avatar($author_id, 40, '', '', ['class' => 'fs-single-avatar']); ?>
                             <div class="fs-single-author-info">
-                                <span class="fs-single-author-name"><?php the_author(); ?><?php echo fluent_starter_verified_mark(get_the_author_meta('ID')); ?><?php echo fluent_starter_author_badges(get_the_author_meta('ID')); ?></span>
+                                <span class="fs-single-author-name"><?php the_author(); ?><?php echo fluent_starter_verified_mark($author_id); ?><?php echo fluent_starter_author_badges($author_id); ?></span>
                                 <span class="fs-single-date-read">
                                     <?php echo esc_html(get_the_date()); ?>
-                                    <span class="fs-separator">·</span>
+                                    <span class="fs-separator">&middot;</span>
                                     <?php echo fluent_starter_reading_time(); ?>
                                 </span>
                             </div>
@@ -449,30 +443,6 @@ add_action('fluent_community/portal_head', function() {
 });
 
 /**
- * Add theme-specific styles to portal pages if needed
- *
- * Generally we want to avoid adding styles to the portal,
- * but this hook is available if absolutely necessary
- */
-add_action('fluent_community/portal_footer', function() {
-    // Portal gets its own styling from Fluent Community
-    // Only add styles here if absolutely necessary for compatibility
-});
-
-/**
- * Filter for controlling headless mode
- *
- * Return false for classic mode (wp_head/wp_footer called)
- * Return true for headless mode (Fluent handles everything)
- *
- * We prefer classic mode for better theme integration
- */
-add_filter('fluent_community/portal_page_headless', function($isHeadless) {
-    // Keep classic mode for theme integration
-    return $isHeadless;
-});
-
-/**
  * Hook into Fluent Community's global asset enqueuing
  *
  * This is called on non-portal pages that use Fluent Community components
@@ -495,14 +465,6 @@ add_action('fluent_community/enqueue_global_assets', function($useDefaultTheme) 
         FLUENT_STARTER_VERSION
     );
 
-    // Load blog styles for blog archive and single posts
-    wp_enqueue_style(
-        'fluent-starter-blog',
-        FLUENT_STARTER_URI . '/assets/css/blog.css',
-        array('fluent-starter-base', 'fluent-starter-components'),
-        FLUENT_STARTER_VERSION
-    );
-
     // Fluent compatibility CSS variable bridge
     wp_enqueue_style(
         'fluent-starter-fluent-compat',
@@ -511,29 +473,14 @@ add_action('fluent_community/enqueue_global_assets', function($useDefaultTheme) 
         FLUENT_STARTER_VERSION
     );
 
-    // Load WooCommerce styles if WooCommerce integration is enabled
-    if (fluent_starter_wc_integration_enabled() && function_exists('is_woocommerce')) {
-        if (is_woocommerce() || is_cart() || is_checkout() || is_account_page()) {
-            wp_enqueue_style(
-                'fluent-starter-woocommerce',
-                FLUENT_STARTER_URI . '/assets/css/woocommerce.css',
-                array('fluent-starter-base'),
-                FLUENT_STARTER_VERSION
-            );
-        }
+    // Blog styles (archive and single post within frame)
+    if (is_home() || is_archive() || is_single() || is_search()) {
+        wp_enqueue_style(
+            'fluent-starter-blog',
+            FLUENT_STARTER_URI . '/assets/css/blog.css',
+            array('fluent-starter-base', 'fluent-starter-components'),
+            FLUENT_STARTER_VERSION
+        );
     }
+
 }, 10, 1);
-
-/**
- * Add custom links to header right menu (optional)
- */
-// add_action('fluent_community/before_header_right_menu_items', function($auth) {
-//     // Add custom menu items if needed
-// });
-
-/**
- * Add custom links before header menu items (optional)
- */
-// add_action('fluent_community/before_header_menu_items', function($auth, $context) {
-//     // Add custom menu items if needed
-// }, 10, 2);

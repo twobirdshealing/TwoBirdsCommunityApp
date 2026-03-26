@@ -2,6 +2,23 @@
 
 All notable changes to the Fluent Starter theme.
 
+## 1.0.53
+
+- Removed `fluent_starter_content_handled` filter — plugins now hook directly into Fluent Community's own `fluent_community/theme_content` action
+- Blog template routing restored to theme (was briefly extracted to plugin)
+
+## 1.0.52
+
+- Removed all WooCommerce code — extracted to tbc-cart plugin (v2.0.0)
+- Deleted `inc/woocommerce-integration.php` (641 lines)
+- Deleted `assets/css/woocommerce.css` (1,757 lines)
+- Removed WooCommerce customizer section and helper functions from `inc/customizer.php`
+- Removed WooCommerce theme support declarations from `inc/theme-setup.php`
+- Removed WooCommerce CSS enqueue from `inc/enqueue.php`
+- Removed product gallery thumbnail sync from `inc/enqueue.php`
+- Removed WooCommerce template routing and CSS enqueue from `inc/fluent-integration.php`
+- Theme is now WooCommerce-agnostic — install tbc-cart plugin for WC integration
+
 ## 1.0.51
 
 - Added docs viewer: serve static HTML docs inside Fluent Community frame

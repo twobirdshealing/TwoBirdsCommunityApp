@@ -73,14 +73,6 @@ function fluent_starter_setup() {
     // Set content width
     $GLOBALS['content_width'] = apply_filters('fluent_starter_content_width', 1200);
 
-    // WooCommerce theme support
-    // This ensures products display properly even when Fluent integration is OFF
-    if (class_exists('WooCommerce')) {
-        add_theme_support('woocommerce');
-        add_theme_support('wc-product-gallery-zoom');
-        add_theme_support('wc-product-gallery-lightbox');
-        add_theme_support('wc-product-gallery-slider');
-    }
 }
 add_action('after_setup_theme', 'fluent_starter_setup');
 
