@@ -2,7 +2,7 @@
 // BLOG MODULE - WordPress blog posts and comments
 // =============================================================================
 // Uses standard WP REST API (/wp-json/wp/v2) — no companion plugin required.
-// Provides: home widget, menu item, blog list/detail/comments screens.
+// Provides: home widget, launcher item, blog list/detail/comments screens.
 // =============================================================================
 
 import type { ModuleManifest } from '@/modules/_types';
@@ -32,14 +32,14 @@ export const blogModule: ModuleManifest = {
     },
   ],
 
-  menuItems: [
+  launcherItems: [
     {
       id: 'blog',
       label: 'Blog',
       icon: 'newspaper-outline',
       route: '/blog',
       order: 60,
-      hideMenuKey: 'blog',
+      hideKey: 'blog',
     },
   ],
 

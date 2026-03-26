@@ -15,7 +15,7 @@ import type {
   TabRegistration,
   WidgetRegistration,
   ProviderRegistration,
-  MenuItemRegistration,
+  LauncherItemRegistration,
   HeaderIconRegistration,
   RegistrationStepRegistration,
   ResponseHeaderMapping,
@@ -36,6 +36,7 @@ import { otpModule } from './otp/module';
 import { profileCompletionModule } from './profile-completion/module';
 import { cartModule } from './cart/module';
 import { multiReactionsModule } from './multi-reactions/module';
+import { adminModule } from './admin/module';
 
 export const MODULES: ModuleManifest[] = [
   calendarModule,
@@ -48,6 +49,7 @@ export const MODULES: ModuleManifest[] = [
   profileCompletionModule,
   cartModule,
   multiReactionsModule,
+  adminModule,
 ];
 
 // =============================================================================
@@ -110,10 +112,10 @@ export function getModuleProviders(): ProviderRegistration[] {
     .sort((a, b) => a.order - b.order);
 }
 
-/** All module menu items for UserMenu dropdown, sorted by order */
-export function getModuleMenuItems(): MenuItemRegistration[] {
+/** All module launcher items for the Launcher bottom sheet, sorted by order */
+export function getLauncherItems(): LauncherItemRegistration[] {
   return MODULES
-    .flatMap((m) => m.menuItems ?? [])
+    .flatMap((m) => m.launcherItems ?? [])
     .sort((a, b) => a.order - b.order);
 }
 

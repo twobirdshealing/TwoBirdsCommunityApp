@@ -46,15 +46,15 @@ export const bookclubModule: ModuleManifest = {
     },
   ],
 
-  // Menu item in avatar dropdown
-  menuItems: [
+  // Launcher item in bottom sheet grid
+  launcherItems: [
     {
       id: 'bookclub',
       label: 'Book Club',
       icon: 'book-outline',
       route: '/bookclub',
       order: 55,
-      hideMenuKey: 'bookclub',
+      hideKey: 'bookclub',
     },
   ],
 

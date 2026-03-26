@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { useNewMessageListener } from '@/contexts/PusherContext';
 import { HeaderIconButton } from './HeaderIconButton';
-import { UserMenu } from './UserMenu';
+import { Launcher } from './Launcher';
 import { getModuleHeaderIcons } from '@/modules/_registry';
 import type { HeaderIconRegistration } from '@/modules/_types';
 
@@ -233,8 +233,8 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
         </View>
       </View>
 
-      {/* User Menu Dropdown */}
-      <UserMenu
+      {/* Launcher Bottom Sheet */}
+      <Launcher
         visible={menuVisible}
         onClose={() => setMenuVisible(false)}
         user={{

@@ -1,7 +1,7 @@
 // =============================================================================
-// DONOR MODULE - Donor Dashboard menu item (WebView)
+// DONOR MODULE - Donor Dashboard launcher item (WebView)
 // =============================================================================
-// Menu-only module — adds a "Donor Dashboard" entry to the avatar dropdown
+// Launcher-only module — adds a "Donor Dashboard" tile to the Launcher
 // that opens the WordPress donor dashboard page in a WebView.
 // =============================================================================
 
@@ -12,12 +12,12 @@ export const donorModule: ModuleManifest = {
   id: 'donor',
   name: 'Donor Dashboard',
   version: '1.0.0',
-  description: 'Donor Dashboard menu item (WebView)',
+  description: 'Donor Dashboard launcher item (WebView)',
   author: 'Two Birds Code',
   authorUrl: 'https://twobirdscode.com',
   license: 'Proprietary',
 
-  menuItems: [
+  launcherItems: [
     {
       id: 'donor-dashboard',
       label: 'Donor Dashboard',
@@ -30,7 +30,7 @@ export const donorModule: ModuleManifest = {
         },
       },
       order: 65,
-      hideMenuKey: 'donor_dashboard',
+      hideKey: 'donor_dashboard',
     },
   ],
 };

@@ -36,15 +36,16 @@ export const donateModule: ModuleManifest = {
     },
   },
 
-  menuItems: [
+  launcherItems: [
     {
       id: 'donate',
       label: 'Donate',
       icon: 'heart-outline',
       route: { pathname: '/webview', params: DONATE_ROUTE_PARAMS },
       order: 60,
-      hideMenuKey: 'donate',
+      hideKey: 'donate',
       iconColor: 'error',
+      iconBackground: 'error',
     },
   ],
 };

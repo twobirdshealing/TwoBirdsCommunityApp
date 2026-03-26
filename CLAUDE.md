@@ -69,7 +69,7 @@ Each add-on is a **paired module + plugin**: the app module lives in `modules/`,
 
 ## Module System
 
-Self-contained features that plug into the app without touching core code. Each module registers any combination of: bottom tabs, home widgets, menu items, header icons, context providers, tab bar addons, registration steps, response headers, route prefixes, UI slots.
+Self-contained features that plug into the app without touching core code. Each module registers any combination of: bottom tabs, home widgets, launcher items, header icons, context providers, tab bar addons, registration steps, response headers, route prefixes, UI slots.
 
 - **Define** a manifest in `modules/yourmodule/module.ts`
 - **Register** in `modules/_registry.ts` (one line to enable/disable)
@@ -108,6 +108,28 @@ Update all 4 places when bumping:
 4. `app.json` → `android.versionCode` (integer, pattern: `major*100 + minor*10 + patch`)
 
 Or use the version bump buttons in the setup dashboard.
+
+## OTA Updates vs New Build
+
+The app uses `expo-updates` for over-the-air updates. **OTA can only update the JS bundle** — anything that touches native code requires a full EAS build + store submission.
+
+**OTA is sufficient (push via `eas update` or dashboard OTA tab):**
+- Any change to JS/TS files (screens, components, hooks, services, utils, modules)
+- Style changes, text changes, new images imported via `require()`
+- Bug fixes in React/JS logic
+- Adding/removing/editing modules (JS-only)
+- Config changes in `constants/config.ts`
+
+**Requires a new native build (`eas build`):**
+- Adding or removing a package in `package.json` that includes native code (anything with `ios/` or `android/` folders, or an Expo config plugin)
+- Changing `app.json` fields that affect native config: bundle ID, permissions, plugins array, splash screen, icons, scheme, `expo-build-properties`
+- Changing `eas.json` build profiles
+- Bumping `expo` SDK version
+- Any change to `app.config.ts` that feeds into native builds
+
+**Rule of thumb:** If the change only touches `.ts`/`.tsx`/`.js` files and doesn't add native dependencies, OTA is fine. If you're unsure, check whether the package has an Expo config plugin or native code — if yes, new build needed.
+
+After completing a task, tell the user whether their change is OTA-safe or requires a new build.
 
 ## Development & Debugging
 
@@ -169,6 +191,8 @@ Calendar module — custom to Two Birds Church, not a public add-on.
 Donate module — custom to Two Birds Church, not a public add-on.
 
 Donor module — custom to Two Birds Church, not a public add-on.
+
+Admin module — custom to Two Birds Church, not a public add-on.
 
 ### Site-Specific Companion Plugins
 

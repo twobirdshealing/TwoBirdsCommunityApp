@@ -81,13 +81,13 @@ export interface ProviderRegistration {
 }
 
 // -----------------------------------------------------------------------------
-// Menu Item Registration (UserMenu dropdown)
+// Launcher Item Registration (icon grid in the Launcher bottom sheet)
 // -----------------------------------------------------------------------------
 
-export interface MenuItemRegistration {
-  /** Unique ID for this menu item */
+export interface LauncherItemRegistration {
+  /** Unique ID for this launcher item */
   id: string;
-  /** Display label */
+  /** Display label shown below the icon */
   label: string;
   /** Ionicon name */
   icon: keyof typeof Ionicons.glyphMap;
@@ -96,9 +96,11 @@ export interface MenuItemRegistration {
   /** Sort position — core items use 10-90, place yours between them */
   order: number;
   /** Server visibility key — item hidden when this key is in hide_menu[] */
-  hideMenuKey?: string;
+  hideKey?: string;
   /** Override icon color — use a theme token name (e.g. 'error' for red). Defaults to textSecondary */
   iconColor?: string;
+  /** Icon background color — use a theme token name (e.g. 'primary', 'error'). Defaults to surfaceSecondary */
+  iconBackground?: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -215,8 +217,8 @@ export interface ModuleManifest {
   widgets?: WidgetRegistration[];
   /** Provider registrations — adds context providers to the app tree */
   providers?: ProviderRegistration[];
-  /** Menu item registrations — adds items to the UserMenu dropdown */
-  menuItems?: MenuItemRegistration[];
+  /** Launcher item registrations — adds icon tiles to the Launcher bottom sheet */
+  launcherItems?: LauncherItemRegistration[];
   /** Header icon registrations — adds icons to the TopHeader */
   headerIcons?: HeaderIconRegistration[];
   /** Server visibility key for hide_menu (convenience — also available on tab) */
