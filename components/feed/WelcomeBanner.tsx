@@ -129,9 +129,11 @@ export function WelcomeBanner({ banner, onClose }: WelcomeBannerProps) {
     banner.bannerVideo?.type === 'oembed' && 
     banner.bannerVideo?.url;
   
-  const youtubeId = hasYouTube && banner.bannerVideo?.url 
-    ? extractYouTubeId(banner.bannerVideo.url) 
+  const youtubeId = hasYouTube && banner.bannerVideo?.url
+    ? extractYouTubeId(banner.bannerVideo.url)
     : null;
+
+  const visibleButtons = banner.ctaButtons?.filter(btn => btn.label?.trim()) ?? [];
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
@@ -176,10 +178,10 @@ export function WelcomeBanner({ banner, onClose }: WelcomeBannerProps) {
           />
         )}
 
-        {/* CTA Buttons */}
-        {banner.ctaButtons && banner.ctaButtons.length > 0 && (
+        {/* CTA Buttons — skip buttons with empty labels (matches Fluent web behavior) */}
+        {visibleButtons.length > 0 && (
           <View style={styles.buttonsContainer}>
-            {banner.ctaButtons.map((btn, index) => (
+            {visibleButtons.map((btn, index) => (
               <CTAButton key={`${btn.label}-${index}`} button={btn} />
             ))}
           </View>

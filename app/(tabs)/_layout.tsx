@@ -8,10 +8,10 @@
 
 import React, { useCallback, useMemo } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { Tabs, useRouter } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { hapticHeavy } from '@/utils/haptics';
+import { useWobble } from '@/hooks/useWobble';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -61,21 +61,12 @@ interface TabItemButtonProps {
 }
 
 function TabItemButton({ routeKey, label, icon, isFocused, color, accessibilityLabel, onPress, onLongPress }: TabItemButtonProps) {
-  const wobble = useSharedValue(0);
+  const { triggerWobble, wobbleStyle } = useWobble();
 
   const handlePress = useCallback(() => {
-    hapticHeavy();
-    wobble.value = withSequence(
-      withTiming(1, { duration: 40 }),
-      withTiming(-1, { duration: 80 }),
-      withTiming(0, { duration: 40 }),
-    );
+    triggerWobble();
     onPress();
-  }, [onPress, wobble]);
-
-  const wobbleStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${interpolate(wobble.value, [-1, 0, 1], [-8, 0, 8])}deg` }],
-  }));
+  }, [onPress, triggerWobble]);
 
   return (
     <Pressable

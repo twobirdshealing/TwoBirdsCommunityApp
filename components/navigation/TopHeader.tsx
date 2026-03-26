@@ -13,9 +13,8 @@ import { spacing, shadows, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUnreadCounts } from '@/contexts/UnreadCountsContext';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAppConfig } from '@/contexts/AppConfigContext';
 import { Image } from 'expo-image';
@@ -27,6 +26,8 @@ import { Launcher } from './Launcher';
 import { getModuleHeaderIcons } from '@/modules/_registry';
 import type { HeaderIconRegistration } from '@/modules/_types';
 import { EMPTY_HIDE_MENU, isItemHidden } from '@/utils/visibility';
+import Animated from 'react-native-reanimated';
+import { useWobble } from '@/hooks/useWobble';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -92,6 +93,8 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
+
+  const handleOpenMenu = useCallback(() => setMenuVisible(true), []);
 
   const handleMessagesPress = () => {
     router.push('/messages' as any);
@@ -204,32 +207,12 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
             <ModuleHeaderIcon key={icon.id} registration={icon} />
           ))}
 
-          {/* Avatar with dropdown arrow */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.avatarButton,
-              pressed && [styles.avatarButtonPressed, { backgroundColor: themeColors.backgroundSecondary }],
-            ]}
-            onPress={() => setMenuVisible(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Open menu"
-          >
-            {avatar ? (
-              <Image source={{ uri: avatar }} style={[styles.avatar, { backgroundColor: themeColors.border }]} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary }]}>
-                <Text style={[styles.avatarText, { color: themeColors.textInverse }]}>
-                  {displayName.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
-            <Ionicons
-              name="chevron-down"
-              size={14}
-              color={themeColors.textSecondary}
-              style={styles.dropdownArrow}
-            />
-          </Pressable>
+          {/* Avatar menu button */}
+          <AvatarMenuButton
+            avatar={avatar}
+            displayName={displayName}
+            onPress={handleOpenMenu}
+          />
         </View>
       </View>
 
@@ -254,6 +237,47 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     </View>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Avatar Menu Button — animated avatar with wobble on press
+// -----------------------------------------------------------------------------
+
+const AvatarMenuButton = React.memo(function AvatarMenuButton({ avatar, displayName, onPress }: { avatar?: string; displayName: string; onPress: () => void }) {
+  const { colors: themeColors } = useTheme();
+  const { triggerWobble, wobbleStyle } = useWobble();
+
+  const handlePress = useCallback(() => {
+    triggerWobble();
+    onPress();
+  }, [onPress, triggerWobble]);
+
+  return (
+    <Pressable
+      style={styles.avatarButton}
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel="Open menu"
+    >
+      <Animated.View style={wobbleStyle}>
+        {avatar ? (
+          <Image
+            source={{ uri: avatar }}
+            style={[styles.avatar, { backgroundColor: themeColors.border, borderColor: themeColors.tabBar.active }]}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+          />
+        ) : (
+          <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: themeColors.primary, borderColor: themeColors.tabBar.active }]}>
+            <Text style={[styles.avatarText, { color: themeColors.textInverse }]}>
+              {displayName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
+      </Animated.View>
+    </Pressable>
+  );
+});
 
 // -----------------------------------------------------------------------------
 // Module Header Icon — wrapper that supports useBadgeCount hooks
@@ -312,23 +336,17 @@ const styles = StyleSheet.create({
   },
 
   avatarButton: {
-    flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: spacing.xs,
-    paddingLeft: spacing.xs,
-    paddingRight: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: sizing.borderRadius.lg,
-  },
-
-  avatarButtonPressed: {
-    opacity: 0.7,
+    justifyContent: 'center',
+    marginLeft: spacing.sm,
+    padding: spacing.xs,
   },
 
   avatar: {
-    width: 36,
-    height: 36,
+    width: sizing.avatar.md,
+    height: sizing.avatar.md,
     borderRadius: sizing.borderRadius.full,
+    borderWidth: 2.5,
   },
 
   avatarPlaceholder: {
@@ -339,10 +357,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: typography.size.md,
     fontWeight: typography.weight.semibold,
-  },
-
-  dropdownArrow: {
-    marginLeft: spacing.xs,
   },
 });
 

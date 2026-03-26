@@ -86,7 +86,7 @@ async function listOTAUpdates() {
 async function deleteOTAUpdate(groupId) {
   if (!OTA_GROUP_ID_PATTERN.test(groupId)) return { ok: false, error: 'Invalid group ID' };
   try {
-    await runCommand(['eas', 'update:delete', '--group', groupId, '--non-interactive'], 30000);
+    await runCommand(['eas', 'update:delete', groupId, '--non-interactive'], 30000);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err.message };
