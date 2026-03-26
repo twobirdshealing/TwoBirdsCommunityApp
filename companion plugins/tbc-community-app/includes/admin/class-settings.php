@@ -85,20 +85,29 @@ class TBC_CA_Admin_Settings {
             }
         }
 
-        // UI visibility: role => array of hidden element keys
-        $sanitized['ui_visibility'] = [];
-        $core_elements = ['cart', 'blog', 'courses', 'bookmarks', 'directory', 'notification_settings'];
+        // UI visibility: store per-element rules directly (mode + roles)
+        $sanitized['visibility_rules'] = [];
+        $core_elements = ['courses', 'bookmarks', 'directory', 'notification_settings', 'privacy'];
         $custom_keys = array_column($sanitized['custom_visibility_elements'], 'key');
         $allowed_elements = array_merge($core_elements, $custom_keys);
-        if (isset($input['ui_visibility']) && is_array($input['ui_visibility'])) {
-            foreach ($input['ui_visibility'] as $role => $elements) {
-                $role = sanitize_key($role);
-                if (is_array($elements)) {
-                    $clean = array_values(array_intersect(array_map('sanitize_key', $elements), $allowed_elements));
-                    if (!empty($clean)) {
-                        $sanitized['ui_visibility'][$role] = $clean;
-                    }
+        $all_roles = array_keys(wp_roles()->role_names);
+
+        if (isset($input['visibility_rules']) && is_array($input['visibility_rules'])) {
+            foreach ($input['visibility_rules'] as $el_key => $rule) {
+                $el_key = sanitize_key($el_key);
+                if (!in_array($el_key, $allowed_elements, true)) continue;
+
+                $mode = sanitize_key($rule['mode'] ?? 'everyone');
+                $selected_roles = array_map('sanitize_key', (array) ($rule['roles'] ?? []));
+                $selected_roles = array_values(array_intersect($selected_roles, $all_roles));
+
+                if (($mode === 'only' || $mode === 'except') && !empty($selected_roles)) {
+                    $sanitized['visibility_rules'][$el_key] = [
+                        'mode'  => $mode,
+                        'roles' => $selected_roles,
+                    ];
                 }
+                // 'everyone' = no rule needed (visible to all)
             }
         }
 
@@ -158,19 +167,17 @@ class TBC_CA_Admin_Settings {
         $wp_roles = wp_roles()->role_names; // ['administrator' => 'Administrator', ...]
         $maint = $settings['maintenance_mode'] ?? [];
         $bypass_roles = $settings['maintenance_bypass_roles'] ?? [];
-        $ui_visibility = $settings['ui_visibility'] ?? [];
         $min_app_version = $settings['min_app_version'] ?? '';
         $store_urls = $settings['store_urls'] ?? [];
         $features = $settings['features'] ?? [];
 
-        // Core elements (hardcoded in app UI, not from modules)
+        // Core elements (hardcoded isHidden() checks in app UI, not from modules)
         $hideable_elements = [
-            'cart'                  => __('Cart Icon (header)', 'tbc-ca'),
-            'blog'                  => __('Blog (menu)', 'tbc-ca'),
             'courses'               => __('Courses (menu)', 'tbc-ca'),
             'bookmarks'             => __('Bookmarks (menu)', 'tbc-ca'),
-            'directory'             => __('Church Directory (menu)', 'tbc-ca'),
+            'directory'             => __('Directory (menu)', 'tbc-ca'),
             'notification_settings' => __('Notification Settings (menu)', 'tbc-ca'),
+            'privacy'               => __('Privacy Policy (menu)', 'tbc-ca'),
         ];
 
         // Merge custom elements added by admin
@@ -563,83 +570,394 @@ class TBC_CA_Admin_Settings {
                 <!-- Tab: UI Visibility -->
                 <div class="tbc-ca-tab-panel<?php echo $current_tab === 'visibility' ? ' tbc-ca-tab-panel--active' : ''; ?>" data-panel="visibility">
 
-                <div class="tbc-ca-section">
-                    <h2><?php _e('UI Visibility by Role', 'tbc-ca'); ?></h2>
-                    <p class="description"><?php _e('Check elements to HIDE for each role. This applies to all users with that role, including administrators.', 'tbc-ca'); ?></p>
+                <?php
+                // ── Read per-element visibility rules ──
+                $all_role_slugs = array_keys($wp_roles);
+                $custom_keys_list = array_column($custom_elements, 'key');
+                $vis_rules = $settings['visibility_rules'] ?? [];
 
-                    <table class="widefat tbc-ca-visibility-table">
-                        <thead>
-                            <tr>
-                                <th><?php _e('Role', 'tbc-ca'); ?></th>
-                                <?php foreach ($hideable_elements as $el_key => $el_label): ?>
-                                    <th class="tbc-ca-vis-col"><?php echo esc_html($el_label); ?></th>
-                                <?php endforeach; ?>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($wp_roles as $role_slug => $role_name):
-                                $role_hidden = $ui_visibility[$role_slug] ?? [];
-                            ?>
-                            <tr>
-                                <td><strong><?php echo esc_html($role_name); ?></strong></td>
-                                <?php foreach ($hideable_elements as $el_key => $el_label): ?>
-                                    <td class="tbc-ca-vis-col">
-                                        <input type="checkbox"
-                                               name="tbc_ca_settings[ui_visibility][<?php echo esc_attr($role_slug); ?>][]"
-                                               value="<?php echo esc_attr($el_key); ?>"
-                                               <?php checked(in_array($el_key, $role_hidden, true)); ?> />
-                                    </td>
-                                <?php endforeach; ?>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+                // Build element_modes from stored rules (direct — no conversion needed)
+                $element_modes = [];
+                foreach ($hideable_elements as $el_key => $el_label) {
+                    $element_modes[$el_key] = $vis_rules[$el_key] ?? ['mode' => 'everyone', 'roles' => []];
+                }
 
-                <!-- Custom Visibility Elements -->
-                <div class="tbc-ca-section">
-                    <h2><?php _e('Custom Visibility Elements', 'tbc-ca'); ?></h2>
-                    <p class="description"><?php _e('Add custom elements for app modules. The key must match the <code>hideMenuKey</code> in the module manifest. The label is shown as a column header above.', 'tbc-ca'); ?></p>
+                $core_element_keys = ['courses', 'bookmarks', 'directory', 'notification_settings', 'privacy'];
 
-                    <table class="widefat" style="max-width: 600px;" id="tbc-ca-custom-elements">
-                        <thead>
-                            <tr>
-                                <th><?php _e('Key', 'tbc-ca'); ?></th>
-                                <th><?php _e('Label', 'tbc-ca'); ?></th>
-                                <th style="width: 60px;"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php
-                            $idx = 0;
-                            foreach ($custom_elements as $el):
-                                $key   = $el['key'] ?? '';
-                                $label = $el['label'] ?? '';
-                            ?>
-                            <tr>
-                                <td><input type="text" name="tbc_ca_settings[custom_visibility_elements][<?php echo $idx; ?>][key]" value="<?php echo esc_attr($key); ?>" class="regular-text" placeholder="my_module" /></td>
-                                <td><input type="text" name="tbc_ca_settings[custom_visibility_elements][<?php echo $idx; ?>][label]" value="<?php echo esc_attr($label); ?>" class="regular-text" placeholder="My Module (tab)" /></td>
-                                <td><button type="button" class="button button-small tbc-ca-remove-element" onclick="this.closest('tr').remove();">&times;</button></td>
-                            </tr>
-                            <?php $idx++; endforeach; ?>
-                        </tbody>
-                    </table>
-                    <p style="margin-top: 8px;">
-                        <button type="button" class="button button-secondary" onclick="tbcCaAddElement();"><?php _e('+ Add Element', 'tbc-ca'); ?></button>
-                    </p>
-                    <script>
-                    function tbcCaAddElement() {
-                        var tbody = document.querySelector('#tbc-ca-custom-elements tbody');
-                        var idx = tbody.querySelectorAll('tr').length;
-                        var tr = document.createElement('tr');
-                        tr.innerHTML =
-                            '<td><input type="text" name="tbc_ca_settings[custom_visibility_elements][' + idx + '][key]" class="regular-text" placeholder="my_module" /></td>' +
-                            '<td><input type="text" name="tbc_ca_settings[custom_visibility_elements][' + idx + '][label]" class="regular-text" placeholder="My Module (tab)" /></td>' +
-                            '<td><button type="button" class="button button-small" onclick="this.closest(\'tr\').remove();">&times;</button></td>';
-                        tbody.appendChild(tr);
+                // Helper: render a visibility card (used for both core and custom)
+                $render_vis_card = function($el_key, $el_label, $is_custom, $custom_idx = null) use ($element_modes, $wp_roles, $all_role_slugs) {
+                    $mode_data = $element_modes[$el_key] ?? ['mode' => 'everyone', 'roles' => []];
+                    $mode = $mode_data['mode'];
+                    $selected_roles = $mode_data['roles'];
+
+                    if ($mode === 'everyone') {
+                        $summary = __('Visible to all', 'tbc-ca');
+                        $summary_class = 'tbc-ca-summary--all';
+                    } elseif ($mode === 'only') {
+                        $names = array_map(function($s) use ($wp_roles) { return $wp_roles[$s] ?? $s; }, $selected_roles);
+                        $summary = __('Only:', 'tbc-ca') . ' ' . implode(', ', $names);
+                        $summary_class = 'tbc-ca-summary--only';
+                    } else {
+                        $names = array_map(function($s) use ($wp_roles) { return $wp_roles[$s] ?? $s; }, $selected_roles);
+                        $summary = __('Hidden from:', 'tbc-ca') . ' ' . implode(', ', $names);
+                        $summary_class = 'tbc-ca-summary--except';
                     }
-                    </script>
+                    ?>
+                    <div class="tbc-vis-card<?php echo $is_custom ? ' tbc-vis-card--custom' : ''; ?>" data-element="<?php echo esc_attr($el_key); ?>">
+                        <?php if ($is_custom): ?>
+                            <input type="hidden" name="tbc_ca_settings[custom_visibility_elements][<?php echo $custom_idx; ?>][key]" value="<?php echo esc_attr($el_key); ?>" />
+                            <input type="hidden" name="tbc_ca_settings[custom_visibility_elements][<?php echo $custom_idx; ?>][label]" value="<?php echo esc_attr($el_label); ?>" />
+                        <?php endif; ?>
+
+                        <!-- Collapsed header -->
+                        <div class="tbc-vis-card__header" onclick="tbcVis.toggle(this);">
+                            <div class="tbc-vis-card__header-left">
+                                <span class="tbc-vis-card__arrow dashicons dashicons-arrow-right-alt2"></span>
+                                <div class="tbc-vis-card__identity">
+                                    <span class="tbc-vis-card__label"><?php echo esc_html($el_label); ?></span>
+                                    <?php if ($is_custom): ?>
+                                        <span class="tbc-vis-card__key-badge"><?php echo esc_html($el_key); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                <span class="tbc-vis-card__type-badge tbc-vis-card__type-badge--<?php echo $is_custom ? 'custom' : 'core'; ?>">
+                                    <?php echo $is_custom ? __('Custom', 'tbc-ca') : __('Core', 'tbc-ca'); ?>
+                                </span>
+                            </div>
+                            <div class="tbc-vis-card__header-right">
+                                <span class="tbc-vis-card__summary <?php echo esc_attr($summary_class); ?>"><?php echo esc_html($summary); ?></span>
+                                <?php if ($is_custom): ?>
+                                    <button type="button" class="tbc-vis-card__delete" onclick="tbcVis.removeElement(event, this);" title="<?php esc_attr_e('Remove element', 'tbc-ca'); ?>">
+                                        <span class="dashicons dashicons-trash"></span>
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <!-- Expanded body -->
+                        <div class="tbc-vis-card__body" style="display: none;">
+                            <div class="tbc-vis-card__modes">
+                                <label class="tbc-vis-mode <?php echo $mode === 'everyone' ? 'tbc-vis-mode--active' : ''; ?>">
+                                    <input type="radio"
+                                           name="tbc_ca_settings[visibility_rules][<?php echo esc_attr($el_key); ?>][mode]"
+                                           value="everyone"
+                                           <?php checked($mode, 'everyone'); ?>
+                                           onchange="tbcVis.modeChange(this);" />
+                                    <span class="dashicons dashicons-visibility"></span>
+                                    <span class="tbc-vis-mode__text">
+                                        <strong><?php _e('Everyone', 'tbc-ca'); ?></strong>
+                                        <small><?php _e('Visible to all roles', 'tbc-ca'); ?></small>
+                                    </span>
+                                </label>
+                                <label class="tbc-vis-mode <?php echo $mode === 'only' ? 'tbc-vis-mode--active' : ''; ?>">
+                                    <input type="radio"
+                                           name="tbc_ca_settings[visibility_rules][<?php echo esc_attr($el_key); ?>][mode]"
+                                           value="only"
+                                           <?php checked($mode, 'only'); ?>
+                                           onchange="tbcVis.modeChange(this);" />
+                                    <span class="dashicons dashicons-lock"></span>
+                                    <span class="tbc-vis-mode__text">
+                                        <strong><?php _e('Only these roles', 'tbc-ca'); ?></strong>
+                                        <small><?php _e('Hidden from everyone else', 'tbc-ca'); ?></small>
+                                    </span>
+                                </label>
+                                <label class="tbc-vis-mode <?php echo $mode === 'except' ? 'tbc-vis-mode--active' : ''; ?>">
+                                    <input type="radio"
+                                           name="tbc_ca_settings[visibility_rules][<?php echo esc_attr($el_key); ?>][mode]"
+                                           value="except"
+                                           <?php checked($mode, 'except'); ?>
+                                           onchange="tbcVis.modeChange(this);" />
+                                    <span class="dashicons dashicons-hidden"></span>
+                                    <span class="tbc-vis-mode__text">
+                                        <strong><?php _e('Everyone except', 'tbc-ca'); ?></strong>
+                                        <small><?php _e('Hidden from selected roles', 'tbc-ca'); ?></small>
+                                    </span>
+                                </label>
+                            </div>
+
+                            <div class="tbc-vis-card__roles" style="<?php echo $mode === 'everyone' ? 'display:none;' : ''; ?>">
+                                <div class="tbc-vis-pills">
+                                    <?php foreach ($selected_roles as $role_slug):
+                                        $role_name = $wp_roles[$role_slug] ?? $role_slug;
+                                    ?>
+                                    <span class="tbc-vis-pill" data-role="<?php echo esc_attr($role_slug); ?>">
+                                        <?php echo esc_html($role_name); ?>
+                                        <button type="button" class="tbc-vis-pill__x" onclick="tbcVis.removeRole(this);">&times;</button>
+                                        <input type="hidden"
+                                               name="tbc_ca_settings[visibility_rules][<?php echo esc_attr($el_key); ?>][roles][]"
+                                               value="<?php echo esc_attr($role_slug); ?>" />
+                                    </span>
+                                    <?php endforeach; ?>
+                                </div>
+                                <select class="tbc-vis-role-select" onchange="tbcVis.addRole(this);">
+                                    <option value=""><?php _e('— Add a role —', 'tbc-ca'); ?></option>
+                                    <?php foreach ($wp_roles as $role_slug => $role_name): ?>
+                                        <option value="<?php echo esc_attr($role_slug); ?>"
+                                                <?php echo in_array($role_slug, $selected_roles, true) ? 'disabled' : ''; ?>>
+                                            <?php echo esc_html($role_name); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <?php
+                };
+                ?>
+
+                <!-- Core Elements -->
+                <div class="tbc-ca-section">
+                    <h2><?php _e('Core Elements', 'tbc-ca'); ?></h2>
+                    <p class="description"><?php _e('Built-in app UI elements. Click to configure visibility by role.', 'tbc-ca'); ?></p>
+
+                    <div class="tbc-vis-list">
+                        <?php foreach ($core_element_keys as $el_key):
+                            if (!isset($hideable_elements[$el_key])) continue;
+                            $render_vis_card($el_key, $hideable_elements[$el_key], false);
+                        endforeach; ?>
+                    </div>
                 </div>
+
+                <!-- Custom Elements -->
+                <div class="tbc-ca-section">
+                    <h2><?php _e('Custom Elements', 'tbc-ca'); ?></h2>
+                    <p class="description"><?php _e('Elements from your app modules. The key must match the <code>hideMenuKey</code> in the module manifest.', 'tbc-ca'); ?></p>
+
+                    <div class="tbc-vis-list" id="tbc-vis-custom-list">
+                        <?php
+                        $idx = 0;
+                        foreach ($custom_elements as $el):
+                            $key   = $el['key'] ?? '';
+                            $label = $el['label'] ?? '';
+                            if (!$key || !$label) { $idx++; continue; }
+                            $render_vis_card($key, $label, true, $idx);
+                            $idx++;
+                        endforeach;
+                        ?>
+
+                        <!-- Add element card -->
+                        <div class="tbc-vis-card tbc-vis-card--add" id="tbc-vis-add-card" onclick="tbcVis.showAddForm();">
+                            <div class="tbc-vis-card--add__inner">
+                                <span class="tbc-vis-card--add__icon">+</span>
+                                <span class="tbc-vis-card--add__text"><?php _e('Add Custom Element', 'tbc-ca'); ?></span>
+                                <span class="tbc-vis-card--add__hint"><?php _e('Register a new module element for visibility control', 'tbc-ca'); ?></span>
+                            </div>
+                        </div>
+
+                        <!-- Inline add form -->
+                        <div class="tbc-vis-card tbc-vis-card--form" id="tbc-vis-add-form" style="display: none;">
+                            <div class="tbc-vis-add-form__inner">
+                                <h4><?php _e('New Custom Element', 'tbc-ca'); ?></h4>
+                                <div class="tbc-vis-add-form__fields">
+                                    <label class="tbc-vis-add-form__field">
+                                        <span><?php _e('Key', 'tbc-ca'); ?></span>
+                                        <input type="text" id="tbc-vis-new-key" placeholder="my_module" />
+                                        <small><?php _e('Must match hideMenuKey in module', 'tbc-ca'); ?></small>
+                                    </label>
+                                    <label class="tbc-vis-add-form__field">
+                                        <span><?php _e('Label', 'tbc-ca'); ?></span>
+                                        <input type="text" id="tbc-vis-new-label" placeholder="My Module (tab)" />
+                                        <small><?php _e('Display name for this element', 'tbc-ca'); ?></small>
+                                    </label>
+                                </div>
+                                <div class="tbc-vis-add-form__actions">
+                                    <button type="button" class="button button-primary" onclick="tbcVis.confirmAdd();"><?php _e('Add Element', 'tbc-ca'); ?></button>
+                                    <button type="button" class="button" onclick="tbcVis.cancelAdd();"><?php _e('Cancel', 'tbc-ca'); ?></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visibility JS -->
+                <script>
+                (function() {
+                    var roles = <?php echo json_encode($wp_roles); ?>;
+
+                    window.tbcVis = {
+                        // ── Toggle card — only one open at a time ──
+                        toggle: function(header) {
+                            var card = header.closest('.tbc-vis-card');
+                            var body = card.querySelector('.tbc-vis-card__body');
+                            var isOpen = body.style.display !== 'none';
+
+                            // Close all other open cards
+                            document.querySelectorAll('.tbc-vis-card--open').forEach(function(c) {
+                                if (c !== card) {
+                                    c.classList.remove('tbc-vis-card--open');
+                                    c.querySelector('.tbc-vis-card__body').style.display = 'none';
+                                }
+                            });
+
+                            body.style.display = isOpen ? 'none' : 'block';
+                            card.classList.toggle('tbc-vis-card--open', !isOpen);
+                        },
+
+                        // ── Mode change ──
+                        modeChange: function(radio) {
+                            var card = radio.closest('.tbc-vis-card');
+                            var rolesSection = card.querySelector('.tbc-vis-card__roles');
+                            var modes = card.querySelectorAll('.tbc-vis-mode');
+                            modes.forEach(function(m) { m.classList.remove('tbc-vis-mode--active'); });
+                            radio.closest('.tbc-vis-mode').classList.add('tbc-vis-mode--active');
+                            rolesSection.style.display = radio.value === 'everyone' ? 'none' : '';
+                            this._updateSummary(card);
+                        },
+
+                        // ── Add role ──
+                        addRole: function(select) {
+                            var slug = select.value;
+                            if (!slug) return;
+                            var name = select.options[select.selectedIndex].text;
+                            var card = select.closest('.tbc-vis-card');
+                            var elKey = card.dataset.element;
+                            var pills = card.querySelector('.tbc-vis-pills');
+
+                            var pill = document.createElement('span');
+                            pill.className = 'tbc-vis-pill';
+                            pill.dataset.role = slug;
+                            pill.innerHTML = name +
+                                '<button type="button" class="tbc-vis-pill__x" onclick="tbcVis.removeRole(this);">&times;</button>' +
+                                '<input type="hidden" name="tbc_ca_settings[visibility_rules][' + elKey + '][roles][]" value="' + slug + '" />';
+                            pills.appendChild(pill);
+
+                            select.options[select.selectedIndex].disabled = true;
+                            select.value = '';
+                            this._updateSummary(card);
+                        },
+
+                        // ── Remove role ──
+                        removeRole: function(btn) {
+                            var pill = btn.closest('.tbc-vis-pill');
+                            var card = pill.closest('.tbc-vis-card');
+                            var slug = pill.dataset.role;
+                            var select = card.querySelector('.tbc-vis-role-select');
+                            for (var i = 0; i < select.options.length; i++) {
+                                if (select.options[i].value === slug) { select.options[i].disabled = false; break; }
+                            }
+                            pill.remove();
+                            this._updateSummary(card);
+                        },
+
+                        // ── Update summary badge ──
+                        _updateSummary: function(card) {
+                            var el = card.querySelector('.tbc-vis-card__summary');
+                            var mode = card.querySelector('input[type="radio"]:checked').value;
+                            var pills = card.querySelectorAll('.tbc-vis-pill');
+                            var names = [];
+                            pills.forEach(function(p) { names.push(p.textContent.replace('×', '').trim()); });
+
+                            el.className = 'tbc-vis-card__summary';
+                            if (mode === 'everyone') {
+                                el.textContent = '<?php echo esc_js(__('Visible to all', 'tbc-ca')); ?>';
+                                el.classList.add('tbc-ca-summary--all');
+                            } else if (mode === 'only') {
+                                el.textContent = names.length ? '<?php echo esc_js(__('Only:', 'tbc-ca')); ?> ' + names.join(', ') : '<?php echo esc_js(__('Only: (none selected)', 'tbc-ca')); ?>';
+                                el.classList.add('tbc-ca-summary--only');
+                            } else {
+                                el.textContent = names.length ? '<?php echo esc_js(__('Hidden from:', 'tbc-ca')); ?> ' + names.join(', ') : '<?php echo esc_js(__('Hidden from: (none selected)', 'tbc-ca')); ?>';
+                                el.classList.add('tbc-ca-summary--except');
+                            }
+                        },
+
+                        // ── Show add form ──
+                        showAddForm: function() {
+                            document.getElementById('tbc-vis-add-card').style.display = 'none';
+                            document.getElementById('tbc-vis-add-form').style.display = '';
+                            document.getElementById('tbc-vis-new-key').focus();
+                        },
+
+                        cancelAdd: function() {
+                            document.getElementById('tbc-vis-new-key').value = '';
+                            document.getElementById('tbc-vis-new-label').value = '';
+                            document.getElementById('tbc-vis-add-form').style.display = 'none';
+                            document.getElementById('tbc-vis-add-card').style.display = '';
+                        },
+
+                        // ── Confirm add ──
+                        confirmAdd: function() {
+                            var key = document.getElementById('tbc-vis-new-key').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                            var label = document.getElementById('tbc-vis-new-label').value.trim();
+                            if (!key || !label) { alert('<?php echo esc_js(__('Both key and label are required.', 'tbc-ca')); ?>'); return; }
+
+                            // Duplicate check
+                            var all = document.querySelectorAll('.tbc-vis-card[data-element]');
+                            for (var i = 0; i < all.length; i++) {
+                                if (all[i].dataset.element === key) { alert('<?php echo esc_js(__('An element with this key already exists.', 'tbc-ca')); ?>'); return; }
+                            }
+
+                            var list = document.getElementById('tbc-vis-custom-list');
+                            var addCard = document.getElementById('tbc-vis-add-card');
+                            var idx = list.querySelectorAll('.tbc-vis-card--custom').length;
+
+                            // Build role options
+                            var opts = '<option value=""><?php echo esc_js(__('— Add a role —', 'tbc-ca')); ?></option>';
+                            for (var slug in roles) { opts += '<option value="' + slug + '">' + roles[slug] + '</option>'; }
+
+                            var html =
+                                '<div class="tbc-vis-card tbc-vis-card--custom" data-element="' + key + '">' +
+                                    '<input type="hidden" name="tbc_ca_settings[custom_visibility_elements][' + idx + '][key]" value="' + key + '" />' +
+                                    '<input type="hidden" name="tbc_ca_settings[custom_visibility_elements][' + idx + '][label]" value="' + label + '" />' +
+                                    '<div class="tbc-vis-card__header" onclick="tbcVis.toggle(this);">' +
+                                        '<div class="tbc-vis-card__header-left">' +
+                                            '<span class="tbc-vis-card__arrow dashicons dashicons-arrow-right-alt2"></span>' +
+                                            '<div class="tbc-vis-card__identity">' +
+                                                '<span class="tbc-vis-card__label">' + label + '</span>' +
+                                                '<span class="tbc-vis-card__key-badge">' + key + '</span>' +
+                                            '</div>' +
+                                            '<span class="tbc-vis-card__type-badge tbc-vis-card__type-badge--custom"><?php echo esc_js(__('Custom', 'tbc-ca')); ?></span>' +
+                                        '</div>' +
+                                        '<div class="tbc-vis-card__header-right">' +
+                                            '<span class="tbc-vis-card__summary tbc-ca-summary--all"><?php echo esc_js(__('Visible to all', 'tbc-ca')); ?></span>' +
+                                            '<button type="button" class="tbc-vis-card__delete" onclick="tbcVis.removeElement(event, this);" title="<?php echo esc_js(__('Remove element', 'tbc-ca')); ?>">' +
+                                                '<span class="dashicons dashicons-trash"></span>' +
+                                            '</button>' +
+                                        '</div>' +
+                                    '</div>' +
+                                    '<div class="tbc-vis-card__body" style="display: none;">' +
+                                        '<div class="tbc-vis-card__modes">' +
+                                            '<label class="tbc-vis-mode tbc-vis-mode--active">' +
+                                                '<input type="radio" name="tbc_ca_settings[visibility_rules][' + key + '][mode]" value="everyone" checked onchange="tbcVis.modeChange(this);" />' +
+                                                '<span class="dashicons dashicons-visibility"></span>' +
+                                                '<span class="tbc-vis-mode__text"><strong><?php echo esc_js(__('Everyone', 'tbc-ca')); ?></strong><small><?php echo esc_js(__('Visible to all roles', 'tbc-ca')); ?></small></span>' +
+                                            '</label>' +
+                                            '<label class="tbc-vis-mode">' +
+                                                '<input type="radio" name="tbc_ca_settings[visibility_rules][' + key + '][mode]" value="only" onchange="tbcVis.modeChange(this);" />' +
+                                                '<span class="dashicons dashicons-lock"></span>' +
+                                                '<span class="tbc-vis-mode__text"><strong><?php echo esc_js(__('Only these roles', 'tbc-ca')); ?></strong><small><?php echo esc_js(__('Hidden from everyone else', 'tbc-ca')); ?></small></span>' +
+                                            '</label>' +
+                                            '<label class="tbc-vis-mode">' +
+                                                '<input type="radio" name="tbc_ca_settings[visibility_rules][' + key + '][mode]" value="except" onchange="tbcVis.modeChange(this);" />' +
+                                                '<span class="dashicons dashicons-hidden"></span>' +
+                                                '<span class="tbc-vis-mode__text"><strong><?php echo esc_js(__('Everyone except', 'tbc-ca')); ?></strong><small><?php echo esc_js(__('Hidden from selected roles', 'tbc-ca')); ?></small></span>' +
+                                            '</label>' +
+                                        '</div>' +
+                                        '<div class="tbc-vis-card__roles" style="display:none;">' +
+                                            '<div class="tbc-vis-pills"></div>' +
+                                            '<select class="tbc-vis-role-select" onchange="tbcVis.addRole(this);">' + opts + '</select>' +
+                                        '</div>' +
+                                    '</div>' +
+                                '</div>';
+
+                            addCard.insertAdjacentHTML('beforebegin', html);
+
+                            // Reset
+                            document.getElementById('tbc-vis-new-key').value = '';
+                            document.getElementById('tbc-vis-new-label').value = '';
+                            document.getElementById('tbc-vis-add-form').style.display = 'none';
+                            addCard.style.display = '';
+                        },
+
+                        // ── Remove custom element ──
+                        removeElement: function(event, btn) {
+                            event.stopPropagation();
+                            var card = btn.closest('.tbc-vis-card');
+                            if (confirm('<?php echo esc_js(__('Remove this element? Its visibility rules will be deleted.', 'tbc-ca')); ?>')) {
+                                card.remove();
+                            }
+                        }
+                    };
+                })();
+                </script>
 
                 </div><!-- /.tbc-ca-tab-panel visibility -->
 

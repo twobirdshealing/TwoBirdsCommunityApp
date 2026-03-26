@@ -10,6 +10,7 @@ import type { FeaturesConfig } from '@/services/api/appConfig';
 import type { WidgetRegistration } from '@/modules/_types';
 import { getModuleWidgets } from '@/modules/_registry';
 import { CoursesWidget } from '@/components/home/CoursesWidget';
+import { isItemHidden } from '@/utils/visibility';
 
 // -----------------------------------------------------------------------------
 // Core Widget Registry (non-module widgets)
@@ -26,6 +27,7 @@ const CORE_WIDGETS: WidgetRegistration[] = [
     canDisable: true,
     externalWrapper: true,
     component: CoursesWidget,
+    hideKey: 'courses',
   },
 ];
 
@@ -43,12 +45,11 @@ export const WIDGET_REGISTRY: WidgetRegistration[] = [
 // Helpers
 // -----------------------------------------------------------------------------
 
-/** Get the subset of widgets that pass their feature flag check */
-export function getAvailableWidgets(features: FeaturesConfig): WidgetRegistration[] {
+/** Get the subset of widgets that pass their feature flag and visibility checks */
+export function getAvailableWidgets(features: FeaturesConfig, hideMenu: string[] = []): WidgetRegistration[] {
   return WIDGET_REGISTRY.filter((w) => {
-    if (w.featureFlag) {
-      return features[w.featureFlag] === true;
-    }
+    if (w.featureFlag && features[w.featureFlag] !== true) return false;
+    if (isItemHidden(hideMenu, w.hideKey)) return false;
     return true;
   });
 }

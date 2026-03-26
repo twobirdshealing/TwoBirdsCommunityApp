@@ -173,24 +173,410 @@
     border-left: 4px solid #d63638;
 }
 
-/* Visibility table */
-.tbc-ca-visibility-table {
-    margin-top: 15px;
+/* ── Visibility: Unified Cards ── */
+.tbc-vis-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
 }
 
-.tbc-ca-visibility-table th,
-.tbc-ca-visibility-table td {
-    vertical-align: middle;
+.tbc-vis-card {
+    border: 1px solid #dcdcde;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.tbc-ca-vis-col {
-    text-align: center;
-    width: 100px;
+.tbc-vis-card--open {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
 }
 
-.tbc-ca-visibility-table thead th {
-    background: #f6f7f7;
+.tbc-vis-card--custom {
+    border-left: 3px solid #2271b1;
+}
+
+/* ── Card header ── */
+.tbc-vis-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.1s;
+    gap: 12px;
+}
+
+.tbc-vis-card__header:hover {
+    background: #f9f9f9;
+}
+
+.tbc-vis-card__header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.tbc-vis-card__header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.tbc-vis-card__arrow {
+    color: #a7aaad;
+    font-size: 16px;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+
+.tbc-vis-card--open .tbc-vis-card__arrow {
+    transform: rotate(90deg);
+    color: #2271b1;
+}
+
+.tbc-vis-card__identity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.tbc-vis-card__label {
+    font-weight: 600;
+    font-size: 13px;
+    color: #1d2327;
+    white-space: nowrap;
+}
+
+.tbc-vis-card__key-badge {
+    font-family: monospace;
+    font-size: 11px;
+    color: #666;
+    background: #f0f0f1;
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.tbc-vis-card__type-badge {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.tbc-vis-card__type-badge--core {
+    background: #f0f0f1;
+    color: #888;
+}
+
+.tbc-vis-card__type-badge--custom {
+    background: #f0f6fc;
+    color: #2271b1;
+}
+
+/* Delete button */
+.tbc-vis-card__delete {
+    background: none;
+    border: none;
+    color: #a7aaad;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+}
+
+.tbc-vis-card__delete:hover {
+    color: #cc1818;
+    background: #fcecec;
+}
+
+.tbc-vis-card__delete .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+/* ── Summary badges ── */
+.tbc-vis-card__summary {
     font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
+}
+
+.tbc-ca-summary--all {
+    background: #edfaef;
+    color: #00a32a;
+}
+
+.tbc-ca-summary--only {
+    background: #fef3e0;
+    color: #996800;
+}
+
+.tbc-ca-summary--except {
+    background: #fcecec;
+    color: #cc1818;
+}
+
+/* ── Card body (expanded) ── */
+.tbc-vis-card__body {
+    padding: 0 16px 20px;
+    border-top: 1px solid #f0f0f1;
+}
+
+/* Mode selector */
+.tbc-vis-card__modes {
+    display: flex;
+    gap: 8px;
+    margin: 16px 0 12px;
+}
+
+.tbc-vis-mode {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 2px solid #dcdcde;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: #fafafa;
+}
+
+.tbc-vis-mode:hover {
+    border-color: #a7aaad;
+    background: #f0f0f1;
+}
+
+.tbc-vis-mode--active {
+    border-color: #2271b1;
+    background: #f0f6fc;
+}
+
+.tbc-vis-mode--active:hover {
+    border-color: #2271b1;
+    background: #f0f6fc;
+}
+
+.tbc-vis-mode input[type="radio"] {
+    display: none;
+}
+
+.tbc-vis-mode .dashicons {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #a7aaad;
+    flex-shrink: 0;
+}
+
+.tbc-vis-mode--active .dashicons {
+    color: #2271b1;
+}
+
+.tbc-vis-mode__text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.tbc-vis-mode__text strong {
+    font-size: 13px;
+    color: #1d2327;
+}
+
+.tbc-vis-mode__text small {
+    font-size: 11px;
+    color: #888;
+}
+
+/* Role picker */
+.tbc-vis-card__roles {
+    margin-top: 4px;
+}
+
+.tbc-vis-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+    min-height: 8px;
+}
+
+.tbc-vis-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f0f6fc;
+    border: 1px solid #c5d9ed;
+    color: #2271b1;
+    padding: 5px 8px 5px 11px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.tbc-vis-pill__x {
+    background: none;
+    border: none;
+    font-size: 15px;
+    color: #2271b1;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    border-radius: 50%;
+    transition: background 0.1s, color 0.1s;
+}
+
+.tbc-vis-pill__x:hover {
+    background: #2271b1;
+    color: #fff;
+}
+
+.tbc-vis-role-select {
+    width: 100%;
+    max-width: 300px;
+    padding: 7px 10px;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+/* ── Add element card ── */
+.tbc-vis-card--add {
+    border: 2px dashed #c3c4c7;
+    background: #fafafa;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.tbc-vis-card--add:hover {
+    border-color: #2271b1;
+    background: #f0f6fc;
+}
+
+.tbc-vis-card--add__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 16px;
+    gap: 4px;
+}
+
+.tbc-vis-card--add__icon {
+    font-size: 32px;
+    font-weight: 300;
+    color: #2271b1;
+    line-height: 1;
+}
+
+.tbc-vis-card--add__text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2271b1;
+}
+
+.tbc-vis-card--add__hint {
+    font-size: 12px;
+    color: #888;
+}
+
+/* Inline add form */
+.tbc-vis-card--form {
+    border: 2px solid #2271b1;
+    border-radius: 8px;
+}
+
+.tbc-vis-add-form__inner {
+    padding: 20px;
+}
+
+.tbc-vis-add-form__inner h4 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    color: #1d2327;
+}
+
+.tbc-vis-add-form__fields {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.tbc-vis-add-form__field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tbc-vis-add-form__field > span {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.tbc-vis-add-form__field input {
+    padding: 6px 10px;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.tbc-vis-add-form__field small {
+    font-size: 11px;
+    color: #888;
+}
+
+.tbc-vis-add-form__actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* ── Responsive ── */
+@media screen and (max-width: 782px) {
+    .tbc-vis-card__modes {
+        flex-direction: column;
+    }
+
+    .tbc-vis-card__summary {
+        max-width: 140px;
+        font-size: 11px;
+    }
+
+    .tbc-vis-card__header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .tbc-vis-add-form__fields {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .tbc-vis-mode {
+        padding: 10px 12px;
+    }
 }
 
 /* Stats section */

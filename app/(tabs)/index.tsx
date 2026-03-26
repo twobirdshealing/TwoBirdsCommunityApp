@@ -22,7 +22,7 @@ import { useRouter } from 'expo-router';
 import { spacing } from '@/constants/layout';
 import { useTabContentPadding } from '@/contexts/BottomOffsetContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useFeatures } from '@/contexts/AppConfigContext';
+import { useAppConfig, useFeatures } from '@/contexts/AppConfigContext';
 import { useTabBar } from '@/contexts/TabBarContext';
 import { hapticMedium } from '@/utils/haptics';
 import { useWidgetPreferences, WidgetPreference } from '@/hooks/useWidgetPreferences';
@@ -34,6 +34,7 @@ import { HomeWidget } from '@/components/home/HomeWidget';
 import { WelcomeBannerWidget } from '@/components/home/WelcomeBannerWidget';
 import { EditModeBar } from '@/components/home/EditModeBar';
 import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
+import { EMPTY_HIDE_MENU } from '@/utils/visibility';
 
 // -----------------------------------------------------------------------------
 // Widget Component Map — core + module widgets (unified)
@@ -64,6 +65,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
   const features = useFeatures();
+  const { visibility } = useAppConfig();
+  const hideMenu = visibility?.hide_menu ?? EMPTY_HIDE_MENU;
   const bottomInset = useTabContentPadding();
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -99,7 +102,7 @@ export default function HomeScreen() {
 
   const widgetItems = useMemo<WidgetItem[]>(() => {
     if (!preferences) return [];
-    const available = getAvailableWidgets(features);
+    const available = getAvailableWidgets(features, hideMenu);
     const registryMap = new Map(available.map((w) => [w.id, w]));
 
     return preferences.order
@@ -109,7 +112,7 @@ export default function HomeScreen() {
         return { pref, config };
       })
       .filter((item): item is WidgetItem => item !== null);
-  }, [preferences, features]);
+  }, [preferences, features, hideMenu]);
 
   // ---------------------------------------------------------------------------
   // Edit Mode

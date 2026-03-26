@@ -26,6 +26,7 @@ import { HeaderIconButton } from './HeaderIconButton';
 import { Launcher } from './Launcher';
 import { getModuleHeaderIcons } from '@/modules/_registry';
 import type { HeaderIconRegistration } from '@/modules/_types';
+import { EMPTY_HIDE_MENU, isItemHidden } from '@/utils/visibility';
 
 // -----------------------------------------------------------------------------
 // Props
@@ -53,11 +54,10 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
     setUnreadNotifications,
   } = useUnreadCounts();
 
-  const hideMenu = visibility?.hide_menu ?? [];
-  // Modules are static — only refilter when visibility changes
+  const hideMenu = visibility?.hide_menu ?? EMPTY_HIDE_MENU;
   const moduleHeaderIcons = useMemo(
     () => getModuleHeaderIcons().filter(
-      (icon) => !icon.hideMenuKey || !hideMenu.includes(icon.hideMenuKey)
+      (icon) => !isItemHidden(hideMenu, icon.hideMenuKey)
     ),
     [hideMenu]
   );

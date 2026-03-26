@@ -41,7 +41,7 @@ async function pushOTAUpdate(channel, message, platform) {
   if (!VALID_OTA_PLATFORMS.includes(platform)) return { ok: false, error: 'Invalid platform' };
   if (!message || typeof message !== 'string' || message.length > 500) return { ok: false, error: 'Message is required (max 500 chars)' };
 
-  const args = ['eas', 'update', '--channel', channel, '--message', JSON.stringify(message), '--non-interactive'];
+  const args = ['eas', 'update', '--channel', channel, '--environment', channel, '--message', JSON.stringify(message), '--non-interactive'];
   if (platform !== 'all') {
     args.push('--platform', platform);
   }
@@ -73,6 +73,11 @@ async function listOTAUpdates() {
     const output = await runCommand(['eas', 'update:list', '--all', '--json', '--non-interactive'], 30000);
     return { ok: true, updates: JSON.parse(output) };
   } catch (err) {
+    // When no updates exist yet, EAS CLI errors out — treat as empty list
+    const msg = (err.message || '').toLowerCase();
+    if (msg.includes('branch') || msg.includes('no updates') || msg.includes('not found') || msg.includes('could not find') || msg.includes('environment')) {
+      return { ok: true, updates: [] };
+    }
     return diagnoseEasError(err);
   }
 }

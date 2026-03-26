@@ -755,7 +755,7 @@
       <div id="ota-push-banner" style="display:none"></div>
       <div class="field-group" style="margin-bottom:16px">
         <div class="field">
-          <label>Channel</label>
+          <label>Environment</label>
           <select id="ota-channel">
             <option value="production">Production</option>
             <option value="preview">Preview</option>
@@ -777,7 +777,7 @@
         </div>
       </div>
       <button class="btn btn-primary" id="ota-push-btn" onclick="pushOTA()">Push Update</button>
-      <p style="margin:12px 0 0;font-size:12px;color:var(--text-muted)">This pushes your current JS code to all users on the selected channel. Changes take effect on their next app launch.</p>
+      <p style="margin:12px 0 0;font-size:12px;color:var(--text-muted)">This pushes your current JS code to all users on the selected environment. Changes take effect on their next app launch.</p>
     </div>
   </div>
 
@@ -787,8 +787,11 @@
       <h3>Update History</h3>
       <button class="btn btn-sm" onclick="loadOTAHistory()">Refresh</button>
     </div>
-    <div class="card-body" id="ota-history-body">
-      <div class="loading"><span class="spinner"></span> Loading updates...</div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px 0">OTA updates only reach devices on the matching runtime version. Once you release a new native build (e.g. v3.4.0), old updates (e.g. v3.3.0) will no longer be delivered and can be safely removed.</p>
+      <div id="ota-history-body">
+        <div class="loading"><span class="spinner"></span> Loading updates...</div>
+      </div>
     </div>
   </div>
 </div>
@@ -1984,6 +1987,18 @@ async function loadModules() {
         companionHtml = '<div style="font-size:11px;color:var(--text-muted)">Plugin: ' + mod.companionPlugin + ' ' + cpIcon + '</div>';
       }
 
+      let visKeyHtml = '';
+      if (mod.visibilityKeys && mod.visibilityKeys.length > 0) {
+        const keyBadges = mod.visibilityKeys.map(function(k) {
+          return '<code style="font-family:monospace;font-size:11px;background:var(--bg-alt);border:1px solid var(--border);padding:1px 6px;border-radius:3px;user-select:all">' + esc(k) + '</code>';
+        }).join(' ');
+        visKeyHtml = '<div style="font-size:11px;color:var(--text-muted)">' +
+          'Visibility ' + (mod.visibilityKeys.length > 1 ? 'Keys' : 'Key') + ': ' + keyBadges +
+          ' <button class="help-toggle" type="button" title="Toggle help">?</button>' +
+          '<div class="field-help collapsed" style="margin-top:4px">Add ' + (mod.visibilityKeys.length > 1 ? 'these keys' : 'this key') + ' in wp-admin → TBC Community App → UI Visibility → Custom Elements to control who sees this module.</div>' +
+        '</div>';
+      }
+
       let actionsHtml = '';
       if (mod.active) {
         actionsHtml += '<button class="btn btn-sm" onclick="toggleMod(\'' + mod.id + '\', false)">Deactivate</button>';
@@ -2012,9 +2027,21 @@ async function loadModules() {
             (mod.hasTab ? '<div style="font-size:11px;color:var(--text-muted)">Has tab</div>' : '') +
             companionHtml +
           '</div>' +
+          visKeyHtml +
         '</div>' +
         '<span class="build-status ' + (mod.active ? 'finished' : 'canceled') + '">' + statusLabel + '</span>' +
         '<div class="build-actions">' + actionsHtml + '</div>';
+      // Wire up help-toggle for visibility key
+      const helpToggle = card.querySelector('.help-toggle');
+      const helpPanel = card.querySelector('.field-help');
+      if (helpToggle && helpPanel) {
+        helpToggle.addEventListener('click', function(e) {
+          e.stopPropagation();
+          helpPanel.classList.toggle('collapsed');
+          helpPanel.classList.toggle('expanded');
+        });
+      }
+
       list.appendChild(card);
     }
   } catch (err) {
@@ -2481,13 +2508,18 @@ async function loadOTAHistory() {
       html += '<span>' + esc(dateStr) + '</span>';
       html += '</div>';
       html += '</div>';
-      html += '<button class="btn btn-sm btn-danger-subtle" onclick="deleteOTA(&quot;' + esc(id) + '&quot;)">Delete</button>';
+      html += '<button class="btn btn-sm btn-danger-subtle" onclick="deleteOTA(&quot;' + esc(id) + '&quot;)">Remove from EAS</button>';
       html += '</div>';
     });
     html += '</div>';
     el.innerHTML = html;
   } catch (err) {
-    el.innerHTML = '<div class="ota-banner error">Failed to load history: ' + esc(err.message) + '</div>';
+    // Network/timeout errors on first use likely mean no updates exist yet
+    if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+      el.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:24px 0">No OTA updates yet. Push your first update above.</p>';
+    } else {
+      el.innerHTML = '<div class="ota-banner error">Failed to load history: ' + esc(err.message) + '</div>';
+    }
   }
 }
 
@@ -2499,7 +2531,7 @@ async function pushOTA() {
   const btn = document.getElementById('ota-push-btn');
 
   if (!message) { showToast('Please enter a message describing what changed', 'error'); return; }
-  if (!confirm('Push an OTA update to the "' + channel + '" channel (' + platform + ')?\n\nThis will immediately push your current code to all users on this channel.')) return;
+  if (!confirm('Push an OTA update to the "' + channel + '" environment (' + platform + ')?\n\nThis will immediately push your current code to all users on this environment.')) return;
 
   btn.disabled = true;
   btn.textContent = 'Pushing...';
@@ -2536,7 +2568,7 @@ async function pushOTA() {
 }
 
 async function deleteOTA(groupId) {
-  if (!confirm('Delete this OTA update group?\n\nUsers who already downloaded it will not be affected, but new users will not receive it.')) return;
+  if (!confirm('Remove this OTA update from EAS?\n\n• Users who already downloaded this update will keep it\n• Users who haven\'t downloaded it yet will no longer receive it\n• To revert users who already have it, push a new OTA update\n\nThis cannot be undone.')) return;
   try {
     const res = await fetch('/api/ota/delete', {
       method: 'POST',
@@ -2545,13 +2577,13 @@ async function deleteOTA(groupId) {
     });
     const data = await res.json();
     if (data.ok) {
-      showToast('Update deleted', 'success');
+      showToast('Update removed from EAS', 'success');
       loadOTAHistory();
     } else {
-      showToast('Delete failed: ' + (data.error || 'Unknown error'), 'error');
+      showToast('Remove failed: ' + (data.error || 'Unknown error'), 'error');
     }
   } catch (err) {
-    showToast('Delete failed: ' + err.message, 'error');
+    showToast('Remove failed: ' + err.message, 'error');
   }
 }
 

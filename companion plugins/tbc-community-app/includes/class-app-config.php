@@ -146,16 +146,25 @@ class TBC_CA_App_Config {
      * Get visibility flags for a specific user role
      */
     private function get_visibility_flags($user_roles, $settings) {
-        $visibility = $settings['ui_visibility'] ?? [];
+        $rules = $settings['visibility_rules'] ?? [];
 
-        // Merge hidden elements across ALL of the user's roles
         $hidden = [];
-        foreach ($user_roles as $role) {
-            if (isset($visibility[$role])) {
-                $hidden = array_merge($hidden, (array) $visibility[$role]);
+        foreach ($rules as $el_key => $rule) {
+            $mode  = $rule['mode'] ?? 'everyone';
+            $roles = (array) ($rule['roles'] ?? []);
+
+            if ($mode === 'only') {
+                // Visible only to these roles — hidden if user has NONE of them
+                if (!array_intersect($user_roles, $roles)) {
+                    $hidden[] = $el_key;
+                }
+            } elseif ($mode === 'except') {
+                // Visible to everyone except these roles — hidden if user has ANY of them
+                if (array_intersect($user_roles, $roles)) {
+                    $hidden[] = $el_key;
+                }
             }
         }
-        $hidden = array_unique($hidden);
 
         return [
             'hide_menu' => array_values($hidden),

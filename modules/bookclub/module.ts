@@ -43,6 +43,7 @@ export const bookclubModule: ModuleManifest = {
       canDisable: true,
       externalWrapper: true,
       component: BookClubWidget,
+      hideKey: 'bookclub',
     },
   ],
 

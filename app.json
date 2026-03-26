@@ -34,7 +34,7 @@
         "foregroundImage": "./assets/images/app_icon_android_adaptive_fg.png",
         "backgroundImage": "./assets/images/app_icon_android_adaptive_bg.png"
       },
-      "softwareKeyboardLayoutMode": "adjustNothing",
+      "softwareKeyboardLayoutMode": "pan",
       "predictiveBackGestureEnabled": false,
       "googleServicesFile": "./google-services.json"
     },

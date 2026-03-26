@@ -29,6 +29,7 @@ export const youtubeModule: ModuleManifest = {
       canDisable: true,
       externalWrapper: true,
       component: YouTubeWidget,
+      hideKey: 'youtube',
     },
   ],
 

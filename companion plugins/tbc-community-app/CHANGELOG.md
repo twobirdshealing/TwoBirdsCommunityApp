@@ -2,6 +2,15 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.49.2
+- **Add Privacy Policy to core visibility elements**: Privacy Policy launcher item can now be hidden per role via UI Visibility. Fixed "Church Directory" label to generic "Directory".
+
+## v3.49.1
+- **Unified visibility cards**: Merged the separate "Registered Elements" and "Visibility Rules" sections into one unified card interface. Each element (core and custom) is now a single expandable card showing its label, type badge (Core/Custom), key badge, and summary pill. Click to expand and configure visibility mode + roles inline. Only one card open at a time. Core elements can't be deleted; custom elements have a trash icon. Custom elements section includes a "+" add card with inline form. Same data format — no API changes.
+
+## v3.49.0
+- **Redesign UI Visibility tab**: Replaced the old checkbox matrix with a modern per-element card interface. Each UI element now has its own expandable rule card with three visibility modes: "Everyone" (visible to all), "Only these roles" (whitelist), and "Everyone except" (blacklist). Roles are selected from a dropdown and displayed as removable pills. Registered Elements section moved to the top with visual cards for core (read-only) and custom (editable) elements. New custom elements are added via an inline "+" card form. Same data format under the hood — no changes to the API response or app-side code.
+
 ## v3.48.2
 - **Add automated notification push support**: Wired up the `fluent_community/notification/automated` hook so automated notifications (e.g. from Uncanny Automator) trigger push notifications. Registered new `automated_notification` type in the push registry (community category, user-configurable, default on). Users can toggle these in their notification preferences.
 

@@ -65,6 +65,8 @@ export interface WidgetRegistration {
   externalWrapper: boolean;
   /** The widget component — receives refreshKey prop */
   component: React.ComponentType<{ refreshKey: number }>;
+  /** Server visibility key — widget hidden when this key is in hide_menu[] */
+  hideKey?: string;
 }
 
 // -----------------------------------------------------------------------------

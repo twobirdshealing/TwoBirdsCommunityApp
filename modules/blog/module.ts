@@ -29,6 +29,7 @@ export const blogModule: ModuleManifest = {
       canDisable: true,
       externalWrapper: true,
       component: BlogWidget,
+      hideKey: 'blog',
     },
   ],
 

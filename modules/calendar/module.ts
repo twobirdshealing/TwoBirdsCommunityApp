@@ -38,6 +38,7 @@ export const calendarModule: ModuleManifest = {
       canDisable: true,
       externalWrapper: true,
       component: CeremonyWidget,
+      hideKey: 'calendar',
     },
     {
       id: 'featured-events',
@@ -48,6 +49,7 @@ export const calendarModule: ModuleManifest = {
       canDisable: true,
       externalWrapper: true,
       component: EventsWidget,
+      hideKey: 'calendar',
     },
   ],
 

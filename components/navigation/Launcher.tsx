@@ -26,6 +26,9 @@ import { BottomSheet, BottomSheetScrollView } from '@/components/common/BottomSh
 import { getLauncherItems } from '@/modules/_registry';
 import type { ColorTheme } from '@/constants/colors';
 
+import { EMPTY_HIDE_MENU, isHidden as isMenuHidden } from '@/utils/visibility';
+
+
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
@@ -112,8 +115,8 @@ export function Launcher({
   const { isDark, setTheme, colors: themeColors } = useTheme();
   const { visibility } = useAppConfig();
   const features = useFeatures();
-  const hideMenu = visibility?.hide_menu ?? [];
-  const isHidden = (key: string) => hideMenu.includes(key);
+  const hideMenu = visibility?.hide_menu ?? EMPTY_HIDE_MENU;
+  const isHidden = (key: string) => isMenuHidden(hideMenu, key);
 
   // Modules are static — memoize to avoid re-sorting on every render
   const moduleLauncherItems = useMemo(() => getLauncherItems(), []);
@@ -202,12 +205,14 @@ export function Launcher({
     }
 
     // Privacy Policy
-    items.push({
-      id: 'privacy',
-      icon: 'shield-checkmark-outline',
-      label: 'Privacy',
-      onPress: handlePrivacyPolicyPress,
-    });
+    if (!isHidden('privacy')) {
+      items.push({
+        id: 'privacy',
+        icon: 'shield-checkmark-outline',
+        label: 'Privacy',
+        onPress: handlePrivacyPolicyPress,
+      });
+    }
 
     // Logout (always last)
     items.push({

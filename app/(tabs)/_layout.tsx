@@ -22,6 +22,7 @@ import { useAppConfig } from '@/contexts/AppConfigContext';
 import { spacing, typography } from '@/constants/layout';
 import type { TabRegistration } from '@/modules/_types';
 import { getModuleTabs, getTabBarAddons } from '@/modules/_registry';
+import { EMPTY_HIDE_MENU, isItemHidden } from '@/utils/visibility';
 
 // -----------------------------------------------------------------------------
 // Tab Bar Icon Component
@@ -112,7 +113,7 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
   const { translateY } = useTabBar();
   const setAddonHeight = useSetAddonHeight();
   const { visibility } = useAppConfig();
-  const hideMenu = visibility?.hide_menu ?? [];
+  const hideMenu = visibility?.hide_menu ?? EMPTY_HIDE_MENU;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -148,7 +149,7 @@ function CustomTabBar({ state, descriptors, navigation, insets }: BottomTabBarPr
       <View style={styles.tabBarInner}>
         {state.routes.filter((route) => {
           const meta = moduleTabMeta[route.name];
-          return !meta?.hideKey || !hideMenu.includes(meta.hideKey);
+          return !isItemHidden(hideMenu, meta?.hideKey);
         }).map((route) => {
           const { options } = descriptors[route.key];
           const isFocused = state.routes[state.index]?.key === route.key;
@@ -200,7 +201,7 @@ function TabLayoutInner() {
   const { showTabBar } = useTabBar();
   const { visibility } = useAppConfig();
   const router = useRouter();
-  const hideMenu = visibility?.hide_menu ?? [];
+  const hideMenu = visibility?.hide_menu ?? EMPTY_HIDE_MENU;
 
   // Module registrations (static — safe to memoize with empty deps)
   const moduleTabs = useMemo(() => getModuleTabs(), []);
@@ -258,14 +259,14 @@ function TabLayoutInner() {
         {/* ============================================= */}
 
         {moduleTabs.map((tab) => {
-          const isHidden = tab.hideMenuKey && hideMenu.includes(tab.hideMenuKey);
+          const hidden = isItemHidden(hideMenu, tab.hideMenuKey);
           return (
             <Tabs.Screen
               key={tab.name}
               name={tab.name}
               options={{
                 title: tab.title,
-                href: isHidden ? null : undefined,
+                href: hidden ? null : undefined,
                 tabBarIcon: tab.tabBarIcon
                   ? tab.tabBarIcon
                   : ({ focused, color }) => (

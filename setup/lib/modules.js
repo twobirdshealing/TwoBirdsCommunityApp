@@ -28,7 +28,8 @@ function safeExtractFiles(files, prefix, destDir) {
 
 /** Parse module.ts to extract id, name, version, companionPlugin, whether it has a tab */
 function parseModuleManifest(moduleDir) {
-  const moduleTs = path.join(moduleDir, 'module.ts');
+  let moduleTs = path.join(moduleDir, 'module.ts');
+  if (!fileExists(moduleTs)) moduleTs = path.join(moduleDir, 'module.tsx');
   if (!fileExists(moduleTs)) return null;
   const content = fs.readFileSync(moduleTs, 'utf8');
 
@@ -44,7 +45,14 @@ function parseModuleManifest(moduleDir) {
   const hasTab = /\btab:\s*\{/.test(content);
   const apiBase = extractTsValue(content, /apiBase:\s*'([^']*)'/);
 
-  return { id, name, version, description, author, authorUrl, license, minAppVersion, companionPlugin, hasTab, apiBase };
+  // Extract all visibility keys — modules can have multiple hideable elements
+  const visibilityKeys = [];
+  const hideKeyMatches = content.matchAll(/hideKey:\s*'([^']*)'/g);
+  for (const m of hideKeyMatches) { if (!visibilityKeys.includes(m[1])) visibilityKeys.push(m[1]); }
+  const hideMenuKeyMatches = content.matchAll(/hideMenuKey:\s*'([^']*)'/g);
+  for (const m of hideMenuKeyMatches) { if (!visibilityKeys.includes(m[1])) visibilityKeys.push(m[1]); }
+
+  return { id, name, version, description, author, authorUrl, license, minAppVersion, companionPlugin, hasTab, apiBase, visibilityKeys };
 }
 
 /** Get all installed modules */
