@@ -19,7 +19,7 @@ SOURCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 WHITE_LABEL_ROOT="$(cd "$SOURCE_DIR/.." && pwd)/TBC-Community-App (White Lable)"
 
 # Allowlist: only these companion plugins ship with the base product
-CORE_PLUGINS=("tbc-community-app" "tbc-multi-reactions" "tbc-starter-theme")
+CORE_PLUGINS=("tbc-community-app" "tbc-multi-reactions")
 
 # Protected paths: buyer-customized files that updates must NEVER overwrite
 # Used to generate manifest.json AND find exclusions for core-update tar
@@ -197,7 +197,12 @@ sed -i \
   -e 's|"version": "[^"]*"|"version": "1.0.0"|' \
   -e 's|https://staging.twobirdschurch.com|https://staging.yoursite.com|g' \
   -e '/"snapshot":/d' \
+  -e '/"changelog":/d' \
   "$TARGET_DIR/package.json"
+
+# Fix trailing commas in JSON (sed deletes can leave them)
+# Matches: comma, optional whitespace, then closing brace/bracket
+sed -i -E ':a;N;$!ba;s/,([[:space:]]*[}\]])/\1/g' "$TARGET_DIR/package.json"
 
 # --- package-lock.json ---
 sed -i \
@@ -344,39 +349,15 @@ if [ $ISSUES -eq 0 ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Step 7: Generate / update CHANGELOG.md
+# Step 7: Copy CHANGELOG.md
 # ---------------------------------------------------------------------------
 
-echo "[7/9] Updating CHANGELOG..."
+echo "[7/9] Copying CHANGELOG..."
 
-CHANGELOG="$TARGET_DIR/CHANGELOG.md"
-DATE=$(date +%Y-%m-%d)
-
-if [ ! -f "$CHANGELOG" ]; then
-  # First snapshot — create the file
-  cat > "$CHANGELOG" << CHANGELOG_EOF
-# Changelog
-
-All notable changes to the TBC Community App white-label product.
-
-## [$SOURCE_VERSION] — $DATE
-
-- Initial white-label release
-CHANGELOG_EOF
+if [ -f "$SOURCE_DIR/CHANGELOG.md" ]; then
+  cp "$SOURCE_DIR/CHANGELOG.md" "$TARGET_DIR/CHANGELOG.md"
 else
-  # Subsequent snapshot — prepend new version entry after the header
-  # Create temp file with new entry inserted after "All notable changes..." line
-  # Skip if this version already has an entry
-  if grep -q "## \[$SOURCE_VERSION\]" "$CHANGELOG"; then
-    echo "  Version $SOURCE_VERSION already in CHANGELOG, skipping."
-  else
-    TEMP_CL=$(mktemp)
-    awk -v ver="$SOURCE_VERSION" -v dt="$DATE" '
-      /^All notable changes/ { print; print ""; print "## [" ver "] — " dt; print ""; print "- Update from upstream"; next }
-      { print }
-    ' "$CHANGELOG" > "$TEMP_CL"
-    mv "$TEMP_CL" "$CHANGELOG"
-  fi
+  echo "  WARNING: No CHANGELOG.md found in source. Skipping."
 fi
 
 echo "  Done."

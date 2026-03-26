@@ -76,7 +76,6 @@ const REQUIRED_ASSETS = [
 const CORE_PLUGINS = [
   { folder: 'tbc-community-app', label: 'TBC Community App', required: true, description: 'Main bridge plugin — auth, registration, push notifications, config, branding, theme sync' },
   { folder: 'tbc-multi-reactions', label: 'TBC Multi Reactions', required: false, description: 'Multi-reaction support — upload to WordPress if desired' },
-  { folder: 'tbc-starter-theme', label: 'TBC Starter Theme', required: false, description: 'Custom WordPress theme — upload and activate' },
 ];
 
 const ADDON_PLUGINS = [

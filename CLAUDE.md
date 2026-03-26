@@ -10,9 +10,13 @@ This is a white-label community app powered by [Fluent Community](https://fluent
 |---|---|
 | **Setup Guide** | `setup/setup-guide.html` — Full walkthrough with screenshots |
 | **Setup Dashboard** | `npm run dashboard` — Browser-based config UI at localhost:3456 |
-| **Theme System** | `docs/theme-system.html` — Color tokens, Fluent CSS sync, usage rules |
+| **Architecture** | `docs/architecture.html` — App structure, data flow, core systems |
 | **Module System** | `docs/module-system.html` — Full reference with examples |
+| **Theme System** | `docs/theme-system.html` — Color tokens, Fluent CSS sync, usage rules |
+| **Companion Plugins** | `docs/companion-plugins.html` — Plugin descriptions, endpoints, installation |
+| **Logging** | `docs/logging.html` — createLogger usage and conventions |
 | **Per-Module Docs** | `docs/modules/` — Individual module setup & configuration |
+| **All Docs** | `docs/` — 25+ HTML files covering every core system in detail |
 
 ## Quick Commands
 
@@ -26,7 +30,7 @@ This is a white-label community app powered by [Fluent Community](https://fluent
 | `eas submit --platform ios --latest` | Submit latest iOS build to App Store Connect |
 | `eas update --channel production --message "..."` | Push OTA update to production users (JS-layer only) |
 
-## Core Files — Do Not Edit Without Permission
+## Core Files — Do Not Edit
 
 The following directories and files are **core** and will be **overwritten when you apply updates**:
 
@@ -36,6 +40,7 @@ The following directories and files are **core** and will be **overwritten when 
 - `contexts/` — React context providers
 - `hooks/` — Custom React hooks
 - `utils/` — Utility functions
+- `types/` — TypeScript type definitions
 - `constants/colors.ts` — Theme color definitions (overridden by Fluent sync)
 
 **Safe to edit** (protected during updates):
@@ -46,37 +51,30 @@ The following directories and files are **core** and will be **overwritten when 
 - `assets/images/` — Your branding assets
 - `modules/` — Your custom modules
 
+> **Source of truth:** `manifest.json` → `protectedPaths` defines exactly which files are preserved during updates. Everything else is core and gets overwritten.
+
 > **Warning:** If you modify core files, your changes will be lost when applying a core update. If you need custom behavior, build it as a module instead.
 
 ## Companion Plugins
 
-The `companion plugins/` folder contains WordPress plugins and a theme that ship with the app. Install these on your WordPress site.
+The `companion plugins/` folder contains WordPress plugins. Install these on your WordPress site.
 
-### Core Plugins (required)
-- **tbc-community-app** — Main bridge plugin. All custom REST endpoints that the app uses to communicate with WordPress. Includes base registration endpoints (`tbc-ca/v1/auth/register/*`) that work with FC's native registration.
-- **tbc-multi-reactions** — Multi-reaction support (like, love, laugh, etc.) for Fluent Community posts.
+**Core (required):** tbc-community-app (REST endpoints), tbc-multi-reactions (post reactions).
 
-### Theme
-- **tbc-starter-theme** — WordPress theme that provides the app's web companion views and color sync endpoint.
+**Add-ons (sold separately):** Paired module + plugin packages — the app module lives in `modules/`, the companion plugin lives in `companion plugins/`. Both are required for the feature to work.
 
-### Add-on Modules with Companion Plugins (sold separately)
+See `docs/companion-plugins.html` for full plugin reference including endpoints and installation.
 
-Each add-on is a **paired module + plugin**: the app module lives in `modules/`, and its companion WordPress plugin lives in `companion plugins/`. Both are required for the feature to work.
-
-- **tbc-otp** (plugin) + **otp module** — Phone OTP verification via Twilio. Adds a pre-creation registration step. Endpoints at `tbc-otp/v1`.
-- **tbc-profile-completion** (plugin) + **profile-completion module** — Profile completion gate. Requires bio and/or avatar after registration. Uses response header detection. Endpoints at `tbc-pcom/v1`.
-
+> When working on companion plugins, always update the version number and changelog after changes.
 
 ## Module System
 
-Self-contained features that plug into the app without touching core code. Each module registers any combination of: bottom tabs, home widgets, launcher items, header icons, context providers, tab bar addons, registration steps, response headers, route prefixes, UI slots.
+Self-contained features that plug into the app without touching core code. Full reference: `docs/module-system.html`
 
 - **Define** a manifest in `modules/yourmodule/module.ts`
 - **Register** in `modules/_registry.ts` (one line to enable/disable)
 - **Route stub** in `app/(tabs)/` (one-line re-export, only if module has a tab)
 - **Companion plugin** in `companion plugins/` (if module needs a WordPress backend)
-
-Core features (feed, spaces, profiles, messaging, courses) are controlled by feature flags in wp-admin → TBC Community App → Features tab. The app fetches them via `/app-config` on startup (see `AppConfigContext` + `useFeatures` hook). Modules are for self-contained add-ons that go beyond core.
 
 ## Import Rules — Direct Imports Only
 
@@ -100,14 +98,7 @@ Quick rules:
 
 ## App Version Bumping
 
-Update all 4 places when bumping:
-
-1. `package.json` → `version`
-2. `app.json` → `expo.version`
-3. `app.json` → `ios.buildNumber` (string, e.g. `"3.0.1"`)
-4. `app.json` → `android.versionCode` (integer, pattern: `major*100 + minor*10 + patch`)
-
-Or use the version bump buttons in the setup dashboard.
+Use the version bump buttons in the setup dashboard (`npm run dashboard`). If bumping manually, update: `package.json` → version, `app.json` → expo.version + ios.buildNumber + android.versionCode.
 
 ## OTA Updates vs New Build
 
@@ -134,20 +125,13 @@ After completing a task, tell the user whether their change is OTA-safe or requi
 ## Development & Debugging
 
 - **Dev client**: App uses `expo-dev-client` (NOT Expo Go). After adding native modules, a new dev client build is needed via EAS.
-- **Logging**: Use `createLogger(tag)` from `@/utils/logger` for all debug logging. Zero-cost in production.
-  ```ts
-  const log = createLogger('Pusher');
-  log('connected');        // [Pusher] connected
-  log.warn('reconnecting'); // [Pusher] reconnecting
-  log.error('failed', err); // [Pusher] failed <error>
-  ```
+- **Logging**: Use `createLogger(tag)` from `@/utils/logger` — never raw `console.log`. See `docs/logging.html`.
 - **`__DEV__` checks**: Used for dev-only validation. Never wrap user-facing logic in `__DEV__`.
 
 ## General Rules
 
 - Do not create new dependencies or utilities without checking the project first — there may already be centralized functions for what you need.
 - Don't guess or make up APIs — always check existing endpoints and services first.
-- When working on companion plugins, update the version number and changelog after changes.
 
 ---
 
@@ -175,6 +159,7 @@ Dev brand: Two Birds Code (twobirdscode.com) — TBC
 | Command | What it does |
 |---|---|
 | `npm run snapshot` | Create white-label snapshot (`bash scripts/create-white-label.sh`) |
+| `npm run changelog` | Generate/update CHANGELOG.md from git history since last version bump |
 
 ### Add-on Modules
 
@@ -213,7 +198,7 @@ The snapshot script copies this app to the white-label folder with all site-spec
 
 **What it does:**
 1. Copies project to `../TBC-Community-App (White Lable)/` (excludes node_modules, .git, modules, companion plugins)
-2. Copies only core companion plugins (allowlist: tbc-community-app, tbc-multi-reactions, tbc-starter-theme)
+2. Copies only core companion plugins (allowlist: tbc-community-app, tbc-multi-reactions)
 3. Copies only module infrastructure (`_registry.ts`, `_types.ts`) — no module folders
 4. Replaces Two Birds-specific values with placeholders in config.ts, app.json, eas.json, app.config.ts, package.json
 5. Removes Firebase configs, adds FIREBASE_SETUP.md guide
@@ -222,7 +207,7 @@ The snapshot script copies this app to the white-label folder with all site-spec
 
 **What ships in the base white-label product:**
 - Core app (all screens, services, components)
-- Core companion plugins: tbc-community-app, tbc-multi-reactions, tbc-starter-theme
+- Core companion plugins: tbc-community-app, tbc-multi-reactions
 
 **Sold separately as add-ons (NOT in white-label):**
 - tbc-otp plugin (phone OTP verification), tbc-profile-completion plugin (profile completion gate)

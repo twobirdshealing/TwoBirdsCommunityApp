@@ -12,7 +12,8 @@
     "dev": "npx expo start --dev-client --clear",
     "dev:staging": "cross-env EXPO_PUBLIC_SITE_URL=https://staging.twobirdschurch.com EXPO_PUBLIC_USE_STAGING=1 npx expo start --dev-client --clear",
     "dashboard": "node setup/dashboard.js",
-    "snapshot": "bash scripts/create-white-label.sh"
+    "snapshot": "bash scripts/create-white-label.sh",
+    "changelog": "bash scripts/update-changelog.sh"
   },
   "dependencies": {
     "@10play/tentap-editor": "^1.0.1",
