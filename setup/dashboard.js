@@ -32,7 +32,7 @@ if (fs.existsSync(_nextDashboard)) {
     fs.copyFileSync(_nextDashboard, __filename);
     fs.unlinkSync(_nextDashboard);
     console.log('Dashboard updated! Restarting...');
-    spawn(process.argv[0], process.argv.slice(1), { stdio: 'inherit', detached: true }).unref();
+    spawn(process.argv[0], process.argv.slice(1), { stdio: 'ignore', detached: true, windowsHide: true }).unref();
     process.exit(0);
   } catch (err) {
     console.error('Self-update failed, continuing with current version:', err.message);
@@ -56,6 +56,7 @@ const {
   createBackup, listBackups, restoreFromBackup, deleteBackup, pruneBackups,
   applyUpdateFromTar, downloadUpdate, isUpdateInProgress, setUpdateInProgress,
 } = require('./lib/updates');
+const { loadPresets, savePresets, addPreset, removePreset, validateProjectPath, listDirectory } = require('./lib/app-presets');
 
 // ---------------------------------------------------------------------------
 // Shared state
@@ -75,7 +76,7 @@ const dashboardHTML = fs.readFileSync(path.join(__dirname, 'frontend', 'index.ht
 // ---------------------------------------------------------------------------
 
 function jsonResponse(res, data, status = 200) {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(data));
 }
 
@@ -128,6 +129,60 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // --- App Switcher ---
+    if (pathname === '/api/presets' && req.method === 'GET') {
+      const data = loadPresets();
+      jsonResponse(res, { ok: true, presets: data.presets, currentProject: PROJECT_DIR });
+      return;
+    }
+
+    if (pathname.match(/^\/api\/(presets|switch-app)$/) && (req.method === 'POST' || req.method === 'DELETE')) {
+      const body = JSON.parse(await readBody(req));
+      const projectPath = (body.path || '').trim();
+      if (!projectPath) { jsonResponse(res, { ok: false, error: 'Path is required' }, 400); return; }
+
+      if (pathname === '/api/presets' && req.method === 'POST') {
+        const result = addPreset(projectPath);
+        jsonResponse(res, result, result.ok ? 200 : 400);
+        return;
+      }
+
+      if (pathname === '/api/presets' && req.method === 'DELETE') {
+        const result = removePreset(projectPath);
+        jsonResponse(res, result, result.ok ? 200 : 400);
+        return;
+      }
+
+      // POST /api/switch-app
+      const validation = validateProjectPath(projectPath);
+      if (!validation.valid) { jsonResponse(res, { ok: false, error: validation.error }, 400); return; }
+      // Update lastUsed
+      const data = loadPresets();
+      data.lastUsed = path.resolve(projectPath);
+      savePresets(data);
+      // Respond before restarting
+      jsonResponse(res, { ok: true, restarting: true, name: validation.name });
+      console.log(`\n  Switching to: ${validation.name} (${projectPath})`);
+      // Clean restart: close server, wait for port release, then spawn new process
+      server.close(() => {
+        setTimeout(() => {
+          spawn(process.argv[0], [process.argv[1], path.resolve(projectPath), '--no-open'], {
+            stdio: 'ignore', detached: true, windowsHide: true
+          }).unref();
+          process.exit(0);
+        }, 500);
+      });
+      return;
+    }
+
+    if (pathname === '/api/browse' && req.method === 'GET') {
+      const dirPath = url.searchParams.get('path') || (process.platform === 'win32' ? 'C:\\' : '/');
+      const result = listDirectory(dirPath);
+      if (!result.ok) { jsonResponse(res, result, 400); return; }
+      jsonResponse(res, result);
+      return;
+    }
+
     // --- Config ---
     if (pathname === '/api/state' && req.method === 'GET') {
       lastHeartbeat = Date.now();
@@ -161,7 +216,7 @@ const server = http.createServer(async (req, res) => {
       else if (fileExists(path.join(PROJECT_DIR, 'pnpm-lock.yaml'))) { cmd = 'pnpm'; }
 
       installProcess = { status: 'running', output: '', exitCode: null };
-      var child = spawn(cmd + ' ' + cmdArgs.join(' '), [], { cwd: PROJECT_DIR, shell: true, timeout: 300000 });
+      var child = spawn(cmd + ' ' + cmdArgs.join(' '), [], { cwd: PROJECT_DIR, shell: true, timeout: 300000, windowsHide: true });
       child.stdout.on('data', function(d) { installProcess.output += d.toString(); });
       child.stderr.on('data', function(d) { installProcess.output += d.toString(); });
       child.on('close', function(code) {
@@ -210,7 +265,7 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/eas/login' && req.method === 'POST') {
       try {
-        spawn('eas login --browser', [], { cwd: PROJECT_DIR, shell: true, stdio: 'ignore', detached: true }).unref();
+        spawn('eas login --browser', [], { cwd: PROJECT_DIR, shell: true, stdio: 'ignore', detached: true, windowsHide: true }).unref();
         jsonResponse(res, { ok: true, message: 'Login opened in your browser. Complete login there, then click Check Status.' });
       } catch (e) {
         jsonResponse(res, { ok: false, error: e.message });
@@ -605,12 +660,15 @@ server.listen(PORT, () => {
   console.log('  Press Ctrl+C to stop.');
   console.log('');
 
-  try {
-    const platform = process.platform;
-    if (platform === 'win32') execSync(`start ${url}`, { stdio: 'ignore' });
-    else if (platform === 'darwin') execSync(`open ${url}`, { stdio: 'ignore' });
-    else execSync(`xdg-open ${url}`, { stdio: 'ignore' });
-  } catch { /* ignore */ }
+  // Skip browser open on restart (app switcher passes --no-open)
+  if (!process.argv.includes('--no-open')) {
+    try {
+      const platform = process.platform;
+      if (platform === 'win32') execSync(`start "" "${url}"`, { stdio: 'ignore', windowsHide: true });
+      else if (platform === 'darwin') execSync(`open ${url}`, { stdio: 'ignore' });
+      else execSync(`xdg-open ${url}`, { stdio: 'ignore' });
+    } catch { /* ignore */ }
+  }
 });
 
 process.on('SIGINT', () => { console.log('\n  Dashboard stopped.'); process.exit(0); });

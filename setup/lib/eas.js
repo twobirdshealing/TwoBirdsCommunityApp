@@ -22,6 +22,7 @@ function runCommand(args, timeout = 30000) {
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout,
       shell: true,
+      windowsHide: true,
     });
     let stdout = '', stderr = '';
     child.stdout.on('data', (d) => { stdout += d; });

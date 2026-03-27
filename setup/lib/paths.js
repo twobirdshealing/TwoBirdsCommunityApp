@@ -2,7 +2,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 // ---------------------------------------------------------------------------
 // Dashboard version (bumped when the update system changes)

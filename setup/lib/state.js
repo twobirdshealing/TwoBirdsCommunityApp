@@ -102,6 +102,9 @@ function readProjectState() {
     }
   }
 
+  // --- Project directory (for app switcher) ---
+  state.projectDir = PROJECT_DIR;
+
   // --- Validation (runs on raw values, but after sanitize placeholders read as empty = fail) ---
   runValidation(state);
 

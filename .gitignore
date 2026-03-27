@@ -48,10 +48,11 @@ app-example
 # Reference-only plugins (not our code, kept for dev reference)
 companion plugins/Refrence plugins ONLY/
 
-# Dashboard update system (buyer-local files)
+# Dashboard (buyer-local files)
 setup/.license
 setup/.backups/
 setup/.temp/
+setup/.app-presets.json
 setup/logs/
 setup/dashboard.next.js
 
