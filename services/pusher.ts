@@ -88,10 +88,10 @@ export async function initializePusher(userId: number, socketConfig: SocketConfi
     }
 
     // Build Pusher options — add custom host params for Fluent Socket / Soketi
-    const pusherOptions: Record<string, unknown> = {
+    const pusherOptions: any = {
       cluster,
       authorizer: (channel: { name: string }) => ({
-        authorize: async (socketId, callback) => {
+        authorize: async (socketId: string, callback: (error: Error | null, data: any) => void) => {
           try {
             log('Authorizing channel:', channel.name);
 
@@ -220,7 +220,7 @@ export function disconnectPusher(): void {
   }
 
   currentUserId = null;
-  currentSocketConfig = null;
+  currentSocketConfig = undefined;
   connectedAt = 0;
   // Don't clear handlers here — they're managed by React component lifecycle.
   // Only clearHandlers() on logout (called from PusherContext).

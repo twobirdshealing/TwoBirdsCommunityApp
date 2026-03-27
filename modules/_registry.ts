@@ -19,6 +19,7 @@ import type {
   HeaderIconRegistration,
   RegistrationStepRegistration,
   ResponseHeaderMapping,
+  SlotName,
 } from './_types';
 
 // =============================================================================
@@ -227,7 +228,7 @@ export function handleModuleNotification(
 // -----------------------------------------------------------------------------
 
 /** Get the winning slot component for a named slot (lowest priority wins, null if none) */
-export function getSlotComponent<P = any>(slotName: string): React.ComponentType<P> | null {
+export function getSlotComponent<P = any>(slotName: SlotName): React.ComponentType<P> | null {
   const registrations = MODULES
     .flatMap((m) => m.slots ?? [])
     .filter((s) => s.slot === slotName)

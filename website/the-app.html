@@ -1,0 +1,416 @@
+<style>
+  /* ── TBC App Page ── */
+  .tbc-app *, .tbc-app *::before, .tbc-app *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .tbc-app {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    color: var(--fcom-primary-text, #19283a);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    --tbc-card: var(--fcom-primary-bg, #ffffff);
+    --tbc-card-hover: var(--fcom-active-bg, #f0f3f5);
+    --tbc-text: var(--fcom-primary-text, #19283a);
+    --tbc-text-muted: var(--fcom-secondary-text, #525866);
+    --tbc-text-dim: var(--fcom-text-off, #959595);
+    --tbc-border: var(--fcom-primary-border, #e3e8ee);
+    --tbc-accent: var(--fcom-text-link, #2271b1);
+    --tbc-accent-soft: color-mix(in srgb, var(--fcom-text-link, #2271b1) 10%, transparent);
+    --tbc-btn-bg: var(--fcom-primary-button, #2B2E33);
+    --tbc-btn-text: var(--fcom-primary-button-text, #ffffff);
+    --tbc-content-bg: var(--fcom-secondary-content-bg, #f0f3f5);
+  }
+
+  /* ── Typography ── */
+  .tbc-app h1, .tbc-app h2, .tbc-app h3 { line-height: 1.2; font-weight: 700; color: var(--tbc-text); }
+  .tbc-app h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); letter-spacing: -0.03em; }
+  .tbc-app h2 { font-size: clamp(1.6rem, 3.5vw, 2.4rem); letter-spacing: -0.02em; }
+  .tbc-app h3 { font-size: 1.15rem; }
+  .tbc-app a { color: var(--tbc-accent); text-decoration: none; }
+  .tbc-app a:hover { text-decoration: underline; }
+
+  /* ── Layout ── */
+  .tbc-container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+  .tbc-container-wide { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+  .tbc-section { padding: 80px 0; }
+  .tbc-section + .tbc-section { border-top: 1px solid var(--tbc-border); }
+
+  /* ── Buttons ── */
+  .tbc-buttons { display: flex; gap: 16px; flex-wrap: wrap; }
+  .tbc-buttons.centered { justify-content: center; }
+  .tbc-btn {
+    padding: 14px 32px; border-radius: 10px; font-size: 1rem;
+    font-weight: 600; transition: all 0.2s; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    text-decoration: none;
+  }
+  .tbc-btn:hover { text-decoration: none; }
+  .tbc-btn-primary { background: var(--tbc-btn-bg) !important; color: var(--tbc-btn-text) !important; border: none; }
+  .tbc-btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .tbc-btn-outline { background: transparent !important; color: var(--tbc-text) !important; border: 1px solid var(--tbc-border); }
+  .tbc-btn-outline:hover { border-color: var(--tbc-text-muted); transform: translateY(-1px); }
+
+  /* ── Hero ── */
+  .tbc-hero { padding: 80px 0 60px; }
+  .tbc-hero h1 { margin-bottom: 16px; }
+  .tbc-hero h1 em { font-style: normal; color: var(--tbc-accent); }
+  .tbc-hero-sub {
+    color: var(--tbc-text-muted); font-size: 1.15rem; max-width: 600px; line-height: 1.8;
+  }
+
+  /* ── Prose ── */
+  .tbc-prose p {
+    color: var(--tbc-text-muted); font-size: 1.08rem; margin-bottom: 24px; line-height: 1.85;
+  }
+  .tbc-prose strong { color: var(--tbc-text); font-weight: 600; }
+  .tbc-prose h2 { margin-top: 0; margin-bottom: 24px; }
+  .tbc-prose h3 { margin-top: 40px; margin-bottom: 12px; color: var(--tbc-text); }
+
+  /* ── Screenshot placeholders ── */
+  .tbc-screenshot {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid var(--tbc-border);
+    background: var(--tbc-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--tbc-text-dim);
+    font-size: 0.9rem;
+    margin: 32px 0;
+  }
+  .tbc-screenshot-wide {
+    aspect-ratio: 16/9;
+    max-width: 100%;
+  }
+  .tbc-screenshot-phones {
+    aspect-ratio: 2/1;
+    max-width: 100%;
+  }
+  .tbc-screenshot-single {
+    aspect-ratio: 9/16;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* ── Demo callout ── */
+  .tbc-demo-callout {
+    background: var(--tbc-card);
+    border: 1px solid var(--tbc-border);
+    border-radius: 14px;
+    padding: 36px 40px;
+    text-align: center;
+    margin: 48px 0;
+  }
+  .tbc-demo-callout h3 { margin-bottom: 12px; font-size: 1.3rem; }
+  .tbc-demo-callout p { color: var(--tbc-text-muted); font-size: 1rem; margin-bottom: 24px; }
+  .tbc-demo-callout .tbc-buttons { justify-content: center; }
+
+  /* ── Feature pairs (text + screenshot side by side) ── */
+  .tbc-feature-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+    margin: 64px 0;
+  }
+  .tbc-feature-row.reverse { direction: rtl; }
+  .tbc-feature-row.reverse > * { direction: ltr; }
+  .tbc-feature-row h3 { margin-top: 0; }
+  .tbc-feature-row .tbc-screenshot { margin: 0; }
+
+  @media (max-width: 768px) {
+    .tbc-feature-row { grid-template-columns: 1fr; gap: 24px; }
+    .tbc-feature-row.reverse { direction: ltr; }
+  }
+
+  /* ── CTA ── */
+  .tbc-cta { text-align: center; }
+  .tbc-cta h2 { margin-bottom: 16px; }
+  .tbc-cta p {
+    color: var(--tbc-text-muted); font-size: 1.05rem; margin-bottom: 40px;
+    max-width: 540px; margin-left: auto; margin-right: auto;
+  }
+</style>
+
+<div class="tbc-app">
+
+<!-- ── Hero ── -->
+<div class="tbc-hero">
+  <div class="tbc-container">
+    <h1>The App</h1>
+    <p class="tbc-hero-sub">
+      A native iOS and Android app for Fluent Community. Not a webview. Not a wrapper.
+      A real React Native app you own, customize, and ship under your own brand.
+    </p>
+  </div>
+</div>
+
+<!-- ── Demo Callout ── -->
+<div style="padding: 0 0 40px;">
+  <div class="tbc-container">
+    <div class="tbc-demo-callout">
+      <h3>Try it yourself</h3>
+      <p>Download our demo app to see what's possible. Customize it out of the box — or dig into the code and make it entirely yours.</p>
+      <div class="tbc-buttons">
+        <a href="#" class="tbc-btn tbc-btn-primary">Download for iOS</a>
+        <a href="#" class="tbc-btn tbc-btn-outline">Download for Android</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Your Community, Native ── -->
+<div class="tbc-section">
+  <div class="tbc-container tbc-prose">
+    <h2>Your community, native</h2>
+
+    <p>
+      The app connects to your Fluent Community site and brings the full experience to mobile. Your feed, your spaces, your members — all in a native app that feels like it was built just for your community. Because it was.
+    </p>
+
+    <p>
+      Colors and branding sync automatically from your Fluent settings. Change your accent color on the web and the app updates to match — light mode and dark mode. No rebuild needed.
+    </p>
+
+    <div class="tbc-screenshot tbc-screenshot-phones">
+      [ Screenshot: Home screen — light mode + dark mode side by side ]
+    </div>
+  </div>
+</div>
+
+<!-- ── Feed ── -->
+<div class="tbc-section">
+  <div class="tbc-container-wide">
+    <div class="tbc-feature-row">
+      <div class="tbc-prose">
+        <h3>Activity Feed</h3>
+        <p>
+          Posts, comments, nested replies, media, bookmarks, reactions — everything your members do on the web, they can do from their phone. Admins can pin important posts to the top of any space.
+        </p>
+        <p>
+          The UI responds immediately to taps — no waiting for the server to confirm before you see your reaction land. Pull down to refresh, and new posts, comments, and reactions load instantly.
+        </p>
+      </div>
+      <div class="tbc-screenshot tbc-screenshot-single">
+        [ Screenshot: Feed with reactions, comments, media ]
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Messaging ── -->
+<div class="tbc-section">
+  <div class="tbc-container-wide">
+    <div class="tbc-feature-row reverse">
+      <div class="tbc-prose">
+        <h3>Real-Time Messaging</h3>
+        <p>
+          Direct messaging powered by Fluent Messaging. Messages deliver instantly over WebSocket — reactions, image attachments, reply quotes. Tap a notification and land directly in the conversation.
+        </p>
+        <p>
+          Unread counts show on the tab bar and stay in sync across the app. Block or unblock anyone. Delete messages or entire threads. It works the way messaging should work.
+        </p>
+      </div>
+      <div class="tbc-screenshot tbc-screenshot-single">
+        [ Screenshot: Message thread with reactions and reply ]
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Spaces ── -->
+<div class="tbc-section">
+  <div class="tbc-container-wide">
+    <div class="tbc-feature-row">
+      <div class="tbc-prose">
+        <h3>Spaces</h3>
+        <p>
+          Public, private, and secret spaces — each with their own feed, member list, and permissions. Private spaces show a lock screen until approved. Secret spaces don't show up at all unless you're invited.
+        </p>
+        <p>
+          Space groups organize everything into tabs. Members can browse, request to join, and start posting. Moderators can pin posts and manage members. Admins control it all from WordPress.
+        </p>
+      </div>
+      <div class="tbc-screenshot tbc-screenshot-single">
+        [ Screenshot: Space discovery / space feed ]
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Profiles ── -->
+<div class="tbc-section">
+  <div class="tbc-container-wide">
+    <div class="tbc-feature-row reverse">
+      <div class="tbc-prose">
+        <h3>Profiles</h3>
+        <p>
+          Full member profiles with avatars, cover photos, bios, badges, and custom fields. Follow people, send direct messages, see their posts and activity — all from their profile.
+        </p>
+        <p>
+          Members can edit their own profile directly from the app. Verified badges, role indicators, and admin-assigned achievement badges all display automatically. Restricted profiles only show the About tab to non-connections.
+        </p>
+      </div>
+      <div class="tbc-screenshot tbc-screenshot-single">
+        [ Screenshot: Profile with badges, cover, tabs ]
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Push Notifications ── -->
+<div class="tbc-section">
+  <div class="tbc-container tbc-prose">
+    <h2>Push notifications that actually work</h2>
+
+    <p>
+      Real native push notifications on iOS and Android. Not email. Not in-app-only badges. Actual notifications that wake up your phone and bring people back to your community.
+    </p>
+
+    <p>
+      Members control what they get — likes, comments, messages, course updates — with per-category toggles. Tap a notification and it deep-links straight to the right screen. Admins can send manual pushes to the entire community from WordPress.
+    </p>
+
+    <div class="tbc-screenshot tbc-screenshot-phones">
+      [ Screenshot: Push notification on lock screen + notification preferences screen ]
+    </div>
+  </div>
+</div>
+
+<!-- ── Courses ── -->
+<div class="tbc-section">
+  <div class="tbc-container-wide">
+    <div class="tbc-feature-row">
+      <div class="tbc-prose">
+        <h3>Courses</h3>
+        <p>
+          Full Fluent Community Pro course support. Browse courses, enroll, work through lessons, take quizzes, track your progress. Lessons support rich content — text, images, YouTube, Vimeo, documents.
+        </p>
+        <p>
+          Progress tracking updates instantly as members complete lessons. Drip content shows unlock dates. Free lesson previews let non-enrolled users get a taste. And when someone finishes a course — confetti.
+        </p>
+      </div>
+      <div class="tbc-screenshot tbc-screenshot-single">
+        [ Screenshot: Course lesson with progress bar ]
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Home Widgets ── -->
+<div class="tbc-section">
+  <div class="tbc-container tbc-prose">
+    <h2>A home screen members make their own</h2>
+
+    <p>
+      The home screen is built from widgets — My Courses, recent activity, welcome banners, and anything modules add. Members can long-press to enter edit mode, drag to reorder, and toggle widgets on or off. Their preferences persist across sessions.
+    </p>
+
+    <p>
+      New widgets from updates or modules appear automatically. If a widget has no content, it hides itself. The whole home screen refreshes with a pull-down, but widgets are smart about it — they won't re-fetch data that's less than two minutes old.
+    </p>
+
+    <div class="tbc-screenshot tbc-screenshot-phones">
+      [ Screenshot: Home screen normal view + edit mode with drag handles ]
+    </div>
+  </div>
+</div>
+
+<!-- ── Architecture ── -->
+<div class="tbc-section">
+  <div class="tbc-container tbc-prose">
+    <h2>Built right under the hood</h2>
+
+    <p>
+      This isn't a webview with a native shell. It's a real <strong>React Native</strong> app built on <strong>Expo</strong> — the same stack teams at Shopify, Discord, and Microsoft use for production mobile apps. Modern, well-supported, and fast.
+    </p>
+
+    <p>
+      Data is managed with <strong>TanStack Query</strong> and persisted locally with <strong>MMKV</strong> — so the app renders instantly from cache while fresh data loads in the background. Taps feel immediate because the UI updates optimistically before the server confirms. Minimal dependencies, no bloat.
+    </p>
+
+    <p>
+      And when you need to push a fix or a new feature, <strong>over-the-air updates</strong> let you ship JS changes straight to your users — no App Store review, no waiting. Full details in the <a href="/docs">documentation</a>.
+    </p>
+  </div>
+</div>
+
+<!-- ── Server-Driven ── -->
+<div class="tbc-section">
+  <div class="tbc-container tbc-prose">
+    <h2>Control it from WordPress</h2>
+
+    <p>
+      A lot of what the app shows is driven by your server — not hardcoded into the app. Toggle features on or off from the WordPress admin. Hide tabs, menu items, or widgets by user role. Turn on maintenance mode and only admins can get in. Set a minimum app version to force members to update.
+    </p>
+
+    <p>
+      None of that requires an app update. Change it on the server, it takes effect on the next app launch. The companion plugin gives you admin tabs for general settings, features, UI visibility, notifications, push logs, stats, and tools.
+    </p>
+
+    <div class="tbc-screenshot tbc-screenshot-wide">
+      [ Screenshot: WordPress admin — TBC Community App settings panel ]
+    </div>
+  </div>
+</div>
+
+<!-- ── Deep Linking & WebView ── -->
+<div class="tbc-section">
+  <div class="tbc-container tbc-prose">
+    <h2>Links just work</h2>
+
+    <p>
+      Share a link to a space, a profile, a course lesson, or a post — and it opens directly in the app. Universal Links on iOS, App Links on Android, and a custom URL scheme for internal routing. If someone taps a link before logging in, it queues up and opens after they authenticate.
+    </p>
+
+    <p>
+      Need to send members to a WordPress page that isn't in the app — like a checkout page or a booking form? The authenticated WebView bridge handles it. One-time login URLs mean your members don't have to sign in again. They stay in the app, interact with the web page, and come back.
+    </p>
+  </div>
+</div>
+
+<!-- ── Module System Teaser ── -->
+<div class="tbc-section">
+  <div class="tbc-container tbc-prose">
+    <h2>Extend it without breaking it</h2>
+
+    <p>
+      Need custom features? The app has a module system — add tabs, widgets, menu items, and more without touching core code. Your customizations stay intact when we push updates.
+    </p>
+
+    <p>
+      Build your own or grab one of our ready-made add-ons. <a href="/modules">Learn more about the module system.</a>
+    </p>
+  </div>
+</div>
+
+<!-- ── Demo CTA ── -->
+<div class="tbc-section">
+  <div class="tbc-container">
+    <div class="tbc-demo-callout">
+      <h3>See it in action</h3>
+      <p>Download the demo app and explore every feature with real data. No signup required.</p>
+      <div class="tbc-buttons">
+        <a href="#" class="tbc-btn tbc-btn-primary">Download for iOS</a>
+        <a href="#" class="tbc-btn tbc-btn-outline">Download for Android</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CTA ── -->
+<div class="tbc-section tbc-cta">
+  <div class="tbc-container">
+    <h2>Ready to give your community a real app?</h2>
+    <p>
+      One lifetime license. Full source code. Ship it under your brand.
+    </p>
+    <div class="tbc-buttons centered">
+      <a href="/purchase" class="tbc-btn tbc-btn-primary">Get the App</a>
+      <a href="/" class="tbc-btn tbc-btn-outline">Back to Home</a>
+    </div>
+  </div>
+</div>
+
+</div>

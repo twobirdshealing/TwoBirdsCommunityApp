@@ -28,7 +28,7 @@ import { useFeedModals } from '@/contexts/FeedModalsContext';
 import { getSlotComponent } from '@/modules/_registry';
 import { shadows, sizing, spacing, typography } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
-import { Feed } from '@/types/feed';
+import { Feed, ReactionType } from '@/types/feed';
 import { formatRelativeTime } from '@/utils/formatDate';
 import { formatCompactNumber } from '@/utils/formatNumber';
 import { stripHtmlTags } from '@/utils/htmlToText';
@@ -503,7 +503,7 @@ export const FeedCard = React.memo(function FeedCard({
               userReactionIconUrl={feed.user_reaction_icon_url || null}
               reactionsCount={reactionsCount}
               reactionBreakdown={reactionBreakdown}
-              onReact={(type) => onReact?.(type)}
+              onReact={(type: string) => onReact?.(type)}
             />
           ) : (
             <AnimatedPressable
@@ -551,7 +551,7 @@ export const FeedCard = React.memo(function FeedCard({
             userReactionIconUrl={feed.user_reaction_icon_url || null}
             reactionsCount={reactionsCount}
             reactionBreakdown={reactionBreakdown}
-            onReact={(type) => onReact?.(type)}
+            onReact={(type: string) => onReact?.(type)}
           />
         ) : reactionsCount > 0 ? (
           <View style={styles.footerRight}>

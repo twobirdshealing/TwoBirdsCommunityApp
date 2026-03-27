@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { PATHS, REQUIRED_ASSETS, CORE_PLUGINS, ADDON_PLUGINS, PROJECT_DIR, isPlaceholder } = require('./paths');
+const { PATHS, REQUIRED_ASSETS, CORE_PLUGINS, PROJECT_DIR, isPlaceholder } = require('./paths');
 const { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, getPluginVersion } = require('./file-utils');
 
 // ---------------------------------------------------------------------------
@@ -89,10 +89,6 @@ function readProjectState() {
     const version = getPluginVersion(plugin.folder);
     state.plugins.core.push({ ...plugin, exists: version !== null, version: version || '' });
   }
-  for (const plugin of ADDON_PLUGINS) {
-    const version = getPluginVersion(plugin.folder);
-    state.plugins.addons.push({ ...plugin, exists: version !== null, version: version || '' });
-  }
 
   // --- Dependencies ---
   state.dependencies = {
@@ -166,6 +162,11 @@ function runValidation(state) {
   // Firebase
   check(state.firebase.android.exists, 'google-services.json exists', 'firebase', 'firebase-setup');
   check(state.firebase.ios.exists, 'GoogleService-Info.plist exists', 'firebase', 'firebase-setup');
+
+  // Core companion plugins
+  for (const plugin of state.plugins.core) {
+    check(plugin.exists, plugin.label + ' plugin is bundled', 'companion plugins', 'core-plugins');
+  }
 
   // Dependencies
   check(state.dependencies.nodeModules, 'node_modules exists (npm install done)', 'dependencies', 'quick-start');

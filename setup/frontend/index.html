@@ -195,6 +195,30 @@
   .plugin-desc { font-size: 12px; color: var(--text-secondary); }
   .plugin-version { font-family: var(--font-mono); font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--bg-tertiary); }
 
+  /* Module cards */
+  .module-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 10px; }
+  .module-card-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
+  .module-card-icon { font-size: 28px; line-height: 1; flex-shrink: 0; margin-top: 2px; }
+  .module-card-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+  .module-card-version { font-size: 12px; font-weight: 400; color: var(--text-muted); margin-left: 6px; }
+  .module-card-desc { font-size: 13px; color: var(--text-secondary); margin-top: 2px; line-height: 1.5; }
+  .module-card-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .module-card-meta .meta-tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--bg-tertiary); color: var(--text-muted); }
+  .module-card-plugin { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 12px; }
+  .module-card-plugin.plugin-ok { background: color-mix(in srgb, #22c55e 6%, transparent); border-color: color-mix(in srgb, #22c55e 20%, var(--border)); }
+  .module-card-plugin.plugin-missing { background: color-mix(in srgb, #ef4444 6%, transparent); border-color: color-mix(in srgb, #ef4444 20%, var(--border)); }
+  .module-card-plugin .plugin-label { font-weight: 600; color: var(--text-primary); }
+  .module-card-plugin .plugin-hint { color: var(--text-muted); font-size: 11px; margin-left: auto; }
+  .module-card-integrations { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .module-card-integrations .int-tag { font-size: 10px; padding: 2px 7px; border-radius: 4px; background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); font-weight: 500; letter-spacing: 0.02em; }
+  .module-card-vis { margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+  .module-card-vis code { font-family: var(--font-mono); font-size: 11px; background: var(--bg-alt); border: 1px solid var(--border); padding: 1px 6px; border-radius: 3px; user-select: all; }
+  .module-card-footer { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .module-card-status { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 6px; }
+  .module-card-status.active { background: color-mix(in srgb, #22c55e 12%, transparent); color: #16a34a; }
+  .module-card-status.inactive { background: color-mix(in srgb, #f59e0b 12%, transparent); color: #d97706; }
+  .module-card-footer .spacer { flex: 1; }
+
   .connectivity-grid { display: grid; gap: 8px; }
   .connectivity-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-primary); border-radius: var(--radius); border: 1px solid var(--border); }
   .connectivity-label { flex: 1; font-size: 14px; }
@@ -369,7 +393,6 @@
 <div class="tab-bar">
   <button class="tab-btn active" data-tab="config">Config</button>
   <button class="tab-btn" data-tab="assets">Assets</button>
-  <button class="tab-btn" data-tab="plugins">Plugins & Firebase</button>
   <button class="tab-btn" data-tab="modules">Modules</button>
   <button class="tab-btn" data-tab="builds">Builds</button>
   <button class="tab-btn" data-tab="ota">OTA Updates</button>
@@ -389,13 +412,17 @@
   <button class="btn btn-sm cmd-copy cmd-row" data-cmd="npm run dashboard">
     <span class="cmd-label">Open Dashboard</span>
   </button>
+  <button class="btn btn-sm cmd-copy cmd-row" data-cmd="npm run kill-dashboard" style="color:var(--danger,#d63638)">
+    <span class="cmd-label">Kill Dashboard</span>
+  </button>
   <div id="cmd-toast" style="display:none;font-size:11px;color:var(--accent);margin-left:8px"></div>
 </div>
 <div class="field-help collapsed" id="cmd-help-panel" style="margin:0;border-radius:0;border-left:0;border-right:0">
   Click any command to copy it to your clipboard, then paste into your terminal to run.<br>
   <strong>Dev Server</strong> — <code>npm run dev</code> — starts Expo against your production site.<br>
   <strong>Dev Server (Staging)</strong> — <code>npm run dev:staging</code> — starts Expo against your staging site (shows red STAGING indicator).<br>
-  <strong>Open Dashboard</strong> — <code>npm run dashboard</code> — launches this setup dashboard in your browser.
+  <strong>Open Dashboard</strong> — <code>npm run dashboard</code> — launches this setup dashboard in your browser.<br>
+  <strong>Kill Dashboard</strong> — <code>npm run kill-dashboard</code> — kills the dashboard process if port 3456 is stuck.
 </div>
 
 <!-- ============== Config Tab ============== -->
@@ -579,6 +606,14 @@
     </div>
   </div>
 
+  <div class="card">
+    <div class="card-header"><h3>Firebase Config</h3><span class="badge" style="color:var(--text-muted)">Push Notifications</span></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Drop in your Firebase config files to enable push notifications.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="firebase-section"></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Floating save bar -->
@@ -604,24 +639,6 @@
   </div>
 </div>
 
-<!-- ============== Plugins & Firebase Tab ============== -->
-<div class="tab-content" id="tab-plugins">
-  <div class="card">
-    <div class="card-header"><h3>Firebase Config</h3></div>
-    <div class="card-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="firebase-section"></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-header"><h3>Core Companion Plugins</h3><span class="badge" style="color:var(--text-muted)">companion plugins/</span></div>
-    <div class="card-body"><div id="core-plugins-list"></div></div>
-  </div>
-  <div class="card">
-    <div class="card-header"><h3>Add-on Plugins</h3><span class="badge" style="color:var(--text-muted)">optional</span></div>
-    <div class="card-body"><div id="addon-plugins-list"></div></div>
-  </div>
-</div>
-
 <!-- ============== Modules Tab ============== -->
 <div class="tab-content" id="tab-modules">
   <div class="card">
@@ -634,6 +651,14 @@
         <div style="font-size:12px;color:var(--text-muted)">Or click to browse. The module will be extracted, registered, and ready after your next build.</div>
         <input type="file" accept=".tar.gz,.tgz" id="module-import-input">
       </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>Core Companion Plugins</h3><span class="badge" style="color:var(--text-muted)">companion plugins/</span></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">These WordPress plugins are required for the app to work. Install them on your WordPress site.</p>
+      <div id="core-plugins-list"></div>
     </div>
   </div>
 
@@ -1419,11 +1444,8 @@ function populateFirebase(firebase) {
 
 function populatePlugins(plugins) {
   const coreList = document.getElementById('core-plugins-list');
-  const addonList = document.getElementById('addon-plugins-list');
   coreList.innerHTML = '';
-  addonList.innerHTML = '';
   for (const plugin of plugins.core) coreList.appendChild(createPluginItem(plugin));
-  for (const plugin of plugins.addons) addonList.appendChild(createPluginItem(plugin));
 }
 
 function createPluginItem(plugin) {
@@ -1799,6 +1821,15 @@ function showMoreBuilds() {
 
 async function loadBuilds() {
   const list = document.getElementById('builds-list');
+  // Check if EAS project is configured before trying to fetch builds
+  var pid = (document.getElementById('cfg-easProjectId') || {}).value || '';
+  if (!pid || PLACEHOLDERS.indexOf(pid) !== -1) {
+    list.innerHTML = '<div style="padding:24px;color:var(--text-secondary);text-align:center">' +
+      '<p style="font-size:15px;margin-bottom:8px">No EAS project connected</p>' +
+      '<p style="font-size:13px">Set up your EAS project in the <strong>Settings</strong> tab to see builds here.</p></div>';
+    buildsLoaded = false;
+    return;
+  }
   list.innerHTML = '<div class="loading"><span class="spinner"></span> Loading builds from EAS...</div>';
   try {
     const [res, subRes] = await Promise.all([fetch('/api/builds'), fetch('/api/builds/submissions')]);
@@ -1974,63 +2005,88 @@ async function loadModules() {
     list.innerHTML = '';
     for (const mod of data.modules) {
       const card = document.createElement('div');
-      card.className = 'build-card';
-      card.style.flexWrap = 'wrap';
+      card.className = 'module-card';
 
-      const statusColor = mod.active ? 'status-pass' : 'status-warn';
-      const statusIcon = mod.active ? '\u2705' : '\u26D4';
-      const statusLabel = mod.active ? 'Active' : 'Inactive';
+      // Meta tags (author, license, file count)
+      const metaTags = [];
+      if (mod.author) {
+        metaTags.push(mod.authorUrl
+          ? '<a href="' + esc(mod.authorUrl) + '" target="_blank" class="meta-tag" style="color:var(--accent);text-decoration:none">' + esc(mod.author) + '</a>'
+          : '<span class="meta-tag">' + esc(mod.author) + '</span>');
+      }
+      if (mod.license) metaTags.push('<span class="meta-tag">' + esc(mod.license) + '</span>');
+      metaTags.push('<span class="meta-tag">' + mod.fileCount + ' files</span>');
 
+      // Companion plugin section
       let companionHtml = '';
       if (mod.companionPlugin) {
-        const cpIcon = mod.companionExists ? '\u2705' : '\u274C';
-        companionHtml = '<div style="font-size:11px;color:var(--text-muted)">Plugin: ' + mod.companionPlugin + ' ' + cpIcon + '</div>';
+        if (mod.companionExists) {
+          companionHtml = '<div class="module-card-plugin plugin-ok">' +
+            '<span>\u2705</span>' +
+            '<span class="plugin-label">' + esc(mod.companionPlugin) + '</span>' +
+            (mod.companionVersion ? '<span style="font-family:var(--font-mono);color:var(--text-muted)">v' + esc(mod.companionVersion) + '</span>' : '') +
+            '<span class="plugin-hint">Bundled — install on your WordPress site</span>' +
+          '</div>';
+        } else {
+          companionHtml = '<div class="module-card-plugin plugin-missing">' +
+            '<span>\u274C</span>' +
+            '<span class="plugin-label">' + esc(mod.companionPlugin) + '</span>' +
+            '<span style="color:var(--red);font-weight:500">Not found</span>' +
+            '<span class="plugin-hint">Required — add to companion plugins/ folder</span>' +
+          '</div>';
+        }
       }
 
-      let visKeyHtml = '';
-      if (mod.visibilityKeys && mod.visibilityKeys.length > 0) {
-        const keyBadges = mod.visibilityKeys.map(function(k) {
-          return '<code style="font-family:monospace;font-size:11px;background:var(--bg-alt);border:1px solid var(--border);padding:1px 6px;border-radius:3px;user-select:all">' + esc(k) + '</code>';
-        }).join(' ');
-        visKeyHtml = '<div style="font-size:11px;color:var(--text-muted)">' +
-          'Visibility ' + (mod.visibilityKeys.length > 1 ? 'Keys' : 'Key') + ': ' + keyBadges +
-          ' <button class="help-toggle" type="button" title="Toggle help">?</button>' +
-          '<div class="field-help collapsed" style="margin-top:4px">Add ' + (mod.visibilityKeys.length > 1 ? 'these keys' : 'this key') + ' in wp-admin → TBC Community App → UI Visibility → Custom Elements to control who sees this module.</div>' +
+      // Integration tags
+      let integrationsHtml = '';
+      if (mod.integrations && mod.integrations.length > 0) {
+        integrationsHtml = '<div class="module-card-integrations">' +
+          mod.integrations.map(function(i) { return '<span class="int-tag">' + esc(i) + '</span>'; }).join('') +
         '</div>';
       }
 
+      // Visibility keys
+      let visKeyHtml = '';
+      if (mod.visibilityKeys && mod.visibilityKeys.length > 0) {
+        const keyBadges = mod.visibilityKeys.map(function(k) {
+          return '<code>' + esc(k) + '</code>';
+        }).join(' ');
+        visKeyHtml = '<div class="module-card-vis">' +
+          'Visibility ' + (mod.visibilityKeys.length > 1 ? 'Keys' : 'Key') + ': ' + keyBadges +
+          ' <button class="help-toggle" type="button" title="Toggle help">?</button>' +
+          '<div class="field-help collapsed" style="margin-top:4px">Add ' + (mod.visibilityKeys.length > 1 ? 'these keys' : 'this key') + ' in wp-admin \u2192 TBC Community App \u2192 UI Visibility \u2192 Custom Elements to control who sees this module.</div>' +
+        '</div>';
+      }
+
+      // Actions
+      var safeId = esc(mod.id);
       let actionsHtml = '';
       if (mod.active) {
-        actionsHtml += '<button class="btn btn-sm" onclick="toggleMod(\'' + mod.id + '\', false)">Deactivate</button>';
+        actionsHtml += '<button class="btn btn-sm" onclick="toggleMod(\'' + safeId + '\', false)">Deactivate</button>';
       } else {
-        actionsHtml += '<button class="btn btn-sm btn-primary" onclick="toggleMod(\'' + mod.id + '\', true)">Activate</button>';
+        actionsHtml += '<button class="btn btn-sm btn-primary" onclick="toggleMod(\'' + safeId + '\', true)">Activate</button>';
       }
-      actionsHtml += '<a class="btn btn-sm" href="/api/modules/export/' + mod.id + '" download>Export</a>';
-      actionsHtml += '<button class="btn btn-sm btn-danger-subtle" onclick="removeMod(\'' + mod.id + '\', \'' + mod.name + '\')">Remove</button>';
-
-      const authorHtml = mod.author
-        ? '<span style="font-size:11px;color:var(--text-muted)">' +
-            (mod.authorUrl ? '<a href="' + mod.authorUrl + '" target="_blank" style="color:var(--accent);text-decoration:none">' + mod.author + '</a>' : mod.author) +
-          '</span>'
-        : '';
-      const licenseHtml = mod.license ? '<span style="font-size:11px;color:var(--text-muted)">' + mod.license + '</span>' : '';
+      actionsHtml += '<a class="btn btn-sm" href="/api/modules/export/' + encodeURIComponent(mod.id) + '" download>Export</a>';
+      actionsHtml += '<button class="btn btn-sm btn-danger-subtle" onclick="removeMod(\'' + safeId + '\', \'' + esc(mod.name) + '\')">Remove</button>';
 
       card.innerHTML =
-        '<div class="build-platform" style="font-size:22px">\uD83E\uDDE9</div>' +
-        '<div class="build-info">' +
-          '<div class="build-version">' + mod.name + ' <span style="font-size:12px;color:var(--text-muted)">v' + (mod.version || '?') + '</span></div>' +
-          '<div class="build-meta">' + (mod.description || mod.folder) + '</div>' +
-          '<div style="display:flex;gap:12px;align-items:center;margin-top:2px;flex-wrap:wrap">' +
-            authorHtml +
-            licenseHtml +
-            '<div class="build-id">' + mod.fileCount + ' files</div>' +
-            (mod.hasTab ? '<div style="font-size:11px;color:var(--text-muted)">Has tab</div>' : '') +
-            companionHtml +
+        '<div class="module-card-header">' +
+          '<div class="module-card-icon">\uD83E\uDDE9</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div class="module-card-title">' + esc(mod.name) + '<span class="module-card-version">v' + esc(mod.version || '?') + '</span></div>' +
+            '<div class="module-card-desc">' + esc(mod.description || mod.folder) + '</div>' +
+            '<div class="module-card-meta">' + metaTags.join('') + '</div>' +
           '</div>' +
-          visKeyHtml +
         '</div>' +
-        '<span class="build-status ' + (mod.active ? 'finished' : 'canceled') + '">' + statusLabel + '</span>' +
-        '<div class="build-actions">' + actionsHtml + '</div>';
+        integrationsHtml +
+        companionHtml +
+        visKeyHtml +
+        '<div class="module-card-footer">' +
+          '<span class="module-card-status ' + (mod.active ? 'active' : 'inactive') + '">' + (mod.active ? 'Active' : 'Inactive') + '</span>' +
+          '<div class="spacer"></div>' +
+          actionsHtml +
+        '</div>';
+
       // Wire up help-toggle for visibility key
       const helpToggle = card.querySelector('.help-toggle');
       const helpPanel = card.querySelector('.field-help');

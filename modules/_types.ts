@@ -168,11 +168,22 @@ export interface RegistrationStepRegistration {
 // Slot Registration (module-injected UI into core component areas)
 // -----------------------------------------------------------------------------
 
+/**
+ * Available slot names in core components.
+ * Add new entries here when core adds a new extension point.
+ */
+export type SlotName =
+  | 'feedReactions'            // FeedCard — reaction button area
+  | 'feedReactionBreakdown'    // FeedCard — reaction summary/breakdown
+  | 'commentReactions'         // CommentItem — reaction button area
+  | 'commentReactionBreakdown' // CommentItem — reaction summary/breakdown
+;
+
 export interface SlotRegistration<P = any> {
   /** Unique slot ID */
   id: string;
-  /** Named slot this fills (e.g. 'feedReactions', 'commentReactions') */
-  slot: string;
+  /** Named slot this fills — see SlotName for available slots */
+  slot: SlotName;
   /** Priority — lower number wins if multiple modules target the same slot */
   priority: number;
   /** The component to render in this slot — receives typed props from the host */
@@ -194,6 +205,11 @@ export interface ResponseHeaderMapping {
 
 // -----------------------------------------------------------------------------
 // Module Manifest
+// -----------------------------------------------------------------------------
+// NOTE: The setup dashboard parses module.ts via regex to detect integrations.
+// Use standard formatting for registration properties:
+//   tab: {           widgets: [           launcherItems: [
+// Avoid extracting registrations to variables or non-standard formatting.
 // -----------------------------------------------------------------------------
 
 export interface ModuleManifest {

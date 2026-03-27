@@ -143,7 +143,7 @@ function CommentItemInner({ item, themeColors, commentContentWidth, menuButtonRe
                 userReactionIconUrl={item.user_reaction_icon_url || null}
                 reactionsCount={typeof item.reactions_count === 'string' ? parseInt(item.reactions_count, 10) : item.reactions_count || 0}
                 reactionBreakdown={item.reaction_breakdown || []}
-                onReact={(type) => onReaction(item, type)}
+                onReact={(type: string) => onReaction(item, type)}
               />
             ) : (
               <AnimatedPressable
@@ -180,7 +180,7 @@ function CommentItemInner({ item, themeColors, commentContentWidth, menuButtonRe
               userReactionIconUrl={item.user_reaction_icon_url || null}
               reactionsCount={typeof item.reactions_count === 'string' ? parseInt(item.reactions_count, 10) : item.reactions_count || 0}
               reactionBreakdown={item.reaction_breakdown || []}
-              onReact={(type) => onReaction(item, type)}
+              onReact={(type: string) => onReaction(item, type)}
             />
           ) : null}
         </View>

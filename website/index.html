@@ -1,0 +1,165 @@
+<style>
+  /* ── TBC Landing Page ── */
+  .tbc-landing *, .tbc-landing *::before, .tbc-landing *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .tbc-landing {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    color: var(--fcom-primary-text, #19283a);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    --tbc-card: var(--fcom-primary-bg, #ffffff);
+    --tbc-card-hover: var(--fcom-active-bg, #f0f3f5);
+    --tbc-text: var(--fcom-primary-text, #19283a);
+    --tbc-text-muted: var(--fcom-secondary-text, #525866);
+    --tbc-text-dim: var(--fcom-text-off, #959595);
+    --tbc-border: var(--fcom-primary-border, #e3e8ee);
+    --tbc-accent: var(--fcom-text-link, #2271b1);
+    --tbc-accent-soft: color-mix(in srgb, var(--fcom-text-link, #2271b1) 10%, transparent);
+    --tbc-btn-bg: var(--fcom-primary-button, #2B2E33);
+    --tbc-btn-text: var(--fcom-primary-button-text, #ffffff);
+    --tbc-content-bg: var(--fcom-secondary-content-bg, #f0f3f5);
+  }
+
+  /* ── Typography ── */
+  .tbc-landing h1, .tbc-landing h2, .tbc-landing h3 { line-height: 1.2; font-weight: 700; color: var(--tbc-text); }
+  .tbc-landing h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); letter-spacing: -0.03em; }
+  .tbc-landing h2 { font-size: clamp(1.6rem, 3.5vw, 2.4rem); letter-spacing: -0.02em; }
+  .tbc-landing h3 { font-size: 1.15rem; }
+  .tbc-landing a { color: var(--tbc-accent); text-decoration: none; }
+  .tbc-landing a:hover { text-decoration: underline; }
+
+  /* ── Layout ── */
+  .tbc-container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+  .tbc-section { padding: 80px 0; }
+  .tbc-section + .tbc-section { border-top: 1px solid var(--tbc-border); }
+
+  /* ── Buttons ── */
+  .tbc-buttons { display: flex; gap: 16px; flex-wrap: wrap; }
+  .tbc-buttons.centered { justify-content: center; }
+  .tbc-btn {
+    padding: 14px 32px; border-radius: 10px; font-size: 1rem;
+    font-weight: 600; transition: all 0.2s; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    text-decoration: none;
+  }
+  .tbc-btn:hover { text-decoration: none; }
+  .tbc-btn-primary { background: var(--tbc-btn-bg) !important; color: var(--tbc-btn-text) !important; border: none; }
+  .tbc-btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .tbc-btn-outline { background: transparent !important; color: var(--tbc-text) !important; border: 1px solid var(--tbc-border); }
+  .tbc-btn-outline:hover { border-color: var(--tbc-text-muted); transform: translateY(-1px); }
+
+  /* ── Hero ── */
+  .tbc-hero { padding: 80px 0 60px; }
+  .tbc-hero h1 { margin-bottom: 32px; }
+  .tbc-hero h1 em { font-style: normal; color: var(--tbc-accent); }
+
+  /* ── Prose ── */
+  .tbc-prose p {
+    color: var(--tbc-text-muted); font-size: 1.08rem; margin-bottom: 24px; line-height: 1.85;
+  }
+  .tbc-prose strong { color: var(--tbc-text); font-weight: 600; }
+  .tbc-prose h2 { margin-top: 64px; margin-bottom: 24px; }
+  .tbc-prose ul { list-style: none; padding: 0; margin: 0 0 24px 0; }
+  .tbc-prose li {
+    color: var(--tbc-text-muted); font-size: 1.05rem;
+    padding: 6px 0 6px 24px; position: relative; line-height: 1.7;
+  }
+  .tbc-prose li::before { content: '\2192'; position: absolute; left: 0; color: var(--tbc-accent); }
+
+  /* ── CTA ── */
+  .tbc-cta { text-align: center; }
+  .tbc-cta h2 { margin-bottom: 16px; }
+  .tbc-cta p {
+    color: var(--tbc-text-muted); font-size: 1.05rem; margin-bottom: 40px;
+    max-width: 540px; margin-left: auto; margin-right: auto;
+  }
+</style>
+
+<div class="tbc-landing">
+
+<!-- ── Hero ── -->
+<div class="tbc-hero">
+  <div class="tbc-container">
+    <h1>We built an app for our community.<br><em>Now you can have one too.</em></h1>
+  </div>
+</div>
+
+<!-- ── The Story ── -->
+<div class="tbc-section" style="padding-top: 0;">
+  <div class="tbc-container tbc-prose">
+
+    <p>
+      We've been running an online community for years. Started back with BuddyPress, grew with BuddyBoss — the whole journey. Forums, groups, member profiles, the works. And for a while, it was fine.
+    </p>
+
+    <p>
+      But we always knew the tech was dated. And when we started looking at our options for a mobile app, it got worse. Webview wrappers that felt slow. Generic white-label apps you couldn't really customize. Expensive SaaS platforms where you had zero access to the actual code. And the ones that did give you "dev access"? Limited. Locked down. Basic.
+    </p>
+
+    <p>
+      The thing that kept us stuck? <strong>The app.</strong> Our members lived in it. And every option we looked at had the same problem — <strong>if you stop paying, you lose access to "your" app.</strong> The one your members use every day. The one with your brand on it. Gone.
+    </p>
+
+    <p>
+      And the cost added up fast for a small community like ours.
+    </p>
+
+    <p>
+      So we started asking ourselves — what if we just... built our own?
+    </p>
+
+    <h2>The switch to Fluent Community</h2>
+
+    <p>
+      When we found <strong>Fluent Community</strong>, it clicked. Modern. Fast. Actually maintained. Built on a clean codebase by a team that ships. It was everything the others used to promise but never quite delivered.
+    </p>
+
+    <p>
+      But there was no native app for it. Not one we could actually own. There were options — managed services that build and deploy an app for you. They'll slap your colors and logo on it, sure. But you don't get the source code. You don't control the builds. You're back to renting someone else's platform. We didn't spend all that time leaving one locked-in setup just to settle for the lazy option.
+    </p>
+
+    <p>
+      So we spent months planning and building. Not just an app — but an app we could actually manage ourselves. One that matched our Fluent Community site feature-for-feature. Feed, messaging, spaces, profiles, courses, push notifications — all native. Not a webview wrapper. A real React Native app.
+    </p>
+
+    <p>
+      Along the way we built the tools we wished we had — a dashboard to manage everything from the browser, instant updates we could push without waiting on App Store review, a way to add new features without breaking the core. We built all of it because <strong>we use all of it.</strong> Every day. For our own community.
+    </p>
+
+    <p>
+      This isn't a product someone dreamed up in a boardroom — it's a tool we needed, and we made it good enough to share. <a href="/features">See everything that's included.</a>
+    </p>
+
+    <h2>It's for people like you</h2>
+
+    <p>
+      Maybe you run a community on Fluent and your members keep asking "where's the app?" You don't want another subscription that disappears if you stop paying. You want something real — an app with your brand, in your App Store listing, that you actually own. One license, one site, yours forever. Set it up with the dashboard, ship it. Done.
+    </p>
+
+    <p>
+      Or maybe you're a dev. You've got clients with communities and they all want apps. Instead of building from scratch every time, you grab a license for each client, white-label it, customize it with modules, and charge them for setup and ongoing maintenance. <strong>Their builds, their updates, their dashboard — you manage it all.</strong> The license is a one-time cost. What you charge your clients on top of that is up to you.
+    </p>
+
+    <p>
+      Either way — this isn't a SaaS. <strong>One lifetime license. Use it forever.</strong> Your first year of core updates is included. After that, you can renew just the updates for a small yearly fee — not the app itself. The app is yours regardless. Renew or don't, it keeps working. You're only paying to stay current, never to keep what you already have.
+    </p>
+
+  </div>
+</div>
+
+<!-- ── CTA ── -->
+<div class="tbc-section tbc-cta" id="get-started">
+  <div class="tbc-container">
+    <h2>Your community deserves a real app.</h2>
+    <p>
+      Buy it. Own it. Ship it. No recurring fees, no lock-in, no permission needed.
+    </p>
+    <div class="tbc-buttons centered">
+      <a href="/features" class="tbc-btn tbc-btn-outline">Features</a>
+      <a href="/docs" class="tbc-btn tbc-btn-outline">Documentation</a>
+      <a href="/compare" class="tbc-btn tbc-btn-outline">Compare</a>
+    </div>
+  </div>
+</div>
+
+</div>

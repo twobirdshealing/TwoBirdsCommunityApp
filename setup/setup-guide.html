@@ -884,7 +884,7 @@
         <tr style="border-bottom:1px solid var(--border)">
           <td style="padding:6px 8px;white-space:nowrap"><strong>Push Notifications</strong></td>
           <td style="padding:6px 8px">Native push notifications for new posts, replies, messages, and more. Delivered via Firebase Cloud Messaging.</td>
-          <td style="padding:6px 8px;color:var(--text-secondary)"><code>google-services.json</code> + <code>GoogleService-Info.plist</code> (set up in the Plugins &amp; Firebase tab)</td>
+          <td style="padding:6px 8px;color:var(--text-secondary)"><code>google-services.json</code> + <code>GoogleService-Info.plist</code> (set up in the Config tab)</td>
         </tr>
         <tr style="border-bottom:1px solid var(--border)">
           <td style="padding:6px 8px;white-space:nowrap"><strong>Messaging</strong></td>
@@ -1000,42 +1000,28 @@
   </div>
 </div>
 
-<!-- Plugins & Firebase Tab heading -->
-<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Plugins &amp; Firebase Tab</h3>
-
-<!-- Step 14: Plugins & Firebase -->
-<div class="step-card">
-  <div class="step-header">
-    <span class="step-number">14</span>
-    <span class="step-title">Plugins &amp; Firebase</span>
-  </div>
-  <div class="step-body">
-    <p class="prereq-ref">Requires: <a href="#prereq-firebase" class="prereq-badge firebase">Firebase</a> <a href="#prereq-fluent" class="prereq-badge fluent">Fluent</a></p>
-    Check companion plugin status and drop in your Firebase config files. Details coming as we walk through this step.
-  </div>
-</div>
-
 <!-- Modules Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Modules Tab</h3>
 
-<!-- Step 15: Modules -->
+<!-- Step 14: Modules -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">15</span>
-    <span class="step-title">Modules</span>
+    <span class="step-number">14</span>
+    <span class="step-title">Modules &amp; Companion Plugins</span>
   </div>
   <div class="step-body">
-    Toggle add-on features on or off with a single click. Details coming as we walk through this step.
+    <p class="prereq-ref">Requires: <a href="#prereq-firebase" class="prereq-badge firebase">Firebase</a> <a href="#prereq-fluent" class="prereq-badge fluent">Fluent</a></p>
+    Install, enable, and manage add-on modules. Core companion plugins are listed here with their status — make sure they're installed on your WordPress site. Each module card shows its integration points and companion plugin requirements.
   </div>
 </div>
 
 <!-- Builds Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Builds Tab</h3>
 
-<!-- Step 16: Builds -->
+<!-- Step 15: Builds -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">16</span>
+    <span class="step-number">15</span>
     <span class="step-title">Builds</span>
   </div>
   <div class="step-body">
@@ -1046,10 +1032,10 @@
 <!-- OTA Updates Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">OTA Updates Tab</h3>
 
-<!-- Step 16.5: OTA Updates -->
+<!-- Step 15.5: OTA Updates -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">16.5</span>
+    <span class="step-number">15.5</span>
     <span class="step-title">OTA Updates (Over-the-Air)</span>
   </div>
   <div class="step-body">
@@ -1075,10 +1061,10 @@
 <!-- Updates Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Updates Tab</h3>
 
-<!-- Step 17: Updates -->
+<!-- Step 16: Updates -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">17</span>
+    <span class="step-number">16</span>
     <span class="step-title">Updates &amp; Licensing</span>
   </div>
   <div class="step-body">
@@ -1089,10 +1075,10 @@
 <!-- Status Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Status Tab</h3>
 
-<!-- Step 18: Status -->
+<!-- Step 17: Status -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">18</span>
+    <span class="step-number">17</span>
     <span class="step-title">Status</span>
   </div>
   <div class="step-body">
@@ -1792,6 +1778,12 @@ git merge upstream/main</code></pre>
   <li><strong>Android:</strong> Verify <code>google-services.json</code> is in the project root and has the correct package name</li>
   <li>Check that Push Notifications is enabled in wp-admin &rarr; TBC Community App &rarr; Features</li>
   <li>EAS project ID must be set in <code>app.json</code> — push tokens are registered via Expo's push service</li>
+</ul>
+
+<h3>Dashboard Port Already in Use</h3>
+<ul>
+  <li>If the dashboard won't start because port 3456 is already in use, run: <code>npm run kill-dashboard</code></li>
+  <li>This kills whatever process is holding the port, then you can run <code>npm run dashboard</code> again</li>
 </ul>
 
 <h3>Build Fails</h3>

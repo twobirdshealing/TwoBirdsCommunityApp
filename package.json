@@ -12,6 +12,7 @@
     "dev": "npx expo start --dev-client --clear",
     "dev:staging": "cross-env EXPO_PUBLIC_SITE_URL=https://staging.twobirdschurch.com EXPO_PUBLIC_USE_STAGING=1 npx expo start --dev-client --clear",
     "dashboard": "node setup/dashboard.js",
+    "kill-dashboard": "node -e \"const{execSync}=require('child_process');const win=process.platform==='win32';try{const cmd=win?'netstat -ano | findstr :3456 | findstr LISTENING':'lsof -ti :3456';const r=execSync(cmd,{encoding:'utf8'}).trim();if(!r){console.log('No dashboard running on port 3456');process.exit(0)}const p=win?r.split(/\\s+/).pop():r.split('\\n')[0];execSync(win?'taskkill /F /PID '+p:'kill -9 '+p);console.log('Dashboard killed (PID '+p+')')}catch{console.log('No dashboard running on port 3456')}\"",
     "snapshot": "bash scripts/create-white-label.sh",
     "changelog": "bash scripts/update-changelog.sh"
   },

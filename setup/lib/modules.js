@@ -5,7 +5,7 @@ const path = require('path');
 const zlib = require('zlib');
 
 const { PATHS }                    = require('./paths');
-const { fileExists, extractTsValue } = require('./file-utils');
+const { fileExists, extractTsValue, getPluginVersion } = require('./file-utils');
 const { createTar, parseTar }      = require('./http-helpers');
 
 // ---------------------------------------------------------------------------
@@ -45,6 +45,19 @@ function parseModuleManifest(moduleDir) {
   const hasTab = /\btab:\s*\{/.test(content);
   const apiBase = extractTsValue(content, /apiBase:\s*'([^']*)'/);
 
+  // Detect which integration slots this module uses
+  const integrations = [];
+  if (hasTab) integrations.push('Tab');
+  if (/\bwidgets:\s*\[/.test(content)) integrations.push('Widget');
+  if (/\blauncherItems:\s*\[/.test(content)) integrations.push('Launcher');
+  if (/\bheaderIcons:\s*\[/.test(content)) integrations.push('Header Icon');
+  if (/\bproviders:\s*\[/.test(content)) integrations.push('Provider');
+  if (/\bslots:\s*\[/.test(content)) integrations.push('Slot');
+  if (/\bregistrationSteps:\s*\[/.test(content)) integrations.push('Registration Step');
+  if (/\bresponseHeaders:\s*\[/.test(content)) integrations.push('Response Header');
+  if (/\btabBarAddon:\s*\w/.test(content)) integrations.push('Tab Bar Addon');
+  if (/\bnotificationHandler:\s*[\w(]/.test(content)) integrations.push('Push Handler');
+
   // Extract all visibility keys — modules can have multiple hideable elements
   const visibilityKeys = [];
   const hideKeyMatches = content.matchAll(/hideKey:\s*'([^']*)'/g);
@@ -52,7 +65,7 @@ function parseModuleManifest(moduleDir) {
   const hideMenuKeyMatches = content.matchAll(/hideMenuKey:\s*'([^']*)'/g);
   for (const m of hideMenuKeyMatches) { if (!visibilityKeys.includes(m[1])) visibilityKeys.push(m[1]); }
 
-  return { id, name, version, description, author, authorUrl, license, minAppVersion, companionPlugin, hasTab, apiBase, visibilityKeys };
+  return { id, name, version, description, author, authorUrl, license, minAppVersion, companionPlugin, hasTab, apiBase, visibilityKeys, integrations };
 }
 
 /** Get all installed modules */
@@ -89,6 +102,9 @@ function getInstalledModules() {
     const companionExists = manifest.companionPlugin
       ? fileExists(path.join(PATHS.pluginsDir, manifest.companionPlugin))
       : null;
+    const companionVersion = manifest.companionPlugin
+      ? getPluginVersion(manifest.companionPlugin)
+      : null;
 
     // Count files
     const fileCount = countFiles(moduleDir);
@@ -99,6 +115,7 @@ function getInstalledModules() {
       active: isActive,
       hasRouteStub,
       companionExists,
+      companionVersion,
       fileCount,
     });
   }

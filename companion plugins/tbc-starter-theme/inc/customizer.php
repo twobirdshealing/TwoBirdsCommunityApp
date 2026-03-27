@@ -192,3 +192,4 @@ function fluent_starter_get_blog_template() {
 function fluent_starter_show_comments() {
     return (bool) get_theme_mod('fluent_starter_show_comments', true);
 }
+

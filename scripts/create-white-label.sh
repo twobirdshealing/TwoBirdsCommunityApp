@@ -19,7 +19,7 @@ SOURCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 WHITE_LABEL_ROOT="$(cd "$SOURCE_DIR/.." && pwd)/TBC-Community-App (White Lable)"
 
 # Allowlist: only these companion plugins ship with the base product
-CORE_PLUGINS=("tbc-community-app" "tbc-multi-reactions")
+CORE_PLUGINS=("tbc-community-app")
 
 # Protected paths: buyer-customized files that updates must NEVER overwrite
 # Used to generate manifest.json AND find exclusions for core-update tar
@@ -64,9 +64,7 @@ generate_manifest() {
 $(generate_protected_paths_json "    ")
   ],
   "corePlugins": [
-    "tbc-community-app",
-    "tbc-multi-reactions",
-    "tbc-starter-theme"
+    "tbc-community-app"
   ]
 }
 GENMANIFEST_EOF
@@ -213,12 +211,6 @@ sed -i \
 sed -i \
   -e "s|define('TBC_CA_APP_USER_AGENT', 'TBCCommunityApp');|define('TBC_CA_APP_USER_AGENT', 'CommunityApp');|" \
   "$TARGET_DIR/companion plugins/tbc-community-app/tbc-community-app.php"
-
-# --- tbc-multi-reactions: replace contributor name ---
-if [ -f "$TARGET_DIR/companion plugins/tbc-multi-reactions/readme.txt" ]; then
-  sed -i 's|Contributors: twobirdscommunity|Contributors: twobirdscode|' \
-    "$TARGET_DIR/companion plugins/tbc-multi-reactions/readme.txt"
-fi
 
 echo "  Done."
 

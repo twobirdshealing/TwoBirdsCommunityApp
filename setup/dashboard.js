@@ -586,8 +586,7 @@ server.on('error', (err) => {
     console.error(`\n  ERROR: Port ${PORT} is already in use.`);
     console.error('  Another dashboard instance may be running.');
     console.error('  Fix: close the other terminal, or run:');
-    console.error('    taskkill /F /IM node.exe  (Windows)');
-    console.error('    kill $(lsof -ti :' + PORT + ')   (Mac/Linux)\n');
+    console.error('    npm run kill-dashboard\n');
     process.exit(1);
   }
   throw err;

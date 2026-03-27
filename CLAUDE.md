@@ -23,6 +23,7 @@ This is a white-label community app powered by [Fluent Community](https://fluent
 | Command | What it does |
 |---|---|
 | `npm run dashboard` | Launch setup dashboard (browser UI for all configuration) |
+| `npm run kill-dashboard` | Kill dashboard process if port 3456 is stuck |
 | `npm run dev` | Start local dev server (production URL) |
 | `npm run dev:staging` | Start local dev server (staging URL — shows red STAGING indicator in header) |
 | `eas build --platform ios --profile production` | Build iOS via EAS |
@@ -59,7 +60,7 @@ The following directories and files are **core** and will be **overwritten when 
 
 The `companion plugins/` folder contains WordPress plugins. Install these on your WordPress site.
 
-**Core (required):** tbc-community-app (REST endpoints), tbc-multi-reactions (post reactions).
+**Core (required):** tbc-community-app (REST endpoints).
 
 **Add-ons (sold separately):** Paired module + plugin packages — the app module lives in `modules/`, the companion plugin lives in `companion plugins/`. Both are required for the feature to work.
 
@@ -198,7 +199,7 @@ The snapshot script copies this app to the white-label folder with all site-spec
 
 **What it does:**
 1. Copies project to `../TBC-Community-App (White Lable)/` (excludes node_modules, .git, modules, companion plugins)
-2. Copies only core companion plugins (allowlist: tbc-community-app, tbc-multi-reactions)
+2. Copies only core companion plugins (allowlist: tbc-community-app)
 3. Copies only module infrastructure (`_registry.ts`, `_types.ts`) — no module folders
 4. Replaces Two Birds-specific values with placeholders in config.ts, app.json, eas.json, app.config.ts, package.json
 5. Removes Firebase configs, adds FIREBASE_SETUP.md guide
@@ -207,7 +208,7 @@ The snapshot script copies this app to the white-label folder with all site-spec
 
 **What ships in the base white-label product:**
 - Core app (all screens, services, components)
-- Core companion plugins: tbc-community-app, tbc-multi-reactions
+- Core companion plugin: tbc-community-app
 
 **Sold separately as add-ons (NOT in white-label):**
 - tbc-otp plugin (phone OTP verification), tbc-profile-completion plugin (profile completion gate)

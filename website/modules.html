@@ -1,0 +1,306 @@
+<style>
+  /* ── TBC Modules Page ── */
+  .tbc-mod *, .tbc-mod *::before, .tbc-mod *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .tbc-mod {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    color: var(--fcom-primary-text, #19283a);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    --tbc-card: var(--fcom-primary-bg, #ffffff);
+    --tbc-card-hover: var(--fcom-active-bg, #f0f3f5);
+    --tbc-text: var(--fcom-primary-text, #19283a);
+    --tbc-text-muted: var(--fcom-secondary-text, #525866);
+    --tbc-text-dim: var(--fcom-text-off, #959595);
+    --tbc-border: var(--fcom-primary-border, #e3e8ee);
+    --tbc-accent: var(--fcom-text-link, #2271b1);
+    --tbc-accent-soft: color-mix(in srgb, var(--fcom-text-link, #2271b1) 10%, transparent);
+    --tbc-btn-bg: var(--fcom-primary-button, #2B2E33);
+    --tbc-btn-text: var(--fcom-primary-button-text, #ffffff);
+    --tbc-content-bg: var(--fcom-secondary-content-bg, #f0f3f5);
+  }
+
+  /* ── Typography ── */
+  .tbc-mod h1, .tbc-mod h2, .tbc-mod h3 { line-height: 1.2; font-weight: 700; color: var(--tbc-text); }
+  .tbc-mod h1 { font-size: clamp(2.2rem, 5vw, 3.8rem); letter-spacing: -0.03em; }
+  .tbc-mod h2 { font-size: clamp(1.6rem, 3.5vw, 2.4rem); letter-spacing: -0.02em; }
+  .tbc-mod h3 { font-size: 1.15rem; }
+  .tbc-mod a { color: var(--tbc-accent); text-decoration: none; }
+  .tbc-mod a:hover { text-decoration: underline; }
+
+  /* ── Layout ── */
+  .tbc-container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+  .tbc-section { padding: 80px 0; }
+  .tbc-section + .tbc-section { border-top: 1px solid var(--tbc-border); }
+
+  /* ── Buttons ── */
+  .tbc-buttons { display: flex; gap: 16px; flex-wrap: wrap; }
+  .tbc-buttons.centered { justify-content: center; }
+  .tbc-btn {
+    padding: 14px 32px; border-radius: 10px; font-size: 1rem;
+    font-weight: 600; transition: all 0.2s; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    text-decoration: none;
+  }
+  .tbc-btn:hover { text-decoration: none; }
+  .tbc-btn-primary { background: var(--tbc-btn-bg) !important; color: var(--tbc-btn-text) !important; border: none; }
+  .tbc-btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .tbc-btn-outline { background: transparent !important; color: var(--tbc-text) !important; border: 1px solid var(--tbc-border); }
+  .tbc-btn-outline:hover { border-color: var(--tbc-text-muted); transform: translateY(-1px); }
+
+  /* ── Hero ── */
+  .tbc-hero { padding: 80px 0 60px; }
+  .tbc-hero h1 { margin-bottom: 16px; }
+  .tbc-hero-sub {
+    color: var(--tbc-text-muted); font-size: 1.15rem; max-width: 600px; line-height: 1.8;
+  }
+
+  /* ── Prose ── */
+  .tbc-prose p {
+    color: var(--tbc-text-muted); font-size: 1.08rem; margin-bottom: 24px; line-height: 1.85;
+  }
+  .tbc-prose strong { color: var(--tbc-text); font-weight: 600; }
+  .tbc-prose h2 { margin-top: 0; margin-bottom: 24px; }
+  .tbc-prose h3 { margin-top: 40px; margin-bottom: 12px; color: var(--tbc-text); }
+  .tbc-prose ul { list-style: none; padding: 0; margin: 0 0 24px 0; }
+  .tbc-prose li {
+    color: var(--tbc-text-muted); font-size: 1.05rem;
+    padding: 6px 0 6px 24px; position: relative; line-height: 1.7;
+  }
+  .tbc-prose li::before { content: '\2192'; position: absolute; left: 0; color: var(--tbc-accent); }
+
+  /* ── Screenshot placeholders ── */
+  .tbc-screenshot {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid var(--tbc-border);
+    background: var(--tbc-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--tbc-text-dim);
+    font-size: 0.9rem;
+    margin: 32px 0;
+  }
+  .tbc-screenshot-wide {
+    aspect-ratio: 16/9;
+    max-width: 100%;
+  }
+  .tbc-screenshot-phones {
+    aspect-ratio: 2/1;
+    max-width: 100%;
+  }
+
+  /* ── Add-on cards ── */
+  .tbc-addon-card {
+    background: var(--tbc-card);
+    border: 1px solid var(--tbc-border);
+    border-radius: 14px;
+    padding: 32px 36px;
+    margin: 24px 0;
+  }
+  .tbc-addon-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.2rem;
+  }
+  .tbc-addon-card p {
+    color: var(--tbc-text-muted);
+    font-size: 1.05rem;
+    line-height: 1.8;
+    margin-bottom: 0;
+  }
+  .tbc-addon-card p + p { margin-top: 12px; }
+  .tbc-addon-tag {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--tbc-accent);
+    background: var(--tbc-accent-soft);
+    padding: 3px 10px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+  }
+
+  /* ── CTA ── */
+  .tbc-cta { text-align: center; }
+  .tbc-cta h2 { margin-bottom: 16px; }
+  .tbc-cta p {
+    color: var(--tbc-text-muted); font-size: 1.05rem; margin-bottom: 40px;
+    max-width: 540px; margin-left: auto; margin-right: auto;
+  }
+</style>
+
+<div class="tbc-mod">
+
+<!-- ── Hero ── -->
+<div class="tbc-hero">
+  <div class="tbc-container">
+    <h1>Modules</h1>
+    <p class="tbc-hero-sub">
+      Add features to your app without touching core code. Install a prebuilt module in seconds — or build your own from scratch.
+    </p>
+  </div>
+</div>
+
+<!-- ── How it works ── -->
+<div class="tbc-section" style="padding-top: 0;">
+  <div class="tbc-container tbc-prose">
+
+    <h2>How modules work</h2>
+
+    <p>
+      A module is a self-contained folder that plugs into the app through a simple manifest file. It tells the app what it adds — a tab, a home screen widget, a menu item, a header icon, whatever it needs — and the app picks it up automatically. No rewiring screens. No editing core files.
+    </p>
+
+    <p>
+      Installing a module is drag-and-drop in the <a href="/the-dashboard">dashboard</a>. Drop in the package, the dashboard registers it, and it's live on your next build. Enable it, disable it, remove it — all from the same screen.
+    </p>
+
+    <div class="tbc-screenshot tbc-screenshot-wide">
+      [ Screenshot: Dashboard modules tab — install drop zone and installed modules list ]
+    </div>
+
+    <p>
+      The key thing: <strong>modules are protected during core updates.</strong> When we push a new version of the app, your modules stay exactly where they are. The update system knows not to touch them. So you can customize freely without worrying about losing your work.
+    </p>
+
+    <h2>What a module can do</h2>
+
+    <p>
+      Modules aren't limited to simple menu links. A single module can use any combination of these integration points:
+    </p>
+
+    <ul>
+      <li><strong>Bottom tab</strong> — add a full tab to the navigation bar with its own screen</li>
+      <li><strong>Home widgets</strong> — cards on the home screen that display your data</li>
+      <li><strong>Launcher items</strong> — icons in the launcher grid for quick access</li>
+      <li><strong>Header icons</strong> — buttons in the top bar with optional badge counts</li>
+      <li><strong>Registration steps</strong> — custom verification during signup (OTP, profile gates)</li>
+      <li><strong>UI slots</strong> — swap out parts of the core UI with your own components</li>
+      <li><strong>Persistent UI</strong> — always-visible elements like a mini audio player above the tab bar</li>
+      <li><strong>Push notification routing</strong> — handle custom notification types</li>
+      <li><strong>Context providers</strong> — app-wide state that other parts of your module can use</li>
+    </ul>
+
+    <p>
+      A module can be as simple as a single file that adds a link to your website in the menu. Or it can be a full-featured system with its own screens, API calls, a companion WordPress plugin, and persistent state. The <a href="/docs">documentation</a> covers all of it with examples.
+    </p>
+
+    <h2>Build your own</h2>
+
+    <p>
+      The module system is designed so that anyone comfortable with React Native can build a module. One folder, one manifest, one line in the registry to enable it. The docs include a full reference with working examples — from a simple menu link all the way up to a complex multi-screen feature with a WordPress backend.
+    </p>
+
+    <p>
+      And if you use AI coding tools like <strong>Claude Code</strong>, you can describe what you want and have a working module generated in seconds. The manifest format is straightforward enough that AI handles it well — and the docs give it everything it needs to get the integration points right.
+    </p>
+
+    <div class="tbc-screenshot tbc-screenshot-wide">
+      [ Screenshot: Module folder structure in code editor — module.ts manifest ]
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Available Add-ons ── -->
+<div class="tbc-section">
+  <div class="tbc-container tbc-prose">
+    <h2>Available add-ons</h2>
+
+    <p>
+      These are prebuilt modules you can purchase and install. Each one comes with the app module and — where needed — a companion WordPress plugin that provides the backend. Drop them into the dashboard and they're ready to go.
+    </p>
+
+    <div class="tbc-addon-card">
+      <span class="tbc-addon-tag">Module</span>
+      <h3>Blog</h3>
+      <p>
+        Brings your WordPress blog posts into the app. Members can browse posts and read them without leaving the app. Shows up as a home screen widget and a launcher item. Uses the standard WordPress REST API — no companion plugin needed.
+      </p>
+      <p><a href="/addons/blog">Learn more</a></p>
+    </div>
+
+    <div class="tbc-addon-card">
+      <span class="tbc-addon-tag">Module + Plugin</span>
+      <h3>YouTube</h3>
+      <p>
+        Pulls in your YouTube channel's videos and playlists with server-side caching so you don't burn through API quotas. Videos play inline. Shows up as a home screen widget.
+      </p>
+      <p><a href="/addons/youtube">Learn more</a></p>
+    </div>
+
+    <div class="tbc-addon-card">
+      <span class="tbc-addon-tag">Module + Plugin</span>
+      <h3>Multi-Reactions</h3>
+      <p>
+        Upgrades the standard single-reaction system to multi-emoji reactions on posts and comments. Members can react with any emoji — not just a heart. Replaces the core reaction UI with richer interaction through the module's UI slot system.
+      </p>
+      <p><a href="/addons/multi-reactions">Learn more</a></p>
+    </div>
+
+    <div class="tbc-addon-card">
+      <span class="tbc-addon-tag">Module + Plugin</span>
+      <h3>WooCommerce Cart</h3>
+      <p>
+        Adds a cart icon with a live badge count to the app header. Tapping it opens your WooCommerce cart page in an authenticated WebView. Great for communities that sell products, courses, or event tickets through WooCommerce.
+      </p>
+      <p><a href="/addons/cart">Learn more</a></p>
+    </div>
+
+    <div class="tbc-addon-card">
+      <span class="tbc-addon-tag">Module + Plugin</span>
+      <h3>OTP Verification</h3>
+      <p>
+        Phone number verification during registration. Members verify via SMS or voice call before their account is created. Adds a verification step to the signup flow — no changes to core code needed.
+      </p>
+      <p><a href="/addons/otp">Learn more</a></p>
+    </div>
+
+    <div class="tbc-addon-card">
+      <span class="tbc-addon-tag">Module + Plugin</span>
+      <h3>Profile Completion</h3>
+      <p>
+        Requires new members to complete their profile — avatar, bio, or custom fields — before they can access the community. A gentle gate that keeps profiles filled out and your member directory useful.
+      </p>
+      <p><a href="/addons/profile-completion">Learn more</a></p>
+    </div>
+
+    <p>
+      More add-ons are in development. Each one is a one-time purchase — no subscriptions, no recurring fees. Buy it, install it, it's yours.
+    </p>
+
+  </div>
+</div>
+
+<!-- ── For Devs Managing Clients ── -->
+<div class="tbc-section">
+  <div class="tbc-container tbc-prose">
+    <h2>For developers with clients</h2>
+
+    <p>
+      If you're building apps for multiple communities, modules are how you keep things manageable. The core app stays the same across all your clients. Custom features go in modules — one per client, or shared across several. You can export a module from one project and import it into another.
+    </p>
+
+    <p>
+      When we push a core update, you apply it to each client's project and their modules stay intact. No merge conflicts with core. No rewriting custom features after every update. That's the whole point.
+    </p>
+  </div>
+</div>
+
+<!-- ── CTA ── -->
+<div class="tbc-section tbc-cta">
+  <div class="tbc-container">
+    <h2>Make the app yours.</h2>
+    <p>
+      Install a prebuilt module or build something entirely custom. The system stays out of your way.
+    </p>
+    <div class="tbc-buttons centered">
+      <a href="/the-app" class="tbc-btn tbc-btn-outline">The App</a>
+      <a href="/purchase" class="tbc-btn tbc-btn-primary">Get Started</a>
+      <a href="/docs" class="tbc-btn tbc-btn-outline">Documentation</a>
+    </div>
+  </div>
+</div>
+
+</div>
