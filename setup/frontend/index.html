@@ -123,6 +123,13 @@
   .rebuild-notice { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--yellow); margin-top: 3px; }
   .rebuild-notice::before { content: '⚠'; font-size: 10px; }
 
+  .card-header.collapsible { cursor: pointer; user-select: none; }
+  .card-header.collapsible:hover { background: var(--bg-tertiary); border-radius: var(--radius) var(--radius) 0 0; }
+  .card-header .chevron { transition: transform 0.2s; font-size: 12px; color: var(--text-muted); margin-right: 4px; }
+  .card-header .chevron.collapsed { transform: rotate(-90deg); }
+  .card-body h4 { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+  .card-body h4:first-child { margin-top: 0; }
+
   .cmd-toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 24px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
   .cmd-toolbar-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px; }
   .cmd-row { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
@@ -525,16 +532,8 @@
         <div class="field">
           <label>App Version <span class="file-hint">app.json + package.json (4 places)</span></label>
           <input type="text" id="cfg-version" data-key="version" placeholder="1.0.0" pattern="[0-9]+\.[0-9]+\.[0-9]+">
-          <span class="version-files">Your App Store version. Bump from the Builds tab before submitting to stores.</span>
+          <span class="version-files">Your App Store version. Bump from the <a href="#" onclick="document.querySelector('[data-tab=builds]').click();return false" style="color:var(--accent)">Builds tab</a> before submitting to stores.</span>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header"><h3>Bundle IDs</h3><span class="badge" style="color:var(--text-muted)">app.json</span></div>
-    <div class="card-body">
-      <div class="field-group">
         <div class="field">
           <label>iOS Bundle ID <span class="file-hint">ios.bundleIdentifier</span></label>
           <div class="input-with-copy"><input type="text" id="cfg-iosBundleId" data-key="iosBundleId" placeholder="com.yourcompany.communityapp"><button type="button" class="copy-btn" data-copy-from="cfg-iosBundleId" title="Copy for wp-admin Deep Linking">Copy</button></div>
@@ -550,18 +549,17 @@
     </div>
   </div>
 
-
   <div class="card">
-    <div class="card-header"><h3>Site URLs</h3><span class="badge" style="color:var(--text-muted)">eas.json + app.config.ts</span></div>
+    <div class="card-header"><h3>Your WordPress Site</h3><span class="badge" style="color:var(--text-muted)">eas.json + app.config.ts</span></div>
     <div class="card-body">
       <div class="field-group single">
         <div class="field">
-          <label>Production URL <span class="file-hint">eas.json</span></label>
+          <label>Production URL <span class="file-hint">eas.json + app.config.ts</span></label>
           <input type="url" id="cfg-siteUrl" data-key="siteUrl" placeholder="https://your-community-site.com">
           <span class="derive-hint">Used by preview and production builds</span>
         </div>
         <div class="field">
-          <label>Staging URL <span class="file-hint">app.config.ts (optional)</span></label>
+          <label>Staging URL <span class="file-hint">eas.json + app.config.ts</span></label>
           <input type="url" id="cfg-stagingUrl" data-key="stagingUrl" placeholder="https://staging.your-site.com (optional)">
           <span class="derive-hint">Used by <code>npm run dev:staging</code> — leave empty if no staging site</span>
         </div>
@@ -570,7 +568,7 @@
   </div>
 
   <div class="card">
-    <div class="card-header"><h3>EAS (Expo) Config</h3><span class="badge" style="color:var(--text-muted)">app.json</span></div>
+    <div class="card-header"><h3>Build Service</h3><span class="badge" style="color:var(--text-muted)">app.json</span></div>
     <div class="card-body">
       <div id="eas-setup-panel" style="background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
@@ -599,26 +597,9 @@
   </div>
 
   <div class="card">
-    <div class="card-header"><h3>App Branding (Code)</h3><span class="badge" style="color:var(--text-muted)">constants/config.ts</span></div>
+    <div class="card-header"><h3>App Store Submission</h3><span class="badge" style="color:var(--text-muted)">eas.json</span></div>
     <div class="card-body">
-      <div class="field-group">
-        <div class="field">
-          <label>APP_NAME <span class="file-hint">constants/config.ts</span></label>
-          <input type="text" id="cfg-appNameConfig" data-key="appNameConfig" placeholder="My Community">
-          <span class="derive-hint">Auto-synced with app name</span>
-        </div>
-        <div class="field">
-          <label>APP_USER_AGENT <span class="file-hint">constants/config.ts</span></label>
-          <input type="text" id="cfg-userAgent" data-key="userAgent" placeholder="CommunityApp/1.0">
-          <span class="derive-hint">Auto-derived from app name</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header"><h3>iOS App Store Submit</h3><span class="badge" style="color:var(--text-muted)">eas.json</span></div>
-    <div class="card-body">
+      <h4>iOS</h4>
       <div class="field-group">
         <div class="field">
           <label>Apple ID <span class="file-hint">submit.production.ios.appleId</span></label>
@@ -629,12 +610,7 @@
           <input type="text" id="cfg-ascAppId" data-key="ascAppId" placeholder="0000000000">
         </div>
       </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header"><h3>Google Play Submit</h3><span class="badge" style="color:var(--text-muted)">eas.json</span></div>
-    <div class="card-body">
+      <h4>Android</h4>
       <div class="field-group">
         <div class="field">
           <label>Track <span class="file-hint">submit.production.android.track</span></label>
@@ -658,23 +634,37 @@
   </div>
 
   <div class="card">
-    <div class="card-header"><h3>Package</h3><span class="badge" style="color:var(--text-muted)">package.json</span></div>
+    <div class="card-header"><h3>Push Notifications</h3><span class="badge" style="color:var(--text-muted)">Firebase</span></div>
     <div class="card-body">
-      <div class="field-group single">
-        <div class="field">
-          <label>Package Name <span class="file-hint">package.json > name</span></label>
-          <input type="text" id="cfg-packageName" data-key="packageName" placeholder="my-community-app">
-          <span class="derive-hint">Auto-derived from slug if blank</span>
-        </div>
-      </div>
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Drop in your Firebase config files to enable push notifications.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="firebase-section"></div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-header"><h3>Firebase Config</h3><span class="badge" style="color:var(--text-muted)">Push Notifications</span></div>
-    <div class="card-body">
-      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Drop in your Firebase config files to enable push notifications.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="firebase-section"></div>
+    <div class="card-header collapsible" id="advanced-toggle">
+      <h3><span class="chevron collapsed">&#9660;</span> Auto-Generated Fields</h3>
+      <span class="badge" style="color:var(--text-muted)">auto-derived</span>
+    </div>
+    <div class="card-body" id="advanced-body" style="display:none">
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">These fields are automatically derived from your App Name. You shouldn't need to edit them, but you can unlock to override.</p>
+      <div class="field-group">
+        <div class="field">
+          <label>APP_NAME <span class="file-hint">constants/config.ts</span></label>
+          <input type="text" id="cfg-appNameConfig" data-key="appNameConfig" placeholder="My Community">
+          <span class="derive-hint">Auto-synced with app name</span>
+        </div>
+        <div class="field">
+          <label>APP_USER_AGENT <span class="file-hint">constants/config.ts</span></label>
+          <input type="text" id="cfg-userAgent" data-key="userAgent" placeholder="CommunityApp/1.0">
+          <span class="derive-hint">Auto-derived from app name</span>
+        </div>
+        <div class="field">
+          <label>Package Name <span class="file-hint">package.json > name</span></label>
+          <input type="text" id="cfg-packageName" data-key="packageName" placeholder="my-community-app">
+          <span class="derive-hint">Auto-derived from app name</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -893,11 +883,11 @@
     <div class="card-body">
       <div class="license-row" id="license-section">
         <div class="license-input-group">
-          <input type="text" id="license-key" class="input" placeholder="Enter your license key (e.g. TBC-XXXX-XXXX-XXXX)" spellcheck="false">
-          <button class="btn btn-primary" id="license-activate-btn" onclick="activateLicense()">Activate</button>
+          <input type="text" id="license-key" class="input" placeholder="Enter your license key (e.g. TBC-XXXX-XXXX-XXXX)" spellcheck="false" style="display:none">
+          <button class="btn btn-primary" id="license-activate-btn" onclick="activateLicense()" style="display:none">Activate</button>
           <button class="btn btn-danger-subtle" id="license-remove-btn" onclick="removeLicense()" style="display:none">Remove</button>
         </div>
-        <div id="license-status" class="license-status"></div>
+        <div id="license-status" class="license-status checking">Checking license...</div>
       </div>
     </div>
   </div>
@@ -1031,7 +1021,7 @@ const FIELD_HELP = {
     rebuild: true,
   },
   stagingUrl: {
-    text: 'Optional staging/test site URL for local development. Run <code>npm run dev:staging</code> to use this URL instead of production. Leave empty if no staging site.',
+    text: 'Optional staging/test site URL for local development. Run <code>npm run dev:staging</code> to use this URL instead of production. Saves to <code>eas.json</code>, <code>app.config.ts</code>, and <code>package.json</code>. Leave empty if no staging site.',
   },
   easOwner: {
     text: 'Your Expo account username. Use the <strong>Log In to EAS</strong> button above to connect your account — the owner will auto-fill.',
@@ -1105,6 +1095,17 @@ document.getElementById('cmd-help-toggle').addEventListener('click', function() 
   const isCollapsed = panel.classList.contains('collapsed');
   panel.classList.toggle('collapsed', !isCollapsed);
   panel.classList.toggle('expanded', isCollapsed);
+});
+
+// ---------- Collapsible card toggle ----------
+document.querySelectorAll('.card-header.collapsible').forEach(function(header) {
+  header.addEventListener('click', function() {
+    var body = header.nextElementSibling;
+    var chevron = header.querySelector('.chevron');
+    var isHidden = body.style.display === 'none';
+    body.style.display = isHidden ? '' : 'none';
+    if (chevron) chevron.classList.toggle('collapsed', !isHidden);
+  });
 });
 
 // Hide dev:staging button if no staging URL configured
