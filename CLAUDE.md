@@ -189,6 +189,15 @@ Admin module — custom to Two Birds Church, not a public add-on.
 ### Site-Specific Plugins (not in repo — on server only)
 Donation addons, donor dashboard, messaging center, checkout prerequisites, participant frontend, space manager, bulk tools, entry review — these are Two Birds Church site-specific and not part of the product. We occasionally bring them into the companion folder for reference.
 
+### Versioning — Core vs App
+
+There are two separate version numbers:
+
+- **Core version** (`manifest.json` → `version`) — The version of the white-label product/engine. Only we (the devs) control this. Buyers never touch it — it gets overwritten when they apply an update zip. Displayed in the dashboard header badge so buyers can confirm their update applied correctly.
+- **App version** (`app.json` + `package.json`) — The buyer's App Store version. They bump this themselves via the dashboard when submitting to stores.
+
+When we bump the app version for a release, also bump `manifest.json` → `version` to match so the core version stays in sync.
+
 ### White-Label Snapshot
 
 After a version bump, ask the user if we should create a new white-label snapshot.

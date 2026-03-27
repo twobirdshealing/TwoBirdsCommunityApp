@@ -60,6 +60,8 @@
   .header h1 { font-size: 20px; font-weight: 600; }
   .header .subtitle { color: var(--text-secondary); font-size: 13px; margin-left: 12px; }
   .header-right { display: flex; align-items: center; gap: 12px; }
+  .version-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border); letter-spacing: 0.3px; }
+  .version-badge .vb-label { opacity: 0.7; font-weight: 500; }
   .server-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border); }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; }
   .status-dot.connected { background: var(--green); box-shadow: 0 0 4px var(--green); }
@@ -128,7 +130,6 @@
   .build-version-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; }
   .build-version-label { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
   .build-version-input { width: 80px; text-align: center; font-family: var(--font-mono); font-size: 13px; padding: 4px 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); }
-  .build-version-input.bumped { border-color: var(--yellow); color: var(--yellow); }
   .version-control { display: flex; gap: 8px; align-items: center; }
   .version-control input { flex: 1; }
   .version-bumps { display: flex; gap: 4px; flex-shrink: 0; }
@@ -363,6 +364,7 @@
     <span class="subtitle" id="project-path"></span>
   </div>
   <div class="header-right">
+    <span class="version-badge" title="Core product version — updates automatically when you apply an update. Not the same as your App Store version."><span class="vb-label">Core</span> <span id="header-core-version">—</span></span>
     <span class="progress-badge" id="progress-badge"></span>
     <span class="server-status" id="server-status" title="Server connected">
       <span class="status-dot connected" id="status-dot"></span>
@@ -453,15 +455,8 @@
         </div>
         <div class="field">
           <label>App Version <span class="file-hint">app.json + package.json (4 places)</span></label>
-          <div class="version-control">
-            <input type="text" id="cfg-version" data-key="version" placeholder="1.0.0" pattern="[0-9]+\.[0-9]+\.[0-9]+">
-            <div class="version-bumps">
-              <button type="button" class="btn btn-sm" onclick="bumpVersion('major')" title="Major version (breaking changes)">Major</button>
-              <button type="button" class="btn btn-sm" onclick="bumpVersion('minor')" title="Minor version (new features)">Minor</button>
-              <button type="button" class="btn btn-sm" onclick="bumpVersion('patch')" title="Patch version (bug fixes)">Patch</button>
-            </div>
-          </div>
-          <span class="version-files">Your App Store version. Updates: app.json (version + buildNumber + versionCode) + package.json</span>
+          <input type="text" id="cfg-version" data-key="version" placeholder="1.0.0" pattern="[0-9]+\.[0-9]+\.[0-9]+">
+          <span class="version-files">Your App Store version. Bump from the Builds tab before submitting to stores.</span>
         </div>
       </div>
     </div>
@@ -703,7 +698,7 @@
         <button type="button" class="btn btn-sm" onclick="bumpVersion('major')">Major</button>
         <button type="button" class="btn btn-sm" onclick="bumpVersion('minor')">Minor</button>
         <button type="button" class="btn btn-sm" onclick="bumpVersion('patch')">Patch</button>
-        <button type="button" class="btn btn-sm btn-primary" id="build-version-save" style="display:none" onclick="saveVersionFromBuild()">Save</button>
+        <button type="button" class="btn btn-sm" id="bump-direction-toggle" onclick="toggleBumpDirection()" title="Switch to decrement">&#x25B2;</button>
       </div>
       <div class="new-build-grid">
         <div class="new-build-card">
@@ -947,7 +942,7 @@ const FIELD_HELP = {
     rebuild: true,
   },
   version: {
-    text: 'App version (semver). Use the bump buttons or type directly. Saves to all 4 places: <code>app.json</code> version + buildNumber + versionCode, and <code>package.json</code> version.',
+    text: 'Your App Store version (semver). Bump from the <strong>Builds</strong> tab, or unlock to edit manually. Saves to all 4 places: <code>app.json</code> version + buildNumber + versionCode, and <code>package.json</code> version. The <strong>Core</strong> version in the header is separate — it tracks the product version and updates automatically when you apply an update.',
     rebuild: true,
   },
   iosBundleId: {
@@ -1136,7 +1131,7 @@ document.querySelectorAll('#tab-config select[data-key]').forEach(sel => {
 // ---------- Derived-field lock ----------
 const LOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
 const UNLOCK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
-const DERIVABLE_FIELDS = ['slug', 'scheme', 'appNameConfig', 'userAgent', 'packageName', 'androidPackage'];
+const DERIVABLE_FIELDS = ['slug', 'scheme', 'appNameConfig', 'userAgent', 'packageName', 'androidPackage', 'version'];
 
 function setupFieldLock(input) {
   if (!input || input.closest('.input-lock-wrap')) return; // already wrapped
@@ -1207,6 +1202,9 @@ async function loadState() {
       headerTitle.textContent = isDefault ? 'Setup Dashboard' : appName + ' — Setup Dashboard';
     }
     document.title = isDefault ? 'Setup Dashboard' : appName + ' — Setup Dashboard';
+    // Show core version in header badge
+    var coreVBadge = document.getElementById('header-core-version');
+    if (coreVBadge) coreVBadge.textContent = 'v' + (state.config.coreVersion || '?');
   } catch (err) {
     showToast('Failed to load state: ' + err.message, 'error');
   }
@@ -1535,38 +1533,51 @@ async function saveConfig() {
 }
 
 // ---------- Version bump ----------
+var bumpUp = true;
+function toggleBumpDirection() {
+  bumpUp = !bumpUp;
+  var btn = document.getElementById('bump-direction-toggle');
+  if (btn) { btn.innerHTML = bumpUp ? '&#x25B2;' : '&#x25BC;'; btn.title = bumpUp ? 'Switch to decrement' : 'Switch to increment'; }
+}
+
 function bumpVersion(type) {
-  const el = document.getElementById('cfg-version');
+  var el = document.getElementById('cfg-version');
   if (!el) return;
-  const current = el.value || '1.0.0';
-  const parts = current.split('.').map(Number);
+  var current = el.value || '1.0.0';
+  var parts = current.split('.').map(Number);
   if (parts.length !== 3 || parts.some(isNaN)) {
     showToast('Invalid version format. Use semver (e.g. 1.0.0)', 'error');
     return;
   }
-  if (type === 'major') { parts[0]++; parts[1] = 0; parts[2] = 0; }
-  else if (type === 'minor') { parts[1]++; parts[2] = 0; }
-  else { parts[2]++; }
+  var before = el.value;
+  if (bumpUp) {
+    if (type === 'major') { parts[0]++; parts[1] = 0; parts[2] = 0; }
+    else if (type === 'minor') { parts[1]++; parts[2] = 0; }
+    else if (type === 'patch') { parts[2]++; }
+  } else {
+    if (type === 'major' && parts[0] > 0) { parts[0]--; parts[1] = 0; parts[2] = 0; }
+    else if (type === 'minor' && parts[1] > 0) { parts[1]--; parts[2] = 0; }
+    else if (type === 'patch' && parts[2] > 0) { parts[2]--; }
+  }
   el.value = parts.join('.');
+  if (el.value === before) {
+    showToast('Already at minimum for ' + type, 'error');
+    return;
+  }
   checkDirty();
-  syncBuildVersion();
+  syncBuildVersion(false);
 }
 
-function syncBuildVersion() {
-  const configEl = document.getElementById('cfg-version');
-  const buildEl = document.getElementById('build-version');
-  const saveBtn = document.getElementById('build-version-save');
+function syncBuildVersion(updateBanners) {
+  var configEl = document.getElementById('cfg-version');
+  var buildEl = document.getElementById('build-version');
   if (configEl && buildEl) {
     buildEl.value = configEl.value;
-    const changed = configEl.value !== originalValues.version;
-    buildEl.classList.toggle('bumped', changed);
-    if (saveBtn) saveBtn.style.display = changed ? 'inline-flex' : 'none';
   }
-  // Update build banners
+  if (updateBanners === false) return;
   var blockers = getChecksByStatus('fail');
   updateBannerList('build-blockers-banner', 'build-blockers-list', blockers);
   updateBannerList('build-warnings-banner', 'build-warnings-list', getChecksByStatus('warn'));
-  // Disable/enable build buttons based on blockers
   var buildBtns = document.querySelectorAll('.new-build-card .btn');
   var hasBlockers = blockers.length > 0;
   for (var i = 0; i < buildBtns.length; i++) {
@@ -1574,20 +1585,6 @@ function syncBuildVersion() {
     buildBtns[i].style.opacity = hasBlockers ? '0.5' : '';
     buildBtns[i].style.pointerEvents = hasBlockers ? 'none' : '';
   }
-}
-
-async function saveVersionFromBuild() {
-  const el = document.getElementById('cfg-version');
-  if (!el || el.value === originalValues.version) return;
-  const changes = { version: el.value };
-  try {
-    const res = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) });
-    const data = await res.json();
-    if (data.ok) {
-      showToast('Version bumped to ' + el.value, 'success');
-      await loadState();
-    } else showToast('Save failed', 'error');
-  } catch (err) { showToast('Save error: ' + err.message, 'error'); }
 }
 
 // ---------- File uploads ----------
@@ -1920,6 +1917,10 @@ async function startBuild(platform, profile) {
   var blockers = getChecksByStatus('fail');
   if (blockers.length > 0) {
     alert('Cannot build — fix these issues first:\n\n' + blockers.map(function(b) { return '  ✗ ' + b; }).join('\n') + '\n\nGo to the Config tab to resolve them.');
+    return;
+  }
+  if (dirty) {
+    alert('You have unsaved changes. Save your changes on the Config tab before building.');
     return;
   }
   if (!confirm('Start a ' + profile + ' build for ' + platform + '?\n\nThis will queue a build on EAS servers.')) return;
