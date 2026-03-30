@@ -851,7 +851,7 @@
       <h4>iOS</h4>
       <div class="field-group">
         <div class="field">
-          <label>Apple ID <span class="file-hint">submit.production.ios.appleId</span>
+          <label>Apple Account (Email) <span class="file-hint">submit.production.ios.appleId</span>
             <template x-if="FIELD_HELP.appleId">
               <button class="help-toggle" type="button" x-on:click="toggleFieldHelp('appleId')" title="Toggle help">?</button>
             </template>
@@ -860,7 +860,7 @@
           <div class="field-help" x-bind:class="fieldHelpState.appleId ? 'expanded' : 'collapsed'" x-html="getFieldHelpHtml('appleId')"></div>
         </div>
         <div class="field">
-          <label>ASC App ID <span class="file-hint">submit.production.ios.ascAppId</span>
+          <label>App Store Connect ID <span class="file-hint">submit.production.ios.ascAppId</span>
             <template x-if="FIELD_HELP.ascAppId">
               <button class="help-toggle" type="button" x-on:click="toggleFieldHelp('ascAppId')" title="Toggle help">?</button>
             </template>
@@ -1313,7 +1313,7 @@
               <button class="btn btn-sm btn-success" x-on:click="submitToStore(isIosBuild(build) ? 'ios' : 'android', build.id)" x-text="'Submit to ' + (isIosBuild(build) ? 'App Store' : 'Google Play')"></button>
             </template>
             <template x-if="normStatus(build) === 'finished' && !isInternalBuild(build) && !buildSubmissions[build.id]?.ok && !isStoreConfigured(build)">
-              <button class="btn btn-sm" disabled x-bind:title="isIosBuild(build) ? 'Set Apple ID and ASC App ID in Config tab first' : 'Upload Google Play service account key in Config tab first'">Submit (not configured)</button>
+              <button class="btn btn-sm" disabled x-bind:title="isIosBuild(build) ? 'Set Apple Account and App Store Connect ID in Config tab first' : 'Upload Google Play service account key in Config tab first'">Submit (not configured)</button>
             </template>
             <!-- View on EAS -->
             <template x-if="getBuildPageUrl(build)">
@@ -1869,8 +1869,8 @@ document.addEventListener('alpine:init', () => {
       easProjectId: { text: 'Your EAS project ID (UUID format). Use the <strong>Link Project</strong> button above to create one — it will auto-fill this field.', link: 'https://expo.dev', linkLabel: 'Expo Dashboard', rebuild: true },
       appNameConfig: { text: 'The app name used in code (header, notifications, etc.). Auto-synced with the App Name field above.' },
       userAgent: { text: 'Identifies your app in HTTP requests to your WordPress site. Auto-derived from app name. Format: <code>YourAppName/1.0</code>.' },
-      appleId: { text: 'The Apple ID email you use for App Store Connect — the email that manages your Apple Developer account.', link: 'https://appstoreconnect.apple.com', linkLabel: 'App Store Connect' },
-      ascAppId: { text: 'Your App Store Connect App ID (numeric). Find it under your app → General → App Information → Apple ID.', link: 'https://appstoreconnect.apple.com/apps', linkLabel: 'App Store Connect' },
+      appleId: { text: 'The email you use to sign into App Store Connect — your Apple Developer account email.', link: 'https://appstoreconnect.apple.com', linkLabel: 'App Store Connect' },
+      ascAppId: { text: 'The numeric ID Apple assigns to your app. Find it in App Store Connect → your app → General → App Information → "Apple ID" (the number, e.g. <code>1563113528</code>).', link: 'https://appstoreconnect.apple.com/apps', linkLabel: 'App Store Connect' },
       googlePlayTrack: { text: 'Which track to submit Android builds to. Use <strong>internal</strong> for testing, <strong>production</strong> for release.', link: 'https://play.google.com/console', linkLabel: 'Google Play Console' },
       packageName: { text: 'The npm package name in <code>package.json</code>. Not user-visible — just for repo cleanliness. Auto-derived from slug.' },
     },

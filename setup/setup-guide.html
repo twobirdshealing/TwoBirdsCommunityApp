@@ -191,6 +191,38 @@
     border-radius: 8px;
     margin-top: 16px;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    cursor: zoom-in;
+    transition: opacity 0.15s;
+  }
+  .step-img:hover { opacity: 0.85; }
+  .step-img-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .step-img-row .step-img { margin-top: 0; max-width: 240px; flex: 1 1 200px; }
+  .field-ref-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.92rem; }
+  .field-ref-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .field-ref-table td:first-child { white-space: nowrap; font-weight: 600; width: 160px; color: var(--accent); }
+  .field-ref-table tr:last-child td { border-bottom: none; }
+
+  /* Lightbox */
+  .lightbox-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out;
+    padding: 24px;
+  }
+  .lightbox-overlay.active { display: flex; }
+  .lightbox-overlay img {
+    max-width: 95vw;
+    max-height: 92vh;
+    border-radius: 8px;
+    box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+    object-fit: contain;
   }
 
   .toc { background: var(--surface); border-radius: 12px; padding: 24px 28px; margin: 24px 0 40px; border: 1px solid var(--border); }
@@ -390,14 +422,14 @@
             <li><strong>Platforms</strong> &mdash; check <strong>iOS</strong></li>
             <li><strong>Name</strong> &mdash; your app's display name on the App Store (you can change this later)</li>
             <li><strong>Primary Language</strong> &mdash; your app's main language</li>
-            <li><strong>Bundle ID</strong> &mdash; select the bundle ID you registered in the Apple Developer Portal (from Step 5). If you haven't registered one yet, do that first and come back here.</li>
+            <li><strong>Bundle ID</strong> &mdash; select the bundle ID you registered in the Apple Developer Portal (from Step 4). If you haven't registered one yet, do that first and come back here.</li>
             <li><strong>SKU</strong> &mdash; an internal reference ID (not visible to users). Use something like your app slug, e.g. <code>mycommunityapp</code></li>
             <li><strong>User Access</strong> &mdash; select <strong>Full Access</strong> unless you have specific team restrictions</li>
           </ul>
           <img class="step-img" src="images/newappsetup.webp" alt="New App form in App Store Connect with all fields filled in">
         </li>
         <li>
-          Click <strong>Create</strong>. Your app now exists in App Store Connect. You'll need the <strong>ASC App ID</strong> later (found under General &rarr; App Information &rarr; Apple ID).
+          Click <strong>Create</strong>. Your app now exists in App Store Connect. You'll need the <strong>App Store Connect ID</strong> later (found under General &rarr; App Information &rarr; Apple ID).
         </li>
       </ol>
       <div class="callout" style="margin-top: 12px;">
@@ -445,7 +477,7 @@
           Check the <strong>Developer Program Policies</strong> and <strong>US export laws</strong> declarations, then click <strong>Create app</strong>.
         </li>
         <li>
-          Your app now exists in the Play Console. The <strong>package name</strong> gets locked when you upload your first build &mdash; make sure it matches the Android Package you set in Step 5.
+          Your app now exists in the Play Console. The <strong>package name</strong> gets locked when you upload your first build &mdash; make sure it matches the Android Package you set in Step 4.
         </li>
       </ol>
       <div class="callout" style="margin-top: 12px;">
@@ -566,7 +598,7 @@
   <details>
     <summary>Walkthrough: Install EAS CLI</summary>
     <div class="details-content">
-      <p>The <strong>setup dashboard handles this automatically</strong> &mdash; in Step 7 (EAS Config card), it detects whether EAS CLI is installed and lets you install, log in, and link your project with one click each.</p>
+      <p>The <strong>setup dashboard handles this automatically</strong> &mdash; in Step 6 (EAS Config card), it detects whether EAS CLI is installed and lets you install, log in, and link your project with one click each.</p>
       <div class="callout" style="margin-top: 12px;">
         <strong>Manual alternative:</strong> <code>npm install -g eas-cli</code> then <code>eas login</code> from your terminal.
       </div>
@@ -729,118 +761,129 @@
     <span class="step-title">App Identity</span>
   </div>
   <div class="step-body">
+    <p class="prereq-ref">Requires: <a href="#prereq-apple" class="prereq-badge apple">Apple</a> <a href="#prereq-google" class="prereq-badge google">Google</a></p>
     <p>
-      Set your <strong>App Name</strong> (what users see on their home screen), and the dashboard auto-derives the <strong>Slug</strong> (URL-safe project ID) and <strong>Scheme</strong> (deep link prefix like <code>myapp://</code>) from it. You can override these if needed, but the auto-derived values are usually fine.
+      The App Identity card is where you name your app and set the identifiers the app stores use to find it. You only need to fill in <strong>two fields</strong> &mdash; everything else auto-derives from your app name.
     </p>
+    <img class="step-img" src="images/App Identity 1.webp" alt="App Identity card in setup dashboard showing all fields">
+
+    <!-- App Name -->
+    <h5 style="margin-top: 20px;">App Name</h5>
     <p>
-      <strong>Version</strong> starts at <code>1.0.0</code> &mdash; this is <em>your</em> app version that you control. Use the bump buttons (Major, Minor, Patch) or type directly. The dashboard writes it to all 4 required places at once (<code>app.json</code> version + buildNumber + versionCode + <code>package.json</code>). There's also a quick version bump section on the Builds tab for convenience. The <strong>core version</strong> is separate and locked &mdash; it tracks which version of the product you're running and is used by the Updates tab to check for new releases.
+      Type your app name &mdash; this is what users see on their home screen and in stores (keep it under 30 characters). The dashboard auto-derives Slug, URL Scheme, APP_NAME, APP_USER_AGENT, and Package Name from it.
     </p>
-    <img class="step-img" src="images/step4-appIdentity.webp" alt="App Identity card showing name, slug, scheme, and version fields">
+
+    <!-- iOS Bundle ID -->
+    <h5 style="margin-top: 16px;">iOS Bundle ID</h5>
+    <p>
+      A reverse-domain identifier (e.g. <code>com.yourcompany.community</code>) that uniquely identifies your app in the App Store. <strong>Cannot be changed</strong> after your first submission &mdash; choose carefully. You need to register this in the Apple Developer Portal before building:
+    </p>
+    <details style="margin-top: 8px;">
+      <summary>Register your Bundle ID in Apple Developer Portal</summary>
+      <div class="details-content">
+        <ol>
+          <li>Go to <a href="https://developer.apple.com/account/resources/identifiers/list" target="_blank">Certificates, Identifiers &amp; Profiles</a> &rarr; <strong>Identifiers</strong></li>
+          <li>Click the blue <strong>+</strong> button</li>
+          <li>Select <strong>App IDs</strong> &rarr; Continue &rarr; Select <strong>App</strong> &rarr; Continue</li>
+          <li>Enter a <strong>Description</strong> and your <strong>Bundle ID</strong> (Explicit, not Wildcard &mdash; must match the dashboard exactly)</li>
+          <li>Under <strong>Capabilities</strong>, enable <strong>Push Notifications</strong></li>
+          <li>Click <strong>Continue</strong> &rarr; <strong>Register</strong></li>
+        </ol>
+        <div class="step-img-row">
+          <img class="step-img" src="images/App Identity 2.webp" alt="Click + to register a new identifier">
+          <img class="step-img" src="images/App Identity 3.webp" alt="Select App IDs, then App type">
+          <img class="step-img" src="images/App Identity 4.webp" alt="Enter description and bundle ID, enable Push Notifications">
+        </div>
+      </div>
+    </details>
+    <div class="callout callout-warn" style="margin-top: 12px;">
+      The bundle ID in the dashboard must match <strong>exactly</strong> what you registered &mdash; mismatches cause build failures and broken push notifications.
+    </div>
+
+    <!-- Auto-derived fields -->
+    <h5 style="margin-top: 20px;">Other fields (auto-derived, no action needed)</h5>
+    <table class="field-ref-table">
+      <tr><td>Slug</td><td>URL-safe project ID for Expo. Auto-derived from app name.</td></tr>
+      <tr><td>URL Scheme</td><td>Deep link prefix (e.g. <code>mycommunityapp://</code>) for push notification taps and external links. Auto-derived from slug. Copy into wp-admin &rarr; TBC Community App &rarr; Deep Linking.</td></tr>
+      <tr><td>App Version</td><td>Starts at <code>1.0.0</code>. Bump from the <strong>Builds</strong> tab &mdash; writes to all 4 required places at once. The <em>core version</em> in the header is separate (tracks product version).</td></tr>
+      <tr><td>Android Package</td><td>Auto-fills from iOS Bundle ID. Same ID on both platforms is recommended for Firebase. Override manually if needed.</td></tr>
+      <tr><td>APP_NAME</td><td>App name in code (header, notifications). Auto-synced with App Name above.</td></tr>
+      <tr><td>APP_USER_AGENT</td><td>Identifies your app in API requests to WordPress. Auto-derived from app name.</td></tr>
+      <tr><td>Package Name</td><td>npm package name in <code>package.json</code>. Not user-visible &mdash; auto-derived from slug.</td></tr>
+    </table>
   </div>
 </div>
 
-<!-- Step 5: Bundle IDs -->
+<!-- Step 5: Your WordPress Site -->
 <div class="step-card">
   <div class="step-header">
     <span class="step-number">5</span>
-    <span class="step-title">Bundle IDs</span>
+    <span class="step-title">Your WordPress Site</span>
   </div>
   <div class="step-body">
-    <p class="prereq-ref">Requires: <a href="#prereq-apple" class="prereq-badge apple">Apple</a> <a href="#prereq-google" class="prereq-badge google">Google</a></p>
     <p>
-      Your <strong>iOS Bundle ID</strong> and <strong>Android Package</strong> uniquely identify your app in the App Store and Play Store. These <strong>cannot be changed</strong> after your first store submission, so choose carefully.
+      Point your app at the WordPress site it connects to. You only need the <strong>Production URL</strong> &mdash; staging is optional.
     </p>
+    <img class="step-img" src="images/Your WordPress Site.webp" alt="Your WordPress Site card showing production and staging URL fields">
 
-    <h5 style="margin-top: 16px;">iOS Bundle ID</h5>
-    <p>
-      Format: <code>com.yourcompany.communityapp</code> &mdash; reverse domain style. You'll need to register this in the <a href="https://developer.apple.com/account/resources/identifiers/list" target="_blank">Apple Developer Portal &rarr; Identifiers</a>:
-    </p>
-    <ol style="margin-top: 8px;">
-      <li>Click the <strong>+</strong> button to register a new App ID</li>
-      <li>Select <strong>App IDs</strong>, then <strong>App</strong></li>
-      <li>Enter a description and your <strong>Bundle ID</strong> (explicit, not wildcard)</li>
-      <li>Enable <strong>Push Notifications</strong> under Capabilities (required for the app to send notifications)</li>
-      <li>Click <strong>Continue</strong> &rarr; <strong>Register</strong></li>
-    </ol>
-    <p style="margin-top: 8px;">
-      Enter this same bundle ID in the dashboard. It must match exactly &mdash; if it doesn't, builds will fail and push notifications won't work.
-    </p>
-    <img class="step-img" src="images/step5-bundleids.webp" alt="Bundle IDs card showing iOS and Android package fields">
-    <img class="step-img" src="images/step5-bundleids-ios.webp" alt="iOS bundle ID in Apple Developer Portal">
-
-    <h5 style="margin-top: 16px;">Android Package</h5>
-    <p>
-      Let this <strong>auto-fill from your iOS Bundle ID</strong> &mdash; no need to type anything here. Using the same identifier on both platforms is recommended because Firebase (used for push notifications) requires the package name to match exactly. Keeping them the same means one Firebase project covers both iOS and Android cleanly. If you do need a different Android package name, type it in manually &mdash; just make sure your Firebase project has separate apps configured for each.
-    </p>
-    <p>
-      You'll create your app in the <a href="https://play.google.com/console" target="_blank">Google Play Console</a> later when you're ready to submit. The package name is set during your first upload &mdash; just make sure it matches what you entered here.
-    </p>
+    <table class="field-ref-table" style="margin-top: 16px;">
+      <tr><td>Production URL</td><td>Your live WordPress + Fluent Community site URL (<strong>no trailing slash</strong>). The app uses this for everything &mdash; login, feed, profiles, messaging. Must have the <code>tbc-community-app</code> companion plugin installed.</td></tr>
+      <tr><td>Staging URL</td><td>Optional. If you have a test site, enter it here and run <code>npm run dev:staging</code> to develop against it instead of production. The app shows a red <strong>STAGING</strong> label in the header so you always know which environment you're on. Leave empty if you don't have one.</td></tr>
+    </table>
   </div>
 </div>
 
-<!-- Step 6: Site URLs -->
+<!-- Step 6: Build Service -->
 <div class="step-card">
   <div class="step-header">
     <span class="step-number">6</span>
-    <span class="step-title">Site URLs</span>
-  </div>
-  <div class="step-body">
-    <p>
-      <strong>Production URL</strong> &mdash; Your WordPress + Fluent Community site URL (<strong>no trailing slash</strong>). This is the server your app talks to for everything &mdash; login, feed, profiles, messaging. It must have the <code>tbc-community-app</code> companion plugin installed.
-    </p>
-    <p>
-      <strong>Staging URL</strong> (optional) &mdash; If you have a staging/test site, enter its URL here. Run <code>npm run dev:staging</code> to test locally against your staging server instead of production. Leave empty if you don't have one. When connected to staging, the app shows a red <strong>STAGING</strong> label in the header so you always know which environment you're on.
-    </p>
-    <img class="step-img" src="images/step6-siteurl.webp" alt="Site URLs card showing production and staging URL fields">
-  </div>
-</div>
-
-<!-- Step 7: EAS (Expo) Config -->
-<div class="step-card">
-  <div class="step-header">
-    <span class="step-number">7</span>
-    <span class="step-title">EAS (Expo) Config</span>
+    <span class="step-title">Build Service</span>
   </div>
   <div class="step-body">
     <p class="prereq-ref">Requires: <a href="#prereq-expo" class="prereq-badge expo">Expo</a></p>
     <p>
-      EAS is the cloud build service that compiles your app for iOS and Android &mdash; no Xcode or Android Studio needed on your machine. The dashboard handles the entire setup: install, login, and project linking.
+      EAS (Expo Application Services) is the cloud build service that compiles your app for iOS and Android &mdash; no Xcode or Android Studio needed. The dashboard walks you through the entire setup: install, login, and project linking.
     </p>
+    <img class="step-img" src="images/Build Service 1.webp" alt="Build Service card showing EAS CLI status, owner, and project ID">
 
-    <h5 style="margin-top: 16px;">1. Install EAS CLI</h5>
-    <p>
-      The dashboard auto-detects whether EAS CLI is installed. If it's not, you'll see a red dot and an <strong>Install EAS CLI</strong> button. Click it &mdash; the dashboard runs <code>npm install -g eas-cli</code> for you and shows a green success toast when it's done.
-    </p>
-    <p>
-      Or install manually from terminal: <code>npm install -g eas-cli</code>
-    </p>
-    <img class="step-img" src="images/easclinotinstalled.webp" alt="EAS Config card showing red dot — EAS CLI not installed, with Install button">
+    <details style="margin-top: 12px;">
+      <summary>Setup walkthrough: Install &rarr; Login &rarr; Link</summary>
+      <div class="details-content">
+        <h5 style="margin-top: 8px;">1. Install EAS CLI</h5>
+        <p>
+          The dashboard auto-detects EAS CLI. If missing, you'll see a red dot &mdash; click <strong>Install EAS CLI</strong> and the dashboard runs <code>npm install -g eas-cli</code> for you. Or install manually: <code>npm install -g eas-cli</code>
+        </p>
+        <img class="step-img" src="images/easclinotinstalled.webp" alt="EAS CLI not installed — red dot with Install button">
 
-    <h5 style="margin-top: 16px;">2. Log in to EAS</h5>
-    <p>
-      Once installed, the status updates to show the version with a green <strong>Installed</strong> badge. If you don't have an Expo account yet, <a href="https://expo.dev/signup" target="_blank">create one for free</a> first.
-      Then click <strong>Log In to EAS</strong> &mdash; this opens your browser where you sign in. Once complete, the dashboard automatically detects the login.
-    </p>
-    <img class="step-img" src="images/eascliinstallednotloggedin.webp" alt="EAS Config card showing yellow dot — EAS CLI installed but not logged in, with Log In button">
+        <h5 style="margin-top: 16px;">2. Log in to EAS</h5>
+        <p>
+          Once installed, click <strong>Log In to EAS</strong> &mdash; this opens your browser to sign in. If you don't have an Expo account, <a href="https://expo.dev/signup" target="_blank">create one for free</a> first. The dashboard detects login automatically.
+        </p>
+        <img class="step-img" src="images/eascliinstallednotloggedin.webp" alt="EAS CLI installed but not logged in — yellow dot with Log In button">
+
+        <h5 style="margin-top: 16px;">3. Link your project</h5>
+        <p>
+          After login, click <strong>Link Project</strong> to create a project on your Expo account. This auto-fills <strong>EAS Owner</strong> and <strong>EAS Project ID</strong>. If a project with the same slug already exists, it links to that one instead. Set your app name first (Step 4) before linking.
+        </p>
+        <img class="step-img" src="images/eascliinstalledloggedin.webp" alt="EAS CLI logged in — green dot with username">
+      </div>
+    </details>
+
+    <table class="field-ref-table" style="margin-top: 16px;">
+      <tr><td>EAS Owner</td><td>Your Expo account username. Auto-fills when you log in and link your project.</td></tr>
+      <tr><td>EAS Project ID</td><td>UUID that identifies your project on EAS. Auto-fills when you link your project.</td></tr>
+    </table>
+
     <div class="callout callout-info" style="margin-top: 12px;">
-      <strong>Good to know:</strong> EAS login is <em>per machine</em>, not per project. Once you log in, every project on this computer uses that Expo account. If you work with multiple Expo accounts, use the <strong>Log Out</strong> button to switch, or manually type a different owner name in the field.
+      <strong>Good to know:</strong> EAS login is <em>per machine</em>, not per project. Once logged in, every project on this computer uses that Expo account. Use the <strong>Log Out</strong> button to switch accounts.
     </div>
-
-    <h5 style="margin-top: 16px;">3. Link your project</h5>
-    <p>
-      After logging in, the status turns green and shows your username. Click <strong>Link Project</strong> to create a new project on your Expo account using your app's slug. This fills in the <strong>EAS Owner</strong> and <strong>EAS Project ID</strong> automatically.
-    </p>
-    <img class="step-img" src="images/eascliinstalledloggedin.webp" alt="EAS Config card showing green dot — EAS CLI installed and logged in with username">
-    <p style="margin-top: 12px;">
-      If a project with the same slug already exists on your account, it links to that one instead of creating a duplicate. The slug comes from your app name &mdash; so <strong>set your app name first</strong> (step 4) before linking.
-    </p>
   </div>
 </div>
 
-<!-- Step 8: App Branding (Code) -->
+<!-- Step 7: App Branding (Code) -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">8</span>
+    <span class="step-number">7</span>
     <span class="step-title">App Branding (Code)</span>
   </div>
   <div class="step-body">
@@ -854,11 +897,10 @@
   </div>
 </div>
 
-<!-- Step 9: Bot Protection -->
-<!-- Step 9: Feature Flags & Profile Tabs -->
+<!-- Step 8: Feature Flags & Profile Tabs -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">9</span>
+    <span class="step-number">8</span>
     <span class="step-title">Feature Flags &amp; Profile Tabs</span>
   </div>
   <div class="step-body">
@@ -920,10 +962,10 @@
   </div>
 </div>
 
-<!-- Step 10: iOS App Store Submit -->
+<!-- Step 9: iOS App Store Submit -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">10</span>
+    <span class="step-number">9</span>
     <span class="step-title">iOS App Store Submit</span>
   </div>
   <div class="step-body">
@@ -932,12 +974,12 @@
       These fields are used by <code>eas submit</code> to automatically upload your iOS builds to App Store Connect. You don't need them for building &mdash; only when you're ready to submit to the App Store. You can skip this step and come back later.
     </p>
 
-    <h5 style="margin-top: 16px;">Apple ID</h5>
+    <h5 style="margin-top: 16px;">Apple Account (Email)</h5>
     <p>
       The email address you use to sign into <a href="https://appstoreconnect.apple.com" target="_blank">App Store Connect</a>. This is your Apple Developer account email. You can find it by logging into App Store Connect and clicking your name in the top-right corner &rarr; Settings &mdash; it's shown under <strong>Apple Account</strong>.
     </p>
 
-    <h5 style="margin-top: 16px;">ASC App ID</h5>
+    <h5 style="margin-top: 16px;">App Store Connect ID</h5>
     <p>
       A numeric ID that Apple assigns when you create your app in App Store Connect. To find it:
     </p>
@@ -945,20 +987,20 @@
       <li>Log into <a href="https://appstoreconnect.apple.com" target="_blank">App Store Connect</a></li>
       <li>Go to <strong>Apps</strong> and select your app (or create one if you haven't yet &mdash; click the <strong>+</strong> button, select <strong>New App</strong>, and fill in your app name, bundle ID, and SKU)</li>
       <li>Navigate to <strong>General &rarr; App Information</strong></li>
-      <li>The <strong>Apple ID</strong> field (numeric, e.g. <code>1563113528</code>) is your ASC App ID &mdash; copy it into the dashboard</li>
+      <li>The <strong>Apple ID</strong> field (numeric, e.g. <code>1563113528</code>) is your App Store Connect ID &mdash; copy it into the dashboard</li>
     </ol>
 
     <div class="callout callout-info" style="margin-top: 12px;">
       <strong>Note:</strong> EAS submit also requires an <strong>App-Specific Password</strong> for authentication. Generate one at <a href="https://appleid.apple.com/account/manage" target="_blank">appleid.apple.com</a> &rarr; Sign-In and Security &rarr; App-Specific Passwords. You'll be prompted for it the first time you run <code>eas submit</code>, or you can set it as the <code>EXPO_APPLE_APP_SPECIFIC_PASSWORD</code> environment variable.
     </div>
-    <img class="step-img" src="images/iossubmit.webp" alt="iOS App Store Submit card showing Apple ID and ASC App ID fields">
+    <img class="step-img" src="images/iossubmit.webp" alt="iOS App Store Submit card showing Apple Account and App Store Connect ID fields">
   </div>
 </div>
 
-<!-- Step 11: Google Play Submit -->
+<!-- Step 10: Google Play Submit -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">11</span>
+    <span class="step-number">10</span>
     <span class="step-title">Google Play Submit</span>
   </div>
   <div class="step-body">
@@ -969,10 +1011,10 @@
   </div>
 </div>
 
-<!-- Step 12: Package -->
+<!-- Step 11: Package -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">12</span>
+    <span class="step-number">11</span>
     <span class="step-title">Package</span>
   </div>
   <div class="step-body">
@@ -989,10 +1031,10 @@
 <!-- Assets Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Assets Tab</h3>
 
-<!-- Step 13: Assets -->
+<!-- Step 12: Assets -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">13</span>
+    <span class="step-number">12</span>
     <span class="step-title">Branding Assets</span>
   </div>
   <div class="step-body">
@@ -1003,10 +1045,10 @@
 <!-- Modules Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Modules Tab</h3>
 
-<!-- Step 14: Modules -->
+<!-- Step 13: Modules -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">14</span>
+    <span class="step-number">13</span>
     <span class="step-title">Modules &amp; Companion Plugins</span>
   </div>
   <div class="step-body">
@@ -1018,10 +1060,10 @@
 <!-- Builds Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Builds Tab</h3>
 
-<!-- Step 15: Builds -->
+<!-- Step 14: Builds -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">15</span>
+    <span class="step-number">14</span>
     <span class="step-title">Builds</span>
   </div>
   <div class="step-body">
@@ -1032,10 +1074,10 @@
 <!-- OTA Updates Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">OTA Updates Tab</h3>
 
-<!-- Step 15.5: OTA Updates -->
+<!-- Step 14.5: OTA Updates -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">15.5</span>
+    <span class="step-number">14.5</span>
     <span class="step-title">OTA Updates (Over-the-Air)</span>
   </div>
   <div class="step-body">
@@ -1061,10 +1103,10 @@
 <!-- Updates Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Updates Tab</h3>
 
-<!-- Step 16: Updates -->
+<!-- Step 15: Updates -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">16</span>
+    <span class="step-number">15</span>
     <span class="step-title">Updates &amp; Licensing</span>
   </div>
   <div class="step-body">
@@ -1075,10 +1117,10 @@
 <!-- Status Tab heading -->
 <h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Status Tab</h3>
 
-<!-- Step 17: Status -->
+<!-- Step 16: Status -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">17</span>
+    <span class="step-number">16</span>
     <span class="step-title">Status</span>
   </div>
   <div class="step-body">
@@ -1574,7 +1616,7 @@ eas submit --platform android</code></pre>
   <tr><td>4</td><td>URL scheme updated</td><td><code>app.json</code> (expo.scheme)</td><td></td></tr>
   <tr><td>5</td><td>Permission dialog strings updated (no old brand name)</td><td><code>app.json</code> (expo-image-picker, expo-media-library)</td><td></td></tr>
   <tr><td>6</td><td>SITE_URL set in all eas.json profiles (required — build fails without it)</td><td><code>eas.json</code></td><td></td></tr>
-  <tr><td>7</td><td>Apple ID and App Store Connect ID set for iOS submissions</td><td><code>eas.json</code> (submit.production.ios)</td><td></td></tr>
+  <tr><td>7</td><td>Apple Account email and App Store Connect ID set for iOS submissions</td><td><code>eas.json</code> (submit.production.ios)</td><td></td></tr>
   <tr><td>8</td><td>APP_NAME and APP_USER_AGENT updated</td><td><code>constants/config.ts</code></td><td></td></tr>
   <tr><td>9</td><td>Real-time messaging configured in WordPress admin (if using Fluent Messaging)</td><td>WP Admin &rarr; Fluent Community &rarr; Settings &rarr; Messaging</td><td></td></tr>
   <tr><td>10</td><td>Feature flags reviewed (disable features you don't use)</td><td>WP Admin &rarr; TBC Community App &rarr; Features</td><td></td></tr>
@@ -1719,7 +1761,7 @@ git merge upstream/main</code></pre>
   </tr>
   <tr>
     <td><code>eas.json</code></td>
-    <td>You set your SITE_URL, Apple IDs; upstream has placeholders</td>
+    <td>You set your SITE_URL, Apple Account, App Store Connect ID; upstream has placeholders</td>
     <td>Keep your values</td>
   </tr>
   <tr>
@@ -1828,6 +1870,28 @@ git merge upstream/main</code></pre>
   <a href="../docs/state-management.html">State Management</a> &middot;
   <a href="../docs/theme-system.html">Theme System</a>
 </p>
+
+<!-- Lightbox -->
+<div class="lightbox-overlay" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview" tabindex="-1" onclick="this.classList.remove('active')">
+  <img id="lightbox-img" alt="">
+</div>
+<script>
+(function() {
+  var lb = document.getElementById('lightbox');
+  var lbImg = document.getElementById('lightbox-img');
+  document.querySelectorAll('.step-img').forEach(function(img) {
+    img.addEventListener('click', function() {
+      lbImg.src = this.src;
+      lbImg.alt = this.alt;
+      lb.classList.add('active');
+      lb.focus();
+    });
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') lb.classList.remove('active');
+  });
+})();
+</script>
 
 </body>
 </html>

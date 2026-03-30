@@ -144,8 +144,8 @@ function runValidation(state) {
 
   // eas.json
   check(!isPlaceholder(c.siteUrl), 'EXPO_PUBLIC_SITE_URL is set', 'eas.json', 'site-url');
-  checkWarn(isPlaceholder(c.appleId), 'Apple ID not set (needed for iOS submit)', 'eas.json', 'app-store-submission');
-  checkWarn(isPlaceholder(c.ascAppId), 'ASC App ID not set (needed for iOS submit)', 'eas.json', 'app-store-submission');
+  checkWarn(isPlaceholder(c.appleId), 'Apple Account email not set (needed for iOS submit)', 'eas.json', 'app-store-submission');
+  checkWarn(isPlaceholder(c.ascAppId), 'App Store Connect ID not set (needed for iOS submit)', 'eas.json', 'app-store-submission');
 
   // config.ts
   check(!isPlaceholder(c.appNameConfig), 'APP_NAME is set in config.ts', 'config.ts', 'auto-generated');
