@@ -104,9 +104,9 @@
   .copy-btn { padding: 6px 12px; font-size: 11px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-primary); color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
   .copy-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
   .wp-sync-hint { display: block; font-size: 11px; color: var(--accent); margin-top: 4px; }
-  .field .input-lock-wrap { position: relative; display: flex; align-items: center; }
-  .field .input-lock-wrap input { flex: 1; padding-right: 36px; }
-  .field .lock-btn { position: absolute; right: 8px; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; display: flex; align-items: center; transition: color 0.15s; }
+  .field .input-lock-wrap { display: flex; align-items: center; gap: 6px; }
+  .field .input-lock-wrap > input { flex: 1; }
+  .field .lock-btn { flex-shrink: 0; background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; display: flex; align-items: center; transition: color 0.15s; }
   .field .lock-btn:hover { color: var(--accent); }
   .field .lock-btn svg { width: 16px; height: 16px; }
   .field input.locked { color: var(--text-muted); background: var(--bg-tertiary); }

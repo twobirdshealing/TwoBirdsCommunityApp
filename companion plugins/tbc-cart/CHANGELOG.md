@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.2 — 2026-03-30
+- Fix variable product dropdown styling — added `.variations` table and select theming with dark mode support, custom arrow, and focus states
+
 ## 2.0.1 — 2026-03-26
 - Hooks directly into Fluent Community's `fluent_community/theme_content` action instead of theme-specific filter
 - Works with any WordPress theme — no longer requires Fluent Starter theme
