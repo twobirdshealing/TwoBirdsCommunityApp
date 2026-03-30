@@ -59,10 +59,6 @@ export interface WidgetRegistration {
   featureFlag?: BooleanFeatureKey;
   /** Default enabled state for new users */
   defaultEnabled: boolean;
-  /** Whether the user can disable this widget */
-  canDisable: boolean;
-  /** Whether the home screen wraps this in HomeWidget (true) or widget handles its own layout (false) */
-  externalWrapper: boolean;
   /** The widget component — receives refreshKey prop */
   component: React.ComponentType<{ refreshKey: number }>;
   /** Server visibility key — widget hidden when this key is in hide_menu[] */

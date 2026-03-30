@@ -10,11 +10,11 @@
 <body>
 
 <h1>Widget System</h1>
-<p class="subtitle">Home screen widgets with drag-and-drop reordering, show/hide toggles, and module registration</p>
+<p class="subtitle">Home screen widgets with drag-and-drop reordering and module registration</p>
 
 <div class="callout">
   <strong>Key files:</strong> <span class="file-path">components/home/widgetRegistry.ts</span> (registry), <span class="file-path">hooks/useWidgetPreferences.ts</span> (preferences), <span class="file-path">app/(tabs)/index.tsx</span> (home screen)<br>
-  Widgets are customizable content blocks on the home screen. Core and module widgets register in a unified registry. Users can reorder via drag-and-drop and toggle visibility. Preferences persist in MMKV.
+  Widgets are customizable content blocks on the home screen. Core and module widgets register in a unified registry. Users can long-press to drag and reorder. Preferences persist in MMKV.
 </div>
 
 <div class="toc">
@@ -25,7 +25,7 @@
     <li><a href="#registry">Registry &amp; Merging</a></li>
     <li><a href="#preferences">User Preferences</a></li>
     <li><a href="#rendering">Rendering Pipeline</a></li>
-    <li><a href="#edit-mode">Edit Mode &amp; Drag-and-Drop</a></li>
+    <li><a href="#drag-reorder">Drag-and-Drop Reorder</a></li>
     <li><a href="#refresh">Data Refresh</a></li>
     <li><a href="#widget-list">Widget List</a></li>
     <li><a href="#welcome-banner">Welcome Banner</a></li>
@@ -38,22 +38,17 @@
 <h2 id="overview">1. Overview</h2>
 
 <pre><code>Home Screen (app/(tabs)/index.tsx)
-  ├── Welcome Banner (pinned, not in registry)
-  ├── Widget List (FlashList or DraggableFlatList)
-  │     ├── HomeWidget wrapper (header, icon, "See all")
-  │     │     └── Widget Component (receives refreshKey)
-  │     └── ... more widgets
-  └── Edit Mode Bar (Reset / Done)
+  ├── Animated.ScrollView (pull-to-refresh)
+  │     └── Sortable.Grid (columns=1, long-press to reorder)
+  │           ├── Welcome Banner (fixed-order, not draggable)
+  │           ├── HomeWidget wrapper (header, icon, "See all")
+  │           │     └── Widget Component (receives refreshKey)
+  │           └── ... more widgets
+  │
+  └── Widget Registry (core + modules)
+        └── User Preferences (MMKV) → order</code></pre>
 
-Widget Registry (core + modules)
-  └── User Preferences (MMKV)
-        └── Order + enabled/disabled state</code></pre>
-
-<p>Two rendering modes:</p>
-<ul>
-  <li><strong>Normal mode:</strong> FlashList with pull-to-refresh. Long-press a widget header to enter edit mode.</li>
-  <li><strong>Edit mode:</strong> DraggableFlatList with drag handles and toggle switches. Separate list component because DraggableFlatList conflicts with RefreshControl.</li>
-</ul>
+<p>Long-press any widget to drag and reorder. Uses <code>react-native-sortables</code> (<code>Sortable.Grid</code>) with <code>customHandle</code> — the welcome banner is a <code>fixed-order</code> item pinned at the top, all other widgets are draggable. Order persists to MMKV.</p>
 
 <!-- ================================================================== -->
 <h2 id="registration">2. Widget Registration</h2>
@@ -67,8 +62,6 @@ Widget Registry (core + modules)
   seeAllRoute?: string;          // Navigation route for "See all"
   featureFlag?: BooleanFeatureKey;          // Conditional inclusion (server-controlled)
   defaultEnabled: boolean;       // Default state for new users
-  canDisable: boolean;           // Whether user can toggle
-  externalWrapper: boolean;      // true = wrapped in HomeWidget
   component: React.ComponentType&lt;{ refreshKey: number }&gt;;
 }</code></pre>
 
@@ -77,7 +70,6 @@ Widget Registry (core + modules)
   <tr><th>Field</th><th>Description</th></tr>
   <tr><td><code>id</code></td><td>Must be stable across app updates. Used as MMKV preference key. Never change once shipped.</td></tr>
   <tr><td><code>featureFlag</code></td><td>If set, widget only included when the server-controlled flag is enabled (checked via <code>useFeatures()</code>). Excluded entirely when flag is off.</td></tr>
-  <tr><td><code>externalWrapper</code></td><td>When <code>true</code>, HomeWidget provides header, icon, and "See all" link. When <code>false</code>, widget handles its own layout (use <code>EditableWidgetWrapper</code> for edit-mode support).</td></tr>
   <tr><td><code>seeAllRoute</code></td><td>Tapping "See all" navigates to this route. If undefined, no link shown.</td></tr>
 </table>
 
@@ -123,8 +115,6 @@ export const yourModule: ModuleManifest = {
     icon: 'grid-outline',
     seeAllRoute: '/yourmodule',
     defaultEnabled: true,
-    canDisable: true,
-    externalWrapper: true,
     component: YourModuleWidget,
   }],
 };</code></pre>
@@ -162,8 +152,6 @@ export const yourModule: ModuleManifest = {
   <tr><td><code>preferences</code></td><td>Current <code>WidgetPreferences</code> object (or <code>null</code> while loading)</td></tr>
   <tr><td><code>isLoading</code></td><td>True while loading from MMKV on mount</td></tr>
   <tr><td><code>reorder(newOrder)</code></td><td>Save new order after drag-and-drop</td></tr>
-  <tr><td><code>toggleWidget(id)</code></td><td>Flip enabled/disabled state</td></tr>
-  <tr><td><code>resetToDefaults()</code></td><td>Restore all widgets to default order and enabled state</td></tr>
 </table>
 
 <h3>Forward Compatibility</h3>
@@ -184,13 +172,12 @@ export const yourModule: ModuleManifest = {
   <li>Load preferences from MMKV via <code>useWidgetPreferences()</code></li>
   <li>Get available widgets via <code>getAvailableWidgets(features)</code> (feature-flag filtering)</li>
   <li>Build <code>WidgetItem[]</code> list by matching each preference entry to its registry config. Items with no matching config (removed widgets) are dropped.</li>
-  <li>Pass all <code>WidgetItem[]</code> to the list component (both modes receive the full list)</li>
+  <li>Welcome banner prepended as a <code>fixed-order</code> item (not draggable). Disabled widgets filtered out.</li>
   <li>Each item renders through <code>renderWidget()</code>:
     <ul>
       <li>Looks up the component from the merged <code>WIDGET_COMPONENTS</code> map</li>
-      <li>In normal mode, disabled widgets return <code>null</code> (skipped entirely)</li>
-      <li>In edit mode, disabled widgets render with 0.4 opacity and hidden content</li>
-      <li>Wraps the component in <code>HomeWidget</code> which provides header, icon, "See all" link, drag handle, and toggle switch</li>
+      <li>Wraps the component in <code>Sortable.Handle</code> + <code>HomeWidget</code> (header, icon, "See all" link)</li>
+      <li>Long-press activates drag via <code>react-native-sortables</code></li>
     </ul>
   </li>
 </ol>
@@ -199,10 +186,8 @@ export const yourModule: ModuleManifest = {
 <p><span class="file-path">components/home/HomeWidget.tsx</span> provides consistent UI for each widget:</p>
 <ul>
   <li>Header row with icon + title + "See all" link (configurable label via <code>seeAllLabel</code> prop, defaults to "See all")</li>
-  <li>In edit mode: drag handle (left) + toggle switch (right), "See all" link hidden</li>
-  <li>Disabled widgets show at 0.4 opacity in edit mode</li>
-  <li><strong>Content detection:</strong> Uses <code>onLayout</code> to measure children height. When a widget renders no visible content (height = 0), the header is hidden too &mdash; prevents orphaned headers for empty widgets</li>
-  <li>Long-press header (400ms) enters edit mode with medium haptic feedback</li>
+  <li>Stateless wrapper — no internal state, just renders header + children</li>
+  <li>Widgets that return <code>null</code> when empty (e.g., no data) naturally collapse the space</li>
 </ul>
 
 <h3>HomeWidget Props</h3>
@@ -212,42 +197,23 @@ export const yourModule: ModuleManifest = {
   seeAllLabel?: string;          // defaults to 'See all'
   onSeeAll?: () => void;
   children: React.ReactNode;
-  hidden?: boolean;
-  // Edit mode
-  isEditing?: boolean;
-  isEnabled?: boolean;
-  canDisable?: boolean;
-  onToggle?: () => void;
-  drag?: () => void;
-  isActive?: boolean;
-  onEnterEditMode?: () => void;
 }</code></pre>
 
 <!-- ================================================================== -->
-<h2 id="edit-mode">6. Edit Mode &amp; Drag-and-Drop</h2>
+<h2 id="drag-reorder">6. Drag-and-Drop Reorder</h2>
 
-<h3>Entering Edit Mode</h3>
-<p>Long-press (400ms) on any widget header enters edit mode. Medium haptic feedback fires on entry. The tab bar is locked visible (via <code>setLocked(true)</code>) for the duration of edit mode.</p>
+<p>The home screen uses <code>react-native-sortables</code> (<code>Sortable.Grid</code> with <code>columns={1}</code>) for drag-and-drop reordering. No edit mode — long-press any widget to start dragging immediately.</p>
 
-<h3>Drag-and-Drop</h3>
 <table>
   <tr><th>Aspect</th><th>Details</th></tr>
-  <tr><td>Library</td><td><code>react-native-draggable-flatlist</code></td></tr>
-  <tr><td>Visual feedback</td><td><code>ScaleDecorator</code> (1.02x scale + shadow when dragging)</td></tr>
-  <tr><td>Haptic</td><td>Medium haptic fires on <code>onDragBegin</code></td></tr>
+  <tr><td>Library</td><td><code>react-native-sortables</code></td></tr>
+  <tr><td>Activation</td><td>Long-press (400ms) via <code>dragActivationDelay</code></td></tr>
+  <tr><td>Visual feedback</td><td>1.02x scale + shadow on active item, 0.5 opacity on inactive items</td></tr>
+  <tr><td>Haptic</td><td>Medium haptic on drag start/end, selection haptic on reorder</td></tr>
   <tr><td>Persist</td><td><code>onDragEnd</code> &rarr; <code>reorder()</code> &rarr; MMKV</td></tr>
+  <tr><td>Welcome banner</td><td><code>Sortable.Handle mode="fixed-order"</code> — stays at top, not draggable</td></tr>
+  <tr><td>Auto-scroll</td><td><code>scrollableRef</code> passed to grid for scroll-while-dragging</td></tr>
 </table>
-
-<h3>Edit Mode Bar</h3>
-<p><span class="file-path">components/home/EditModeBar.tsx</span> shows at the top:</p>
-<ul>
-  <li><strong>Reset</strong> (left) &mdash; restores default order and visibility</li>
-  <li><strong>"Edit Widgets"</strong> (center) &mdash; title</li>
-  <li><strong>Done</strong> (right) &mdash; exits edit mode and unlocks the tab bar</li>
-</ul>
-
-<h3>EditableWidgetWrapper</h3>
-<p><span class="file-path">components/home/EditableWidgetWrapper.tsx</span> provides a minimal edit overlay for widgets that set <code>externalWrapper: false</code>. In normal mode it renders children directly. In edit mode it adds a drag handle, title label, and toggle switch above the widget content. Use this when your widget manages its own header/layout but still needs edit-mode controls.</p>
 
 <!-- ================================================================== -->
 <h2 id="refresh">7. Data Refresh</h2>
@@ -296,8 +262,8 @@ export const yourModule: ModuleManifest = {
 <p><span class="file-path">components/home/WelcomeBannerWidget.tsx</span> is a special widget pinned at the top of the home screen:</p>
 
 <ul>
-  <li><strong>Not in the widget registry</strong> &mdash; always shown first, not reorderable or toggleable</li>
-  <li><strong>Rendered as ListHeaderComponent</strong> in both FlashList and DraggableFlatList</li>
+  <li><strong>Not in the widget registry</strong> &mdash; always shown first, not draggable</li>
+  <li><strong>Rendered as a <code>fixed-order</code> item</strong> inside the Sortable.Grid via <code>Sortable.Handle</code></li>
   <li><strong>Server-driven:</strong> Fetches from <code>/feeds/welcome-banner</code> REST endpoint via <code>useAppQuery</code></li>
   <li><strong>Dismissible:</strong> Users can dismiss for 7 days (or until content changes)</li>
   <li><strong>Fingerprint-based:</strong> Content hash (title, description, media, CTA buttons) detects changes; changed banner re-shows after dismissal</li>
@@ -310,11 +276,9 @@ export const yourModule: ModuleManifest = {
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
   <tr><td><span class="file-path">components/home/widgetRegistry.ts</span></td><td>Core widget definitions, <code>WIDGET_REGISTRY</code> array, <code>getAvailableWidgets()</code>, <code>getCoreWidgetComponentMap()</code></td></tr>
-  <tr><td><span class="file-path">hooks/useWidgetPreferences.ts</span></td><td>MMKV preferences (order, enabled/disabled, merge logic)</td></tr>
-  <tr><td><span class="file-path">app/(tabs)/index.tsx</span></td><td>Home screen: merges core + module widget component maps, renders widgets, manages edit mode and refresh</td></tr>
-  <tr><td><span class="file-path">components/home/HomeWidget.tsx</span></td><td>Widget wrapper (header, icon, "See all", drag handle, toggle, content detection)</td></tr>
-  <tr><td><span class="file-path">components/home/EditModeBar.tsx</span></td><td>Top bar in edit mode (Reset / Done buttons)</td></tr>
-  <tr><td><span class="file-path">components/home/EditableWidgetWrapper.tsx</span></td><td>Minimal edit overlay for widgets with <code>externalWrapper: false</code></td></tr>
+  <tr><td><span class="file-path">hooks/useWidgetPreferences.ts</span></td><td>MMKV preferences (order, merge logic)</td></tr>
+  <tr><td><span class="file-path">app/(tabs)/index.tsx</span></td><td>Home screen: Sortable.Grid, widget rendering, drag-and-drop, refresh</td></tr>
+  <tr><td><span class="file-path">components/home/HomeWidget.tsx</span></td><td>Stateless widget wrapper (header, icon, "See all" link)</td></tr>
   <tr><td><span class="file-path">components/home/WelcomeBannerWidget.tsx</span></td><td>Pinned welcome banner with server-driven content and dismiss logic</td></tr>
   <tr><td><span class="file-path">components/home/CoursesWidget.tsx</span></td><td>My Courses carousel (core widget)</td></tr>
   <tr><td><span class="file-path">modules/_types.ts</span></td><td><code>WidgetRegistration</code> interface</td></tr>
@@ -331,17 +295,15 @@ export const yourModule: ModuleManifest = {
 
   <li><strong>Set <code>refreshOnFocus: false</code> in widget data hooks.</strong> The home screen manages focus-based refresh via <code>useAppFocus</code>. If widgets also refresh on focus, you get double fetches.</li>
 
-  <li><strong>Use <code>featureFlag</code> for conditional widgets.</strong> Feature flags are server-controlled (wp-admin &rarr; TBC Community App &rarr; Features tab) and accessed via <code>useFeatures()</code>. When a flag is off, the widget is excluded from the registry entirely &mdash; not just hidden. It won't appear in preferences or edit mode.</li>
+  <li><strong>Use <code>featureFlag</code> for conditional widgets.</strong> Feature flags are server-controlled (wp-admin &rarr; TBC Community App &rarr; Features tab) and accessed via <code>useFeatures()</code>. When a flag is off, the widget is excluded from the registry entirely &mdash; not just hidden. It won't appear in preferences.</li>
 
   <li><strong>Module widgets go in the module manifest, not the core registry.</strong> Register via <code>widgets: [...]</code> in your <code>ModuleManifest</code>. The registry merges them automatically via <code>getModuleWidgets()</code>.</li>
 
   <li><strong>New widgets auto-append with defaults.</strong> When a user updates the app and a new widget exists, it appends to their saved order with <code>defaultEnabled</code> state. No user action needed.</li>
 
-  <li><strong>Don't use DraggableFlatList in normal mode.</strong> It conflicts with RefreshControl (steals the vertical pan gesture). The home screen uses FlashList for normal mode and only switches to DraggableFlatList in edit mode.</li>
+  <li><strong>The welcome banner is NOT in the registry.</strong> It's rendered as a <code>fixed-order</code> item inside the Sortable.Grid. Don't try to register it as a widget &mdash; it has special dismissal and fingerprint logic that the registry doesn't support.</li>
 
-  <li><strong>The welcome banner is NOT in the registry.</strong> It's rendered as <code>ListHeaderComponent</code> in both list modes. Don't try to register it as a widget &mdash; it has special dismissal and fingerprint logic that the registry doesn't support.</li>
-
-  <li><strong>Widgets should return null when empty.</strong> If a widget has no data to show (e.g., no enrolled courses), return <code>null</code>. The HomeWidget wrapper detects empty content via <code>onLayout</code> and hides its header automatically.</li>
+  <li><strong>Widgets should return null when empty.</strong> If a widget has no data to show (e.g., no enrolled courses), return <code>null</code>. The space collapses naturally.</li>
 
   <li><strong>Use <code>WIDGET_STALE_TIME</code> (120s) for all widget fetches.</strong> This prevents rapid pull-to-refresh from hammering the API. Don't use shorter intervals for widgets &mdash; they stay mounted on the home screen.</li>
 </ol>

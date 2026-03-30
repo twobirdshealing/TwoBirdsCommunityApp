@@ -26,8 +26,7 @@ export const blogModule: ModuleManifest = {
       icon: 'newspaper-outline',
       seeAllRoute: '/blog',
       defaultEnabled: true,
-      canDisable: true,
-      externalWrapper: true,
+
       component: BlogWidget,
       hideKey: 'blog',
     },

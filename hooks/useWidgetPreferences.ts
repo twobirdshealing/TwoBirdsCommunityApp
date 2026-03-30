@@ -1,7 +1,7 @@
 // =============================================================================
-// USE WIDGET PREFERENCES - Persist widget order + visibility
+// USE WIDGET PREFERENCES - Persist widget order
 // =============================================================================
-// Stores user's widget order and enabled/disabled state in MMKV.
+// Stores user's widget order in MMKV.
 // Handles forward compatibility: new widgets appended, removed widgets dropped.
 // =============================================================================
 
@@ -115,35 +115,9 @@ export function useWidgetPreferences() {
     [persist],
   );
 
-  // Toggle widget visibility
-  const toggleWidget = useCallback(
-    (widgetId: string) => {
-      if (!preferences) return;
-      const updated: WidgetPreferences = {
-        ...preferences,
-        order: preferences.order.map((p) =>
-          p.id === widgetId ? { ...p, enabled: !p.enabled } : p,
-        ),
-      };
-      setPreferences(updated);
-      persist(updated);
-    },
-    [preferences, persist],
-  );
-
-  // Reset to defaults
-  const resetToDefaults = useCallback(() => {
-    const available = getAvailableWidgets(features);
-    const defaults = buildDefaults(available);
-    setPreferences(defaults);
-    persist(defaults);
-  }, [persist, features]);
-
   return {
     preferences,
     isLoading,
     reorder,
-    toggleWidget,
-    resetToDefaults,
   };
 }

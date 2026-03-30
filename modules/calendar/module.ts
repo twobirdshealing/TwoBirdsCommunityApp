@@ -35,8 +35,7 @@ export const calendarModule: ModuleManifest = {
       icon: 'flame-outline',
       seeAllRoute: '/(tabs)/calendar',
       defaultEnabled: true,
-      canDisable: true,
-      externalWrapper: true,
+
       component: CeremonyWidget,
       hideKey: 'calendar',
     },
@@ -46,8 +45,7 @@ export const calendarModule: ModuleManifest = {
       icon: 'calendar-outline',
       seeAllRoute: '/(tabs)/calendar',
       defaultEnabled: true,
-      canDisable: true,
-      externalWrapper: true,
+
       component: EventsWidget,
       hideKey: 'calendar',
     },

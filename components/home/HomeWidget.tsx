@@ -5,9 +5,8 @@
 // Children render the actual widget content.
 // =============================================================================
 
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import {
-  type LayoutChangeEvent,
   Pressable,
   StyleSheet,
   Text,
@@ -27,7 +26,6 @@ interface HomeWidgetProps {
   seeAllLabel?: string;
   onSeeAll?: () => void;
   children: React.ReactNode;
-  hidden?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -40,21 +38,8 @@ export function HomeWidget({
   seeAllLabel = 'See all',
   onSeeAll,
   children,
-  hidden,
 }: HomeWidgetProps) {
   const { colors: themeColors } = useTheme();
-
-  // Track whether children rendered any visible content (default true to avoid double-render)
-  const [hasContent, setHasContent] = useState(true);
-  const handleChildLayout = useCallback((e: LayoutChangeEvent) => {
-    const visible = e.nativeEvent.layout.height > 0;
-    setHasContent((prev) => (prev === visible ? prev : visible));
-  }, []);
-
-  if (hidden) return null;
-
-  // Hide entire widget when children confirmed empty
-  if (!hasContent) return null;
 
   return (
     <View style={styles.container}>
@@ -84,10 +69,7 @@ export function HomeWidget({
         )}
       </View>
 
-      {/* Widget Content — measured to detect empty widgets */}
-      <View onLayout={handleChildLayout}>
-        {children}
-      </View>
+      {children}
     </View>
   );
 }
@@ -136,4 +118,3 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeWidget;

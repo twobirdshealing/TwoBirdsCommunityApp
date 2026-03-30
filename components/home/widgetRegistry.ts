@@ -24,8 +24,6 @@ const CORE_WIDGETS: WidgetRegistration[] = [
     seeAllRoute: '/courses',
     featureFlag: 'courses',
     defaultEnabled: true,
-    canDisable: true,
-    externalWrapper: true,
     component: CoursesWidget,
     hideKey: 'courses',
   },

@@ -54,7 +54,7 @@ interface WidgetItem {
 // Welcome banner sentinel — locked at top of the sortable grid, not draggable
 const BANNER_ITEM: WidgetItem = {
   pref: { id: '_banner', enabled: true },
-  config: { id: '_banner', title: '' },
+  config: { id: '_banner', title: '', defaultEnabled: true, component: () => null },
   fixed: true,
 };
 

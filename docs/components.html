@@ -943,9 +943,7 @@ export default function HomeScreen() {
 <h3>Home (Widget System)</h3>
 <table>
   <tr><th>Component</th><th>File</th><th>Purpose</th></tr>
-  <tr><td>HomeWidget</td><td><span class="file-path">components/home/HomeWidget.tsx</span></td><td>Shared wrapper for home page widget sections: title, icon, "See all" link, edit mode (drag handle, toggle switch)</td></tr>
-  <tr><td>EditableWidgetWrapper</td><td><span class="file-path">components/home/EditableWidgetWrapper.tsx</span></td><td>Edit overlay for headerless widgets (e.g., WelcomeBanner) that don't use HomeWidget</td></tr>
-  <tr><td>EditModeBar</td><td><span class="file-path">components/home/EditModeBar.tsx</span></td><td>Top bar during widget editing with Reset and Done actions</td></tr>
+  <tr><td>HomeWidget</td><td><span class="file-path">components/home/HomeWidget.tsx</span></td><td>Stateless wrapper for home page widget sections: title, icon, "See all" link</td></tr>
   <tr><td>WelcomeBannerWidget</td><td><span class="file-path">components/home/WelcomeBannerWidget.tsx</span></td><td>Self-contained welcome banner widget: fetches data, handles dismiss (7-day expiry), cached</td></tr>
   <tr><td>CoursesWidget</td><td><span class="file-path">components/home/CoursesWidget.tsx</span></td><td>Enrolled courses horizontal carousel with progress bars, cached</td></tr>
   <tr><td>widgetRegistry.ts</td><td><span class="file-path">components/home/widgetRegistry.ts</span></td><td>Core widget definitions merged with module widgets via <code>getModuleWidgets()</code></td></tr>

@@ -26,8 +26,7 @@ export const youtubeModule: ModuleManifest = {
       icon: 'logo-youtube',
       seeAllRoute: '/youtube',
       defaultEnabled: true,
-      canDisable: true,
-      externalWrapper: true,
+
       component: YouTubeWidget,
       hideKey: 'youtube',
     },

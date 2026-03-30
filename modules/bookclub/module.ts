@@ -40,8 +40,7 @@ export const bookclubModule: ModuleManifest = {
       icon: 'book-outline',
       seeAllRoute: '/bookclub',
       defaultEnabled: true,
-      canDisable: true,
-      externalWrapper: true,
+
       component: BookClubWidget,
       hideKey: 'bookclub',
     },

@@ -2,8 +2,8 @@
 // CEREMONY WIDGET - Upcoming booked event with countdown
 // =============================================================================
 // Shows the user's next booked event (ceremony, sound journey, kambo, etc.)
-// with a live countdown. Returns null if no upcoming bookings, so the
-// HomeWidget wrapper auto-hides. Data is pre-populated by the startup batch.
+// with a live countdown. Returns null if no upcoming bookings.
+// Data is pre-populated by the startup batch.
 // =============================================================================
 
 import React, { useEffect, useState } from 'react';
