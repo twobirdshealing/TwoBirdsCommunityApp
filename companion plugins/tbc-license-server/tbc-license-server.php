@@ -3,7 +3,7 @@
  * Plugin Name: TBC - License Server
  * Plugin URI: https://twobirdscode.com
  * Description: Bridge between the TBC Community App dashboard and FluentCart Pro licensing. Validates licenses and serves core updates.
- * Version: 2.3.0
+ * Version: 3.0.0
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  * License: GPL v2 or later
@@ -21,7 +21,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('TBC_LICENSE_VERSION', '2.3.0');
+define('TBC_LICENSE_VERSION', '3.0.0');
 define('TBC_LICENSE_REST_NAMESPACE', 'tbc-license/v1');
 
 // Allow tar.gz/gz uploads in WordPress (needed for FluentCart update packages)

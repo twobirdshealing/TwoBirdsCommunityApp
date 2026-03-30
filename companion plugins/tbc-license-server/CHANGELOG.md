@@ -2,6 +2,16 @@
 
 All notable changes to TBC License Server.
 
+## [3.0.0] — 2026-03-27
+
+- **Breaking:** Rewrite to use FluentCart Pro's native license API instead of direct DB queries
+- Activation, deactivation, and validation now delegate to FluentCart's built-in handlers (`?fluent-cart=activate_license`, etc.)
+- FluentCart natively enforces activation limits, local/staging site detection, and proper activation counting
+- Removed custom `activate_site()`, `is_site_activated()`, and direct model manipulation
+- Version/update checks now use FluentCart's `get_license_version` action with signed download URLs
+- Requires `siteUrl` — rejects requests without one
+- Better error messages translated from FluentCart's error types
+
 ## [2.3.0] — 2026-03-19
 
 - Fix: Per-site license validation — verify the requesting site is actually activated, not just that the license is globally active

@@ -2,13 +2,13 @@
 /**
  * TBC License REST API — FluentCart Pro Bridge
  *
- * Translates between the dashboard's API contract and FluentCart Pro's
- * licensing system. The dashboard calls our endpoint; we query FluentCart's
- * License model and return the response in the format the dashboard expects.
+ * Thin proxy between the dashboard and FluentCart Pro's native license API.
+ * All activation logic, limit enforcement, and site tracking is handled by
+ * FluentCart — this plugin only translates the request/response format.
  *
  * Dashboard calls:
  *   POST /wp-json/tbc-license/v1/check
- *   { "licenseKey": "...", "currentVersion": "3.0.6", "product": "tbc-community-app" }
+ *   { "licenseKey": "...", "currentVersion": "3.0.6", "siteUrl": "example.com" }
  *
  * We return:
  *   { "valid": true, "plan": "core", "expiresAt": "2027-03-16", "latest": { ... } }
@@ -20,8 +20,6 @@ class TBC_License_API {
 
     /**
      * The FluentCart product ID for the TBC Community App.
-     * Set this to your actual FluentCart product ID.
-     *
      * To find it: WP Admin → FluentCart → Products → click product → ID is in the URL.
      */
     const PRODUCT_ID = 12;
@@ -30,14 +28,12 @@ class TBC_License_API {
      * Register REST routes.
      */
     public function register_routes() {
-        // POST /wp-json/tbc-license/v1/check
         register_rest_route(TBC_LICENSE_REST_NAMESPACE, '/check', [
             'methods'             => 'POST',
             'callback'            => [$this, 'check_license'],
             'permission_callback' => '__return_true',
         ]);
 
-        // POST /wp-json/tbc-license/v1/deactivate
         register_rest_route(TBC_LICENSE_REST_NAMESPACE, '/deactivate', [
             'methods'             => 'POST',
             'callback'            => [$this, 'deactivate_site_endpoint'],
@@ -46,9 +42,7 @@ class TBC_License_API {
     }
 
     /**
-     * POST /check — Validate license and return update info.
-     *
-     * Reads from FluentCart Pro's fct_licenses table and product license_settings.
+     * POST /check — Activate/validate license via FluentCart's native API and return update info.
      */
     public function check_license($request) {
         $license_key     = sanitize_text_field($request->get_param('licenseKey') ?? '');
@@ -56,156 +50,80 @@ class TBC_License_API {
         $site_url        = sanitize_text_field($request->get_param('siteUrl') ?? '');
 
         if (empty($license_key)) {
-            return new WP_REST_Response(['valid' => false, 'error' => 'License key is required'], 400);
+            return new WP_REST_Response(['valid' => false, 'error' => 'License key is required.'], 400);
         }
 
-        // Check FluentCart Pro is available
-        if (!class_exists('FluentCartPro\App\Modules\Licensing\Models\License')) {
-            return new WP_REST_Response(['valid' => false, 'error' => 'License system not available. Contact support.'], 500);
-        }
-
-        // Find the license in FluentCart
-        $license = \FluentCartPro\App\Modules\Licensing\Models\License::where('license_key', $license_key)->first();
-
-        if (!$license) {
+        if (empty($site_url)) {
             return new WP_REST_Response([
                 'valid' => false,
-                'error' => 'License key not found. Check your key or contact support.',
+                'error' => 'Site URL is required for license validation. Configure your Production URL in the dashboard Config tab.',
             ], 200);
         }
 
-        // Check validity (handles expiration + grace period automatically)
-        if ($license->isExpired()) {
-            $expiry = $license->expiration_date ? date('Y-m-d', strtotime($license->expiration_date)) : null;
+        // Call FluentCart's native activate_license endpoint
+        // This handles: key validation, expiration, activation limits, local site detection, duplicate detection
+        $fc_result = $this->call_fluentcart('activate_license', [
+            'license_key' => $license_key,
+            'site_url'    => $site_url,
+            'item_id'     => self::PRODUCT_ID,
+        ]);
+
+        if (!$fc_result) {
             return new WP_REST_Response([
-                'valid'     => false,
-                'error'     => 'Your license expired' . ($expiry ? ' on ' . $expiry : '') . '. Renew at twobirdscode.com',
-                'plan'      => $this->get_plan($license),
-                'expiresAt' => $expiry,
+                'valid' => false,
+                'error' => 'Could not reach license system. Is FluentCart Pro active?',
             ], 200);
         }
 
-        // Auto-activate this site if it isn't already and slots remain
-        if ($site_url && $license->hasActivationLeft()) {
-            $this->activate_site($license, $site_url);
-            $license->refresh();
+        // FluentCart returned an error
+        if (empty($fc_result['success']) || ($fc_result['status'] ?? '') !== 'valid') {
+            return new WP_REST_Response([
+                'valid' => false,
+                'error' => $this->translate_error($fc_result),
+                'plan'  => $this->extract_plan($fc_result),
+            ], 200);
         }
 
-        // Per-site validation: verify THIS site is activated, not just the license globally
-        if ($site_url) {
-            if (!$this->is_site_activated($license, $site_url)) {
-                return new WP_REST_Response([
-                    'valid' => false,
-                    'error' => 'This license is not activated for your site. All activation slots may be in use. Contact support.',
-                    'plan'  => $this->get_plan($license),
-                ], 200);
-            }
-        } else {
-            // No siteUrl provided — fall back to global status check
-            if (!$license->isActive()) {
-                return new WP_REST_Response([
-                    'valid' => false,
-                    'error' => 'This license has been disabled or all activations are used. Contact support.',
-                ], 200);
-            }
+        // License is valid — build our response
+        $expiry = null;
+        if (!empty($fc_result['expiration_date']) && $fc_result['expiration_date'] !== 'lifetime') {
+            $expiry = date('Y-m-d', strtotime($fc_result['expiration_date']));
         }
-
-        // License is valid — check for updates
-        $plan = $this->get_plan($license);
-        $expiry = $license->expiration_date
-            ? date('Y-m-d', strtotime($license->expiration_date))
-            : null;
 
         $response = [
             'valid'     => true,
-            'plan'      => $plan,
+            'plan'      => $this->extract_plan($fc_result),
             'expiresAt' => $expiry,
             'latest'    => null,
         ];
 
-        // Get the product's version info from FluentCart license_settings
-        $latest = $this->get_latest_version($license);
+        // Check for available updates via FluentCart's native version endpoint
+        $version_result = $this->call_fluentcart('get_license_version', [
+            'item_id'     => self::PRODUCT_ID,
+            'license_key' => $license_key,
+            'site_url'    => $site_url,
+        ]);
 
-        if ($latest && version_compare($latest['version'], $current_version, '>')) {
-            $response['latest'] = $latest;
+        if ($version_result && !empty($version_result['new_version'])) {
+            $new_version = $version_result['new_version'];
+
+            if (version_compare($new_version, $current_version, '>')) {
+                $response['latest'] = [
+                    'version'     => $new_version,
+                    'date'        => !empty($version_result['last_updated'])
+                        ? date('Y-m-d', strtotime($version_result['last_updated']))
+                        : current_time('Y-m-d'),
+                    'changelog'   => $version_result['sections']['changelog'] ?? '',
+                    'downloadUrl' => $version_result['download_link'] ?? '',
+                ];
+            }
         }
 
         return new WP_REST_Response($response, 200);
     }
 
     /**
-     * Activate a license for a site using FluentCart's models.
-     * Creates records in fct_license_sites and fct_license_activations.
-     */
-    private function activate_site($license, $site_url) {
-        $LicenseSite = '\FluentCartPro\App\Modules\Licensing\Models\LicenseSite';
-        $LicenseActivation = '\FluentCartPro\App\Modules\Licensing\Models\LicenseActivation';
-
-        if (!class_exists($LicenseSite) || !class_exists($LicenseActivation)) {
-            // Cannot activate without FluentCart models — skip silently
-            return;
-        }
-
-        // Sanitize URL (strip protocol, trailing slash)
-        $clean_url = preg_replace('#^https?://#', '', rtrim($site_url, '/'));
-
-        // Find or create the site record
-        $site = $LicenseSite::where('site_url', $clean_url)->first();
-        if (!$site) {
-            $site = $LicenseSite::create([
-                'site_url'         => $clean_url,
-                'server_version'   => '',
-                'platform_version' => '',
-            ]);
-        }
-
-        // Check if activation already exists for this license+site
-        $existing = $LicenseActivation::where('license_id', $license->id)
-            ->where('site_id', $site->id)
-            ->first();
-
-        if (!$existing) {
-            $LicenseActivation::create([
-                'site_id'             => $site->id,
-                'license_id'          => $license->id,
-                'status'              => 'active',
-                'is_local'            => 0,
-                'product_id'          => $license->product_id,
-                'variation_id'        => $license->variation_id ?: 0,
-                'activation_method'   => 'key_based',
-                'activation_hash'     => md5($license->license_key . $site->id . time() . wp_generate_uuid4()),
-                'last_update_version' => '',
-            ]);
-
-            // Let FluentCart recount — this sets status to active and saves
-            $license->recountActivations();
-        }
-    }
-
-    /**
-     * Check if a specific site has an active activation for this license.
-     */
-    private function is_site_activated($license, $site_url) {
-        $LicenseSite = '\FluentCartPro\App\Modules\Licensing\Models\LicenseSite';
-        $LicenseActivation = '\FluentCartPro\App\Modules\Licensing\Models\LicenseActivation';
-
-        if (!class_exists($LicenseSite) || !class_exists($LicenseActivation)) {
-            // Cannot verify — fail open to avoid blocking legitimate users
-            return true;
-        }
-
-        $clean_url = preg_replace('#^https?://#', '', rtrim($site_url, '/'));
-        $site = $LicenseSite::where('site_url', $clean_url)->first();
-        if (!$site) return false;
-
-        return $LicenseActivation::where('license_id', $license->id)
-            ->where('site_id', $site->id)
-            ->where('status', 'active')
-            ->exists();
-    }
-
-    /**
-     * POST /deactivate — Remove a site's activation record for a license.
+     * POST /deactivate — Deactivate a site via FluentCart's native API.
      */
     public function deactivate_site_endpoint($request) {
         $license_key = sanitize_text_field($request->get_param('licenseKey') ?? '');
@@ -215,113 +133,87 @@ class TBC_License_API {
             return new WP_REST_Response(['success' => false, 'error' => 'licenseKey and siteUrl are required'], 400);
         }
 
-        if (!class_exists('FluentCartPro\App\Modules\Licensing\Models\License')) {
-            return new WP_REST_Response(['success' => false, 'error' => 'License system not available'], 500);
+        $fc_result = $this->call_fluentcart('deactivate_license', [
+            'license_key' => $license_key,
+            'site_url'    => $site_url,
+            'item_id'     => self::PRODUCT_ID,
+        ]);
+
+        if (!$fc_result) {
+            return new WP_REST_Response(['success' => false, 'error' => 'Could not reach license system.'], 200);
         }
 
-        $license = \FluentCartPro\App\Modules\Licensing\Models\License::where('license_key', $license_key)->first();
-        if (!$license) {
-            return new WP_REST_Response(['success' => false, 'error' => 'License not found'], 200);
+        $success = !empty($fc_result['success']) && ($fc_result['status'] ?? '') === 'deactivated';
+
+        return new WP_REST_Response([
+            'success' => $success,
+            'error'   => $success ? null : ($fc_result['message'] ?? 'Deactivation failed'),
+        ], 200);
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Call a FluentCart native license action via internal HTTP request.
+     *
+     * FluentCart exposes actions via ?fluent-cart=<action_name> URLs.
+     * These are proper public API endpoints used by WordPress plugins,
+     * themes, and other software to validate licenses.
+     */
+    private function call_fluentcart($action, $params) {
+        $url = home_url('/?fluent-cart=' . $action);
+
+        $response = wp_remote_post($url, [
+            'body'      => $params,
+            'timeout'   => 15,
+            'sslverify' => false, // same server, no need for SSL verification
+            'cookies'   => [],    // don't forward auth cookies
+        ]);
+
+        if (is_wp_error($response)) {
+            return null;
         }
 
-        $LicenseSite = '\FluentCartPro\App\Modules\Licensing\Models\LicenseSite';
-        $LicenseActivation = '\FluentCartPro\App\Modules\Licensing\Models\LicenseActivation';
+        $code = wp_remote_retrieve_response_code($response);
+        $body = wp_remote_retrieve_body($response);
 
-        if (!class_exists($LicenseSite) || !class_exists($LicenseActivation)) {
-            return new WP_REST_Response(['success' => false, 'error' => 'License models not available'], 500);
+        if (empty($body)) {
+            return null;
         }
 
-        $clean_url = preg_replace('#^https?://#', '', rtrim($site_url, '/'));
-        $site = $LicenseSite::where('site_url', $clean_url)->first();
+        $data = json_decode($body, true);
 
-        if ($site) {
-            $LicenseActivation::where('license_id', $license->id)
-                ->where('site_id', $site->id)
-                ->delete();
-
-            $license->recountActivations();
-        }
-
-        return new WP_REST_Response(['success' => true], 200);
+        return $data;
     }
 
     /**
-     * Get the plan name from a license's variation.
+     * Translate FluentCart's error response into a user-friendly message.
      */
-    private function get_plan($license) {
-        if ($license->variation_id) {
-            $variation = $license->productVariant;
-            if ($variation && !empty($variation->title)) {
-                return strtolower($variation->title);
-            }
+    private function translate_error($fc_result) {
+        $error_type = $fc_result['error_type'] ?? '';
+        $message    = $fc_result['message'] ?? '';
+
+        $translations = [
+            'validation_error'          => 'License key and site URL are required.',
+            'license_not_found'         => 'License key not found. Check your key or contact support.',
+            'license_expired'           => 'Your license has expired. Renew at twobirdscode.com',
+            'activation_limit_exceeded' => 'All activation slots are in use. Deactivate another site first, or upgrade your license.',
+            'key_mismatch'              => 'This license key is not valid for this product.',
+            'license_not_active'        => 'This license has been disabled. Contact support.',
+        ];
+
+        return $translations[$error_type] ?? $message ?: 'License validation failed. Contact support.';
+    }
+
+    /**
+     * Extract plan name from FluentCart's response.
+     */
+    private function extract_plan($fc_result) {
+        if (!empty($fc_result['variation_title'])) {
+            return strtolower($fc_result['variation_title']);
         }
         return 'core';
-    }
-
-    /**
-     * Get the latest version info from the FluentCart product's license settings.
-     *
-     * Reads the product's version, changelog, and generates a download URL
-     * for the update file.
-     */
-    private function get_latest_version($license) {
-        $product_id = $license->product_id ?: self::PRODUCT_ID;
-        if (!$product_id) return null;
-
-        // Read license settings from the product
-        $product = \FluentCart\App\Models\Product::query()->find($product_id);
-        if (!$product) return null;
-
-        $settings = $product->getProductMeta('license_settings');
-        if (!$settings || empty($settings['version'])) return null;
-
-        $version = $settings['version'];
-
-        // Get changelog
-        $changelog = $product->getProductMeta('_fluent_sl_changelog') ?: '';
-
-        // Get the update file once (used for download URL + file size)
-        $update_file = $this->get_update_file($product, $settings);
-        $download_url = $update_file ? $this->get_download_url_from_file($update_file) : '';
-        $size = ($update_file && !empty($update_file->file_size)) ? (int) $update_file->file_size : 0;
-
-        return [
-            'version'     => $version,
-            'date'        => $product->post_modified ? date('Y-m-d', strtotime($product->post_modified)) : current_time('Y-m-d'),
-            'changelog'   => $changelog,
-            'downloadUrl' => $download_url ?: '',
-            'size'        => $size,
-        ];
-    }
-
-    /**
-     * Get the ProductDownload model for the update file.
-     */
-    private function get_update_file($product, $settings) {
-        $file_id = $settings['global_update_file'] ?? '';
-        if (is_array($file_id)) {
-            $file_id = $file_id['id'] ?? '';
-        }
-
-        if ($file_id) {
-            return \FluentCart\App\Models\ProductDownload::find($file_id);
-        }
-
-        // Fallback: first downloadable file for this product
-        return \FluentCart\App\Models\ProductDownload::where('post_id', $product->ID)->first();
-    }
-
-    /**
-     * Generate a time-limited download URL for a given update file.
-     */
-    private function get_download_url_from_file($update_file) {
-        if (!$update_file) return '';
-
-        // Use FluentCart's built-in signed URL generation (60 min validity)
-        if (class_exists('FluentCart\App\Helpers\Helper')) {
-            return \FluentCart\App\Helpers\Helper::generateDownloadFileLink($update_file, null, 60);
-        }
-
-        return '';
     }
 }
