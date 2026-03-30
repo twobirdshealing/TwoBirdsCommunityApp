@@ -44,44 +44,45 @@ export function HomeWidget({
 }: HomeWidgetProps) {
   const { colors: themeColors } = useTheme();
 
-  // Track whether children rendered any visible content
-  const [hasContent, setHasContent] = useState<boolean | null>(null);
+  // Track whether children rendered any visible content (default true to avoid double-render)
+  const [hasContent, setHasContent] = useState(true);
   const handleChildLayout = useCallback((e: LayoutChangeEvent) => {
-    setHasContent(e.nativeEvent.layout.height > 0);
+    const visible = e.nativeEvent.layout.height > 0;
+    setHasContent((prev) => (prev === visible ? prev : visible));
   }, []);
 
   if (hidden) return null;
 
-  // Hide header (and container spacing) when children render nothing
-  return (
-    <View style={hasContent ? styles.container : undefined}>
-      {hasContent === true && (
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            {icon && (
-              <Ionicons
-                name={icon}
-                size={20}
-                color={themeColors.text}
-                style={styles.headerIcon}
-              />
-            )}
-            <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
-          </View>
+  // Hide entire widget when children confirmed empty
+  if (!hasContent) return null;
 
-          {onSeeAll && (
-            <Pressable
-              style={styles.seeAllButton}
-              onPress={onSeeAll}
-            >
-              <Text style={[styles.seeAllText, { color: themeColors.primary }]}>
-                {seeAllLabel}
-              </Text>
-              <Ionicons name="chevron-forward" size={14} color={themeColors.primary} />
-            </Pressable>
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          {icon && (
+            <Ionicons
+              name={icon}
+              size={20}
+              color={themeColors.text}
+              style={styles.headerIcon}
+            />
           )}
+          <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
         </View>
-      )}
+
+        {onSeeAll && (
+          <Pressable
+            style={styles.seeAllButton}
+            onPress={onSeeAll}
+          >
+            <Text style={[styles.seeAllText, { color: themeColors.primary }]}>
+              {seeAllLabel}
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color={themeColors.primary} />
+          </Pressable>
+        )}
+      </View>
 
       {/* Widget Content — measured to detect empty widgets */}
       <View onLayout={handleChildLayout}>

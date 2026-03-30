@@ -48,7 +48,15 @@ const WIDGET_COMPONENTS: Record<
 interface WidgetItem {
   pref: WidgetPreference;
   config: WidgetRegistration;
+  fixed?: boolean;
 }
+
+// Welcome banner sentinel — locked at top of the sortable grid, not draggable
+const BANNER_ITEM: WidgetItem = {
+  pref: { id: '_banner', enabled: true },
+  config: { id: '_banner', title: '' },
+  fixed: true,
+};
 
 // -----------------------------------------------------------------------------
 // Component
@@ -96,7 +104,7 @@ export default function HomeScreen() {
     const available = getAvailableWidgets(features, hideMenu);
     const registryMap = new Map(available.map((w) => [w.id, w]));
 
-    return preferences.order
+    const items = preferences.order
       .map((pref) => {
         const config = registryMap.get(pref.id);
         if (!config) return null;
@@ -104,6 +112,9 @@ export default function HomeScreen() {
         return { pref, config };
       })
       .filter((item): item is WidgetItem => item !== null);
+
+    // Banner is first item in the grid (fixed-order, not draggable)
+    return [BANNER_ITEM, ...items];
   }, [preferences, features, hideMenu]);
 
   // ---------------------------------------------------------------------------
@@ -122,7 +133,7 @@ export default function HomeScreen() {
     ({ data }: { data: WidgetItem[] }) => {
       hapticMedium();
       // Merge reordered enabled items with disabled items so they aren't lost
-      const enabledOrder = data.map((item) => item.pref);
+      const enabledOrder = data.filter((item) => !item.fixed).map((item) => item.pref);
       const disabledItems = preferences?.order.filter((p) => !p.enabled) ?? [];
       reorder([...enabledOrder, ...disabledItems]);
     },
@@ -135,6 +146,17 @@ export default function HomeScreen() {
 
   const renderWidget = useCallback<SortableGridRenderItem<WidgetItem>>(
     ({ item }) => {
+      // Welcome banner — fixed at top, not draggable
+      if (item.fixed) {
+        return (
+          <Sortable.Handle mode="fixed-order">
+            <View style={styles.bannerContainer}>
+              <WelcomeBannerWidget refreshKey={refreshKey} />
+            </View>
+          </Sortable.Handle>
+        );
+      }
+
       const { config } = item;
       const WidgetComponent = WIDGET_COMPONENTS[config.id];
       if (!WidgetComponent) return null;
@@ -144,13 +166,15 @@ export default function HomeScreen() {
         : undefined;
 
       return (
-        <HomeWidget
-          title={config.title}
-          icon={config.icon}
-          onSeeAll={seeAllHandler}
-        >
-          <WidgetComponent refreshKey={refreshKey} />
-        </HomeWidget>
+        <Sortable.Handle>
+          <HomeWidget
+            title={config.title}
+            icon={config.icon}
+            onSeeAll={seeAllHandler}
+          >
+            <WidgetComponent refreshKey={refreshKey} />
+          </HomeWidget>
+        </Sortable.Handle>
       );
     },
     [refreshKey, router],
@@ -184,16 +208,12 @@ export default function HomeScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
         >
-          {/* Welcome Banner — locked at top, not reorderable */}
-          <View style={styles.bannerContainer}>
-            <WelcomeBannerWidget refreshKey={refreshKey} />
-          </View>
-
           <Sortable.Grid
             data={widgetItems}
             columns={1}
             renderItem={renderWidget}
             keyExtractor={keyExtractor}
+            customHandle
             onDragStart={handleDragStart}
             onOrderChange={handleOrderChange}
             onDragEnd={handleDragEnd}
@@ -207,6 +227,8 @@ export default function HomeScreen() {
             inactiveItemOpacity={0.5}
             activationAnimationDuration={250}
             dropAnimationDuration={400}
+            overDrag="vertical"
+            reorderTriggerOrigin="touch"
           />
         </Animated.ScrollView>
       </View>
