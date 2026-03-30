@@ -97,52 +97,10 @@ input[type="submit"]:hover {
 }
 
 /* ==========================================================================
-   Non-Interference Rules
-
-   CRITICAL: Never style Fluent Community selectors
-   These rules ensure theme CSS doesn't interfere with the portal
-   ========================================================================== */
-
-/* Reset any accidental cascade to Fluent Community containers */
-.fcom_wrap,
-.fluent_com,
-.fhr_wrap,
-.fhr_content,
-.fhr_home,
-.feed_layout,
-.spaces,
-.feeds_main,
-#fluent_com_portal,
-[class^="fcom_"],
-[class*=" fcom_"],
-[class^="fhr_"],
-[class*=" fhr_"] {
-    /* Allow Fluent Community to control its own styles */
-    font-family: inherit;
-}
-
-/* Ensure Fluent Community forms keep their styling */
-.fluent_com input,
-.fluent_com select,
-.fluent_com textarea,
-.fluent_com button,
-.fcom_wrap input,
-.fcom_wrap select,
-.fcom_wrap textarea,
-.fcom_wrap button {
-    /* Don't override Fluent Community form styles */
-    all: revert;
-}
-
-/* ==========================================================================
    Fluent Forms Integration
 
    Style Fluent Forms to match the theme when embedded on regular pages
    ========================================================================== */
-
-.fluentform {
-    /* Fluent Forms should use theme colors */
-}
 
 .fluentform .ff-el-input--label label {
     color: var(--fs-color-text);
@@ -179,21 +137,9 @@ input[type="submit"]:hover {
    When using the "FluentCommunity Frame" page template
    ========================================================================== */
 
-body.fluent_com_wp_pages {
-    /* Pages using Fluent Community frame template */
-}
-
-.fluent_com_wp_pages .fcom_wp_content {
-    /* Content area within the frame */
-}
-
 .fluent_com_wp_pages .fcom_wp_content_title h1 {
     font-size: 1.75rem;
     margin-bottom: var(--fs-spacing-lg);
-}
-
-.fluent_com_wp_pages .fcom_wp_content_body {
-    /* Standard content styling applies */
 }
 
 /* Wide alignment support in Fluent Community frame */

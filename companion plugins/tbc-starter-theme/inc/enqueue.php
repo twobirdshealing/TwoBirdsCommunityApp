@@ -27,8 +27,8 @@ function fluent_starter_scripts() {
     }
 
     // Skip loading other theme assets on Fluent Community portal pages
-    // Fluent Community handles all styling for the portal
-    if (fluent_starter_is_portal_page()) {
+    // and pages using Fluent's frame template — Fluent handles styling there
+    if (fluent_starter_is_portal_page() || fluent_starter_is_fluent_frame()) {
         return;
     }
 
@@ -94,8 +94,8 @@ add_action('after_setup_theme', 'fluent_starter_editor_styles');
  * This runs immediately to prevent flash of wrong theme
  */
 function fluent_starter_dark_mode_inline_script() {
-    // Skip on portal pages
-    if (fluent_starter_is_portal_page()) {
+    // Skip on portal and frame pages — Fluent handles dark mode there
+    if (fluent_starter_is_portal_page() || fluent_starter_is_fluent_frame()) {
         return;
     }
     ?>
@@ -126,39 +126,3 @@ function fluent_starter_dark_mode_inline_script() {
     <?php
 }
 add_action('wp_head', 'fluent_starter_dark_mode_inline_script', 1);
-
-/**
- * Remove jQuery from frontend if not needed
- *
- * Fluent Community uses Vue.js, so jQuery is not needed for the theme
- * Only dequeue if no other plugins need it
- */
-function fluent_starter_maybe_remove_jquery() {
-    // Don't remove on admin or if not on portal
-    if (is_admin()) {
-        return;
-    }
-
-    // Check if we're on a portal page - let Fluent handle it
-    if (fluent_starter_is_portal_page()) {
-        return;
-    }
-
-    // Only dequeue jQuery if theme doesn't need it
-    // Comment out if you need jQuery for some reason
-    // wp_dequeue_script('jquery');
-    // wp_deregister_script('jquery');
-}
-// add_action('wp_enqueue_scripts', 'fluent_starter_maybe_remove_jquery', 20);
-
-/**
- * Preload critical fonts (none needed - we use system fonts)
- *
- * Keeping this function as a placeholder in case custom fonts are added later
- */
-function fluent_starter_preload_fonts() {
-    // We use system fonts, no preloading needed
-    // If you add custom fonts later, preload them here:
-    // echo '<link rel="preload" href="' . FLUENT_STARTER_URI . '/assets/fonts/your-font.woff2" as="font" type="font/woff2" crossorigin>';
-}
-// add_action('wp_head', 'fluent_starter_preload_fonts', 1);
