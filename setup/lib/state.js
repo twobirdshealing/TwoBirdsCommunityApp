@@ -83,6 +83,13 @@ function readProjectState() {
     if (gs) state.firebase.android.projectId = gs.project_info?.project_id || '';
   }
   state.firebase.ios = { exists: fileExists(PATHS.googleServiceInfoPlist), file: 'GoogleService-Info.plist' };
+  if (state.firebase.ios.exists) {
+    try {
+      const plist = fs.readFileSync(PATHS.googleServiceInfoPlist, 'utf8');
+      const m = plist.match(/<key>PROJECT_ID<\/key>\s*<string>([^<]*)<\/string>/);
+      if (m) state.firebase.ios.projectId = m[1];
+    } catch (_) { /* ignore read errors */ }
+  }
 
   // --- Plugins ---
   for (const plugin of CORE_PLUGINS) {
@@ -130,25 +137,25 @@ function runValidation(state) {
   check(!isPlaceholder(c.appName), 'App name is set', 'app.json', 'app-identity');
   check(!isPlaceholder(c.slug), 'Slug is set', 'app.json', 'app-identity');
   check(!isPlaceholder(c.scheme), 'URL scheme is set', 'app.json', 'app-identity');
-  check(!isPlaceholder(c.iosBundleId), 'iOS bundle ID is set', 'app.json', 'bundle-ids');
-  check(!isPlaceholder(c.androidPackage), 'Android package is set', 'app.json', 'bundle-ids');
+  check(!isPlaceholder(c.iosBundleId), 'iOS bundle ID is set', 'app.json', 'app-identity');
+  check(!isPlaceholder(c.androidPackage), 'Android package is set', 'app.json', 'app-identity');
   check(!isPlaceholder(c.easProjectId), 'EAS project ID is set', 'app.json', 'eas-config');
   check(!isPlaceholder(c.easOwner), 'EAS owner is set', 'app.json', 'eas-config');
 
   // eas.json
   check(!isPlaceholder(c.siteUrl), 'EXPO_PUBLIC_SITE_URL is set', 'eas.json', 'site-url');
-  checkWarn(isPlaceholder(c.appleId), 'Apple ID not set (needed for iOS submit)', 'eas.json', 'apple-submit');
-  checkWarn(isPlaceholder(c.ascAppId), 'ASC App ID not set (needed for iOS submit)', 'eas.json', 'apple-submit');
+  checkWarn(isPlaceholder(c.appleId), 'Apple ID not set (needed for iOS submit)', 'eas.json', 'app-store-submission');
+  checkWarn(isPlaceholder(c.ascAppId), 'ASC App ID not set (needed for iOS submit)', 'eas.json', 'app-store-submission');
 
   // config.ts
-  check(!isPlaceholder(c.appNameConfig), 'APP_NAME is set in config.ts', 'config.ts', 'config-ts');
-  check(!isPlaceholder(c.userAgent), 'APP_USER_AGENT is set', 'config.ts', 'config-ts');
+  check(!isPlaceholder(c.appNameConfig), 'APP_NAME is set in config.ts', 'config.ts', 'auto-generated');
+  check(!isPlaceholder(c.userAgent), 'APP_USER_AGENT is set', 'config.ts', 'auto-generated');
   // app.config.ts
   check(!isPlaceholder(c.productionUrl), 'Production URL is set', 'app.config.ts', 'site-url');
 
   // Consistency
   if (c.appName && c.appNameConfig && c.appName !== c.appNameConfig) {
-    checks.push({ pass: 'warn', label: `App name mismatch: app.json="${c.appName}" vs config.ts="${c.appNameConfig}"`, category: 'consistency', ref: 'config-ts' });
+    checks.push({ pass: 'warn', label: `App name mismatch: app.json="${c.appName}" vs config.ts="${c.appNameConfig}"`, category: 'consistency', ref: 'auto-generated' });
   }
   if (c.siteUrl && c.productionUrl && c.siteUrl !== c.productionUrl) {
     checks.push({ pass: 'warn', label: `EXPO_PUBLIC_SITE_URL mismatch: eas.json="${c.siteUrl}" vs app.config.ts="${c.productionUrl}"`, category: 'consistency', ref: 'site-url' });
@@ -175,7 +182,7 @@ function runValidation(state) {
   check(state.dependencies.nodeModules, 'node_modules exists (npm install done)', 'dependencies', 'quick-start');
 
   // package.json
-  check(!isPlaceholder(c.packageName), 'Package name is set', 'package.json', 'package-name');
+  check(!isPlaceholder(c.packageName), 'Package name is set', 'package.json', 'auto-generated');
 
   state.validation.checks = checks;
   state.validation.pass = checks.filter(c => c.pass === 'pass').length;

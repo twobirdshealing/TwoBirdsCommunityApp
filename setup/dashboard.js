@@ -616,6 +616,18 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // --- Static assets ---
+    if (pathname === '/lib/alpine.min.js' && req.method === 'GET') {
+      const alpinePath = path.join(__dirname, 'lib', 'alpine.min.js');
+      if (fileExists(alpinePath)) {
+        res.writeHead(200, { 'Content-Type': 'application/javascript', 'Cache-Control': 'public, max-age=86400' });
+        fs.createReadStream(alpinePath).pipe(res);
+      } else {
+        res.writeHead(404); res.end('Not found');
+      }
+      return;
+    }
+
     // --- Dashboard HTML ---
     if (pathname === '/' || pathname === '/index.html') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
