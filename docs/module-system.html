@@ -227,10 +227,6 @@ export interface ModuleManifest {
   featureFlag?: BooleanFeatureKey;
   /** Default enabled state for new users */
   defaultEnabled: boolean;
-  /** Whether the user can disable this widget */
-  canDisable: boolean;
-  /** Whether the home screen wraps this in HomeWidget (true) or widget handles its own layout (false) */
-  externalWrapper: boolean;
   /** The widget component &mdash; receives refreshKey prop */
   component: React.ComponentType&lt;{ refreshKey: number }&gt;;
 }</code></pre>
@@ -243,17 +239,11 @@ export interface ModuleManifest {
   seeAllRoute: '/events',
   featureFlag: 'events',     // Only shown if events feature is enabled
   defaultEnabled: true,
-  canDisable: true,
-  externalWrapper: true,     // HomeWidget wrapper handles header/chrome
   component: EventsWidget,
 }]</code></pre>
 
 <div class="callout">
   <strong>refreshKey prop.</strong> The home screen passes a <code>refreshKey</code> number that increments on pull-to-refresh. Use it to trigger data refetch. Return <code>null</code> from your widget if there's no data &mdash; never render an empty card.
-</div>
-
-<div class="callout">
-  <strong>externalWrapper explained.</strong> When <code>true</code>, the home screen wraps your widget in the standard <code>HomeWidget</code> chrome (header bar with title, icon, and "See All" link). When <code>false</code>, your widget component is responsible for its own layout &mdash; useful for full-bleed or custom-styled widgets.
 </div>
 
 <h3 id="provider-registration">ProviderRegistration</h3>
@@ -703,7 +693,7 @@ export const eventsModule: ModuleManifest = {
 };</code></pre>
 
 <h3>Widget user preferences</h3>
-<p>Users can reorder and toggle widgets on the home screen (long-press to enter edit mode). These preferences are stored in MMKV and persist across sessions. The <code>defaultEnabled</code> and <code>canDisable</code> fields on <code>WidgetRegistration</code> control the initial state and whether toggling is allowed.</p>
+<p>Users can long-press to drag and reorder widgets on the home screen. These preferences are stored in MMKV and persist across sessions. The <code>defaultEnabled</code> field on <code>WidgetRegistration</code> controls the initial state.</p>
 
 <!-- ================================================================== -->
 <h2 id="lifecycle">8. Lifecycle Hooks</h2>
@@ -931,8 +921,7 @@ export const eventsModule: ModuleManifest = {
       icon: 'calendar-outline',
       seeAllRoute: '/events',
       defaultEnabled: true,
-      canDisable: true,
-      externalWrapper: true,
+
       component: EventsWidget,
     },
   ],
@@ -1138,8 +1127,6 @@ export const announcementsModule: ModuleManifest = {
     title: 'Announcement',
     icon: 'megaphone-outline',
     defaultEnabled: true,
-    canDisable: true,
-    externalWrapper: true,
     component: AnnouncementWidget,
   }],
 };</code></pre>
@@ -1541,8 +1528,6 @@ export const eventsModule: ModuleManifest = {
     icon: 'calendar-outline',
     seeAllRoute: '/events',
     defaultEnabled: true,
-    canDisable: true,
-    externalWrapper: true,
     component: EventsWidget,
   }],
 
