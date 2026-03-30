@@ -1,12 +1,13 @@
 // =============================================================================
 // LAUNCHER - Icon grid bottom sheet (main navigation surface)
 // =============================================================================
-// Displays navigation items as a grid of icon tiles inside a BottomSheet.
+// Displays navigation items as a sortable grid of icon tiles inside a BottomSheet.
 // Core items + module launcher items are merged into a single grid.
-// Dark mode toggle sits in the profile row; logout is the last grid tile.
+// Long-press any tile to drag and reorder — order persists via MMKV.
+// Dark mode toggle sits in the profile row; logout is pinned at bottom.
 // =============================================================================
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   Dimensions,
   StyleSheet,
@@ -16,6 +17,8 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Sortable from 'react-native-sortables';
+import type { SortableGridRenderItem } from 'react-native-sortables';
 import { useAppConfig, useFeatures } from '@/contexts/AppConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { PRIVACY_POLICY_URL } from '@/constants/config';
@@ -24,6 +27,8 @@ import { withOpacity } from '@/constants/colors';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { BottomSheet, BottomSheetScrollView } from '@/components/common/BottomSheet';
 import { getLauncherItems } from '@/modules/_registry';
+import { useLauncherPreferences } from '@/hooks/useLauncherPreferences';
+import { hapticMedium, hapticSelection } from '@/utils/haptics';
 import type { ColorTheme } from '@/constants/colors';
 
 import { EMPTY_HIDE_MENU, isHidden as isMenuHidden } from '@/utils/visibility';
@@ -55,7 +60,6 @@ interface GridItem {
   id: string;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
-  onPress: () => void;
   iconColor?: string;
   iconBackground?: string;
 }
@@ -70,7 +74,15 @@ const GRID_PADDING = spacing.lg;
 const TILE_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2) / NUM_COLUMNS;
 const ICON_CIRCLE_SIZE = 52;
 
-function GridTile({ item, colors }: { item: GridItem; colors: ColorTheme }) {
+function GridTile({
+  item,
+  colors,
+  onPress,
+}: {
+  item: GridItem;
+  colors: ColorTheme;
+  onPress?: () => void;
+}) {
   const bgColor = item.iconBackground
     ? withOpacity((colors as any)[item.iconBackground] ?? colors.backgroundSecondary, 0.15)
     : colors.backgroundSecondary;
@@ -81,7 +93,7 @@ function GridTile({ item, colors }: { item: GridItem; colors: ColorTheme }) {
   return (
     <AnimatedPressable
       style={[styles.tile, { width: TILE_WIDTH }]}
-      onPress={item.onPress}
+      onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={item.label}
     >
@@ -131,61 +143,29 @@ export function Launcher({
   };
 
   // ---------------------------------------------------------------------------
-  // Build unified grid items array
+  // Build reorderable items (everything except logout)
   // ---------------------------------------------------------------------------
 
-  const gridItems = useMemo(() => {
+  const reorderableItems = useMemo(() => {
     const items: GridItem[] = [];
 
-    // Core items
-    items.push({
-      id: 'profile',
-      icon: 'person-outline',
-      label: 'My Profile',
-      onPress: onProfilePress,
-    });
-
-    items.push({
-      id: 'spaces',
-      icon: 'people-outline',
-      label: 'My Spaces',
-      onPress: onMySpacesPress,
-    });
+    items.push({ id: 'profile', icon: 'person-outline', label: 'My Profile' });
+    items.push({ id: 'spaces', icon: 'people-outline', label: 'My Spaces' });
 
     if (!isHidden('directory')) {
-      items.push({
-        id: 'directory',
-        icon: 'globe-outline',
-        label: 'Directory',
-        onPress: onDirectoryPress,
-      });
+      items.push({ id: 'directory', icon: 'globe-outline', label: 'Directory' });
     }
 
     if (!isHidden('bookmarks')) {
-      items.push({
-        id: 'bookmarks',
-        icon: 'bookmark-outline',
-        label: 'Bookmarks',
-        onPress: onBookmarksPress,
-      });
+      items.push({ id: 'bookmarks', icon: 'bookmark-outline', label: 'Bookmarks' });
     }
 
     if (features.courses && !isHidden('courses')) {
-      items.push({
-        id: 'courses',
-        icon: 'school-outline',
-        label: 'Courses',
-        onPress: onCoursesPress,
-      });
+      items.push({ id: 'courses', icon: 'school-outline', label: 'Courses' });
     }
 
     if (!isHidden('notification_settings')) {
-      items.push({
-        id: 'notifications',
-        icon: 'notifications-outline',
-        label: 'Notifications',
-        onPress: onNotificationSettingsPress,
-      });
+      items.push({ id: 'notifications', icon: 'notifications-outline', label: 'Notifications' });
     }
 
     // Module items
@@ -197,35 +177,103 @@ export function Launcher({
         label: item.label,
         iconColor: item.iconColor,
         iconBackground: item.iconBackground,
-        onPress: () => {
-          onClose();
-          router.push(item.route as any);
-        },
       });
     }
 
     // Privacy Policy
     if (!isHidden('privacy')) {
-      items.push({
-        id: 'privacy',
-        icon: 'shield-checkmark-outline',
-        label: 'Privacy',
-        onPress: handlePrivacyPolicyPress,
-      });
+      items.push({ id: 'privacy', icon: 'shield-checkmark-outline', label: 'Privacy' });
     }
-
-    // Logout (always last)
-    items.push({
-      id: 'logout',
-      icon: 'log-out-outline',
-      label: 'Logout',
-      iconColor: 'error',
-      onPress: onLogout,
-    });
 
     return items;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hideMenu, features.courses, moduleLauncherItems]);
+
+  // Stable list of available IDs for the preferences hook
+  const availableIds = useMemo(
+    () => reorderableItems.map((i) => i.id),
+    [reorderableItems],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Launcher order preferences (persisted to MMKV)
+  // ---------------------------------------------------------------------------
+
+  const { orderedIds, reorder } = useLauncherPreferences(availableIds);
+
+  // Sort reorderable items by persisted order
+  const sortedItems = useMemo(() => {
+    const map = new Map(reorderableItems.map((item) => [item.id, item]));
+    const sorted: GridItem[] = [];
+    for (const id of orderedIds) {
+      const item = map.get(id);
+      if (item) sorted.push(item);
+    }
+    return sorted;
+  }, [reorderableItems, orderedIds]);
+
+  // ---------------------------------------------------------------------------
+  // Press handler lookup (resolves fresh handler each render — no stale refs)
+  // ---------------------------------------------------------------------------
+
+  const getPressHandler = useCallback((id: string): (() => void) | undefined => {
+    switch (id) {
+      case 'profile': return onProfilePress;
+      case 'spaces': return onMySpacesPress;
+      case 'directory': return onDirectoryPress;
+      case 'bookmarks': return onBookmarksPress;
+      case 'courses': return onCoursesPress;
+      case 'notifications': return onNotificationSettingsPress;
+      case 'privacy': return handlePrivacyPolicyPress;
+      default: {
+        const moduleItem = moduleLauncherItems.find((m) => m.id === id);
+        if (!moduleItem) return undefined;
+        return () => {
+          onClose();
+          router.push(moduleItem.route as any);
+        };
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onProfilePress, onMySpacesPress, onDirectoryPress, onBookmarksPress,
+      onCoursesPress, onNotificationSettingsPress, moduleLauncherItems]);
+
+  // ---------------------------------------------------------------------------
+  // Sortable grid callbacks
+  // ---------------------------------------------------------------------------
+
+  const handleDragStart = useCallback(() => {
+    hapticMedium();
+  }, []);
+
+  const handleOrderChange = useCallback(() => {
+    hapticSelection();
+  }, []);
+
+  const handleDragEnd = useCallback(
+    ({ data }: { data: GridItem[] }) => {
+      hapticMedium();
+      reorder(data.map((item) => item.id));
+    },
+    [reorder],
+  );
+
+  const renderSortableItem = useCallback<SortableGridRenderItem<GridItem>>(
+    ({ item }) => (
+      <GridTile
+        item={item}
+        colors={themeColors}
+        onPress={getPressHandler(item.id)}
+      />
+    ),
+    [themeColors, getPressHandler],
+  );
+
+  const keyExtractor = useCallback((item: GridItem) => item.id, []);
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <BottomSheet visible={visible} onClose={onClose} heightPercentage={60}>
@@ -271,10 +319,35 @@ export function Launcher({
 
         <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
 
-        <View style={styles.grid}>
-          {gridItems.map((item) => (
-            <GridTile key={item.id} item={item} colors={themeColors} />
-          ))}
+        {/* Sortable icon grid — long-press to drag and reorder */}
+        <View style={styles.gridContainer}>
+          <Sortable.Grid
+            data={sortedItems}
+            columns={NUM_COLUMNS}
+            renderItem={renderSortableItem}
+            keyExtractor={keyExtractor}
+            onDragStart={handleDragStart}
+            onOrderChange={handleOrderChange}
+            onDragEnd={handleDragEnd}
+            rowGap={0}
+            columnGap={0}
+            dragActivationDelay={400}
+            activeItemScale={1.15}
+            activeItemOpacity={1}
+            activeItemShadowOpacity={0.3}
+            inactiveItemOpacity={0.5}
+            activationAnimationDuration={250}
+            dropAnimationDuration={400}
+          />
+        </View>
+
+        {/* Logout — pinned at bottom, not reorderable */}
+        <View style={styles.logoutRow}>
+          <GridTile
+            item={{ id: 'logout', icon: 'log-out-outline', label: 'Logout', iconColor: 'error' }}
+            colors={themeColors}
+            onPress={onLogout}
+          />
         </View>
       </BottomSheetScrollView>
     </BottomSheet>
@@ -344,11 +417,14 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
   },
 
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  gridContainer: {
     paddingHorizontal: GRID_PADDING,
     paddingVertical: spacing.md,
+  },
+
+  logoutRow: {
+    alignItems: 'flex-start',
+    paddingHorizontal: GRID_PADDING,
   },
 
   tile: {
