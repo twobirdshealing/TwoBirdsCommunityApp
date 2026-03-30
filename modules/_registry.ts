@@ -14,6 +14,7 @@ import type {
   ModuleManifest,
   TabRegistration,
   WidgetRegistration,
+  WidgetComponentProps,
   ProviderRegistration,
   LauncherItemRegistration,
   HeaderIconRegistration,
@@ -243,9 +244,9 @@ export function getSlotComponent<P = any>(slotName: SlotName): React.ComponentTy
 /** Widget component map (id → component) for home screen */
 export function getWidgetComponentMap(): Record<
   string,
-  React.ComponentType<{ refreshKey: number }>
+  React.ComponentType<WidgetComponentProps>
 > {
-  const map: Record<string, React.ComponentType<{ refreshKey: number }>> = {};
+  const map: Record<string, React.ComponentType<WidgetComponentProps>> = {};
   for (const w of getModuleWidgets()) {
     map[w.id] = w.component;
   }

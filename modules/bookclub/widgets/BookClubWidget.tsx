@@ -2,9 +2,8 @@
 // BOOK CLUB WIDGET - Compact home screen entry point
 // =============================================================================
 // Only renders if the user is a member of the "Book Club" space.
-// HomeWidget wrapping is handled externally by the home screen.
 // If the server includes next_meeting data, shows a meeting row with Join.
-// Returns null entirely when not applicable (no orphaned header).
+// Returns null entirely when not applicable (hides header too).
 // =============================================================================
 
 import React from 'react';
@@ -20,14 +19,8 @@ import { spacesApi } from '@/services/api/spaces';
 import bookclubApi from '@/modules/bookclub/services/bookclubApi';
 import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 import type { BookSummary } from '@/modules/bookclub/types/bookclub';
-
-// -----------------------------------------------------------------------------
-// Props
-// -----------------------------------------------------------------------------
-
-interface BookClubWidgetProps {
-  refreshKey: number;
-}
+import { HomeWidget } from '@/components/home/HomeWidget';
+import type { WidgetComponentProps } from '@/modules/_types';
 
 // -----------------------------------------------------------------------------
 // Component
@@ -38,7 +31,7 @@ interface BookClubCacheData {
   book: BookSummary | null;
 }
 
-export function BookClubWidget({ refreshKey }: BookClubWidgetProps) {
+export function BookClubWidget({ refreshKey, title, icon, onSeeAll }: WidgetComponentProps) {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
 
@@ -73,7 +66,7 @@ export function BookClubWidget({ refreshKey }: BookClubWidgetProps) {
   const nextMeeting = book.next_meeting;
 
   return (
-    <>
+    <HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}>
       {/* Book Card */}
       <AnimatedPressable
         style={[styles.card, { backgroundColor: themeColors.surface }]}
@@ -128,7 +121,7 @@ export function BookClubWidget({ refreshKey }: BookClubWidgetProps) {
           </Pressable>
         </View>
       )}
-    </>
+    </HomeWidget>
   );
 }
 

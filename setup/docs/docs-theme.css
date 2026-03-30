@@ -1,0 +1,638 @@
+/**
+ * TBC Docs — Unified Theme
+ *
+ * Matches setup-guide.html styling: sticky top bar, content wrapper,
+ * GitHub-inspired light/dark theme.
+ *
+ * Dual-mode: works standalone (offline) AND inside Fluent Community (on-site).
+ * When embedded in WordPress, --fcom-* vars override our standalone defaults.
+ */
+
+/* ================================================================
+   LIGHT MODE (default)
+   ================================================================ */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --surface-hover: #eaeef2;
+  --border: #d0d7de;
+  --border-light: #afb8c1;
+  --text: #1f2328;
+  --text-secondary: #656d76;
+  --text-muted: #8c959f;
+  --accent: #0969da;
+  --accent-hover: #0550ae;
+  --accent-glow: rgba(9, 105, 218, 0.1);
+  --success: #1a7f37;
+  --success-bg: rgba(26, 127, 55, 0.1);
+  --warning: #9a6700;
+  --warning-bg: rgba(154, 103, 0, 0.1);
+  --error: #cf222e;
+  --error-bg: rgba(207, 34, 46, 0.1);
+  --purple: #8250df;
+  --purple-bg: rgba(130, 80, 223, 0.1);
+  --code-bg: #f6f8fa;
+  --tag-bg: #eaeef2;
+  --gradient-start: #0969da;
+  --gradient-end: #8250df;
+}
+
+/* ================================================================
+   DARK MODE
+   ================================================================ */
+[data-theme="dark"] {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface-hover: #1c2333;
+  --border: #30363d;
+  --border-light: #484f58;
+  --text: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent: #58a6ff;
+  --accent-hover: #79c0ff;
+  --accent-glow: rgba(88, 166, 255, 0.15);
+  --success: #3fb950;
+  --success-bg: rgba(63, 185, 80, 0.1);
+  --warning: #d29922;
+  --warning-bg: rgba(210, 153, 34, 0.1);
+  --error: #f85149;
+  --error-bg: rgba(248, 81, 73, 0.1);
+  --purple: #bc8cff;
+  --purple-bg: rgba(188, 140, 255, 0.1);
+  --code-bg: #161b22;
+  --tag-bg: #1f2937;
+  --gradient-start: #58a6ff;
+  --gradient-end: #a371f7;
+}
+
+/* ================================================================
+   Fluent Community overrides (when embedded on-site)
+   ================================================================ */
+body.fcom-embedded {
+  --bg: var(--fcom-primary-bg, #ffffff);
+  --surface: var(--fcom-secondary-bg, #f6f8fa);
+  --border: var(--fcom-primary-border, #d0d7de);
+  --text: var(--fcom-primary-text, #1f2328);
+  --text-secondary: var(--fcom-secondary-text, #656d76);
+  --accent: var(--fcom-text-link, #0969da);
+  --success: var(--fcom-success-color, #1a7f37);
+  --warning: var(--fcom-warning-color, #9a6700);
+  --error: var(--fcom-danger-color, #cf222e);
+}
+
+/* ================================================================
+   BASE
+   ================================================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+  margin: 0;
+  padding: 0;
+}
+
+/* ================================================================
+   TOP BAR — mirrors dashboard / setup guide header
+   ================================================================ */
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 32px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+.top-bar-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+.top-bar-back {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.15s;
+}
+.top-bar-back:hover { color: var(--accent); text-decoration: none; }
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.top-bar-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--accent-glow);
+  color: var(--accent);
+  border: 1px solid rgba(88, 166, 255, 0.25);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.top-bar-badge:hover { text-decoration: none; opacity: 0.8; }
+[data-theme="dark"] .top-bar-badge {
+  border-color: rgba(88, 166, 255, 0.25);
+}
+.theme-toggle {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+.theme-toggle:hover { color: var(--text); border-color: var(--accent); }
+
+/* ================================================================
+   SECTION NAV — sticky tab bar below top bar
+   ================================================================ */
+.section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  position: sticky;
+  top: 49px;
+  z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+}
+.section-nav a {
+  padding: 10px 14px;
+  border-radius: 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.15s;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.section-nav a:hover { color: var(--text); text-decoration: none; }
+.section-nav a.active {
+  background: none;
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ================================================================
+   CONTENT WRAPPER
+   ================================================================ */
+.guide-content {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+/* ================================================================
+   TYPOGRAPHY
+   ================================================================ */
+h1 { font-size: 2rem; margin-bottom: 8px; margin-top: 32px; }
+h2 {
+  font-size: 1.6rem;
+  margin-top: 56px;
+  margin-bottom: 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+}
+h3 { font-size: 1.15rem; margin-top: 32px; margin-bottom: 12px; color: var(--accent); }
+h4 { font-size: 1rem; margin-top: 20px; margin-bottom: 8px; color: var(--text-secondary); }
+p, li { margin-bottom: 8px; }
+ul { padding-left: 24px; }
+ol { padding-left: 24px; }
+
+/* ================================================================
+   LINKS
+   ================================================================ */
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+/* ================================================================
+   CODE
+   ================================================================ */
+code {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  margin: 12px 0 16px;
+}
+pre code { background: none; border: none; padding: 0; }
+
+/* ================================================================
+   TABLES
+   ================================================================ */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 24px;
+  font-size: 0.95em;
+}
+th, td {
+  text-align: left;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+}
+th { background: var(--surface); font-weight: 600; }
+tr:hover td { background: rgba(88, 166, 255, 0.04); }
+
+/* ================================================================
+   SUBTITLE
+   ================================================================ */
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin-bottom: 32px;
+}
+
+/* ================================================================
+   TAGS / BADGES
+   ================================================================ */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 600;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.required { background: var(--error-bg); color: var(--error); }
+.optional { background: var(--warning-bg); color: var(--warning); }
+.auto { background: var(--success-bg); color: var(--success); }
+.core { background: var(--success-bg); color: var(--success); }
+.shared { background: rgba(88, 166, 255, 0.15); color: var(--accent); }
+.screen { background: var(--warning-bg); color: var(--warning); }
+.addon, .tag-addon { background: var(--warning-bg); color: var(--warning); }
+.tag-free { background: rgba(9, 105, 218, 0.12); color: var(--accent); }
+.tag-pro { background: var(--purple-bg); color: var(--purple); }
+.tag-msg { background: rgba(247, 120, 186, 0.12); color: #f778ba; }
+.tag-app { background: var(--success-bg); color: var(--success); }
+.tag-roadmap { background: var(--warning-bg); color: var(--warning); }
+
+/* ================================================================
+   CALLOUTS
+   ================================================================ */
+.callout {
+  border-left: 4px solid var(--accent);
+  background: var(--surface);
+  padding: 16px 20px;
+  border-radius: 0 8px 8px 0;
+  margin: 16px 0;
+}
+.callout-warn { border-left-color: var(--warning); }
+.callout-error { border-left-color: var(--error); }
+.callout-success { border-left-color: var(--success); }
+
+/* ================================================================
+   TABLE OF CONTENTS
+   ================================================================ */
+.toc {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin: 24px 0 40px;
+}
+.toc ol { padding-left: 20px; }
+.toc li { margin-bottom: 4px; }
+
+/* ================================================================
+   FILE PATHS
+   ================================================================ */
+.file-path {
+  color: var(--accent);
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+/* ================================================================
+   COLLAPSIBLE SECTIONS
+   ================================================================ */
+details { margin: 16px 0; }
+details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+details summary::-webkit-details-marker { display: none; }
+details summary::before { content: "\25B6"; font-size: 0.7em; transition: transform 0.2s; }
+details[open] summary::before { transform: rotate(90deg); }
+details[open] summary { border-radius: 8px 8px 0 0; }
+details .details-content {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  background: var(--surface);
+}
+
+/* ================================================================
+   STATS GRID
+   ================================================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent);
+  display: block;
+}
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.85em;
+  margin-top: 4px;
+}
+
+/* ================================================================
+   LEGEND
+   ================================================================ */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 16px 0 24px;
+  font-size: 0.9em;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+
+/* ================================================================
+   FEATURE COMPARISON
+   ================================================================ */
+.check { color: var(--success); font-weight: bold; font-size: 1.1em; }
+.cross { color: var(--error); font-size: 1.1em; }
+.partial { color: var(--warning); font-size: 1.1em; }
+.na { color: var(--text-muted); font-size: 0.85em; }
+
+.row-app td { background: var(--success-bg); }
+.row-roadmap td { background: var(--warning-bg); }
+.row-done td { background: var(--surface); }
+.row-done td s { color: var(--text-muted); }
+
+/* ================================================================
+   DIAGRAMS
+   ================================================================ */
+.diagram {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.85em;
+  line-height: 1.7;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* ================================================================
+   FLOW DIAGRAMS
+   ================================================================ */
+.flow-diagram {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.85em;
+  line-height: 1.8;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* ================================================================
+   OUTPUT EXAMPLES (logging.html)
+   ================================================================ */
+.output-example {
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0 16px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.85em;
+  line-height: 1.8;
+}
+.output-example .log { color: #e6edf3; }
+.output-example .warn { color: var(--warning); }
+.output-example .error { color: var(--error); }
+.output-example .tag {
+  background: none;
+  padding: 0;
+  margin: 0;
+  color: var(--accent);
+  font-size: 1em;
+}
+
+/* ================================================================
+   COLOR SWATCHES (theme-system.html)
+   ================================================================ */
+.color-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  vertical-align: middle;
+  margin-right: 6px;
+}
+.swatch-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
+.swatch {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  font-size: 0.6em;
+  padding-bottom: 2px;
+  color: var(--text-secondary);
+}
+
+/* ================================================================
+   COMPONENT CARDS (components.html)
+   ================================================================ */
+.component-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+.component-card h4 { margin-top: 0; }
+.component-card .file-path { display: block; margin-bottom: 8px; }
+
+/* ================================================================
+   PROP TABLES (components.html)
+   ================================================================ */
+.prop-table td:first-child {
+  font-family: monospace;
+  color: var(--success);
+  white-space: nowrap;
+}
+.prop-table td:nth-child(2) {
+  font-family: monospace;
+  color: var(--purple);
+  white-space: nowrap;
+}
+
+/* ================================================================
+   STEP CARDS (setup-guide style, available for docs too)
+   ================================================================ */
+.step-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 28px 24px;
+  margin: 24px 0;
+  position: relative;
+  transition: border-color 0.2s;
+}
+.step-card:hover { border-color: rgba(88, 166, 255, 0.3); }
+.step-header { display: flex; align-items: center; margin-bottom: 16px; gap: 12px; }
+.step-title { font-size: 1.2rem; font-weight: 700; color: var(--text); }
+.step-body { color: var(--text-secondary); font-size: 1rem; line-height: 1.7; }
+.step-body strong { color: var(--text); }
+.step-img {
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  cursor: zoom-in;
+  transition: opacity 0.15s;
+}
+.step-img:hover { opacity: 0.85; }
+
+/* ================================================================
+   LIGHTBOX
+   ================================================================ */
+.lightbox-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  justify-content: center;
+  align-items: center;
+  cursor: zoom-out;
+  padding: 24px;
+}
+.lightbox-overlay.active { display: flex; }
+.lightbox-overlay img {
+  max-width: 95vw;
+  max-height: 92vh;
+  border-radius: 8px;
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+  object-fit: contain;
+}
+
+/* ================================================================
+   DOCS INDEX — card grid for docs landing page
+   ================================================================ */
+.docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+.doc-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  display: block;
+}
+.doc-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 12px var(--accent-glow);
+  text-decoration: none;
+}
+.doc-card h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  color: var(--accent);
+}
+.doc-card p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (max-width: 768px) {
+  .top-bar { padding: 12px 16px; gap: 10px; }
+  .section-nav { padding: 0 16px; }
+  .guide-content { padding: 0 16px 60px; }
+  table { font-size: 0.8em; }
+  th, td { padding: 6px 8px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .docs-grid { grid-template-columns: 1fr; }
+  h1 { font-size: 1.6rem; }
+}

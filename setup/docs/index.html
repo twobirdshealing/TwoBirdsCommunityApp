@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App &mdash; Developer Documentation</title>
+<link rel="stylesheet" href="docs-theme.css">
+<script src="docs-theme.js"></script>
+</head>
+<body>
+
+<h1>Documentation</h1>
+<p class="subtitle">Architecture, systems, and module references for the Community App</p>
+
+<h2>Architecture &amp; Core Systems</h2>
+
+<div class="docs-grid">
+  <a class="doc-card" href="architecture.html">
+    <h3>Architecture Guide</h3>
+    <p>How the app works end-to-end &mdash; from cold start to real-time updates</p>
+  </a>
+  <a class="doc-card" href="state-management.html">
+    <h3>State Management</h3>
+    <p>React Context providers, nesting order, data flow, and service &harr; React bridges</p>
+  </a>
+  <a class="doc-card" href="api-client.html">
+    <h3>API Client</h3>
+    <p>JWT authentication, automatic token refresh, error normalization, and batch requests</p>
+  </a>
+  <a class="doc-card" href="caching-system.html">
+    <h3>Data Fetching &amp; Caching</h3>
+    <p>Stale-while-revalidate pattern with batch startup, cross-screen invalidation, and optimistic updates</p>
+  </a>
+  <a class="doc-card" href="theme-system.html">
+    <h3>Theme System</h3>
+    <p>Fluent Community color sync, token mapping, and usage rules</p>
+  </a>
+  <a class="doc-card" href="logging.html">
+    <h3>Logging</h3>
+    <p>Tagged debug logging with zero production cost</p>
+  </a>
+</div>
+
+<h2>Features &amp; Screens</h2>
+
+<div class="docs-grid">
+  <a class="doc-card" href="feed-system.html">
+    <h3>Feed System</h3>
+    <p>Posts, reactions, comments, sticky posts, surveys, bookmarks, and media</p>
+  </a>
+  <a class="doc-card" href="messaging.html">
+    <h3>Messaging</h3>
+    <p>Direct messages, real-time Pusher events, thread resolution, reactions, and blocking</p>
+  </a>
+  <a class="doc-card" href="spaces.html">
+    <h3>Spaces (Groups)</h3>
+    <p>Discovery, membership, feeds, lock screens, and space groups</p>
+  </a>
+  <a class="doc-card" href="courses.html">
+    <h3>Courses</h3>
+    <p>Fluent LMS integration &mdash; browsing, enrollment, lessons, quizzes, and progress tracking</p>
+  </a>
+  <a class="doc-card" href="profile-system.html">
+    <h3>Profile System</h3>
+    <p>User profiles, badges, connections, custom fields, avatars, and profile editing</p>
+  </a>
+  <a class="doc-card" href="notifications.html">
+    <h3>Notifications</h3>
+    <p>Push notifications, in-app list, badge counts, unified preferences, and deep linking</p>
+  </a>
+  <a class="doc-card" href="registration.html">
+    <h3>Registration</h3>
+    <p>Multi-step wizard, email verification, module-injected steps, and password recovery</p>
+  </a>
+  <a class="doc-card" href="content-creation.html">
+    <h3>Content Creation</h3>
+    <p>Rich text editing, media attachments, polls, space selection, and post submission</p>
+  </a>
+  <a class="doc-card" href="media-uploads.html">
+    <h3>Media &amp; Uploads</h3>
+    <p>Image picking, upload pipeline, gallery viewer, video playback, GIF picker, and YouTube embeds</p>
+  </a>
+</div>
+
+<h2>Infrastructure</h2>
+
+<div class="docs-grid">
+  <a class="doc-card" href="module-system.html">
+    <h3>Module System</h3>
+    <p>Self-contained features that plug into the app without touching core code</p>
+  </a>
+  <a class="doc-card" href="widget-system.html">
+    <h3>Widget System</h3>
+    <p>Home screen widgets with drag-and-drop reordering and module registration</p>
+  </a>
+  <a class="doc-card" href="companion-plugins.html">
+    <h3>Companion Plugins</h3>
+    <p>WordPress plugins that power the app&rsquo;s backend &mdash; REST endpoints, auth, push notifications</p>
+  </a>
+  <a class="doc-card" href="pusher.html">
+    <h3>Real-Time (Pusher)</h3>
+    <p>WebSocket connection, private channels, event handling, and lifecycle management</p>
+  </a>
+  <a class="doc-card" href="deep-linking.html">
+    <h3>Deep Linking</h3>
+    <p>Universal links, custom scheme, in-app URL routing, and push notification navigation</p>
+  </a>
+  <a class="doc-card" href="forms-validation.html">
+    <h3>Forms &amp; Validation</h3>
+    <p>DynamicFormField, server-driven configs, validation patterns, and password strength</p>
+  </a>
+  <a class="doc-card" href="components.html">
+    <h3>Components</h3>
+    <p>Shared UI component reference &mdash; buttons, avatars, inputs, and more</p>
+  </a>
+</div>
+
+<h2>Reference</h2>
+
+<div class="docs-grid">
+  <a class="doc-card" href="features.html">
+    <h3>Feature Matrix</h3>
+    <p>Comprehensive feature mapping: Fluent Community ecosystem vs. TBC Community App</p>
+  </a>
+  <a class="doc-card" href="competitive.html">
+    <h3>Competitive Landscape</h3>
+    <p>How the TBC Community App compares to the competition</p>
+  </a>
+  <a class="doc-card" href="roadmap.html">
+    <h3>Roadmap &amp; Gaps</h3>
+    <p>Unsupported Fluent features and planned improvements</p>
+  </a>
+  <a class="doc-card" href="modules/index.html">
+    <h3>Module Docs &rarr;</h3>
+    <p>Per-module guides covering setup, configuration, endpoints, and file structure</p>
+  </a>
+</div>
+
+</body>
+</html>

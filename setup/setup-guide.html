@@ -3,9 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>White-Label Community App — Setup Guide</title>
+<title>TBC Community App — Setup Guide</title>
 <style>
+  /* Light mode (default) */
   :root {
+    --bg: #ffffff;
+    --surface: #f6f8fa;
+    --surface-hover: #eaeef2;
+    --border: #d0d7de;
+    --text: #1f2328;
+    --text-secondary: #656d76;
+    --accent: #0969da;
+    --accent-hover: #0550ae;
+    --accent-glow: rgba(9, 105, 218, 0.1);
+    --success: #1a7f37;
+    --warning: #9a6700;
+    --error: #cf222e;
+    --code-bg: #f6f8fa;
+    --tag-bg: #eaeef2;
+    --gradient-start: #0969da;
+    --gradient-end: #8250df;
+  }
+  /* Dark mode */
+  [data-theme="dark"] {
     --bg: #0d1117;
     --surface: #161b22;
     --surface-hover: #1c2333;
@@ -29,45 +49,64 @@
     background: var(--bg);
     color: var(--text);
     line-height: 1.7;
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
+    margin: 0;
+    padding: 0;
   }
 
-  /* Hero */
-  .hero {
-    text-align: center;
-    padding: 60px 20px 48px;
-    margin-bottom: 40px;
+  /* Top bar — mirrors dashboard header */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 200;
   }
-  .hero h1 {
-    font-size: 2.6rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 12px;
-    letter-spacing: -0.5px;
+  .top-bar-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
   }
-  .hero .subtitle {
-    font-size: 1.2rem;
-    color: var(--text-secondary);
-    margin-bottom: 24px;
-    max-width: 560px;
+  .top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     margin-left: auto;
-    margin-right: auto;
   }
-  .hero .hero-tagline {
+  .top-bar-version {
     display: inline-block;
-    padding: 8px 20px;
-    border-radius: 24px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
     background: var(--accent-glow);
     color: var(--accent);
-    font-weight: 600;
-    font-size: 0.95rem;
     border: 1px solid rgba(88, 166, 255, 0.25);
+    white-space: nowrap;
   }
+  [data-theme="dark"] .top-bar-version {
+    border-color: rgba(88, 166, 255, 0.25);
+  }
+  .theme-toggle {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+  }
+  .theme-toggle:hover { color: var(--text); border-color: var(--accent); }
 
   h1 { font-size: 2rem; margin-bottom: 8px; }
   h2 {
@@ -161,19 +200,6 @@
     margin-bottom: 16px;
     gap: 12px;
   }
-  .step-number {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-    color: #fff;
-    font-weight: 700;
-    font-size: 1rem;
-    flex-shrink: 0;
-  }
   .step-title {
     font-size: 1.2rem;
     font-weight: 700;
@@ -225,15 +251,9 @@
     object-fit: contain;
   }
 
-  .toc { background: var(--surface); border-radius: 12px; padding: 24px 28px; margin: 24px 0 40px; border: 1px solid var(--border); }
-  .toc ol { padding-left: 20px; }
-  .toc li { margin-bottom: 6px; }
-  .toc li a { font-size: 1rem; }
   ul { padding-left: 24px; }
   ol { padding-left: 24px; }
   .file-path { color: var(--accent); font-family: monospace; font-size: 0.9em; }
-  nav { position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 10; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
-  nav a { margin-right: 16px; font-size: 0.9rem; }
 
   /* Collapsible sections */
   details { margin: 16px 0; }
@@ -307,40 +327,88 @@
   /* Prereq reference line shown at top of steps */
   .prereq-ref { font-size: 0.88em; color: var(--text-secondary); margin: -8px 0 12px; }
   .prereq-ref .prereq-badge { cursor: pointer; }
+
+  /* Content wrapper */
+  .guide-content {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* Section navigation — tab bar mirroring dashboard */
+  .section-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    position: sticky;
+    top: 49px;
+    z-index: 100;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+  }
+  .section-nav a {
+    padding: 12px 16px;
+    border-radius: 0;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+  .section-nav a:hover { color: var(--text); text-decoration: none; }
+  .section-nav a.active {
+    background: none;
+    border-bottom-color: var(--accent);
+    color: var(--accent);
+  }
+  .guide-section { display: none; }
+  .guide-section.active { display: block; }
 </style>
+<script>
+  // Apply theme before render to prevent flash
+  (function() {
+    var s = localStorage.getItem('tbc-docs-theme');
+    if (!s) s = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (s === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  })();
+</script>
 </head>
 <body>
 
-<div class="hero">
-  <h1>Community App Setup</h1>
-  <p class="subtitle">Your white-label community app is ready to go. Let's get it branded, configured, and live.</p>
-  <span class="hero-tagline">Follow the steps below &mdash; you'll have a running app in minutes</span>
+<div class="top-bar">
+  <span class="top-bar-title">TBC Community App &mdash; Setup Guide</span>
+  <div class="top-bar-right">
+    <span class="top-bar-version">Setup Guide</span>
+    <button class="theme-toggle" id="theme-toggle" title="Toggle light/dark mode"></button>
+  </div>
 </div>
 
-<div class="toc">
-  <strong>What's in this guide</strong>
-  <ol>
-    <li><a href="#prerequisites">Before You Start</a> &mdash; accounts &amp; tools you'll need</li>
-    <li><a href="#setup">Setup Walkthrough</a> &mdash; the main event, step by step</li>
-    <li><a href="#config-reference">Configuration Reference</a> &mdash; every config file explained</li>
-    <li><a href="#branding-assets">Branding Assets</a> &mdash; icons, splash screens, logos</li>
-    <li><a href="#plugins">Companion Plugins</a> &mdash; WordPress plugins that power the backend</li>
-    <li><a href="#modules">Module System</a> &mdash; add-on features you can toggle on/off</li>
-    <li><a href="#theming">Theme System</a> &mdash; automatic color sync from your site</li>
-    <li><a href="#build-deploy">Build &amp; Deploy</a> &mdash; ship to App Store &amp; Play Store</li>
-    <li><a href="#checklist">Pre-Launch Checklist</a> &mdash; make sure nothing's missed</li>
-    <li><a href="#updates-tab">Updates &amp; Licensing</a> &mdash; stay current with one click</li>
-    <li><a href="#updating">Updating from Upstream (Git)</a> &mdash; for git-based workflows</li>
-    <li><a href="#troubleshooting">Troubleshooting</a> &mdash; common issues &amp; fixes</li>
-  </ol>
+<div class="section-nav" id="section-nav">
+  <a data-section="prerequisites" class="active">Getting Started</a>
+  <a data-section="setup">Config</a>
+  <a data-section="branding-assets">Assets</a>
+  <a data-section="plugins">Companion Plugins</a>
+  <a data-section="modules">Modules</a>
+  <a data-section="builds">Builds</a>
+  <a data-section="ota">OTA Updates</a>
+  <a data-section="updates-tab">Updates</a>
+  <a data-section="status">Status</a>
 </div>
 
-<!-- ====================================================================== -->
-<h2 id="prerequisites">1. Prerequisites</h2>
+<div class="guide-content">
 
+<div class="guide-section active" id="sec-prerequisites">
+<h2 id="prerequisites">Getting Started</h2>
+
+<h3>Prerequisites</h3>
 <p>Make sure you have these accounts and tools ready before starting setup.</p>
 
-<h3>Required Accounts &amp; Services</h3>
+<h4 style="margin-top: 24px; margin-bottom: 12px;">Required Accounts &amp; Services</h4>
 
 <div class="prereq-card" id="prereq-fluent">
   <div class="prereq-card-header">
@@ -422,7 +490,7 @@
             <li><strong>Platforms</strong> &mdash; check <strong>iOS</strong></li>
             <li><strong>Name</strong> &mdash; your app's display name on the App Store (you can change this later)</li>
             <li><strong>Primary Language</strong> &mdash; your app's main language</li>
-            <li><strong>Bundle ID</strong> &mdash; select the bundle ID you registered in the Apple Developer Portal (from Step 4). If you haven't registered one yet, do that first and come back here.</li>
+            <li><strong>Bundle ID</strong> &mdash; select the bundle ID you registered in the Apple Developer Portal (from the <strong>App Identity</strong> card). If you haven't registered one yet, do that first and come back here.</li>
             <li><strong>SKU</strong> &mdash; an internal reference ID (not visible to users). Use something like your app slug, e.g. <code>mycommunityapp</code></li>
             <li><strong>User Access</strong> &mdash; select <strong>Full Access</strong> unless you have specific team restrictions</li>
           </ul>
@@ -477,7 +545,7 @@
           Check the <strong>Developer Program Policies</strong> and <strong>US export laws</strong> declarations, then click <strong>Create app</strong>.
         </li>
         <li>
-          Your app now exists in the Play Console. The <strong>package name</strong> gets locked when you upload your first build &mdash; make sure it matches the Android Package you set in Step 4.
+          Your app now exists in the Play Console. The <strong>package name</strong> gets locked when you upload your first build &mdash; make sure it matches the Android Package you set in the <strong>App Identity</strong> card.
         </li>
       </ol>
       <div class="callout" style="margin-top: 12px;">
@@ -487,7 +555,7 @@
   </details>
 </div>
 
-<h3>Optional Services</h3>
+<h4 style="margin-top: 24px; margin-bottom: 12px;">Optional Services</h4>
 <p>These are only needed if you use the features they power. The app works fine without them.</p>
 
 <div class="prereq-card" id="prereq-firebase">
@@ -566,7 +634,7 @@
   </details>
 </div>
 
-<h3>Development Tools</h3>
+<h4 style="margin-top: 24px; margin-bottom: 12px;">Development Tools</h4>
 <p>Install these before starting setup. All are free.</p>
 
 <div class="prereq-card" id="prereq-node">
@@ -598,7 +666,7 @@
   <details>
     <summary>Walkthrough: Install EAS CLI</summary>
     <div class="details-content">
-      <p>The <strong>setup dashboard handles this automatically</strong> &mdash; in Step 6 (EAS Config card), it detects whether EAS CLI is installed and lets you install, log in, and link your project with one click each.</p>
+      <p>The <strong>setup dashboard handles this automatically</strong> &mdash; in the <strong>Build Service</strong> card, it detects whether EAS CLI is installed and lets you install, log in, and link your project with one click each.</p>
       <div class="callout" style="margin-top: 12px;">
         <strong>Manual alternative:</strong> <code>npm install -g eas-cli</code> then <code>eas login</code> from your terminal.
       </div>
@@ -672,92 +740,63 @@
   <strong>Claude Code is free to get started.</strong> All the code is already written &mdash; you don't need an expensive AI plan. A <a href="https://claude.ai/signup" target="_blank">free Claude account</a> is plenty to answer questions about the app, help with setup, and guide you through customizations. We include a <code>CLAUDE.md</code> file that teaches Claude your entire project, so it can help right out of the box.
 </div>
 
-<!-- ====================================================================== -->
-<h2 id="setup">2. Setup Walkthrough</h2>
+<h3>Set Up Your Project</h3>
 
-<p>This is the main event. Follow these steps in order and you'll have a branded, running app on your device. The <strong>setup dashboard</strong> handles most of the heavy lifting &mdash; it reads your config files, lets you edit everything in a browser UI, and validates your setup live.</p>
-
-<!-- Step 1: Download & Extract -->
 <div class="step-card">
-  <div class="step-header">
-    <span class="step-number">1</span>
-    <span class="step-title">Download &amp; Extract</span>
-  </div>
+  <div class="step-header"><span class="step-title">Download &amp; Extract</span></div>
   <div class="step-body">
-    After purchasing, you'll receive a <code>.tar.gz</code> archive (e.g. <code>core-update-3.1.0.tar.gz</code>).
-    Extract it to a folder on your computer and <strong>name it after your community</strong> &mdash; something like <code>MyCommunityApp</code> or <code>FitnessTribeApp</code>. This is your project root. Inside you'll see everything you need: app code, companion plugins, setup dashboard, and docs.
-    <br><br>
+    <p>After purchasing, you'll receive a <code>.tar.gz</code> archive (e.g. <code>core-update-3.1.0.tar.gz</code>). Extract it to a folder on your computer and name it after your community &mdash; something like <strong>MyCommunityApp</strong> or <strong>FitnessTribeApp</strong>. This is your project root.</p>
     <img class="step-img" src="images/step1-extract.webp" alt="Extracted app archive showing project files and folders">
-
-    <h5 style="margin-top: 20px;">Open in VS Code</h5>
-    <p>
-      Open VS Code, click <strong>File &rarr; Open Folder</strong>, and navigate to the folder you just extracted. This gives you a full project workspace with the terminal built in.
-    </p>
-    <img class="step-img" src="images/step1-vscode.webp" alt="Project open in VS Code with file explorer">
-
-    <h5 style="margin-top: 20px;">Claude Code &mdash; your AI co-pilot</h5>
-    <p>
-      We ship a <code>CLAUDE.md</code> file with your project. This tells <a href="https://marketplace.visualstudio.com/items?itemName=anthropic.claude-code" target="_blank">Claude Code</a> everything about your app &mdash; how the module system works, where the docs live, what files are safe to edit, and what's core. Install the Claude Code extension for VS Code and you get an AI assistant that actually understands your project.
-    </p>
-    <p>
-      Ask it to launch your dashboard, configure settings, build custom modules, debug issues, or explain how any part of the app works. It has access to our full documentation and knows the entire project structure. All the code is already written &mdash; a free Claude account is plenty to help answer questions about the app, walk you through setup, and guide you through customizations.
-    </p>
-    <img class="step-img" src="images/step1-claude.webp" alt="Claude Code extension open in VS Code ready to assist">
-    <div class="callout callout-info" style="margin-top: 12px;">
-      <strong>Make it yours.</strong> The <code>CLAUDE.md</code> file includes a <em>Your Instructions</em> section at the bottom where you can add your own preferences, project notes, and rules. This file is protected during core updates &mdash; your customizations won't be overwritten.
-    </div>
   </div>
 </div>
 
-<!-- Step 2: Launch the Dashboard -->
 <div class="step-card">
-  <div class="step-header">
-    <span class="step-number">2</span>
-    <span class="step-title">Launch the Dashboard</span>
-  </div>
+  <div class="step-header"><span class="step-title">Open in VS Code</span></div>
   <div class="step-body">
-    <p>If you're using Claude Code, just ask it to <em>"launch the dashboard"</em> &mdash; it knows what to do. Otherwise, open a terminal in your project folder and run:</p>
+    <p>Open VS Code, go to <strong>File &rarr; Open Folder</strong>, and select your project folder. Open the built-in terminal (<strong>Terminal &rarr; New Terminal</strong> or <code>Ctrl+`</code>).</p>
+    <img class="step-img" src="images/step1-vscode.webp" alt="Project open in VS Code">
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Claude Code &mdash; your AI co-pilot</span></div>
+  <div class="step-body">
+    <p>If you installed the Claude Code extension, open it from the sidebar. It reads your project's <code>CLAUDE.md</code> and understands the full codebase &mdash; ask it to help with setup, build modules, or debug issues.</p>
+    <img class="step-img" src="images/step1-claude.webp" alt="Claude Code extension in VS Code">
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Launch the Dashboard</span></div>
+  <div class="step-body">
+    <p>If you're using Claude Code, just ask it to <em>"launch the dashboard"</em>. Otherwise, open a terminal in your project folder and run:</p>
     <pre><code>npm run dashboard</code></pre>
-    <p>You'll see output like this:</p>
-    <pre><code>========================================
-  Setup Dashboard
-========================================
-
-  Project: C:\Users\YourName\Projects\MyCommunityApp
-  Dashboard: http://localhost:3456
-
-  Press Ctrl+C to stop.</code></pre>
-    <p>
-      The dashboard automatically opens <a href="http://localhost:3456" target="_blank">http://localhost:3456</a> in your browser. This is your setup command center &mdash; it reads your actual config files, lets you edit everything in a browser UI, and validates your setup live. You'll work through each tab from left to right.
-    </p>
+    <p>The dashboard opens <code>http://localhost:3456</code> in your browser &mdash; your setup command center. It reads your actual config files, lets you edit everything in a browser UI, and validates your setup live. Work through each tab from left to right.</p>
     <img class="step-img" src="images/step2-dashboard.webp" alt="Setup dashboard running in the browser">
-    <div class="callout callout-info" style="margin-top: 12px;">
-      <strong>Keep the dashboard running</strong> while you work through setup. When you're done, click the <strong>stop button</strong> <img src="images/stopdashboard.webp" alt="Stop dashboard button" style="height:22px;vertical-align:middle;margin:0 4px;border-radius:4px;"> in the dashboard header, or press <code>Ctrl+C</code> in the terminal.
+    <div class="callout" style="margin-top: 16px;">
+      <strong>Keep the dashboard running</strong> while you work through setup. When you're done, click the stop button <img src="images/stopdashboard.webp" alt="Stop dashboard button" style="height: 20px; vertical-align: middle; border-radius: 4px;"> in the header, or press <code>Ctrl+C</code> in the terminal.
     </div>
   </div>
 </div>
 
-<!-- Step 3: Install Dependencies -->
 <div class="step-card">
-  <div class="step-header">
-    <span class="step-number">3</span>
-    <span class="step-title">Install Dependencies</span>
-  </div>
+  <div class="step-header"><span class="step-title">Install Dependencies</span></div>
   <div class="step-body">
-    If the dashboard detects that <code>node_modules</code> is missing, it will show a yellow banner at the top with an <strong>Install Dependencies</strong> button. Click it &mdash; this runs <code>npm install</code> for you. Once complete, the banner disappears and you're ready to configure.
-    <br><br>
+    <p>If <code>node_modules</code> is missing, the dashboard shows a yellow banner with an <strong>Install Dependencies</strong> button. Click it &mdash; this runs <code>npm install</code> for you. Once complete, the banner disappears and you're ready to configure.</p>
     <img class="step-img" src="images/step3-dependencies.webp" alt="Dashboard showing install dependencies banner">
   </div>
 </div>
 
-<!-- Config Tab heading -->
-<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Config Tab</h3>
-<p style="margin-bottom: 24px;">The Config tab is the big one &mdash; this is where you make the app yours. Work through each card from top to bottom. When you're done, hit <strong>Save Changes</strong> at the bottom and everything gets written to the right files automatically.</p>
+</div><!-- /sec-prerequisites -->
 
-<!-- Step 4: App Identity -->
+<div class="guide-section" id="sec-setup">
+<h2 id="setup">Config Tab</h2>
+
+<p>The Config tab is where you make the app yours. Work through each card top to bottom, then hit <strong>Save Changes</strong> &mdash; everything gets written to the right files automatically.</p>
+
+<!-- App Identity -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">4</span>
     <span class="step-title">App Identity</span>
   </div>
   <div class="step-body">
@@ -817,7 +856,6 @@
 <!-- Step 5: Your WordPress Site -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">5</span>
     <span class="step-title">Your WordPress Site</span>
   </div>
   <div class="step-body">
@@ -836,7 +874,6 @@
 <!-- Step 6: Build Service -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">6</span>
     <span class="step-title">Build Service</span>
   </div>
   <div class="step-body">
@@ -863,7 +900,7 @@
 
         <h5 style="margin-top: 16px;">3. Link your project</h5>
         <p>
-          After login, click <strong>Link Project</strong> to create a project on your Expo account. This auto-fills <strong>EAS Owner</strong> and <strong>EAS Project ID</strong>. If a project with the same slug already exists, it links to that one instead. Set your app name first (Step 4) before linking.
+          After login, click <strong>Link Project</strong> to create a project on your Expo account. This auto-fills <strong>EAS Owner</strong> and <strong>EAS Project ID</strong>. If a project with the same slug already exists, it links to that one instead. Set your app name first (in the <strong>App Identity</strong> card) before linking.
         </p>
         <img class="step-img" src="images/eascliinstalledloggedin.webp" alt="EAS CLI logged in — green dot with username">
       </div>
@@ -880,421 +917,87 @@
   </div>
 </div>
 
-<!-- Step 7: App Branding (Code) -->
+<!-- Step 7: App Store Submission -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">7</span>
-    <span class="step-title">App Branding (Code)</span>
+    <span class="step-title">App Store Submission</span>
   </div>
   <div class="step-body">
+    <p class="prereq-ref">Requires: <a href="#prereq-apple" class="prereq-badge apple">Apple</a> <a href="#prereq-google" class="prereq-badge google">Google</a></p>
     <p>
-      These fields control how your app identifies itself in code. <strong>App Name (Config)</strong> is what appears in headers, notifications, and other in-app text. <strong>User Agent</strong> identifies your app in HTTP requests to your WordPress site (format: <code>YourApp/1.0</code>).
+      These fields let <code>eas submit</code> automatically upload builds to the App Store and Google Play. You don't need them for building &mdash; only when you're ready to submit. Skip this and come back later if you prefer.
     </p>
-    <p>
-      Both auto-fill from your App Name in step 4 &mdash; just verify they look right. You'll see a <strong>lock icon</strong> on these fields (and other auto-derived fields like slug, scheme, and Android package). The lock keeps them in sync with the field they derive from. Click the lock to unlock and edit &mdash; for example, if you want a shorter name in headers than your full store name.
-    </p>
-    <img class="step-img" src="images/appbranding.webp" alt="App Branding (Code) card showing APP_NAME and APP_USER_AGENT fields with lock icons">
-  </div>
-</div>
+    <img class="step-img" src="images/App Store Submission.webp" alt="App Store Submission card showing iOS and Android fields">
 
-<!-- Step 8: Feature Flags & Profile Tabs -->
-<div class="step-card">
-  <div class="step-header">
-    <span class="step-number">8</span>
-    <span class="step-title">Feature Flags &amp; Profile Tabs</span>
-  </div>
-  <div class="step-body">
-    <p class="prereq-ref">Requires: <a href="#prereq-fluent" class="prereq-badge fluent">Fluent</a></p>
-    <p>
-      Feature flags are controlled from your WordPress admin panel: <strong>TBC Community App &rarr; Features</strong> tab. Changes take effect immediately &mdash; no app rebuild needed. The app fetches the latest flags on every launch.
-    </p>
-
-    <table style="width:100%;font-size:13px;margin:12px 0 16px;border-collapse:collapse">
-      <thead>
-        <tr style="border-bottom:1px solid var(--border);text-align:left">
-          <th style="padding:6px 8px;color:var(--text-secondary)">Flag</th>
-          <th style="padding:6px 8px;color:var(--text-secondary)">What it does</th>
-          <th style="padding:6px 8px;color:var(--text-secondary)">Requires</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:6px 8px;white-space:nowrap"><strong>Dark Mode</strong></td>
-          <td style="padding:6px 8px">Enables dark mode, synced automatically from your Fluent Community theme colors.</td>
-          <td style="padding:6px 8px;color:var(--text-secondary)">&mdash;</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:6px 8px;white-space:nowrap"><strong>Push Notifications</strong></td>
-          <td style="padding:6px 8px">Native push notifications for new posts, replies, messages, and more. Delivered via Firebase Cloud Messaging.</td>
-          <td style="padding:6px 8px;color:var(--text-secondary)"><code>google-services.json</code> + <code>GoogleService-Info.plist</code> (set up in the Config tab)</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:6px 8px;white-space:nowrap"><strong>Messaging</strong></td>
-          <td style="padding:6px 8px">Direct messaging between users. Shows a Messages tab and chat UI.</td>
-          <td style="padding:6px 8px;color:var(--text-secondary)"><a href="https://fluentcommunity.co" target="_blank">Fluent Community Pro</a> with FluentCommunity Chat enabled from Features page</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:6px 8px;white-space:nowrap"><strong>Courses</strong></td>
-          <td style="padding:6px 8px">Course enrollment, progress tracking, and lesson viewing. Shows a Courses tab.</td>
-          <td style="padding:6px 8px;color:var(--text-secondary)"><a href="https://fluentcommunity.co" target="_blank">Fluent Community Pro</a> with Course module enabled</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 8px;white-space:nowrap"><strong>Multi-Reactions</strong></td>
-          <td style="padding:6px 8px">Emoji reactions (like, love, laugh, etc.) on posts and comments instead of a simple like button.</td>
-          <td style="padding:6px 8px;color:var(--text-secondary)">TBC Multi-Reactions companion plugin installed on your site</td>
-        </tr>
-      </tbody>
+    <h5 style="margin-top: 16px;">iOS</h5>
+    <table class="field-ref-table">
+      <tr><td>Apple Account (Email)</td><td>The email you sign into <a href="https://appstoreconnect.apple.com" target="_blank">App Store Connect</a> with. Find it under your name &rarr; Settings &rarr; <strong>Apple Account</strong>.</td></tr>
+      <tr><td>App Store Connect ID</td><td>Numeric ID Apple assigns to your app. Find it in App Store Connect &rarr; your app &rarr; General &rarr; App Information &rarr; the field labeled <strong>Apple ID</strong> (e.g. <code>1563113528</code>).</td></tr>
     </table>
 
-    <p style="margin-top: 12px;">
-      The plugin auto-detects missing dependencies &mdash; if a required plugin isn't installed, the flag is forced off regardless of the setting. Flags that depend on missing plugins show a <strong>"NOT AVAILABLE"</strong> badge in the admin UI.
-    </p>
-
-    <h5 style="margin-top: 20px;">Profile Tabs</h5>
-    <p>
-      Below the feature flags you'll find <strong>Profile Tabs</strong> &mdash; extra tabs shown on user profile pages. The <strong>About</strong> tab is always visible. Toggle each additional tab independently:
-    </p>
-    <ul style="margin-top: 8px;">
-      <li><strong>Posts</strong> &mdash; shows a feed of the user's posts</li>
-      <li><strong>Spaces</strong> &mdash; shows which spaces the user has joined</li>
-      <li><strong>Comments</strong> &mdash; shows the user's comment history</li>
-    </ul>
-  </div>
-</div>
-
-<!-- Step 9: iOS App Store Submit -->
-<div class="step-card">
-  <div class="step-header">
-    <span class="step-number">9</span>
-    <span class="step-title">iOS App Store Submit</span>
-  </div>
-  <div class="step-body">
-    <p class="prereq-ref">Requires: <a href="#prereq-apple" class="prereq-badge apple">Apple</a></p>
-    <p>
-      These fields are used by <code>eas submit</code> to automatically upload your iOS builds to App Store Connect. You don't need them for building &mdash; only when you're ready to submit to the App Store. You can skip this step and come back later.
-    </p>
-
-    <h5 style="margin-top: 16px;">Apple Account (Email)</h5>
-    <p>
-      The email address you use to sign into <a href="https://appstoreconnect.apple.com" target="_blank">App Store Connect</a>. This is your Apple Developer account email. You can find it by logging into App Store Connect and clicking your name in the top-right corner &rarr; Settings &mdash; it's shown under <strong>Apple Account</strong>.
-    </p>
-
-    <h5 style="margin-top: 16px;">App Store Connect ID</h5>
-    <p>
-      A numeric ID that Apple assigns when you create your app in App Store Connect. To find it:
-    </p>
-    <ol style="margin-top: 8px;">
-      <li>Log into <a href="https://appstoreconnect.apple.com" target="_blank">App Store Connect</a></li>
-      <li>Go to <strong>Apps</strong> and select your app (or create one if you haven't yet &mdash; click the <strong>+</strong> button, select <strong>New App</strong>, and fill in your app name, bundle ID, and SKU)</li>
-      <li>Navigate to <strong>General &rarr; App Information</strong></li>
-      <li>The <strong>Apple ID</strong> field (numeric, e.g. <code>1563113528</code>) is your App Store Connect ID &mdash; copy it into the dashboard</li>
-    </ol>
+    <details style="margin-top: 12px;">
+      <summary>Haven't created your app in App Store Connect yet?</summary>
+      <div class="details-content">
+        <ol>
+          <li>Log into <a href="https://appstoreconnect.apple.com" target="_blank">App Store Connect</a> &rarr; <strong>Apps</strong></li>
+          <li>Click <strong>+</strong> &rarr; <strong>New App</strong></li>
+          <li>Fill in your app name, select the <strong>Bundle ID</strong> you registered in the <strong>App Identity</strong> card, and enter a <strong>SKU</strong></li>
+          <li>Click <strong>Create</strong> &mdash; then find the App Store Connect ID under General &rarr; App Information &rarr; Apple ID</li>
+        </ol>
+      </div>
+    </details>
 
     <div class="callout callout-info" style="margin-top: 12px;">
-      <strong>Note:</strong> EAS submit also requires an <strong>App-Specific Password</strong> for authentication. Generate one at <a href="https://appleid.apple.com/account/manage" target="_blank">appleid.apple.com</a> &rarr; Sign-In and Security &rarr; App-Specific Passwords. You'll be prompted for it the first time you run <code>eas submit</code>, or you can set it as the <code>EXPO_APPLE_APP_SPECIFIC_PASSWORD</code> environment variable.
+      <strong>App-Specific Password:</strong> EAS submit needs one for authentication. Generate it at <a href="https://appleid.apple.com/account/manage" target="_blank">appleid.apple.com</a> &rarr; Sign-In and Security &rarr; App-Specific Passwords. You'll be prompted on first submit, or set <code>EXPO_APPLE_APP_SPECIFIC_PASSWORD</code> as an environment variable.
     </div>
-    <img class="step-img" src="images/iossubmit.webp" alt="iOS App Store Submit card showing Apple Account and App Store Connect ID fields">
+
+    <h5 style="margin-top: 20px;">Android</h5>
+    <table class="field-ref-table">
+      <tr><td>Track</td><td>Which Play Store track to submit to &mdash; <strong>internal</strong> for testing, <strong>production</strong> for release.</td></tr>
+      <tr><td>Service Account Key</td><td>A JSON key file from Google Cloud that authorizes automated uploads. Drop the file into the upload area in the dashboard.</td></tr>
+    </table>
   </div>
 </div>
 
-<!-- Step 10: Google Play Submit -->
+<!-- Step 8: Push Notifications -->
 <div class="step-card">
   <div class="step-header">
-    <span class="step-number">10</span>
-    <span class="step-title">Google Play Submit</span>
+    <span class="step-title">Push Notifications</span>
   </div>
   <div class="step-body">
-    <p class="prereq-ref">Requires: <a href="#prereq-google" class="prereq-badge google">Google</a></p>
+    <p class="prereq-ref">Requires: <a href="#prereq-firebase" class="prereq-badge firebase">Firebase</a></p>
     <p>
-      Choose your <strong>submission track</strong> (internal for testing, production for release) and upload your <strong>Google Play Service Account Key</strong> (JSON). This enables automated Android submissions via EAS Submit.
+      Drop in your Firebase config files to enable push notifications. Both files are required &mdash; the dashboard shows a red indicator for each missing file and a green check once uploaded.
     </p>
-  </div>
-</div>
+    <img class="step-img" src="images/Push Notifications.webp" alt="Push Notifications card showing Android and iOS file upload areas">
 
-<!-- Step 11: Package -->
-<div class="step-card">
-  <div class="step-header">
-    <span class="step-number">11</span>
-    <span class="step-title">Package</span>
-  </div>
-  <div class="step-body">
-    <p>
-      The npm package name in <code>package.json</code>. Not user-visible &mdash; just for repo cleanliness. Auto-derived from your slug.
-    </p>
+    <table class="field-ref-table" style="margin-top: 16px;">
+      <tr><td>google-services.json</td><td>Android config. Download from your Firebase project: <strong>Project Settings &rarr; General &rarr; Your Apps &rarr; Android app</strong>.</td></tr>
+      <tr><td>GoogleService-Info.plist</td><td>iOS config. Download from your Firebase project: <strong>Project Settings &rarr; General &rarr; Your Apps &rarr; iOS app</strong>.</td></tr>
+    </table>
+
+    <details style="margin-top: 12px;">
+      <summary>Haven't set up Firebase yet?</summary>
+      <div class="details-content">
+        <ol>
+          <li>Go to the <a href="https://console.firebase.google.com" target="_blank">Firebase Console</a> and create a new project (or use an existing one)</li>
+          <li>Add an <strong>Android app</strong> &mdash; use your Android package name from the <strong>App Identity</strong> card. Download <code>google-services.json</code></li>
+          <li>Add an <strong>iOS app</strong> &mdash; use your iOS Bundle ID from the <strong>App Identity</strong> card. Download <code>GoogleService-Info.plist</code></li>
+          <li>Drop both files into the dashboard upload areas</li>
+        </ol>
+      </div>
+    </details>
   </div>
 </div>
 
 <div class="callout callout-success">
-  <strong>When you're done with all the Config tab fields, click Save Changes.</strong> The dashboard writes everything to the correct config files (<code>app.json</code>, <code>eas.json</code>, <code>app.config.ts</code>, <code>constants/config.ts</code>, <code>package.json</code>) in one go.
+  <strong>Config tab complete!</strong> Click <strong>Save Changes</strong> &mdash; the dashboard writes everything to the right files (<code>app.json</code>, <code>eas.json</code>, <code>app.config.ts</code>, <code>constants/config.ts</code>, <code>package.json</code>) in one go.
 </div>
 
-<!-- Assets Tab heading -->
-<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Assets Tab</h3>
+</div><!-- /sec-setup -->
 
-<!-- Step 12: Assets -->
-<div class="step-card">
-  <div class="step-header">
-    <span class="step-number">12</span>
-    <span class="step-title">Branding Assets</span>
-  </div>
-  <div class="step-body">
-    Replace app icons, splash screen, and login branding with your own images. Details coming as we walk through this step.
-  </div>
-</div>
-
-<!-- Modules Tab heading -->
-<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Modules Tab</h3>
-
-<!-- Step 13: Modules -->
-<div class="step-card">
-  <div class="step-header">
-    <span class="step-number">13</span>
-    <span class="step-title">Modules &amp; Companion Plugins</span>
-  </div>
-  <div class="step-body">
-    <p class="prereq-ref">Requires: <a href="#prereq-firebase" class="prereq-badge firebase">Firebase</a> <a href="#prereq-fluent" class="prereq-badge fluent">Fluent</a></p>
-    Install, enable, and manage add-on modules. Core companion plugins are listed here with their status — make sure they're installed on your WordPress site. Each module card shows its integration points and companion plugin requirements.
-  </div>
-</div>
-
-<!-- Builds Tab heading -->
-<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Builds Tab</h3>
-
-<!-- Step 14: Builds -->
-<div class="step-card">
-  <div class="step-header">
-    <span class="step-number">14</span>
-    <span class="step-title">Builds</span>
-  </div>
-  <div class="step-body">
-    Build for iOS and Android right from the dashboard. Details coming as we walk through this step.
-  </div>
-</div>
-
-<!-- OTA Updates Tab heading -->
-<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">OTA Updates Tab</h3>
-
-<!-- Step 14.5: OTA Updates -->
-<div class="step-card">
-  <div class="step-header">
-    <span class="step-number">14.5</span>
-    <span class="step-title">OTA Updates (Over-the-Air)</span>
-  </div>
-  <div class="step-body">
-    <p>Push JavaScript-layer changes directly to your users without a store build. Updates are downloaded silently in the background and applied on the next app launch.</p>
-
-    <p><strong>What can be updated via OTA:</strong> Custom modules, screens, styling, config changes, images/assets, bug fixes &mdash; any JS/TS code.</p>
-
-    <p><strong>What requires a store build:</strong> New native modules, permission changes, Expo SDK upgrades, native config changes in app.json.</p>
-
-    <p><strong>How to use:</strong></p>
-    <ol>
-      <li>Make your code changes locally</li>
-      <li>Open the dashboard &rarr; OTA Updates tab</li>
-      <li>Select a channel (production or preview), platform, and describe your changes</li>
-      <li>Click "Push Update" &mdash; takes about 30&ndash;60 seconds</li>
-      <li>Users receive the update on their next app launch</li>
-    </ol>
-
-    <p><strong>Important:</strong> You need at least one store build after initial setup before OTA updates can reach users. The first build bakes in the OTA update infrastructure. The dashboard will show a warning and disable pushing until your first build is complete.</p>
-  </div>
-</div>
-
-<!-- Updates Tab heading -->
-<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Updates Tab</h3>
-
-<!-- Step 15: Updates -->
-<div class="step-card">
-  <div class="step-header">
-    <span class="step-number">15</span>
-    <span class="step-title">Updates &amp; Licensing</span>
-  </div>
-  <div class="step-body">
-    Activate your license and apply future updates with automatic backup. Details coming as we walk through this step.
-  </div>
-</div>
-
-<!-- Status Tab heading -->
-<h3 style="margin-top: 40px; margin-bottom: 8px; color: var(--accent); font-size: 1.3rem;">Status Tab</h3>
-
-<!-- Step 16: Status -->
-<div class="step-card">
-  <div class="step-header">
-    <span class="step-number">16</span>
-    <span class="step-title">Status</span>
-  </div>
-  <div class="step-body">
-    Live validation &mdash; shows pass/fail for every check. Green across the board means you're ready to build and ship.
-  </div>
-</div>
-
-<div class="callout callout-warn">
-  <strong>Requirement:</strong> Your app needs a WordPress site with <a href="https://fluentcommunity.co">Fluent Community</a> installed, plus the <code>tbc-community-app</code> companion plugin. See the <a href="#plugins">Companion Plugins</a> section for install instructions.
-</div>
-
-<!-- Manual editing for devs who prefer it -->
-<details>
-  <summary>Prefer manual editing? Click here for the file-by-file checklist</summary>
-  <div class="details-content">
-    <p>If you'd rather edit config files directly instead of using the dashboard, here's the quick version. See <a href="#config-reference">Configuration Reference</a> for details on each file.</p>
-    <ol>
-      <li><strong>Install dependencies:</strong> <code>npm install</code></li>
-      <li><strong>Set up EAS CLI:</strong> <code>npm install -g eas-cli && eas login && eas init</code></li>
-      <li><strong>Set your site URL</strong> in <code>eas.json</code> &mdash; replace the <code>EXPO_PUBLIC_SITE_URL</code> value in all build profiles</li>
-      <li><strong>Set your app name &amp; branding</strong> in <code>constants/config.ts</code> &mdash; update <code>APP_NAME</code> and <code>APP_USER_AGENT</code></li>
-      <li><strong>Update <code>app.json</code></strong> &mdash; app name, slug, scheme, bundle IDs, EAS project ID, owner, permission strings</li>
-      <li><strong>Update <code>app.config.ts</code></strong> &mdash; edit the YOUR CONFIG section: fallback URL, name, slug</li>
-      <li><strong>Replace branding images</strong> in <code>assets/images/</code></li>
-      <li><strong>Replace Firebase configs</strong> &mdash; <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS)</li>
-      <li><strong>Install companion plugins</strong> on your WordPress site (see <a href="#plugins">Companion Plugins</a>)</li>
-      <li><strong>Configure modules</strong> in <code>modules/_registry.ts</code></li>
-      <li><strong>Run the dashboard</strong> to catch anything you missed: <code>npm run dashboard</code> &mdash; check the Status tab</li>
-      <li><strong>Create a dev build:</strong> <code>eas build --profile development --platform all</code></li>
-    </ol>
-  </div>
-</details>
-
-<!-- ====================================================================== -->
-<h2 id="config-reference">3. Configuration Reference</h2>
-
-<p>Every file you need to edit, organized by purpose.</p>
-
-<!-- constants/config.ts -->
-<h3>constants/config.ts <span class="tag required">Required</span></h3>
-<p>Buyer-editable values are in the <strong>YOUR CONFIG</strong> section at the top of the file (above the <code>END YOUR CONFIG</code> marker). Everything below that line is core &mdash; don't edit it.</p>
-
-<table>
-  <tr><th>Value</th><th>What It Does</th><th>Example</th></tr>
-  <tr><td><code>APP_NAME</code></td><td>Display name used in UI where server branding isn't available</td><td><code>'My Community'</code></td></tr>
-  <tr><td><code>APP_USER_AGENT</code></td><td>User-Agent header sent with API requests</td><td><code>'MyCommunityApp/1.0'</code></td></tr>
-  <tr><td><code>EXPO_PUBLIC_SITE_URL</code></td><td>Derived from eas.json (no fallback — build fails if missing)</td><td><code>'https://community.example.com'</code></td></tr>
-  <tr><td colspan="3" style="color:var(--text-secondary);font-style:italic">Feature flags have moved to wp-admin &rarr; TBC Community App &rarr; Features tab. No build-time flags in this file.</td></tr>
-</table>
-
-<!-- app.json -->
-<h3>app.json <span class="tag required">Required</span></h3>
-
-<div class="callout callout-error">
-  <strong>Do not miss these.</strong> Several values in app.json are easy to overlook but will cause builds to fail or ship with wrong branding.
-</div>
-
-<table>
-  <tr><th>Path</th><th>What It Does</th><th>Notes</th></tr>
-  <tr><td><code>expo.name</code></td><td>App display name</td><td>Shows in app stores and device home screen</td></tr>
-  <tr><td><code>expo.slug</code></td><td>Expo project slug</td><td>Must be unique across Expo</td></tr>
-  <tr><td><code>expo.version</code></td><td>App version string</td><td>Shown in app stores</td></tr>
-  <tr><td><code>expo.scheme</code></td><td>Custom URL scheme for deep links</td><td>e.g. <code>"mycommunity"</code> → <code>mycommunity://</code></td></tr>
-  <tr><td><code>expo.owner</code></td><td>Your Expo account name</td><td>Builds fail if this doesn't match your EAS account</td></tr>
-  <tr><td><code>expo.extra.eas.projectId</code></td><td>Your EAS project ID</td><td>Get from <code>eas init</code> or Expo dashboard. Push notifications break without this.</td></tr>
-  <tr><td><code>ios.bundleIdentifier</code></td><td>iOS bundle ID</td><td>e.g. <code>"com.yourcompany.community"</code></td></tr>
-  <tr><td><code>ios.buildNumber</code></td><td>iOS build number (string)</td><td>Matches version, e.g. <code>"1.0.0"</code></td></tr>
-  <tr><td><code>android.package</code></td><td>Android package name</td><td>e.g. <code>"com.yourcompany.community"</code></td></tr>
-  <tr><td><code>android.versionCode</code></td><td>Android version code (integer)</td><td>Pattern: <code>major*100 + minor*10 + patch</code></td></tr>
-  <tr><td><code>android.adaptiveIcon.backgroundColor</code></td><td>Background color for Android adaptive icon</td><td>Match your brand primary color</td></tr>
-  <tr><td><code>plugins &gt; expo-notifications &gt; color</code></td><td>Android notification accent color</td><td>Match your brand primary color</td></tr>
-  <tr><td><code>plugins &gt; expo-splash-screen &gt; backgroundColor</code></td><td>Splash screen background (light + dark)</td><td>Light: typically white. Dark: typically near-black.</td></tr>
-  <tr><td><code>plugins &gt; expo-image-picker &gt; cameraPermission</code></td><td>iOS camera permission dialog text</td><td>Replace app name in the string</td></tr>
-  <tr><td><code>plugins &gt; expo-image-picker &gt; photosPermission</code></td><td>iOS photo library permission dialog text</td><td>Replace app name in the string</td></tr>
-  <tr><td><code>plugins &gt; expo-media-library &gt; photosPermission</code></td><td>iOS media save permission dialog text</td><td>Replace app name in the string</td></tr>
-  <tr><td><code>plugins &gt; expo-media-library &gt; savePhotosPermission</code></td><td>iOS media save permission dialog text</td><td>Replace app name in the string</td></tr>
-</table>
-
-<!-- app.config.ts -->
-<h3>app.config.ts <span class="tag required">Required</span></h3>
-<p>Reads <code>EXPO_PUBLIC_SITE_URL</code> from the environment (set in <code>eas.json</code>) and wires up deep links automatically. Has its own <strong>YOUR CONFIG</strong> section with three things to edit:</p>
-
-<table>
-  <tr><th>Value</th><th>What to Change</th></tr>
-  <tr><td><code>siteUrl</code> fallback</td><td>Replace with your site URL (only used for local dev &mdash; EAS builds use <code>eas.json</code>)</td></tr>
-  <tr><td><code>name</code> / <code>slug</code> fallbacks</td><td>Replace with your app name and slug</td></tr>
-  <tr><td><code>moduleDeepLinkPaths</code></td><td>Add/remove path prefixes for any add-on modules that need deep linking (e.g. <code>'/blog/'</code>)</td></tr>
-</table>
-
-<!-- eas.json -->
-<h3>eas.json <span class="tag required">Required</span></h3>
-<p><strong>Critical:</strong> <code>EXPO_PUBLIC_SITE_URL</code> must be set in every build profile. The app will not build without it.</p>
-<pre><code>{
-  "build": {
-    "development": { "env": { "EXPO_PUBLIC_SITE_URL": "https://your-site.com" } },
-    "preview":     { "env": { "EXPO_PUBLIC_SITE_URL": "https://your-site.com" } },
-    "simulator":   { "env": { "EXPO_PUBLIC_SITE_URL": "https://your-site.com" } },
-    "production":  { "env": { "EXPO_PUBLIC_SITE_URL": "https://your-site.com" } }
-  },
-  "submit": {
-    "production": {
-      "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "YOUR_ASC_APP_ID"
-      }
-    }
-  }
-}</code></pre>
-<p>The <code>submit.production.ios</code> section saves you from being prompted for Apple credentials on every <code>eas submit</code>. Find your <strong>ascAppId</strong> in App Store Connect → your app → General → App Information → "Apple ID". For fully automated submissions, set the <code>EXPO_APPLE_PASSWORD</code> environment variable to an <a href="https://support.apple.com/en-us/102654">App-Specific Password</a>.</p>
-
-<!-- package.json -->
-<h3>package.json <span class="tag optional">Optional</span></h3>
-<p>Update the <code>"name"</code> field (line 2) to your project name. Not user-visible but keeps your repo clean.</p>
-
-<!-- Firebase -->
-<h3 id="firebase-setup">Firebase Configuration <span class="tag required">Required for Push Notifications</span></h3>
-
-<p>Push notifications require a Firebase project linked to your app. Follow these steps:</p>
-
-<ol>
-  <li><strong>Create a Firebase project</strong> at <a href="https://console.firebase.google.com">console.firebase.google.com</a></li>
-  <li><strong>Add an Android app</strong> in Firebase:
-    <ul>
-      <li>Set the package name to <strong>exactly match</strong> <code>android.package</code> in your <code>app.json</code> (e.g. <code>com.yourcompany.community</code>)</li>
-      <li>Download <code>google-services.json</code> → place in the project root (replaces the existing file)</li>
-    </ul>
-  </li>
-  <li><strong>Add an iOS app</strong> in Firebase:
-    <ul>
-      <li>Set the bundle ID to <strong>exactly match</strong> <code>ios.bundleIdentifier</code> in your <code>app.json</code></li>
-      <li>Download <code>GoogleService-Info.plist</code> → place in the project root (replaces the existing file)</li>
-    </ul>
-  </li>
-  <li><strong>Upload your APNs key</strong> (required for iOS push):
-    <ul>
-      <li>In <a href="https://developer.apple.com/account/resources/authkeys/list">Apple Developer → Keys</a>, create a key with <strong>APNs</strong> enabled</li>
-      <li>Download the <code>.p8</code> key file and note the <strong>Key ID</strong></li>
-      <li>In Firebase Console → Project Settings → Cloud Messaging → iOS, upload the <code>.p8</code> file with your Key ID and Team ID</li>
-    </ul>
-  </li>
-</ol>
-
-<div class="callout callout-error">
-  <strong>Package names must match exactly.</strong> If the package name in Firebase doesn't match <code>app.json</code>, push notifications will silently fail — no error, just no notifications delivered.
-</div>
-
-<!-- constants/colors.ts -->
-<h3>constants/colors.ts <span class="tag optional">Optional</span></h3>
-<p>Default fallback colors used before the server theme syncs. The app automatically pulls your Fluent Community theme colors — these are just the initial defaults on first launch.</p>
-
-<!-- Pusher Setup -->
-<h3>Real-Time Messaging Setup <span class="tag optional">Optional — Requires Fluent Messaging</span></h3>
-<p>Only needed if you use Fluent Community Pro with the Fluent Messaging add-on and want real-time message delivery.</p>
-
-<p>Socket configuration is <strong>server-driven</strong>. The app reads socket settings from your WordPress site automatically &mdash; no app-side Pusher configuration needed.</p>
-
-<ol>
-  <li>In your WordPress admin, go to <strong>Fluent Community &rarr; Settings &rarr; Messaging</strong></li>
-  <li>Enable real-time and choose your socket provider:
-    <ul>
-      <li><strong>Pusher Cloud</strong> &mdash; create an app at <a href="https://pusher.com">pusher.com</a>, enter credentials</li>
-      <li><strong>Fluent Socket</strong> &mdash; Fluent's hosted service, auto-configured</li>
-      <li><strong>Custom Soketi</strong> &mdash; enter your self-hosted Soketi host and port</li>
-    </ul>
-  </li>
-  <li>That's it &mdash; the <code>tbc-community-app</code> plugin serves the socket config to the app via <code>/app-config</code></li>
-</ol>
-
-<div class="callout">
-  <strong>No app-side credentials needed.</strong> The app reads socket config from the server at startup and caches it. Switching providers in WordPress admin takes effect on the next app launch &mdash; no rebuild required. The fallback <code>PUSHER_CONFIG</code> in <code>constants/config.ts</code> is only used on first-ever launch before server config arrives.
-</div>
-
-<!-- ====================================================================== -->
-<h2 id="branding-assets">4. Branding Assets</h2>
+<div class="guide-section" id="sec-branding-assets">
+<h2 id="branding-assets">Assets Tab</h2>
 
 <p>Replace these files in <code>assets/images/</code>:</p>
 
@@ -1314,8 +1017,10 @@
   The static <code>login_logo.png</code> is a fallback for first launch before server branding is cached.
 </div>
 
-<!-- ====================================================================== -->
-<h2 id="plugins">5. Companion Plugins</h2>
+</div><!-- /sec-branding-assets -->
+
+<div class="guide-section" id="sec-plugins">
+<h2 id="plugins">Companion Plugins</h2>
 
 <p>WordPress plugins that power the app's backend. Located in the <code>companion plugins/</code> folder.</p>
 
@@ -1400,8 +1105,10 @@
   <tr><td>OTP verification</td><td><a href="https://twilio.com">Twilio</a> account — configured in <code>tbc-otp</code> plugin settings. Requires the <code>tbc-otp</code> add-on (sold separately).</td></tr>
 </table>
 
-<!-- ====================================================================== -->
-<h2 id="modules">6. Module System</h2>
+</div><!-- /sec-plugins -->
+
+<div class="guide-section" id="sec-modules">
+<h2 id="modules">Module System</h2>
 
 <p>
   Modules are self-contained features that plug into the app without touching core code.
@@ -1492,155 +1199,179 @@ export const MODULES: ModuleManifest[] = [
   See <code>modules/_types.ts</code> for full TypeScript type definitions and the existing modules for examples.
 </p>
 
-<!-- ====================================================================== -->
-<h2 id="theming">7. Theme System</h2>
+</div><!-- /sec-modules -->
 
-<p>The app's colors are <strong>automatically synced</strong> from your Fluent Community color settings. No manual color configuration needed in most cases.</p>
 
-<h3>How It Works</h3>
-<ol>
-  <li>You configure colors in <strong>Fluent Community &gt; Settings &gt; Design</strong> on your WordPress site</li>
-  <li>The <code>tbc-community-app</code> plugin exposes these via a REST endpoint (<code>/tbc-ca/v1/theme/colors</code>)</li>
-  <li>The app fetches and caches these colors on launch</li>
-  <li>Both light and dark mode colors are synced automatically</li>
-</ol>
+<div class="guide-section" id="sec-builds">
+<h2 id="builds">Builds Tab</h2>
 
-<h3>What's Automatic vs Manual</h3>
-<table>
-  <tr><th>Automatic (from server)</th><th>Manual (in app code)</th></tr>
-  <tr>
-    <td>
-      All body colors (text, backgrounds, borders, buttons)<br>
-      Tab bar colors (background, active, inactive)<br>
-      Light + dark mode variants<br>
-      Logo and site name (login screen)
-    </td>
-    <td>
-      Semantic colors: success, error, warning, info (in <code>constants/colors.ts</code>)<br>
-      Splash screen colors (in <code>app.json</code>)<br>
-      Notification accent color (in <code>app.json</code>)<br>
-      Adaptive icon background (in <code>app.json</code>)
-    </td>
-  </tr>
-</table>
+<p>The <strong>Builds</strong> tab in the dashboard shows your current app version and provides quick-action buttons for building and submitting to app stores via EAS (Expo Application Services).</p>
 
-<h3>Using Colors in Components</h3>
-<pre><code>// Always use the hook — never import light/darkColors directly
-const { colors } = useTheme();
-
-// Examples
-style={{ color: colors.text }}
-style={{ backgroundColor: colors.surface }}
-style={{ borderColor: colors.border }}
-
-// For transparent variants, use withOpacity:
-import { withOpacity } from '@/constants/colors';
-style={{ backgroundColor: withOpacity(colors.primary, 0.12) }}</code></pre>
-
-<!-- ====================================================================== -->
-<h2 id="build-deploy">8. Build &amp; Deploy</h2>
-
-<h3>First-Time EAS Setup</h3>
-<p>If this is your first time using EAS (Expo Application Services):</p>
-<ol>
-  <li><strong>Install EAS CLI</strong> globally:
-    <pre><code>npm install -g eas-cli</code></pre>
-  </li>
-  <li><strong>Log in</strong> to your Expo account:
-    <pre><code>eas login</code></pre>
-  </li>
-  <li><strong>Initialize the project</strong> (links it to your Expo account):
-    <pre><code>eas init</code></pre>
-    This generates a project ID. Copy it to <code>app.json</code> → <code>expo.extra.eas.projectId</code> and set <code>expo.owner</code> to your Expo username.
-  </li>
-  <li><strong>iOS (first build only):</strong> EAS will prompt you to log in with your Apple Developer account and will manage provisioning profiles automatically.</li>
-  <li><strong>Android (first production build):</strong> EAS creates and securely stores your signing keystore. For Play Store, you can use Google Play App Signing.</li>
-</ol>
-
-<h3>Local Development</h3>
-<p>This app uses an <strong>Expo dev client</strong> (not Expo Go). The dev client is a custom build that includes all native modules the app uses.</p>
-<ol>
-  <li><strong>Build the dev client</strong> (one-time, or after adding native modules):
-    <pre><code>eas build --profile development --platform [ios|android]</code></pre>
-  </li>
-  <li><strong>Install the dev client</strong> on your device or simulator from the EAS build link</li>
-  <li><strong>Start the dev server:</strong>
-    <pre><code>npx expo start</code></pre>
-  </li>
-  <li>Open the dev client on your device — it connects to the dev server automatically (same WiFi network required)</li>
-</ol>
-
-<div class="callout">
-  <strong>Dev client vs Expo Go:</strong> Expo Go doesn't include the native modules this app needs (push notifications, secure storage, etc.). You only need to rebuild the dev client when adding or removing native packages — code changes hot-reload instantly.
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Version Bumping</span></div>
+  <div class="step-body">
+    <p>Use the <strong>version bump buttons</strong> in the dashboard to increment your version. This updates all required files automatically (<code>package.json</code>, <code>app.json</code> version, iOS build number, and Android version code).</p>
+    <div class="callout">
+      <strong>Tip:</strong> Always bump the version before submitting a new build to the stores. The stores reject builds with duplicate version numbers.
+    </div>
+  </div>
 </div>
 
-<h3>EAS Build Profiles</h3>
-<table>
-  <tr><th>Profile</th><th>Use Case</th><th>Command</th></tr>
-  <tr><td><code>development</code></td><td>Dev client with hot reload</td><td><code>eas build --profile development</code></td></tr>
-  <tr><td><code>simulator</code></td><td>iOS Simulator build</td><td><code>eas build --profile simulator --platform ios</code></td></tr>
-  <tr><td><code>preview</code></td><td>Internal testing (device installs)</td><td><code>eas build --profile preview</code></td></tr>
-  <tr><td><code>production</code></td><td>App Store / Play Store submission</td><td><code>eas build --profile production</code></td></tr>
-</table>
+<div class="step-card">
+  <div class="step-header"><span class="step-title">First-Time EAS Setup</span></div>
+  <div class="step-body">
+    <p>Before your first build, you need EAS CLI installed and linked to your Expo account.</p>
+    <details>
+      <summary>Setup walkthrough</summary>
+      <div class="details-content">
+        <ol>
+          <li><strong>Install EAS CLI</strong> globally: <code>npm install -g eas-cli</code></li>
+          <li><strong>Log in</strong> to your Expo account: <code>eas login</code></li>
+          <li><strong>Initialize the project:</strong> <code>eas init</code> &mdash; generates a project ID. Copy it to <code>app.json</code> &rarr; <code>expo.extra.eas.projectId</code> and set <code>expo.owner</code> to your Expo username.</li>
+          <li><strong>iOS (first build only):</strong> EAS prompts for your Apple Developer login and manages provisioning profiles automatically.</li>
+          <li><strong>Android (first production build):</strong> EAS creates and securely stores your signing keystore.</li>
+        </ol>
+      </div>
+    </details>
+  </div>
+</div>
 
-<h3>Version Bumping</h3>
-<p>When releasing a new version, update <strong>all 4 places</strong>:</p>
-<table>
-  <tr><th>File</th><th>Field</th><th>Example</th></tr>
-  <tr><td><code>package.json</code></td><td><code>version</code></td><td><code>"1.2.0"</code></td></tr>
-  <tr><td><code>app.json</code></td><td><code>expo.version</code></td><td><code>"1.2.0"</code></td></tr>
-  <tr><td><code>app.json</code></td><td><code>ios.buildNumber</code></td><td><code>"1.2.0"</code> (string)</td></tr>
-  <tr><td><code>app.json</code></td><td><code>android.versionCode</code></td><td><code>120</code> (integer: major*100 + minor*10 + patch)</td></tr>
-</table>
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Build Profiles</span></div>
+  <div class="step-body">
+    <table>
+      <tr><th>Profile</th><th>Use Case</th><th>Command</th></tr>
+      <tr><td><code>development</code></td><td>Dev client with hot reload</td><td><code>eas build --profile development</code></td></tr>
+      <tr><td><code>simulator</code></td><td>iOS Simulator build</td><td><code>eas build --profile simulator --platform ios</code></td></tr>
+      <tr><td><code>preview</code></td><td>Internal testing (device installs)</td><td><code>eas build --profile preview</code></td></tr>
+      <tr><td><code>production</code></td><td>App Store / Play Store submission</td><td><code>eas build --profile production</code></td></tr>
+    </table>
+  </div>
+</div>
 
-<h3>Submitting to Stores</h3>
-<pre><code># Build for production
-eas build --profile production --platform all
-
-# Submit to App Store
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Submitting to Stores</span></div>
+  <div class="step-body">
+    <p>After a successful production build, submit directly from the dashboard or via CLI:</p>
+<pre><code># Submit to App Store
 eas submit --platform ios
 
 # Submit to Play Store
 eas submit --platform android</code></pre>
+    <div class="callout callout-warn">
+      <strong>iOS:</strong> Make sure your Apple Account email and App Store Connect ID are set in the Config tab before submitting.
+    </div>
+  </div>
+</div>
 
-<!-- ====================================================================== -->
-<h2 id="checklist">9. Pre-Launch Checklist</h2>
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Local Development</span></div>
+  <div class="step-body">
+    <p>This app uses an <strong>Expo dev client</strong> (not Expo Go). The dev client is a custom build that includes all native modules.</p>
+    <details>
+      <summary>Dev client setup</summary>
+      <div class="details-content">
+        <ol>
+          <li><strong>Build the dev client</strong> (one-time, or after adding native modules): <code>eas build --profile development --platform [ios|android]</code></li>
+          <li><strong>Install</strong> the dev client on your device or simulator from the EAS build link</li>
+          <li><strong>Start the dev server:</strong> <code>npx expo start</code></li>
+          <li>Open the dev client on your device &mdash; it connects automatically (same WiFi network required)</li>
+        </ol>
+        <div class="callout">
+          <strong>Dev client vs Expo Go:</strong> Expo Go doesn't include the native modules this app needs. You only need to rebuild the dev client when adding or removing native packages &mdash; code changes hot-reload instantly.
+        </div>
+      </div>
+    </details>
+  </div>
+</div>
 
-<p>Go through this before submitting to app stores:</p>
+</div><!-- /sec-builds -->
 
-<table>
-  <tr><th>#</th><th>Item</th><th>File(s)</th><th>Done?</th></tr>
-  <tr><td>1</td><td>App name and slug updated</td><td><code>app.json</code>, <code>constants/config.ts</code></td><td></td></tr>
-  <tr><td>2</td><td>Bundle IDs / package names set</td><td><code>app.json</code> (ios.bundleIdentifier, android.package)</td><td></td></tr>
-  <tr><td>3</td><td>EAS project ID and owner updated (via <code>eas init</code>)</td><td><code>app.json</code> (expo.owner, expo.extra.eas.projectId)</td><td></td></tr>
-  <tr><td>4</td><td>URL scheme updated</td><td><code>app.json</code> (expo.scheme)</td><td></td></tr>
-  <tr><td>5</td><td>Permission dialog strings updated (no old brand name)</td><td><code>app.json</code> (expo-image-picker, expo-media-library)</td><td></td></tr>
-  <tr><td>6</td><td>SITE_URL set in all eas.json profiles (required — build fails without it)</td><td><code>eas.json</code></td><td></td></tr>
-  <tr><td>7</td><td>Apple Account email and App Store Connect ID set for iOS submissions</td><td><code>eas.json</code> (submit.production.ios)</td><td></td></tr>
-  <tr><td>8</td><td>APP_NAME and APP_USER_AGENT updated</td><td><code>constants/config.ts</code></td><td></td></tr>
-  <tr><td>9</td><td>Real-time messaging configured in WordPress admin (if using Fluent Messaging)</td><td>WP Admin &rarr; Fluent Community &rarr; Settings &rarr; Messaging</td><td></td></tr>
-  <tr><td>10</td><td>Feature flags reviewed (disable features you don't use)</td><td>WP Admin &rarr; TBC Community App &rarr; Features</td><td></td></tr>
-  <tr><td>11</td><td>Module registry reviewed (only needed modules enabled)</td><td><code>modules/_registry.ts</code></td><td></td></tr>
-  <tr><td>12</td><td>All branding images replaced</td><td><code>assets/images/</code></td><td></td></tr>
-  <tr><td>13</td><td>Notification + adaptive icon colors match brand</td><td><code>app.json</code></td><td></td></tr>
-  <tr><td>14</td><td>Splash screen background colors match brand</td><td><code>app.json</code></td><td></td></tr>
-  <tr><td>15</td><td>Firebase configs replaced (package names match app.json)</td><td><code>google-services.json</code>, <code>GoogleService-Info.plist</code></td><td></td></tr>
-  <tr><td>16</td><td>APNs key uploaded in Firebase (for iOS push)</td><td>Firebase Console → Cloud Messaging</td><td></td></tr>
-  <tr><td>17</td><td>Default fallback colors reviewed</td><td><code>constants/colors.ts</code></td><td></td></tr>
-  <tr><td>18</td><td>Required companion plugins installed in correct order</td><td>See <a href="#plugins">Plugin section</a></td><td></td></tr>
-  <tr><td>19</td><td>Fluent Community theme colors configured</td><td>WP Admin → Fluent Community → Settings → Design</td><td></td></tr>
-  <tr><td>20</td><td>Real-time messaging working (socket config is server-driven, no app-side match needed)</td><td>WP Admin &rarr; Fluent Community &rarr; Settings &rarr; Messaging</td><td></td></tr>
-  <tr><td>21</td><td>(Add-on) YouTube API key configured in <code>tbc-youtube</code> plugin (if purchased)</td><td>WP Admin → YouTube plugin settings</td><td></td></tr>
-  <tr><td>22</td><td>package.json name updated</td><td><code>package.json</code></td><td></td></tr>
-  <tr><td>23</td><td>app.config.ts YOUR CONFIG section updated (name, slug, SITE_URL fallback, module deep link paths)</td><td><code>app.config.ts</code></td><td></td></tr>
-  <tr><td>24</td><td>Dashboard Status tab shows all checks passing — <code>npm run dashboard</code></td><td>Setup Dashboard → Status</td><td></td></tr>
-  <tr><td>25</td><td>Production build tested on real device — install via <code>eas build --profile preview</code>, test login, feed, profile</td><td>—</td><td></td></tr>
-  <tr><td>26</td><td>Push notifications tested — trigger from WordPress, verify delivery on both platforms</td><td>—</td><td></td></tr>
-  <tr><td>27</td><td>Deep links tested — open <code>https://yoursite.com/spaces/general</code> in mobile browser, should open app</td><td>—</td><td></td></tr>
-</table>
+<div class="guide-section" id="sec-ota">
+<h2 id="ota">OTA Updates Tab</h2>
 
-<!-- ====================================================================== -->
-<h2 id="updates-tab">10. Updates &amp; Licensing</h2>
+<p>The <strong>OTA Updates</strong> tab lets you push JavaScript-layer updates to your users instantly &mdash; no app store review required. This uses Expo's <code>expo-updates</code> system.</p>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">What Can Be Updated OTA</span></div>
+  <div class="step-body">
+    <table>
+      <tr><th>OTA Safe (JS only)</th><th>Requires New Build (native)</th></tr>
+      <tr>
+        <td>
+          Any JS/TS file changes<br>
+          Style, text, and image changes<br>
+          Bug fixes in React/JS logic<br>
+          Adding/editing modules (JS-only)<br>
+          Config changes in <code>constants/config.ts</code>
+        </td>
+        <td>
+          Adding native packages (<code>npm install</code> with native code)<br>
+          Changing <code>app.json</code> native fields (bundle ID, permissions, plugins)<br>
+          Changing <code>eas.json</code> build profiles<br>
+          Bumping Expo SDK version
+        </td>
+      </tr>
+    </table>
+    <div class="callout">
+      <strong>Rule of thumb:</strong> If the change only touches <code>.ts</code>/<code>.tsx</code>/<code>.js</code> files and doesn't add native dependencies, OTA is fine.
+    </div>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Pushing an OTA Update</span></div>
+  <div class="step-body">
+    <p>Use the dashboard OTA tab or the CLI:</p>
+<pre><code>eas update --channel production --message "Brief description of changes"</code></pre>
+    <p>Updates are delivered the next time users open the app. The app checks for updates on launch.</p>
+  </div>
+</div>
+
+</div><!-- /sec-ota -->
+
+<div class="guide-section" id="sec-status">
+<h2 id="status">Status Tab</h2>
+
+<p>The <strong>Status</strong> tab in the dashboard runs automated validation checks across your entire project configuration. It verifies that all required fields are set, assets exist, Firebase configs are in place, and companion plugins are bundled.</p>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">What It Checks</span></div>
+  <div class="step-body">
+    <table>
+      <tr><th>Category</th><th>What's Validated</th></tr>
+      <tr><td><strong>app.json</strong></td><td>App name, slug, URL scheme, bundle IDs, EAS project ID, owner</td></tr>
+      <tr><td><strong>eas.json</strong></td><td>Site URL, Apple Account, App Store Connect ID</td></tr>
+      <tr><td><strong>config.ts</strong></td><td>APP_NAME, APP_USER_AGENT</td></tr>
+      <tr><td><strong>app.config.ts</strong></td><td>Production URL</td></tr>
+      <tr><td><strong>Assets</strong></td><td>All required branding images exist</td></tr>
+      <tr><td><strong>Firebase</strong></td><td>google-services.json and GoogleService-Info.plist exist</td></tr>
+      <tr><td><strong>Plugins</strong></td><td>Core companion plugins are bundled</td></tr>
+      <tr><td><strong>Dependencies</strong></td><td>node_modules installed</td></tr>
+      <tr><td><strong>Consistency</strong></td><td>App name, site URL, and version match across files</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Reading the Results</span></div>
+  <div class="step-body">
+    <p>Each check shows one of three states:</p>
+    <ul>
+      <li><strong style="color: var(--success);">Pass</strong> &mdash; configured correctly</li>
+      <li><strong style="color: var(--error);">Fail</strong> &mdash; missing or placeholder value, needs to be set</li>
+      <li><strong style="color: var(--warning);">Warn</strong> &mdash; optional but recommended (e.g., Apple submission fields)</li>
+    </ul>
+    <div class="callout callout-success">
+      <strong>Goal:</strong> All checks passing before your first production build. Warnings are OK if you haven't set up iOS submission yet.
+    </div>
+  </div>
+</div>
+
+</div><!-- /sec-status -->
+
+<div class="guide-section" id="sec-updates-tab">
+<h2 id="updates-tab">Updates Tab</h2>
 
 <p>The <strong>Updates</strong> tab in the setup dashboard handles license activation, version checking, applying updates, and backup/restore. This is the recommended way to keep your app up to date.</p>
 
@@ -1715,161 +1446,9 @@ eas submit --platform android</code></pre>
   <strong>Do not edit <code>manifest.json</code> manually.</strong> It is updated automatically when an update is applied. Editing it could break the update process.
 </div>
 
-<!-- ====================================================================== -->
-<h2 id="updating">11. Updating from Upstream (Git)</h2>
+</div><!-- /sec-updates-tab -->
 
-<p>If you prefer git-based updates over the <a href="#updates-tab">dashboard Updates tab</a>, you can merge upstream releases using standard git. Your modules, branding, and config stay intact &mdash; only core code gets updated.</p>
-
-<h3>One-time setup</h3>
-<p>Add the upstream repo as a remote (you only do this once):</p>
-<pre><code>git remote add upstream https://github.com/UPSTREAM_ORG/UPSTREAM_REPO.git</code></pre>
-
-<h3>Merging an update</h3>
-<pre><code># Fetch the latest tags
-git fetch upstream --tags
-
-# Merge a specific release (check CHANGELOG.md for what changed)
-git merge v3.1.0
-
-# Or merge the latest
-git merge upstream/main</code></pre>
-
-<h3>What conflicts to expect</h3>
-<p>Conflicts only happen in files you've customized. They're predictable and always the same files:</p>
-
-<table>
-  <tr><th>File</th><th>Why it conflicts</th><th>Resolution</th></tr>
-  <tr>
-    <td><code>modules/_registry.ts</code></td>
-    <td>You added your module imports; upstream ships an empty array</td>
-    <td>Keep your imports and array entries</td>
-  </tr>
-  <tr>
-    <td><code>constants/config.ts</code></td>
-    <td>You set your APP_NAME; upstream has placeholders</td>
-    <td>Keep your values in the YOUR CONFIG section; accept upstream changes below END YOUR CONFIG</td>
-  </tr>
-  <tr>
-    <td><code>app.config.ts</code></td>
-    <td>You set your site URL fallback, name, slug, module deep link paths; upstream has placeholders</td>
-    <td>Keep your values in the YOUR CONFIG section; accept upstream changes below END YOUR CONFIG</td>
-  </tr>
-  <tr>
-    <td><code>app.json</code></td>
-    <td>You set your bundle IDs, name, scheme; upstream has placeholders</td>
-    <td>Keep your values</td>
-  </tr>
-  <tr>
-    <td><code>eas.json</code></td>
-    <td>You set your SITE_URL, Apple Account, App Store Connect ID; upstream has placeholders</td>
-    <td>Keep your values</td>
-  </tr>
-  <tr>
-    <td><code>package.json</code></td>
-    <td>You may have added npm packages; upstream has base deps</td>
-    <td>Keep both &mdash; accept upstream dep updates, keep your additions</td>
-  </tr>
-</table>
-
-<div class="callout callout-success">
-  <strong>The rule of thumb:</strong> for the <strong>YOUR CONFIG</strong> sections in config files, keep your values. For everything else (components, services, hooks, screens, and anything below <code>END YOUR CONFIG</code>), accept the upstream changes &mdash; you shouldn't have edited those.
-</div>
-
-<h3>What merges cleanly (no conflicts)</h3>
-<ul>
-  <li><strong>Your modules</strong> in <code>modules/</code> &mdash; upstream doesn't ship module folders</li>
-  <li><strong>Your route stubs</strong> in <code>app/</code> &mdash; upstream doesn't ship module routes</li>
-  <li><strong>Your <code>modules/_shared/</code></strong> &mdash; upstream doesn't touch this</li>
-  <li><strong>Core code updates</strong> (components, services, hooks, screens) &mdash; you didn't edit these</li>
-  <li><strong>Companion plugins</strong> &mdash; upstream ships updated versions, you haven't edited them</li>
-  <li><strong>Docs</strong> &mdash; new or updated documentation merges cleanly</li>
-</ul>
-
-<h3>After merging</h3>
-<ol>
-  <li>Check <code>CHANGELOG.md</code> for what changed and whether any new setup steps are needed</li>
-  <li>Run <code>npm install</code> in case dependencies were added or updated</li>
-  <li>If native packages changed, rebuild your dev client: <code>eas build --profile development</code></li>
-  <li>Test locally: <code>npx expo start</code></li>
-</ol>
-
-<!-- ====================================================================== -->
-<h2 id="troubleshooting">12. Troubleshooting</h2>
-
-<h3>App Won't Connect to Server</h3>
-<ul>
-  <li>Verify <code>EXPO_PUBLIC_SITE_URL</code> is correct in <code>eas.json</code> — must include <code>https://</code>, no trailing slash</li>
-  <li>Verify <code>tbc-community-app</code> plugin is installed and <strong>activated</strong> on WordPress</li>
-  <li>Test the API directly: visit <code>https://yoursite.com/wp-json/tbc-ca/v1/config</code> in a browser — should return JSON</li>
-  <li>Check WordPress permalink settings — must <strong>not</strong> be set to "Plain" (use Post name or any other option)</li>
-  <li>If using Cloudflare or a CDN, ensure <code>/wp-json/</code> paths are not cached or blocked</li>
-</ul>
-
-<h3>Colors Not Syncing from Fluent Community</h3>
-<ul>
-  <li>Verify <code>tbc-community-app</code> plugin is active</li>
-  <li>Test the endpoint: visit <code>https://yoursite.com/wp-json/tbc-ca/v1/theme/colors</code> — should return color data</li>
-  <li>Colors are cached on device — force-quit and reopen the app to refresh</li>
-  <li>Check your colors are configured in <strong>Fluent Community → Settings → Design</strong> in WordPress admin</li>
-</ul>
-
-<h3>Push Notifications Not Working</h3>
-<ul>
-  <li>Verify Firebase config files match your app's bundle ID / package name <strong>exactly</strong></li>
-  <li><strong>iOS:</strong> Ensure your APNs key (<code>.p8</code> file) is uploaded in Firebase Console → Cloud Messaging settings</li>
-  <li><strong>Android:</strong> Verify <code>google-services.json</code> is in the project root and has the correct package name</li>
-  <li>Check that Push Notifications is enabled in wp-admin &rarr; TBC Community App &rarr; Features</li>
-  <li>EAS project ID must be set in <code>app.json</code> — push tokens are registered via Expo's push service</li>
-</ul>
-
-<h3>Dashboard Port Already in Use</h3>
-<ul>
-  <li>If the dashboard won't start because port 3456 is already in use, run: <code>npm run kill-dashboard</code></li>
-  <li>This kills whatever process is holding the port, then you can run <code>npm run dashboard</code> again</li>
-</ul>
-
-<h3>Build Fails</h3>
-<ul>
-  <li><strong>"Owner mismatch":</strong> <code>expo.owner</code> in <code>app.json</code> doesn't match your <code>eas login</code> account</li>
-  <li><strong>"Project ID not found":</strong> run <code>eas init</code> to generate one, then copy it to <code>app.json</code></li>
-  <li><strong>iOS signing issues:</strong> EAS usually handles this automatically — try <code>eas credentials</code> to manage certificates</li>
-  <li><strong>Android keystore:</strong> on first production build, EAS creates and stores this for you automatically</li>
-</ul>
-
-<h3>Real-Time Messaging Not Working</h3>
-<ul>
-  <li>Ensure <strong>Fluent Community Pro</strong> + <strong>Fluent Messaging</strong> add-on are both installed and active</li>
-  <li>Verify socket provider is configured in WordPress: <strong>Fluent Community &rarr; Settings &rarr; Messaging</strong></li>
-  <li>Socket config is server-driven &mdash; the app reads it from <code>/app-config</code>. No app-side Pusher credentials to match.</li>
-  <li>If using Pusher Cloud, check <a href="https://dashboard.pusher.com">Pusher dashboard</a> &rarr; Debug Console for connection attempts and errors</li>
-  <li>Verify the <code>tbc-community-app</code> plugin is updated to v3.40.0+ (required for server-driven socket config)</li>
-  <li>Force-quit and reopen the app to clear cached socket config</li>
-</ul>
-
-<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--border);">
-<p style="margin-top: 16px; color: var(--text-secondary); font-size: 0.9em;">
-  Setup Guide &middot;
-  Setup Dashboard (<code>npm run dashboard</code>) &middot;
-  <a href="../docs/api-client.html">API Client &amp; HTTP Layer</a> &middot;
-  <a href="../docs/architecture.html">Architecture</a> &middot;
-  <a href="../docs/components.html">Components</a> &middot;
-  <a href="../docs/content-creation.html">Content Creation &amp; Composer</a> &middot;
-  <a href="../docs/deep-linking.html">Deep Linking &amp; URL Routing</a> &middot;
-  <a href="../docs/caching-system.html">Data Fetching &amp; Caching</a> &middot;
-  <a href="../docs/companion-plugins.html">Companion Plugins</a> &middot;
-  <a href="../docs/features.html">Features</a> &middot;
-  <a href="../docs/feed-system.html">Feed System</a> &middot;
-  <a href="../docs/logging.html">Logging</a> &middot;
-  <a href="../docs/media-uploads.html">Media &amp; Uploads</a> &middot;
-  <a href="../docs/messaging.html">Messaging &amp; Chat</a> &middot;
-  <a href="../docs/module-system.html">Module System</a> &middot;
-  <a href="../docs/notifications.html">Notifications</a> &middot;
-  <a href="../docs/profile-system.html">Profile System</a> &middot;
-  <a href="../docs/pusher.html">Pusher</a> &middot;
-  <a href="../docs/registration.html">Registration &amp; Onboarding</a> &middot;
-  <a href="../docs/state-management.html">State Management</a> &middot;
-  <a href="../docs/theme-system.html">Theme System</a>
-</p>
+</div><!-- /guide-content -->
 
 <!-- Lightbox -->
 <div class="lightbox-overlay" id="lightbox" role="dialog" aria-modal="true" aria-label="Image preview" tabindex="-1" onclick="this.classList.remove('active')">
@@ -1877,6 +1456,29 @@ git merge upstream/main</code></pre>
 </div>
 <script>
 (function() {
+  // Theme toggle
+  var saved = localStorage.getItem('tbc-docs-theme');
+  if (!saved) saved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  var toggleBtn = document.getElementById('theme-toggle');
+  function updateIcon() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    toggleBtn.textContent = isDark ? '\u263E' : '\u2600';
+  }
+  updateIcon();
+  toggleBtn.addEventListener('click', function() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('tbc-docs-theme', 'light');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('tbc-docs-theme', 'dark');
+    }
+    updateIcon();
+  });
+
+  // Lightbox
   var lb = document.getElementById('lightbox');
   var lbImg = document.getElementById('lightbox-img');
   document.querySelectorAll('.step-img').forEach(function(img) {
@@ -1889,6 +1491,25 @@ git merge upstream/main</code></pre>
   });
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') lb.classList.remove('active');
+  });
+
+  // Section navigation
+  var nav = document.getElementById('section-nav');
+  var links = nav.querySelectorAll('a[data-section]');
+  function showSection(id) {
+    document.querySelectorAll('.guide-section').forEach(function(s) { s.classList.remove('active'); });
+    links.forEach(function(a) { a.classList.remove('active'); });
+    var sec = document.getElementById('sec-' + id);
+    var link = nav.querySelector('[data-section="' + id + '"]');
+    if (sec) sec.classList.add('active');
+    if (link) link.classList.add('active');
+    window.scrollTo(0, 0);
+  }
+  links.forEach(function(a) {
+    a.addEventListener('click', function(e) {
+      e.preventDefault();
+      showSection(this.dataset.section);
+    });
   });
 })();
 </script>

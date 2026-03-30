@@ -15,20 +15,14 @@ import { CalendarEvent } from '@/modules/calendar/types/calendar';
 import { FeaturedEvents } from '@/modules/calendar/components/FeaturedEvents';
 import { useEventWebView } from '@/modules/calendar/hooks/useEventWebView';
 import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
-
-// -----------------------------------------------------------------------------
-// Props
-// -----------------------------------------------------------------------------
-
-interface EventsWidgetProps {
-  refreshKey: number;
-}
+import { HomeWidget } from '@/components/home/HomeWidget';
+import type { WidgetComponentProps } from '@/modules/_types';
 
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
-export function EventsWidget({ refreshKey }: EventsWidgetProps) {
+export function EventsWidget({ refreshKey, title, icon, onSeeAll }: WidgetComponentProps) {
   const { colors: themeColors } = useTheme();
   const { openEvent } = useEventWebView();
 
@@ -47,19 +41,23 @@ export function EventsWidget({ refreshKey }: EventsWidgetProps) {
   // Loading state on first load only (no cache yet)
   if (isLoading) {
     return (
-      <View style={{ padding: spacing.lg, alignItems: 'center' }}>
-        <ActivityIndicator size="small" color={themeColors.primary} />
-      </View>
+      <HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}>
+        <View style={{ padding: spacing.lg, alignItems: 'center' }}>
+          <ActivityIndicator size="small" color={themeColors.primary} />
+        </View>
+      </HomeWidget>
     );
   }
 
   if (!events || events.length === 0) return null;
 
   return (
-    <FeaturedEvents
-      events={events}
-      onEventPress={openEvent}
-    />
+    <HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}>
+      <FeaturedEvents
+        events={events}
+        onEventPress={openEvent}
+      />
+    </HomeWidget>
   );
 }
 

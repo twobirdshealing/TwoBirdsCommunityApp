@@ -43,6 +43,21 @@ export interface TabRegistration {
 }
 
 // -----------------------------------------------------------------------------
+// Widget Component Props (passed to every widget by the home screen)
+// -----------------------------------------------------------------------------
+
+export interface WidgetComponentProps {
+  /** Incremented on pull-to-refresh / app resume — pass to useAppQuery */
+  refreshKey: number;
+  /** Widget title — pass to HomeWidget */
+  title: string;
+  /** Ionicon name — pass to HomeWidget */
+  icon?: keyof typeof Ionicons.glyphMap;
+  /** "See all" handler — pass to HomeWidget */
+  onSeeAll?: () => void;
+}
+
+// -----------------------------------------------------------------------------
 // Widget Registration
 // -----------------------------------------------------------------------------
 
@@ -59,8 +74,8 @@ export interface WidgetRegistration {
   featureFlag?: BooleanFeatureKey;
   /** Default enabled state for new users */
   defaultEnabled: boolean;
-  /** The widget component — receives refreshKey prop */
-  component: React.ComponentType<{ refreshKey: number }>;
+  /** The widget component — wraps itself in HomeWidget, returns null when empty */
+  component: React.ComponentType<WidgetComponentProps>;
   /** Server visibility key — widget hidden when this key is in hide_menu[] */
   hideKey?: string;
 }

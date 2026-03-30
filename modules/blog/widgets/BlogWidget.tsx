@@ -2,8 +2,7 @@
 // BLOG WIDGET - Single featured blog post card for home page
 // =============================================================================
 // Shows the latest blog post as a hero card with featured image.
-// Returns null if no posts available.
-// HomeWidget wrapping is handled externally by the home screen.
+// Returns null if no posts available (hides header too).
 // =============================================================================
 
 import React from 'react';
@@ -21,20 +20,14 @@ import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
 import { formatSmartDate } from '@/utils/formatDate';
 import type { WPPost } from '@/modules/blog/types/blog';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
-
-// -----------------------------------------------------------------------------
-// Props
-// -----------------------------------------------------------------------------
-
-interface BlogWidgetProps {
-  refreshKey: number;
-}
+import { HomeWidget } from '@/components/home/HomeWidget';
+import type { WidgetComponentProps } from '@/modules/_types';
 
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
-export function BlogWidget({ refreshKey }: BlogWidgetProps) {
+export function BlogWidget({ refreshKey, title, icon, onSeeAll }: WidgetComponentProps) {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
 
@@ -52,7 +45,7 @@ export function BlogWidget({ refreshKey }: BlogWidgetProps) {
 
   if (!post) return null;
 
-  const title = decodeHtmlEntities(stripHtmlTags(post.title.rendered));
+  const postTitle = decodeHtmlEntities(stripHtmlTags(post.title.rendered));
   const date = formatSmartDate(post.date);
   const featuredMedia = post._embedded?.['wp:featuredmedia']?.[0];
   const imageUrl =
@@ -62,46 +55,48 @@ export function BlogWidget({ refreshKey }: BlogWidgetProps) {
   const categories = post._embedded?.['wp:term']?.[0] || [];
 
   return (
-    <AnimatedPressable
-      style={[styles.card, { backgroundColor: themeColors.surface }]}
-      onPress={() =>
-        router.push({ pathname: '/blog/[id]', params: { id: String(post.id) } })
-      }
-    >
-      {imageUrl ? (
-        <>
-          <Image
-            source={{ uri: imageUrl }}
-            style={[styles.image, { backgroundColor: themeColors.border }]}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            transition={200}
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.75)']}
-            style={styles.gradient}
-          >
-            {categories.length > 0 && (
-              <View style={styles.categoryPill}>
-                <Text style={styles.categoryText}>{categories[0].name}</Text>
-              </View>
-            )}
-            <Text style={styles.titleLight} numberOfLines={2}>
-              {title}
+    <HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}>
+      <AnimatedPressable
+        style={[styles.card, { backgroundColor: themeColors.surface }]}
+        onPress={() =>
+          router.push({ pathname: '/blog/[id]', params: { id: String(post.id) } })
+        }
+      >
+        {imageUrl ? (
+          <>
+            <Image
+              source={{ uri: imageUrl }}
+              style={[styles.image, { backgroundColor: themeColors.border }]}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={200}
+            />
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.75)']}
+              style={styles.gradient}
+            >
+              {categories.length > 0 && (
+                <View style={styles.categoryPill}>
+                  <Text style={styles.categoryText}>{categories[0].name}</Text>
+                </View>
+              )}
+              <Text style={styles.titleLight} numberOfLines={2}>
+                {postTitle}
+              </Text>
+              <Text style={styles.dateLight}>{date}</Text>
+            </LinearGradient>
+          </>
+        ) : (
+          <View style={[styles.fallback, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}>
+            <Ionicons name="newspaper-outline" size={28} color={themeColors.primary} />
+            <Text style={[styles.titleDark, { color: themeColors.text }]} numberOfLines={2}>
+              {postTitle}
             </Text>
-            <Text style={styles.dateLight}>{date}</Text>
-          </LinearGradient>
-        </>
-      ) : (
-        <View style={[styles.fallback, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}>
-          <Ionicons name="newspaper-outline" size={28} color={themeColors.primary} />
-          <Text style={[styles.titleDark, { color: themeColors.text }]} numberOfLines={2}>
-            {title}
-          </Text>
-          <Text style={[styles.dateDark, { color: themeColors.textSecondary }]}>{date}</Text>
-        </View>
-      )}
-    </AnimatedPressable>
+            <Text style={[styles.dateDark, { color: themeColors.textSecondary }]}>{date}</Text>
+          </View>
+        )}
+      </AnimatedPressable>
+    </HomeWidget>
   );
 }
 

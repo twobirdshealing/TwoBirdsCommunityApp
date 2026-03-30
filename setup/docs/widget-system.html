@@ -41,12 +41,15 @@
   ├── Animated.ScrollView (pull-to-refresh)
   │     └── Sortable.Grid (columns=1, long-press to reorder)
   │           ├── Welcome Banner (fixed-order, not draggable)
-  │           ├── HomeWidget wrapper (header, icon, "See all")
-  │           │     └── Widget Component (receives refreshKey)
+  │           ├── Widget Component (wraps itself in HomeWidget)
+  │           │     └── HomeWidget (header, icon, "See all")
+  │           │           └── Widget content
   │           └── ... more widgets
   │
   └── Widget Registry (core + modules)
         └── User Preferences (MMKV) → order</code></pre>
+
+<p>Each widget owns its <code>HomeWidget</code> wrapper — when there's no data to show, the widget returns <code>null</code> and the entire section (header included) disappears cleanly.</p>
 
 <p>Long-press any widget to drag and reorder. Uses <code>react-native-sortables</code> (<code>Sortable.Grid</code>) with <code>customHandle</code> — the welcome banner is a <code>fixed-order</code> item pinned at the top, all other widgets are draggable. Order persists to MMKV.</p>
 
@@ -55,14 +58,21 @@
 
 <p>The <code>WidgetRegistration</code> interface in <span class="file-path">modules/_types.ts</span>:</p>
 
-<pre><code>interface WidgetRegistration {
+<pre><code>interface WidgetComponentProps {
+  refreshKey: number;            // Incremented on pull-to-refresh / app resume
+  title: string;                 // Widget title — pass to HomeWidget
+  icon?: keyof typeof Ionicons.glyphMap;  // Header icon — pass to HomeWidget
+  onSeeAll?: () => void;         // "See all" handler — pass to HomeWidget
+}
+
+interface WidgetRegistration {
   id: string;                    // Stable unique ID (preference key)
   title: string;                 // Display title in header
   icon?: keyof typeof Ionicons.glyphMap;  // Header icon
   seeAllRoute?: string;          // Navigation route for "See all"
   featureFlag?: BooleanFeatureKey;          // Conditional inclusion (server-controlled)
   defaultEnabled: boolean;       // Default state for new users
-  component: React.ComponentType&lt;{ refreshKey: number }&gt;;
+  component: React.ComponentType&lt;WidgetComponentProps&gt;;
 }</code></pre>
 
 <h3>Key Fields</h3>
@@ -175,7 +185,8 @@ export const yourModule: ModuleManifest = {
   <li>Each item renders through <code>renderWidget()</code>:
     <ul>
       <li>Looks up the component from the merged <code>WIDGET_COMPONENTS</code> map</li>
-      <li>Wraps the component in <code>Sortable.Handle</code> + <code>HomeWidget</code> (header, icon, "See all" link)</li>
+      <li>Passes <code>title</code>, <code>icon</code>, <code>onSeeAll</code>, and <code>refreshKey</code> as props</li>
+      <li>Wraps in <code>Sortable.Handle</code> — widget wraps itself in <code>HomeWidget</code> internally</li>
       <li>Long-press activates drag via <code>react-native-sortables</code></li>
     </ul>
   </li>
@@ -186,7 +197,7 @@ export const yourModule: ModuleManifest = {
 <ul>
   <li>Header row with icon + title + "See all" link (configurable label via <code>seeAllLabel</code> prop, defaults to "See all")</li>
   <li>Stateless wrapper — no internal state, just renders header + children</li>
-  <li>Widgets that return <code>null</code> when empty (e.g., no data) naturally collapse the space</li>
+  <li>Each widget wraps itself in <code>HomeWidget</code> internally — when a widget returns <code>null</code> (no data), the header hides too</li>
 </ul>
 
 <h3>HomeWidget Props</h3>
@@ -220,7 +231,10 @@ export const yourModule: ModuleManifest = {
 <p>All widgets receive a <code>refreshKey</code> prop from the home screen. When it increments, widgets re-fetch data.</p>
 
 <h3>Widget Data Pattern</h3>
-<pre><code>function MyWidget({ refreshKey }: { refreshKey: number }) {
+<pre><code>import { HomeWidget } from '@/components/home/HomeWidget';
+import type { WidgetComponentProps } from '@/modules/_types';
+
+function MyWidget({ refreshKey, title, icon, onSeeAll }: WidgetComponentProps) {
   const { data } = useAppQuery({
     cacheKey: 'tbc_widget_my_data',
     fetcher: () => api.getMyData(),
@@ -228,7 +242,14 @@ export const yourModule: ModuleManifest = {
     refreshOnFocus: false,          // Widgets don't refresh on app focus
     staleTime: WIDGET_STALE_TIME,   // 120 seconds
   });
-  // render...
+
+  if (!data) return null;           // No data → entire widget (header too) hidden
+
+  return (
+    &lt;HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}&gt;
+      {/* your widget content */}
+    &lt;/HomeWidget&gt;
+  );
 }</code></pre>
 
 <h3>Refresh Triggers</h3>
@@ -290,7 +311,7 @@ export const yourModule: ModuleManifest = {
 <ol>
   <li><strong>Widget IDs must be stable.</strong> The <code>id</code> field is used as a MMKV key for user preferences. Changing it after release resets user preferences for that widget. Never rename a shipped widget ID.</li>
 
-  <li><strong>All widgets must accept <code>refreshKey</code> prop.</strong> The home screen controls refresh for all widgets through this prop. Use <code>useAppQuery</code> with <code>refreshKey</code> and <code>staleTime: WIDGET_STALE_TIME</code> (120s).</li>
+  <li><strong>All widgets must accept <code>WidgetComponentProps</code>.</strong> The home screen passes <code>refreshKey</code>, <code>title</code>, <code>icon</code>, and <code>onSeeAll</code>. Use <code>useAppQuery</code> with <code>refreshKey</code> and <code>staleTime: WIDGET_STALE_TIME</code> (120s). Wrap rendered content in <code>&lt;HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}&gt;</code>.</li>
 
   <li><strong>Set <code>refreshOnFocus: false</code> in widget data hooks.</strong> The home screen manages focus-based refresh via <code>useAppFocus</code>. If widgets also refresh on focus, you get double fetches.</li>
 
@@ -302,7 +323,7 @@ export const yourModule: ModuleManifest = {
 
   <li><strong>The welcome banner is NOT in the registry.</strong> It's rendered as a <code>fixed-order</code> item inside the Sortable.Grid. Don't try to register it as a widget &mdash; it has special dismissal and fingerprint logic that the registry doesn't support.</li>
 
-  <li><strong>Widgets should return null when empty.</strong> If a widget has no data to show (e.g., no enrolled courses), return <code>null</code>. The space collapses naturally.</li>
+  <li><strong>Widgets must return null when empty.</strong> If a widget has no data to show, return <code>null</code> <em>before</em> the <code>HomeWidget</code> wrapper. This hides the entire section — header included — so there are no orphaned headers on the home screen.</li>
 
   <li><strong>Use <code>WIDGET_STALE_TIME</code> (120s) for all widget fetches.</strong> This prevents rapid pull-to-refresh from hammering the API. Don't use shorter intervals for widgets &mdash; they stay mounted on the home screen.</li>
 </ol>

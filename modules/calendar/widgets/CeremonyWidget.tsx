@@ -19,14 +19,8 @@ import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 import { useEventWebView } from '@/modules/calendar/hooks/useEventWebView';
 import calendarApi from '@/modules/calendar/services/calendarApi';
 import type { CalendarEvent } from '@/modules/calendar/types/calendar';
-
-// -----------------------------------------------------------------------------
-// Props
-// -----------------------------------------------------------------------------
-
-interface CeremonyWidgetProps {
-  refreshKey: number;
-}
+import { HomeWidget } from '@/components/home/HomeWidget';
+import type { WidgetComponentProps } from '@/modules/_types';
 
 // -----------------------------------------------------------------------------
 // Countdown helpers
@@ -84,7 +78,7 @@ function formatEventDate(event: CalendarEvent, is24Hour: boolean): string {
 // Component
 // -----------------------------------------------------------------------------
 
-export function CeremonyWidget({ refreshKey }: CeremonyWidgetProps) {
+export function CeremonyWidget({ refreshKey, title, icon, onSeeAll }: WidgetComponentProps) {
   const { colors: themeColors } = useTheme();
   const { is24Hour } = useAppConfig();
   const { openEvent } = useEventWebView();
@@ -120,49 +114,51 @@ export function CeremonyWidget({ refreshKey }: CeremonyWidgetProps) {
   const ringColor = event.calendar_color || themeColors.primary;
 
   return (
-    <AnimatedPressable
-      style={[styles.card, { backgroundColor: themeColors.surface }]}
-      onPress={() => openEvent(event)}
-    >
-      {/* Avatar column: image/icon + countdown */}
-      <View style={styles.avatarColumn}>
-        {event.image ? (
-          <View style={[styles.imageRing, { borderColor: ringColor }]}>
-            <Image
-              source={{ uri: event.image }}
-              style={styles.eventImage}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-              transition={200}
-            />
-          </View>
-        ) : (
-          <View style={[styles.iconCircle, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}>
-            <Ionicons name="calendar-outline" size={22} color={themeColors.primary} />
-          </View>
-        )}
-        {countdown ? (
-          <Text style={[styles.countdownText, { color: themeColors.primary }]}>
-            {countdown}
-          </Text>
-        ) : null}
-      </View>
+    <HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}>
+      <AnimatedPressable
+        style={[styles.card, { backgroundColor: themeColors.surface }]}
+        onPress={() => openEvent(event)}
+      >
+        {/* Avatar column: image/icon + countdown */}
+        <View style={styles.avatarColumn}>
+          {event.image ? (
+            <View style={[styles.imageRing, { borderColor: ringColor }]}>
+              <Image
+                source={{ uri: event.image }}
+                style={styles.eventImage}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={200}
+              />
+            </View>
+          ) : (
+            <View style={[styles.iconCircle, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}>
+              <Ionicons name="calendar-outline" size={22} color={themeColors.primary} />
+            </View>
+          )}
+          {countdown ? (
+            <Text style={[styles.countdownText, { color: themeColors.primary }]}>
+              {countdown}
+            </Text>
+          ) : null}
+        </View>
 
-      {/* Info */}
-      <View style={styles.info}>
-        <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>
-          {event.title}
-        </Text>
-        <Text style={[styles.date, { color: themeColors.textSecondary }]} numberOfLines={1}>
-          {formatEventDate(event, is24Hour)}
-        </Text>
-        {location ? (
-          <Text style={[styles.location, { color: themeColors.textTertiary }]} numberOfLines={1}>
-            {location}
+        {/* Info */}
+        <View style={styles.info}>
+          <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>
+            {event.title}
           </Text>
-        ) : null}
-      </View>
-    </AnimatedPressable>
+          <Text style={[styles.date, { color: themeColors.textSecondary }]} numberOfLines={1}>
+            {formatEventDate(event, is24Hour)}
+          </Text>
+          {location ? (
+            <Text style={[styles.location, { color: themeColors.textTertiary }]} numberOfLines={1}>
+              {location}
+            </Text>
+          ) : null}
+        </View>
+      </AnimatedPressable>
+    </HomeWidget>
   );
 }
 

@@ -3,7 +3,7 @@
 // =============================================================================
 // Token names map to Fluent Community CSS variables (--fcom-*)
 // Defaults are overridden at runtime by ThemeContext via /app-config API
-// Full reference: docs/theme-system.html
+// Full reference: setup/docs/theme-system.html
 //
 // Usage:
 //   import { useTheme } from '@/contexts/ThemeContext';

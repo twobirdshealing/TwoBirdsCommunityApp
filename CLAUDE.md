@@ -10,13 +10,13 @@ This is a white-label community app powered by [Fluent Community](https://fluent
 |---|---|
 | **Setup Guide** | `setup/setup-guide.html` — Full walkthrough with screenshots |
 | **Setup Dashboard** | `npm run dashboard` — Browser-based config UI at localhost:3456 |
-| **Architecture** | `docs/architecture.html` — App structure, data flow, core systems |
-| **Module System** | `docs/module-system.html` — Full reference with examples |
-| **Theme System** | `docs/theme-system.html` — Color tokens, Fluent CSS sync, usage rules |
-| **Companion Plugins** | `docs/companion-plugins.html` — Plugin descriptions, endpoints, installation |
-| **Logging** | `docs/logging.html` — createLogger usage and conventions |
-| **Per-Module Docs** | `docs/modules/` — Individual module setup & configuration |
-| **All Docs** | `docs/` — 25+ HTML files covering every core system in detail |
+| **Architecture** | `setup/docs/architecture.html` — App structure, data flow, core systems |
+| **Module System** | `setup/docs/module-system.html` — Full reference with examples |
+| **Theme System** | `setup/docs/theme-system.html` — Color tokens, Fluent CSS sync, usage rules |
+| **Companion Plugins** | `setup/docs/companion-plugins.html` — Plugin descriptions, endpoints, installation |
+| **Logging** | `setup/docs/logging.html` — createLogger usage and conventions |
+| **Per-Module Docs** | `setup/docs/modules/` — Individual module setup & configuration |
+| **All Docs** | `setup/docs/` — 25+ HTML files covering every core system in detail |
 
 ## Quick Commands
 

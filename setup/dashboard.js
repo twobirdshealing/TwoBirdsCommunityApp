@@ -75,6 +75,22 @@ const dashboardHTML = fs.readFileSync(path.join(__dirname, 'frontend', 'index.ht
 // Response helpers
 // ---------------------------------------------------------------------------
 
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'application/javascript',
+  '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif', '.svg': 'image/svg+xml', '.webp': 'image/webp',
+};
+
+function serveStatic(res, filePath, cacheControl = 'no-cache') {
+  const ext = path.extname(filePath).toLowerCase();
+  const stream = fs.createReadStream(filePath);
+  stream.on('error', () => { res.writeHead(404); res.end('Not found'); });
+  stream.on('open', () => {
+    res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] || 'application/octet-stream', 'Cache-Control': cacheControl });
+    stream.pipe(res);
+  });
+}
+
 function jsonResponse(res, data, status = 200) {
   res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(data));
@@ -466,12 +482,7 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname.startsWith('/api/asset/') && req.method === 'GET') {
       const assetName = decodeURIComponent(pathname.replace('/api/asset/', ''));
-      const assetPath = path.join(PATHS.assetsDir, path.basename(assetName));
-      if (!fileExists(assetPath)) { res.writeHead(404); res.end('Not found'); return; }
-      const ext = path.extname(assetPath).toLowerCase();
-      const mimeTypes = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml', '.webp': 'image/webp' };
-      res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
-      fs.createReadStream(assetPath).pipe(res);
+      serveStatic(res, path.join(PATHS.assetsDir, path.basename(assetName)));
       return;
     }
 
@@ -616,15 +627,27 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // --- Static assets ---
+    // --- Static files (alpine, setup guide, images, docs) ---
     if (pathname === '/lib/alpine.min.js' && req.method === 'GET') {
-      const alpinePath = path.join(__dirname, 'lib', 'alpine.min.js');
-      if (fileExists(alpinePath)) {
-        res.writeHead(200, { 'Content-Type': 'application/javascript', 'Cache-Control': 'public, max-age=86400' });
-        fs.createReadStream(alpinePath).pipe(res);
-      } else {
-        res.writeHead(404); res.end('Not found');
-      }
+      serveStatic(res, path.join(__dirname, 'lib', 'alpine.min.js'), 'public, max-age=86400');
+      return;
+    }
+
+    if (pathname === '/setup-guide.html' && req.method === 'GET') {
+      serveStatic(res, path.join(__dirname, 'setup-guide.html'));
+      return;
+    }
+
+    if (pathname.startsWith('/images/') && req.method === 'GET') {
+      const imgName = decodeURIComponent(pathname.replace('/images/', ''));
+      serveStatic(res, path.join(__dirname, 'images', path.basename(imgName)), 'public, max-age=3600');
+      return;
+    }
+
+    if (pathname.startsWith('/docs/') && req.method === 'GET') {
+      const relPath = decodeURIComponent(pathname.replace('/docs/', ''));
+      const safePath = relPath.split('/').filter(p => p && p !== '..' && p !== '.').join(path.sep);
+      serveStatic(res, path.join(__dirname, 'docs', safePath));
       return;
     }
 

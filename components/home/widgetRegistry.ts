@@ -7,7 +7,7 @@
 // =============================================================================
 
 import type { FeaturesConfig } from '@/services/api/appConfig';
-import type { WidgetRegistration } from '@/modules/_types';
+import type { WidgetRegistration, WidgetComponentProps } from '@/modules/_types';
 import { getModuleWidgets } from '@/modules/_registry';
 import { CoursesWidget } from '@/components/home/CoursesWidget';
 import { isItemHidden } from '@/utils/visibility';
@@ -55,9 +55,9 @@ export function getAvailableWidgets(features: FeaturesConfig, hideMenu: string[]
 /** Core widget component map (id → component) for home screen */
 export function getCoreWidgetComponentMap(): Record<
   string,
-  React.ComponentType<{ refreshKey: number }>
+  React.ComponentType<WidgetComponentProps>
 > {
-  const map: Record<string, React.ComponentType<{ refreshKey: number }>> = {};
+  const map: Record<string, React.ComponentType<WidgetComponentProps>> = {};
   for (const w of CORE_WIDGETS) {
     map[w.id] = w.component;
   }

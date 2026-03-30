@@ -22,8 +22,7 @@ import { useWidgetPreferences } from '@/hooks/useWidgetPreferences';
 import { useAppFocus } from '@/hooks/useAppFocus';
 import { getAvailableWidgets, getCoreWidgetComponentMap } from '@/components/home/widgetRegistry';
 import { getWidgetComponentMap } from '@/modules/_registry';
-import type { WidgetRegistration } from '@/modules/_types';
-import { HomeWidget } from '@/components/home/HomeWidget';
+import type { WidgetRegistration, WidgetComponentProps } from '@/modules/_types';
 import { WelcomeBannerWidget } from '@/components/home/WelcomeBannerWidget';
 import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
 import { EMPTY_HIDE_MENU } from '@/utils/visibility';
@@ -35,7 +34,7 @@ import type { WidgetPreference } from '@/hooks/useWidgetPreferences';
 
 const WIDGET_COMPONENTS: Record<
   string,
-  React.ComponentType<{ refreshKey: number }>
+  React.ComponentType<WidgetComponentProps>
 > = {
   ...getCoreWidgetComponentMap(),
   ...getWidgetComponentMap(),
@@ -167,13 +166,12 @@ export default function HomeScreen() {
 
       return (
         <Sortable.Handle>
-          <HomeWidget
+          <WidgetComponent
+            refreshKey={refreshKey}
             title={config.title}
             icon={config.icon}
             onSeeAll={seeAllHandler}
-          >
-            <WidgetComponent refreshKey={refreshKey} />
-          </HomeWidget>
+          />
         </Sortable.Handle>
       );
     },

@@ -2,8 +2,7 @@
 // YOUTUBE WIDGET - Single featured video card for home page
 // =============================================================================
 // Shows the latest YouTube video as a hero card with thumbnail + play overlay.
-// Returns null if no videos available.
-// HomeWidget wrapping is handled externally by the home screen.
+// Returns null if no videos available (hides header too).
 // =============================================================================
 
 import React, { useState } from 'react';
@@ -19,20 +18,14 @@ import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 import { formatSmartDate } from '@/utils/formatDate';
 import type { YouTubeVideo } from '../types/youtube';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
-
-// -----------------------------------------------------------------------------
-// Props
-// -----------------------------------------------------------------------------
-
-interface YouTubeWidgetProps {
-  refreshKey: number;
-}
+import { HomeWidget } from '@/components/home/HomeWidget';
+import type { WidgetComponentProps } from '@/modules/_types';
 
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
-export function YouTubeWidget({ refreshKey }: YouTubeWidgetProps) {
+export function YouTubeWidget({ refreshKey, title, icon, onSeeAll }: WidgetComponentProps) {
   const { colors: themeColors } = useTheme();
 
   const { data: video } = useAppQuery<YouTubeVideo | null>({
@@ -52,42 +45,44 @@ export function YouTubeWidget({ refreshKey }: YouTubeWidgetProps) {
   if (!video) return null;
 
   return (
-    <View style={styles.card}>
-      {!isPlaying ? (
-        <AnimatedPressable onPress={() => setIsPlaying(true)} style={styles.thumbnailContainer}>
-          <Image
-            source={{ uri: video.thumbnail }}
-            style={[styles.thumbnail, { backgroundColor: themeColors.border }]}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            transition={200}
-          />
+    <HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}>
+      <View style={styles.card}>
+        {!isPlaying ? (
+          <AnimatedPressable onPress={() => setIsPlaying(true)} style={styles.thumbnailContainer}>
+            <Image
+              source={{ uri: video.thumbnail }}
+              style={[styles.thumbnail, { backgroundColor: themeColors.border }]}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={200}
+            />
 
-          <PlayButtonOverlay variant="youtube" />
+            <PlayButtonOverlay variant="youtube" />
 
-          {/* Title + date gradient */}
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.8)']}
-            style={styles.gradient}
-          >
-            <Text style={styles.title} numberOfLines={1}>
-              {video.title}
-            </Text>
-            <Text style={styles.date}>{formatSmartDate(video.publishedAt)}</Text>
-          </LinearGradient>
-        </AnimatedPressable>
-      ) : (
-        <View style={styles.thumbnailContainer}>
-          <YouTubeEmbed
-            videoId={video.videoId}
-            playing={isPlaying}
-            onStateChange={(state) => {
-              if (state === 'ended') setIsPlaying(false);
-            }}
-          />
-        </View>
-      )}
-    </View>
+            {/* Title + date gradient */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.8)']}
+              style={styles.gradient}
+            >
+              <Text style={styles.title} numberOfLines={1}>
+                {video.title}
+              </Text>
+              <Text style={styles.date}>{formatSmartDate(video.publishedAt)}</Text>
+            </LinearGradient>
+          </AnimatedPressable>
+        ) : (
+          <View style={styles.thumbnailContainer}>
+            <YouTubeEmbed
+              videoId={video.videoId}
+              playing={isPlaying}
+              onStateChange={(state) => {
+                if (state === 'ended') setIsPlaying(false);
+              }}
+            />
+          </View>
+        )}
+      </View>
+    </HomeWidget>
   );
 }
 

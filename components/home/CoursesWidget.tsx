@@ -27,6 +27,8 @@ import { Course } from '@/types/course';
 import { ProgressBar } from '@/components/course/ProgressBar';
 import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
+import { HomeWidget } from '@/components/home/HomeWidget';
+import type { WidgetComponentProps } from '@/modules/_types';
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -37,18 +39,10 @@ const CARD_WIDTH = SCREEN_WIDTH * 0.7;
 const CARD_GAP = spacing.md;
 
 // -----------------------------------------------------------------------------
-// Props
-// -----------------------------------------------------------------------------
-
-interface CoursesWidgetProps {
-  refreshKey: number;
-}
-
-// -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
-export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
+export function CoursesWidget({ refreshKey, title, icon, onSeeAll }: WidgetComponentProps) {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
 
@@ -67,77 +61,83 @@ export function CoursesWidget({ refreshKey }: CoursesWidgetProps) {
   // Loading state on first load only (no cache yet)
   if (isLoading) {
     return (
-      <View style={{ padding: spacing.lg, alignItems: 'center' }}>
-        <ActivityIndicator size="small" color={themeColors.primary} />
-      </View>
+      <HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}>
+        <View style={{ padding: spacing.lg, alignItems: 'center' }}>
+          <ActivityIndicator size="small" color={themeColors.primary} />
+        </View>
+      </HomeWidget>
     );
   }
 
   // No enrolled courses — show browse CTA
   if (!courses || courses.length === 0) {
     return (
-      <AnimatedPressable
-        style={[styles.ctaCard, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}
-        onPress={() => router.push('/courses')}
-      >
-        <Ionicons name="school-outline" size={28} color={themeColors.primary} />
-        <Text style={[styles.ctaText, { color: themeColors.primary }]}>Browse Courses</Text>
-        <Text style={[styles.ctaSubtext, { color: themeColors.textSecondary }]}>
-          Explore available courses and start learning
-        </Text>
-      </AnimatedPressable>
+      <HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}>
+        <AnimatedPressable
+          style={[styles.ctaCard, { backgroundColor: withOpacity(themeColors.primary, 0.1) }]}
+          onPress={() => router.push('/courses')}
+        >
+          <Ionicons name="school-outline" size={28} color={themeColors.primary} />
+          <Text style={[styles.ctaText, { color: themeColors.primary }]}>Browse Courses</Text>
+          <Text style={[styles.ctaSubtext, { color: themeColors.textSecondary }]}>
+            Explore available courses and start learning
+          </Text>
+        </AnimatedPressable>
+      </HomeWidget>
     );
   }
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      snapToInterval={CARD_WIDTH + CARD_GAP}
-      decelerationRate="fast"
-      contentContainerStyle={styles.scrollContent}
-    >
-      {courses.map((course) => {
-        const hasCover = course.cover_photo && course.cover_photo.trim() !== ''
-          && !course.cover_photo.includes('fluent-community/assets/images/');
-        const progress = course.progress ?? 0;
+    <HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={CARD_WIDTH + CARD_GAP}
+        decelerationRate="fast"
+        contentContainerStyle={styles.scrollContent}
+      >
+        {courses.map((course) => {
+          const hasCover = course.cover_photo && course.cover_photo.trim() !== ''
+            && !course.cover_photo.includes('fluent-community/assets/images/');
+          const progress = course.progress ?? 0;
 
-        return (
-          <AnimatedPressable
-            key={course.id}
-            style={[styles.card, { width: CARD_WIDTH, backgroundColor: themeColors.surface }]}
-            onPress={() => router.push({ pathname: '/courses/[slug]', params: { slug: course.slug } })}
-          >
-            {/* Hero Cover */}
-            {hasCover ? (
-              <Image source={{ uri: course.cover_photo! }} style={styles.cardCover} contentFit="cover" transition={200} cachePolicy="memory-disk" />
-            ) : (
-              <View style={[styles.cardCover, { backgroundColor: themeColors.lightBg, justifyContent: 'center', alignItems: 'center' }]}>
-                <Ionicons name="book-outline" size={32} color={themeColors.textTertiary} />
-              </View>
-            )}
-
-            {/* Gradient Overlay with Title + Progress */}
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.7)']}
-              style={styles.heroOverlay}
+          return (
+            <AnimatedPressable
+              key={course.id}
+              style={[styles.card, { width: CARD_WIDTH, backgroundColor: themeColors.surface }]}
+              onPress={() => router.push({ pathname: '/courses/[slug]', params: { slug: course.slug } })}
             >
-              <Text style={styles.cardTitle} numberOfLines={1}>
-                {course.title}
-              </Text>
-              <View style={styles.cardProgress}>
-                <Text style={styles.cardProgressText}>
-                  {progress === 100 ? 'Complete' : `${Math.round(progress)}%`}
-                </Text>
-                <View style={{ flex: 1 }}>
-                  <ProgressBar progress={progress} />
+              {/* Hero Cover */}
+              {hasCover ? (
+                <Image source={{ uri: course.cover_photo! }} style={styles.cardCover} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+              ) : (
+                <View style={[styles.cardCover, { backgroundColor: themeColors.lightBg, justifyContent: 'center', alignItems: 'center' }]}>
+                  <Ionicons name="book-outline" size={32} color={themeColors.textTertiary} />
                 </View>
-              </View>
-            </LinearGradient>
-          </AnimatedPressable>
-        );
-      })}
-    </ScrollView>
+              )}
+
+              {/* Gradient Overlay with Title + Progress */}
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.7)']}
+                style={styles.heroOverlay}
+              >
+                <Text style={styles.cardTitle} numberOfLines={1}>
+                  {course.title}
+                </Text>
+                <View style={styles.cardProgress}>
+                  <Text style={styles.cardProgressText}>
+                    {progress === 100 ? 'Complete' : `${Math.round(progress)}%`}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <ProgressBar progress={progress} />
+                  </View>
+                </View>
+              </LinearGradient>
+            </AnimatedPressable>
+          );
+        })}
+      </ScrollView>
+    </HomeWidget>
   );
 }
 

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Setup Dashboard</title>
 <script>
-(function(){var t=localStorage.getItem('dashboard-theme');if(!t)t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();
+(function(){var t=localStorage.getItem('tbc-docs-theme');if(!t)t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();
 </script>
 <style>
   :root {
@@ -60,14 +60,15 @@
   .header h1 { font-size: 20px; font-weight: 600; }
   .header .subtitle { color: var(--text-secondary); font-size: 13px; margin-left: 12px; }
   .header-right { display: flex; align-items: center; gap: 12px; }
-  .version-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border); letter-spacing: 0.3px; }
-  .version-badge .vb-label { opacity: 0.7; font-weight: 500; }
+  .version-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; background: rgba(88,166,255,0.1); color: var(--accent); border: 1px solid rgba(88,166,255,0.25); white-space: nowrap; }
   .server-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border); }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; }
   .status-dot.connected { background: var(--green); box-shadow: 0 0 4px var(--green); }
   .status-dot.disconnected { background: var(--red, #ef4444); }
   .btn-icon { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 20px; padding: 6px 10px; cursor: pointer; font-size: 14px; line-height: 1; transition: background 0.15s; color: var(--text-secondary); display: inline-flex; align-items: center; }
   .btn-icon:hover { background: var(--red-bg, #fef2f2); color: var(--red, #ef4444); border-color: var(--red, #ef4444); }
+  .btn-help { text-decoration: none; }
+  .btn-help:hover { background: var(--accent-bg, rgba(88,166,255,0.12)); color: var(--accent, #58a6ff); border-color: var(--accent, #58a6ff); }
   .theme-toggle { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 20px; padding: 6px 10px; cursor: pointer; font-size: 16px; line-height: 1; transition: background 0.15s; color: var(--text-secondary); display: inline-flex; align-items: center; }
   .theme-toggle:hover { background: var(--bg-hover); }
   [data-theme="dark"] .theme-toggle { color: #e8c86a; }
@@ -467,10 +468,6 @@
     </div>
   </div>
   <div class="header-right">
-    <span class="version-badge" title="Core product version — updates automatically when you apply an update. Not the same as your App Store version.">
-      <span class="vb-label">Core</span>
-      <span x-text="'v' + (config.coreVersion || '?')">--</span>
-    </span>
     <span class="progress-badge" x-bind:class="progressBadgeClass" x-text="progressBadgeText"></span>
     <span class="server-status" x-bind:title="serverConnected ? 'Server connected' : 'Server stopped'">
       <span class="status-dot" x-bind:class="serverConnected ? 'connected' : 'disconnected'"></span>
@@ -479,6 +476,15 @@
     <button class="btn-icon" x-show="serverConnected" x-on:click="stopServer()" title="Stop dashboard server">
       <ion-icon name="stop-outline"></ion-icon>
     </button>
+    <a class="btn-icon btn-help" href="docs/index.html" target="_blank" title="Open Documentation">
+      <ion-icon name="book-outline"></ion-icon>
+    </a>
+    <a class="btn-icon btn-help" href="setup-guide.html" target="_blank" title="Open Setup Guide">
+      <ion-icon name="help-circle-outline"></ion-icon>
+    </a>
+    <span class="version-badge" title="Core product version — updates automatically when you apply an update.">
+      <span x-text="'Dashboard v' + (config.coreVersion || '?')">--</span>
+    </span>
     <button class="theme-toggle" x-on:click="toggleTheme()" title="Toggle light/dark mode">
       <ion-icon x-bind:name="darkMode ? 'moon-outline' : 'sunny-outline'"></ion-icon>
     </button>
@@ -1881,7 +1887,7 @@ document.addEventListener('alpine:init', () => {
     get headerTitle() {
       var name = (this.config.appName || '').trim();
       var isDefault = !name || this.PLACEHOLDERS.indexOf(name) !== -1;
-      return isDefault ? 'Setup Dashboard' : name + ' — Setup Dashboard';
+      return (isDefault ? 'TBC Community App' : name) + ' — Setup Dashboard';
     },
 
     get appSwitcherLabel() {
@@ -1970,7 +1976,7 @@ document.addEventListener('alpine:init', () => {
       this.darkMode = !this.darkMode;
       if (this.darkMode) document.documentElement.setAttribute('data-theme', 'dark');
       else document.documentElement.removeAttribute('data-theme');
-      localStorage.setItem('dashboard-theme', this.darkMode ? 'dark' : 'light');
+      localStorage.setItem('tbc-docs-theme', this.darkMode ? 'dark' : 'light');
     },
 
     // =========================================================================

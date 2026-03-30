@@ -213,8 +213,15 @@ export interface ModuleManifest {
 </div>
 
 <h3 id="widget-registration">WidgetRegistration</h3>
-<p>Adds a card to the home screen.</p>
-<pre><code>interface WidgetRegistration {
+<p>Adds a card to the home screen. Each widget component wraps itself in <code>HomeWidget</code> and returns <code>null</code> when it has no data &mdash; hiding the header too.</p>
+<pre><code>interface WidgetComponentProps {
+  refreshKey: number;            // Incremented on pull-to-refresh / app resume
+  title: string;                 // Widget title &mdash; pass to HomeWidget
+  icon?: keyof typeof Ionicons.glyphMap;  // Header icon &mdash; pass to HomeWidget
+  onSeeAll?: () => void;         // "See all" handler &mdash; pass to HomeWidget
+}
+
+interface WidgetRegistration {
   /** Unique stable ID &mdash; never change once shipped (used as MMKV preference key) */
   id: string;
   /** Display title shown in HomeWidget header */
@@ -227,8 +234,8 @@ export interface ModuleManifest {
   featureFlag?: BooleanFeatureKey;
   /** Default enabled state for new users */
   defaultEnabled: boolean;
-  /** The widget component &mdash; receives refreshKey prop */
-  component: React.ComponentType&lt;{ refreshKey: number }&gt;;
+  /** The widget component &mdash; wraps itself in HomeWidget, returns null when empty */
+  component: React.ComponentType&lt;WidgetComponentProps&gt;;
 }</code></pre>
 
 <p><strong>Example:</strong></p>
@@ -243,7 +250,7 @@ export interface ModuleManifest {
 }]</code></pre>
 
 <div class="callout">
-  <strong>refreshKey prop.</strong> The home screen passes a <code>refreshKey</code> number that increments on pull-to-refresh. Use it to trigger data refetch. Return <code>null</code> from your widget if there's no data &mdash; never render an empty card.
+  <strong>Widget pattern.</strong> The home screen passes <code>WidgetComponentProps</code> (refreshKey, title, icon, onSeeAll). Your widget wraps its content in <code>&lt;HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}&gt;</code>. Return <code>null</code> <em>before</em> the wrapper when there's no data &mdash; this hides the entire section including the header.
 </div>
 
 <h3 id="provider-registration">ProviderRegistration</h3>
@@ -842,13 +849,11 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAppQuery, WIDGET_STALE_TIME } from '@/hooks/useAppQuery';
+import { HomeWidget } from '@/components/home/HomeWidget';
+import type { WidgetComponentProps } from '@/modules/_types';
 import { getUpcomingEvent } from '../services/eventsApi';
 
-interface Props {
-  refreshKey: number;
-}
-
-export function EventsWidget({ refreshKey }: Props) {
+export function EventsWidget({ refreshKey, title, icon, onSeeAll }: WidgetComponentProps) {
   const { colors } = useTheme();
   const { data } = useAppQuery({
     cacheKey: 'tbc_widget_events',
@@ -858,15 +863,17 @@ export function EventsWidget({ refreshKey }: Props) {
     staleTime: WIDGET_STALE_TIME,
   });
 
-  // Return null if no data &mdash; never render an empty card
+  // Return null if no data &mdash; hides entire section (header too)
   if (!data?.events?.length) return null;
 
   const event = data.events[0];
   return (
-    &lt;View style={[styles.card, { backgroundColor: colors.surface }]}&gt;
-      &lt;Text style={{ color: colors.text }}&gt;{event.title}&lt;/Text&gt;
-      &lt;Text style={{ color: colors.textSecondary }}&gt;{event.date}&lt;/Text&gt;
-    &lt;/View&gt;
+    &lt;HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}&gt;
+      &lt;View style={[styles.card, { backgroundColor: colors.surface }]}&gt;
+        &lt;Text style={{ color: colors.text }}&gt;{event.title}&lt;/Text&gt;
+        &lt;Text style={{ color: colors.textSecondary }}&gt;{event.date}&lt;/Text&gt;
+      &lt;/View&gt;
+    &lt;/HomeWidget&gt;
   );
 }
 
@@ -1148,7 +1155,10 @@ async function fetchAnnouncement() {
   });
 }
 
-export function AnnouncementWidget({ refreshKey }: { refreshKey: number }) {
+import { HomeWidget } from '@/components/home/HomeWidget';
+import type { WidgetComponentProps } from '@/modules/_types';
+
+export function AnnouncementWidget({ refreshKey, title, icon, onSeeAll }: WidgetComponentProps) {
   const { colors } = useTheme();
   const { data } = useAppQuery({
     cacheKey: 'tbc_widget_announcement',
@@ -1157,17 +1167,19 @@ export function AnnouncementWidget({ refreshKey }: { refreshKey: number }) {
     staleTime: WIDGET_STALE_TIME,
   });
 
-  if (!data) return null;
+  if (!data) return null;  // No data &mdash; hides header too
 
   return (
-    &lt;View style={[styles.card, { backgroundColor: colors.surface }]}&gt;
-      &lt;Text style={[styles.message, { color: colors.text }]}&gt;
-        {data.message}
-      &lt;/Text&gt;
-      &lt;Text style={[styles.author, { color: colors.textSecondary }]}&gt;
-        &mdash; {data.author}
-      &lt;/Text&gt;
-    &lt;/View&gt;
+    &lt;HomeWidget title={title} icon={icon} onSeeAll={onSeeAll}&gt;
+      &lt;View style={[styles.card, { backgroundColor: colors.surface }]}&gt;
+        &lt;Text style={[styles.message, { color: colors.text }]}&gt;
+          {data.message}
+        &lt;/Text&gt;
+        &lt;Text style={[styles.author, { color: colors.textSecondary }]}&gt;
+          &mdash; {data.author}
+        &lt;/Text&gt;
+      &lt;/View&gt;
+    &lt;/HomeWidget&gt;
   );
 }
 

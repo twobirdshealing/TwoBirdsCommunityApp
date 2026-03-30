@@ -37,6 +37,7 @@ PROTECTED_PATHS=(
   "setup/.backups/"
   "setup/dashboard.next.js"
   "manifest.json"
+  "CLAUDE.md"
 )
 
 # Helper: generate JSON array from PROTECTED_PATHS
