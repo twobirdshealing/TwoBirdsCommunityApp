@@ -9,7 +9,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedRef } from 'react-native-reanimated';
-import { useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import Sortable from 'react-native-sortables';
 import type { SortableGridRenderItem } from 'react-native-sortables';
 import { spacing } from '@/constants/layout';
@@ -72,6 +72,11 @@ export default function HomeScreen() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const scrollableRef = useAnimatedRef<Animated.ScrollView>();
+
+  // Workaround: react-native-gesture-handler loses native attachment after
+  // freeze/unfreeze (RNGH #3560, sortables #519). Keying on focus forces a
+  // fresh grid mount with working gesture handlers when returning to this tab.
+  const isFocused = useIsFocused();
 
   // Refresh all widgets when app returns from background
   useAppFocus(useCallback(() => setRefreshKey((prev) => prev + 1), []));
@@ -207,6 +212,7 @@ export default function HomeScreen() {
           }
         >
           <Sortable.Grid
+            key={String(isFocused)}
             data={widgetItems}
             columns={1}
             renderItem={renderWidget}
