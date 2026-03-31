@@ -46,43 +46,54 @@
 <!-- ================================================================== -->
 <h2 id="overview">1. Architecture Overview</h2>
 
-<pre><code>┌─────────────────────────────────────────────────────────────┐
-│                      Server Side                             │
-│                                                              │
-│  Fluent Community hooks ──► TBC-CA Push Hooks                │
-│  (feed created, comment,     (class-hooks.php)               │
-│   reaction, follow, etc.)         │                          │
-│                                   ▼                          │
-│                           Action Scheduler                    │
-│                           (async batch)                      │
-│                                   │                          │
-│                                   ▼                          │
-│                       Expo Push API send                      │
-│                       (class-firebase.php)                    │
-│                                   │                          │
-│                    Badge count attached ◄── FC unread count   │
-└───────────────────────────┬─────────────────────────────────┘
-                            │ Push notification
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Mobile App                              │
-│                                                              │
-│  Notification Handler (foreground: banner + sound)            │
-│  Tap Listener (deep links to route)                          │
-│                                                              │
-│  ┌─────────────────┐  ┌────────────────────┐                │
-│  │ notifications.tsx│  │notification-settings│                │
-│  │ (list + swipe)  │  │(push + email prefs) │                │
-│  └────────┬────────┘  └────────────────────┘                │
-│           │                                                  │
-│  ┌────────▼────────┐  ┌────────────────────┐                │
-│  │ UnreadCounts    │◄─┤ X-TBC-Unread-*     │                │
-│  │ Context         │  │ response headers    │                │
-│  └────────┬────────┘  └────────────────────┘                │
-│           │                                                  │
-│           ▼                                                  │
-│  syncBadgeCount() ──► OS app icon badge                      │
-└─────────────────────────────────────────────────────────────┘</code></pre>
+<pre><code>┌──────────────────────────────────────────────────────────────────┐
+│  Server                                                          │
+│                                                                  │
+│  Fluent Community event ──► TBC-CA Push Hooks (class-hooks.php)  │
+│  (post, comment, reaction,        │                              │
+│   follow, DM, etc.)               ▼                              │
+│                            Action Scheduler (async batch)        │
+│                                    │                              │
+│                                    ▼                              │
+│                         Expo Push API (class-firebase.php)        │
+│                         payload: title, body, route, badge        │
+│                         badge = notifications + messages          │
+│                                (TBC_CA_Core::get_unread_         │
+│                                 message_count + notif query)     │
+│                                                                  │
+│  Every REST response ──► X-TBC-Unread-Notifications: N           │
+│  (class-response-          X-TBC-Unread-Messages: N              │
+│   headers.php)                                                   │
+│                                                                  │
+│  Pusher/Soketi ──► private-chat_user_{id} channel                │
+│  (real-time)       events: message, reaction                     │
+└───────────────────────┬────────────────────┬─────────────────────┘
+                        │ push notification   │ WebSocket + headers
+                        ▼                     ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  Mobile App                                                      │
+│                                                                  │
+│  Push handler: shouldShowBanner: true, shouldSetBadge: false     │
+│  Tap listener: routes to content via data.route field            │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │  UnreadCountsContext (single source of truth)            │    │
+│  │                                                          │    │
+│  │  Updated by:                                             │    │
+│  │  1. Startup batch (/chat/unread_threads + /notif/unread) │    │
+│  │  2. Response headers (X-TBC-Unread-* on every API call)  │    │
+│  │  3. Pusher message event (bumps unreadMessages + 1)      │    │
+│  │  4. Push notification listener (bumps unreadNotif + 1)   │    │
+│  │  5. Mark-as-read APIs (sets count from server response)  │    │
+│  └──────────────┬───────────────────────────────────────────┘    │
+│                 │                                                 │
+│                 ▼                                                 │
+│  BadgeSync component (app/_layout.tsx)                            │
+│  syncBadgeCount(unreadNotifications + unreadMessages)             │
+│  iOS: sets app icon badge directly                                │
+│  Android: setBadgeCountAsync ignored by Samsung — badge           │
+│           comes from pending notifications in shade               │
+└──────────────────────────────────────────────────────────────────┘</code></pre>
 
 <!-- ================================================================== -->
 <h2 id="types">2. Notification Types</h2>
@@ -253,19 +264,40 @@
 <table>
   <tr><th>Source</th><th>When</th><th>Mechanism</th></tr>
   <tr><td>Startup batch</td><td>App launch (authenticated)</td><td><code>useStartupData</code> populates initial counts from batch API</td></tr>
-  <tr><td>Response headers</td><td>Every authenticated API response</td><td><code>X-TBC-Unread-Notifications</code>, <code>X-TBC-Unread-Messages</code></td></tr>
-  <tr><td>Mark as read</td><td>User marks notification read</td><td>API returns new <code>unread_count</code></td></tr>
-  <tr><td>Mark all read</td><td>User marks all read</td><td>Sets count to 0</td></tr>
+  <tr><td>Response headers</td><td>Every authenticated API response</td><td><code>X-TBC-Unread-Notifications</code>, <code>X-TBC-Unread-Messages</code> headers extracted by <span class="file-path">services/api/client.ts</span></td></tr>
+  <tr><td>Pusher (real-time)</td><td>New DM received while app is open</td><td><code>useNewMessageListener</code> in TopHeader bumps <code>unreadMessages + 1</code></td></tr>
+  <tr><td>Push notification</td><td>Foreground notification received</td><td><code>addNotificationReceivedListener</code> in TopHeader bumps <code>unreadNotifications + 1</code></td></tr>
+  <tr><td>Mark as read</td><td>User marks notification read</td><td><code>setUnreadNotifications(response.data.unread_count)</code></td></tr>
+  <tr><td>Mark all read</td><td>User marks all read</td><td><code>setUnreadNotifications(0)</code></td></tr>
 </table>
 
-<h3>OS Badge Sync</h3>
-<pre><code>// Set app icon badge count
-await syncBadgeCount(count);   // Deduplicates (skips if same as last)
+<h3>OS App Icon Badge</h3>
 
-// Clear badge on logout
-await clearBadgeCount();       // Sets to 0</code></pre>
+<p>The <code>BadgeSync</code> component in <span class="file-path">app/_layout.tsx</span> reactively syncs the OS badge whenever either count changes:</p>
+
+<pre><code>// BadgeSync — isolated component so count changes don't re-render the layout
+function BadgeSync() {
+  const { unreadNotifications, unreadMessages } = useUnreadCounts();
+  useEffect(() => {
+    syncBadgeCount(unreadNotifications + unreadMessages);
+  }, [unreadNotifications, unreadMessages]);
+  return null;
+}</code></pre>
 
 <p><code>syncBadgeCount()</code> in <span class="file-path">services/push.ts</span> calls <code>Notifications.setBadgeCountAsync(count)</code>. It deduplicates — if the count hasn't changed since the last call, it's a no-op.</p>
+
+<h3>Platform Differences</h3>
+
+<table>
+  <tr><th>Platform</th><th>How Badge Works</th><th>What We Control</th></tr>
+  <tr><td><strong>iOS</strong></td><td><code>setBadgeCountAsync()</code> directly sets the red number on the app icon. Push payload <code>badge</code> field also sets it when app is killed.</td><td>Full control — badge = notifications + messages, always accurate.</td></tr>
+  <tr><td><strong>Android (Samsung, Pixel)</strong></td><td>Badge count = number of <strong>pending notifications in the notification shade</strong>. <code>setBadgeCountAsync()</code> is ignored by Samsung — it uses its own notification-based counting.</td><td>Limited — badge appears when push notifications arrive and clears when the user dismisses them. In-app badges (TopHeader) are always accurate regardless.</td></tr>
+  <tr><td><strong>Android (other launchers)</strong></td><td>Varies by manufacturer. Some support <code>setBadgeCountAsync()</code>, many don't.</td><td>Best-effort. No reliable cross-manufacturer badge API exists on Android.</td></tr>
+</table>
+
+<div class="callout">
+  <strong>Why Samsung badges disappear when notifications are dismissed:</strong> Samsung's One UI ties the app icon badge directly to pending notifications in the shade — not to <code>setBadgeCountAsync()</code>. Apps like Gmail maintain persistent badges because they use native Android foreground services, which isn't available in Expo's managed workflow. This is a known platform limitation, not a bug.
+</div>
 
 <!-- ================================================================== -->
 <h2 id="preferences">7. Notification Preferences</h2>
@@ -517,8 +549,10 @@ interface UnifiedSection {
   <tr><th>File</th><th>Purpose</th></tr>
   <tr><td><span class="file-path">tbc-community-app/includes/push/class-api.php</span></td><td>REST endpoints (device, settings)</td></tr>
   <tr><td><span class="file-path">tbc-community-app/includes/push/class-hooks.php</span></td><td>Event hooks (listens to FC actions)</td></tr>
-  <tr><td><span class="file-path">tbc-community-app/includes/push/class-firebase.php</span></td><td>Expo Push API sender</td></tr>
+  <tr><td><span class="file-path">tbc-community-app/includes/push/class-firebase.php</span></td><td>Expo Push API sender (badge = notifications + messages)</td></tr>
   <tr><td><span class="file-path">tbc-community-app/includes/push/class-devices.php</span></td><td>Device token database table</td></tr>
+  <tr><td><span class="file-path">tbc-community-app/includes/class-response-headers.php</span></td><td>Attaches <code>X-TBC-Unread-*</code> headers to every authenticated REST response</td></tr>
+  <tr><td><span class="file-path">tbc-community-app/includes/class-core.php</span></td><td>Shared <code>get_unread_message_count()</code> — direct DB query (ChatHelper is lazy-loaded)</td></tr>
   <tr><td><span class="file-path">tbc-community-app/includes/push/class-preferences.php</span></td><td>User push preference storage</td></tr>
   <tr><td><span class="file-path">tbc-community-app/includes/push/class-registry.php</span></td><td>Notification type definitions + defaults</td></tr>
 </table>
@@ -530,8 +564,9 @@ interface UnifiedSection {
   <li><strong>Check <code>features.push_notifications</code> (via <code>useFeatures()</code>) before any push operations.</strong> This flag is server-controlled (wp-admin &rarr; TBC Community App &rarr; Features tab). When disabled, skip token registration, hide push toggles in settings, and don't show push-related UI.</li>
   <li><strong>Always pass auth token as parameter to push functions.</strong> The <code>services/push.ts</code> and <code>services/api/push.ts</code> files use raw <code>fetch()</code> to avoid circular dependency with <code>auth.ts</code>. Never import from <code>services/auth.ts</code> in push code.</li>
   <li><strong>Email prefs are full replacement.</strong> When updating email preferences, always send the complete <code>user_globals</code> + <code>space_prefs</code> object. Omitting keys resets them to defaults.</li>
-  <li><strong>Use <code>UnreadCountsContext</code> for all badge counts.</strong> Don't maintain separate unread state — all screens and components read from this single context. It's updated by response headers, startup batch, and mark-as-read APIs.</li>
-  <li><strong>Sync OS badge after count changes.</strong> After updating <code>unreadNotifications</code> in context, call <code>syncBadgeCount(count)</code> to update the app icon badge. It deduplicates automatically.</li>
+  <li><strong>Use <code>UnreadCountsContext</code> for all badge counts.</strong> Don't maintain separate unread state — all screens and components read from this single context. It's updated by response headers, startup batch, Pusher events, push notification listener, and mark-as-read APIs.</li>
+  <li><strong>Never call <code>syncBadgeCount()</code> directly.</strong> The <code>BadgeSync</code> component in <code>_layout.tsx</code> reactively syncs the OS badge whenever <code>unreadNotifications</code> or <code>unreadMessages</code> changes. Just update the context — the badge follows automatically.</li>
+  <li><strong>OS badge = notifications + messages.</strong> The badge formula is <code>unreadNotifications + unreadMessages</code>. On iOS this sets the app icon badge directly. On Android (Samsung), the badge is tied to pending notifications in the shade — <code>setBadgeCountAsync()</code> is ignored.</li>
   <li><strong>Transform notifications before use.</strong> All raw API notification data must pass through <code>transformNotification()</code>. The API service functions do this automatically — don't transform again in UI code.</li>
   <li><strong>Deep link via <code>route</code> field, not legacy fields.</strong> Push notifications use a string <code>data.route</code> path. In-app notification objects use a <code>route</code> object with <code>{ name, params }</code>. Legacy fields (<code>feed_id</code>, <code>space_slug</code>) are fallbacks only.</li>
   <li><strong>Register device token on every app startup.</strong> Don't skip registration if a token was previously obtained — device tokens can change. Re-registering ensures the backend always has the current token.</li>
