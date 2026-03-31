@@ -516,7 +516,7 @@ const server = http.createServer(async (req, res) => {
         if (color) ai.backgroundColor = color;
       }
       fs.writeFileSync(PATHS.appJson, JSON.stringify(appJson, null, 2) + '\n');
-      jsonResponse(res, { ok: true });
+      jsonResponse(res, { ok: true, results: ['app.json updated'] });
       return;
     }
 

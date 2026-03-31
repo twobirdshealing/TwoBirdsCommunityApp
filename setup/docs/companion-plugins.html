@@ -22,8 +22,8 @@
   <ol>
     <li><a href="#overview">Overview &amp; Classification</a></li>
     <li><a href="#tbc-community-app">TBC Community App</a> <span class="tag required">Core</span></li>
-    <li><a href="#tbc-multi-reactions">TBC Multi Reactions</a> <span class="tag required">Core</span></li>
-    <li><a href="#tbc-starter-theme">TBC Starter Theme</a> <span class="tag required">Core</span></li>
+    <li><a href="#tbc-multi-reactions">TBC Multi Reactions</a> <span class="tag optional">Addon</span></li>
+    <li><a href="#tbc-starter-theme">TBC Starter Theme</a> <span class="tag optional">Addon</span></li>
     <li><a href="#addon-plugins">Add-on Plugins</a> <span class="tag optional">Addon</span></li>
     <li><a href="#app-constants">App-Side URL Constants</a></li>
     <li><a href="#installation">Installation</a></li>
@@ -44,13 +44,13 @@
   <tr>
     <td><strong>tbc-multi-reactions</strong></td>
     <td><code>tbc-multi-reactions/v1</code></td>
-    <td><span class="tag required">Core</span></td>
+    <td><span class="tag optional">Addon</span></td>
     <td>Multi-emoji reactions on posts, comments, and chat messages</td>
   </tr>
   <tr>
     <td><strong>tbc-starter-theme</strong></td>
     <td>&mdash;</td>
-    <td><span class="tag required">Core</span></td>
+    <td><span class="tag optional">Addon</span></td>
     <td>Lightweight WordPress theme optimized for Fluent Community</td>
   </tr>
   <tr>
@@ -62,7 +62,7 @@
 </table>
 
 <div class="callout callout-success">
-  <strong>White-label product includes:</strong> All 3 core items (tbc-community-app, tbc-multi-reactions, tbc-starter-theme). Addon plugins are purchased separately and come with their matching app module.
+  <strong>White-label product includes:</strong> tbc-community-app (the core plugin). All other plugins and the theme are purchased separately as add-ons.
 </div>
 
 <!-- ====================================================================== -->
@@ -73,7 +73,7 @@
 <p>The main bridge plugin. Every app installation requires this. It provides JWT authentication, registration, the batch API, push notifications (via Expo Push API), app configuration delivery, authenticated WebView sessions, deep linking, and response header injection.</p>
 
 <h3>Plugin Structure</h3>
-<p>Version <code>3.48.0</code> &mdash; REST namespace <code>tbc-ca/v1</code>. Classes are autoloaded from <span class="file-path">includes/</span>:</p>
+<p>Version <code>3.49.4</code> &mdash; REST namespace <code>tbc-ca/v1</code>. Classes are autoloaded from <span class="file-path">includes/</span>:</p>
 <table>
   <tr><th>File</th><th>Class</th><th>Purpose</th></tr>
   <tr><td><code>class-core.php</code></td><td>TBC_CA_Core</td><td>Initializes all components, settings management</td></tr>
@@ -215,7 +215,7 @@
 <!-- ====================================================================== -->
 <h2 id="tbc-multi-reactions">3. TBC Multi Reactions</h2>
 
-<p><span class="file-path">companion plugins/tbc-multi-reactions/</span> <span class="tag required">Core</span></p>
+<p><span class="file-path">companion plugins/tbc-multi-reactions/</span> <span class="tag optional">Addon</span></p>
 
 <p>Version <code>1.5.5</code>. Replaces Fluent Community&rsquo;s default single-heart reaction with a multi-emoji reaction system. Supports posts, comments, and chat messages. Reaction icons can be customized in WP admin (PNG, SVG, GIF, WEBP).</p>
 
@@ -240,9 +240,9 @@
 <!-- ====================================================================== -->
 <h2 id="tbc-starter-theme">4. TBC Starter Theme</h2>
 
-<p><span class="file-path">companion plugins/tbc-starter-theme/</span> <span class="tag required">Core</span></p>
+<p><span class="file-path">companion plugins/tbc-starter-theme/</span> <span class="tag optional">Addon</span></p>
 
-<p>Version <code>1.0.51</code>. A lightweight WordPress theme (named &ldquo;Fluent Starter&rdquo;) designed for sites running Fluent Community. It stays out of the way on community portal pages (Fluent Community renders its own Vue.js SPA) while providing clean styling for regular WordPress pages.</p>
+<p>Version <code>1.0.57</code>. A lightweight WordPress theme (named &ldquo;Fluent Starter&rdquo;) designed for sites running Fluent Community. It stays out of the way on community portal pages (Fluent Community renders its own Vue.js SPA) while providing clean styling for regular WordPress pages.</p>
 
 <h3>Key Features</h3>
 <ul>
@@ -316,10 +316,9 @@ const response = await request('/items', { baseUrl: API_BASE });</code></pre>
 
 <h3>For Buyers (White-Label Setup)</h3>
 <ol>
-  <li>Upload the 2 core plugins + theme to <code>wp-content/plugins/</code> and <code>wp-content/themes/</code></li>
-  <li>Activate all plugins and the theme in WordPress admin</li>
-  <li>No configuration needed for tbc-community-app &mdash; it auto-detects Fluent Community</li>
-  <li>Configure tbc-multi-reactions in WP admin to customize reaction icons (optional)</li>
+  <li>Upload tbc-community-app to <code>wp-content/plugins/</code></li>
+  <li>Activate the plugin in WordPress admin</li>
+  <li>No configuration needed &mdash; it auto-detects Fluent Community</li>
 </ol>
 
 <h3>For Addon Plugins</h3>

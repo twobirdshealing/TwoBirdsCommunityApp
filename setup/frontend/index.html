@@ -2270,11 +2270,11 @@ document.addEventListener('alpine:init', () => {
         var res = await this.postJson('/api/config', changes);
         var data = await res.json();
         if (data.ok) {
-          this.showToast('Saved: ' + data.results.join(', '), 'success');
+          this.showToast('Saved: ' + (data.results || []).join(', '), 'success');
           this.dirty = false;
           await this.loadState();
         } else {
-          this.showToast('Save failed: ' + JSON.stringify(data), 'error');
+          this.showToast('Save failed: ' + (data.error || 'unknown'), 'error');
         }
       } catch (err) { this.showToast('Save error: ' + err.message, 'error'); }
     },
@@ -2339,7 +2339,7 @@ bumpVersion(type) {
         var data = await res.json();
         if (data.ok) {
           this.adaptiveIconBg = { mode, color };
-          this.showToast(mode === 'color' ? 'Using solid color background' : 'Using background image', 'success');
+          this.showToast('Saved: ' + (data.results || []).join(', '), 'success');
           this.loadState();
         } else this.showToast('Failed: ' + data.error, 'error');
       } catch (err) { this.showToast('Error: ' + err.message, 'error'); }
@@ -2352,8 +2352,9 @@ bumpVersion(type) {
           splashColorDark: this.brandingColors.splashColorDark,
           notificationColor: this.brandingColors.notificationColor
         });
-        if (res.ok) this.showToast('Branding colors saved', 'success');
-        else this.showToast('Save failed: ' + (res.error || 'unknown'), 'error');
+        var data = await res.json();
+        if (data.ok) this.showToast('Saved: ' + (data.results || []).join(', '), 'success');
+        else this.showToast('Save failed: ' + (data.error || 'unknown'), 'error');
       } catch (err) { this.showToast('Save error: ' + err.message, 'error'); }
     },
 
