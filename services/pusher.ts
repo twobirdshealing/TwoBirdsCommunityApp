@@ -55,6 +55,16 @@ let connectedAt: number = 0;
 const messageHandlers: Set<MessageHandler> = new Set();
 const reactionHandlers: Set<ReactionHandler> = new Set();
 
+// Connection state callback — single consumer (PusherContext owns this)
+let connectionStateCallback: ((connected: boolean) => void) | null = null;
+let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+
+export function setConnectionStateCallback(cb: ((connected: boolean) => void) | null): void {
+  connectionStateCallback = cb;
+}
+
 // -----------------------------------------------------------------------------
 // Initialize Pusher Connection
 // -----------------------------------------------------------------------------
@@ -148,10 +158,18 @@ export async function initializePusher(userId: number, socketConfig: SocketConfi
     pusherClient.connection.bind('connected', () => {
       log('Connected to Pusher, socket_id:', pusherClient?.connection.socket_id);
       connectedAt = Date.now();
+      reconnectAttempts = 0;
+      connectionStateCallback?.(true);
     });
 
     pusherClient.connection.bind('disconnected', () => {
       log('Disconnected from Pusher');
+      connectionStateCallback?.(false);
+    });
+
+    pusherClient.connection.bind('unavailable', () => {
+      log('Pusher connection unavailable');
+      connectionStateCallback?.(false);
     });
 
     pusherClient.connection.bind('error', (error: any) => {
@@ -170,6 +188,19 @@ export async function initializePusher(userId: number, socketConfig: SocketConfi
 
     userChannel.bind('pusher:subscription_error', (error: any) => {
       log('Subscription error:', error);
+      // Channel auth can fail after auto-reconnect (stale token) — force full reconnect
+      // Exponential backoff with cap to prevent infinite loops on permanent auth failure
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        log('Max reconnect attempts reached, giving up');
+        return;
+      }
+      reconnectAttempts++;
+      const delay = Math.min(5000 * Math.pow(2, reconnectAttempts - 1), 60_000);
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      reconnectTimeout = setTimeout(() => {
+        reconnectTimeout = null;
+        reconnectPusher();
+      }, delay);
     });
 
     // Dev-only: catch ALL events on this channel for diagnostics
@@ -207,6 +238,12 @@ export async function initializePusher(userId: number, socketConfig: SocketConfi
 
 export function disconnectPusher(): void {
   log('Disconnecting Pusher');
+
+  if (reconnectTimeout) {
+    clearTimeout(reconnectTimeout);
+    reconnectTimeout = null;
+  }
+  reconnectAttempts = 0;
 
   if (userChannel && currentUserId) {
     const channelName = `private-chat_user_${currentUserId}`;

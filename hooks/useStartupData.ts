@@ -23,7 +23,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { batchRequest, findBatchResponse } from '@/services/api/batch';
-import { syncBadgeCount } from '@/services/push';
 import { getJSON } from '@/services/storage';
 import { FEATURES_CACHE_KEY } from '@/utils/featureFlags';
 import { createLogger } from '@/utils/logger';
@@ -144,7 +143,6 @@ export function useStartupData({
       );
       const notifCount = notifData?.unread_count ?? 0;
       onUnreadNotifications(notifCount);
-      syncBadgeCount(notifCount);
 
       // 4. Message unread count (response is { unread_threads: Record<string, number> })
       const chatData = findBatchResponse<{ unread_threads?: Record<string, number> }>(

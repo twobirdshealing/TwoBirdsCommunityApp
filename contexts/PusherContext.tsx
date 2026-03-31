@@ -13,6 +13,7 @@ import {
   disconnectPusher,
   initializePusher,
   reconnectPusher,
+  setConnectionStateCallback,
   MessageHandler,
   onNewMessage,
   onReaction,
@@ -54,6 +55,16 @@ export function PusherProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuth();
   const { socketConfig } = useAppConfig();
   const [isConnected, setIsConnected] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Connection state callback — tracks real WebSocket state (connected/disconnected)
+  // so isConnected reflects mid-foreground drops, not just init/resume transitions.
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    setConnectionStateCallback(setIsConnected);
+    return () => setConnectionStateCallback(null);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Connect/Disconnect based on auth + server socket config

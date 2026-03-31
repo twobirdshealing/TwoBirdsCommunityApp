@@ -20,7 +20,7 @@ import { NotificationCard } from '@/components/notification/NotificationCard';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { notificationsApi } from '@/services/api/notifications';
-import { syncBadgeCount } from '@/services/push';
+import { useUnreadCounts } from '@/contexts/UnreadCountsContext';
 import { AppNotification } from '@/types/notification';
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
@@ -47,6 +47,7 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
+  const { setUnreadNotifications } = useUnreadCounts();
 
   // State
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
@@ -178,7 +179,7 @@ export default function NotificationsScreen() {
                 updateNotifications(items =>
                   items.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
                 );
-                syncBadgeCount(0);
+                setUnreadNotifications(0);
               }
             } catch (err) {
               Alert.alert('Error', 'Failed to mark notifications as read');
@@ -206,7 +207,7 @@ export default function NotificationsScreen() {
           )
         );
         if (response.success) {
-          syncBadgeCount(response.data.unread_count);
+          setUnreadNotifications(response.data.unread_count);
         }
       } catch (err) {
         // Silent fail - still navigate
@@ -299,7 +300,7 @@ export default function NotificationsScreen() {
         )
       );
       if (response.success) {
-        syncBadgeCount(response.data.unread_count);
+        setUnreadNotifications(response.data.unread_count);
       }
     } catch (err) {
       Alert.alert('Error', 'Failed to mark as read');

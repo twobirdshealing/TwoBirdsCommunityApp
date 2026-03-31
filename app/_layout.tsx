@@ -159,7 +159,6 @@ function RootLayoutNav() {
     return addResponseHeaderListener((data) => {
       if (data.unreadNotifications !== undefined) {
         setUnreadNotifications(data.unreadNotifications);
-        syncBadgeCount(data.unreadNotifications);
       }
       if (data.unreadMessages !== undefined) {
         setUnreadMessages(data.unreadMessages);
@@ -404,10 +403,25 @@ function RootLayoutNav() {
             a file stub in app/ — no entry here required. */}
 
         </Stack>
+        <BadgeSync />
         <StatusBar style={isDark ? 'light' : 'dark'} />
       </View>
     </NavThemeProvider>
   );
+}
+
+// -----------------------------------------------------------------------------
+// Badge Sync — isolated component so count changes don't re-render the layout
+// -----------------------------------------------------------------------------
+
+function BadgeSync() {
+  const { unreadNotifications, unreadMessages } = useUnreadCounts();
+
+  useEffect(() => {
+    syncBadgeCount(unreadNotifications + unreadMessages);
+  }, [unreadNotifications, unreadMessages]);
+
+  return null;
 }
 
 // -----------------------------------------------------------------------------

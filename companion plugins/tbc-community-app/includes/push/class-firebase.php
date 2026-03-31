@@ -420,17 +420,32 @@ class TBC_CA_Push_Firebase {
     }
 
     /**
-     * Get unread notification count for a user (for app icon badge)
+     * Get combined unread count for a user (notifications + message threads)
+     * Matches the app-side badge formula: unreadNotifications + unreadMessages
      *
      * @param int $user_id
      * @return int
      */
     private function get_unread_count($user_id) {
         global $wpdb;
+
+        // Unread notifications
         $table = $wpdb->prefix . 'fcom_notification_users';
-        return (int) $wpdb->get_var($wpdb->prepare(
+        $notif_count = (int) $wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM {$table} WHERE user_id = %d AND is_read = 0 AND object_type = 'notification'",
             $user_id
         ));
+
+        // Unread message threads (same helper used by X-TBC-Unread-Messages header)
+        $msg_count = 0;
+        if (class_exists('FluentCommunity\Modules\Messaging\Services\ChatHelper')) {
+            try {
+                $msg_count = (int) \FluentCommunity\Modules\Messaging\Services\ChatHelper::getUnreadThreadCounts($user_id);
+            } catch (\Exception $e) {
+                error_log('[TBC Push] Failed to get unread message count: ' . $e->getMessage());
+            }
+        }
+
+        return $notif_count + $msg_count;
     }
 }

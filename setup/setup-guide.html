@@ -566,23 +566,13 @@
   </div>
   <p class="prereq-card-desc">Push notifications &mdash; alerts users about new posts, replies, chat messages. Skip if you disable Push Notifications in wp-admin &rarr; TBC Community App &rarr; Features.</p>
   <details>
-    <summary>Walkthrough: Create a Firebase project</summary>
+    <summary>Don't have a Firebase account yet?</summary>
     <div class="details-content">
       <ol>
-        <li>Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> and sign in with your Google account.</li>
-        <li>Click <strong>Create a project</strong> (or <strong>Add project</strong>). Give it a name like your app name.</li>
-        <li>You can disable Google Analytics if you don't need it &mdash; the app only uses Firebase for push notifications.</li>
-        <li>Once the project is created, click <strong>Add app</strong>:
-          <ul>
-            <li>Add an <strong>Android app</strong> &mdash; use your Android package name (from <code>app.json</code> &rarr; <code>android.package</code>). Download <code>google-services.json</code> and place it in your project root.</li>
-            <li>Add an <strong>iOS app</strong> &mdash; use your iOS bundle identifier (from <code>app.json</code> &rarr; <code>ios.bundleIdentifier</code>). Download <code>GoogleService-Info.plist</code> and place it in your project root.</li>
-          </ul>
-        </li>
-        <li>Enable <strong>Cloud Messaging</strong> under Project Settings &rarr; Cloud Messaging. Make sure the Firebase Cloud Messaging API (V1) is enabled.</li>
+        <li>Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> and sign in with your Google account (or create one).</li>
+        <li>Firebase is free on the Spark plan &mdash; no billing setup needed. The app only uses Firebase Cloud Messaging for push notifications.</li>
       </ol>
-      <div class="callout" style="margin-top: 12px;">
-        <strong>Both config files are required.</strong> The app needs <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS) in the project root for push notifications to work on both platforms.
-      </div>
+      <p>Once you have an account, the <a href="#step-push-notifications">Push Notifications step</a> in the setup guide walks you through creating a project and downloading the config files.</p>
     </div>
   </details>
 </div>
@@ -960,33 +950,86 @@
 </div>
 
 <!-- Step 8: Push Notifications -->
-<div class="step-card">
+<div class="step-card" id="step-push-notifications">
   <div class="step-header">
     <span class="step-title">Push Notifications</span>
   </div>
   <div class="step-body">
     <p class="prereq-ref">Requires: <a href="#prereq-firebase" class="prereq-badge firebase">Firebase</a></p>
     <p>
-      Drop in your Firebase config files to enable push notifications. Both files are required &mdash; the dashboard shows a red indicator for each missing file and a green check once uploaded.
+      Push notifications require a Firebase project with two config files &mdash; one for Android and one for iOS. The dashboard shows a red indicator for each missing file and a green checkmark once uploaded.
     </p>
     <img class="step-img" src="images/Push Notifications.webp" alt="Push Notifications card showing Android and iOS file upload areas">
 
-    <table class="field-ref-table" style="margin-top: 16px;">
-      <tr><td>google-services.json</td><td>Android config. Download from your Firebase project: <strong>Project Settings &rarr; General &rarr; Your Apps &rarr; Android app</strong>.</td></tr>
-      <tr><td>GoogleService-Info.plist</td><td>iOS config. Download from your Firebase project: <strong>Project Settings &rarr; General &rarr; Your Apps &rarr; iOS app</strong>.</td></tr>
-    </table>
-
-    <details style="margin-top: 12px;">
-      <summary>Haven't set up Firebase yet?</summary>
+    <details style="margin-top: 16px;">
+      <summary>1. Create a Firebase project</summary>
       <div class="details-content">
         <ol>
-          <li>Go to the <a href="https://console.firebase.google.com" target="_blank">Firebase Console</a> and create a new project (or use an existing one)</li>
-          <li>Add an <strong>Android app</strong> &mdash; use your Android package name from the <strong>App Identity</strong> card. Download <code>google-services.json</code></li>
-          <li>Add an <strong>iOS app</strong> &mdash; use your iOS Bundle ID from the <strong>App Identity</strong> card. Download <code>GoogleService-Info.plist</code></li>
-          <li>Drop both files into the dashboard upload areas</li>
+          <li>Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> and sign in with your Google account.</li>
+          <li>Click <strong>Create a project</strong> (or <strong>Add project</strong>).</li>
+          <li>Enter a project name &mdash; use your app name (e.g. &ldquo;My Community App&rdquo;). Firebase will generate a project ID below the name field automatically.</li>
+          <li>On the Google Analytics step, <strong>disable</strong> the toggle. The app only uses Firebase for push notifications &mdash; Analytics is not needed and adds unnecessary complexity.</li>
+          <li>Click <strong>Create project</strong> and wait for it to finish provisioning.</li>
+        </ol>
+        <img class="step-img" src="images/Push Notifications 2.webp" alt="Firebase project creation — enter your app name as the project name">
+      </div>
+    </details>
+
+    <details style="margin-top: 8px;">
+      <summary>2. Add the Android app</summary>
+      <div class="details-content">
+        <ol>
+          <li>From your Firebase project dashboard, click <strong>Add app</strong> and select the <strong>Android</strong> icon.</li>
+          <li>For <strong>Android package name</strong>, enter the same package name you set in the <strong>App Identity</strong> card (e.g. <code>com.company.appname</code>). This must match exactly.</li>
+          <li>For <strong>App nickname</strong>, enter your app name followed by &ldquo;Android&rdquo; (e.g. &ldquo;My Community App Android&rdquo;). This helps you tell the two apps apart in Firebase later.</li>
+          <li>Click <strong>Register app</strong>.</li>
+          <li>On the next step (<strong>Download and then add config file</strong>), click <strong>Download google-services.json</strong>. Save this file somewhere you can find it.</li>
+          <li>Click <strong>Next</strong> to skip through the remaining steps (<strong>Add Firebase SDK</strong> and <strong>Next steps</strong>), then click <strong>Continue to console</strong>. The app already has the Firebase SDK built in &mdash; you do not need to edit any Gradle files or add any code.</li>
+        </ol>
+        <img class="step-img" src="images/Push Notifications 3.webp" alt="Register Android app in Firebase — enter your package name and app nickname">
+      </div>
+    </details>
+
+    <details style="margin-top: 8px;">
+      <summary>3. Add the iOS app</summary>
+      <div class="details-content">
+        <ol>
+          <li>Back on the project dashboard, click <strong>Add app</strong> again and select the <strong>iOS</strong> icon.</li>
+          <li>For <strong>Apple bundle ID</strong>, enter your iOS bundle identifier from the <strong>App Identity</strong> card (e.g. <code>com.company.appname</code>). This must match exactly.</li>
+          <li>For <strong>App nickname</strong>, enter your app name followed by &ldquo;iOS&rdquo; (e.g. &ldquo;My Community App iOS&rdquo;).</li>
+          <li>For <strong>App Store ID</strong>, enter your numeric Apple ID if you already have one &mdash; it&rsquo;s the same <strong>App Store Connect ID</strong> from the previous step. Find it in <a href="https://appstoreconnect.apple.com" target="_blank">App Store Connect</a> &rarr; your app &rarr; General &rarr; App Information &rarr; <strong>Apple ID</strong>. If you haven&rsquo;t created your app in App Store Connect yet, leave this blank &mdash; you can add it later.</li>
+          <li>Click <strong>Register app</strong>.</li>
+          <li>On the next step, click <strong>Download GoogleService-Info.plist</strong>. Save this file.</li>
+          <li>Click <strong>Next</strong> to skip through the remaining steps, then click <strong>Continue to console</strong>. Same as Android &mdash; the SDK is already built into the app.</li>
+        </ol>
+        <img class="step-img" src="images/Push Notifications 4.webp" alt="Register iOS app in Firebase — enter your bundle ID and app nickname">
+      </div>
+    </details>
+
+    <details style="margin-top: 8px;">
+      <summary>4. Upload to the dashboard</summary>
+      <div class="details-content">
+        <ol>
+          <li>Back in the setup dashboard, find the <strong>Push Notifications</strong> card.</li>
+          <li>Drag and drop <code>google-services.json</code> into the <strong>Android</strong> upload area. The indicator will turn green with a checkmark.</li>
+          <li>Drag and drop <code>GoogleService-Info.plist</code> into the <strong>iOS</strong> upload area. The indicator will turn green with a checkmark.</li>
         </ol>
       </div>
     </details>
+
+    <details style="margin-top: 8px;">
+      <summary>5. Enable Cloud Messaging</summary>
+      <div class="details-content">
+        <ol>
+          <li>In the Firebase console, go to <strong>Project Settings</strong> (gear icon) &rarr; <strong>Cloud Messaging</strong> tab.</li>
+          <li>Make sure <strong>Firebase Cloud Messaging API (V1)</strong> is enabled. If it shows &ldquo;Disabled&rdquo;, click the three-dot menu and enable it.</li>
+        </ol>
+      </div>
+    </details>
+
+    <div class="callout" style="margin-top: 12px;">
+      <strong>Both config files are required.</strong> The app needs <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS) for push notifications to work on both platforms.
+    </div>
   </div>
 </div>
 
