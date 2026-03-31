@@ -480,6 +480,57 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (pathname.startsWith('/api/upload/') && req.method === 'DELETE') {
+      const target = pathname.replace('/api/upload/', '');
+      let destPath;
+      if (target === 'firebase-android') {
+        destPath = PATHS.googleServicesJson;
+      } else if (target === 'firebase-ios') {
+        destPath = PATHS.googleServiceInfoPlist;
+      } else if (target === 'google-play-key') {
+        destPath = PATHS.googlePlayKeyFile;
+        const easJson = readJsonSafe(PATHS.easJson);
+        if (easJson?.submit?.production?.android?.serviceAccountKeyPath) {
+          delete easJson.submit.production.android.serviceAccountKeyPath;
+          fs.writeFileSync(PATHS.easJson, JSON.stringify(easJson, null, 2) + '\n');
+        }
+      } else {
+        jsonResponse(res, { error: 'Unknown upload target' }, 400);
+        return;
+      }
+      if (fs.existsSync(destPath)) {
+        fs.unlinkSync(destPath);
+        jsonResponse(res, { ok: true, deleted: target });
+      } else {
+        jsonResponse(res, { ok: true, deleted: target, note: 'File did not exist' });
+      }
+      return;
+    }
+
+    if (pathname === '/api/adaptive-icon-bg' && req.method === 'POST') {
+      const body = await readBody(req);
+      const { mode, color } = JSON.parse(body);
+      const appJson = readJsonSafe(PATHS.appJson);
+      if (!appJson?.expo?.android?.adaptiveIcon) {
+        jsonResponse(res, { error: 'adaptiveIcon not found in app.json' }, 400);
+        return;
+      }
+      const ai = appJson.expo.android.adaptiveIcon;
+      if (mode === 'color') {
+        delete ai.backgroundImage;
+        ai.backgroundColor = color || '#FFFFFF';
+        // Remove the bg image file if it exists
+        const bgPath = path.join(PATHS.assetsDir, 'app_icon_android_adaptive_bg.png');
+        if (fs.existsSync(bgPath)) fs.unlinkSync(bgPath);
+      } else {
+        ai.backgroundImage = './assets/images/app_icon_android_adaptive_bg.png';
+        if (color) ai.backgroundColor = color;
+      }
+      fs.writeFileSync(PATHS.appJson, JSON.stringify(appJson, null, 2) + '\n');
+      jsonResponse(res, { ok: true });
+      return;
+    }
+
     if (pathname.startsWith('/api/asset/') && req.method === 'GET') {
       const assetName = decodeURIComponent(pathname.replace('/api/asset/', ''));
       serveStatic(res, path.join(PATHS.assetsDir, path.basename(assetName)));

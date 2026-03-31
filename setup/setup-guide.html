@@ -782,7 +782,11 @@
 <div class="guide-section" id="sec-setup">
 <h2 id="setup">Config Tab</h2>
 
-<p>The Config tab is where you make the app yours. Work through each card top to bottom, then hit <strong>Save Changes</strong> &mdash; everything gets written to the right files automatically.</p>
+<p>The Config tab is where you make the app yours. Work through each card top to bottom.</p>
+
+<div class="callout callout-info">
+  <strong>Save as you go.</strong> The floating <strong>Save Changes</strong> bar appears whenever you have unsaved changes. Click it any time &mdash; the dashboard writes your config to the right files (<code>app.json</code>, <code>eas.json</code>, <code>app.config.ts</code>, <code>constants/config.ts</code>, <code>package.json</code>) in one go. You don&rsquo;t need to wait until the end &mdash; save after each card if you like.
+</div>
 
 <!-- App Identity -->
 <div class="step-card">
@@ -1014,6 +1018,7 @@
           <li>Drag and drop <code>google-services.json</code> into the <strong>Android</strong> upload area. The indicator will turn green with a checkmark.</li>
           <li>Drag and drop <code>GoogleService-Info.plist</code> into the <strong>iOS</strong> upload area. The indicator will turn green with a checkmark.</li>
         </ol>
+        <img class="step-img" src="images/Push Notifications 5.webp" alt="Dashboard Push Notifications card with both Firebase files uploaded — green checkmarks">
       </div>
     </details>
 
@@ -1021,9 +1026,14 @@
       <summary>5. Enable Cloud Messaging</summary>
       <div class="details-content">
         <ol>
-          <li>In the Firebase console, go to <strong>Project Settings</strong> (gear icon) &rarr; <strong>Cloud Messaging</strong> tab.</li>
-          <li>Make sure <strong>Firebase Cloud Messaging API (V1)</strong> is enabled. If it shows &ldquo;Disabled&rdquo;, click the three-dot menu and enable it.</li>
+          <li>In the Firebase console, click the <strong>gear icon</strong> next to &ldquo;Project Overview&rdquo; and select <strong>Project settings</strong>.</li>
+          <li>Click the <strong>Cloud Messaging</strong> tab.</li>
+          <li>Look for <strong>Firebase Cloud Messaging API (V1)</strong> &mdash; it should show <strong>Enabled</strong> with a green checkmark. If it&rsquo;s already enabled, you&rsquo;re done.</li>
+          <li>If it shows <strong>Disabled</strong>, click the <strong>three-dot menu</strong> (&#8942;) on the right side of that row, then click <strong>Enable</strong>. This may take you to the Google Cloud Console &mdash; click <strong>Enable</strong> there and return to Firebase.</li>
         </ol>
+        <div class="callout callout-info" style="margin-top: 8px;">
+          <strong>What about the rest of this page?</strong> You&rsquo;ll see sections for APNs Authentication Keys, APNs Certificates, and Web Push certificates &mdash; <strong>leave these all blank</strong>. The app sends push notifications through Expo&rsquo;s push service, which handles the APNs (Apple) delivery using its own credentials. Firebase is only used for Android delivery via FCM. You also don&rsquo;t need the <strong>Cloud Messaging API (Legacy)</strong> &mdash; that&rsquo;s the old deprecated API.
+        </div>
       </div>
     </details>
 
@@ -1034,7 +1044,7 @@
 </div>
 
 <div class="callout callout-success">
-  <strong>Config tab complete!</strong> Click <strong>Save Changes</strong> &mdash; the dashboard writes everything to the right files (<code>app.json</code>, <code>eas.json</code>, <code>app.config.ts</code>, <code>constants/config.ts</code>, <code>package.json</code>) in one go.
+  <strong>Config tab complete!</strong> Make sure you&rsquo;ve saved your changes before moving on to the next tab.
 </div>
 
 </div><!-- /sec-setup -->
@@ -1042,22 +1052,42 @@
 <div class="guide-section" id="sec-branding-assets">
 <h2 id="branding-assets">Assets Tab</h2>
 
-<p>Replace these files in <code>assets/images/</code>:</p>
+<p>The Assets tab shows all your branding images as a visual grid. Click any asset to upload a replacement &mdash; the dashboard shows a preview of each image with its current dimensions and file size.</p>
 
-<table>
-  <tr><th>File</th><th>Purpose</th><th>Notes</th></tr>
-  <tr><td><code>app_icon_ios.png</code></td><td>iOS app icon</td><td>1024x1024, no transparency</td></tr>
-  <tr><td><code>app_icon_android_adaptive_fg.png</code></td><td>Android adaptive icon foreground</td><td>Must work with <code>adaptiveIcon.backgroundColor</code> in app.json. Also used as Play Store listing icon.</td></tr>
-  <tr><td><code>app_icon_android_adaptive_bg.png</code></td><td>Android adaptive icon background</td><td>Optional — use solid color in app.json instead</td></tr>
-  <tr><td><code>app_icon_android_notification.png</code></td><td>Android notification icon</td><td>Monochrome, transparent background</td></tr>
-  <tr><td><code>splash_screen_img.png</code></td><td>Splash screen logo</td><td>Centered on splash backgroundColor</td></tr>
-  <tr><td><code>login_background_img.png</code></td><td>Login screen background</td><td>Full-screen background image</td></tr>
-  <tr><td><code>login_logo.png</code></td><td>Login screen logo (fallback)</td><td>Overridden by server-synced logo if available</td></tr>
-</table>
+<img class="step-img" src="images/Branding Assets.webp" alt="Branding Assets card in the dashboard showing the asset grid with previews">
 
-<div class="callout">
-  <strong>Server-synced branding:</strong> The login logo is automatically pulled from your Fluent Community site at login.
-  The static <code>login_logo.png</code> is a fallback for first launch before server branding is cached.
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-title">Branding Assets</span>
+  </div>
+  <div class="step-body">
+    <table>
+      <tr><th>Asset</th><th>Purpose</th><th>Notes</th></tr>
+      <tr><td><code>app_icon_ios.png</code></td><td>iOS app icon</td><td>1024&times;1024, no transparency, no rounded corners (iOS adds them)</td></tr>
+      <tr><td><code>app_icon_android_adaptive_fg.png</code></td><td>Android adaptive icon foreground</td><td>1024&times;1024. Keep your logo centered in the inner 66% &mdash; Android crops the edges into circles/squircles. Also used as the Play Store listing icon.</td></tr>
+      <tr><td><code>app_icon_android_adaptive_bg.png</code></td><td>Android adaptive icon background</td><td>Optional &mdash; you can use a solid <code>adaptiveIcon.backgroundColor</code> in app.json instead</td></tr>
+      <tr><td><code>app_icon_android_notification.png</code></td><td>Android notification icon</td><td>96&times;96. Must be monochrome (single color + transparent background) &mdash; Android tints it white</td></tr>
+      <tr><td><code>splash_screen_img.png</code></td><td>Splash screen logo</td><td>Centered on the splash <code>backgroundColor</code> from app.json. Keep it simple &mdash; this shows for ~1&ndash;2 seconds on launch.</td></tr>
+      <tr><td><code>login_background_img.png</code></td><td>Login screen background</td><td>Full-screen background image behind the login form</td></tr>
+      <tr><td><code>login_logo.png</code></td><td>Login screen logo (fallback)</td><td>Only used on first launch before server branding is cached</td></tr>
+    </table>
+
+    <div class="callout callout-info" style="margin-top: 12px;">
+      <strong>Server-synced branding:</strong> The login logo is automatically pulled from your Fluent Community site after the first login. The static <code>login_logo.png</code> is a fallback for the very first launch before server branding is cached.
+    </div>
+
+    <details style="margin-top: 12px;">
+      <summary>Tips for Android adaptive icons</summary>
+      <div class="details-content">
+        <p>Android uses <a href="https://developer.android.com/develop/ui/views/launch/icon_design_adaptive" target="_blank">adaptive icons</a> &mdash; a foreground layer on top of a background layer. Different devices crop the combined result into different shapes (circle, squircle, rounded square).</p>
+        <ul>
+          <li>Your foreground image should have a <strong>transparent background</strong> with the logo centered in the inner 66% of the canvas.</li>
+          <li>The background can be a separate image or a solid color set via <code>adaptiveIcon.backgroundColor</code> in <code>app.json</code>.</li>
+          <li>Use Android Studio&rsquo;s <a href="https://developer.android.com/studio/write/create-app-icons" target="_blank">Image Asset Studio</a> or <a href="https://icon.kitchen" target="_blank">icon.kitchen</a> to preview how your icon looks in different mask shapes.</li>
+        </ul>
+      </div>
+    </details>
+  </div>
 </div>
 
 </div><!-- /sec-branding-assets -->

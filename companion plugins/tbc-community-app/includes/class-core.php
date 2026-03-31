@@ -206,4 +206,58 @@ class TBC_CA_Core {
         self::$settings_cache = null;
         return update_option('tbc_ca_settings', $settings);
     }
+
+    // ─── Shared queries ──────────────────────────────────────────────────
+
+    private static $messaging_tables_exist = null;
+
+    /**
+     * Count unread message threads for a user.
+     * Direct DB query — same logic as ChatHelper::getUnreadThreadCounts but
+     * works on all routes (ChatHelper is lazy-loaded by Fluent Messaging).
+     * Result is cached per-request via wp_cache to avoid repeated JOINs.
+     */
+    public static function get_unread_message_count($user_id) {
+        $cache_key = "unread_msg_count_{$user_id}";
+        $cached = wp_cache_get($cache_key, 'tbc_ca');
+        if ($cached !== false) {
+            return (int) $cached;
+        }
+
+        global $wpdb;
+
+        // Check table existence once per process
+        if (self::$messaging_tables_exist === null) {
+            $table = $wpdb->prefix . 'fcom_chat_thread_users';
+            self::$messaging_tables_exist = (bool) $wpdb->get_var("SHOW TABLES LIKE '{$table}'");
+        }
+        if (!self::$messaging_tables_exist) {
+            return 0;
+        }
+
+        $tu  = $wpdb->prefix . 'fcom_chat_thread_users';
+        $t   = $wpdb->prefix . 'fcom_chat_threads';
+        $m   = $wpdb->prefix . 'fcom_chat_messages';
+        $xp  = $wpdb->prefix . 'fcom_xprofile';
+
+        $count = (int) $wpdb->get_var($wpdb->prepare("
+            SELECT COUNT(*)
+            FROM {$tu} AS tu
+            INNER JOIN {$t} AS t ON tu.thread_id = t.id
+            WHERE tu.user_id = %d
+            AND tu.status = 'active'
+            AND t.status = 'active'
+            AND EXISTS (
+                SELECT 1
+                FROM {$m} AS m
+                INNER JOIN {$xp} AS xp ON m.user_id = xp.user_id
+                WHERE m.thread_id = tu.thread_id
+                AND (m.id > tu.last_seen_message_id OR tu.last_seen_message_id IS NULL)
+                AND xp.status = 'active'
+            )
+        ", $user_id));
+
+        wp_cache_set($cache_key, $count, 'tbc_ca');
+        return $count;
+    }
 }

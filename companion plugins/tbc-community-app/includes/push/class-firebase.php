@@ -436,15 +436,8 @@ class TBC_CA_Push_Firebase {
             $user_id
         ));
 
-        // Unread message threads (same helper used by X-TBC-Unread-Messages header)
-        $msg_count = 0;
-        if (class_exists('FluentCommunity\Modules\Messaging\Services\ChatHelper')) {
-            try {
-                $msg_count = (int) \FluentCommunity\Modules\Messaging\Services\ChatHelper::getUnreadThreadCounts($user_id);
-            } catch (\Exception $e) {
-                error_log('[TBC Push] Failed to get unread message count: ' . $e->getMessage());
-            }
-        }
+        // Unread message threads
+        $msg_count = TBC_CA_Core::get_unread_message_count($user_id);
 
         return $notif_count + $msg_count;
     }

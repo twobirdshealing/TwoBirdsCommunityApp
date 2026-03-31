@@ -111,18 +111,10 @@ class TBC_CA_Response_Headers {
     }
 
     /**
-     * Count unread message threads via Fluent Messaging's ChatHelper.
-     * Uses EXISTS subquery — efficient early exit per thread.
+     * Count unread message threads for a user.
      */
     private function get_unread_message_count($user_id) {
-        if (!class_exists('FluentCommunity\Modules\Messaging\Services\ChatHelper')) {
-            return 0;
-        }
-        try {
-            return (int) \FluentCommunity\Modules\Messaging\Services\ChatHelper::getUnreadThreadCounts($user_id);
-        } catch (\Exception $e) {
-            return 0;
-        }
+        return TBC_CA_Core::get_unread_message_count($user_id);
     }
 
     /**

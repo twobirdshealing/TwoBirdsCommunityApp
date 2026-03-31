@@ -76,6 +76,13 @@ function readProjectState() {
     state.assets.push({ ...asset, exists, sizeKB: exists ? fileSizeKB(fullPath) : 0 });
   }
 
+  // --- Adaptive icon background mode ---
+  const adaptiveIcon = appJson?.expo?.android?.adaptiveIcon || {};
+  state.adaptiveIconBg = {
+    mode: adaptiveIcon.backgroundImage ? 'image' : 'color',
+    color: adaptiveIcon.backgroundColor || '#FFFFFF',
+  };
+
   // --- Firebase ---
   state.firebase.android = { exists: fileExists(PATHS.googleServicesJson), file: 'google-services.json' };
   if (state.firebase.android.exists) {

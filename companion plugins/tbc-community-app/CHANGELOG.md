@@ -2,8 +2,11 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.49.4
+- **Fix unread message count always 0**: Replaced ChatHelper dependency with direct DB query for unread message thread count. ChatHelper is lazy-loaded by Fluent Messaging and not available on non-messaging REST routes (ticker, batch, etc.), causing `X-TBC-Unread-Messages` header to always return 0. Direct query uses same SQL as ChatHelper internally. Fixed in both response headers and push badge calculation.
+
 ## v3.49.3
-- **Fix push notification badge count**: Badge now includes unread notifications + unread message threads (was notifications only). Matches the app-side badge formula so the app icon count stays consistent whether set by push payload or client-side sync. Uses Fluent Community ChatHelper for message thread count with graceful fallback if messaging is unavailable.
+- **Fix push notification badge count**: Badge now includes unread notifications + unread message threads (was notifications only). Matches the app-side badge formula so the app icon count stays consistent whether set by push payload or client-side sync.
 
 ## v3.49.2
 - **Add Privacy Policy to core visibility elements**: Privacy Policy launcher item can now be hidden per role via UI Visibility. Fixed "Church Directory" label to generic "Directory".
