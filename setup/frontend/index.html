@@ -61,7 +61,10 @@
   .header .subtitle { color: var(--text-secondary); font-size: 13px; margin-left: 12px; }
   .header-right { display: flex; align-items: center; gap: 12px; }
   .version-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; background: rgba(88,166,255,0.1); color: var(--accent); border: 1px solid rgba(88,166,255,0.25); white-space: nowrap; }
-  .server-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border); }
+  .server-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 20px; font-size: 12px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border); }
+  .server-status-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 14px; padding: 2px 4px; line-height: 1; display: inline-flex; align-items: center; border-radius: 4px; transition: all 0.15s; }
+  .server-status-btn:hover { color: var(--accent); background: var(--bg-hover); }
+  .server-status-btn-danger:hover { color: var(--red, #ef4444); }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; }
   .status-dot.connected { background: var(--green); box-shadow: 0 0 4px var(--green); }
   .status-dot.disconnected { background: var(--red, #ef4444); }
@@ -476,10 +479,13 @@
     <span class="server-status" x-bind:title="serverConnected ? 'Server connected' : 'Server stopped'">
       <span class="status-dot" x-bind:class="serverConnected ? 'connected' : 'disconnected'"></span>
       <span x-text="serverConnected ? 'Connected' : 'Server stopped — run: npm run dashboard'"></span>
+      <button class="server-status-btn" x-show="serverConnected" x-on:click="location.reload()" title="Refresh dashboard">
+        <ion-icon name="refresh-outline"></ion-icon>
+      </button>
+      <button class="server-status-btn server-status-btn-danger" x-show="serverConnected" x-on:click="stopServer()" title="Stop dashboard server">
+        <ion-icon name="stop-outline"></ion-icon>
+      </button>
     </span>
-    <button class="btn-icon" x-show="serverConnected" x-on:click="stopServer()" title="Stop dashboard server">
-      <ion-icon name="stop-outline"></ion-icon>
-    </button>
     <a class="btn-icon btn-help" href="docs/index.html" target="_blank" title="Open Documentation">
       <ion-icon name="book-outline"></ion-icon>
     </a>
@@ -1026,9 +1032,7 @@
             </span>
             <!-- Color swatch for adaptive bg in color mode -->
             <template x-if="asset.file === 'app_icon_android_adaptive_bg.png' && adaptiveIconBg.mode === 'color'">
-              <div class="asset-thumb" style="display:flex;align-items:center;justify-content:center" x-bind:style="'background:' + adaptiveIconBg.color">
-                <ion-icon name="color-palette-outline" style="font-size:32px;color:rgba(0,0,0,0.3)"></ion-icon>
-              </div>
+              <div class="asset-thumb" x-bind:style="'background:' + adaptiveIconBg.color"></div>
             </template>
             <!-- Normal image preview (skip for adaptive bg in color mode) -->
             <template x-if="!(asset.file === 'app_icon_android_adaptive_bg.png' && adaptiveIconBg.mode === 'color') && asset.exists">
@@ -1061,6 +1065,60 @@
         <input type="color" x-ref="adaptiveBgColorPicker" style="position:absolute;visibility:hidden"
                x-bind:value="adaptiveIconBg.color"
                x-on:input="setAdaptiveIconBg('color', $event.target.value)">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3>Branding Colors</h3><span class="badge" style="color:var(--text-muted)">app.json</span></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">These colors are baked into the native build. Changes require a new build to take effect.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+        <!-- Splash Light -->
+        <div class="field">
+          <label>Splash Background (Light)</label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <div x-bind:style="'width:36px;height:36px;border-radius:6px;border:1px solid var(--border);cursor:pointer;flex-shrink:0;background:' + brandingColors.splashColorLight"
+                 x-on:click="$refs.splashLightPicker.click()"></div>
+            <input type="text" x-model="brandingColors.splashColorLight" style="font-family:monospace;font-size:13px"
+                   x-on:change="saveBrandingColors()">
+            <input type="color" x-ref="splashLightPicker" style="position:absolute;visibility:hidden"
+                   x-bind:value="brandingColors.splashColorLight"
+                   x-on:input="brandingColors.splashColorLight = $event.target.value"
+                   x-on:change="saveBrandingColors()">
+          </div>
+          <div class="field-help expanded" style="margin-top:4px">Background color behind your splash screen logo in light mode.</div>
+        </div>
+        <!-- Splash Dark -->
+        <div class="field">
+          <label>Splash Background (Dark)</label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <div x-bind:style="'width:36px;height:36px;border-radius:6px;border:1px solid var(--border);cursor:pointer;flex-shrink:0;background:' + brandingColors.splashColorDark"
+                 x-on:click="$refs.splashDarkPicker.click()"></div>
+            <input type="text" x-model="brandingColors.splashColorDark" style="font-family:monospace;font-size:13px"
+                   x-on:change="saveBrandingColors()">
+            <input type="color" x-ref="splashDarkPicker" style="position:absolute;visibility:hidden"
+                   x-bind:value="brandingColors.splashColorDark"
+                   x-on:input="brandingColors.splashColorDark = $event.target.value"
+                   x-on:change="saveBrandingColors()">
+          </div>
+          <div class="field-help expanded" style="margin-top:4px">Background color behind your splash screen logo in dark mode.</div>
+        </div>
+        <!-- Notification Color -->
+        <div class="field">
+          <label>Notification Accent Color</label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+            <div x-bind:style="'width:36px;height:36px;border-radius:6px;border:1px solid var(--border);cursor:pointer;flex-shrink:0;background:' + brandingColors.notificationColor"
+                 x-on:click="$refs.notifColorPicker.click()"></div>
+            <input type="text" x-model="brandingColors.notificationColor" style="font-family:monospace;font-size:13px"
+                   x-on:change="saveBrandingColors()">
+            <input type="color" x-ref="notifColorPicker" style="position:absolute;visibility:hidden"
+                   x-bind:value="brandingColors.notificationColor"
+                   x-on:input="brandingColors.notificationColor = $event.target.value"
+                   x-on:change="saveBrandingColors()">
+          </div>
+          <div class="field-help expanded" style="margin-top:4px">Android tints the notification icon with this color. Use your brand&rsquo;s primary color.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1805,6 +1863,7 @@ document.addEventListener('alpine:init', () => {
     assetCacheBust: Date.now(),
     assetHelpOpen: {},
     adaptiveIconBg: { mode: 'image', color: '#FFFFFF' },
+    brandingColors: { splashColorLight: '#ffffff', splashColorDark: '#1a1a1a', notificationColor: '#6366F1' },
     firebase: { android: { exists: false }, ios: { exists: false } },
 
     // Plugins
@@ -2085,6 +2144,7 @@ document.addEventListener('alpine:init', () => {
         // Assets, firebase, plugins, validation
         this.assets = state.assets || [];
         this.adaptiveIconBg = state.adaptiveIconBg || { mode: 'image', color: '#FFFFFF' };
+        this.brandingColors = state.brandingColors || { splashColorLight: '#ffffff', splashColorDark: '#1a1a1a', notificationColor: '#6366F1' };
         this.firebase = state.firebase || { android: { exists: false }, ios: { exists: false } };
         this.firebaseHelpOpen = { android: !state.firebase?.android?.exists, ios: !state.firebase?.ios?.exists };
         this.plugins = state.plugins || { core: [] };
@@ -2283,6 +2343,18 @@ bumpVersion(type) {
           this.loadState();
         } else this.showToast('Failed: ' + data.error, 'error');
       } catch (err) { this.showToast('Error: ' + err.message, 'error'); }
+    },
+
+    async saveBrandingColors() {
+      try {
+        var res = await this.postJson('/api/config', {
+          splashColorLight: this.brandingColors.splashColorLight,
+          splashColorDark: this.brandingColors.splashColorDark,
+          notificationColor: this.brandingColors.notificationColor
+        });
+        if (res.ok) this.showToast('Branding colors saved', 'success');
+        else this.showToast('Save failed: ' + (res.error || 'unknown'), 'error');
+      } catch (err) { this.showToast('Save error: ' + err.message, 'error'); }
     },
 
     async handleFileUpload(event, target) {

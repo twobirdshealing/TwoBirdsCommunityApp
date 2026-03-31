@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { PATHS, REQUIRED_ASSETS, CORE_PLUGINS, PROJECT_DIR, isPlaceholder } = require('./paths');
-const { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, getPluginVersion } = require('./file-utils');
+const { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, getPluginVersion, findPluginConfig } = require('./file-utils');
 
 // ---------------------------------------------------------------------------
 // State Reader
@@ -81,6 +81,15 @@ function readProjectState() {
   state.adaptiveIconBg = {
     mode: adaptiveIcon.backgroundImage ? 'image' : 'color',
     color: adaptiveIcon.backgroundColor || '#FFFFFF',
+  };
+
+  // --- Branding colors ---
+  const splashCfg = findPluginConfig(appJson?.expo?.plugins, 'expo-splash-screen');
+  const notifCfg = findPluginConfig(appJson?.expo?.plugins, 'expo-notifications');
+  state.brandingColors = {
+    splashColorLight: splashCfg?.backgroundColor || '#ffffff',
+    splashColorDark: splashCfg?.dark?.backgroundColor || '#1a1a1a',
+    notificationColor: notifCfg?.color || '#6366F1',
   };
 
   // --- Firebase ---

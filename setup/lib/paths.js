@@ -62,8 +62,8 @@ const REQUIRED_ASSETS = [
     help: 'Must be a white silhouette on transparent background — Android tints this with your notification color. No color or detail — just a simple recognizable shape of your logo. 96x96px PNG.' },
   { file: 'splash_screen_img.png', label: 'Splash Screen Image', size: '200px wide', purpose: 'Shown during app load',
     help: 'The image shown on the splash screen while the app loads. Keep it around 200px wide — it is centered on screen. Usually your logo mark without text. PNG with transparent background works best.' },
-  { file: 'login_logo.png', label: 'Login Logo', size: 'Any', purpose: 'Logo on login/register screens',
-    help: 'Displayed on the login and registration screens. Can be any size — it scales to fit. Use your full logo with text. PNG with transparent background recommended.' },
+  { file: 'login_logo.png', label: 'Login Logo', size: 'Any', purpose: 'Logo on login/register screens (auto-synced)',
+    help: 'This logo is <strong>automatically synced</strong> from your Fluent Community site after the user\'s first login. This static file is only used as a fallback on the very first app launch before server branding is cached. Upload your logo here so it looks right from the start — after that, the server version takes over.' },
   { file: 'login_background_img.png', label: 'Login Background', size: '1284x2778', purpose: 'Background image on auth screens',
     help: 'Full-screen background behind the login/register forms. Use 1284x2778px for best quality on modern phones. A dark or blurred image works well so text remains readable.' },
 ];

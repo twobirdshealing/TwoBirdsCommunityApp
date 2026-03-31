@@ -44,7 +44,7 @@ if (fs.existsSync(_nextDashboard)) {
 // ---------------------------------------------------------------------------
 
 const { PROJECT_DIR, PORT, PATHS, VALID_PLATFORMS, VALID_PROFILES, BUILD_ID_PATTERN, BACKUP_ID_PATTERN, isPlaceholder } = require('./lib/paths');
-const { fileExists, readJsonSafe, getSiteUrl } = require('./lib/file-utils');
+const { fileExists, readJsonSafe, getSiteUrl, resolveUploadPath } = require('./lib/file-utils');
 const { readProjectState } = require('./lib/state');
 const { writeConfigValues } = require('./lib/config-writer');
 const { checkConnectivity, parseMultipart, httpsRequest } = require('./lib/http-helpers');
@@ -69,7 +69,7 @@ let lastHeartbeat = Date.now();
 // Load frontend HTML
 // ---------------------------------------------------------------------------
 
-const dashboardHTML = fs.readFileSync(path.join(__dirname, 'frontend', 'index.html'), 'utf8');
+const dashboardHTMLPath = path.join(__dirname, 'frontend', 'index.html');
 
 // ---------------------------------------------------------------------------
 // Response helpers
@@ -453,13 +453,12 @@ const server = http.createServer(async (req, res) => {
       const parts = await parseMultipart(req);
       if (parts.length === 0) { jsonResponse(res, { error: 'No file uploaded' }, 400); return; }
       const file = parts[0];
-      let destPath;
-      if (target === 'firebase-android') {
-        destPath = PATHS.googleServicesJson;
-      } else if (target === 'firebase-ios') {
-        destPath = PATHS.googleServiceInfoPlist;
-      } else if (target === 'google-play-key') {
-        destPath = PATHS.googlePlayKeyFile;
+      let destPath = resolveUploadPath(target);
+      if (!destPath && target === 'asset') {
+        destPath = path.join(PATHS.assetsDir, path.basename(file.filename));
+      }
+      if (!destPath) { jsonResponse(res, { error: 'Unknown upload target' }, 400); return; }
+      if (target === 'google-play-key') {
         const easJson = readJsonSafe(PATHS.easJson);
         if (easJson) {
           if (!easJson.submit) easJson.submit = {};
@@ -468,13 +467,9 @@ const server = http.createServer(async (req, res) => {
           easJson.submit.production.android.serviceAccountKeyPath = './google-play-service-account.json';
           fs.writeFileSync(PATHS.easJson, JSON.stringify(easJson, null, 2) + '\n');
         }
-      } else if (target === 'asset') {
-        const safeName = path.basename(file.filename);
-        destPath = path.join(PATHS.assetsDir, safeName);
-      } else {
-        jsonResponse(res, { error: 'Unknown upload target' }, 400);
-        return;
       }
+      const destDir = path.dirname(destPath);
+      if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
       fs.writeFileSync(destPath, file.data);
       jsonResponse(res, { ok: true, path: destPath, size: file.data.length });
       return;
@@ -482,27 +477,21 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname.startsWith('/api/upload/') && req.method === 'DELETE') {
       const target = pathname.replace('/api/upload/', '');
-      let destPath;
-      if (target === 'firebase-android') {
-        destPath = PATHS.googleServicesJson;
-      } else if (target === 'firebase-ios') {
-        destPath = PATHS.googleServiceInfoPlist;
-      } else if (target === 'google-play-key') {
-        destPath = PATHS.googlePlayKeyFile;
+      const destPath = resolveUploadPath(target);
+      if (!destPath) { jsonResponse(res, { error: 'Unknown upload target' }, 400); return; }
+      if (target === 'google-play-key') {
         const easJson = readJsonSafe(PATHS.easJson);
         if (easJson?.submit?.production?.android?.serviceAccountKeyPath) {
           delete easJson.submit.production.android.serviceAccountKeyPath;
           fs.writeFileSync(PATHS.easJson, JSON.stringify(easJson, null, 2) + '\n');
         }
-      } else {
-        jsonResponse(res, { error: 'Unknown upload target' }, 400);
-        return;
       }
-      if (fs.existsSync(destPath)) {
+      try {
         fs.unlinkSync(destPath);
         jsonResponse(res, { ok: true, deleted: target });
-      } else {
-        jsonResponse(res, { ok: true, deleted: target, note: 'File did not exist' });
+      } catch (err) {
+        if (err.code === 'ENOENT') jsonResponse(res, { ok: true, deleted: target, note: 'File did not exist' });
+        else jsonResponse(res, { error: err.message }, 500);
       }
       return;
     }
@@ -704,8 +693,8 @@ const server = http.createServer(async (req, res) => {
 
     // --- Dashboard HTML ---
     if (pathname === '/' || pathname === '/index.html') {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(dashboardHTML);
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+      res.end(fs.readFileSync(dashboardHTMLPath, 'utf8'));
       return;
     }
 

@@ -62,7 +62,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/app_icon_ios.png",
+          "icon": "./assets/images/app_icon_android_notification.png",
           "color": "#6366F1"
         }
       ],

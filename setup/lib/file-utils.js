@@ -46,4 +46,19 @@ function getPluginVersion(pluginFolder) {
   return m ? m[1].trim() : 'unknown';
 }
 
-module.exports = { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, getPluginVersion };
+function findPluginConfig(plugins, pluginName) {
+  if (!Array.isArray(plugins)) return null;
+  for (const p of plugins) {
+    if (Array.isArray(p) && p[0] === pluginName && p[1]) return p[1];
+  }
+  return null;
+}
+
+function resolveUploadPath(target) {
+  if (target === 'firebase-android') return PATHS.googleServicesJson;
+  if (target === 'firebase-ios') return PATHS.googleServiceInfoPlist;
+  if (target === 'google-play-key') return PATHS.googlePlayKeyFile;
+  return null;
+}
+
+module.exports = { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, getPluginVersion, findPluginConfig, resolveUploadPath };

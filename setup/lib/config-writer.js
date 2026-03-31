@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const { PATHS } = require('./paths');
-const { readJsonSafe } = require('./file-utils');
+const { readJsonSafe, findPluginConfig } = require('./file-utils');
 
 // ---------------------------------------------------------------------------
 // Config Writer
@@ -14,7 +14,9 @@ function writeConfigValues(changes) {
   // --- app.json ---
   if (changes.appName !== undefined || changes.slug !== undefined || changes.scheme !== undefined ||
       changes.version !== undefined || changes.iosBundleId !== undefined || changes.androidPackage !== undefined ||
-      changes.easOwner !== undefined || changes.easProjectId !== undefined) {
+      changes.easOwner !== undefined || changes.easProjectId !== undefined ||
+      changes.splashColorLight !== undefined || changes.splashColorDark !== undefined ||
+      changes.notificationColor !== undefined) {
     const appJson = readJsonSafe(PATHS.appJson);
     if (appJson) {
       const expo = appJson.expo;
@@ -51,6 +53,25 @@ function writeConfigValues(changes) {
         if (!expo.extra) expo.extra = {};
         if (!expo.extra.eas) expo.extra.eas = {};
         expo.extra.eas.projectId = changes.easProjectId;
+      }
+      // Splash screen colors
+      if (changes.splashColorLight !== undefined || changes.splashColorDark !== undefined) {
+        const splashCfg = findPluginConfig(expo.plugins, 'expo-splash-screen');
+        if (splashCfg) {
+          if (changes.splashColorLight !== undefined) splashCfg.backgroundColor = changes.splashColorLight;
+          if (changes.splashColorDark !== undefined) {
+            if (!splashCfg.dark) splashCfg.dark = {};
+            splashCfg.dark.backgroundColor = changes.splashColorDark;
+          }
+        }
+      }
+      // Notification accent color + fix icon path
+      if (changes.notificationColor !== undefined) {
+        const notifCfg = findPluginConfig(expo.plugins, 'expo-notifications');
+        if (notifCfg) {
+          notifCfg.color = changes.notificationColor;
+          notifCfg.icon = './assets/images/app_icon_android_notification.png';
+        }
       }
       fs.writeFileSync(PATHS.appJson, JSON.stringify(appJson, null, 2) + '\n');
       results.push('app.json updated');
