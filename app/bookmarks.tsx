@@ -3,7 +3,8 @@
 // =============================================================================
 
 import { FeedList } from '@/components/feed/FeedList';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('Bookmarks');
@@ -138,9 +139,8 @@ export default function BookmarksScreen() {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         {/* Header - Using PageHeader for consistency */}
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title="Bookmarks"
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>Bookmarks</HeaderTitle>}
         />
         <FeedList
           feeds={feeds}

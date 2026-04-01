@@ -15,6 +15,8 @@ import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { ChatInput } from '@/components/message/ChatInput';
 import { DateSeparator, MessageBubble } from '@/components/message/MessageBubble';
 import { MediaViewer } from '@/components/media/MediaViewer';
+import { PageHeader } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -30,7 +32,6 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useRef } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -303,23 +304,11 @@ export default function UserChatScreen() {
 
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         {/* Header */}
-        <View style={[styles.header, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
-          <Pressable
-            style={styles.headerBackButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color={themeColors.text} />
-          </Pressable>
-
-          {renderHeaderCenter()}
-
-          <Pressable
-            style={({ pressed }) => [styles.headerGearButton, pressed && { opacity: 0.7 }]}
-            onPress={() => setChatMenuVisible(true)}
-          >
-            <Ionicons name="settings-outline" size={20} color={themeColors.text} />
-          </Pressable>
-        </View>
+        <PageHeader
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={renderHeaderCenter()}
+          right={<HeaderIconButton icon="settings-outline" onPress={() => setChatMenuVisible(true)} />}
+        />
 
         {/* Chat Area */}
         <KeyboardAvoidingView
@@ -419,36 +408,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    minHeight: 52,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-
-  headerBackButton: {
-    width: sizing.iconButton,
-    height: sizing.iconButton,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: sizing.iconButton / 2,
-  },
-
   headerCenter: {
     flex: 1,
     flexDirection: 'row',
@@ -474,14 +433,6 @@ const styles = StyleSheet.create({
 
   headerLoader: {
     marginLeft: spacing.xs,
-  },
-
-  headerGearButton: {
-    width: sizing.iconButton,
-    height: sizing.iconButton,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: sizing.iconButton / 2,
   },
 
   loadingContainer: {

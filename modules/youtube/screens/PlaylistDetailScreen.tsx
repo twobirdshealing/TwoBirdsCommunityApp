@@ -25,7 +25,8 @@ import { BottomSheet, BottomSheetScrollView } from '@/components/common/BottomSh
 import { stripHtmlPreserveBreaks } from '@/utils/htmlToText';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { youtubeApi } from '../services/youtubeApi';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
 import type { YouTubeVideo } from '../types/youtube';
 
@@ -190,11 +191,9 @@ export default function PlaylistDetailScreen() {
         ]}
       >
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title={title || 'Playlist'}
-          rightIcon={description ? 'information-circle-outline' : undefined}
-          onRightPress={description ? () => setInfoVisible(true) : undefined}
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>{title || 'Playlist'}</HeaderTitle>}
+          right={description ? <HeaderIconButton icon="information-circle-outline" onPress={() => setInfoVisible(true)} /> : undefined}
         />
 
         {/* Search Bar */}

@@ -29,7 +29,8 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { EmptyState } from '@/components/common/EmptyState';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -216,10 +217,9 @@ export default function ChurchDirectoryScreen() {
       <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
         {/* Header */}
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title="Church Directory"
-          rightElement={
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>Church Directory</HeaderTitle>}
+          right={
             <>
               <Pressable onPress={() => setShowSortMenu(true)} style={styles.menuButton}>
                 <Ionicons name="options-outline" size={22} color={themeColors.text} />
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Gear menu button (in PageHeader rightElement)
+  // Gear menu button (in PageHeader right slot)
   menuButton: {
     width: sizing.iconButton,
     height: sizing.iconButton,

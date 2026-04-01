@@ -26,7 +26,8 @@ import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { WPPost } from '@/modules/blog/types/blog';
 import { blogApi } from '@/modules/blog/services/blogApi';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { stripHtmlTags, decodeHtmlEntities } from '@/utils/htmlToText';
@@ -138,11 +139,9 @@ export default function BlogDetailScreen() {
 
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title="Blog"
-          rightIcon="share-outline"
-          onRightPress={handleShare}
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>Blog</HeaderTitle>}
+          right={<HeaderIconButton icon="share-outline" onPress={handleShare} />}
         />
 
         {loading ? (

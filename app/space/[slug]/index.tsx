@@ -26,7 +26,8 @@ import { FeedList } from '@/components/feed/FeedList';
 import { SpaceMenu } from '@/components/space/SpaceMenu';
 import { SpaceInfoHeader } from '@/components/space/SpaceInfoHeader';
 import { SpaceLockScreen } from '@/components/space/SpaceLockScreen';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useFeedActions } from '@/hooks/useFeedActions';
 import { useAppQuery, useArrayMutate } from '@/hooks/useAppQuery';
@@ -285,10 +286,9 @@ export default function SpacePage() {
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
       {/* Header - Using PageHeader with SpaceMenu */}
       <PageHeader
-        leftAction="back"
-        onLeftPress={() => router.back()}
-        title={space?.title || 'Space'}
-        rightElement={
+        left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+        center={<HeaderTitle>{space?.title || 'Space'}</HeaderTitle>}
+        right={
           slug ? (
             <SpaceMenu
               slug={slug}

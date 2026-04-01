@@ -51,7 +51,8 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ProfileMenu } from '@/components/profile/ProfileMenu';
 import { TabBar } from '@/components/common/TabBar';
 import { CommentCard } from '@/components/profile/CommentCard';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 
 const log = createLogger('Profile');
 
@@ -632,9 +633,8 @@ export default function UserProfileScreen() {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title={username ? `@${username}` : 'Profile'}
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>{username ? `@${username}` : 'Profile'}</HeaderTitle>}
         />
         <LoadingSpinner message="Loading profile..." />
       </View>
@@ -650,9 +650,8 @@ export default function UserProfileScreen() {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title="Profile"
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>Profile</HeaderTitle>}
         />
         <ErrorMessage message={error} onRetry={refresh} />
       </View>
@@ -843,20 +842,9 @@ export default function UserProfileScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <PageHeader
-        leftAction="back"
-        onLeftPress={() => router.back()}
-        title={profile?.display_name || `@${username}`}
-        rightElement={
-          <Pressable
-            onPress={() => isOwnProfile ? setSettingsVisible(true) : setOtherMenuVisible(true)}
-            style={({ pressed }) => [
-              styles.settingsButton,
-              pressed && { opacity: 0.7 },
-            ]}
-          >
-            <Ionicons name="settings-outline" size={22} color={themeColors.text} />
-          </Pressable>
-        }
+        left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+        center={<HeaderTitle>{profile?.display_name || `@${username}`}</HeaderTitle>}
+        right={<HeaderIconButton icon="settings-outline" onPress={() => isOwnProfile ? setSettingsVisible(true) : setOtherMenuVisible(true)} />}
       />
 
       {renderTabContent()}
@@ -911,14 +899,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
     borderBottomWidth: 1,
-  },
-
-  settingsButton: {
-    width: sizing.iconButton,
-    height: sizing.iconButton,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: sizing.iconButton / 2,
   },
 
   followButton: {

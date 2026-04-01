@@ -27,7 +27,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { APP_USER_AGENT } from '@/constants/config';
 import { appApi } from '@/services/api/app';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getThemeInjectionScript } from '@/utils/webviewTheme';
 import { createLogger } from '@/utils/logger';
@@ -55,7 +56,7 @@ export default function WebViewScreen() {
   // State
   const [sessionUrl, setSessionUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pageLoading, setPageLoading] = useState(true);
+
   const [canGoBack, setCanGoBack] = useState(false);
   const [pageTitle, setPageTitle] = useState(params.title || 'Loading...');
   const [error, setError] = useState<string | null>(null);
@@ -140,9 +141,6 @@ export default function WebViewScreen() {
     }
   };
 
-  const handleLoadStart = useCallback(() => setPageLoading(true), []);
-  const handleLoadEnd = useCallback(() => setPageLoading(false), []);
-
   const handleError = useCallback((event: WebViewErrorEvent) => {
     const { description } = event.nativeEvent;
     log('Load error:', description);
@@ -184,9 +182,8 @@ export default function WebViewScreen() {
 
         {/* Header */}
         <PageHeader
-          leftAction="close"
-          onLeftPress={handleClose}
-          title="Error"
+          left={<HeaderIconButton icon="close" onPress={handleClose} />}
+          center={<HeaderTitle>Error</HeaderTitle>}
         />
 
         {/* Error Content */}
@@ -211,10 +208,8 @@ export default function WebViewScreen() {
 
       {/* Header - Using PageHeader component */}
       <PageHeader
-        leftAction={canGoBack ? 'back' : 'close'}
-        onLeftPress={handleBack}
-        title={pageTitle}
-        showLoader={pageLoading}
+        left={canGoBack ? <HeaderIconButton icon="chevron-back" onPress={handleBack} /> : <HeaderIconButton icon="close" onPress={handleBack} />}
+        center={<HeaderTitle>{pageTitle}</HeaderTitle>}
       />
 
       {/* WebView with custom User-Agent + theme sync */}
@@ -225,8 +220,6 @@ export default function WebViewScreen() {
           style={styles.webView}
           userAgent={APP_USER_AGENT}
           onNavigationStateChange={handleNavigationChange}
-          onLoadStart={handleLoadStart}
-          onLoadEnd={handleLoadEnd}
           onError={handleError}
           onHttpError={handleHttpError}
           incognito={true}

@@ -13,7 +13,10 @@
 // =============================================================================
 
 import { FlashList } from '@shopify/flash-list';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -93,6 +96,7 @@ function xprofileToMemberCard(xp: any): MemberCardData {
 
 export default function ConnectionsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { username, initialTab } = useLocalSearchParams<{ username: string; initialTab?: string }>();
   const { user: currentUser } = useAuth();
   const { colors: themeColors } = useTheme();
@@ -305,10 +309,11 @@ export default function ConnectionsScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <>
-      <Stack.Screen options={{ title: 'Connections' }} />
-
-      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
+        <PageHeader
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>Connections</HeaderTitle>}
+        />
         {/* Tab Bar */}
         <TabBar
           tabs={TABS}
@@ -420,7 +425,6 @@ export default function ConnectionsScreen() {
           />
         )}
       </View>
-    </>
   );
 }
 

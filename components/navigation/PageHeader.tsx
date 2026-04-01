@@ -1,45 +1,30 @@
 // =============================================================================
-// PAGE HEADER - Reusable header for detail screens, modals, etc.
+// PAGE HEADER - Universal slot-based header
 // =============================================================================
-// Use this for any screen that needs: back/close button, title, optional right action
-// NOT for tab-level headers (use TopHeader for that)
+// Three universal slots: left, center, right. Put anything in any slot.
+// NOT for tab-level headers (use TopHeader for that).
 //
 // Usage:
 //   <PageHeader
-//     leftAction="back"
-//     onLeftPress={() => router.back()}
-//     title="Event Details"
-//     showLoader={isLoading}
-//     rightIcon="cart-outline"
-//     onRightPress={handleCart}
+//     left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+//     center={<HeaderTitle>Post</HeaderTitle>}
 //   />
 //
 //   <PageHeader
-//     leftAction="close"
-//     onLeftPress={onClose}
-//     title="Select Space"
+//     left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+//     center={<HeaderTitle>Blog</HeaderTitle>}
+//     right={<HeaderIconButton icon="share-outline" onPress={handleShare} />}
 //   />
 //
 //   <PageHeader
-//     leftAction="back"
-//     onLeftPress={() => router.back()}
-//     title={space?.title}
-//     rightElement={<SpaceMenu slug={slug} />}
+//     left={<HeaderIconButton icon="close" onPress={onClose} />}
+//     center={<HeaderTitle>Comments</HeaderTitle>}
 //   />
 // =============================================================================
 
 import React, { ReactNode } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { hapticLight } from '@/utils/haptics';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { spacing, shadows, sizing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -47,129 +32,48 @@ import { spacing, shadows, sizing, typography } from '@/constants/layout';
 // -----------------------------------------------------------------------------
 
 export interface PageHeaderProps {
-  // Left side
-  leftAction?: 'back' | 'close' | 'none';
-  onLeftPress?: () => void;
-  
-  // Center
-  title?: string;
-  showLoader?: boolean;
-  
-  // Right side - use ONE of these
-  rightIcon?: keyof typeof Ionicons.glyphMap;
-  onRightPress?: () => void;
-  rightBadgeCount?: number;
-  rightElement?: ReactNode;
-  
-  // Optional: include safe area padding (default: false, container handles it)
-  includeSafeArea?: boolean;
+  left?: ReactNode;
+  center?: ReactNode;
+  right?: ReactNode;
+}
+
+// -----------------------------------------------------------------------------
+// HeaderTitle — styled title text for the center slot
+// -----------------------------------------------------------------------------
+
+export function HeaderTitle({ children }: { children: string }) {
+  const { colors } = useTheme();
+  return (
+    <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+      {children}
+    </Text>
+  );
 }
 
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
-export function PageHeader({
-  leftAction = 'back',
-  onLeftPress,
-  title,
-  showLoader = false,
-  rightIcon,
-  onRightPress,
-  rightBadgeCount,
-  rightElement,
-  includeSafeArea = false,
-}: PageHeaderProps) {
+export function PageHeader({ left, center, right }: PageHeaderProps) {
   const { colors: themeColors } = useTheme();
 
-  // ---------------------------------------------------------------------------
-  // Handlers with haptic feedback
-  // ---------------------------------------------------------------------------
-  
-  const handleLeftPress = () => {
-    hapticLight();
-    onLeftPress?.();
-  };
-  
-  const handleRightPress = () => {
-    hapticLight();
-    onRightPress?.();
-  };
-  
-  // ---------------------------------------------------------------------------
-  // Determine left icon
-  // ---------------------------------------------------------------------------
-  
-  const getLeftIcon = (): keyof typeof Ionicons.glyphMap | null => {
-    switch (leftAction) {
-      case 'back':
-        return 'chevron-back';
-      case 'close':
-        return 'close';
-      case 'none':
-        return null;
-      default:
-        return 'chevron-back';
-    }
-  };
-  
-  const leftIcon = getLeftIcon();
-  
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
-  
   return (
     <View style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
       <View style={styles.content}>
-        {/* Left Button */}
-        {leftIcon ? (
-          <Pressable
-            onPress={handleLeftPress}
-            style={({ pressed }) => [
-              styles.button,
-              pressed && [styles.buttonPressed, { backgroundColor: themeColors.backgroundSecondary }],
-            ]}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel={leftAction === 'close' ? 'Close' : 'Go back'}
-          >
-            <Ionicons name={leftIcon} size={24} color={themeColors.text} />
-          </Pressable>
+        {left ? (
+          <View style={styles.slot}>{left}</View>
         ) : (
-          <View style={styles.buttonSpacer} />
+          <View style={styles.spacer} />
         )}
-        
-        {/* Center: Title + Loader */}
+
         <View style={styles.center}>
-          {title && (
-            <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>
-              {title}
-            </Text>
-          )}
-          {showLoader && (
-            <ActivityIndicator
-              size="small"
-              color={themeColors.primary}
-              style={styles.loader}
-            />
-          )}
+          {center}
         </View>
-        
-        {/* Right Side */}
-        {rightElement ? (
-          <View style={styles.rightElement}>
-            {rightElement}
-          </View>
-        ) : rightIcon ? (
-          <HeaderIconButton
-            icon={rightIcon}
-            onPress={handleRightPress}
-            badgeCount={rightBadgeCount}
-            accessibilityLabel="Action"
-          />
+
+        {right ? (
+          <View style={styles.slot}>{right}</View>
         ) : (
-          <View style={styles.buttonSpacer} />
+          <View style={styles.spacer} />
         )}
       </View>
     </View>
@@ -185,7 +89,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     ...shadows.sm,
   },
-  
+
   content: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -194,24 +98,18 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     minHeight: 52,
   },
-  
-  button: {
+
+  spacer: {
     width: sizing.iconButton,
     height: sizing.iconButton,
+  },
+
+  slot: {
+    minWidth: sizing.iconButton,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: sizing.iconButton / 2,
   },
-  
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  
-  buttonSpacer: {
-    width: sizing.iconButton,
-    height: sizing.iconButton,
-  },
-  
+
   center: {
     flex: 1,
     flexDirection: 'row',
@@ -219,20 +117,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginHorizontal: spacing.sm,
   },
-  
+
   title: {
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold,
     textAlign: 'center',
-  },
-  
-  loader: {
-    marginLeft: spacing.xs,
-  },
-  
-  rightElement: {
-    minWidth: 40,
-    alignItems: 'flex-end',
   },
 });
 

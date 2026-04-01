@@ -28,7 +28,8 @@ import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
-import { ScreenHeader } from '@/components/common/ScreenHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { useThemedEditor } from '@/hooks/useThemedEditor';
 import { Comment } from '@/types/comment';
 import { commentsApi } from '@/services/api/comments';
@@ -593,7 +594,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
       <KeyboardAvoidingView behavior="padding" style={styles.modalContainer}>
       <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.surface }]} edges={['top']}>
           {/* Header */}
-          <ScreenHeader title="Comments" onClose={onClose} />
+          <PageHeader left={<HeaderIconButton icon="close" onPress={onClose} />} center={<HeaderTitle>Comments</HeaderTitle>} />
 
           {/* Comments list */}
           <View style={[styles.contentArea, { backgroundColor: themeColors.background }]}>

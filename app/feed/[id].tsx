@@ -16,7 +16,10 @@ import {
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('FeedDetail');
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { FeedCard } from '@/components/feed/FeedCard';
 import { FeedModalsProvider } from '@/contexts/FeedModalsContext';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -37,6 +40,7 @@ import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 export default function SinglePostScreen() {
   const { colors: themeColors } = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   // ---------------------------------------------------------------------------
@@ -132,69 +136,49 @@ export default function SinglePostScreen() {
   };
 
   // ---------------------------------------------------------------------------
-  // Loading & Error states
-  // ---------------------------------------------------------------------------
-
-  if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-        <Stack.Screen options={{ title: 'Post', headerStyle: { backgroundColor: themeColors.surface }, headerTintColor: themeColors.text }} />
-        <LoadingSpinner />
-      </View>
-    );
-  }
-
-  if (error || !feed) {
-    return (
-      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-        <Stack.Screen options={{ title: 'Post', headerStyle: { backgroundColor: themeColors.surface }, headerTintColor: themeColors.text }} />
-        <ErrorMessage message={error || 'Post not found'} onRetry={refresh} />
-      </View>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Main render - uses FeedCard with variant="full"
+  // Render
   // ---------------------------------------------------------------------------
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <Stack.Screen
-        options={{
-          title: 'Post',
-          headerStyle: { backgroundColor: themeColors.surface },
-          headerTintColor: themeColors.text,
-          headerBackTitle: 'Back',
-        }}
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
+      <PageHeader
+        left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+        center={<HeaderTitle>Post</HeaderTitle>}
       />
 
-      <FeedModalsProvider>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <FeedCard
-          feed={feed}
-          variant="full"
-          onReact={(type) => handleReact(feed.id, type)}
-          onAuthorPress={() => {
-            if (feed.xprofile?.username) {
-              router.push(`/profile/${feed.xprofile.username}`);
-            }
-          }}
-          onSpacePress={() => {
-            if (feed.space?.slug) {
-              router.push(`/space/${feed.space.slug}`);
-            }
-          }}
-          onCommentPress={handleCommentPress}
-          onBookmarkToggle={handleBookmarkToggle}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-      </ScrollView>
-      </FeedModalsProvider>
+      {loading ? (
+        <LoadingSpinner />
+      ) : error || !feed ? (
+        <ErrorMessage message={error || 'Post not found'} onRetry={refresh} />
+      ) : (
+        <FeedModalsProvider>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <FeedCard
+              feed={feed}
+              variant="full"
+              onReact={(type) => handleReact(feed.id, type)}
+              onAuthorPress={() => {
+                if (feed.xprofile?.username) {
+                  router.push(`/profile/${feed.xprofile.username}`);
+                }
+              }}
+              onSpacePress={() => {
+                if (feed.space?.slug) {
+                  router.push(`/space/${feed.space.slug}`);
+                }
+              }}
+              onCommentPress={handleCommentPress}
+              onBookmarkToggle={handleBookmarkToggle}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          </ScrollView>
+        </FeedModalsProvider>
+      )}
     </View>
   );
 }

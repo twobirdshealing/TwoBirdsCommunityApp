@@ -892,7 +892,8 @@ import React from 'react';
 import { View } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAppQuery } from '@/hooks/useAppQuery';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { getEvents } from '../services/eventsApi';
 
 export default function EventsScreen() {
@@ -904,7 +905,7 @@ export default function EventsScreen() {
 
   return (
     &lt;View style={{ flex: 1, backgroundColor: colors.background }}&gt;
-      &lt;PageHeader title="Events" /&gt;
+      &lt;PageHeader left={&lt;HeaderIconButton icon="chevron-back" onPress={() =&gt; router.back()} /&gt;} center={&lt;HeaderTitle&gt;Events&lt;/HeaderTitle&gt;} /&gt;
       {/* Your event list here */}
     &lt;/View&gt;
   );

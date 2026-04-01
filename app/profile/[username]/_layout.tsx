@@ -15,13 +15,7 @@ export default function ProfileLayout() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen
           name="connections"
-          options={{
-            headerShown: true,
-            title: 'Connections',
-            headerStyle: { backgroundColor: themeColors.surface },
-            headerTintColor: themeColors.text,
-            headerShadowVisible: false,
-          }}
+          options={{ headerShown: false }}
         />
       </Stack>
     </GestureHandlerRootView>

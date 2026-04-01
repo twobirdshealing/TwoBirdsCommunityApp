@@ -32,7 +32,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HtmlContent } from '@/components/common/HtmlContent';
 import { YouTubeEmbed } from '@/components/media/YouTubeEmbed';
 import { OEmbedPlayer } from '@/components/media/OEmbedPlayer';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -332,7 +333,7 @@ export default function LessonViewScreen() {
       <>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
-          <PageHeader leftAction="back" onLeftPress={() => router.back()} title="Lesson" />
+          <PageHeader left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />} center={<HeaderTitle>Lesson</HeaderTitle>} />
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={themeColors.primary} />
           </View>
@@ -346,7 +347,7 @@ export default function LessonViewScreen() {
       <>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
-          <PageHeader leftAction="back" onLeftPress={() => router.back()} title="Lesson" />
+          <PageHeader left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />} center={<HeaderTitle>Lesson</HeaderTitle>} />
           <View style={styles.centerContainer}>
             <Ionicons name="alert-circle-outline" size={48} color={themeColors.error} />
             <Text style={[styles.errorText, { color: themeColors.error }]}>{error || 'Lesson not found'}</Text>
@@ -368,7 +369,7 @@ export default function LessonViewScreen() {
       <>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
-          <PageHeader leftAction="back" onLeftPress={() => router.back()} title={lesson.title} />
+          <PageHeader left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />} center={<HeaderTitle>{lesson.title}</HeaderTitle>} />
           <View style={styles.centerContainer}>
             <Ionicons name="lock-closed" size={64} color={themeColors.textTertiary} />
             <Text style={[styles.lockedTitle, { color: themeColors.text }]}>This lesson is locked</Text>
@@ -400,7 +401,7 @@ export default function LessonViewScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
-        <PageHeader leftAction="back" onLeftPress={() => router.back()} title={navTitle} />
+        <PageHeader left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />} center={<HeaderTitle>{navTitle}</HeaderTitle>} />
 
         <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContent}>
           {/* Hero Image with Gradient Overlay + Title + Action Badges */}

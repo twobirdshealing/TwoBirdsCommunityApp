@@ -16,7 +16,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAudioPlayerContext, SPEED_OPTIONS } from '@/modules/bookclub/contexts/AudioPlayerContext';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { BottomSheet, BottomSheetScrollView } from '@/components/common/BottomSheet';
 import { stripHtmlPreserveBreaks } from '@/utils/htmlToText';
 import { AudioControls } from '@/modules/bookclub/components/AudioControls';
@@ -94,7 +95,7 @@ export default function AudiobookPlayerScreen() {
       <>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
-          <PageHeader title="Book Club" leftAction="back" onLeftPress={() => router.back()} />
+          <PageHeader center={<HeaderTitle>Book Club</HeaderTitle>} left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />} />
           {error ? (
             <ErrorMessage message={error} onRetry={() => {
               setError(null);
@@ -121,11 +122,9 @@ export default function AudiobookPlayerScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         <PageHeader
-          title={currentBook.title}
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          rightIcon={currentBook.description ? 'information-circle-outline' : undefined}
-          onRightPress={currentBook.description ? () => setInfoVisible(true) : undefined}
+          center={<HeaderTitle>{currentBook.title}</HeaderTitle>}
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          right={currentBook.description ? <HeaderIconButton icon="information-circle-outline" onPress={() => setInfoVisible(true)} /> : undefined}
         />
 
         <ScrollView contentContainerStyle={styles.scrollContent}>

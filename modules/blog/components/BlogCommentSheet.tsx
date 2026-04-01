@@ -31,7 +31,8 @@ import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Button } from '@/components/common/Button';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
-import { ScreenHeader } from '@/components/common/ScreenHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { RichText } from '@10play/tentap-editor';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { htmlToMarkdown } from '@/utils/htmlToMarkdown';
@@ -400,7 +401,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
       <KeyboardAvoidingView behavior="padding" style={styles.modalContainer}>
       <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.surface }]} edges={['top']}>
         {/* Header */}
-        <ScreenHeader title="Comments" onClose={onClose} />
+        <PageHeader left={<HeaderIconButton icon="close" onPress={onClose} />} center={<HeaderTitle>Comments</HeaderTitle>} />
 
         {/* Comments list */}
         <View style={[styles.contentArea, { backgroundColor: themeColors.background }]}>

@@ -12,7 +12,8 @@ import { useAppQuery } from '@/hooks/useAppQuery';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { EmptyState } from '@/components/common/EmptyState';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { BookCard } from '@/modules/bookclub/components/BookCard';
 import { spacing } from '@/constants/layout';
 import bookclubApi from '@/modules/bookclub/services/bookclubApi';
@@ -63,7 +64,7 @@ export default function BookClubListScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
-        <PageHeader title="Book Club" leftAction="back" onLeftPress={() => router.back()} />
+        <PageHeader center={<HeaderTitle>Book Club</HeaderTitle>} left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />} />
 
         {error && !loading ? (
           <ErrorMessage message={error} onRetry={refresh} />

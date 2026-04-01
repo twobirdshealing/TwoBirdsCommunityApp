@@ -12,7 +12,8 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { ScreenHeader } from '@/components/common/ScreenHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { useThemedEditor } from '@/hooks/useThemedEditor';
 import { ComposerToolbar } from './ComposerToolbar';
 import { MarkdownToolbar } from './MarkdownToolbar';
@@ -370,7 +371,7 @@ export function CreatePostContent({
     <>
       <SafeAreaView style={[styles.container, { backgroundColor: themeColors.surface }]} edges={['top']}>
         {/* Header */}
-        <ScreenHeader title={isEditing ? 'Edit Post' : 'Create Post'} onClose={onClose} />
+        <PageHeader left={<HeaderIconButton icon="close" onPress={onClose} />} center={<HeaderTitle>{isEditing ? 'Edit Post' : 'Create Post'}</HeaderTitle>} />
 
         {/* Space indicator or selector */}
         {effectiveSpaceName ? (

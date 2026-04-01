@@ -29,7 +29,8 @@ import { CourseCard } from '@/components/course/CourseCard';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { EmptyState } from '@/components/common/EmptyState';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { coursesApi } from '@/services/api/courses';
@@ -181,9 +182,8 @@ export default function CoursesListScreen() {
       <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
         {/* Header */}
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title="Courses"
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>Courses</HeaderTitle>}
         />
 
         {/* Tab Toggle + Search */}

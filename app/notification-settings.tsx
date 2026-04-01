@@ -8,7 +8,8 @@
 
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -288,9 +289,8 @@ export default function NotificationSettingsScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
           <PageHeader
-            leftAction="back"
-            onLeftPress={() => router.back()}
-            title="Notifications"
+            left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+            center={<HeaderTitle>Notifications</HeaderTitle>}
           />
           <LoadingSpinner />
         </View>
@@ -305,9 +305,8 @@ export default function NotificationSettingsScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
           <PageHeader
-            leftAction="back"
-            onLeftPress={() => router.back()}
-            title="Notifications"
+            left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+            center={<HeaderTitle>Notifications</HeaderTitle>}
           />
           <ErrorMessage
             title="Failed to Load"
@@ -328,9 +327,8 @@ export default function NotificationSettingsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title="Notifications"
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>Notifications</HeaderTitle>}
         />
 
         <ScrollView

@@ -10,8 +10,11 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -56,6 +59,7 @@ function sortMembersWithLeadersFirst(members: MemberCardData[]): MemberCardData[
 
 export default function SpaceMembersScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { user: currentUser } = useAuth();
   const { colors: themeColors } = useTheme();
@@ -224,19 +228,11 @@ export default function SpaceMembersScreen() {
   // ---------------------------------------------------------------------------
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: 'Members',
-          headerShown: true,
-          headerBackTitle: 'Back',
-          headerStyle: { backgroundColor: themeColors.surface },
-          headerTintColor: themeColors.text,
-          headerShadowVisible: false,
-        }}
-      />
-
-      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
+        <PageHeader
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>Members</HeaderTitle>}
+        />
         {/* Error State */}
         {error && !loading && members.length === 0 && (
           <ErrorMessage message={error} onRetry={handleRefresh} />
@@ -303,7 +299,6 @@ export default function SpaceMembersScreen() {
           />
         )}
       </View>
-    </>
   );
 }
 

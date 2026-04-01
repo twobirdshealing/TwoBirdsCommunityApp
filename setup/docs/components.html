@@ -328,26 +328,33 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
 <div class="component-card">
   <h4>PageHeader <span class="tag shared">Shared</span></h4>
   <span class="file-path">components/navigation/PageHeader.tsx</span>
-  <p>Standard header for detail screens with back/close button, centered title, and optional right action.</p>
+  <p>Universal slot-based header with three slots: <code>left</code>, <code>center</code>, <code>right</code>. Each accepts any ReactNode. Use <code>HeaderTitle</code> (exported from PageHeader.tsx) for title text and <code>HeaderIconButton</code> (from HeaderIconButton.tsx) for icon buttons in any slot.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
-    <tr><td>leftAction</td><td>'back' | 'close' | 'none'</td><td>'back'</td><td>Left button type</td></tr>
-    <tr><td>onLeftPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Left button handler</td></tr>
-    <tr><td>title</td><td>string</td><td>&mdash;</td><td>Centered title text</td></tr>
-    <tr><td>showLoader</td><td>boolean</td><td>false</td><td>Show loading indicator in title area</td></tr>
-    <tr><td>rightIcon</td><td>Ionicons name</td><td>&mdash;</td><td>Right icon button</td></tr>
-    <tr><td>onRightPress</td><td>() =&gt; void</td><td>&mdash;</td><td>Right button handler</td></tr>
-    <tr><td>rightBadgeCount</td><td>number</td><td>&mdash;</td><td>Badge on right icon</td></tr>
-    <tr><td>rightElement</td><td>ReactNode</td><td>&mdash;</td><td>Custom right element (overrides rightIcon)</td></tr>
-    <tr><td>includeSafeArea</td><td>boolean</td><td>false</td><td>Include safe area top padding</td></tr>
+    <tr><td>left</td><td>ReactNode</td><td>&mdash;</td><td>Left slot &mdash; typically &lt;HeaderIconButton icon="chevron-back"&gt; or &lt;HeaderIconButton icon="close"&gt;</td></tr>
+    <tr><td>center</td><td>ReactNode</td><td>&mdash;</td><td>Center slot &mdash; typically &lt;HeaderTitle&gt;, or any custom element</td></tr>
+    <tr><td>right</td><td>ReactNode</td><td>&mdash;</td><td>Right slot &mdash; typically &lt;HeaderIconButton&gt;, or any custom element</td></tr>
   </table>
 
-<pre><code>&lt;PageHeader
-  leftAction="back"
-  onLeftPress={() =&gt; router.back()}
-  title="Edit Profile"
-  rightElement={&lt;Button title="Save" size="sm" onPress={handleSave} loading={saving} /&gt;}
+<pre><code>&lt;!-- Back + title --&gt;
+&lt;PageHeader
+  left={&lt;HeaderIconButton icon="chevron-back" onPress={() =&gt; router.back()} /&gt;}
+  center={&lt;HeaderTitle&gt;Post&lt;/HeaderTitle&gt;}
+/&gt;
+
+&lt;!-- Back + title + icon button --&gt;
+&lt;PageHeader
+  left={&lt;HeaderIconButton icon="chevron-back" onPress={() =&gt; router.back()} /&gt;}
+  center={&lt;HeaderTitle&gt;Blog&lt;/HeaderTitle&gt;}
+  right={&lt;HeaderIconButton icon="share-outline" onPress={handleShare} /&gt;}
+/&gt;
+
+&lt;!-- Close + title + save button --&gt;
+&lt;PageHeader
+  left={&lt;HeaderIconButton icon="close" onPress={() =&gt; router.back()} /&gt;}
+  center={&lt;HeaderTitle&gt;Edit Profile&lt;/HeaderTitle&gt;}
+  right={&lt;Button title="Save" size="sm" onPress={handleSave} loading={saving} /&gt;}
 /&gt;</code></pre>
 </div>
 
@@ -402,18 +409,6 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
   </table>
 </div>
 
-<!-- ScreenHeader -->
-<div class="component-card">
-  <h4>ScreenHeader <span class="tag shared">Shared</span></h4>
-  <span class="file-path">components/common/ScreenHeader.tsx</span>
-  <p>Simple close button + centered title. Used inside modals and bottom sheets (CommentSheet, CreatePostContent).</p>
-
-  <table class="prop-table">
-    <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
-    <tr><td>title</td><td>string</td><td>&mdash;</td><td>Centered title</td></tr>
-    <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close button handler</td></tr>
-  </table>
-</div>
 
 <!-- TabBar -->
 <div class="component-card">

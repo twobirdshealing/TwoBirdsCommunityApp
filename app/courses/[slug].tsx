@@ -32,7 +32,8 @@ import { ProgressBar } from '@/components/course/ProgressBar';
 import { SectionList } from '@/components/course/SectionList';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -196,7 +197,7 @@ export default function CourseDetailScreen() {
       <>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
-          <PageHeader leftAction="back" onLeftPress={() => router.back()} title="Course" />
+          <PageHeader left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />} center={<HeaderTitle>Course</HeaderTitle>} />
           <LoadingSpinner />
         </View>
       </>
@@ -208,7 +209,7 @@ export default function CourseDetailScreen() {
       <>
         <Stack.Screen options={{ headerShown: false }} />
         <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
-          <PageHeader leftAction="back" onLeftPress={() => router.back()} title="Course" />
+          <PageHeader left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />} center={<HeaderTitle>Course</HeaderTitle>} />
           <ErrorMessage message={error} onRetry={refresh} />
         </View>
       </>
@@ -244,9 +245,8 @@ export default function CourseDetailScreen() {
 
       <View style={[styles.container, { backgroundColor: themeColors.background, paddingTop: insets.top }]}>
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title={course.title}
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>{course.title}</HeaderTitle>}
         />
 
         <ScrollView

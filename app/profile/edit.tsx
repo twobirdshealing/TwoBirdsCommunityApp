@@ -31,7 +31,8 @@ import { SocialLinksForm } from '@/components/common/SocialLinksForm';
 import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
 import { DynamicFormField } from '@/components/common/DynamicFormField';
 import { SelectModal } from '@/components/common/SelectModal';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { useSocialProviders } from '@/hooks/useSocialProviders';
 import { createLogger } from '@/utils/logger';
 
@@ -387,9 +388,8 @@ export default function EditProfileScreen() {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         <Stack.Screen options={{ headerShown: false }} />
         <PageHeader
-          leftAction="close"
-          onLeftPress={() => router.back()}
-          title="Edit Profile"
+          left={<HeaderIconButton icon="close" onPress={() => router.back()} />}
+          center={<HeaderTitle>Edit Profile</HeaderTitle>}
         />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={themeColors.primary} />
@@ -409,10 +409,9 @@ export default function EditProfileScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <PageHeader
-        leftAction="close"
-        onLeftPress={() => router.back()}
-        title="Edit Profile"
-        rightElement={
+        left={<HeaderIconButton icon="close" onPress={() => router.back()} />}
+        center={<HeaderTitle>Edit Profile</HeaderTitle>}
+        right={
           <Button
             title="Save"
             size="sm"

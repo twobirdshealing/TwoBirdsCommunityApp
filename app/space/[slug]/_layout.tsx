@@ -15,13 +15,7 @@ export default function SpaceLayout() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen
           name="members"
-          options={{
-            headerShown: true,
-            title: 'Members',
-            headerStyle: { backgroundColor: themeColors.surface },
-            headerTintColor: themeColors.text,
-            headerShadowVisible: false,
-          }}
+          options={{ headerShown: false }}
         />
       </Stack>
     </GestureHandlerRootView>

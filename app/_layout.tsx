@@ -379,15 +379,12 @@ function RootLayoutNav() {
         {/* TABS */}
         <Stack.Screen name="(tabs)" />
 
-        {/* SINGLE POST VIEW — only screen with a visible header */}
+        {/* SINGLE POST VIEW */}
         <Stack.Screen
           name="feed/[id]"
           options={{
-            headerShown: true,
+            headerShown: false,
             animation: 'default',
-            headerStyle: { backgroundColor: themeColors.surface },
-            headerTintColor: themeColors.text,
-            headerShadowVisible: false,
           }}
         />
 

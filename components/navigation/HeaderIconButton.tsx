@@ -1,13 +1,14 @@
 // =============================================================================
 // HEADER ICON BUTTON - Reusable icon button with optional badge
 // =============================================================================
-// Used in TopHeader for Messages, Notifications, etc.
+// Used in TopHeader and PageHeader for icon buttons with haptic feedback.
 // =============================================================================
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
+import { hapticLight } from '@/utils/haptics';
 import { sizing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -46,7 +47,7 @@ export function HeaderIconButton({
         styles.container,
         pressed && [styles.pressed, { backgroundColor: themeColors.backgroundSecondary }],
       ]}
-      onPress={onPress}
+      onPress={() => { hapticLight(); onPress(); }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
     >

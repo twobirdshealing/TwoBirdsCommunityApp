@@ -12,7 +12,8 @@
 
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('Notifications');
@@ -395,11 +396,9 @@ export default function NotificationsScreen() {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         {/* Header - Using PageHeader for consistency */}
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title="Notifications"
-          rightIcon="settings-outline"
-          onRightPress={handleMoreOptions}
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>Notifications</HeaderTitle>}
+          right={<HeaderIconButton icon="settings-outline" onPress={handleMoreOptions} />}
         />
         {loading && notifications.length === 0 ? (
           <LoadingSpinner />

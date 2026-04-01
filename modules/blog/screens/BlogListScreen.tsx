@@ -19,7 +19,8 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { spacing } from '@/constants/layout';
 import { WPPost } from '@/modules/blog/types/blog';
 import { blogApi } from '@/modules/blog/services/blogApi';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { BlogCard } from '@/modules/blog/components/BlogCard';
 
 // -----------------------------------------------------------------------------
@@ -153,9 +154,8 @@ export default function BlogListScreen() {
 
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title="Blog"
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>Blog</HeaderTitle>}
         />
 
         {/* Error State */}

@@ -17,7 +17,8 @@ import { createLogger } from '@/utils/logger';
 
 const log = createLogger('Messages');
 import { NewMessageModal } from '@/components/message/NewMessageModal';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getMessagePreview, getThreadDisplayName, getThreadAvatar, getThreadUserId, getThreadUsername } from '@/types/message';
@@ -242,11 +243,9 @@ export default function MessagesScreen() {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
         {/* Header */}
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title="Messages"
-          rightIcon="add"
-          onRightPress={() => setShowNewMessageModal(true)}
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>Messages</HeaderTitle>}
+          right={<HeaderIconButton icon="add" onPress={() => setShowNewMessageModal(true)} />}
         />
 
         {/* New Message Modal */}

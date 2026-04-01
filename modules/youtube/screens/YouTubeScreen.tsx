@@ -26,7 +26,8 @@ import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { EmptyState } from '@/components/common/EmptyState';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { youtubeApi } from '../services/youtubeApi';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
+import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import type { YouTubePlaylist } from '../types/youtube';
 
 // -----------------------------------------------------------------------------
@@ -113,11 +114,9 @@ export default function YouTubeScreen() {
         ]}
       >
         <PageHeader
-          leftAction="back"
-          onLeftPress={() => router.back()}
-          title="YouTube"
-          rightIcon={channelUrl ? "open-outline" : undefined}
-          onRightPress={channelUrl ? () => Linking.openURL(channelUrl) : undefined}
+          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
+          center={<HeaderTitle>YouTube</HeaderTitle>}
+          right={channelUrl ? <HeaderIconButton icon="open-outline" onPress={() => Linking.openURL(channelUrl)} /> : undefined}
         />
 
         {error && !loading ? (
