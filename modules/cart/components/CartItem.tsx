@@ -59,7 +59,7 @@ export const CartItemRow = React.memo(function CartItemRow({
     );
   };
 
-  const variationEntries = Object.entries(item.variation);
+  const variationEntries = item.variation ? Object.entries(item.variation) : [];
   const atMaxQty = item.max_quantity !== null && item.quantity >= item.max_quantity;
 
   return (

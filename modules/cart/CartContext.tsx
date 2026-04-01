@@ -22,9 +22,18 @@ import { spacing } from '@/constants/layout';
 import { cartApi } from './services/cartApi';
 import { CartItemRow } from './components/CartItem';
 import { CartSummary } from './components/CartSummary';
-import type { CartData, CartItem } from './types';
+import type { CartData, CartItem, CartSettings } from './types';
 
 const log = createLogger('Cart');
+
+const DEFAULT_SETTINGS: CartSettings = {
+  coupons_enabled: false,
+  tax_enabled: false,
+  shipping_enabled: false,
+  currency_symbol: '$',
+  currency_position: 'left',
+  price_decimals: 2,
+};
 
 // -----------------------------------------------------------------------------
 // Contexts
@@ -166,7 +175,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const renderItem = useCallback(({ item }: { item: CartItem }) => (
     <CartItemRow
       item={item}
-      settings={cart!.settings}
+      settings={cart?.settings ?? DEFAULT_SETTINGS}
       onUpdateQuantity={handleUpdateQuantity}
       onRemove={handleRemoveItem}
       disabled={mutatingKey !== null}
@@ -224,9 +233,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         ListFooterComponent={
           <CartSummary
             totals={cart.totals}
-            coupons={cart.coupons}
-            fees={cart.fees}
-            settings={cart.settings}
+            coupons={cart.coupons ?? []}
+            fees={cart.fees ?? []}
+            settings={cart.settings ?? DEFAULT_SETTINGS}
             onApplyCoupon={handleApplyCoupon}
             onRemoveCoupon={handleRemoveCoupon}
             onClose={closeCart}
