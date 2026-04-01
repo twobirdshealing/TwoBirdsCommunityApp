@@ -1,22 +1,27 @@
 // =============================================================================
-// CART MODULE - WooCommerce cart icon with badge count in header
+// CART MODULE - Native WooCommerce cart with bottom sheet UI
 // =============================================================================
-// Adds a cart icon to the TopHeader that opens the WooCommerce cart page in a
-// WebView. Badge count is synced via X-TBC-Cart-Count response header on every
-// authenticated API call. Requires the tbc-cart WordPress plugin.
+// Adds a cart icon to the TopHeader that opens a native bottom sheet cart.
+// Badge count is synced via X-TBC-Cart-Count response header on every
+// authenticated API call. Requires the tbc-cart WordPress plugin (v3.0.0+).
 //
 // Disable by removing this module from modules/_registry.ts.
 // =============================================================================
 
 import type { ModuleManifest } from '../_types';
-import { SITE_URL } from '@/constants/config';
-import { CartProvider, useCartCount } from './CartContext';
+import { CartProvider, useCartCount, useCartSheet } from './CartContext';
+
+/** Hook returning the cart sheet opener — used by useOnPress in header icon. */
+function useCartPress(): () => void {
+  const { openCart } = useCartSheet();
+  return openCart;
+}
 
 export const cartModule: ModuleManifest = {
   id: 'cart',
   name: 'WooCommerce Cart',
-  version: '1.0.0',
-  description: 'WooCommerce cart icon with badge count in the header',
+  version: '2.0.0',
+  description: 'Native WooCommerce cart with bottom sheet UI',
   author: 'Two Birds Code',
   authorUrl: 'https://twobirdscode.com',
   license: 'Proprietary',
@@ -27,14 +32,11 @@ export const cartModule: ModuleManifest = {
     {
       id: 'cart',
       icon: 'cart-outline',
-      route: {
-        pathname: '/webview',
-        params: { url: `${SITE_URL}/cart/`, title: 'Cart' },
-      },
       order: 30,
       accessibilityLabel: 'Cart',
       hideMenuKey: 'cart',
       useBadgeCount: useCartCount,
+      useOnPress: useCartPress,
     },
   ],
 

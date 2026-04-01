@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.1.0 — 2026-04-01
+- Add WooCommerce fees support — `fees` array in cart response with name, amount, and tax per fee
+- Add `fee` total to totals object (from WC `fee_total`)
+- App now renders individual fee line items in cart summary between shipping and tax
+
+## 3.0.0 — 2026-03-31
+- **Major:** Native cart API for TBC Community App — replaces WebView cart with native screen
+- New endpoint: `GET /tbc-cart/v1/cart` — full cart contents, totals, applied coupons, and WC store settings
+- New endpoint: `PATCH /tbc-cart/v1/cart/items/{key}` — update item quantity
+- New endpoint: `DELETE /tbc-cart/v1/cart/items/{key}` — remove item from cart
+- New endpoint: `POST /tbc-cart/v1/cart/coupons` — apply coupon code
+- New endpoint: `DELETE /tbc-cart/v1/cart/coupons/{code}` — remove coupon code
+- WC session initialization via `wc_load_cart()` for REST context
+- Settings object in cart response: `coupons_enabled`, `tax_enabled`, `shipping_enabled`, currency formatting
+- All mutation endpoints return full updated cart (single round-trip)
+- Error notices from WC operations captured and returned in response
+
 ## 2.0.2 — 2026-03-30
 - Fix variable product dropdown styling — added `.variations` table and select theming with dark mode support, custom arrow, and focus states
 
