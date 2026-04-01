@@ -422,7 +422,7 @@ export const yourModule: ModuleManifest = {
 <!-- ====================================================================== -->
 <h2 id="hooks">11. Hooks Reference</h2>
 
-<p><span class="file-path">hooks/</span> &mdash; 16 custom hooks used across the app.</p>
+<p><span class="file-path">hooks/</span> &mdash; 19 custom hooks used across the app.</p>
 
 <table>
   <tr><th>Hook</th><th>File</th><th>Purpose</th></tr>
@@ -442,6 +442,9 @@ export const yourModule: ModuleManifest = {
   <tr><td><code>useNotificationSettings</code></td><td><code>useNotificationSettings.ts</code></td><td>Push prefs, email prefs, permission state, toggle handlers, frequency changes, and space email prefs</td></tr>
   <tr><td><code>useWidgetPreferences</code></td><td><code>useWidgetPreferences.ts</code></td><td>Persist widget order and visibility to MMKV; handles forward compatibility for new/removed widgets</td></tr>
   <tr><td><code>useThemedEditor</code></td><td><code>useThemedEditor.ts</code></td><td>Shared 10tap editor bridge with app theming (CSS, bridge extensions, placeholder) for post and comment editors</td></tr>
+  <tr><td><code>useOTAUpdates</code></td><td><code>useOTAUpdates.ts</code></td><td>Silent background OTA update check on mount via <code>expo-updates</code>; downloads and applies on next cold start</td></tr>
+  <tr><td><code>useLauncherPreferences</code></td><td><code>useLauncherPreferences.ts</code></td><td>Persist launcher grid item order to MMKV with forward compatibility for new/removed items</td></tr>
+  <tr><td><code>useWobble</code></td><td><code>useWobble.ts</code></td><td>Reanimated rotation wobble animation with haptic feedback for tab buttons and header avatar menu</td></tr>
 </table>
 
 <div class="callout">
@@ -456,10 +459,11 @@ export const yourModule: ModuleManifest = {
 <table>
   <tr><th>Service</th><th>Registration Function</th><th>Consumer</th><th>Purpose</th></tr>
   <tr><td><span class="file-path">services/auth.ts</span></td><td><code>setOnAuthCleared(callback)</code></td><td><code>AuthContext</code></td><td>Force logout when silent refresh fails</td></tr>
-  <tr><td><span class="file-path">services/api/client.ts</span></td><td><code>setOnResponseHeaders(callback)</code></td><td><code>_layout.tsx</code></td><td>Extract badge counts + maintenance from response headers</td></tr>
+  <tr><td><span class="file-path">services/api/client.ts</span></td><td><code>addResponseHeaderListener(listener)</code></td><td><code>_layout.tsx</code></td><td>Extract badge counts + maintenance from response headers; returns unsubscribe function</td></tr>
 </table>
 
-<h3>Pattern</h3>
+<h3>Pattern A &mdash; Single Callback (1:1)</h3>
+<p>Used by <code>setOnAuthCleared</code> where only one consumer exists:</p>
 <pre><code>// In the service (non-React):
 let callback: ((data: SomeData) =&gt; void) | null = null;
 
@@ -478,8 +482,29 @@ useEffect(() =&gt; {
   return () =&gt; setOnSomething(null);
 }, []);</code></pre>
 
+<h3>Pattern B &mdash; Multi-Listener (1:N)</h3>
+<p>Used by <code>addResponseHeaderListener</code> where multiple consumers (core + modules) need the same events:</p>
+<pre><code>// In the service (non-React):
+const listeners = new Set&lt;(data: SomeData) =&gt; void&gt;();
+
+export function addSomethingListener(listener: (data: SomeData) =&gt; void): () =&gt; void {
+  listeners.add(listener);
+  return () =&gt; listeners.delete(listener);  // returns unsubscribe
+}
+
+// Inside the service, when an event occurs:
+listeners.forEach(fn =&gt; fn(data));
+
+// In the React component:
+useEffect(() =&gt; {
+  const unsubscribe = addSomethingListener((data) =&gt; {
+    setContextState(data);
+  });
+  return unsubscribe;
+}, []);</code></pre>
+
 <div class="callout">
-  <strong>Why not events or observables?</strong> The callback pattern is the simplest approach for 1:1 communication between a singleton service and a single React consumer. No event system, no subscription management, no memory leaks from forgotten listeners.
+  <strong>Why not events or observables?</strong> Both patterns are the simplest approach for their use case. Pattern A is ideal for 1:1 communication between a singleton service and a single React consumer. Pattern B supports multiple listeners (e.g., modules subscribing to response headers) with automatic cleanup via the returned unsubscribe function.
 </div>
 
 <!-- ====================================================================== -->

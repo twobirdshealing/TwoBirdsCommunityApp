@@ -56,14 +56,14 @@
   <tr><th>Property</th><th>Value</th></tr>
   <tr><td>ID</td><td><code>latest-blog</code></td></tr>
   <tr><td>Label</td><td>Latest Blog</td></tr>
-  <tr><td>Icon</td><td><code>book-outline</code></td></tr>
+  <tr><td>Icon</td><td><code>newspaper-outline</code></td></tr>
   <tr><td>See All Route</td><td><code>/blog</code></td></tr>
   <tr><td>Default Enabled</td><td><span class="check">&#10003;</span></td></tr>
   <tr><td>Can Disable</td><td><span class="check">&#10003;</span></td></tr>
   <tr><td>External Wrapper</td><td><span class="check">&#10003;</span></td></tr>
 </table>
 
-<h3>Menu Item</h3>
+<h3>Launcher Item</h3>
 <table>
   <tr><th>Property</th><th>Value</th></tr>
   <tr><td>ID</td><td><code>blog</code></td></tr>
@@ -71,6 +71,7 @@
   <tr><td>Icon</td><td><code>newspaper-outline</code></td></tr>
   <tr><td>Route</td><td><code>/blog</code></td></tr>
   <tr><td>Order</td><td>60</td></tr>
+  <tr><td>Hide Key</td><td><code>blog</code></td></tr>
 </table>
 
 <h3>Route Prefixes</h3>
@@ -99,7 +100,7 @@
   <tr><th>Route Stub</th><th>Screen</th></tr>
   <tr><td><span class="file-path">app/blog/index.tsx</span></td><td>BlogListScreen</td></tr>
   <tr><td><span class="file-path">app/blog/[id].tsx</span></td><td>BlogDetailScreen</td></tr>
-  <tr><td><span class="file-path">app/blog-comments/[id].tsx</span></td><td>BlogCommentsScreen</td></tr>
+  <tr><td><span class="file-path">app/blog-comments/[postId].tsx</span></td><td>BlogCommentsScreen</td></tr>
 </table>
 
 <!-- ================================================================== -->

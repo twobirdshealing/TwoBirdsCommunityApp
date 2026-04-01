@@ -318,6 +318,8 @@ await messagesApi.toggleReaction(messageId, '&#x1f44d;');</code></pre>
 <table>
   <tr><th>Property</th><th>Purpose</th></tr>
   <tr><td><code>reactionPickerVisible</code>, <code>reactionPickerAnchor</code></td><td>Picker state for the overlay</td></tr>
+  <tr><td><code>reactionTargetMessageRef</code></td><td>Ref to the message targeted by the picker (used internally)</td></tr>
+  <tr><td><code>getUserReactionType(message)</code></td><td>Returns the reaction config <code>id</code> the current user used on a message, or <code>null</code></td></tr>
   <tr><td><code>renderReactionIcon(emoji)</code></td><td>Renders a <code>ReactionIcon</code> for breakdown pills</td></tr>
   <tr><td><code>renderUserReactionIcon(message)</code></td><td>Returns a render function for the smiley button</td></tr>
   <tr><td><code>handleDefaultReact</code></td><td>Tap handler for the smiley button</td></tr>
@@ -541,8 +543,12 @@ interface CreateThreadRequest {
 <p><span class="file-path">hooks/useMessageMenu.ts</span> &mdash; manages message context menu and media viewer state:</p>
 <table>
   <tr><th>Property</th><th>Purpose</th></tr>
+  <tr><td><code>messageMenuVisible</code>, <code>messageMenuAnchor</code>, <code>messageMenuTarget</code></td><td>Context menu state (visibility, position, target message)</td></tr>
   <tr><td><code>handleMenuPress(message, anchor)</code></td><td>Opens context menu (Reply / Delete) at anchor position</td></tr>
+  <tr><td><code>closeMessageMenu()</code></td><td>Dismisses the context menu</td></tr>
+  <tr><td><code>mediaViewerVisible</code>, <code>mediaViewerImages</code>, <code>mediaViewerIndex</code></td><td>Media viewer state (visibility, images array, starting index)</td></tr>
   <tr><td><code>handleImagePress(images, index)</code></td><td>Opens MediaViewer lightbox for tapped image</td></tr>
+  <tr><td><code>closeMediaViewer()</code></td><td>Dismisses the media viewer</td></tr>
   <tr><td><code>handleReplyQuotePress(messageId)</code></td><td>Scrolls the message list to the quoted original message</td></tr>
 </table>
 

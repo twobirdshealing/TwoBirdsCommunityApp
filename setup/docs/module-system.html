@@ -16,7 +16,7 @@
   <strong>Source files:</strong>
   <span class="file-path">modules/_types.ts</span> (type definitions) &middot;
   <span class="file-path">modules/_registry.ts</span> (active modules)<br>
-  Modules register tabs, widgets, menu items, header icons, context providers, tab bar addons, registration steps, response headers, and UI slots via a manifest. Core code reads from the registry &mdash; modules never import core layouts or navigation.
+  Modules register tabs, widgets, launcher items, header icons, context providers, tab bar addons, registration steps, response headers, and UI slots via a manifest. Core code reads from the registry &mdash; modules never import core layouts or navigation.
 </div>
 
 <div class="callout callout-success">
@@ -46,7 +46,7 @@
 <!-- ================================================================== -->
 <h2 id="overview">1. Overview</h2>
 
-<p>The module system lets you add features to the app &mdash; bottom tabs, home screen widgets, menu items, header icons, context providers, UI slots, and persistent UI above the tab bar &mdash; without editing any core files. Each module is a self-contained folder under <code>modules/</code> with a manifest that declares what it registers.</p>
+<p>The module system lets you add features to the app &mdash; bottom tabs, home screen widgets, launcher items, header icons, context providers, UI slots, and persistent UI above the tab bar &mdash; without editing any core files. Each module is a self-contained folder under <code>modules/</code> with a manifest that declares what it registers.</p>
 
 <div class="callout callout-success">
   <strong>Zero core changes.</strong> Adding or removing a module requires exactly two edits: one import line and one array entry in <code>modules/_registry.ts</code>. If the module needs deep linking, also add its path prefix to <code>moduleDeepLinkPaths</code> in <code>app.config.ts</code>. Core code reads from the registry at build time &mdash; no runtime discovery, no dynamic imports.
@@ -84,7 +84,7 @@ app/
 components/
   navigation/
     TopHeader.tsx    &larr; Renders module header icons
-    UserMenu.tsx     &larr; Renders module menu items
+    Launcher.tsx     &larr; Renders module launcher items
   home/
     widgetRegistry.ts &larr; Merges core + module widgets</code></pre>
 
@@ -115,7 +115,7 @@ export interface ModuleManifest {
   tab?: TabRegistration;
   widgets?: WidgetRegistration[];
   providers?: ProviderRegistration[];
-  menuItems?: MenuItemRegistration[];
+  launcherItems?: LauncherItemRegistration[];
   headerIcons?: HeaderIconRegistration[];
   registrationSteps?: RegistrationStepRegistration[];
   responseHeaders?: ResponseHeaderMapping[];
@@ -153,7 +153,7 @@ export interface ModuleManifest {
     <tr><td><code>tab</code></td><td>TabRegistration</td><td>Bottom tab &mdash; one per module maximum.</td></tr>
     <tr><td><code>widgets</code></td><td>WidgetRegistration[]</td><td>Home screen widgets. A module can register multiple.</td></tr>
     <tr><td><code>providers</code></td><td>ProviderRegistration[]</td><td>Context providers injected into the app tree.</td></tr>
-    <tr><td><code>menuItems</code></td><td>MenuItemRegistration[]</td><td>Items in the avatar dropdown menu.</td></tr>
+    <tr><td><code>launcherItems</code></td><td>LauncherItemRegistration[]</td><td>Icon tiles in the Launcher bottom sheet.</td></tr>
     <tr><td><code>headerIcons</code></td><td>HeaderIconRegistration[]</td><td>Icons in the top header bar.</td></tr>
     <tr><td><code>registrationSteps</code></td><td>RegistrationStepRegistration[]</td><td>Steps injected into the registration wizard (pre-creation only).</td></tr>
     <tr><td><code>responseHeaders</code></td><td>ResponseHeaderMapping[]</td><td>HTTP response headers to extract and store (e.g., for login gates).</td></tr>
@@ -236,6 +236,8 @@ interface WidgetRegistration {
   defaultEnabled: boolean;
   /** The widget component &mdash; wraps itself in HomeWidget, returns null when empty */
   component: React.ComponentType&lt;WidgetComponentProps&gt;;
+  /** Server visibility key &mdash; widget hidden when this key is in hide_menu[] */
+  hideKey?: string;
 }</code></pre>
 
 <p><strong>Example:</strong></p>
@@ -275,12 +277,12 @@ interface WidgetRegistration {
   <strong>Provider ordering.</strong> Lower <code>order</code> values wrap outer in the React tree. If Provider A (order 10) needs to be available inside Provider B (order 20), give A the lower number. Module providers are injected after core providers (Auth, AppConfig, Pusher, BottomSheetModal) so they have access to all core contexts.
 </div>
 
-<h3 id="menu-item-registration">MenuItemRegistration</h3>
-<p>Adds an item to the avatar dropdown menu.</p>
-<pre><code>interface MenuItemRegistration {
-  /** Unique ID for this menu item */
+<h3 id="launcher-item-registration">LauncherItemRegistration</h3>
+<p>Adds an icon tile to the Launcher bottom sheet (the grid that opens from the avatar/menu button).</p>
+<pre><code>interface LauncherItemRegistration {
+  /** Unique ID for this launcher item */
   id: string;
-  /** Display label */
+  /** Display label shown below the icon */
   label: string;
   /** Ionicon name */
   icon: keyof typeof Ionicons.glyphMap;
@@ -289,23 +291,25 @@ interface WidgetRegistration {
   /** Sort position &mdash; core items use 10-90, place yours between them */
   order: number;
   /** Server visibility key &mdash; item hidden when this key is in hide_menu[] */
-  hideMenuKey?: string;
+  hideKey?: string;
   /** Override icon color &mdash; use a theme token name (e.g. 'error' for red). Defaults to textSecondary */
   iconColor?: string;
+  /** Icon background color &mdash; use a theme token name (e.g. 'primary', 'error'). Defaults to surfaceSecondary */
+  iconBackground?: string;
 }</code></pre>
 
 <p><strong>Example &mdash; in-app route:</strong></p>
-<pre><code>menuItems: [{
+<pre><code>launcherItems: [{
   id: 'events',
   label: 'Events',
   icon: 'calendar-outline',
   route: '/events',
   order: 50,
-  hideMenuKey: 'events',
+  hideKey: 'events',
 }]</code></pre>
 
 <p><strong>Example &mdash; WebView route:</strong></p>
-<pre><code>menuItems: [{
+<pre><code>launcherItems: [{
   id: 'resources',
   label: 'Resources',
   icon: 'document-text-outline',
@@ -442,8 +446,8 @@ interface WidgetRegistration {
 <pre><code>interface SlotRegistration&lt;P = any&gt; {
   /** Unique slot registration ID */
   id: string;
-  /** Named slot this fills (e.g. 'feedReactions', 'commentReactions') */
-  slot: string;
+  /** Named slot this fills &mdash; see SlotName for available slots */
+  slot: SlotName;
   /** Priority &mdash; lower number wins if multiple modules target the same slot */
   priority: number;
   /** The component to render in this slot &mdash; receives typed props from the host */
@@ -522,14 +526,14 @@ export const MODULES: ModuleManifest[] = [
     <tr><td><code>getModuleTabs()</code></td><td>TabRegistration[] sorted by order</td><td><span class="file-path">app/(tabs)/_layout.tsx</span></td></tr>
     <tr><td><code>getModuleWidgets()</code></td><td>WidgetRegistration[] flat list</td><td><span class="file-path">components/home/widgetRegistry.ts</span></td></tr>
     <tr><td><code>getModuleProviders()</code></td><td>ProviderRegistration[] sorted by order</td><td><span class="file-path">app/_layout.tsx</span></td></tr>
-    <tr><td><code>getModuleMenuItems()</code></td><td>MenuItemRegistration[] sorted by order</td><td><span class="file-path">components/navigation/UserMenu.tsx</span></td></tr>
+    <tr><td><code>getLauncherItems()</code></td><td>LauncherItemRegistration[] sorted by order</td><td><span class="file-path">components/navigation/Launcher.tsx</span></td></tr>
     <tr><td><code>getModuleHeaderIcons()</code></td><td>HeaderIconRegistration[] sorted by order</td><td><span class="file-path">components/navigation/TopHeader.tsx</span></td></tr>
     <tr><td><code>getTabBarAddons()</code></td><td>ComponentType[] in module order</td><td><span class="file-path">app/(tabs)/_layout.tsx</span></td></tr>
     <tr><td><code>getModuleRoutePrefixes()</code></td><td>string[] flat list</td><td><span class="file-path">app/_layout.tsx</span></td></tr>
     <tr><td><code>getModuleResponseHeaders()</code></td><td>ResponseHeaderMapping[]</td><td><span class="file-path">services/api/client.ts</span></td></tr>
     <tr><td><code>getRegistrationSteps()</code></td><td>RegistrationStepRegistration[] sorted by order (core + module)</td><td><span class="file-path">app/register.tsx</span></td></tr>
     <tr><td><code>getSlotComponent&lt;P&gt;(name)</code></td><td>ComponentType&lt;P&gt; | null</td><td>Any core component with a named slot</td></tr>
-    <tr><td><code>getWidgetComponentMap()</code></td><td>Record&lt;string, ComponentType&lt;{ refreshKey: number }&gt;&gt;</td><td><span class="file-path">app/(tabs)/index.tsx</span></td></tr>
+    <tr><td><code>getWidgetComponentMap()</code></td><td>Record&lt;string, ComponentType&lt;WidgetComponentProps&gt;&gt;</td><td><span class="file-path">app/(tabs)/index.tsx</span></td></tr>
     <tr><td><code>initModules()</code></td><td>Promise&lt;void&gt;</td><td><span class="file-path">app/_layout.tsx</span> (after auth)</td></tr>
     <tr><td><code>cleanupModules()</code></td><td>void</td><td>Cache registry (on logout)</td></tr>
     <tr><td><code>handleModuleNotification(data, router)</code></td><td>boolean</td><td><span class="file-path">app/_layout.tsx</span> (notification tap)</td></tr>
@@ -594,8 +598,8 @@ export const MODULES: ModuleManifest[] = [
 <h3>Home screen widgets</h3>
 <p><span class="file-path">components/home/widgetRegistry.ts</span> merges core and module widgets into a single <code>WIDGET_REGISTRY</code> array. Core widgets (like Courses) come first, then module widgets from <code>getModuleWidgets()</code>. The <code>getAvailableWidgets(features)</code> helper filters out widgets whose <code>featureFlag</code> is disabled. Users can reorder and toggle widgets in edit mode (long-press). Preferences persist in MMKV.</p>
 
-<h3>Avatar dropdown menu</h3>
-<p><span class="file-path">components/navigation/UserMenu.tsx</span> renders module menu items after core items (Profile, Spaces, Bookmarks, etc.), sorted by <code>order</code>.</p>
+<h3>Launcher bottom sheet</h3>
+<p><span class="file-path">components/navigation/Launcher.tsx</span> renders module launcher items after core items, sorted by <code>order</code>. Items appear as icon tiles in a grid layout.</p>
 
 <h3>Top header icons</h3>
 <p><span class="file-path">components/navigation/TopHeader.tsx</span> renders module icons after core icons (Messages, Notifications) and before the avatar button, sorted by <code>order</code>.</p>
@@ -686,15 +690,15 @@ function FeedCard({ feed }) {
 </table>
 
 <h3>hideMenuKey inheritance</h3>
-<p>If a module sets <code>hideMenuKey</code> at the manifest level, it's inherited by the tab registration (unless the tab sets its own). Menu items and header icons set their own <code>hideMenuKey</code> individually.</p>
+<p>If a module sets <code>hideMenuKey</code> at the manifest level, it's inherited by the tab registration (unless the tab sets its own). Launcher items and header icons set their own <code>hideKey</code>/<code>hideMenuKey</code> individually.</p>
 
 <pre><code>// Module-level hideMenuKey inherited by tab
 export const eventsModule: ModuleManifest = {
   id: 'events',
   hideMenuKey: 'events',    // &larr; Tab inherits this
   tab: { ... },             // Tab doesn't need its own hideMenuKey
-  menuItems: [{
-    hideMenuKey: 'events',  // &larr; Menu items set their own
+  launcherItems: [{
+    hideKey: 'events',      // &larr; Launcher items set their own
     ...
   }],
 };</code></pre>
@@ -792,7 +796,7 @@ notificationHandler: (data, router) =&gt; {
 <!-- ================================================================== -->
 <h2 id="create-module">10. Creating a Module (Step-by-Step)</h2>
 
-<p>Let's build a module called "events" that registers a home widget and a menu item.</p>
+<p>Let's build a module called "events" that registers a home widget and a launcher item.</p>
 
 <h3>Step 1: Create the folder structure</h3>
 <pre><code>modules/events/
@@ -933,14 +937,14 @@ export const eventsModule: ModuleManifest = {
     },
   ],
 
-  menuItems: [
+  launcherItems: [
     {
       id: 'events',
       label: 'Events',
       icon: 'calendar-outline',
       route: '/events',
       order: 50,
-      hideMenuKey: 'events',
+      hideKey: 'events',
     },
   ],
 
@@ -977,7 +981,7 @@ const moduleDeepLinkPaths: string[] = [
 
 <p>Also set <code>routePrefixes</code> in your module manifest so push notification taps route correctly.</p>
 
-<p>That's it. Your widget appears on the home screen, your menu item appears in the avatar dropdown, and <code>/events</code> routes to your screen.</p>
+<p>That's it. Your widget appears on the home screen, your launcher item appears in the Launcher bottom sheet, and <code>/events</code> routes to your screen.</p>
 
 <!-- ================================================================== -->
 <h2 id="directory-structure">11. Directory Structure</h2>
@@ -1082,8 +1086,8 @@ export async function createEvent(data) {
 
 <p>Practical examples showing different module patterns. Each shows the manifest and any required files &mdash; copy, adapt, register.</p>
 
-<h3>Example A: Menu item that opens a WordPress page</h3>
-<p>The simplest possible module. No tab, no widget &mdash; just a link in the avatar dropdown that opens a WordPress page in the in-app browser.</p>
+<h3>Example A: Launcher item that opens a WordPress page</h3>
+<p>The simplest possible module. No tab, no widget &mdash; just a tile in the Launcher bottom sheet that opens a WordPress page in the in-app browser.</p>
 <pre><code>// modules/resources/module.ts
 
 import type { ModuleManifest } from '@/modules/_types';
@@ -1097,7 +1101,7 @@ export const resourcesModule: ModuleManifest = {
   author: 'Your Name',
   license: 'Proprietary',
 
-  menuItems: [{
+  launcherItems: [{
     id: 'resources',
     label: 'Resources',
     icon: 'document-text-outline',
@@ -1109,7 +1113,7 @@ export const resourcesModule: ModuleManifest = {
       },
     },
     order: 50,
-    hideMenuKey: 'resources',
+    hideKey: 'resources',
   }],
 };</code></pre>
 <p><strong>Files needed:</strong> Just <code>modules/resources/module.ts</code> and the registry entry. No route stubs, no screens, no components.</p>
@@ -1343,7 +1347,7 @@ const styles = StyleSheet.create({
 <p><strong>Files needed:</strong> <code>module.ts</code> + <code>components/NowPlayingBar.tsx</code> + registry entry. No route stubs needed.</p>
 
 <h3>Example F: Slot-based UI injection</h3>
-<p>A module that replaces core UI via the slot system. The multi-reactions module (which ships with the app) uses this pattern &mdash; it replaces the default like button with a multi-reaction picker. No tab, no widget, no menu item &mdash; just injected slot components and a context provider for shared state (modals, pickers).</p>
+<p>A module that replaces core UI via the slot system. The multi-reactions module (which ships with the app) uses this pattern &mdash; it replaces the default like button with a multi-reaction picker. No tab, no widget, no launcher item &mdash; just injected slot components and a context provider for shared state (modals, pickers).</p>
 <pre><code>// modules/reactions/module.ts
 
 import type { ModuleManifest } from '@/modules/_types';
@@ -1505,7 +1509,7 @@ export function AgeVerifyStep({
 <p><strong>Files needed:</strong> <code>module.ts</code> + <code>components/AgeVerifyStep.tsx</code> + companion WordPress plugin + registry entry.</p>
 
 <h3>Example J: Full-featured module (combining multiple extension points)</h3>
-<p>A module that uses tab, widget, menu item, provider, lifecycle, and notifications together.</p>
+<p>A module that uses tab, widget, launcher item, provider, lifecycle, and notifications together.</p>
 <pre><code>// modules/events/module.ts (full-featured version)
 
 import type { ModuleManifest } from '@/modules/_types';
@@ -1543,7 +1547,7 @@ export const eventsModule: ModuleManifest = {
     component: EventsWidget,
   }],
 
-  menuItems: [{
+  launcherItems: [{
     id: 'events-menu',
     label: 'Events',
     icon: 'calendar-outline',
@@ -1579,7 +1583,7 @@ export const eventsModule: ModuleManifest = {
 <p><strong>Files needed:</strong> <code>module.ts</code> + <code>screens/EventsTab.tsx</code> + <code>widgets/EventsWidget.tsx</code> + <code>contexts/EventsProvider.tsx</code> + <code>services/eventsApi.ts</code> + <code>app/(tabs)/events.tsx</code> route stub + registry entry.</p>
 
 <div class="callout callout-success">
-  <strong>Mix and match.</strong> A single module can combine any of these patterns. Want a tab with a widget and a menu item and a tab bar addon? Just fill in the relevant manifest fields. The registry handles the rest.
+  <strong>Mix and match.</strong> A single module can combine any of these patterns. Want a tab with a widget and a launcher item and a tab bar addon? Just fill in the relevant manifest fields. The registry handles the rest.
 </div>
 
 <!-- ================================================================== -->

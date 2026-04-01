@@ -33,14 +33,14 @@
 <!-- ================================================================== -->
 <h2 id="overview">Overview</h2>
 
-<p>The Donate module adds a <strong>heart icon</strong> to the tab bar that opens a donation page in a WebView. It does not render a screen &mdash; instead, tapping the tab intercepts navigation and opens the configured URL. The module also registers a matching <strong>menu item</strong> in the user menu for the same action.</p>
+<p>The Donate module adds a <strong>heart icon</strong> to the tab bar that opens a donation page in a WebView. It does not render a screen &mdash; instead, tapping the tab intercepts navigation and opens the configured URL. The module also registers a matching <strong>launcher item</strong> in the Launcher bottom sheet for the same action.</p>
 
 <table>
   <tr><th>Property</th><th>Value</th></tr>
   <tr><td>Module ID</td><td><code>donate</code></td></tr>
   <tr><td>Version</td><td>1.0.0</td></tr>
   <tr><td>Companion plugin</td><td>None</td></tr>
-  <tr><td>Registers</td><td>1 tab (with interceptPress), 1 menu item</td></tr>
+  <tr><td>Registers</td><td>1 tab (with interceptPress), 1 launcher item</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -53,8 +53,6 @@
 <pre><code>const DONATE_ROUTE_PARAMS = {
   url: `${SITE_URL}/calendar/donate/`,  // SETUP: Path to your donation page
   title: 'Donate',
-  rightIcon: 'cart-outline',
-  rightAction: 'cart',
 };</code></pre>
 
 <h3>2. Enable the module</h3>
@@ -90,7 +88,7 @@ export default () => &lt;View /&gt;;</code></pre>
   <li>The WebView screen opens with the donation page, including a cart icon in the header</li>
 </ol>
 
-<p>The same URL is opened when the user taps the "Donate" menu item in the user menu.</p>
+<p>The same URL is opened when the user taps the "Donate" launcher item in the Launcher bottom sheet.</p>
 
 <!-- ================================================================== -->
 <h2 id="file-structure">File Structure</h2>
@@ -99,7 +97,7 @@ export default () => &lt;View /&gt;;</code></pre>
   <tr><th>File</th><th>Purpose</th></tr>
   <tr>
     <td><span class="file-path">modules/donate/module.tsx</span></td>
-    <td>Module manifest &mdash; declares tab with interceptPress, menu item, animated icon (TSX because it contains an inline component)</td>
+    <td>Module manifest &mdash; declares tab with interceptPress, launcher item, animated icon (TSX because it contains an inline component)</td>
   </tr>
   <tr>
     <td><span class="file-path">modules/donate/components/DonateTabIcon.tsx</span></td>
@@ -143,15 +141,16 @@ export default () => &lt;View /&gt;;</code></pre>
     },
   },
 
-  menuItems: [
+  launcherItems: [
     {
       id: 'donate',
       label: 'Donate',
       icon: 'heart-outline',
       route: { pathname: '/webview', params: DONATE_ROUTE_PARAMS },
       order: 60,
-      hideMenuKey: 'donate',
+      hideKey: 'donate',
       iconColor: 'error',
+      iconBackground: 'error',
     },
   ],
 };</code></pre>
@@ -174,7 +173,7 @@ export default () => &lt;View /&gt;;</code></pre>
   <tr><td>hideMenuKey</td><td><code>donate</code></td></tr>
 </table>
 
-<h3>Menu Item</h3>
+<h3>Launcher Item</h3>
 
 <table>
   <tr><th>Property</th><th>Value</th></tr>
@@ -183,7 +182,8 @@ export default () => &lt;View /&gt;;</code></pre>
   <tr><td>icon</td><td><code>heart-outline</code></td></tr>
   <tr><td>order</td><td>60</td></tr>
   <tr><td>iconColor</td><td><code>error</code> (red)</td></tr>
-  <tr><td>hideMenuKey</td><td><code>donate</code></td></tr>
+  <tr><td>iconBackground</td><td><code>error</code></td></tr>
+  <tr><td>hideKey</td><td><code>donate</code></td></tr>
 </table>
 
 <!-- ================================================================== -->

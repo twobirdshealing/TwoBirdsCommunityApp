@@ -73,6 +73,7 @@ interface WidgetRegistration {
   featureFlag?: BooleanFeatureKey;          // Conditional inclusion (server-controlled)
   defaultEnabled: boolean;       // Default state for new users
   component: React.ComponentType&lt;WidgetComponentProps&gt;;
+  hideKey?: string;              // Server visibility key (hide_menu[])
 }</code></pre>
 
 <h3>Key Fields</h3>
@@ -81,6 +82,7 @@ interface WidgetRegistration {
   <tr><td><code>id</code></td><td>Must be stable across app updates. Used as MMKV preference key. Never change once shipped.</td></tr>
   <tr><td><code>featureFlag</code></td><td>If set, widget only included when the server-controlled flag is enabled (checked via <code>useFeatures()</code>). Excluded entirely when flag is off.</td></tr>
   <tr><td><code>seeAllRoute</code></td><td>Tapping "See all" navigates to this route. If undefined, no link shown.</td></tr>
+  <tr><td><code>hideKey</code></td><td>Server visibility key. When this key appears in the <code>hide_menu[]</code> array from <code>/app-config</code>, the widget is excluded entirely (same as disabled feature flag).</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -98,6 +100,7 @@ interface WidgetRegistration {
     defaultEnabled: true,
 
     component: CoursesWidget,
+    hideKey: 'courses',
   },
 ];
 
@@ -109,7 +112,7 @@ export const WIDGET_REGISTRY: WidgetRegistration[] = [
 <h3>Helper Functions</h3>
 <table>
   <tr><th>Function</th><th>Description</th></tr>
-  <tr><td><code>getAvailableWidgets(features)</code></td><td>Filters <code>WIDGET_REGISTRY</code> to only widgets whose <code>featureFlag</code> (if set) is enabled in the provided <code>FeaturesConfig</code>. Widgets without a <code>featureFlag</code> always pass.</td></tr>
+  <tr><td><code>getAvailableWidgets(features, hideMenu)</code></td><td>Filters <code>WIDGET_REGISTRY</code> by two checks: (1) <code>featureFlag</code> must be enabled in the provided <code>FeaturesConfig</code> (widgets without a flag always pass), and (2) <code>hideKey</code> must not appear in the <code>hideMenu</code> array (server-controlled visibility via <code>/app-config</code>).</td></tr>
   <tr><td><code>getCoreWidgetComponentMap()</code></td><td>Returns a <code>Record&lt;string, Component&gt;</code> mapping core widget IDs to their components.</td></tr>
 </table>
 
@@ -168,7 +171,7 @@ export const yourModule: ModuleManifest = {
 <ul>
   <li><strong>New widgets</strong> (added since last save) are appended to the end with their <code>defaultEnabled</code> state</li>
   <li><strong>Removed widgets</strong> (no longer in registry) are silently dropped</li>
-  <li><strong>Disabled feature flags</strong> (server-controlled, fetched via <code>/app-config</code>) exclude widgets entirely &mdash; they never appear in preferences</li>
+  <li><strong>Disabled feature flags or hidden via <code>hide_menu</code></strong> (both server-controlled via <code>/app-config</code>) exclude widgets entirely &mdash; they never appear in preferences</li>
   <li><strong>Existing order</strong> is preserved across app updates</li>
 </ul>
 
@@ -179,7 +182,7 @@ export const yourModule: ModuleManifest = {
 
 <ol>
   <li>Load preferences from MMKV via <code>useWidgetPreferences()</code></li>
-  <li>Get available widgets via <code>getAvailableWidgets(features)</code> (feature-flag filtering)</li>
+  <li>Get available widgets via <code>getAvailableWidgets(features, hideMenu)</code> (feature-flag + visibility filtering)</li>
   <li>Build <code>WidgetItem[]</code> list by matching each preference entry to its registry config. Items with no matching config (removed widgets) are dropped.</li>
   <li>Welcome banner prepended as a <code>fixed-order</code> item (not draggable). Disabled widgets filtered out.</li>
   <li>Each item renders through <code>renderWidget()</code>:
@@ -315,7 +318,7 @@ function MyWidget({ refreshKey, title, icon, onSeeAll }: WidgetComponentProps) {
 
   <li><strong>Set <code>refreshOnFocus: false</code> in widget data hooks.</strong> The home screen manages focus-based refresh via <code>useAppFocus</code>. If widgets also refresh on focus, you get double fetches.</li>
 
-  <li><strong>Use <code>featureFlag</code> for conditional widgets.</strong> Feature flags are server-controlled (wp-admin &rarr; TBC Community App &rarr; Features tab) and accessed via <code>useFeatures()</code>. When a flag is off, the widget is excluded from the registry entirely &mdash; not just hidden. It won't appear in preferences.</li>
+  <li><strong>Use <code>featureFlag</code> and/or <code>hideKey</code> for conditional widgets.</strong> Feature flags are server-controlled (wp-admin &rarr; TBC Community App &rarr; Features tab) and accessed via <code>useFeatures()</code>. <code>hideKey</code> checks against the <code>hide_menu[]</code> array from <code>/app-config</code>. When either condition excludes a widget, it is removed from the registry entirely &mdash; not just hidden. It won't appear in preferences.</li>
 
   <li><strong>Module widgets go in the module manifest, not the core registry.</strong> Register via <code>widgets: [...]</code> in your <code>ModuleManifest</code>. The registry merges them automatically via <code>getModuleWidgets()</code>.</li>
 

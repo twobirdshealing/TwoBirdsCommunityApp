@@ -87,7 +87,7 @@ const [fieldErrors, setFieldErrors] = useState&lt;Record&lt;string, string&gt;&g
 
 <table>
   <tr><th>Type</th><th>Renders As</th><th>Keyboard / Behavior</th></tr>
-  <tr><td><code>text</code></td><td>Single-line TextInput</td><td><code>default</code>, auto-capitalize sentences. Special-cased for <code>username</code> keys (no auto-capitalize, <code>username-new</code> autocomplete) and keys containing <code>phone</code> (<code>phone-pad</code> keyboard)</td></tr>
+  <tr><td><code>text</code></td><td>Single-line TextInput</td><td><code>default</code>, auto-capitalize sentences. Special-cased for <code>username</code> keys (no auto-capitalize, <code>username-new</code> autocomplete) and keys containing <code>phone</code> (<code>phone-pad</code> keyboard, <code>tel</code> autocomplete)</td></tr>
   <tr><td><code>email</code></td><td>Single-line TextInput</td><td><code>email-address</code>, no auto-capitalize, <code>email</code> autocomplete</td></tr>
   <tr><td><code>password</code></td><td>TextInput + eye toggle</td><td>Secure entry with show/hide icon, <code>newPassword</code> text content type</td></tr>
   <tr><td><code>number</code></td><td>Single-line TextInput</td><td><code>numeric</code> keyboard</td></tr>

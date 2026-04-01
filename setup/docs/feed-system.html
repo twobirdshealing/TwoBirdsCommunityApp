@@ -229,12 +229,12 @@ interface SurveyOption {
     has_more: boolean;
     total: number;
   };
-  sticky: Feed[] | null;   // Pinned posts (separate from data array)
+  sticky: Feed[] | Feed | null;  // Pinned posts (separate from data array; can be array or single object)
   execution_time: number;
 }</code></pre>
 
 <div class="callout callout-warn">
-  <strong>Sticky post shape varies.</strong> The <code>sticky</code> field can be <code>null</code>, an empty array, or an array of Feed objects depending on the Fluent Community version. Always handle all cases.
+  <strong>Sticky post shape varies.</strong> The <code>sticky</code> field can be <code>null</code>, an empty array, a populated array, or a single Feed object depending on the Fluent Community version. Always handle all cases. Sticky merging only applies to space feeds — the activity screen does not merge sticky posts.
 </div>
 
 <!-- ================================================================== -->
@@ -283,7 +283,7 @@ interface SurveyOption {
 
 <table>
   <tr><th>Screen</th><th>File</th><th>Purpose</th></tr>
-  <tr><td>Activity</td><td><span class="file-path">app/(tabs)/activity.tsx</span></td><td>Main community feed — all posts with sticky merged at top</td></tr>
+  <tr><td>Activity</td><td><span class="file-path">app/(tabs)/activity.tsx</span></td><td>Main community feed — all posts (no sticky merging; sticky is space-only)</td></tr>
   <tr><td>Space Feed</td><td><span class="file-path">app/space/[slug]/index.tsx</span></td><td>Posts within a specific space, with join/lock handling</td></tr>
   <tr><td>Bookmarks</td><td><span class="file-path">app/bookmarks.tsx</span></td><td>User's saved posts</td></tr>
   <tr><td>Post Detail</td><td><span class="file-path">app/feed/[id].tsx</span></td><td>Single post view (deep links, push notifications)</td></tr>
@@ -448,7 +448,7 @@ interface DisplayConfig {
 <!-- ================================================================== -->
 <h2 id="sticky">9. Sticky / Pinned Posts</h2>
 
-<p>Pinned posts appear at the top of the feed, above regular posts.</p>
+<p>Pinned posts appear at the top of the space feed, above regular posts. Sticky merging is a <strong>space-only</strong> feature — the activity screen supports pin/unpin toggling but does not sort sticky posts to the top.</p>
 
 <h3>API</h3>
 <pre><code>// Pin a post
@@ -460,10 +460,13 @@ feedsApi.toggleSticky(feedId, false);
 // → PATCH /feeds/{id} with { is_sticky: 0, query_timestamp: Date.now() }</code></pre>
 
 <h3>Response Handling</h3>
-<p><code>getFeeds()</code> returns sticky posts in a separate <code>sticky</code> field (not mixed into <code>feeds.data</code>). Feed screens merge them at the front of the array:</p>
+<p><code>getFeeds()</code> returns sticky posts in a separate <code>sticky</code> field (not mixed into <code>feeds.data</code>). Sticky is a <strong>space-only</strong> feature — the activity screen does not merge sticky posts. The space feed screen merges them at the front of the array, deduplicating and marking them:</p>
 
-<pre><code>// Activity screen merges sticky + regular feeds
-const allFeeds = [...(sticky || []), ...feeds.data];</code></pre>
+<pre><code>// Space feed screen merges sticky + regular feeds
+const stickyIds = new Set(stickyPosts.map(f => f.id));
+const filteredRegular = rawFeeds.filter(f => !stickyIds.has(f.id));
+const markedSticky = stickyPosts.map(f => ({ ...f, is_sticky: true }));
+const allFeeds = [...markedSticky, ...filteredRegular];</code></pre>
 
 <h3>UI</h3>
 <ul>
@@ -642,10 +645,10 @@ useTickerPolling(isAuthenticated);</code></pre>
   <li><strong>Send <code>X-TBC-Reaction-Type</code> header</strong> with all reaction API calls. Without it, the <code>tbc-multi-reactions</code> plugin can't track the actual reaction type.</li>
   <li><strong>Feed reactions send <code>react_type: 'like'</code>.</strong> Fluent Community core only understands "like". The header carries the real type. Comment reactions use <code>{ state: 0|1 }</code> instead.</li>
   <li><strong>Reconcile after mutation.</strong> After any successful reaction API call, call <code>reconcileReactionBreakdown()</code> to fetch server-accurate counts. This is non-blocking and silently updates state.</li>
-  <li><strong>Handle sticky post shape variance.</strong> The <code>sticky</code> field in <code>FeedsResponse</code> can be <code>null</code>, empty array, or populated array. Always handle all cases when merging.</li>
+  <li><strong>Handle sticky post shape variance.</strong> The <code>sticky</code> field in <code>FeedsResponse</code> can be <code>null</code>, an empty array, a populated array, or even a single Feed object (depending on FC version). Always handle all cases when merging.</li>
   <li><strong>Survey votes use option slugs, not indices.</strong> Send <code>vote_indexes: ['opt_1', 'opt_2']</code> — these are slug strings from <code>SurveyOption.slug</code>, not numeric indices.</li>
   <li><strong>Emit cache events after mutations.</strong> After creating/editing/deleting a post, emit <code>CACHE_EVENTS.FEEDS</code>. After toggling a bookmark, emit <code>CACHE_EVENTS.BOOKMARKS</code>.</li>
-  <li><strong>Check <code>features.multi_reactions</code></strong> (via <code>useFeatures()</code>) before showing reaction picker and breakdown. If the multi-reactions plugin isn't installed, only simple like/unlike is available.</li>
+  <li><strong>Multi-reactions use the module slot system.</strong> <code>FeedCard</code> checks <code>getSlotComponent('feedReactions')</code> and <code>getSlotComponent('feedReactionBreakdown')</code> — if the multi-reactions module is registered, its slot components render the picker and breakdown. If not, the default simple like/unlike fallback is used. There is no <code>features.multi_reactions</code> flag.</li>
   <li><strong>Use <code>message_rendered</code> for display, <code>message</code> for editing.</strong> The server returns pre-rendered HTML in <code>message_rendered</code> — render it with <code>HtmlContent</code>. When editing, use <code>htmlToMarkdown(message_rendered)</code> to convert back for the editor.</li>
   <li><strong>Use <code>useArrayMutate</code> to adapt <code>useAppQuery</code>'s <code>mutate</code>.</strong> Feed hooks (<code>useFeedReactions</code>, <code>useFeedActions</code>) expect <code>React.Dispatch&lt;SetStateAction&lt;Feed[]&gt;&gt;</code>. The <code>useArrayMutate</code> adapter handles the null-to-empty-array conversion.</li>
 </ol>

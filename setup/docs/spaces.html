@@ -124,6 +124,7 @@ interface SpaceGroupOption {
 }</code></pre>
 
 <h3>SpaceSettings</h3>
+<p>Key fields (see <span class="file-path">types/space.ts</span> for the full interface):</p>
 <table>
   <tr><th>Field</th><th>Type</th><th>Description</th></tr>
   <tr><td><code>emoji</code></td><td>string</td><td>Custom emoji displayed instead of logo</td></tr>
@@ -270,10 +271,10 @@ const response = await spacesApi.joinSpace('general');
 <h3>Leave Flow</h3>
 <ol>
   <li>User taps "Leave Space" in SpaceMenu</li>
-  <li>Confirmation alert shown ("Leave Space" / "Cancel")</li>
+  <li>Confirmation alert shown ("Leave" / "Cancel")</li>
   <li><code>spacesApi.leaveSpace(slug)</code> called</li>
-  <li>Navigates back via <code>router.back()</code></li>
   <li>Cache invalidated via <code>CACHE_EVENTS.SPACES</code></li>
+  <li>Navigates back via <code>router.back()</code></li>
 </ol>
 
 <!-- ================================================================== -->
@@ -432,7 +433,7 @@ Ungrouped → "Other Spaces" tab</code></pre>
   <tr><td><span class="file-path">services/api/profiles.ts</span></td><td><code>getUserSpaces(username)</code> for profile spaces tab</td></tr>
   <tr><td><span class="file-path">hooks/useAppQuery.ts</span></td><td>MMKV-persisted TanStack Query data hook used by the Spaces tab</td></tr>
   <tr><td><span class="file-path">utils/cacheEvents.ts</span></td><td><code>CACHE_EVENTS.SPACES</code> for cross-screen invalidation</td></tr>
-  <tr><td><span class="file-path">contexts/AppConfigContext.tsx</span></td><td><code>features.spaces</code> flag (server-controlled via <code>useFeatures()</code>)</td></tr>
+  <tr><td><span class="file-path">contexts/AppConfigContext.tsx</span></td><td><code>features.profile_tabs.spaces</code> flag (server-controlled via <code>useFeatures()</code>) &mdash; controls Spaces tab on user profiles</td></tr>
 </table>
 
 <!-- ================================================================== -->

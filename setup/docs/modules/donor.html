@@ -14,7 +14,7 @@
 </div>
 
 <h1>Donor Dashboard Module</h1>
-<p class="subtitle">Donor dashboard menu item opening WordPress page in WebView</p>
+<p class="subtitle">Donor dashboard launcher item opening WordPress page in WebView</p>
 
 <div class="toc">
   <strong>Contents</strong>
@@ -25,14 +25,14 @@
     <li><a href="#file-structure">File Structure</a></li>
     <li><a href="#manifest">Module Manifest</a></li>
     <li><a href="#registrations">Registrations</a></li>
-    <li><a href="#menu-only-pattern">The "Menu-Only" Pattern</a></li>
+    <li><a href="#launcher-only-pattern">The "Launcher-Only" Pattern</a></li>
   </ol>
 </div>
 
 <!-- ================================================================== -->
 <h2 id="overview">Overview</h2>
 
-<p>The Donor Dashboard module is the <strong>simplest possible module</strong> &mdash; a single menu item that opens a WordPress page in the in-app WebView browser. No tab, no widget, no screen component. Just one file.</p>
+<p>The Donor Dashboard module is the <strong>simplest possible module</strong> &mdash; a single launcher item that opens a WordPress page in the in-app WebView browser. No tab, no widget, no screen component. Just one file.</p>
 
 <table>
   <tr><th>Property</th><th>Value</th></tr>
@@ -40,7 +40,7 @@
   <tr><td>Name</td><td>Donor Dashboard</td></tr>
   <tr><td>Version</td><td>1.0.0</td></tr>
   <tr><td>Companion plugin</td><td>None</td></tr>
-  <tr><td>Registers</td><td>1 menu item</td></tr>
+  <tr><td>Registers</td><td>1 launcher item</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -74,16 +74,16 @@ export const modules = [
 ];</code></pre>
 
 <div class="callout">
-  <strong>No route stub needed.</strong> Since this module only registers a menu item (no tab), there is no route stub file in <code>app/(tabs)/</code>.
+  <strong>No route stub needed.</strong> Since this module only registers a launcher item (no tab), there is no route stub file in <code>app/(tabs)/</code>.
 </div>
 
 <!-- ================================================================== -->
 <h2 id="how-it-works">How It Works</h2>
 
-<p>When the user opens the avatar menu and taps "Donor Dashboard":</p>
+<p>When the user opens the Launcher and taps "Donor Dashboard":</p>
 
 <ol>
-  <li>The menu item's <code>route</code> navigates to <code>/webview</code></li>
+  <li>The launcher item's <code>route</code> navigates to <code>/webview</code></li>
   <li>The WebView screen loads the configured WordPress page URL</li>
   <li>The user interacts with the donor dashboard inside the in-app browser</li>
 </ol>
@@ -97,7 +97,7 @@ export const modules = [
   <tr><th>File</th><th>Purpose</th></tr>
   <tr>
     <td><span class="file-path">modules/donor/module.ts</span></td>
-    <td>Module manifest &mdash; declares a single menu item. This is the only file in the module.</td>
+    <td>Module manifest &mdash; declares a single launcher item. This is the only file in the module.</td>
   </tr>
 </table>
 
@@ -115,12 +115,12 @@ export const donorModule: ModuleManifest = {
   id: 'donor',
   name: 'Donor Dashboard',
   version: '1.0.0',
-  description: 'Donor Dashboard menu item (WebView)',
+  description: 'Donor Dashboard launcher item (WebView)',
   author: 'Two Birds Code',
   authorUrl: 'https://twobirdscode.com',
   license: 'Proprietary',
 
-  menuItems: [
+  launcherItems: [
     {
       id: 'donor-dashboard',
       label: 'Donor Dashboard',
@@ -133,7 +133,7 @@ export const donorModule: ModuleManifest = {
         },
       },
       order: 65,
-      hideMenuKey: 'donor_dashboard',
+      hideKey: 'donor_dashboard',
     },
   ],
 };</code></pre>
@@ -141,7 +141,7 @@ export const donorModule: ModuleManifest = {
 <!-- ================================================================== -->
 <h2 id="registrations">Registrations</h2>
 
-<h3>Menu Item</h3>
+<h3>Launcher Item</h3>
 
 <table>
   <tr><th>Property</th><th>Value</th></tr>
@@ -149,13 +149,13 @@ export const donorModule: ModuleManifest = {
   <tr><td>label</td><td>Donor Dashboard</td></tr>
   <tr><td>icon</td><td><code>wallet-outline</code></td></tr>
   <tr><td>order</td><td>65</td></tr>
-  <tr><td>hideMenuKey</td><td><code>donor_dashboard</code></td></tr>
+  <tr><td>hideKey</td><td><code>donor_dashboard</code></td></tr>
 </table>
 
 <!-- ================================================================== -->
-<h2 id="menu-only-pattern">The "Menu-Only" Pattern</h2>
+<h2 id="launcher-only-pattern">The "Launcher-Only" Pattern</h2>
 
-<p>This module demonstrates the simplest possible module architecture &mdash; <strong>a single manifest file with one menu item</strong>. It is a useful template for any feature that just needs to open an existing WordPress page in the app.</p>
+<p>This module demonstrates the simplest possible module architecture &mdash; <strong>a single manifest file with one launcher item</strong>. It is a useful template for any feature that just needs to open an existing WordPress page in the app.</p>
 
 <p>Common use cases for this pattern:</p>
 
@@ -168,7 +168,7 @@ export const donorModule: ModuleManifest = {
 </ul>
 
 <div class="callout">
-  <strong>Minimal footprint.</strong> A menu-only module requires:
+  <strong>Minimal footprint.</strong> A launcher-only module requires:
   <ul style="margin-bottom: 0;">
     <li>One file: <code>modules/yourmodule/module.ts</code></li>
     <li>One import + one array entry in <code>modules/_registry.ts</code></li>
@@ -177,7 +177,7 @@ export const donorModule: ModuleManifest = {
 </div>
 
 <div class="callout callout-warn">
-  <strong>hideMenuKey</strong> controls visibility. If you also add a tab or widget for the same feature, use a matching <code>hideMenuKey</code> so the menu item hides when the tab is visible (preventing duplicate navigation).
+  <strong>hideKey</strong> controls visibility. If you also add a tab or widget for the same feature, use a matching <code>hideKey</code> so the launcher item hides when the tab is visible (preventing duplicate navigation).
 </div>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

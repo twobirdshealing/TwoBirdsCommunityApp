@@ -97,7 +97,7 @@ showImagePicker(callbacks, {
 <ul>
   <li><strong>iOS:</strong> Shows <code>ActionSheetIOS</code> with Take Photo / Choose from Library options</li>
   <li><strong>Android:</strong> Shows <code>Alert</code> with the same options</li>
-  <li><strong>Permissions:</strong> Requests camera permission before launching camera (library doesn't need explicit permission)</li>
+  <li><strong>Permissions:</strong> Requests camera permission before launching camera (library picker in avatarPicker skips explicit permission; the multi-image composer picker requests <code>MediaLibraryPermissions</code> before launch)</li>
   <li><strong>Quality:</strong> 0.8 (80% JPEG compression) by default</li>
   <li><strong>Editing:</strong> <code>allowsEditing: true</code> &mdash; lets the user crop before confirming</li>
   <li><strong>Upload:</strong> The picker handles upload internally via <code>uploadMedia()</code> &mdash; <code>onSuccess</code> receives the remote URL directly</li>
@@ -164,9 +164,9 @@ showImagePicker(callbacks, {
 <table>
   <tr><th>Priority</th><th>Check</th><th>Media Type</th></tr>
   <tr><td>1</td><td><code>meta.media_items</code> array exists</td><td>Multi-image or video items</td></tr>
-  <tr><td>2</td><td><code>meta.media_preview?.provider === 'youtube'</code></td><td>YouTube embed</td></tr>
-  <tr><td>3</td><td><code>meta.media_preview?.content_type === 'video'</code></td><td>Direct video file</td></tr>
-  <tr><td>4</td><td><code>meta.media_preview?.image</code></td><td>Single image (from preview)</td></tr>
+  <tr><td>2</td><td><code>meta.media_preview?.provider === 'youtube'</code> + <code>content_type === 'video'</code> + <code>url</code></td><td>YouTube embed</td></tr>
+  <tr><td>3</td><td><code>meta.media_preview?.content_type === 'video'</code> + <code>url</code></td><td>Direct video file</td></tr>
+  <tr><td>4</td><td><code>meta.media_preview?.image</code> (skip if <code>provider === 'youtube'</code>)</td><td>Single image (from preview)</td></tr>
   <tr><td>5</td><td><code>feed.featured_image</code></td><td>Legacy featured image</td></tr>
   <tr><td>6</td><td>YouTube link in message text</td><td>YouTube fallback</td></tr>
 </table>
@@ -176,9 +176,9 @@ showImagePicker(callbacks, {
 <pre><code>// Images
 submitData.media_images = attachments.map(item => ({
   url: item.url,
-  type: item.type,
-  width: item.width,
-  height: item.height,
+  type: 'image',
+  width: 0,
+  height: 0,
   provider: 'uploader',
 }));
 
@@ -424,7 +424,7 @@ interface GiphyGif {
   <tr><td><span class="file-path">services/api/feeds.ts</span></td><td>OEmbed endpoint (<code>getOembed()</code> &rarr; <code>GET /feeds/oembed</code>)</td></tr>
   <tr><td><span class="file-path">utils/avatarPicker.ts</span></td><td>Platform-aware image picker with built-in upload (camera + library, aspect ratio, callbacks)</td></tr>
   <tr><td><span class="file-path">utils/youtube.ts</span></td><td><code>extractYouTubeId()</code> &mdash; parses video ID from YouTube URLs</td></tr>
-  <tr><td><span class="file-path">components/media/ImageMedia.tsx</span></td><td>Single image display with responsive sizing (max 400px height), uses RN <code>Image</code></td></tr>
+  <tr><td><span class="file-path">components/media/ImageMedia.tsx</span></td><td>Single image display with responsive sizing (max 400px height), uses RN <code>Image</code> (legacy &mdash; other components use <code>expo-image</code>)</td></tr>
   <tr><td><span class="file-path">components/media/MediaViewer.tsx</span></td><td>Fullscreen gallery with pinch-zoom, save, share (uses <code>expo-image</code>)</td></tr>
   <tr><td><span class="file-path">components/media/VideoPlayer.tsx</span></td><td>Native video playback via <code>expo-video</code></td></tr>
   <tr><td><span class="file-path">components/media/YouTubeEmbed.tsx</span></td><td>YouTube iframe embed (optional dep, try/catch require)</td></tr>

@@ -66,11 +66,11 @@
 
 <div class="stats-grid">
   <div class="stat-card">
-    <span class="stat-number">28</span>
+    <span class="stat-number">34</span>
     <span class="stat-label">Screens / Routes</span>
   </div>
   <div class="stat-card">
-    <span class="stat-number">75+</span>
+    <span class="stat-number">85+</span>
     <span class="stat-label">UI Components</span>
   </div>
   <div class="stat-card">
@@ -82,7 +82,7 @@
     <span class="stat-label">Core Companion Plugins</span>
   </div>
   <div class="stat-card">
-    <span class="stat-number">17</span>
+    <span class="stat-number">20</span>
     <span class="stat-label">API Services</span>
   </div>
   <div class="stat-card">
@@ -254,15 +254,11 @@
   </tr>
   <tr>
     <td><strong>Config</strong></td>
-    <td>Visual editor for all buyer-editable values: app name, site URL, bundle IDs, EAS project ID, Apple Account, Pusher keys. Changes write directly to <code>config.ts</code>, <code>app.json</code>, <code>eas.json</code>, and <code>app.config.ts</code>. Linked fields auto-sync (e.g., setting site URL updates both <code>eas.json</code> and <code>app.config.ts</code>). Feature flags are now server-controlled via wp-admin &rarr; TBC Community App &rarr; Features tab.</td>
+    <td>Visual editor for all buyer-editable values: app name, site URL, bundle IDs, EAS project ID, Apple Account, Pusher keys, and Firebase config files (drag-and-drop upload for <code>google-services.json</code> and <code>GoogleService-Info.plist</code>). Changes write directly to <code>config.ts</code>, <code>app.json</code>, <code>eas.json</code>, and <code>app.config.ts</code>. Linked fields auto-sync (e.g., setting site URL updates both <code>eas.json</code> and <code>app.config.ts</code>). Feature flags are now server-controlled via wp-admin &rarr; TBC Community App &rarr; Features tab.</td>
   </tr>
   <tr>
     <td><strong>Assets</strong></td>
     <td>Visual checklist of all required branding assets (iOS icon, Android adaptive icons, splash screen, login logo, notification icon) with thumbnail previews and exact size requirements. Shows which assets are missing vs. configured.</td>
-  </tr>
-  <tr>
-    <td><strong>Plugins &amp; Firebase</strong></td>
-    <td>Companion plugin status (installed version, latest version, update needed). Firebase configuration status for both iOS and Android. Direct links to plugin setup instructions.</td>
   </tr>
   <tr>
     <td><strong>Modules</strong></td>
@@ -271,6 +267,10 @@
   <tr>
     <td><strong>Builds</strong></td>
     <td>EAS build management: trigger iOS and Android builds, view build history, download artifacts, submit iOS builds to App Store Connect, download Android <code>.aab</code> files for Google Play Console upload.</td>
+  </tr>
+  <tr>
+    <td><strong>OTA Updates</strong></td>
+    <td>Push over-the-air JavaScript updates to production users via <code>eas update</code>. View published updates with channel, branch, and runtime version info.</td>
   </tr>
   <tr>
     <td><strong>Updates</strong></td>
@@ -298,7 +298,7 @@
 
 <h4>Technical Details</h4>
 <ul>
-  <li><strong>Zero dependencies</strong> &mdash; built entirely on Node.js built-ins (<code>http</code>, <code>fs</code>, <code>path</code>, <code>https</code>, <code>zlib</code>). No npm install, no framework, no bundler. Single file: <code>setup/dashboard.js</code>.</li>
+  <li><strong>Zero dependencies</strong> &mdash; built entirely on Node.js built-ins (<code>http</code>, <code>fs</code>, <code>path</code>, <code>https</code>, <code>zlib</code>). No npm install, no framework, no bundler. Entry point: <code>setup/dashboard.js</code>, with modular helpers in <code>setup/lib/</code>, routes in <code>setup/routes/</code>, and frontend in <code>setup/frontend/</code>.</li>
   <li><strong>Custom tar parser</strong> &mdash; reads <code>.tar.gz</code> packages using built-in <code>zlib</code> and a hand-written tar header parser. No third-party archive libraries.</li>
   <li><strong>Protected paths</strong> &mdash; defined in <code>manifest.json</code>. The update system checks this list before writing any file. Includes: <code>config.ts</code>, <code>app.json</code>, <code>eas.json</code>, <code>app.config.ts</code>, <code>package.json</code>, <code>assets/images/</code>, Firebase configs, <code>modules/</code>, and the license/backup files.</li>
   <li><strong>Manifest-driven</strong> &mdash; <code>manifest.json</code> contains the product version, update server URL, protected paths list, and core plugin list. Updated automatically when an update is applied.</li>
@@ -342,7 +342,7 @@
     <td>Bookmarks (save/unsave posts)</td>
     <td><span class="tag tag-free">FREE</span></td>
     <td><span class="check">&#10003;</span></td>
-    <td>Dedicated bookmarks screen with sort options (latest, oldest, popular, new_activity, likes)</td>
+    <td>Dedicated bookmarks screen (API supports sort: latest, oldest, popular, new_activity, likes)</td>
   </tr>
   <tr>
     <td>Post topics / tags</td>

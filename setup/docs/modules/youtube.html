@@ -55,7 +55,7 @@
 <table>
   <tr><th>Property</th><th>Value</th></tr>
   <tr><td>ID</td><td><code>latest-youtube</code></td></tr>
-  <tr><td>Label</td><td>Latest YouTube</td></tr>
+  <tr><td>Label</td><td>YouTube</td></tr>
   <tr><td>Icon</td><td><code>logo-youtube</code></td></tr>
   <tr><td>See All Route</td><td><code>/youtube</code></td></tr>
   <tr><td>Default Enabled</td><td><span class="check">&#10003;</span></td></tr>
@@ -89,7 +89,7 @@
 <table>
   <tr><th>Route Stub</th><th>Screen</th></tr>
   <tr><td><span class="file-path">app/youtube/index.tsx</span></td><td>YouTubeScreen</td></tr>
-  <tr><td><span class="file-path">app/youtube/[playlistId].tsx</span></td><td>PlaylistDetailScreen</td></tr>
+  <tr><td><span class="file-path">app/youtube/playlist/[id].tsx</span></td><td>PlaylistDetailScreen</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -99,9 +99,10 @@
 
 <table>
   <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
-  <tr><td><code>GET</code></td><td><code>tbc-youtube/v1/latest?limit=N</code></td><td>Latest videos from the channel</td></tr>
-  <tr><td><code>GET</code></td><td><code>tbc-youtube/v1/playlists</code></td><td>All playlists for the channel</td></tr>
-  <tr><td><code>GET</code></td><td><code>tbc-youtube/v1/playlists/:id/videos</code></td><td>Videos in a specific playlist</td></tr>
+  <tr><td><code>GET</code></td><td><code>tbc-yt/v1/latest?limit=N</code></td><td>Latest videos from the channel</td></tr>
+  <tr><td><code>GET</code></td><td><code>tbc-yt/v1/playlists</code></td><td>All playlists for the channel</td></tr>
+  <tr><td><code>GET</code></td><td><code>tbc-yt/v1/playlists/:id/videos</code></td><td>Videos in a specific playlist</td></tr>
+  <tr><td><code>GET</code></td><td><code>tbc-yt/v1/config</code></td><td>Module config (channel URL for Subscribe button)</td></tr>
 </table>
 
 <div class="callout callout-warn">

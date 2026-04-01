@@ -15,7 +15,7 @@
 <div class="callout">
   This document covers every reusable component, design token, and pattern in the component library.
   Use this as your reference when building new screens, creating modules, or customizing the app for a client.
-  For setup &amp; configuration, see <a href="../setup/setup-guide.html">Setup Guide</a>.
+  For setup &amp; configuration, see <a href="../setup-guide.html">Setup Guide</a>.
 </div>
 
 <div class="toc">
@@ -117,7 +117,7 @@
 <!-- ================================================================== -->
 
 <p>Colors are synced from the WordPress site's Fluent Community theme. They flow through:</p>
-<pre><code>Fluent Community (WordPress) &rarr; REST API (/tbc-ca/v1/theme/colors) &rarr; ThemeContext &rarr; useTheme().colors</code></pre>
+<pre><code>Fluent Community (WordPress) &rarr; REST API (/tbc-ca/v1/app-config) &rarr; ThemeContext &rarr; useTheme().colors</code></pre>
 
 <div class="callout callout-warn">
   <strong>Never hardcode colors.</strong> Always use <code>const { colors } = useTheme()</code> inside components.
@@ -171,7 +171,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
   <tr><th>File</th><th>Role</th></tr>
   <tr><td><span class="file-path">constants/colors.ts</span></td><td>ColorTheme interface, light/dark defaults, <code>mapFluentToAppColors()</code>, <code>withOpacity()</code></td></tr>
   <tr><td><span class="file-path">contexts/ThemeContext.tsx</span></td><td>Provider, caches colors, syncs from API</td></tr>
-  <tr><td><span class="file-path">services/api/theme.ts</span></td><td>Fetches <code>/tbc-ca/v1/theme/colors</code></td></tr>
+  <tr><td><span class="file-path">services/api/appConfig.ts</span></td><td>Fetches <code>/tbc-ca/v1/app-config</code> (includes theme colors)</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -254,7 +254,7 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
     <tr><td>error</td><td>string</td><td>&mdash;</td><td>Error message below input (colors border red)</td></tr>
     <tr><td>password</td><td>boolean</td><td>false</td><td>Adds show/hide toggle button</td></tr>
     <tr><td>containerStyle</td><td>ViewStyle</td><td>&mdash;</td><td>Override container style</td></tr>
-    <tr><td>inputStyle</td><td>ViewStyle</td><td>&mdash;</td><td>Override input style</td></tr>
+    <tr><td>inputStyle</td><td>TextStyle</td><td>&mdash;</td><td>Override input style</td></tr>
     <tr><td>...rest</td><td>TextInputProps</td><td>&mdash;</td><td>All React Native TextInput props (except style)</td></tr>
   </table>
 
@@ -381,15 +381,15 @@ withOpacity(colors.error, 0.3)     // Subtle error border</code></pre>
   </table>
 </div>
 
-<!-- UserMenu -->
+<!-- Launcher -->
 <div class="component-card">
-  <h4>UserMenu <span class="tag shared">Shared</span></h4>
-  <span class="file-path">components/navigation/UserMenu.tsx</span>
-  <p>Dropdown menu triggered from the avatar in <code>TopHeader</code>. Displays profile preview and navigation to: My Profile, My Spaces, Directory, Bookmarks, Courses, Notification Settings, Privacy Policy, and Logout. Supports module-registered menu items via the module system.</p>
+  <h4>Launcher <span class="tag shared">Shared</span></h4>
+  <span class="file-path">components/navigation/Launcher.tsx</span>
+  <p>Bottom sheet icon grid triggered from the avatar in <code>TopHeader</code>. Displays profile preview and a sortable grid of navigation tiles: My Profile, My Spaces, Directory, Bookmarks, Courses, Notification Settings, Privacy Policy, and Logout. Long-press any tile to drag and reorder &mdash; order persists via MMKV. Dark mode toggle sits in the profile row. Supports module-registered launcher items via the module system.</p>
 
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
-    <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide menu</td></tr>
+    <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide launcher</td></tr>
     <tr><td>onClose</td><td>() =&gt; void</td><td>&mdash;</td><td>Close handler</td></tr>
     <tr><td>user</td><td>{ displayName, username, email?, avatar? }</td><td>&mdash;</td><td>Current user data</td></tr>
     <tr><td>onProfilePress</td><td>() =&gt; void</td><td>&mdash;</td><td>Navigate to profile</td></tr>
@@ -800,6 +800,9 @@ export default function HomeScreen() {
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
     <tr><td>videoId</td><td>string</td><td>&mdash;</td><td>YouTube video ID</td></tr>
     <tr><td>playing</td><td>boolean</td><td>false</td><td>Auto-play</td></tr>
+    <tr><td>onPlay</td><td>() =&gt; void</td><td>&mdash;</td><td>Called when playback starts</td></tr>
+    <tr><td>onStateChange</td><td>(state: string) =&gt; void</td><td>&mdash;</td><td>YouTube player state change handler</td></tr>
+    <tr><td>onReady</td><td>() =&gt; void</td><td>&mdash;</td><td>Called when player is ready</td></tr>
   </table>
 </div>
 

@@ -174,8 +174,8 @@ Logout:
 <ul>
   <li>Unauthenticated users can only access: <code>/login</code>, <code>/register</code>, <code>/forgot-password</code>, <code>/webview</code> (with <code>noAuth</code> param)</li>
   <li>Authenticated users are redirected away from auth screens</li>
-  <li>Profile-incomplete users are redirected to <code>/profile-complete</code></li>
   <li>The <code>/register</code> route stays accessible even after auth (for the avatar/bio completion step)</li>
+  <li>Profile completion redirect (<code>/profile-complete</code>) is handled by the optional profile-completion module, not core</li>
 </ul>
 
 <h3>Key Files</h3>
@@ -467,7 +467,7 @@ tbc-community-app plugin (PHP)
   &darr; exposes via REST API
 GET /tbc-ca/v1/app-config (public, no auth)
   &darr; returns light + dark color tokens
-services/api/appConfig.ts &rarr; mapFluentToAppColors()
+constants/colors.ts &rarr; mapFluentToAppColors()
   &darr; maps Fluent keys to app tokens
 ThemeContext &rarr; caches in MMKV
   &darr; provides via useTheme() hook
@@ -622,7 +622,7 @@ useAppQuery({
 
 <h3>Setup Dashboard &amp; Update System</h3>
 
-<p>The setup dashboard (<code>npm run dashboard</code>) is a zero-dependency local web app that handles the entire app lifecycle. It runs on Node built-ins only and serves at <code>localhost:3456</code>. Seven tabs: <strong>Config</strong> (visual editor for all buyer-editable values), <strong>Assets</strong> (branding checklist with thumbnails), <strong>Plugins &amp; Firebase</strong> (plugin status and Firebase config), <strong>Modules</strong> (import and manage feature modules), <strong>Builds</strong> (EAS build management and store submission), <strong>Updates</strong> (license activation, one-click core updates with automatic backup/restore), and <strong>Status</strong> (live validation and connectivity checks).</p>
+<p>The setup dashboard (<code>npm run dashboard</code>) is a zero-dependency local web app that handles the entire app lifecycle. It runs on Node built-ins only and serves at <code>localhost:3456</code>. Seven tabs: <strong>Config</strong> (visual editor for all buyer-editable values), <strong>Assets</strong> (branding checklist with thumbnails), <strong>Modules</strong> (import and manage feature modules), <strong>Builds</strong> (EAS build management and store submission), <strong>OTA Updates</strong> (push over-the-air JS updates to users), <strong>Updates</strong> (license activation, one-click core updates with automatic backup/restore), and <strong>Status</strong> (live validation and connectivity checks).</p>
 
 <h4>Update Flow</h4>
 <ol>

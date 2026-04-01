@@ -114,7 +114,7 @@
   xprofile?: XProfile;               // Actor who triggered the notification
 
   // Computed (added by transformNotification)
-  id: number;                        // From subscriber.object_id
+  id: number;                        // From raw.id (fallback: subscriber.object_id)
   is_read: boolean;                  // Parsed from subscriber.is_read ("0"/"1"/true)
   created_at: string;                // From subscriber.created_at
   type: NotificationAction;          // Alias for action

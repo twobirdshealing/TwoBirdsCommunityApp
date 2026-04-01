@@ -60,7 +60,7 @@
 <ol>
   <li><strong>Cache events</strong> &mdash; after a mutation (create post, bookmark, join space), the mutating screen emits a cache event. Other screens subscribed to that event silently re-fetch.</li>
   <li><strong>App focus refresh</strong> &mdash; when the user returns to the app from the background, screens re-fetch (with a cooldown to prevent rapid-fire requests).</li>
-  <li><strong>Batch startup</strong> &mdash; on authenticated startup, a single batch API call pre-populates multiple cache keys via <code>queryClient.setQueryData()</code>. Screens that mount after the batch use the already-populated TanStack Query cache and skip their initial network fetch.</li>
+  <li><strong>Batch startup</strong> &mdash; on authenticated startup, a single batch API call pre-populates multiple cache keys via <code>queryClient.setQueryData()</code>. Widgets that mount after the batch use the already-populated TanStack Query cache and skip their initial network fetch.</li>
 </ol>
 
 <!-- ====================================================================== -->
@@ -202,7 +202,7 @@ const { data: courses } = useAppQuery&lt;Course[]&gt;({
   </tr>
   <tr>
     <td>Rapid focus protection</td>
-    <td>5s cooldown (FOCUS_COOLDOWN_MS)</td>
+    <td>TanStack Query's built-in focus manager (staleTime 0 = always refetch)</td>
     <td>staleTime handles this</td>
   </tr>
   <tr>
@@ -265,7 +265,7 @@ useAppQuery&lt;Feed[]&gt;({
 <!-- ====================================================================== -->
 <h2 id="batch-startup">5. Batch Startup Loading</h2>
 
-<p>On authenticated startup, <span class="file-path">hooks/useStartupData.ts</span> fires a single batch API call that replaces 6 individual HTTP requests. Results are distributed to contexts (config, auth, badges) and written directly into the TanStack Query cache via <code>queryClient.setQueryData()</code> for widget caches.</p>
+<p>On authenticated startup, <span class="file-path">hooks/useStartupData.ts</span> fires a single batch API call that replaces ~12 individual HTTP requests. Results are distributed to contexts (config, auth, badges) and written directly into the TanStack Query cache via <code>queryClient.setQueryData()</code> for widget caches.</p>
 
 <h3>What the Batch Fetches</h3>
 <table>
@@ -282,8 +282,8 @@ useAppQuery&lt;Feed[]&gt;({
 <p>After the batch fetch completes, <code>useStartupData</code> calls <code>queryClient.setQueryData(cacheKey, data)</code> for each widget result. When those widgets mount, TanStack Query finds the data already in cache and renders immediately &mdash; no duplicate network fetch is triggered because the cache is already populated and within its stale window.</p>
 
 <pre><code>// In useStartupData.ts — pre-populating widget caches:
-queryClient.setQueryData('tbc_welcome_banner', bannerData);
-queryClient.setQueryData('tbc_widget_enrolled_courses', coursesData);</code></pre>
+queryClient.setQueryData([WIDGET_CACHE_KEYS.welcomeBanner], bannerData.welcome_banner);
+queryClient.setQueryData([WIDGET_CACHE_KEYS.courses], coursesData.courses?.data ?? []);</code></pre>
 
 <div class="callout">
   <strong>Modules don't use the batch.</strong> Module widgets self-fetch via <code>useAppQuery</code> when they mount. Only core widgets participate in the batch to keep it lean and avoid coupling modules to core startup.
@@ -356,7 +356,7 @@ const handleReact = useFeedReactions(feeds, setFeeds);</code></pre>
 
 <pre><code>// AuthContext logout calls:
 import { clearAllUserCaches } from '@/services/cacheRegistry';
-await clearAllUserCaches();</code></pre>
+clearAllUserCaches();</code></pre>
 
 <h3>Keys That Survive Logout</h3>
 <p>These are site-level (not user-specific) and persist across login/logout:</p>
@@ -387,14 +387,14 @@ registerCache({ clearMemory: () =&gt; myCache.clear() });</code></pre>
   <tr><th>Cache Key</th><th>Writer</th><th>Reader</th></tr>
   <tr><td><code>tbc_activity_feeds</code></td><td>Activity screen fetcher</td><td>Activity screen</td></tr>
   <tr><td><code>tbc_bookmarks</code></td><td>Bookmarks screen fetcher</td><td>Bookmarks screen</td></tr>
-  <tr><td><code>tbc_spaces_list</code></td><td>Spaces tab fetcher</td><td>Spaces tab</td></tr>
+  <tr><td><code>tbc_spaces_all</code></td><td>Spaces tab fetcher</td><td>Spaces tab</td></tr>
   <tr><td><code>tbc_space_feeds_${slug}</code></td><td>Space page fetcher</td><td>Space page</td></tr>
   <tr><td><code>tbc_profile_${username}</code></td><td>Profile screen fetcher</td><td>Profile screen</td></tr>
-  <tr><td><code>tbc_feed_detail_${id}</code></td><td>Feed detail fetcher</td><td>Feed detail screen</td></tr>
+  <tr><td><code>tbc_feed_${id}</code></td><td>Feed detail fetcher</td><td>Feed detail screen</td></tr>
   <tr><td><code>tbc_welcome_banner</code></td><td>Startup batch + widget fetcher</td><td>WelcomeBannerWidget</td></tr>
   <tr><td><code>tbc_widget_enrolled_courses</code></td><td>Startup batch + widget fetcher</td><td>CoursesWidget</td></tr>
-  <tr><td><code>tbc_notifications</code></td><td>Notifications screen fetcher</td><td>Notifications screen</td></tr>
-  <tr><td><code>tbc_messages</code></td><td>Messages screen fetcher</td><td>Messages screen</td></tr>
+  <tr><td><code>tbc_notifications_${filter}</code></td><td>Notifications screen fetcher</td><td>Notifications screen (filter: <code>unread</code> or <code>all</code>)</td></tr>
+  <tr><td><code>tbc_messages_threads</code></td><td>Messages screen fetcher</td><td>Messages screen</td></tr>
 </table>
 
 <div class="callout callout-warn">
