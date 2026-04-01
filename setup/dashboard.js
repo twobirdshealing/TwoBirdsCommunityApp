@@ -390,6 +390,30 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (pathname === '/api/builds/presets' && req.method === 'GET') {
+      const data = readJsonSafe(PATHS.buildPresetsFile);
+      jsonResponse(res, { ok: true, selected: data?.selected || [] });
+      return;
+    }
+
+    if (pathname === '/api/builds/presets' && req.method === 'POST') {
+      const body = await readBody(req);
+      const { selected } = JSON.parse(body);
+      if (!Array.isArray(selected)) { jsonResponse(res, { ok: false, error: 'selected must be an array' }, 400); return; }
+      for (const entry of selected) {
+        const parts = entry.split(':');
+        if (parts.length !== 2) { jsonResponse(res, { ok: false, error: 'Invalid entry: ' + entry }, 400); return; }
+        const [platform, profile] = parts;
+        if (!VALID_PLATFORMS.includes(platform) || !VALID_PROFILES.includes(profile)) {
+          jsonResponse(res, { ok: false, error: 'Invalid entry: ' + entry }, 400); return;
+        }
+      }
+      fs.mkdirSync(PATHS.logsDir, { recursive: true });
+      fs.writeFileSync(PATHS.buildPresetsFile, JSON.stringify({ selected }, null, 2));
+      jsonResponse(res, { ok: true });
+      return;
+    }
+
     if (pathname === '/api/builds/cancel' && req.method === 'POST') {
       const body = await readBody(req);
       const { buildId } = JSON.parse(body);

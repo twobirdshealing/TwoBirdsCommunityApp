@@ -266,6 +266,19 @@
   .new-build-card p { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
   .new-build-card .btn-group { justify-content: center; margin-top: 8px; }
 
+  .build-preset-section { margin-bottom: 16px; }
+  .build-preset-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); flex-wrap: wrap; }
+  .build-preset-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+  .build-preset-toggles { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+  .build-preset-chip { border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-secondary); transition: all 0.15s; }
+  .build-preset-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .build-preset-progress { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .build-preset-progress-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 12px; border-radius: var(--radius); background: var(--bg-primary); border: 1px solid var(--border); }
+  .build-preset-progress-item.queued { border-color: #93c5fd; background: #eff6ff; }
+  .build-preset-progress-item.error { border-color: #fca5a5; background: #fef2f2; }
+  .build-preset-progress-item.queuing { border-color: #fcd34d; background: #fffbeb; }
+  .build-preset-status { margin-left: auto; font-weight: 500; font-size: 11px; }
+
   .build-banner { border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
   .build-banner-title { font-weight: 600; margin-bottom: 4px; }
   .build-banner-list { margin: 0; padding-left: 20px; font-size: 13px; }
@@ -1317,6 +1330,44 @@
           <ion-icon x-bind:name="bumpUp ? 'chevron-up-outline' : 'chevron-down-outline'"></ion-icon>
         </button>
       </div>
+      <!-- Quick Build preset -->
+      <div class="build-preset-section" x-show="presetLoaded" style="display:none">
+        <div class="build-preset-bar">
+          <span class="build-preset-label">Quick Build</span>
+          <div class="build-preset-toggles">
+            <template x-for="combo in [
+              {p:'ios',pr:'development',label:'iOS Dev'},
+              {p:'ios',pr:'preview',label:'iOS Preview'},
+              {p:'ios',pr:'production',label:'iOS Prod'},
+              {p:'android',pr:'development',label:'Android Dev'},
+              {p:'android',pr:'preview',label:'Android Preview'},
+              {p:'android',pr:'production',label:'Android Prod'}
+            ]" :key="combo.p+':'+combo.pr">
+              <button class="btn btn-sm build-preset-chip"
+                      x-bind:class="{ active: presetHas(combo.p, combo.pr) }"
+                      x-on:click="togglePreset(combo.p, combo.pr)"
+                      x-text="combo.label"
+                      x-bind:disabled="presetRunning">
+              </button>
+            </template>
+          </div>
+          <button class="btn btn-sm btn-primary"
+                  x-on:click="runPreset()"
+                  x-bind:disabled="buildBlockers.length > 0 || buildPreset.length === 0 || presetRunning">
+            <span x-show="!presetRunning">Build All (<span x-text="buildPreset.length"></span>)</span>
+            <span x-show="presetRunning">Building...</span>
+          </button>
+        </div>
+        <div class="build-preset-progress" x-show="presetProgress.length > 0" style="display:none">
+          <template x-for="item in presetProgress" :key="item.key">
+            <div class="build-preset-progress-item" x-bind:class="item.status">
+              <ion-icon x-bind:name="item.platform==='ios' ? 'logo-apple' : 'logo-android'" style="font-size:14px"></ion-icon>
+              <span x-text="item.label"></span>
+              <span class="build-preset-status" x-text="item.status==='queued'?'✓ Queued':item.status==='error'?'✗ Failed':item.status==='queuing'?'Starting...':'Waiting'"></span>
+            </div>
+          </template>
+        </div>
+      </div>
       <!-- New build grid -->
       <div class="new-build-grid">
         <div class="new-build-card">
@@ -1898,6 +1949,10 @@ document.addEventListener('alpine:init', () => {
     buildQueuedText: '',
     buildQueuedHint: '',
     easLoginWaiting: false,
+    buildPreset: [],
+    presetLoaded: false,
+    presetRunning: false,
+    presetProgress: [],
 
     // Modules
     modules: [],
@@ -2053,6 +2108,7 @@ document.addEventListener('alpine:init', () => {
       // Lazy load tabs
       this.$watch('activeTab', (tab) => {
         if (tab === 'builds' && !this.buildsLoaded) this.loadBuilds();
+        if (tab === 'builds' && !this.presetLoaded) this.loadPreset();
         if (tab === 'ota' && !this.otaLoaded) this.loadOTATab();
         if (tab === 'modules' && !this.modulesLoaded) this.loadModules();
         if (tab === 'updates' && !this.updatesLoaded) this.loadUpdatesTab();
@@ -2507,6 +2563,58 @@ bumpVersion(type) {
           this.showBuildQueued = true;
         } else { this.showToast('Build failed: ' + data.error, 'error'); }
       } catch (err) { this.showToast('Build error: ' + err.message, 'error'); }
+    },
+
+    // Build Presets
+    presetHas(platform, profile) { return this.buildPreset.includes(platform + ':' + profile); },
+
+    togglePreset(platform, profile) {
+      var key = platform + ':' + profile;
+      var idx = this.buildPreset.indexOf(key);
+      if (idx === -1) this.buildPreset.push(key);
+      else this.buildPreset.splice(idx, 1);
+      this.savePreset();
+    },
+
+    async loadPreset() {
+      try {
+        var res = await fetch('/api/builds/presets');
+        var data = await res.json();
+        if (data.ok) this.buildPreset = data.selected || [];
+      } catch (e) { /* ignore */ }
+      this.presetLoaded = true;
+    },
+
+    async savePreset() {
+      try { await this.postJson('/api/builds/presets', { selected: this.buildPreset }); } catch (e) { this.showToast('Failed to save preset', 'error'); }
+    },
+
+    async runPreset() {
+      if (this.buildBlockers.length > 0) {
+        alert('Cannot build — fix these issues first:\n\n' + this.buildBlockers.map(b => '  x ' + b).join('\n'));
+        return;
+      }
+      if (this.dirty) { alert('You have unsaved changes. Save your changes on the Config tab before building.'); return; }
+      if (this.buildPreset.length === 0) return;
+      this.presetProgress = this.buildPreset.map(k => { var p = k.split(':'); return { key: k, platform: p[0], profile: p[1], label: (p[0] === 'ios' ? 'iOS' : 'Android') + ' ' + p[1], status: 'pending' }; });
+      if (!confirm('Start ' + this.presetProgress.length + ' build(s)?\n\n' + this.presetProgress.map(p => p.label).join('\n') + '\n\nThis will queue builds on EAS servers.')) { this.presetProgress = []; return; }
+      this.presetRunning = true;
+      for (var i = 0; i < this.presetProgress.length; i++) {
+        this.presetProgress = this.presetProgress.map((item, j) => j === i ? { ...item, status: 'queuing' } : item);
+        try {
+          var res = await this.postJson('/api/builds/new', { platform: this.presetProgress[i].platform, profile: this.presetProgress[i].profile });
+          var data = await res.json();
+          this.presetProgress = this.presetProgress.map((item, j) => j === i ? { ...item, status: data.ok ? 'queued' : 'error' } : item);
+        } catch (err) { this.presetProgress = this.presetProgress.map((item, j) => j === i ? { ...item, status: 'error' } : item); }
+        if (i < this.presetProgress.length - 1) await new Promise(r => setTimeout(r, 2000));
+      }
+      this.presetRunning = false;
+      var queued = this.presetProgress.filter(p => p.status === 'queued').length;
+      if (queued > 0) {
+        this.buildQueuedText = queued + ' build' + (queued > 1 ? 's' : '') + ' started';
+        this.buildQueuedHint = 'It may take a minute to appear. Hit Refresh to check.';
+        this.showBuildQueued = true;
+      }
     },
 
     async submitToStore(platform, buildId) {

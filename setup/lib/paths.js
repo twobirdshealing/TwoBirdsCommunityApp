@@ -43,6 +43,7 @@ const PATHS = {
   tempDir: path.join(PROJECT_DIR, 'setup', '.temp'),
   logsDir: path.join(PROJECT_DIR, 'setup', 'logs'),
   submissionsLog: path.join(PROJECT_DIR, 'setup', 'logs', 'build-submissions.json'),
+  buildPresetsFile: path.join(PROJECT_DIR, 'setup', 'logs', 'build-presets.json'),
 };
 
 // ---------------------------------------------------------------------------
