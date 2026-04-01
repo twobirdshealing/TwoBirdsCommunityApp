@@ -42,6 +42,7 @@ function readProjectState() {
     const content = fs.readFileSync(PATHS.configTs, 'utf8');
     state.config.appNameConfig = extractTsValue(content, /export const APP_NAME = '([^']*)'/);
     state.config.userAgent = extractTsValue(content, /export const APP_USER_AGENT = '([^']*)'/);
+    state.config.loginLogoMode = extractTsValue(content, /const LOGIN_LOGO_MODE = '([^']*)'/);
   }
 
   // --- app.config.ts ---
@@ -82,6 +83,15 @@ function readProjectState() {
     mode: adaptiveIcon.backgroundImage ? 'image' : 'color',
     color: adaptiveIcon.backgroundColor || '#FFFFFF',
   };
+
+  // --- Login logo mode ---
+  state.loginLogoMode = state.config.loginLogoMode || 'dynamic';
+
+  // --- Mark skipped assets (alternative mode active, no file needed) ---
+  for (const asset of state.assets) {
+    asset.skipped = (asset.file === 'login_logo.png' && state.loginLogoMode === 'dynamic')
+      || (asset.file === 'app_icon_android_adaptive_bg.png' && state.adaptiveIconBg.mode === 'color');
+  }
 
   // --- Branding colors ---
   const splashCfg = findPluginConfig(appJson?.expo?.plugins, 'expo-splash-screen');
@@ -142,6 +152,17 @@ function runValidation(state) {
   const checks = [];
   const c = state.config;
 
+  // Refs point to tab + section so the frontend can navigate on click
+  const REF = {
+    appIdentity:      { tab: 'config', section: 'app-identity' },
+    wordpressSite:    { tab: 'config', section: 'wordpress-site' },
+    buildService:     { tab: 'config', section: 'build-service' },
+    storeSubmission:  { tab: 'config', section: 'app-store-submission' },
+    pushNotifications:{ tab: 'config', section: 'push-notifications' },
+    brandingAssets:   { tab: 'assets', section: 'branding-assets' },
+    companionPlugins: { tab: 'modules', section: 'companion-plugins' },
+  };
+
   function check(pass, label, category, ref) {
     checks.push({ pass: pass ? 'pass' : 'fail', label, category, ref });
   }
@@ -149,56 +170,53 @@ function runValidation(state) {
     checks.push({ pass: warn ? 'warn' : 'pass', label, category, ref });
   }
 
-  // app.json
-  check(!isPlaceholder(c.appName), 'App name is set', 'app.json', 'app-identity');
-  check(!isPlaceholder(c.slug), 'Slug is set', 'app.json', 'app-identity');
-  check(!isPlaceholder(c.scheme), 'URL scheme is set', 'app.json', 'app-identity');
-  check(!isPlaceholder(c.iosBundleId), 'iOS bundle ID is set', 'app.json', 'app-identity');
-  check(!isPlaceholder(c.androidPackage), 'Android package is set', 'app.json', 'app-identity');
-  check(!isPlaceholder(c.easProjectId), 'EAS project ID is set', 'app.json', 'eas-config');
-  check(!isPlaceholder(c.easOwner), 'EAS owner is set', 'app.json', 'eas-config');
-
-  // eas.json
-  check(!isPlaceholder(c.siteUrl), 'EXPO_PUBLIC_SITE_URL is set', 'eas.json', 'site-url');
-  checkWarn(isPlaceholder(c.appleId), 'Apple Account email not set (needed for iOS submit)', 'eas.json', 'app-store-submission');
-  checkWarn(isPlaceholder(c.ascAppId), 'App Store Connect ID not set (needed for iOS submit)', 'eas.json', 'app-store-submission');
-
-  // config.ts
-  check(!isPlaceholder(c.appNameConfig), 'APP_NAME is set in config.ts', 'config.ts', 'auto-generated');
-  check(!isPlaceholder(c.userAgent), 'APP_USER_AGENT is set', 'config.ts', 'auto-generated');
-  // app.config.ts
-  check(!isPlaceholder(c.productionUrl), 'Production URL is set', 'app.config.ts', 'site-url');
-
-  // Consistency
+  // --- App Identity ---
+  check(!isPlaceholder(c.appName), 'App name is set', 'App Identity', REF.appIdentity);
+  check(!isPlaceholder(c.slug), 'Slug is set', 'App Identity', REF.appIdentity);
+  check(!isPlaceholder(c.scheme), 'URL scheme is set', 'App Identity', REF.appIdentity);
+  check(!isPlaceholder(c.iosBundleId), 'iOS bundle ID is set', 'App Identity', REF.appIdentity);
+  check(!isPlaceholder(c.androidPackage), 'Android package is set', 'App Identity', REF.appIdentity);
   if (c.appName && c.appNameConfig && c.appName !== c.appNameConfig) {
-    checks.push({ pass: 'warn', label: `App name mismatch: app.json="${c.appName}" vs config.ts="${c.appNameConfig}"`, category: 'consistency', ref: 'auto-generated' });
+    checks.push({ pass: 'warn', label: `App name out of sync: app.json="${c.appName}" vs config.ts="${c.appNameConfig}"`, category: 'App Identity', ref: REF.appIdentity });
   }
+
+  // --- Your WordPress Site ---
+  check(!isPlaceholder(c.siteUrl), 'Site URL is set', 'Your WordPress Site', REF.wordpressSite);
   if (c.siteUrl && c.productionUrl && c.siteUrl !== c.productionUrl) {
-    checks.push({ pass: 'warn', label: `EXPO_PUBLIC_SITE_URL mismatch: eas.json="${c.siteUrl}" vs app.config.ts="${c.productionUrl}"`, category: 'consistency', ref: 'site-url' });
+    checks.push({ pass: 'warn', label: `Site URL out of sync: eas.json vs app.config.ts`, category: 'Your WordPress Site', ref: REF.wordpressSite });
   }
+
+  // --- Build Service ---
+  check(!isPlaceholder(c.easOwner), 'EAS owner is set', 'Build Service', REF.buildService);
+  check(!isPlaceholder(c.easProjectId), 'EAS project ID is set', 'Build Service', REF.buildService);
+
+  // --- App Store Submission ---
+  checkWarn(isPlaceholder(c.appleId), 'Apple ID not set (needed for iOS submission)', 'App Store Submission', REF.storeSubmission);
+  checkWarn(isPlaceholder(c.ascAppId), 'App Store Connect ID not set (needed for iOS submission)', 'App Store Submission', REF.storeSubmission);
+  checkWarn(!c.googlePlayKeyExists, 'Google Play service account key not uploaded', 'App Store Submission', REF.storeSubmission);
   if (c.version && c.packageVersion && c.version !== c.packageVersion) {
-    checks.push({ pass: 'warn', label: `Version mismatch: app.json="${c.version}" vs package.json="${c.packageVersion}"`, category: 'consistency', ref: 'pre-launch' });
+    checks.push({ pass: 'warn', label: `Version mismatch: app.json="${c.version}" vs package.json="${c.packageVersion}"`, category: 'App Store Submission', ref: REF.storeSubmission });
   }
 
-  // Assets
+  // --- Push Notifications ---
+  check(state.firebase.android.exists, 'Android Firebase config uploaded', 'Push Notifications', REF.pushNotifications);
+  check(state.firebase.ios.exists, 'iOS Firebase config uploaded', 'Push Notifications', REF.pushNotifications);
+
+  // --- Branding Assets ---
   for (const asset of state.assets) {
-    check(asset.exists, `${asset.label} exists`, 'assets', 'branding-assets');
+    if (asset.skipped) {
+      // Alternative mode active (e.g., dynamic logo, solid color bg) — auto-pass with descriptive label
+      const modeLabel = asset.file === 'login_logo.png' ? 'synced from site' : 'using solid color';
+      check(true, `${asset.label} (${modeLabel})`, 'Branding Assets', REF.brandingAssets);
+    } else {
+      check(asset.exists, `${asset.label} exists`, 'Branding Assets', REF.brandingAssets);
+    }
   }
 
-  // Firebase
-  check(state.firebase.android.exists, 'google-services.json exists', 'firebase', 'firebase-setup');
-  check(state.firebase.ios.exists, 'GoogleService-Info.plist exists', 'firebase', 'firebase-setup');
-
-  // Core companion plugins
+  // --- Companion Plugins ---
   for (const plugin of state.plugins.core) {
-    check(plugin.exists, plugin.label + ' plugin is bundled', 'companion plugins', 'core-plugins');
+    check(plugin.exists, `Core plugin installed (${plugin.folder})`, 'Companion Plugins', REF.companionPlugins);
   }
-
-  // Dependencies
-  check(state.dependencies.nodeModules, 'node_modules exists (npm install done)', 'dependencies', 'quick-start');
-
-  // package.json
-  check(!isPlaceholder(c.packageName), 'Package name is set', 'package.json', 'auto-generated');
 
   state.validation.checks = checks;
   state.validation.pass = checks.filter(c => c.pass === 'pass').length;

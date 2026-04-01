@@ -204,7 +204,8 @@
   .check-list { list-style: none; }
   .check-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
   .check-item:last-child { border-bottom: none; }
-  .check-item .ref { margin-left: auto; font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+  .check-item .ref { margin-left: auto; font-size: 11px; color: var(--accent); font-family: var(--font-mono); cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .check-item .ref:hover { text-decoration: underline; }
 
   .plugin-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
   .plugin-item:last-child { border-bottom: none; }
@@ -571,7 +572,7 @@
 <!-- ============== Config Tab ============== -->
 <div class="tab-content" x-bind:class="{ active: activeTab === 'config' }">
 
-  <div class="card">
+  <div class="card" id="section-app-identity">
     <div class="card-header">
       <h3>App Identity</h3>
       <span class="badge" style="color:var(--text-muted)">app.json</span>
@@ -795,7 +796,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="section-wordpress-site">
     <div class="card-header"><h3>Your WordPress Site</h3><span class="badge" style="color:var(--text-muted)">eas.json + app.config.ts</span></div>
     <div class="card-body">
       <div class="field-group single">
@@ -829,7 +830,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="section-build-service">
     <div class="card-header"><h3>Build Service</h3><span class="badge" style="color:var(--text-muted)">app.json</span></div>
     <div class="card-body">
       <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px">
@@ -874,7 +875,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="section-app-store-submission">
     <div class="card-header"><h3>App Store Submission</h3><span class="badge" style="color:var(--text-muted)">eas.json</span></div>
     <div class="card-body">
       <h4>iOS</h4>
@@ -940,7 +941,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="section-push-notifications">
     <div class="card-header"><h3>Push Notifications</h3><span class="badge" style="color:var(--text-muted)">Firebase</span></div>
     <div class="card-body">
       <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Drop in your Firebase config files to enable push notifications.</p>
@@ -1024,39 +1025,43 @@
 
 <!-- ============== Assets Tab ============== -->
 <div class="tab-content" x-bind:class="{ active: activeTab === 'assets' }">
-  <div class="card">
+  <div class="card" id="section-branding-assets">
     <div class="card-header"><h3>Branding Assets</h3><span class="badge" style="color:var(--text-muted)">assets/images/</span></div>
     <div class="card-body">
       <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Replace these images with your branding. Click any asset to upload a replacement.</p>
       <div class="asset-grid">
         <template x-for="asset in assets" :key="asset.file">
           <div class="asset-card"
-               x-bind:class="{ missing: asset.file === 'app_icon_android_adaptive_bg.png' ? (adaptiveIconBg.mode === 'image' && !asset.exists) : !asset.exists }"
+               x-bind:class="{ missing: !asset.skipped && !asset.exists }"
                x-bind:title="'Click to replace ' + asset.file"
-               x-on:click="asset.file === 'app_icon_android_adaptive_bg.png' && adaptiveIconBg.mode === 'color' ? $refs.adaptiveBgColorPicker.click() : uploadAsset(asset.file, $event)">
+               x-on:click="asset.file === 'app_icon_android_adaptive_bg.png' && adaptiveIconBg.mode === 'color' ? $refs.adaptiveBgColorPicker.click() : (asset.skipped ? null : uploadAsset(asset.file, $event))">
             <!-- Help toggle (only if asset has help text) -->
             <template x-if="asset.help">
               <button class="help-toggle" type="button" title="Toggle help" style="position:absolute;top:8px;left:8px"
                       x-on:click.stop="toggleAssetHelp(asset.file)">?</button>
             </template>
             <span class="asset-status">
-              <ion-icon x-bind:name="(asset.file === 'app_icon_android_adaptive_bg.png' ? (adaptiveIconBg.mode === 'color' || asset.exists) : asset.exists) ? 'checkmark-circle' : 'close-circle'"
-                        x-bind:style="'color:var(--' + ((asset.file === 'app_icon_android_adaptive_bg.png' ? (adaptiveIconBg.mode === 'color' || asset.exists) : asset.exists) ? 'green' : 'red') + ')'"></ion-icon>
+              <ion-icon x-bind:name="(asset.skipped || asset.exists) ? 'checkmark-circle' : 'close-circle'"
+                        x-bind:style="'color:var(--' + ((asset.skipped || asset.exists) ? 'green' : 'red') + ')'"></ion-icon>
             </span>
             <!-- Color swatch for adaptive bg in color mode -->
             <template x-if="asset.file === 'app_icon_android_adaptive_bg.png' && adaptiveIconBg.mode === 'color'">
               <div class="asset-thumb" x-bind:style="'background:' + adaptiveIconBg.color"></div>
             </template>
-            <!-- Normal image preview (skip for adaptive bg in color mode) -->
-            <template x-if="!(asset.file === 'app_icon_android_adaptive_bg.png' && adaptiveIconBg.mode === 'color') && asset.exists">
+            <!-- Dynamic badge for login logo in dynamic mode -->
+            <template x-if="asset.file === 'login_logo.png' && loginLogoMode === 'dynamic'">
+              <div class="asset-thumb" style="display:flex;align-items:center;justify-content:center;background:var(--surface-alt);color:var(--text-secondary);font-size:12px;text-align:center;padding:8px">Synced from site</div>
+            </template>
+            <!-- Normal image preview (skip when asset has alternative mode active) -->
+            <template x-if="!asset.skipped && asset.exists">
               <img class="asset-thumb" x-bind:src="'/api/asset/' + encodeURIComponent(asset.file) + '?' + assetCacheBust" x-bind:alt="asset.label">
             </template>
-            <template x-if="!(asset.file === 'app_icon_android_adaptive_bg.png' && adaptiveIconBg.mode === 'color') && !asset.exists">
+            <template x-if="!asset.skipped && !asset.exists">
               <div class="asset-thumb-placeholder">?</div>
             </template>
             <div class="asset-name" x-text="asset.label"></div>
             <div class="asset-purpose" x-text="asset.purpose"></div>
-            <div class="asset-size" x-show="!(asset.file === 'app_icon_android_adaptive_bg.png' && adaptiveIconBg.mode === 'color')"
+            <div class="asset-size" x-show="!asset.skipped"
                  x-text="asset.exists ? asset.sizeKB + ' KB | ' + asset.size : asset.size + ' recommended'"></div>
             <!-- Mode toggle for adaptive bg -->
             <template x-if="asset.file === 'app_icon_android_adaptive_bg.png'">
@@ -1065,6 +1070,15 @@
                         x-on:click="setAdaptiveIconBg('color', adaptiveIconBg.color)">Solid Color</button>
                 <button class="btn btn-sm" x-bind:class="{ 'btn-active': adaptiveIconBg.mode === 'image' }"
                         x-on:click="setAdaptiveIconBg('image', adaptiveIconBg.color)">Image</button>
+              </div>
+            </template>
+            <!-- Mode toggle for login logo -->
+            <template x-if="asset.file === 'login_logo.png'">
+              <div style="display:flex;gap:4px;margin-top:6px" x-on:click.stop>
+                <button class="btn btn-sm" x-bind:class="{ 'btn-active': loginLogoMode === 'dynamic' }"
+                        x-on:click="setLoginLogoMode('dynamic')">Dynamic</button>
+                <button class="btn btn-sm" x-bind:class="{ 'btn-active': loginLogoMode === 'static' }"
+                        x-on:click="setLoginLogoMode('static')">Static</button>
               </div>
             </template>
             <!-- Asset help panel -->
@@ -1157,7 +1171,7 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" id="section-companion-plugins">
     <div class="card-header"><h3>Core Companion Plugins</h3><span class="badge" style="color:var(--text-muted)">companion plugins/</span></div>
     <div class="card-body">
       <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">These WordPress plugins are required for the app to work. Install them on your WordPress site.</p>
@@ -1775,7 +1789,7 @@
                 </span>
                 <span x-text="check.label"></span>
                 <template x-if="check.ref">
-                  <span class="ref" x-text="'#' + check.ref"></span>
+                  <a href="#" class="ref" x-on:click.prevent="goToSection(check.ref)">Go to setting &rarr;</a>
                 </template>
               </li>
             </template>
@@ -1914,6 +1928,7 @@ document.addEventListener('alpine:init', () => {
     assetCacheBust: Date.now(),
     assetHelpOpen: {},
     adaptiveIconBg: { mode: 'image', color: '#FFFFFF' },
+    loginLogoMode: 'dynamic',
     brandingColors: { splashColorLight: '#ffffff', splashColorDark: '#1a1a1a', notificationColor: '#6366F1' },
     firebase: { android: { exists: false }, ios: { exists: false } },
 
@@ -2119,6 +2134,13 @@ document.addEventListener('alpine:init', () => {
     // Tab switching
     // =========================================================================
     switchTab(tab) { this.activeTab = tab; },
+    goToSection(ref) {
+      this.switchTab(ref.tab);
+      this.$nextTick(() => {
+        var el = document.getElementById('section-' + ref.section);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    },
 
     // =========================================================================
     // Theme
@@ -2174,7 +2196,7 @@ document.addEventListener('alpine:init', () => {
         this.config.googlePlayTrack = state.config.googlePlayTrack || 'production';
         this.originalValues.googlePlayTrack = state.config.googlePlayTrack || 'production';
         this.config.googlePlayKeyExists = state.config.googlePlayKeyExists || false;
-        // Auto-derive empty fields
+        // Auto-derive empty fields (don't set originalValues — so saveConfig detects them as changes)
         var self = this;
         Object.entries(this.deriveMap()).forEach(function(entry) {
           var sourceKey = entry[0], deriveFn = entry[1];
@@ -2183,7 +2205,6 @@ document.addEventListener('alpine:init', () => {
           Object.entries(derived).forEach(function(d) {
             if (!self.config[d[0]]) {
               self.config[d[0]] = d[1];
-              self.originalValues[d[0]] = d[1];
             }
           });
         });
@@ -2200,6 +2221,7 @@ document.addEventListener('alpine:init', () => {
         // Assets, firebase, plugins, validation
         this.assets = state.assets || [];
         this.adaptiveIconBg = state.adaptiveIconBg || { mode: 'image', color: '#FFFFFF' };
+        this.loginLogoMode = state.loginLogoMode || 'dynamic';
         this.brandingColors = state.brandingColors || { splashColorLight: '#ffffff', splashColorDark: '#1a1a1a', notificationColor: '#6366F1' };
         this.firebase = state.firebase || { android: { exists: false }, ios: { exists: false } };
         this.firebaseHelpOpen = { android: !state.firebase?.android?.exists, ios: !state.firebase?.ios?.exists };
@@ -2209,6 +2231,8 @@ document.addEventListener('alpine:init', () => {
         this.showDepsBanner = state.dependencies && !state.dependencies.nodeModules;
         this.currentProject = state.projectDir || '';
         this.dirty = false;
+        // Check if auto-derived values need saving to disk
+        this.checkDirty();
         // Load app presets
         this.loadAppPresets();
       } catch (err) {
@@ -2387,14 +2411,22 @@ bumpVersion(type) {
 
     async setAdaptiveIconBg(mode, color) {
       try {
-        var res = await fetch('/api/adaptive-icon-bg', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode, color })
-        });
+        var res = await this.postJson('/api/adaptive-icon-bg', { mode, color });
         var data = await res.json();
         if (data.ok) {
           this.adaptiveIconBg = { mode, color };
+          this.showToast('Saved: ' + (data.results || []).join(', '), 'success');
+          this.loadState();
+        } else this.showToast('Failed: ' + data.error, 'error');
+      } catch (err) { this.showToast('Error: ' + err.message, 'error'); }
+    },
+
+    async setLoginLogoMode(mode) {
+      try {
+        var res = await this.postJson('/api/login-logo-mode', { mode });
+        var data = await res.json();
+        if (data.ok) {
+          this.loginLogoMode = mode;
           this.showToast('Saved: ' + (data.results || []).join(', '), 'success');
           this.loadState();
         } else this.showToast('Failed: ' + data.error, 'error');

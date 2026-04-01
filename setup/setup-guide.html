@@ -1052,41 +1052,151 @@
 <div class="guide-section" id="sec-branding-assets">
 <h2 id="branding-assets">Assets Tab</h2>
 
-<p>The Assets tab shows all your branding images as a visual grid. Click any asset to upload a replacement &mdash; the dashboard shows a preview of each image with its current dimensions and file size.</p>
+<p>Replace the placeholder images in <code>assets/images/</code> with your branding. Click any asset in the dashboard to upload a replacement &mdash; it shows a live preview with dimensions and file size.</p>
 
 <img class="step-img" src="images/Branding Assets.webp" alt="Branding Assets card in the dashboard showing the asset grid with previews">
 
 <div class="step-card">
   <div class="step-header">
     <span class="step-title">Branding Assets</span>
+    <span class="step-badge">assets/images/</span>
   </div>
   <div class="step-body">
-    <table>
-      <tr><th>Asset</th><th>Purpose</th><th>Notes</th></tr>
-      <tr><td><code>app_icon_ios.png</code></td><td>iOS app icon</td><td>1024&times;1024, no transparency, no rounded corners (iOS adds them)</td></tr>
-      <tr><td><code>app_icon_android_adaptive_fg.png</code></td><td>Android adaptive icon foreground</td><td>1024&times;1024. Keep your logo centered in the inner 66% &mdash; Android crops the edges into circles/squircles. Also used as the Play Store listing icon.</td></tr>
-      <tr><td><code>app_icon_android_adaptive_bg.png</code></td><td>Android adaptive icon background</td><td>Optional &mdash; you can use a solid <code>adaptiveIcon.backgroundColor</code> in app.json instead</td></tr>
-      <tr><td><code>app_icon_android_notification.png</code></td><td>Android notification icon</td><td>96&times;96. Must be monochrome (single color + transparent background) &mdash; Android tints it white</td></tr>
-      <tr><td><code>splash_screen_img.png</code></td><td>Splash screen logo</td><td>Centered on the splash <code>backgroundColor</code> from app.json. Keep it simple &mdash; this shows for ~1&ndash;2 seconds on launch.</td></tr>
-      <tr><td><code>login_background_img.png</code></td><td>Login screen background</td><td>Full-screen background image behind the login form</td></tr>
-      <tr><td><code>login_logo.png</code></td><td>Login screen logo (fallback)</td><td>Only used on first launch before server branding is cached</td></tr>
-    </table>
 
-    <div class="callout callout-info" style="margin-top: 12px;">
-      <strong>Server-synced branding:</strong> The login logo is automatically pulled from your Fluent Community site after the first login. The static <code>login_logo.png</code> is a fallback for the very first launch before server branding is cached.
-    </div>
-
-    <details style="margin-top: 12px;">
-      <summary>Tips for Android adaptive icons</summary>
+    <details>
+      <summary>iOS App Icon</summary>
       <div class="details-content">
-        <p>Android uses <a href="https://developer.android.com/develop/ui/views/launch/icon_design_adaptive" target="_blank">adaptive icons</a> &mdash; a foreground layer on top of a background layer. Different devices crop the combined result into different shapes (circle, squircle, rounded square).</p>
+        <p>Your app icon on the iOS home screen, App Store listing, and system UI (notifications, settings, etc.).</p>
         <ul>
-          <li>Your foreground image should have a <strong>transparent background</strong> with the logo centered in the inner 66% of the canvas.</li>
-          <li>The background can be a separate image or a solid color set via <code>adaptiveIcon.backgroundColor</code> in <code>app.json</code>.</li>
-          <li>Use Android Studio&rsquo;s <a href="https://developer.android.com/studio/write/create-app-icons" target="_blank">Image Asset Studio</a> or <a href="https://icon.kitchen" target="_blank">icon.kitchen</a> to preview how your icon looks in different mask shapes.</li>
+          <li><strong>File:</strong> <code>app_icon_ios.png</code></li>
+          <li><strong>Size:</strong> 1024&times;1024px PNG</li>
+          <li><strong>Transparency:</strong> Not allowed &mdash; the App Store rejects icons with an alpha channel</li>
+          <li><strong>Corners:</strong> Keep them square &mdash; iOS applies its rounded mask automatically</li>
+          <li><strong>Content:</strong> Fill the entire canvas with your icon; no padding needed</li>
         </ul>
       </div>
     </details>
+
+    <details>
+      <summary>Android Adaptive Foreground</summary>
+      <div class="details-content">
+        <p>The top layer of your Android app icon. It sits on top of the background layer, and different devices crop the combined result into different shapes (circle, squircle, rounded square).</p>
+        <ul>
+          <li><strong>File:</strong> <code>app_icon_android_adaptive_fg.png</code></li>
+          <li><strong>Size:</strong> 1024&times;1024px PNG</li>
+          <li><strong>Transparency:</strong> Required &mdash; transparent background so the background layer shows through</li>
+          <li><strong>Safe zone:</strong> Keep your logo centered in the inner 66% of the canvas &mdash; the outer 34% may be cropped</li>
+        </ul>
+        <p style="margin-top:8px">Use <a href="https://icon.kitchen" target="_blank">icon.kitchen</a> or Android Studio&rsquo;s <a href="https://developer.android.com/studio/write/create-app-icons" target="_blank">Image Asset Studio</a> to preview how your icon looks in different mask shapes.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Android Adaptive Background</summary>
+      <div class="details-content">
+        <p>The layer behind your foreground icon. You have two options:</p>
+        <ul>
+          <li><strong>File:</strong> <code>app_icon_android_adaptive_bg.png</code></li>
+          <li><strong>Solid color</strong> (recommended) &mdash; use the &ldquo;Solid Color&rdquo; toggle on the asset card in the dashboard. This sets <code>adaptiveIcon.backgroundColor</code> in <code>app.json</code>. No image file needed.</li>
+          <li><strong>Image</strong> &mdash; upload a 1024&times;1024px PNG. Use this for gradients, patterns, or anything a solid color can&rsquo;t do.</li>
+        </ul>
+        <p style="margin-top:8px">This layer can shift slightly with parallax effects on some launchers, so keep the design simple and avoid fine details near the edges.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Android Notification Icon</summary>
+      <div class="details-content">
+        <p>The small icon shown in the Android status bar and notification shade when your app sends a push notification.</p>
+        <ul>
+          <li><strong>File:</strong> <code>app_icon_android_notification.png</code></li>
+          <li><strong>Size:</strong> 96&times;96px PNG</li>
+          <li><strong>Transparency:</strong> Required &mdash; Android uses only the alpha channel (opaque vs transparent pixels). Opaque areas render as white; transparent areas stay clear.</li>
+          <li><strong>Colors:</strong> The source image can contain colors, but Android ignores them &mdash; only the shape matters</li>
+          <li><strong>Design:</strong> Keep it simple and recognizable at small sizes &mdash; a silhouette of your logo works best</li>
+        </ul>
+        <p style="margin-top:8px">The <em>Notification Accent Color</em> (set in Branding Colors below) tints the background behind this icon on supported Android versions.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Splash Screen Image</summary>
+      <div class="details-content">
+        <p>Shown for 1&ndash;2 seconds while the app loads. Centered on screen over the splash background color.</p>
+        <ul>
+          <li><strong>File:</strong> <code>splash_screen_img.png</code></li>
+          <li><strong>Size:</strong> 600&times;600px PNG recommended</li>
+          <li><strong>Transparency:</strong> Recommended &mdash; use a transparent background so it looks correct on both the light and dark splash colors</li>
+          <li><strong>Content:</strong> Logo mark without text works best at this size and duration</li>
+        </ul>
+        <p style="margin-top:8px">The display width is controlled by <code>imageWidth</code> in the <code>expo-splash-screen</code> plugin config in <code>app.json</code> (default: 200). The background color behind this image is set in Branding Colors below (separate light and dark values).</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Login Logo</summary>
+      <div class="details-content">
+        <p>Your logo on the login and register screens. Use the toggle on the asset card to choose between two modes:</p>
+        <ul>
+          <li><strong>Dynamic</strong> (default) &mdash; The logo is fetched automatically from your Fluent Community site on every app launch (no authentication required). No file upload needed &mdash; your site logo is always up to date.</li>
+          <li><strong>Static</strong> &mdash; Bundle a custom <code>login_logo.png</code> in the app. The server logo still takes priority when available, but this image is used as a fallback (e.g.&nbsp;first launch with no network).</li>
+        </ul>
+        <p>Most users should leave this on <strong>Dynamic</strong>. Switch to Static only if you need a guaranteed offline fallback image.</p>
+        <ul>
+          <li><strong>File:</strong> <code>login_logo.png</code> (only needed in Static mode)</li>
+          <li><strong>Size:</strong> 750&times;540px PNG recommended</li>
+          <li><strong>Transparency:</strong> Recommended &mdash; transparent background adapts to light/dark mode</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Login Background</summary>
+      <div class="details-content">
+        <p>Full-screen background image behind the login and register forms.</p>
+        <ul>
+          <li><strong>File:</strong> <code>login_background_img.png</code></li>
+          <li><strong>Size:</strong> 1284&times;2778px PNG recommended</li>
+          <li><strong>Transparency:</strong> Not needed &mdash; this fills the full screen</li>
+          <li><strong>Design:</strong> Dark or blurred images work best so the white text and form fields stay readable</li>
+        </ul>
+      </div>
+    </details>
+
+  </div>
+</div>
+
+<img class="step-img" src="images/Branding Colors.webp" alt="Branding Colors card in the dashboard showing splash and notification color pickers">
+
+<div class="step-card">
+  <div class="step-header">
+    <span class="step-title">Branding Colors</span>
+    <span class="step-badge">app.json</span>
+  </div>
+  <div class="step-body">
+    <p>These colors are baked into the native build. Changing them requires a new build &mdash; OTA updates cannot change these.</p>
+
+    <details>
+      <summary>Splash Background (Light)</summary>
+      <div class="details-content">
+        <p>The background color behind your splash screen image when the device is in light mode. Set this to match your splash image or brand. Default: <code>#ffffff</code> (white).</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Splash Background (Dark)</summary>
+      <div class="details-content">
+        <p>The background color behind your splash screen image when the device is in dark mode. Usually a dark shade that pairs with your splash image. Default: <code>#1a1a1a</code>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Notification Accent Color</summary>
+      <div class="details-content">
+        <p>Android tints the notification icon&rsquo;s background circle with this color on supported versions. Use your brand&rsquo;s primary color so notifications are instantly recognizable.</p>
+      </div>
+    </details>
+
   </div>
 </div>
 
@@ -1413,16 +1523,15 @@ eas submit --platform android</code></pre>
   <div class="step-body">
     <table>
       <tr><th>Category</th><th>What's Validated</th></tr>
-      <tr><td><strong>app.json</strong></td><td>App name, slug, URL scheme, bundle IDs, EAS project ID, owner</td></tr>
-      <tr><td><strong>eas.json</strong></td><td>Site URL, Apple Account, App Store Connect ID</td></tr>
-      <tr><td><strong>config.ts</strong></td><td>APP_NAME, APP_USER_AGENT</td></tr>
-      <tr><td><strong>app.config.ts</strong></td><td>Production URL</td></tr>
-      <tr><td><strong>Assets</strong></td><td>All required branding images exist</td></tr>
-      <tr><td><strong>Firebase</strong></td><td>google-services.json and GoogleService-Info.plist exist</td></tr>
-      <tr><td><strong>Plugins</strong></td><td>Core companion plugins are bundled</td></tr>
-      <tr><td><strong>Dependencies</strong></td><td>node_modules installed</td></tr>
-      <tr><td><strong>Consistency</strong></td><td>App name, site URL, and version match across files</td></tr>
+      <tr><td><strong>App Identity</strong></td><td>App name, slug, URL scheme, iOS bundle ID, Android package</td></tr>
+      <tr><td><strong>Your WordPress Site</strong></td><td>Site URL is set and in sync across config files</td></tr>
+      <tr><td><strong>Build Service</strong></td><td>EAS owner and project ID</td></tr>
+      <tr><td><strong>App Store Submission</strong></td><td>Apple ID, App Store Connect ID, Google Play service account key, version consistency</td></tr>
+      <tr><td><strong>Push Notifications</strong></td><td>Firebase configs uploaded (Android + iOS)</td></tr>
+      <tr><td><strong>Branding Assets</strong></td><td>All 7 required images &mdash; shows mode-aware status for Login Logo and Adaptive Background</td></tr>
+      <tr><td><strong>Companion Plugins</strong></td><td>Core companion plugin installed</td></tr>
     </table>
+    <p style="margin-top: 12px; font-size: 14px; color: var(--text-secondary);">Each check links to its matching section in the dashboard &mdash; click <strong>Go to setting &rarr;</strong> to jump directly to the relevant config field.</p>
   </div>
 </div>
 
@@ -1433,7 +1542,7 @@ eas submit --platform android</code></pre>
     <ul>
       <li><strong style="color: var(--success);">Pass</strong> &mdash; configured correctly</li>
       <li><strong style="color: var(--error);">Fail</strong> &mdash; missing or placeholder value, needs to be set</li>
-      <li><strong style="color: var(--warning);">Warn</strong> &mdash; optional but recommended (e.g., Apple submission fields)</li>
+      <li><strong style="color: var(--warning);">Warn</strong> &mdash; optional but recommended (e.g., Apple submission fields, Google Play service account key)</li>
     </ul>
     <div class="callout callout-success">
       <strong>Goal:</strong> All checks passing before your first production build. Warnings are OK if you haven't set up iOS submission yet.
