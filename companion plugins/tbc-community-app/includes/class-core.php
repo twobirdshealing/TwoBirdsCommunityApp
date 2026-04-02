@@ -187,9 +187,9 @@ class TBC_CA_Core {
                 'messaging'          => true,
                 'courses'            => true,
                 'profile_tabs'       => [
-                    'posts'    => false,
-                    'spaces'   => false,
-                    'comments' => false,
+                    'posts'    => true,
+                    'spaces'   => true,
+                    'comments' => true,
                 ],
             ],
         ];

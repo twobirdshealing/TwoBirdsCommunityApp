@@ -149,6 +149,7 @@ export default function BookmarksScreen() {
           error={error}
           onRefresh={refresh}
           onReact={handleReact}
+          setFeeds={setFeeds}
           onAuthorPress={handleAuthorPress}
           onSpacePress={handleSpacePress}
           onCommentPress={handleCommentPress}

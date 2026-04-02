@@ -8,7 +8,7 @@
 import { get, post, del, patch } from './client';
 import { ENDPOINTS, DEFAULT_PER_PAGE } from '@/constants/config';
 import { Comment, CommentsResponse, CreateCommentResponse } from '@/types/comment';
-import { ReactResponse, ReactionType } from '@/types/feed';
+import { ReactResponse } from '@/types/feed';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('CommentsAPI');
@@ -133,21 +133,15 @@ export async function reactToComment(
   postId: number,
   commentId: number,
   hasReacted: boolean = false,
-  reactionType: ReactionType = 'like'
 ) {
   // Web app format: {state: 1} to react, {state: 0} to unreact
   const payload = {
     state: hasReacted ? 0 : 1,
   };
 
-  // Send reaction type header so tb-multi-reactions plugin can track it
-  const headers: Record<string, string> = {
-    'X-TBC-Reaction-Type': reactionType,
-  };
+  log('Reacting to comment:', { postId, commentId, payload });
 
-  log('Reacting to comment:', { postId, commentId, payload, reactionType });
-
-  return post<ReactResponse>(`${ENDPOINTS.POST_COMMENTS(postId)}/${commentId}/reactions`, payload, undefined, headers);
+  return post<ReactResponse>(`${ENDPOINTS.POST_COMMENTS(postId)}/${commentId}/reactions`, payload);
 }
 
 // -----------------------------------------------------------------------------

@@ -323,6 +323,7 @@ export default function SpacePage() {
           error={error}
           onRefresh={handleRefresh}
           onReact={handleReact}
+          setFeeds={setFeeds}
           onAuthorPress={handleAuthorPress}
           onCommentPress={handleCommentPress}
           onBookmarkToggle={handleBookmarkToggle}

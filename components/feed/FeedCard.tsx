@@ -121,14 +121,16 @@ const FeedBreakdownSlot = getSlotComponent('feedReactionBreakdown');
 
 interface FeedCardProps {
   feed: Feed;
-  onReact?: (type: ReactionType) => void;
-  onAuthorPress?: () => void;
-  onSpacePress?: () => void;
-  onCommentPress?: () => void;
-  onBookmarkToggle?: (isBookmarked: boolean) => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
-  onPin?: () => void;  // Pin callback (only passed if user can pin)
+  onReact?: (feedId: number, type: ReactionType) => void;
+  /** State updater for module slots to perform optimistic updates */
+  setFeeds?: React.Dispatch<React.SetStateAction<Feed[]>>;
+  onAuthorPress?: (username: string) => void;
+  onSpacePress?: (spaceSlug: string) => void;
+  onCommentPress?: (feed: Feed) => void;
+  onBookmarkToggle?: (feed: Feed, isBookmarked: boolean) => void;
+  onEdit?: (feed: Feed) => void;
+  onDelete?: (feed: Feed) => void;
+  onPin?: (feed: Feed) => void;
   canModerate?: boolean; // If true, shows Edit/Delete/Pin for any post (admin/mod)
   variant?: 'compact' | 'full';  // compact = list view (truncated), full = single post view
 }
@@ -140,6 +142,7 @@ interface FeedCardProps {
 export const FeedCard = React.memo(function FeedCard({
   feed,
   onReact,
+  setFeeds,
   onAuthorPress,
   onSpacePress,
   onCommentPress,
@@ -208,8 +211,13 @@ export const FeedCard = React.memo(function FeedCard({
     hapticLight();
     const newState = !isBookmarked;
     setIsBookmarked(newState);
-    onBookmarkToggle?.(newState);
+    onBookmarkToggle?.(feed, newState);
   };
+
+  // Derive per-item updater from list-level setFeeds (for module slots)
+  const onFeedUpdate = setFeeds
+    ? (updater: (f: Feed) => Feed) => setFeeds(prev => prev.map(f => f.id === feed.id ? updater(f) : f))
+    : undefined;
 
   const handleMenuPress = () => {
     hapticLight();
@@ -222,9 +230,9 @@ export const FeedCard = React.memo(function FeedCard({
         canEditOrDelete,
         canPin,
         isSticky,
-        onEdit,
-        onDelete,
-        onPin,
+        onEdit: onEdit ? () => onEdit(feed) : undefined,
+        onDelete: onDelete ? () => onDelete(feed) : undefined,
+        onPin: onPin ? () => onPin(feed) : undefined,
       });
     });
   };
@@ -247,7 +255,7 @@ export const FeedCard = React.memo(function FeedCard({
       <View style={styles.header}>
         <AnimatedPressable
           style={styles.authorRow}
-          onPress={onAuthorPress}
+          onPress={() => { if (feed.xprofile?.username) onAuthorPress?.(feed.xprofile.username); }}
           accessibilityRole="button"
           accessibilityLabel={`View ${authorName}'s profile`}
         >
@@ -270,7 +278,7 @@ export const FeedCard = React.memo(function FeedCard({
               {spaceName && (
                 <>
                   <Text style={[styles.dot, { color: themeColors.textTertiary }]}>•</Text>
-                  <Pressable onPress={onSpacePress}>
+                  <Pressable onPress={() => { if (feed.space?.slug) onSpacePress?.(feed.space.slug); }}>
                     <Text style={[styles.spaceName, { color: themeColors.primary }]} numberOfLines={1}>
                       {spaceName}
                     </Text>
@@ -503,7 +511,8 @@ export const FeedCard = React.memo(function FeedCard({
               userReactionIconUrl={feed.user_reaction_icon_url || null}
               reactionsCount={reactionsCount}
               reactionBreakdown={reactionBreakdown}
-              onReact={(type: string) => onReact?.(type)}
+              onReact={(type: string) => onReact?.(feed.id, type)}
+              onFeedUpdate={onFeedUpdate}
             />
           ) : (
             <AnimatedPressable
@@ -511,7 +520,7 @@ export const FeedCard = React.memo(function FeedCard({
                 styles.footerButton,
                 hasUserReact && [styles.reactionButtonActive, { backgroundColor: themeColors.primary + '15' }],
               ]}
-              onPress={() => { hapticLight(); onReact?.('like'); }}
+              onPress={() => { hapticLight(); onReact?.(feed.id, 'like'); }}
               accessibilityRole="button"
               accessibilityLabel={hasUserReact ? 'Unlike' : 'Like'}
             >
@@ -526,7 +535,7 @@ export const FeedCard = React.memo(function FeedCard({
           {/* Comment button */}
           <AnimatedPressable
             style={styles.footerButton}
-            onPress={() => onCommentPress?.()}
+            onPress={() => onCommentPress?.(feed)}
             accessibilityRole="button"
             accessibilityLabel={commentsCount > 0 ? `${commentsCount} comments` : 'Comment'}
           >
@@ -551,7 +560,8 @@ export const FeedCard = React.memo(function FeedCard({
             userReactionIconUrl={feed.user_reaction_icon_url || null}
             reactionsCount={reactionsCount}
             reactionBreakdown={reactionBreakdown}
-            onReact={(type: string) => onReact?.(type)}
+            onReact={(type: string) => onReact?.(feed.id, type)}
+            onFeedUpdate={onFeedUpdate}
           />
         ) : reactionsCount > 0 ? (
           <View style={styles.footerRight}>

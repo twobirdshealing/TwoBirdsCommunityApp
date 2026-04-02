@@ -2,6 +2,10 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.50.0
+- **Sticky save bar with unsaved changes tracking**: Replaced the bottom-only save button with a sticky save bar that stays visible at the top across all settings tabs (General, Features, Visibility, Notifications). Shows an "unsaved changes" indicator when any form field is modified. Browser warns before navigating away with unsaved changes. Also fixed Features tab missing from save-eligible tabs.
+- **Enable profile tabs by default**: Posts, Spaces, and Comments tabs on user profiles now default to enabled for new installations. Existing sites with saved settings are unaffected.
+
 ## v3.49.4
 - **Fix unread message count always 0**: Replaced ChatHelper dependency with direct DB query for unread message thread count. ChatHelper is lazy-loaded by Fluent Messaging and not available on non-messaging REST routes (ticker, batch, etc.), causing `X-TBC-Unread-Messages` header to always return 0. Direct query uses same SQL as ChatHelper internally. Fixed in both response headers and push badge calculation.
 

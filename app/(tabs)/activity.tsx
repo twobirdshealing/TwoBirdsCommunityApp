@@ -129,6 +129,7 @@ export default function ActivityScreen() {
           error={error}
           onRefresh={refresh}
           onReact={handleReact}
+          setFeeds={setFeeds}
           onAuthorPress={handleAuthorPress}
           onSpacePress={handleSpacePress}
           onCommentPress={handleCommentPress}

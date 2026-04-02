@@ -28,6 +28,62 @@
     background: #d63638;
 }
 
+/* ── Sticky save bar ── */
+.tbc-ca-save-bar {
+    position: sticky;
+    top: 32px; /* below WP admin bar */
+    z-index: 99;
+    display: none;
+    margin: 0 -1px;
+}
+
+@media screen and (max-width: 782px) {
+    .tbc-ca-save-bar {
+        top: 46px; /* mobile admin bar is taller */
+    }
+}
+
+.tbc-ca-save-bar--visible {
+    display: block;
+}
+
+.tbc-ca-save-bar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-top: none;
+    padding: 10px 16px;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.tbc-ca-save-bar__status {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    color: #996800;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.tbc-ca-save-bar__status .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #dba617;
+}
+
+.tbc-ca-save-bar--dirty .tbc-ca-save-bar__status {
+    display: inline-flex;
+}
+
+.tbc-ca-save-bar__btn {
+    margin: 0 !important;
+    min-width: 110px;
+}
+
 /* Tab panels */
 .tbc-ca-tab-panel {
     display: none;

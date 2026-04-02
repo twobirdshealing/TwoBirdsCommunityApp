@@ -406,7 +406,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
     );
 
     try {
-      await commentsApi.reactToComment(postId, comment.id, willRemove, reactionType);
+      await commentsApi.reactToComment(postId, comment.id, willRemove);
     } catch (err) {
       log.error('Reaction error:', err);
       // Revert on error

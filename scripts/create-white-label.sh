@@ -243,6 +243,9 @@ rm -rf "$TARGET_DIR/app/youtube"
 # Remove module login gate route stub
 rm -f "$TARGET_DIR/app/profile-complete.tsx"
 
+# Remove module-specific Stack.Screen declarations from _layout.tsx
+sed -i '/blog-comments\/\[postId\]/d' "$TARGET_DIR/app/_layout.tsx"
+
 # Clean _registry.ts: remove module imports and entries from the MODULES array
 sed -i \
   -e "/^import { .*Module } from /d" \

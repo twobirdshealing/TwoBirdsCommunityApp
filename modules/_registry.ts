@@ -8,6 +8,7 @@
 // =============================================================================
 
 import type { ModuleManifest } from './_types';
+import { setModules } from './_registry-core';
 
 // =============================================================================
 // YOUR MODULES — Import and register your modules below.
@@ -39,6 +40,9 @@ export const MODULES: ModuleManifest[] = [
   multiReactionsModule,
   adminModule,
 ];
+
+// Inject modules into the core registry (no circular dependency — one-way flow)
+setModules(MODULES);
 
 // =============================================================================
 // END YOUR MODULES — Everything below is core. Do not edit.

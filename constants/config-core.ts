@@ -6,7 +6,11 @@
 // =============================================================================
 
 import Constants from 'expo-constants';
-import { SITE_URL } from './config';
+
+// Resolve SITE_URL directly from Constants to avoid circular dependency
+// (config.ts re-exports from this file, so importing SITE_URL from config.ts
+// would create a cycle where SITE_URL is undefined at evaluation time).
+const SITE_URL: string = process.env.EXPO_PUBLIC_SITE_URL || Constants.expoConfig?.extra?.siteUrl;
 
 // -----------------------------------------------------------------------------
 // Derived Constants

@@ -719,6 +719,7 @@ export default function UserProfileScreen() {
           onRefresh={handleRefresh}
           onLoadMore={postsState.hasMore && !postsState.loading ? () => fetchPosts(postsState.page + 1, true) : undefined}
           onReact={handleReact}
+          setFeeds={setPostsData}
           onAuthorPress={handleAuthorPress}
           onSpacePress={handleSpacePress}
           onCommentPress={handleCommentPress}

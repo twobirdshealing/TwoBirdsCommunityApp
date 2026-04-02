@@ -8,6 +8,7 @@
 // NOT used by: feed/[id].tsx (single-feed view, different patterns)
 // =============================================================================
 
+import { useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feed } from '@/types/feed';
@@ -49,36 +50,36 @@ export function useFeedActions({
   // Comments — navigate to comments screen
   // ---------------------------------------------------------------------------
 
-  const handleCommentPress = (feed: Feed) => {
+  const handleCommentPress = useCallback((feed: Feed) => {
     router.push({
       pathname: '/comments/[postId]',
       params: { postId: feed.id.toString(), feedSlug: feed.slug },
     });
-  };
+  }, [router]);
 
   // ---------------------------------------------------------------------------
   // Navigation
   // ---------------------------------------------------------------------------
 
-  const handleAuthorPress = (username: string) => {
+  const handleAuthorPress = useCallback((username: string) => {
     router.push({
       pathname: '/profile/[username]',
       params: { username },
     });
-  };
+  }, [router]);
 
-  const handleSpacePress = (spaceSlug: string) => {
+  const handleSpacePress = useCallback((spaceSlug: string) => {
     router.push({
       pathname: '/space/[slug]',
       params: { slug: spaceSlug },
     });
-  };
+  }, [router]);
 
   // ---------------------------------------------------------------------------
   // Composer — navigate to create-post screen
   // ---------------------------------------------------------------------------
 
-  const openComposer = () => {
+  const openComposer = useCallback(() => {
     router.push({
       pathname: '/create-post',
       params: {
@@ -86,22 +87,22 @@ export function useFeedActions({
         ...(defaultSpaceName ? { spaceName: defaultSpaceName } : {}),
       },
     });
-  };
+  }, [router, defaultSpace, defaultSpaceName]);
 
-  const handleEdit = (feed: Feed) => {
+  const handleEdit = useCallback((feed: Feed) => {
     router.push({
       pathname: '/create-post',
       params: {
         editId: feed.id.toString(),
       },
     });
-  };
+  }, [router]);
 
   // ---------------------------------------------------------------------------
   // Bookmark Toggle
   // ---------------------------------------------------------------------------
 
-  const handleBookmarkToggle = async (feed: Feed, isBookmarked: boolean) => {
+  const handleBookmarkToggle = useCallback(async (feed: Feed, isBookmarked: boolean) => {
     try {
       const response = await optimisticUpdate(
         setFeeds,
@@ -115,13 +116,13 @@ export function useFeedActions({
       log.error('Bookmark error:', err);
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update bookmark');
     }
-  };
+  }, [setFeeds]);
 
   // ---------------------------------------------------------------------------
   // Delete (with confirmation dialog)
   // ---------------------------------------------------------------------------
 
-  const handleDelete = (feed: Feed) => {
+  const handleDelete = useCallback((feed: Feed) => {
     Alert.alert(
       'Delete Post',
       'Are you sure you want to delete this post? This cannot be undone.',
@@ -147,29 +148,20 @@ export function useFeedActions({
         },
       ]
     );
-  };
+  }, [setFeeds]);
 
   // ---------------------------------------------------------------------------
   // Return
   // ---------------------------------------------------------------------------
 
   return {
-    // Comments
     handleCommentPress,
-
-    // Composer
     openComposer,
     handleEdit,
-
-    // Actions
     handleBookmarkToggle,
     handleDelete,
-
-    // Navigation
     handleAuthorPress,
     handleSpacePress,
-
-    // Refresh (exposed for parent focus-based refresh)
     refresh,
   };
 }

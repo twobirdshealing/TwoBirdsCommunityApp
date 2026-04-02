@@ -28,6 +28,8 @@ interface FeedListProps {
   error?: string | null;
   onRefresh?: () => void;
   onReact?: (feedId: number, type: ReactionType) => void;
+  /** State updater for module slots to perform optimistic updates directly */
+  setFeeds?: React.Dispatch<React.SetStateAction<Feed[]>>;
   onAuthorPress?: (username: string) => void;
   onSpacePress?: (spaceSlug: string) => void;
   onCommentPress?: (feed: Feed) => void;
@@ -54,6 +56,7 @@ export function FeedList({
   error = null,
   onRefresh,
   onReact,
+  setFeeds,
   onAuthorPress,
   onSpacePress,
   onCommentPress,
@@ -99,31 +102,23 @@ export function FeedList({
     );
   }
 
-  // Render feed item
-  const renderItem = ({ item }: { item: Feed }) => {
-    return (
-      <FeedCard
-        feed={item}
-        onReact={(type) => onReact?.(item.id, type)}
-        onAuthorPress={() => {
-          if (item.xprofile?.username) {
-            onAuthorPress?.(item.xprofile.username);
-          }
-        }}
-        onSpacePress={() => {
-          if (item.space?.slug) {
-            onSpacePress?.(item.space.slug);
-          }
-        }}
-        onCommentPress={() => onCommentPress?.(item)}
-        onBookmarkToggle={(isBookmarked) => onBookmarkToggle?.(item, isBookmarked)}
-        onEdit={() => onEdit?.(item)}
-        onDelete={() => onDelete?.(item)}
-        onPin={onPin ? () => onPin(item) : undefined}  // Only pass if parent provides it
-        canModerate={canModerate}
-      />
-    );
-  };
+  // Render feed item — callbacks passed directly (no inline wrappers)
+  // so React.memo on FeedCard can skip re-renders when feed data hasn't changed.
+  const renderItem = ({ item }: { item: Feed }) => (
+    <FeedCard
+      feed={item}
+      onReact={onReact}
+      setFeeds={setFeeds}
+      onAuthorPress={onAuthorPress}
+      onSpacePress={onSpacePress}
+      onCommentPress={onCommentPress}
+      onBookmarkToggle={onBookmarkToggle}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onPin={onPin}
+      canModerate={canModerate}
+    />
+  );
 
   return (
     <FeedModalsProvider>

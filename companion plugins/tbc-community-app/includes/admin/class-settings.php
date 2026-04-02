@@ -225,6 +225,19 @@ class TBC_CA_Admin_Settings {
                 <?php wp_nonce_field('tbc_ca_settings_nonce'); ?>
                 <input type="hidden" name="tbc_ca_active_tab" id="tbc-ca-active-tab" value="<?php echo esc_attr($current_tab); ?>" />
 
+                <!-- Sticky save bar -->
+                <div class="tbc-ca-save-bar" id="tbc-ca-save-bar">
+                    <div class="tbc-ca-save-bar__inner">
+                        <span class="tbc-ca-save-bar__status" id="tbc-ca-save-status">
+                            <span class="dashicons dashicons-info-outline"></span>
+                            <?php _e('You have unsaved changes', 'tbc-ca'); ?>
+                        </span>
+                        <button type="submit" name="submit" class="button button-primary tbc-ca-save-bar__btn">
+                            <?php _e('Save Settings', 'tbc-ca'); ?>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Tab: General -->
                 <div class="tbc-ca-tab-panel<?php echo $current_tab === 'general' ? ' tbc-ca-tab-panel--active' : ''; ?>" data-panel="general">
 
@@ -1052,7 +1065,6 @@ class TBC_CA_Admin_Settings {
 
                 </div><!-- /.tbc-ca-tab-panel notifications -->
 
-                <?php submit_button(__('Save Settings', 'tbc-ca')); ?>
             </form>
 
             <!-- Tab: Push Log (outside form — read-only) -->

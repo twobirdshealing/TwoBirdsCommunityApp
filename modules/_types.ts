@@ -191,6 +191,7 @@ export type SlotName =
   | 'feedReactionBreakdown'    // FeedCard — reaction summary/breakdown
   | 'commentReactions'         // CommentItem — reaction button area
   | 'commentReactionBreakdown' // CommentItem — reaction summary/breakdown
+  | 'chatReactionPicker'       // Chat screen — reaction picker for messages
 ;
 
 export interface SlotRegistration<P = any> {

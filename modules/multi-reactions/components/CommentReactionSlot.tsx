@@ -7,9 +7,9 @@
 import React, { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { hapticLight, hapticMedium } from '@/utils/haptics';
-import { useReactionConfig } from '@/hooks/useReactionConfig';
+import { useReactionConfig } from '../hooks/useReactionConfig';
 import { useMultiReactions } from '../MultiReactionsProvider';
-import { ReactionIcon } from '@/components/feed/ReactionIcon';
+import { ReactionIcon } from './ReactionIcon';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { spacing, sizing } from '@/constants/layout';
 import type { ReactionSlotProps } from './slotProps';

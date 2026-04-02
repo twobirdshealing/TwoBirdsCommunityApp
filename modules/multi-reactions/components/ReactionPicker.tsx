@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useReactionConfig } from '@/hooks/useReactionConfig';
+import { useReactionConfig } from '../hooks/useReactionConfig';
 import { ReactionIcon } from './ReactionIcon';
 import { ReactionType } from '@/types/feed';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';

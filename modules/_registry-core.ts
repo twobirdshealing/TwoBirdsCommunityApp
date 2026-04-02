@@ -8,7 +8,6 @@
 import type { Router } from 'expo-router';
 import { registerCache } from '@/services/cacheRegistry';
 import { registerModuleResponseHeaders } from '@/services/api/client';
-import { MODULES } from './_registry';
 import type {
   ModuleManifest,
   TabRegistration,
@@ -23,31 +22,44 @@ import type {
 } from './_types';
 
 // -----------------------------------------------------------------------------
-// Dev-mode validation — catches common setup mistakes
+// Module storage — _registry.ts calls setModules() to inject the array.
+// This avoids a circular dependency (_registry.ts re-exports from this file).
 // -----------------------------------------------------------------------------
 
-if (__DEV__) {
-  const ids = MODULES.map((m) => m.id);
-  const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
-  if (dupes.length) {
-    console.warn(`[Modules] Duplicate module IDs: ${dupes.join(', ')}`);
-  }
+let _modules: ModuleManifest[] = [];
 
-  const widgetIds = MODULES.flatMap((m) => (m.widgets ?? []).map((w) => w.id));
-  const widgetDupes = widgetIds.filter((id, i) => widgetIds.indexOf(id) !== i);
-  if (widgetDupes.length) {
-    console.warn(`[Modules] Duplicate widget IDs: ${widgetDupes.join(', ')}`);
-  }
+/** Called by _registry.ts to inject the MODULES array. Do not call elsewhere. */
+export function setModules(modules: ModuleManifest[]): void {
+  _modules = modules;
 
-  const addonCount = MODULES.filter((m) => m.tabBarAddon).length;
-  if (addonCount > 1) {
-    console.warn(`[Modules] ${addonCount} tabBarAddon registrations — they will stack vertically`);
-  }
+  // Register response headers now that modules are available
+  _cachedResponseHeaders = _modules.flatMap((m) => m.responseHeaders ?? []);
+  registerModuleResponseHeaders(_cachedResponseHeaders);
 
-  const slotNames = MODULES.flatMap((m) => (m.slots ?? []).map((s) => s.slot));
-  const slotDupes = slotNames.filter((s, i) => slotNames.indexOf(s) !== i);
-  if (slotDupes.length) {
-    console.warn(`[Modules] Multiple modules fill the same slot: ${[...new Set(slotDupes)].join(', ')} — lowest priority wins`);
+  // Dev-mode validation — catches common setup mistakes
+  if (__DEV__) {
+    const ids = _modules.map((m) => m.id);
+    const dupes = ids.filter((id, i) => ids.indexOf(id) !== i);
+    if (dupes.length) {
+      console.warn(`[Modules] Duplicate module IDs: ${dupes.join(', ')}`);
+    }
+
+    const widgetIds = _modules.flatMap((m) => (m.widgets ?? []).map((w) => w.id));
+    const widgetDupes = widgetIds.filter((id, i) => widgetIds.indexOf(id) !== i);
+    if (widgetDupes.length) {
+      console.warn(`[Modules] Duplicate widget IDs: ${widgetDupes.join(', ')}`);
+    }
+
+    const addonCount = _modules.filter((m) => m.tabBarAddon).length;
+    if (addonCount > 1) {
+      console.warn(`[Modules] ${addonCount} tabBarAddon registrations — they will stack vertically`);
+    }
+
+    const slotNames = _modules.flatMap((m) => (m.slots ?? []).map((s) => s.slot));
+    const slotDupes = slotNames.filter((s, i) => slotNames.indexOf(s) !== i);
+    if (slotDupes.length) {
+      console.warn(`[Modules] Multiple modules fill the same slot: ${[...new Set(slotDupes)].join(', ')} — lowest priority wins`);
+    }
   }
 }
 
@@ -57,7 +69,7 @@ if (__DEV__) {
 
 /** All module tabs, sorted by order (inherits module-level hideMenuKey onto tab) */
 export function getModuleTabs(): TabRegistration[] {
-  return MODULES
+  return _modules
     .filter((m) => m.tab)
     .map((m) => ({
       ...m.tab!,
@@ -68,45 +80,44 @@ export function getModuleTabs(): TabRegistration[] {
 
 /** All module widgets (flat list from all modules) */
 export function getModuleWidgets(): WidgetRegistration[] {
-  return MODULES.flatMap((m) => m.widgets ?? []);
+  return _modules.flatMap((m) => m.widgets ?? []);
 }
 
 /** All module context providers, sorted by order */
 export function getModuleProviders(): ProviderRegistration[] {
-  return MODULES
+  return _modules
     .flatMap((m) => m.providers ?? [])
     .sort((a, b) => a.order - b.order);
 }
 
 /** All module launcher items for the Launcher bottom sheet, sorted by order */
 export function getLauncherItems(): LauncherItemRegistration[] {
-  return MODULES
+  return _modules
     .flatMap((m) => m.launcherItems ?? [])
     .sort((a, b) => a.order - b.order);
 }
 
 /** All module header icons for TopHeader, sorted by order */
 export function getModuleHeaderIcons(): HeaderIconRegistration[] {
-  return MODULES
+  return _modules
     .flatMap((m) => m.headerIcons ?? [])
     .sort((a, b) => a.order - b.order);
 }
 
 /** All tab bar addon components (stacked vertically above tab buttons) */
 export function getTabBarAddons(): React.ComponentType[] {
-  return MODULES
+  return _modules
     .filter((m) => m.tabBarAddon)
     .map((m) => m.tabBarAddon!);
 }
 
 /** All module route prefixes for push notification / deep link validation */
 export function getModuleRoutePrefixes(): string[] {
-  return MODULES.flatMap((m) => m.routePrefixes ?? []);
+  return _modules.flatMap((m) => m.routePrefixes ?? []);
 }
 
 /** All module response header mappings (consumed by API client for generic header extraction) */
-const _cachedResponseHeaders: ResponseHeaderMapping[] = MODULES.flatMap((m) => m.responseHeaders ?? []);
-registerModuleResponseHeaders(_cachedResponseHeaders);
+let _cachedResponseHeaders: ResponseHeaderMapping[] = [];
 export function getModuleResponseHeaders(): ResponseHeaderMapping[] {
   return _cachedResponseHeaders;
 }
@@ -137,7 +148,7 @@ const CORE_REGISTRATION_STEPS: RegistrationStepRegistration[] = [
 export function getRegistrationSteps(): RegistrationStepRegistration[] {
   return [
     ...CORE_REGISTRATION_STEPS,
-    ...MODULES.flatMap((m) => m.registrationSteps ?? []),
+    ..._modules.flatMap((m) => m.registrationSteps ?? []),
   ].sort((a, b) => a.order - b.order);
 }
 
@@ -147,7 +158,7 @@ export function getRegistrationSteps(): RegistrationStepRegistration[] {
 
 /** Call onInit() on all modules (fire-and-forget, errors logged not thrown) */
 export async function initModules(): Promise<void> {
-  for (const mod of MODULES) {
+  for (const mod of _modules) {
     try {
       await mod.onInit?.();
     } catch (e) {
@@ -158,7 +169,7 @@ export async function initModules(): Promise<void> {
 
 /** Call onCleanup() on all modules (e.g. on logout) */
 export function cleanupModules(): void {
-  for (const mod of MODULES) {
+  for (const mod of _modules) {
     try {
       mod.onCleanup?.();
     } catch (e) {
@@ -182,7 +193,7 @@ export function handleModuleNotification(
   data: Record<string, unknown>,
   router: Router
 ): boolean {
-  for (const mod of MODULES) {
+  for (const mod of _modules) {
     if (mod.notificationHandler?.(data, router)) return true;
   }
   return false;
@@ -194,7 +205,7 @@ export function handleModuleNotification(
 
 /** Get the winning slot component for a named slot (lowest priority wins, null if none) */
 export function getSlotComponent<P = any>(slotName: SlotName): React.ComponentType<P> | null {
-  const registrations = MODULES
+  const registrations = _modules
     .flatMap((m) => m.slots ?? [])
     .filter((s) => s.slot === slotName)
     .sort((a, b) => a.priority - b.priority);

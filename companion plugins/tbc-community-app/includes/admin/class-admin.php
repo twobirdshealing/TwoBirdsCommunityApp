@@ -65,15 +65,35 @@ class TBC_CA_Admin {
 
         wp_add_inline_script('jquery-core', '
             jQuery(function($) {
+                var formTabs = ["general", "features", "visibility", "notifications"];
+                var $saveBar = $("#tbc-ca-save-bar");
+                var isDirty = false;
+                var initialFormState = "";
+                var dirtyTimer = null;
+
+                function captureFormState() {
+                    initialFormState = $("form", ".tbc-ca-admin").serialize();
+                }
+
+                function checkDirty() {
+                    if (dirtyTimer) clearTimeout(dirtyTimer);
+                    dirtyTimer = setTimeout(function() {
+                        var currentState = $("form", ".tbc-ca-admin").serialize();
+                        isDirty = currentState !== initialFormState;
+                        $saveBar.toggleClass("tbc-ca-save-bar--dirty", isDirty);
+                    }, 300);
+                }
+
                 function switchTab(tab) {
                     $(".tbc-ca-tabs .nav-tab").removeClass("nav-tab-active");
                     $(".tbc-ca-tabs .nav-tab[data-tab=\"" + tab + "\"]").addClass("nav-tab-active");
                     $(".tbc-ca-tab-panel").removeClass("tbc-ca-tab-panel--active");
                     $(".tbc-ca-tab-panel[data-panel=\"" + tab + "\"]").addClass("tbc-ca-tab-panel--active");
                     $("#tbc-ca-active-tab").val(tab);
-                    var formTabs = ["general", "visibility", "notifications"];
-                    $(".tbc-ca-admin .submit").toggle(formTabs.indexOf(tab) !== -1);
+                    var isFormTab = formTabs.indexOf(tab) !== -1;
+                    $saveBar.toggleClass("tbc-ca-save-bar--visible", isFormTab);
                 }
+
                 $(".tbc-ca-tabs .nav-tab").on("click", function(e) {
                     e.preventDefault();
                     var tab = $(this).data("tab");
@@ -84,7 +104,26 @@ class TBC_CA_Admin {
                         history.replaceState(null, "", url);
                     }
                 });
+
+                // Track changes on all form inputs
+                $("form", ".tbc-ca-admin").on("change input", "input, select, textarea", function() {
+                    checkDirty();
+                });
+
+                // Warn before leaving with unsaved changes
+                $(window).on("beforeunload", function() {
+                    if (isDirty) return "You have unsaved changes.";
+                });
+
+                // Remove warning on form submit
+                $("form", ".tbc-ca-admin").on("submit", function() {
+                    isDirty = false;
+                    $(window).off("beforeunload");
+                });
+
+                // Init
                 switchTab($(".tbc-ca-tabs .nav-tab-active").data("tab"));
+                captureFormState();
             });
         ');
     }

@@ -6,7 +6,7 @@
 // =============================================================================
 
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import { ReactionPicker } from '@/components/feed/ReactionPicker';
+import { ReactionPicker } from './components/ReactionPicker';
 import { ReactionBreakdownModal } from './components/ReactionBreakdownModal';
 import type { ReactionType } from '@/types/feed';
 

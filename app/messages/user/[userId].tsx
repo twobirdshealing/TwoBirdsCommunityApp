@@ -21,7 +21,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { ReactionPicker } from '@/components/feed/ReactionPicker';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { useChatReactions } from '@/hooks/useChatReactions';
 import { useMessageMenu } from '@/hooks/useMessageMenu';
@@ -188,7 +187,6 @@ export default function UserChatScreen() {
           onAvatarPress={() => handleAvatarPress(item)}
           onDelete={isOwn ? chat.handleDeleteMessage : undefined}
           onDefaultReact={reactions.handleDefaultReact}
-          onReactionLongPress={reactions.handleReactionLongPress}
           onReactionPress={reactions.handleReactionPillPress}
           onMenuPress={menu.handleMenuPress}
           onImagePress={menu.handleImagePress}
@@ -373,15 +371,6 @@ export default function UserChatScreen() {
               }]
             : []),
         ] as DropdownMenuItem[]}
-      />
-
-      {/* Reaction Picker for chat messages */}
-      <ReactionPicker
-        visible={reactions.reactionPickerVisible}
-        onSelect={reactions.handleReactionSelect}
-        onClose={reactions.handleReactionPickerClose}
-        currentType={reactions.reactionTargetMessageRef.current ? reactions.getUserReactionType(reactions.reactionTargetMessageRef.current) : null}
-        anchor={reactions.reactionPickerAnchor}
       />
 
       {/* Image Viewer */}

@@ -1,20 +1,21 @@
 // =============================================================================
-// USE CHAT REACTIONS - Reaction logic for the user chat screen
+// USE CHAT REACTIONS - Basic emoji reaction logic for chat messages
 // =============================================================================
-// Extracted from messages/user/[userId].tsx to reduce route file size.
-// Manages: reaction picker state, optimistic updates, reaction helpers.
+// Manages: optimistic updates, reaction helpers for chat messages.
+// Uses Fluent's native emoji-based reactions (not multi-reactions module).
 // =============================================================================
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback } from 'react';
+import { Text } from 'react-native';
 import { ChatMessage } from '@/types/message';
-import { useReactionConfig } from '@/hooks/useReactionConfig';
-import { ReactionIcon } from '@/components/feed/ReactionIcon';
 import { messagesApi } from '@/services/api/messages';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
-import { hapticLight, hapticMedium } from '@/utils/haptics';
+import { hapticLight } from '@/utils/haptics';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('ChatReactions');
+
+const DEFAULT_EMOJI = '👍';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -30,47 +31,25 @@ interface UseChatReactionsParams {
 // -----------------------------------------------------------------------------
 
 export function useChatReactions({ currentUserId, setMessages }: UseChatReactionsParams) {
-  const { reactions: reactionConfigs } = useReactionConfig();
-
-  // Picker state
-  const [reactionPickerVisible, setReactionPickerVisible] = useState(false);
-  const [reactionPickerAnchor, setReactionPickerAnchor] = useState<{ top: number; left: number } | undefined>();
-  const reactionTargetMessageRef = useRef<ChatMessage | null>(null);
-
-  // Default reaction (first in config)
-  const defaultReactionConfig = reactionConfigs[0] || null;
-  const defaultReactionEmoji = defaultReactionConfig?.emoji || '👍';
-
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
-
-  const typeIdToEmoji = useCallback((typeId: string): string => {
-    const config = reactionConfigs.find(r => r.id === typeId);
-    return config?.emoji || typeId;
-  }, [reactionConfigs]);
-
-  const emojiToConfig = useCallback((emoji: string) => {
-    return reactionConfigs.find(r => r.emoji === emoji) || null;
-  }, [reactionConfigs]);
 
   const getUserReactionType = useCallback((message: ChatMessage): string | null => {
     const reactions = message.meta?.reactions;
     if (!reactions || !currentUserId) return null;
     for (const [emoji, userIds] of Object.entries(reactions)) {
       if (userIds.includes(currentUserId)) {
-        const config = emojiToConfig(emoji);
-        return config?.id || null;
+        return emoji;
       }
     }
     return null;
-  }, [currentUserId, emojiToConfig]);
+  }, [currentUserId]);
 
   /** Render reaction icon for breakdown pills */
   const renderReactionIcon = useCallback((emoji: string): React.ReactNode => {
-    const config = emojiToConfig(emoji);
-    return <ReactionIcon iconUrl={config?.icon_url} emoji={emoji} size={16} />;
-  }, [emojiToConfig]);
+    return <Text style={{ fontSize: 12 }}>{emoji}</Text>;
+  }, []);
 
   /** Render the user's current reaction (or default) for the reaction button */
   const renderUserReactionIcon = useCallback((message: ChatMessage): (() => React.ReactNode) => {
@@ -79,23 +58,16 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
       if (reactions && currentUserId) {
         for (const [emoji, userIds] of Object.entries(reactions)) {
           if (userIds.includes(currentUserId)) {
-            const config = emojiToConfig(emoji);
-            return <ReactionIcon iconUrl={config?.icon_url} emoji={emoji} size={20} />;
+            return <Text style={{ fontSize: 15 }}>{emoji}</Text>;
           }
         }
       }
-      return (
-        <ReactionIcon
-          iconUrl={defaultReactionConfig?.icon_url}
-          emoji={defaultReactionEmoji}
-          size={20}
-        />
-      );
+      return <Text style={{ fontSize: 15 }}>{DEFAULT_EMOJI}</Text>;
     };
-  }, [currentUserId, emojiToConfig, defaultReactionConfig, defaultReactionEmoji]);
+  }, [currentUserId]);
 
   // ---------------------------------------------------------------------------
-  // Optimistic Updater (returns a pure updater function for optimisticUpdate)
+  // Optimistic Updater
   // ---------------------------------------------------------------------------
 
   const makeReactionUpdater = useCallback((messageId: number, emoji: string) => {
@@ -139,44 +111,11 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
   // Handlers
   // ---------------------------------------------------------------------------
 
-  /** User selects a reaction from the picker */
-  const handleReactionSelect = useCallback(async (typeId: string) => {
-    const msg = reactionTargetMessageRef.current;
-    if (!msg) return;
-    reactionTargetMessageRef.current = null;
-    setReactionPickerVisible(false);
-
-    const emoji = typeIdToEmoji(typeId);
-
-    try {
-      await optimisticUpdate(
-        setMessages,
-        makeReactionUpdater(msg.id, emoji),
-        () => messagesApi.toggleReaction(msg.id, emoji),
-      );
-    } catch (err) {
-      log.error('Reaction error:', err);
-    }
-  }, [typeIdToEmoji, setMessages, makeReactionUpdater]);
-
-  /** User taps an existing reaction pill on a message */
-  const handleReactionPillPress = useCallback(async (message: ChatMessage, emoji: string) => {
-    try {
-      await optimisticUpdate(
-        setMessages,
-        makeReactionUpdater(message.id, emoji),
-        () => messagesApi.toggleReaction(message.id, emoji),
-      );
-    } catch (err) {
-      log.error('Reaction toggle error:', err);
-    }
-  }, [setMessages, makeReactionUpdater]);
-
   /** Tap the smiley button — toggle default reaction */
   const handleDefaultReact = useCallback(async (message: ChatMessage) => {
     hapticLight();
     const reactions = message.meta?.reactions;
-    let emojiToToggle = defaultReactionEmoji;
+    let emojiToToggle = DEFAULT_EMOJI;
 
     if (reactions && currentUserId) {
       for (const [emoji, userIds] of Object.entries(reactions)) {
@@ -196,36 +135,28 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
     } catch (err) {
       log.error('Default reaction error:', err);
     }
-  }, [currentUserId, defaultReactionEmoji, setMessages, makeReactionUpdater]);
+  }, [currentUserId, setMessages, makeReactionUpdater]);
 
-  /** Long-press smiley — open picker */
-  const handleReactionLongPress = useCallback((message: ChatMessage, anchor: { top: number; left: number }) => {
-    hapticMedium();
-    reactionTargetMessageRef.current = message;
-    setReactionPickerAnchor(anchor);
-    setReactionPickerVisible(true);
-  }, []);
-
-  /** Dismiss picker without selection */
-  const handleReactionPickerClose = useCallback(() => {
-    setReactionPickerVisible(false);
-    reactionTargetMessageRef.current = null;
-  }, []);
+  /** User taps an existing reaction pill on a message */
+  const handleReactionPillPress = useCallback(async (message: ChatMessage, emoji: string) => {
+    try {
+      await optimisticUpdate(
+        setMessages,
+        makeReactionUpdater(message.id, emoji),
+        () => messagesApi.toggleReaction(message.id, emoji),
+      );
+    } catch (err) {
+      log.error('Reaction toggle error:', err);
+    }
+  }, [setMessages, makeReactionUpdater]);
 
   return {
-    // Picker state
-    reactionPickerVisible,
-    reactionPickerAnchor,
-    reactionTargetMessageRef,
     // Helpers
     getUserReactionType,
     renderReactionIcon,
     renderUserReactionIcon,
     // Handlers
-    handleReactionSelect,
-    handleReactionPillPress,
     handleDefaultReact,
-    handleReactionLongPress,
-    handleReactionPickerClose,
+    handleReactionPillPress,
   };
 }

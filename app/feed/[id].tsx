@@ -79,7 +79,7 @@ export default function SinglePostScreen() {
   // Handlers
   // ---------------------------------------------------------------------------
 
-  const handleBookmarkToggle = async (isBookmarked: boolean) => {
+  const handleBookmarkToggle = async (_feed: Feed, isBookmarked: boolean) => {
     if (!feed) return;
     try {
       const response = await optimisticUpdate(
@@ -160,17 +160,10 @@ export default function SinglePostScreen() {
             <FeedCard
               feed={feed}
               variant="full"
-              onReact={(type) => handleReact(feed.id, type)}
-              onAuthorPress={() => {
-                if (feed.xprofile?.username) {
-                  router.push(`/profile/${feed.xprofile.username}`);
-                }
-              }}
-              onSpacePress={() => {
-                if (feed.space?.slug) {
-                  router.push(`/space/${feed.space.slug}`);
-                }
-              }}
+              onReact={handleReact}
+              setFeeds={setFeedsArray}
+              onAuthorPress={(username) => router.push(`/profile/${username}`)}
+              onSpacePress={(slug) => router.push(`/space/${slug}`)}
               onCommentPress={handleCommentPress}
               onBookmarkToggle={handleBookmarkToggle}
               onEdit={handleEdit}

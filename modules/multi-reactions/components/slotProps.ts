@@ -2,7 +2,7 @@
 // SLOT PROPS - Shared prop interface for reaction slot components
 // =============================================================================
 
-import type { ReactionBreakdown, ReactionType } from '@/types/feed';
+import type { Feed, ReactionBreakdown, ReactionType } from '@/types/feed';
 
 /** Props passed to feed/comment reaction slot components by core */
 export interface ReactionSlotProps {
@@ -18,6 +18,8 @@ export interface ReactionSlotProps {
   reactionsCount: number;
   /** Reaction breakdown array from server */
   reactionBreakdown: ReactionBreakdown[];
-  /** Core react/unreact callback — call with reaction type */
+  /** Core react/unreact callback — used by fallback like button only */
   onReact: (type: ReactionType) => void;
+  /** Feed state updater — module slots use this for optimistic updates */
+  onFeedUpdate?: (updater: (feed: Feed) => Feed) => void;
 }

@@ -5,9 +5,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useReactionConfig } from '@/hooks/useReactionConfig';
+import { useReactionConfig } from '../hooks/useReactionConfig';
 import { useMultiReactions } from '../MultiReactionsProvider';
-import { ReactionIcon } from '@/components/feed/ReactionIcon';
+import { ReactionIcon } from './ReactionIcon';
 import { spacing, typography } from '@/constants/layout';
 import type { ReactionSlotProps } from './slotProps';
 

@@ -6,13 +6,12 @@
 // ADDED: getWelcomeBanner() for welcome banner feature
 // =============================================================================
 
-import { DEFAULT_PER_PAGE, ENDPOINTS, SITE_URL } from '@/constants/config';
-import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionBreakdown, ReactionType, SurveyConfig, WelcomeBannerResponse } from '@/types/feed';
-import { del, get, patch, post, request } from './client';
+import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
+import { Feed, FeedDetailResponse, FeedsResponse, ReactResponse, ReactionType, SurveyConfig, WelcomeBannerResponse } from '@/types/feed';
+import { del, get, patch, post } from './client';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('FeedsAPI');
-const TBC_MR_URL = `${SITE_URL}/wp-json/tbc-multi-reactions/v1`;
 
 // -----------------------------------------------------------------------------
 // Request Options
@@ -244,86 +243,22 @@ export async function deleteFeed(id: number) {
 }
 
 // -----------------------------------------------------------------------------
-// React to a Feed (like, love, etc.)
+// React to a Feed (basic like/unlike)
 // -----------------------------------------------------------------------------
 
 export async function reactToFeed(
   feedId: number,
-  type: ReactionType,
   hasUserReact: boolean = false
 ) {
-  // Always send 'like' to FC — FC only understands 'like' as a reaction type.
-  // The actual multi-reaction type is sent via X-TBC-Reaction-Type header.
   const payload: { react_type: string; remove?: boolean } = {
-    react_type: 'like'
+    react_type: 'like',
   };
 
   if (hasUserReact) {
     payload.remove = true;
   }
 
-  // Send reaction type header so tb-multi-reactions plugin can track it
-  const headers: Record<string, string> = {
-    'X-TBC-Reaction-Type': type,
-  };
-
-  return post<ReactResponse>(ENDPOINTS.FEED_REACT(feedId), payload, undefined, headers);
-}
-
-// -----------------------------------------------------------------------------
-// Swap Reaction Type (change existing reaction to different type)
-// -----------------------------------------------------------------------------
-// Uses tbc-multi-reactions plugin REST endpoint
-
-export async function swapReactionType(
-  objectId: number,
-  objectType: 'feed' | 'comment',
-  reactionType: ReactionType
-) {
-  return request('/swap', {
-    method: 'POST',
-    body: { object_id: objectId, object_type: objectType, reaction_type: reactionType },
-    baseUrl: TBC_MR_URL,
-  });
-}
-
-// -----------------------------------------------------------------------------
-// Get Reaction Breakdown with Users
-// -----------------------------------------------------------------------------
-// Uses tbc-multi-reactions plugin REST endpoint
-
-export interface BreakdownUser {
-  user_id: number;
-  display_name: string;
-  avatar: string;
-  user_url?: string;
-  is_verified?: number;
-  badge_slugs?: string[];
-}
-
-export interface BreakdownItem {
-  type: ReactionType;
-  emoji: string;
-  icon_url?: string | null;
-  name: string;
-  count: number;
-  color: string;
-  users: BreakdownUser[];
-  has_more?: boolean;
-}
-
-export interface BreakdownResponse {
-  breakdown: BreakdownItem[];
-  total: number;
-}
-
-export async function getReactionBreakdownUsers(
-  objectType: 'feed' | 'comment',
-  objectId: number
-) {
-  return request<BreakdownResponse>(`/breakdown/${objectType}/${objectId}/users`, {
-    baseUrl: TBC_MR_URL,
-  });
+  return post<ReactResponse>(ENDPOINTS.FEED_REACT(feedId), payload);
 }
 
 // -----------------------------------------------------------------------------
@@ -403,26 +338,6 @@ export async function getSurveyVoters(feedId: number, optionSlug: string) {
 }
 
 // -----------------------------------------------------------------------------
-// Get Reaction Breakdown (server-accurate counts after mutation)
-// -----------------------------------------------------------------------------
-// Uses tbc-multi-reactions plugin REST endpoint
-
-export interface ReactionBreakdownResponse {
-  breakdown: ReactionBreakdown[];
-  total: number;
-  user_reaction_type?: string | null;
-}
-
-export async function getReactionBreakdown(
-  objectType: 'feed' | 'comment',
-  objectId: number
-) {
-  return request<ReactionBreakdownResponse>(`/breakdown/${objectType}/${objectId}`, {
-    baseUrl: TBC_MR_URL,
-  });
-}
-
-// -----------------------------------------------------------------------------
 // Export as object
 // -----------------------------------------------------------------------------
 
@@ -438,12 +353,9 @@ export const feedsApi = {
   toggleSticky,
   deleteFeed,
   reactToFeed,
-  swapReactionType,
   toggleBookmark,
   getBookmarks,
   getFeedReactions,
-  getReactionBreakdownUsers,
-  getReactionBreakdown,
   castSurveyVote,
   getSurveyVoters,
 };

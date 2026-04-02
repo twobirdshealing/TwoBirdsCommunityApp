@@ -6,8 +6,7 @@
 // =============================================================================
 
 import { ReactionBreakdown, ReactionType } from '@/types/feed';
-import { feedsApi } from '@/services/api/feeds';
-import { ReactionConfig } from '@/hooks/useReactionConfig';
+import { ReactionConfig } from '../hooks/useReactionConfig';
 
 // -----------------------------------------------------------------------------
 // Update breakdown optimistically
@@ -93,37 +92,3 @@ function incrementType(
   return breakdown;
 }
 
-// -----------------------------------------------------------------------------
-// Reconcile with server-accurate breakdown after mutation
-// -----------------------------------------------------------------------------
-
-/** Shape required for reconciliation — both Feed and Comment satisfy this */
-interface Reactable {
-  id: number;
-  reaction_breakdown?: ReactionBreakdown[];
-  reaction_total?: number;
-  reactions_count: number | string;
-  user_reaction_type?: ReactionType | null;
-}
-
-export function reconcileReactionBreakdown<T extends Reactable>(
-  objectType: 'feed' | 'comment',
-  objectId: number,
-  setState: (updater: (prev: T[]) => T[]) => void,
-) {
-  feedsApi.getReactionBreakdown(objectType, objectId).then(res => {
-    if (!res.success) return;
-    setState(prev => prev.map(item => {
-      if (item.id !== objectId) return item;
-      return {
-        ...item,
-        reaction_breakdown: res.data.breakdown,
-        reaction_total: res.data.total,
-        reactions_count: res.data.total,
-        user_reaction_type: res.data.user_reaction_type ?? item.user_reaction_type,
-      };
-    }));
-  }).catch(() => {
-    // Silently ignore — optimistic UI is already correct, reconciliation is best-effort
-  });
-}

@@ -17,8 +17,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
 import { BottomSheet, BottomSheetFlatList, BottomSheetScrollView } from '@/components/common/BottomSheet';
-import { ReactionIcon } from '@/components/feed/ReactionIcon';
-import { feedsApi, BreakdownItem, BreakdownUser } from '@/services/api/feeds';
+import { ReactionIcon } from './ReactionIcon';
+import { getReactionBreakdownUsers, BreakdownItem, BreakdownUser } from '../api';
 import { spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
@@ -62,7 +62,7 @@ export function ReactionBreakdownModal({
   const fetchBreakdown = async () => {
     setLoading(true);
     try {
-      const result = await feedsApi.getReactionBreakdownUsers(objectType, objectId);
+      const result = await getReactionBreakdownUsers(objectType, objectId);
       if (result.success) {
         setBreakdown(result.data.breakdown || []);
         setTotal(result.data.total || 0);

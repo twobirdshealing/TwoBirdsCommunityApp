@@ -72,27 +72,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // -------------------------------------------------------------------------
-  // Sheet controls
-  // -------------------------------------------------------------------------
-
-  const openCart = useCallback(() => {
-    log('Opening cart sheet');
-    setSheetVisible(true);
-    if (hasOpenedRef.current) {
-      // Already fetched before — refresh to get fresh data
-      refresh();
-    } else {
-      hasOpenedRef.current = true;
-      setHasOpened(true);
-    }
-  }, [refresh]);
-
-  const closeCart = useCallback(() => {
-    setSheetVisible(false);
-    setCouponError(null);
-  }, []);
-
-  // -------------------------------------------------------------------------
   // Cart data (only fetched after first open)
   // -------------------------------------------------------------------------
 
@@ -114,6 +93,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     },
     enabled: hasOpened,
   });
+
+  // -------------------------------------------------------------------------
+  // Sheet controls
+  // -------------------------------------------------------------------------
+
+  const openCart = useCallback(() => {
+    log('Opening cart sheet');
+    setSheetVisible(true);
+    if (hasOpenedRef.current) {
+      // Already fetched before — refresh to get fresh data
+      refresh();
+    } else {
+      hasOpenedRef.current = true;
+      setHasOpened(true);
+    }
+  }, [refresh]);
+
+  const closeCart = useCallback(() => {
+    setSheetVisible(false);
+    setCouponError(null);
+  }, []);
 
   // -------------------------------------------------------------------------
   // Mutation helpers — all update local state from the returned cart
