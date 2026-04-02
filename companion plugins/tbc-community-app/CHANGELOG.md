@@ -2,6 +2,13 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.51.1
+- **Fix unread message count stuck after reading**: Removed `wp_cache` from `get_unread_message_count()`. On servers with persistent object caches (Redis), the cached count was never invalidated when threads were marked as read, causing `X-TBC-Unread-Messages` header to return stale values indefinitely. The underlying COUNT+EXISTS query is fast enough on indexed tables to run uncached. Also added `LIMIT 1` to EXISTS subquery to match Fluent Messaging's ChatHelper implementation.
+
+## v3.51.0
+- **Unified feature flags with auto-detection**: Added 6 new auto-detected feature flags to the `/app-config` API: `followers`, `giphy`, `emoji`, `badges`, `custom_fields`, `social_links`. These are computed per-request from Fluent Community module availability — not stored in settings. The app uses these to gate UI (follow buttons, GIF picker, etc.) so features only appear when enabled on the site.
+- **Site Features section in admin**: Added a read-only "Site Features (Auto-Detected)" section to the Features tab showing green ACTIVE / red INACTIVE badges for each detected FC module. Gives admins instant visibility into which features their site supports.
+
 ## v3.50.0
 - **Sticky save bar with unsaved changes tracking**: Replaced the bottom-only save button with a sticky save bar that stays visible at the top across all settings tabs (General, Features, Visibility, Notifications). Shows an "unsaved changes" indicator when any form field is modified. Browser warns before navigating away with unsaved changes. Also fixed Features tab missing from save-eligible tabs.
 - **Enable profile tabs by default**: Posts, Spaces, and Comments tabs on user profiles now default to enabled for new installations. Existing sites with saved settings are unaffected.

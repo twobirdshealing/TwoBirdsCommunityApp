@@ -12,6 +12,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useFeatures } from '@/contexts/AppConfigContext';
 import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
 import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { useThemedEditor } from '@/hooks/useThemedEditor';
@@ -86,6 +87,7 @@ export function CreatePostContent({
   editFeed,
 }: CreatePostContentProps) {
   const { colors: themeColors } = useTheme();
+  const features = useFeatures();
   const insets = useSafeAreaInsets();
   const isEditing = !!editFeed;
   const maxLength = 5000;
@@ -450,7 +452,7 @@ export function CreatePostContent({
           <ComposerToolbar
             onImagePress={handleImagePicker}
             onVideoPress={handleVideoPress}
-            onGifPress={handleGifPress}
+            onGifPress={features.giphy ? handleGifPress : undefined}
             onPollPress={handlePollPress}
             onSubmit={handleSubmit}
             submitLabel={actualSubmitLabel}

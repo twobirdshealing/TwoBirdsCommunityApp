@@ -2,6 +2,27 @@
 
 All notable changes to the TBC Community App white-label product.
 
+## [3.4.4] — 2026-04-02
+
+### Added
+- Unified feature flag system — all app features now gated through `features.*` from the server
+- Auto-detected FC module flags: followers, giphy, emoji, badges, custom_fields
+- Site Features section in companion plugin admin (Features tab) with ACTIVE/INACTIVE badges
+- Dark mode toggle gated by `features.dark_mode` flag
+- Follow buttons gated by `features.followers` (directory, members, connections, profile)
+- GIF picker gated by `features.giphy` (post composer, comment sheet)
+
+### Fixed
+- Dark mode toggle was always visible regardless of admin setting
+- Follow buttons showed even when FC Follower module was disabled
+- GIF button showed even when FC Giphy module was disabled
+- Feature detection now uses FC's native `Helper::isFeatureEnabled()` instead of `class_exists()`
+
+### Changed
+- Companion plugin bumped to v3.51.1
+- Decoupled multi-reactions module from core (no more 404 on sites without the add-on)
+- FeedCard performance optimization — feed-level callbacks, proper React.memo
+
 ## [3.3.0] — 2026-03-26
 
 ### Added

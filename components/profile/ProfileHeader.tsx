@@ -149,23 +149,25 @@ export function ProfileHeader({
         )}
 
         {/* Stats Row */}
-        <View style={[styles.statsRow, { backgroundColor: themeColors.backgroundSecondary }]}>
-          <Pressable style={styles.stat} onPress={onFollowingPress}>
-            <Text style={[styles.statValue, { color: themeColors.text }]}>
-              {formatCompactNumber(profile.followings_count || 0)}
-            </Text>
-            <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Following</Text>
-          </Pressable>
+        {(onFollowingPress || onFollowersPress) && (
+          <View style={[styles.statsRow, { backgroundColor: themeColors.backgroundSecondary }]}>
+            <Pressable style={styles.stat} onPress={onFollowingPress}>
+              <Text style={[styles.statValue, { color: themeColors.text }]}>
+                {formatCompactNumber(profile.followings_count || 0)}
+              </Text>
+              <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Following</Text>
+            </Pressable>
 
-          <View style={[styles.statDivider, { backgroundColor: themeColors.border }]} />
+            <View style={[styles.statDivider, { backgroundColor: themeColors.border }]} />
 
-          <Pressable style={styles.stat} onPress={onFollowersPress}>
-            <Text style={[styles.statValue, { color: themeColors.text }]}>
-              {formatCompactNumber(profile.followers_count || 0)}
-            </Text>
-            <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Followers</Text>
-          </Pressable>
-        </View>
+            <Pressable style={styles.stat} onPress={onFollowersPress}>
+              <Text style={[styles.statValue, { color: themeColors.text }]}>
+                {formatCompactNumber(profile.followers_count || 0)}
+              </Text>
+              <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Followers</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     </View>
   );

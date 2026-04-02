@@ -215,15 +215,10 @@ class TBC_CA_Core {
      * Count unread message threads for a user.
      * Direct DB query — same logic as ChatHelper::getUnreadThreadCounts but
      * works on all routes (ChatHelper is lazy-loaded by Fluent Messaging).
-     * Result is cached per-request via wp_cache to avoid repeated JOINs.
+     * No caching — query is fast (indexed COUNT + EXISTS) and persistent
+     * object caches (Redis) would serve stale counts after mark-read.
      */
     public static function get_unread_message_count($user_id) {
-        $cache_key = "unread_msg_count_{$user_id}";
-        $cached = wp_cache_get($cache_key, 'tbc_ca');
-        if ($cached !== false) {
-            return (int) $cached;
-        }
-
         global $wpdb;
 
         // Check table existence once per process
@@ -254,10 +249,10 @@ class TBC_CA_Core {
                 WHERE m.thread_id = tu.thread_id
                 AND (m.id > tu.last_seen_message_id OR tu.last_seen_message_id IS NULL)
                 AND xp.status = 'active'
+                LIMIT 1
             )
         ", $user_id));
 
-        wp_cache_set($cache_key, $count, 'tbc_ca');
         return $count;
     }
 }

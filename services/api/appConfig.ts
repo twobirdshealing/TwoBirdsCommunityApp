@@ -110,6 +110,12 @@ export interface FeaturesConfig {
     spaces: boolean;
     comments: boolean;
   };
+  // Auto-detected from Fluent Community (read-only, not admin-toggleable)
+  followers: boolean;
+  giphy: boolean;
+  emoji: boolean;
+  badges: boolean;
+  custom_fields: boolean;
 }
 
 /** Keys of FeaturesConfig whose value is boolean (excludes nested objects like profile_tabs) */

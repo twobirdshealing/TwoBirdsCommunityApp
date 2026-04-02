@@ -224,6 +224,10 @@
     vertical-align: middle;
 }
 
+.tbc-ca-feature-badge--active {
+    background: #00a32a;
+}
+
 /* Maintenance mode active state */
 .tbc-ca-maintenance-active {
     border-left: 4px solid #d63638;

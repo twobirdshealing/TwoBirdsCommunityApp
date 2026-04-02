@@ -23,6 +23,11 @@ export const DEFAULT_FEATURES: FeaturesConfig = {
   messaging: false,
   courses: false,
   profile_tabs: { posts: false, spaces: false, comments: false },
+  followers: false,
+  giphy: false,
+  emoji: false,
+  badges: false,
+  custom_fields: false,
 };
 
 // -----------------------------------------------------------------------------

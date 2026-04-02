@@ -36,6 +36,7 @@ export async function getFeeds(options: GetFeedsOptions = {}) {
   const params = {
     page: options.page || 1,
     per_page: options.per_page || DEFAULT_PER_PAGE,
+    ...(!options.space && { feed_base_url: 'feeds' }), // FC requires this for global feed — without it, some installs return empty
     ...(options.space && { space: options.space }),
     ...(options.user_id && { user_id: options.user_id }),
     ...(options.search && { search: options.search }),

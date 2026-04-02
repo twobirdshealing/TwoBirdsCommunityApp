@@ -303,18 +303,20 @@ export function Launcher({
               </Text>
             </View>
           </AnimatedPressable>
-          <AnimatedPressable
-            style={[styles.themeToggle, { backgroundColor: themeColors.backgroundSecondary }]}
-            onPress={handleThemeToggle}
-            accessibilityRole="button"
-            accessibilityLabel={`Switch to ${isDark ? 'light' : 'dark'} mode`}
-          >
-            <Ionicons
-              name={isDark ? 'sunny-outline' : 'moon-outline'}
-              size={20}
-              color={themeColors.textSecondary}
-            />
-          </AnimatedPressable>
+          {features.dark_mode && (
+            <AnimatedPressable
+              style={[styles.themeToggle, { backgroundColor: themeColors.backgroundSecondary }]}
+              onPress={handleThemeToggle}
+              accessibilityRole="button"
+              accessibilityLabel={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+            >
+              <Ionicons
+                name={isDark ? 'sunny-outline' : 'moon-outline'}
+                size={20}
+                color={themeColors.textSecondary}
+              />
+            </AnimatedPressable>
+          )}
         </View>
 
         <View style={[styles.divider, { backgroundColor: themeColors.border }]} />

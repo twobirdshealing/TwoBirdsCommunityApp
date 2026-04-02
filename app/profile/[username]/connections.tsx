@@ -30,6 +30,7 @@ import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { profilesApi } from '@/services/api/profiles';
+import { useFeatures } from '@/contexts/AppConfigContext';
 import { useFollowToggle } from '@/hooks/useFollowToggle';
 
 // -----------------------------------------------------------------------------
@@ -115,6 +116,7 @@ export default function ConnectionsScreen() {
   const searchRef = useRef(search);
   const sortByRef = useRef(sortBy);
 
+  const features = useFeatures();
   const { followMap, setFollowMap, handleFollowPress, handleNotifyPress, isFollowing, isNotifyOn, isFollowLoading } = useFollowToggle();
 
   // ---------------------------------------------------------------------------
@@ -383,8 +385,8 @@ export default function ConnectionsScreen() {
                   member={item}
                   onPress={handleMemberPress}
                   onMessagePress={isSelf ? undefined : handleMessagePress}
-                  onFollowPress={isSelf ? undefined : handleFollowPress}
-                  onNotifyPress={isSelf ? undefined : handleNotifyPress}
+                  onFollowPress={isSelf || !features.followers ? undefined : handleFollowPress}
+                  onNotifyPress={isSelf || !features.followers ? undefined : handleNotifyPress}
                   isFollowing={isFollowing(memberId)}
                   isNotifyOn={isNotifyOn(memberId)}
                   followLoading={isFollowLoading(memberId)}

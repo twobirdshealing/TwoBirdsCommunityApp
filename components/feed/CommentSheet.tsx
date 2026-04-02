@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useFeatures } from '@/contexts/AppConfigContext';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
@@ -78,6 +79,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   const router = useRouter();
   const { user } = useAuth();
   const { colors: themeColors } = useTheme();
+  const features = useFeatures();
   const { width: windowWidth } = useWindowDimensions();
   // Comment content width: window - list padding(16*2) - avatar(32) - avatar margin(12)
   const commentContentWidth = windowWidth - spacing.lg * 2 - sizing.avatar.sm - spacing.md;
@@ -722,17 +724,19 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                 />
               </Pressable>
 
-              <Pressable
-                style={styles.imageButton}
-                onPress={handleGifPress}
-                disabled={!!gifAttachment}
-              >
-                <Text style={{
-                  fontSize: typography.size.sm,
-                  fontWeight: typography.weight.bold,
-                  color: gifAttachment ? themeColors.primary : themeColors.textSecondary,
-                }}>GIF</Text>
-              </Pressable>
+              {features.giphy && (
+                <Pressable
+                  style={styles.imageButton}
+                  onPress={handleGifPress}
+                  disabled={!!gifAttachment}
+                >
+                  <Text style={{
+                    fontSize: typography.size.sm,
+                    fontWeight: typography.weight.bold,
+                    color: gifAttachment ? themeColors.primary : themeColors.textSecondary,
+                  }}>GIF</Text>
+                </Pressable>
+              )}
 
               <View style={{ flex: 1 }} />
 

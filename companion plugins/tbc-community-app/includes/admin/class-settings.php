@@ -578,6 +578,29 @@ class TBC_CA_Admin_Settings {
                     </table>
                 </div>
 
+                <div class="tbc-ca-section">
+                    <h2><?php _e('Site Features (Auto-Detected)', 'tbc-ca'); ?></h2>
+                    <p class="description"><?php _e('These features are automatically detected from your Fluent Community installation. Enable or disable them in Fluent Community → Settings → Features.', 'tbc-ca'); ?></p>
+
+                    <?php $detected_features = TBC_CA_App_Config::get_detected_features(); ?>
+
+                    <table class="form-table">
+                        <?php foreach ($detected_features as $feature): ?>
+                        <tr<?php echo !$feature['active'] ? ' class="tbc-ca-feature-disabled"' : ''; ?>>
+                            <th scope="row"><?php echo esc_html($feature['label']); ?></th>
+                            <td>
+                                <?php if ($feature['active']): ?>
+                                    <span class="tbc-ca-feature-badge tbc-ca-feature-badge--active"><?php _e('ACTIVE', 'tbc-ca'); ?></span>
+                                <?php else: ?>
+                                    <span class="tbc-ca-feature-badge"><?php _e('INACTIVE', 'tbc-ca'); ?></span>
+                                <?php endif; ?>
+                                <p class="description"><?php echo esc_html($feature['description']); ?></p>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </table>
+                </div>
+
                 </div><!-- /.tbc-ca-tab-panel features -->
 
                 <!-- Tab: UI Visibility -->

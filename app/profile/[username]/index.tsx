@@ -537,8 +537,8 @@ export default function UserProfileScreen() {
         isUploading={avatarUploading}
         onCoverPhotoPress={handleCoverPhotoPress}
         onAvatarPress={handleAvatarPress}
-        onFollowersPress={handleFollowersPress}
-        onFollowingPress={handleFollowingPress}
+        onFollowersPress={features.followers ? handleFollowersPress : undefined}
+        onFollowingPress={features.followers ? handleFollowingPress : undefined}
       />
 
       {/* Action Buttons (other profiles only) */}
@@ -560,34 +560,36 @@ export default function UserProfileScreen() {
             </Pressable>
           ) : (
             <>
-              <Pressable
-                style={[
-                  styles.followButton,
-                  { backgroundColor: themeColors.primary },
-                  isFollowing && [styles.followingButton, { borderColor: themeColors.primary }],
-                ]}
-                onPress={handleFollowPress}
-                disabled={followLoading}
-              >
-                {followLoading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={isFollowing ? themeColors.primary : themeColors.textInverse}
-                  />
-                ) : (
-                  <Text
-                    style={[
-                      styles.followButtonText,
-                      { color: themeColors.textInverse },
-                      isFollowing && [styles.followingButtonText, { color: themeColors.primary }],
-                    ]}
-                  >
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </Text>
-                )}
-              </Pressable>
+              {features.followers && (
+                <Pressable
+                  style={[
+                    styles.followButton,
+                    { backgroundColor: themeColors.primary },
+                    isFollowing && [styles.followingButton, { borderColor: themeColors.primary }],
+                  ]}
+                  onPress={handleFollowPress}
+                  disabled={followLoading}
+                >
+                  {followLoading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={isFollowing ? themeColors.primary : themeColors.textInverse}
+                    />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.followButtonText,
+                        { color: themeColors.textInverse },
+                        isFollowing && [styles.followingButtonText, { color: themeColors.primary }],
+                      ]}
+                    >
+                      {isFollowing ? 'Following' : 'Follow'}
+                    </Text>
+                  )}
+                </Pressable>
+              )}
 
-              {isFollowing && (
+              {features.followers && isFollowing && (
                 <Pressable
                   style={[
                     styles.notifyButton,
@@ -622,7 +624,7 @@ export default function UserProfileScreen() {
         onTabChange={setActiveTab}
       />
     </>
-  ), [profile, isOwnProfile, avatarUploading, isBlocked, isFollowing, isEmailNotifyOn, followLoading, blockLoading, visibleTabs, activeTab, themeColors]);
+  ), [profile, isOwnProfile, avatarUploading, isBlocked, isFollowing, isEmailNotifyOn, followLoading, blockLoading, visibleTabs, activeTab, themeColors, features.followers]);
 
   // ---------------------------------------------------------------------------
   // Render: Loading

@@ -372,6 +372,53 @@ class TBC_CA_App_Config {
     // =========================================================================
 
     /**
+     * Detect FC module availability. Returns an array of feature definitions,
+     * each with key, label, description, and active status.
+     * Used by both the API (get_features_config) and admin settings UI.
+     */
+    public static function get_detected_features() {
+        // Use FC's native Helper::isFeatureEnabled() to check actual module state,
+        // not class_exists() which only checks if the file is on disk.
+        $hasHelper = class_exists('FluentCommunity\App\Services\Helper');
+        $isEnabled = function ($key) use ($hasHelper) {
+            return $hasHelper && \FluentCommunity\App\Services\Helper::isFeatureEnabled($key);
+        };
+
+        return [
+            [
+                'key'         => 'followers',
+                'label'       => __('Followers', 'tbc-ca'),
+                'description' => __('Let users follow each other and filter posts by their followings.', 'tbc-ca'),
+                'active'      => $isEnabled('followers_module'),
+            ],
+            [
+                'key'         => 'giphy',
+                'label'       => __('Giphy / GIF Picker', 'tbc-ca'),
+                'description' => __('Allow users to attach GIFs when creating posts and comments.', 'tbc-ca'),
+                'active'      => $isEnabled('giphy_module'),
+            ],
+            [
+                'key'         => 'emoji',
+                'label'       => __('Emoji Reactions', 'tbc-ca'),
+                'description' => __('Add emoji reactions to posts and comments.', 'tbc-ca'),
+                'active'      => $isEnabled('emoji_module'),
+            ],
+            [
+                'key'         => 'badges',
+                'label'       => __('User Badges', 'tbc-ca'),
+                'description' => __('Display customized badges on user profiles beside their names.', 'tbc-ca'),
+                'active'      => $isEnabled('user_badge'),
+            ],
+            [
+                'key'         => 'custom_fields',
+                'label'       => __('Custom Profile Fields', 'tbc-ca'),
+                'description' => __('Custom fields on member profiles like gender, designation, and more.', 'tbc-ca'),
+                'active'      => $isEnabled('custom_profile_fields'),
+            ],
+        ];
+    }
+
+    /**
      * Get feature flags from plugin settings with dependency auto-detection.
      * Flags are set by admin in wp-admin → TBC Community App → Features tab.
      * Dependencies are checked at runtime — if a required plugin/module is not
@@ -389,6 +436,11 @@ class TBC_CA_App_Config {
         // Auto-detect: force courses off if Fluent LMS Course module is not active
         if (!class_exists('FluentCommunity\Modules\Course\Model\Course')) {
             $features['courses'] = false;
+        }
+
+        // Auto-detect: FC module availability (read-only — not stored in settings)
+        foreach (self::get_detected_features() as $df) {
+            $features[$df['key']] = $df['active'];
         }
 
         /**

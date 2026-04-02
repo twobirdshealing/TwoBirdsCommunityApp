@@ -35,6 +35,7 @@ import { spacing, typography, sizing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { membersApi } from '@/services/api/members';
+import { useFeatures } from '@/contexts/AppConfigContext';
 import { useFollowToggle } from '@/hooks/useFollowToggle';
 
 // -----------------------------------------------------------------------------
@@ -73,7 +74,8 @@ export default function ChurchDirectoryScreen() {
   const [showSortMenu, setShowSortMenu] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Follow state
+  // Features & Follow state
+  const features = useFeatures();
   const { followMap, setFollowMap, followLoadingMap, handleFollowPress, handleNotifyPress, isFollowing, isNotifyOn, isFollowLoading } = useFollowToggle();
 
   // ---------------------------------------------------------------------------
@@ -279,8 +281,8 @@ export default function ChurchDirectoryScreen() {
                   member={item}
                   onPress={handleMemberPress}
                   onMessagePress={isSelf ? undefined : handleMessagePress}
-                  onFollowPress={isSelf ? undefined : handleFollowPress}
-                  onNotifyPress={isSelf ? undefined : handleNotifyPress}
+                  onFollowPress={isSelf || !features.followers ? undefined : handleFollowPress}
+                  onNotifyPress={isSelf || !features.followers ? undefined : handleNotifyPress}
                   isFollowing={isFollowing(memberId)}
                   isNotifyOn={isNotifyOn(memberId)}
                   followLoading={isFollowLoading(memberId)}
