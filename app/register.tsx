@@ -67,6 +67,7 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const logoSource = getLogoSource(branding, isDark);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Form data (all steps)
@@ -551,14 +552,15 @@ export default function RegisterScreen() {
           {/* Logo (smaller than login) */}
           {step <= 2 && (
             <View style={styles.header}>
-              <Image
-                source={getLogoSource(branding, isDark)}
-                placeholder={require('@/assets/images/login_logo.png')}
-                style={styles.logo}
-                contentFit="contain"
-                cachePolicy="memory-disk"
-                transition={200}
-              />
+              {logoSource && (
+                <Image
+                  source={logoSource}
+                  style={styles.logo}
+                  contentFit="contain"
+                  cachePolicy="memory-disk"
+                  transition={200}
+                />
+              )}
             </View>
           )}
 

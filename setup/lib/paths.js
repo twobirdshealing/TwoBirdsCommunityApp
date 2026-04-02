@@ -52,21 +52,21 @@ const PATHS = {
 
 const REQUIRED_ASSETS = [
   { file: 'app_icon_ios.png', label: 'iOS App Icon', size: '1024x1024', purpose: 'App Store & home screen icon',
-    help: 'Must be exactly 1024x1024px PNG with no transparency and no rounded corners — Apple applies the mask automatically. Use a tool like Figma or icon generators to create this.' },
+    help: 'Exactly 1024×1024px PNG. <strong>No transparency</strong> — the App Store will reject icons with an alpha channel. No rounded corners — iOS applies the corner mask automatically. Fill the entire canvas with your icon.' },
   { file: 'app_icon_android_adaptive_fg.png', label: 'Android Adaptive Foreground', size: '1024x1024', purpose: 'Adaptive icon foreground layer',
-    help: 'The foreground layer of Android adaptive icons. Keep your logo centered in the inner 66% safe zone — the outer area may be cropped into circles, squircles, etc. by different Android launchers. Transparent background required. Tip: The Play Store also needs a standalone icon — you can upload one separately in the Play Console store listing.',
+    help: '1024×1024px PNG with <strong>transparent background</strong>. Keep your logo centered in the inner 66% safe zone — the outer area gets cropped into circles, squircles, or rounded squares depending on the device. This is the top layer only; the background layer sits behind it.',
     link: 'https://developer.android.com/develop/ui/views/launch/icon_design_adaptive',
     linkLabel: 'Android Adaptive Icons Guide' },
   { file: 'app_icon_android_adaptive_bg.png', label: 'Android Adaptive Background', size: '1024x1024', purpose: 'Adaptive icon background layer',
-    help: 'The background layer behind your foreground icon. Usually a solid color or simple gradient. This layer can shift slightly with parallax effects on some launchers.' },
-  { file: 'app_icon_android_notification.png', label: 'Android Notification Icon', size: '96x96', purpose: 'Push notification small icon (white silhouette)',
-    help: 'Must be a white silhouette on transparent background — Android tints this with your notification color. No color or detail — just a simple recognizable shape of your logo. 96x96px PNG.' },
-  { file: 'splash_screen_img.png', label: 'Splash Screen Image', size: '200px wide', purpose: 'Shown during app load',
-    help: 'The image shown on the splash screen while the app loads. Keep it around 200px wide — it is centered on screen. Usually your logo mark without text. PNG with transparent background works best.' },
-  { file: 'login_logo.png', label: 'Login Logo', size: 'Any', purpose: 'Logo on login/register screens (auto-synced)',
-    help: 'This logo is <strong>automatically synced</strong> from your Fluent Community site after the user\'s first login. This static file is only used as a fallback on the very first app launch before server branding is cached. Upload your logo here so it looks right from the start — after that, the server version takes over.' },
+    help: '1024×1024px PNG. The layer behind your foreground icon — usually a solid color, gradient, or pattern. You can skip this image and use a solid color instead via the toggle below. This layer can shift slightly with parallax effects on some launchers.' },
+  { file: 'app_icon_android_notification.png', label: 'Android Notification Icon', size: '96x96', purpose: 'Push notification small icon',
+    help: '96×96px PNG with <strong>transparent background</strong>. Android uses only the alpha channel — any opaque pixels render as white, transparent areas stay clear. The image can contain colors, but they won\'t display; only the shape matters. The <em>Notification Accent Color</em> (set in Branding Colors below) tints the icon background. Keep the shape simple and recognizable at small sizes.' },
+  { file: 'splash_screen_img.png', label: 'Splash Screen Image', size: '600x600', purpose: 'Shown during app load',
+    help: '600×600px PNG recommended. Centered on the splash background color — displayed at 200px wide on screen (3× for sharp rendering on retina displays). Transparent background recommended so it works on both light and dark splash colors. Usually a logo mark without text. Shows for 1–2 seconds during app load.' },
+  { file: 'login_logo.png', label: 'Login Logo', size: '750x540', purpose: 'Logo on login/register screens',
+    help: '750×540px PNG recommended. In <strong>Dynamic</strong> mode the logo is fetched from your Fluent Community site automatically — no upload needed. Switch to <strong>Static</strong> mode to bundle a custom image instead. Transparent background recommended.' },
   { file: 'login_background_img.png', label: 'Login Background', size: '1284x2778', purpose: 'Background image on auth screens',
-    help: 'Full-screen background behind the login/register forms. Use 1284x2778px for best quality on modern phones. A dark or blurred image works well so text remains readable.' },
+    help: '1284×2778px PNG recommended (iPhone Pro Max resolution). Full-screen background behind the login/register forms — scaled and cropped to fit different screen sizes. A dark or blurred image works best so the white text and form fields remain readable.' },
 ];
 
 // ---------------------------------------------------------------------------

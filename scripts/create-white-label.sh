@@ -29,6 +29,7 @@ PROTECTED_PATHS=(
   "eas.json"
   "app.config.ts"
   "package.json"
+  "package-lock.json"
   "assets/images/"
   "google-services.json"
   "GoogleService-Info.plist"
@@ -119,6 +120,7 @@ tar -cf - \
   --exclude='.expo' \
   --exclude='.git' \
   --exclude='.claude' \
+  --exclude='.gitignore' \
   --exclude='dist' \
   --exclude='web-build' \
   --exclude='ios' \
@@ -201,8 +203,13 @@ sed -i \
   "$TARGET_DIR/package.json"
 
 # Fix trailing commas in JSON (sed deletes can leave them)
-# Matches: comma, optional whitespace, then closing brace/bracket
-sed -i -E ':a;N;$!ba;s/,([[:space:]]*[}\]])/\1/g' "$TARGET_DIR/package.json"
+# Use node for reliable JSON round-trip — sed can't handle edge cases with escaped quotes
+node -e "
+  var fs = require('fs');
+  var raw = fs.readFileSync(process.argv[1], 'utf8');
+  var fixed = raw.replace(/,(\s*[}\]])/g, '\$1');
+  fs.writeFileSync(process.argv[1], JSON.stringify(JSON.parse(fixed), null, 2) + '\n');
+" "$TARGET_DIR/package.json"
 
 # --- package-lock.json ---
 sed -i \
@@ -357,12 +364,24 @@ fi
 echo "  Done."
 
 # ---------------------------------------------------------------------------
-# Step 8: Generate manifest.json & build core-update tar.gz
+# Step 8: Generate package-deps.json, manifest.json & core-update tar.gz
 # ---------------------------------------------------------------------------
 
-echo "[8/9] Generating manifest.json & core-update package..."
+echo "[8/9] Generating manifest.json, package-deps.json & core-update package..."
 
 generate_manifest "$SOURCE_VERSION" "$TARGET_DIR/manifest.json"
+
+# Generate package-deps.json — the dashboard merges these into the buyer's
+# package.json during updates (preserving their name, version, scripts, etc.)
+node -e "
+  var fs = require('fs');
+  var pkg = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+  var deps = {};
+  if (pkg.dependencies) deps.dependencies = pkg.dependencies;
+  if (pkg.devDependencies) deps.devDependencies = pkg.devDependencies;
+  fs.writeFileSync(process.argv[2], JSON.stringify(deps, null, 2) + '\n');
+" "$TARGET_DIR/package.json" "$TARGET_DIR/package-deps.json"
+echo "  Generated package-deps.json"
 
 # The core-update tar.gz contains the FULL snapshot — everything a buyer needs.
 # On first install, they extract the whole thing. On updates, the dashboard

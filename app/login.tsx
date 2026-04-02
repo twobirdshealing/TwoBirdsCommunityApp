@@ -41,6 +41,7 @@ export default function LoginScreen() {
 
   const siteName = branding?.site_name || APP_NAME;
   const siteTagline = branding ? branding.site_tagline : 'Community';
+  const logoSource = getLogoSource(branding, isDark);
 
   const handleLogin = async () => {
     hapticMedium();
@@ -78,14 +79,15 @@ export default function LoginScreen() {
         <View style={styles.content}>
           {/* Logo / Header */}
           <View style={styles.header}>
-            <Image
-              source={getLogoSource(branding, isDark)}
-              placeholder={require('@/assets/images/login_logo.png')}
-              style={styles.logo}
-              contentFit="contain"
-              cachePolicy="memory-disk"
-              transition={200}
-            />
+            {logoSource && (
+              <Image
+                source={logoSource}
+                style={styles.logo}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+                transition={200}
+              />
+            )}
             <Text style={[styles.title, { color: themeColors.text }]}>{siteName}</Text>
             {siteTagline ? <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>{siteTagline}</Text> : null}
           </View>

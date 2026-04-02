@@ -125,8 +125,11 @@ export interface HeaderIconRegistration {
   id: string;
   /** Ionicon name */
   icon: keyof typeof Ionicons.glyphMap;
-  /** Route to navigate to */
-  route: string | { pathname: string; params: Record<string, string> };
+  /** Route to navigate to (ignored when useOnPress is set) */
+  route?: string | { pathname: string; params: Record<string, string> };
+  /** React hook returning a press handler — overrides route navigation (e.g. open a bottom sheet).
+   *  Called inside ModuleHeaderIcon component so hook rules are safe. */
+  useOnPress?: () => () => void;
   /** Sort position — core icons: Messages=10, Notifications=20, Cart=30 */
   order: number;
   /** Accessibility label */

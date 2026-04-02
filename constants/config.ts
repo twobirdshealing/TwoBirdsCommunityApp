@@ -141,13 +141,16 @@ export const WP_ENDPOINTS = {
 // Branding Helpers (server-synced logo from Fluent Community)
 // -----------------------------------------------------------------------------
 
-const STATIC_LOGO = require('@/assets/images/login_logo.png');
+// Login logo mode: 'dynamic' = server-synced from Fluent Community (no static file needed),
+// 'static' = bundled image fallback. Toggled via the setup dashboard.
+const LOGIN_LOGO_MODE = 'dynamic';
+const STATIC_LOGO: ImageSource | null = null; // static mode: require('@/assets/images/login_logo.png')
 
 /** Logo for login/register/forgot-password. Uses dark variant when available in dark mode. */
 export function getLogoSource(
   branding: BrandingConfig | null,
   isDark: boolean,
-): ImageSource {
+): ImageSource | null {
   const url = isDark && branding?.logo_dark ? branding.logo_dark : branding?.logo;
   if (url) return { uri: url };
   return STATIC_LOGO;

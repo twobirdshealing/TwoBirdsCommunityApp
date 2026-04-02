@@ -38,6 +38,7 @@ export default function ForgotPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [login, setLogin] = useState('');
+  const logoSource = getLogoSource(branding, isDark);
 
   // ---------------------------------------------------------------------------
   // Submit
@@ -90,14 +91,15 @@ export default function ForgotPasswordScreen() {
         >
           {/* Logo */}
           <View style={styles.header}>
-            <Image
-              source={getLogoSource(branding, isDark)}
-              placeholder={require('@/assets/images/login_logo.png')}
-              style={styles.logo}
-              contentFit="contain"
-              cachePolicy="memory-disk"
-              transition={200}
-            />
+            {logoSource && (
+              <Image
+                source={logoSource}
+                style={styles.logo}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+                transition={200}
+              />
+            )}
           </View>
 
           {/* Form Card */}

@@ -298,7 +298,6 @@
   .prereq-badge.twilio  { background: rgba(244,114,96,0.15);  color: #f47260; }
   .prereq-badge.node    { background: rgba(63,185,80,0.15);   color: #3fb950; }
   .prereq-badge.eas     { background: rgba(88,166,255,0.15);  color: #58a6ff; }
-  .prereq-badge.git     { background: rgba(248,81,73,0.15);   color: #f85149; }
   .prereq-badge.vscode  { background: rgba(88,166,255,0.15);  color: #58a6ff; }
   .prereq-badge.claude  { background: rgba(163,113,247,0.15); color: #a371f7; }
 
@@ -664,24 +663,6 @@
   </details>
 </div>
 
-<div class="prereq-card" id="prereq-git">
-  <div class="prereq-card-header">
-    <a href="https://git-scm.com" target="_blank">Git</a>
-    <span class="prereq-badge git">Git</span>
-    <span class="prereq-card-cost">Free</span>
-  </div>
-  <p class="prereq-card-desc">Version control &mdash; needed for EAS builds and tracking your config changes.</p>
-  <details>
-    <summary>Walkthrough: Install Git</summary>
-    <div class="details-content">
-      <ol>
-        <li>Go to <a href="https://git-scm.com/downloads" target="_blank">git-scm.com/downloads</a> and download for your OS.</li>
-        <li>Run the installer with default settings.</li>
-        <li>Verify: open a terminal and run <code>git --version</code>.</li>
-      </ol>
-    </div>
-  </details>
-</div>
 
 <div class="prereq-card" id="prereq-vscode">
   <div class="prereq-card-header">
@@ -1564,7 +1545,7 @@ eas submit --platform android</code></pre>
   <li>Enter your license key and click <strong>Activate</strong></li>
   <li>The license is automatically activated and linked to your site URL</li>
   <li>Once activated, the tab displays your plan type and expiration date</li>
-  <li>Your license key is stored in <code>setup/.license</code> (gitignored &mdash; never committed to your repo)</li>
+  <li>Your license key is stored locally in <code>setup/.license</code> &mdash; excluded from builds and version control</li>
 </ul>
 
 <h3>Checking for Updates</h3>

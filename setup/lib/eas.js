@@ -1,9 +1,10 @@
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
 const { spawn } = require('child_process');
 const { PROJECT_DIR, PATHS, VALID_PLATFORMS, VALID_PROFILES, BUILD_ID_PATTERN } = require('./paths');
-const { readJsonSafe } = require('./file-utils');
+const { readJsonSafe, fileExists } = require('./file-utils');
 
 /** Diagnose EAS CLI errors — checks if eas is installed and logged in */
 async function diagnoseEasError(originalError) {
@@ -15,7 +16,7 @@ async function diagnoseEasError(originalError) {
 }
 
 /** Run a command asynchronously (doesn't block the server) */
-function runCommand(args, timeout = 30000) {
+function runCommand(args, timeout = 30000, env) {
   return new Promise((resolve, reject) => {
     const child = spawn(args.join(' '), [], {
       cwd: PROJECT_DIR,
@@ -23,6 +24,7 @@ function runCommand(args, timeout = 30000) {
       timeout,
       shell: true,
       windowsHide: true,
+      ...(env ? { env: { ...process.env, ...env } } : {}),
     });
     let stdout = '', stderr = '';
     child.stdout.on('data', (d) => { stdout += d; });
@@ -49,10 +51,14 @@ async function getEasBuilds() {
 async function startEasBuild(platform, profile) {
   if (!VALID_PLATFORMS.includes(platform)) return { ok: false, error: 'Invalid platform' };
   if (!VALID_PROFILES.includes(profile)) return { ok: false, error: 'Invalid profile' };
+  // Auto-detect git — if no repo, tell EAS to skip VCS and use .easignore instead
+  const hasGit = fileExists(path.join(PROJECT_DIR, '.git'));
+  const env = hasGit ? undefined : { EAS_NO_VCS: '1' };
   try {
     const output = await runCommand(
       ['eas', 'build', '--platform', platform, '--profile', profile, '--non-interactive', '--json'],
-      300000
+      300000,
+      env
     );
     return { ok: true, result: JSON.parse(output) };
   } catch (err) {

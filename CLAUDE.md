@@ -134,6 +134,10 @@ After completing a task, tell the user whether their change is OTA-safe or requi
 - Do not create new dependencies or utilities without checking the project first — there may already be centralized functions for what you need.
 - Don't guess or make up APIs — always check existing endpoints and services first.
 
+## Build File Filtering — `.easignore`
+
+`.easignore` controls which files EAS uploads during builds. Add any files or folders you don't want included in your app builds to this file. Git is not required — the dashboard handles this automatically.
+
 ---
 
 <!-- ====================================================================== -->
@@ -180,11 +184,15 @@ Donor module — custom to Two Birds Church, not a public add-on.
 
 Admin module — custom to Two Birds Church, not a public add-on.
 
-### Site-Specific Companion Plugins
+### Add-on Modules Companion Plugins
 
 - **tbc-youtube** — YouTube channel integration with server-side caching (companion to youtube module)
 - **tbc-book-club** — Book club audiobook player with meetings (companion to bookclub module)
 - **tbc-calendar-fluent** — Our private calendar plugin that links to the calendar module
+
+### Reference Plugins (outside repo)
+
+Fluent Community/Cart/Messaging plugin source code kept at `../../Refrence plugins ONLY/` (outside the project directory) for dev reference. Not part of the product, not tracked in git.
 
 ### Site-Specific Plugins (not in repo — on server only)
 Donation addons, donor dashboard, messaging center, checkout prerequisites, participant frontend, space manager, bulk tools, entry review — these are Two Birds Church site-specific and not part of the product. We occasionally bring them into the companion folder for reference.
@@ -227,6 +235,10 @@ The snapshot script copies this app to the white-label folder with all site-spec
 - Calendar, Donate, Donor modules
 
 ### Dev Rules
+
+Before every native build (`eas build`), run `npx expo install --check` to check for patch updates. If outdated, run `npx expo install --fix` before building. Patch updates often include native crash fixes that can only ship via a new build, not OTA.
+
+We use both `.easignore` and `.gitignore`. `.easignore` is a superset — it has everything in `.gitignore` plus non-app files (setup/, companion plugins/, scripts/, docs) that we track in git but EAS doesn't need. When adding a pattern to `.gitignore`, also add it to `.easignore`. Buyers only get `.easignore` (snapshot excludes `.gitignore`).
 
 After fixes or completed tasks ask user if we want to run /simplify
 

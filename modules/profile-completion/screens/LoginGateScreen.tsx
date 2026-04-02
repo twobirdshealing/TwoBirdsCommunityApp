@@ -29,6 +29,7 @@ export default function LoginGateScreen() {
   const [existing, setExisting] = useState<ProfileExistingData | undefined>();
   const [missingFields, setMissingFields] = useState<string[] | undefined>();
   const [loading, setLoading] = useState(true);
+  const logoSource = getLogoSource(branding, isDark);
 
   const avatarRequired = useMemo(
     () => missingFields?.includes('avatar') ?? true,
@@ -68,14 +69,15 @@ export default function LoginGateScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Image
-              source={getLogoSource(branding, isDark)}
-              placeholder={require('@/assets/images/login_logo.png')}
-              style={styles.logo}
-              contentFit="contain"
-              cachePolicy="memory-disk"
-              transition={200}
-            />
+            {logoSource && (
+              <Image
+                source={logoSource}
+                style={styles.logo}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+                transition={200}
+              />
+            )}
           </View>
 
           <View style={[styles.formCard, { backgroundColor: withOpacity(themeColors.surface, 0.95) }]}>

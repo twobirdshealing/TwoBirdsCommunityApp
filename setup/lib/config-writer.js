@@ -122,13 +122,28 @@ function writeConfigValues(changes) {
   }
 
   // --- constants/config.ts ---
-  if (changes.appNameConfig !== undefined || changes.userAgent !== undefined || changes.appToken !== undefined) {
+  if (changes.appNameConfig !== undefined || changes.userAgent !== undefined || changes.appToken !== undefined || changes.loginLogoMode !== undefined) {
     let content = fs.readFileSync(PATHS.configTs, 'utf8');
     if (changes.appNameConfig !== undefined) {
       content = content.replace(/export const APP_NAME = '[^']*'/, `export const APP_NAME = '${changes.appNameConfig}'`);
     }
     if (changes.userAgent !== undefined) {
       content = content.replace(/export const APP_USER_AGENT = '[^']*'/, `export const APP_USER_AGENT = '${changes.userAgent}'`);
+    }
+    if (changes.loginLogoMode !== undefined) {
+      content = content.replace(/const LOGIN_LOGO_MODE = '[^']*'/, `const LOGIN_LOGO_MODE = '${changes.loginLogoMode}'`);
+      // Swap the STATIC_LOGO line — Metro resolves require() statically, so we can't use a ternary
+      if (changes.loginLogoMode === 'static') {
+        content = content.replace(
+          /const STATIC_LOGO: ImageSource \| null = .+/,
+          "const STATIC_LOGO: ImageSource | null = require('@/assets/images/login_logo.png');"
+        );
+      } else {
+        content = content.replace(
+          /const STATIC_LOGO: ImageSource \| null = .+/,
+          "const STATIC_LOGO: ImageSource | null = null; // static mode: require('@/assets/images/login_logo.png')"
+        );
+      }
     }
     fs.writeFileSync(PATHS.configTs, content);
     results.push('constants/config.ts updated');

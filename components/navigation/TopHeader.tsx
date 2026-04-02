@@ -287,10 +287,11 @@ function ModuleHeaderIcon({ registration }: { registration: HeaderIconRegistrati
   const router = useRouter();
   // Safe: registrations are static (import-time), so hook presence never changes between renders
   const badgeCount = registration.useBadgeCount ? registration.useBadgeCount() : 0;
+  const hookPress = registration.useOnPress ? registration.useOnPress() : null;
   return (
     <HeaderIconButton
       icon={registration.icon}
-      onPress={() => router.push(registration.route as any)}
+      onPress={hookPress ?? (() => router.push(registration.route as any))}
       badgeCount={badgeCount}
       accessibilityLabel={registration.accessibilityLabel || registration.id}
     />

@@ -1701,7 +1701,7 @@
           </div>
           <div class="update-result success">
             <strong>Update applied successfully!</strong>
-            <template x-if="updateState.depsChanged"><br><br><ion-icon name="warning-outline" style="font-size:14px;vertical-align:middle"></ion-icon> Dependencies changed. Run <code>npm install</code> to update them.</template>
+            <template x-if="updateState.depsChanged"><br><br><ion-icon name="sync-outline" style="font-size:14px;vertical-align:middle"></ion-icon> Dependencies updated &mdash; installing automatically. Check the banner above for progress.</template>
           </div>
           <template x-if="updateState.dashboardUpdated">
             <div class="update-result" style="margin-top:12px"><strong><ion-icon name="warning-outline" style="font-size:14px;vertical-align:middle"></ion-icon> Dashboard updated.</strong><br>Stop the server, close this tab, then run <code>npm run dashboard</code> again.</div>
@@ -1736,7 +1736,7 @@
         <span x-text="manualUpdate.filesWritten + ' files updated, config preserved.'"></span><br>
         Backup saved as: <span x-text="manualUpdate.backupName"></span>
         <template x-if="manualUpdate.newVersion"><br>Updated to version <span x-text="manualUpdate.newVersion"></span></template>
-        <template x-if="manualUpdate.depsChanged"><br><br><ion-icon name="warning-outline" style="font-size:14px;vertical-align:middle"></ion-icon> Dependencies changed. Run <code>npm install</code>.</template>
+        <template x-if="manualUpdate.depsChanged"><br><br><ion-icon name="sync-outline" style="font-size:14px;vertical-align:middle"></ion-icon> Dependencies updated &mdash; installing automatically. Check the banner above for progress.</template>
       </div>
       <div x-show="manualUpdate.state === 'error'" class="update-result error">
         <strong>Upload failed:</strong> <span x-text="manualUpdate.error"></span>
@@ -3104,6 +3104,7 @@ bumpVersion(type) {
         if (data.error) throw new Error(data.error);
         this.setUpdateState( { state: 'done', step: 3, backupName: data.backup, filesWritten: data.filesWritten, depsChanged: !!data.depsChanged, dashboardUpdated: !!data.dashboardUpdated });
         await this.loadBackups();
+        if (data.depsChanged) this.installDeps();
       } catch (err) {
         this.setUpdateState( { state: 'error', errorTitle: 'Update failed:', error: err.message + ' — Your backup is safe. Use the Backups section below to restore if needed.' });
       }
@@ -3136,6 +3137,7 @@ bumpVersion(type) {
         this.setManualState({ state: 'done', filesWritten: data.filesWritten, backupName: data.backup, newVersion: data.newVersion || '', depsChanged: !!data.depsChanged });
         this.showToast('Update applied!', 'success');
         await this.loadBackups();
+        if (data.depsChanged) this.installDeps();
       } catch (err) {
         this.setManualState({ state: 'error', showUpload: true, error: err.message });
       }

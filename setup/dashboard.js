@@ -63,6 +63,27 @@ const { loadPresets, savePresets, addPreset, removePreset, validateProjectPath, 
 // ---------------------------------------------------------------------------
 
 let installProcess = { status: 'idle', output: '', exitCode: null };
+
+/** Kick off npm install in the background (reused by install-deps endpoint and post-update) */
+function startNpmInstall() {
+  if (installProcess.status === 'running') return;
+  let cmd = 'npm', cmdArgs = ['install'];
+  if (fileExists(path.join(PROJECT_DIR, 'yarn.lock'))) { cmd = 'yarn'; }
+  else if (fileExists(path.join(PROJECT_DIR, 'pnpm-lock.yaml'))) { cmd = 'pnpm'; }
+
+  installProcess = { status: 'running', output: '', exitCode: null };
+  var child = spawn(cmd + ' ' + cmdArgs.join(' '), [], { cwd: PROJECT_DIR, shell: true, timeout: 300000, windowsHide: true });
+  child.stdout.on('data', function(d) { installProcess.output += d.toString(); });
+  child.stderr.on('data', function(d) { installProcess.output += d.toString(); });
+  child.on('close', function(code) {
+    installProcess.status = code === 0 ? 'done' : 'error';
+    installProcess.exitCode = code;
+  });
+  child.on('error', function(err) {
+    installProcess.status = 'error';
+    installProcess.output += '\n' + err.message;
+  });
+}
 let lastHeartbeat = Date.now();
 
 // ---------------------------------------------------------------------------
@@ -227,22 +248,7 @@ const server = http.createServer(async (req, res) => {
         jsonResponse(res, { ok: false, error: 'Install already in progress' });
         return;
       }
-      let cmd = 'npm', cmdArgs = ['install'];
-      if (fileExists(path.join(PROJECT_DIR, 'yarn.lock'))) { cmd = 'yarn'; }
-      else if (fileExists(path.join(PROJECT_DIR, 'pnpm-lock.yaml'))) { cmd = 'pnpm'; }
-
-      installProcess = { status: 'running', output: '', exitCode: null };
-      var child = spawn(cmd + ' ' + cmdArgs.join(' '), [], { cwd: PROJECT_DIR, shell: true, timeout: 300000, windowsHide: true });
-      child.stdout.on('data', function(d) { installProcess.output += d.toString(); });
-      child.stderr.on('data', function(d) { installProcess.output += d.toString(); });
-      child.on('close', function(code) {
-        installProcess.status = code === 0 ? 'done' : 'error';
-        installProcess.exitCode = code;
-      });
-      child.on('error', function(err) {
-        installProcess.status = 'error';
-        installProcess.output += '\n' + err.message;
-      });
+      startNpmInstall();
       jsonResponse(res, { ok: true, status: 'running' });
       return;
     }
@@ -544,6 +550,18 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (pathname === '/api/login-logo-mode' && req.method === 'POST') {
+      const body = await readBody(req);
+      const { mode } = JSON.parse(body);
+      if (mode !== 'dynamic' && mode !== 'static') {
+        jsonResponse(res, { error: 'Invalid mode. Must be "dynamic" or "static".' }, 400);
+        return;
+      }
+      const results = writeConfigValues({ loginLogoMode: mode });
+      jsonResponse(res, { ok: true, results });
+      return;
+    }
+
     if (pathname.startsWith('/api/asset/') && req.method === 'GET') {
       const assetName = decodeURIComponent(pathname.replace('/api/asset/', ''));
       serveStatic(res, path.join(PATHS.assetsDir, path.basename(assetName)));
@@ -617,6 +635,7 @@ const server = http.createServer(async (req, res) => {
         const tarGzBuffer = await downloadUpdate(downloadUrl, key);
         const result = applyUpdateFromTar(tarGzBuffer);
         pruneBackups(3);
+        if (result.depsChanged) startNpmInstall();
         jsonResponse(res, { ok: true, backup: backup.label, ...result });
       } catch (err) {
         jsonResponse(res, { error: 'Update failed: ' + err.message }, 500);
@@ -647,6 +666,7 @@ const server = http.createServer(async (req, res) => {
 
         const result = applyUpdateFromTar(tarGzBuffer);
         pruneBackups(3);
+        if (result.depsChanged) startNpmInstall();
         jsonResponse(res, { ok: true, backup: backup.label, ...result });
       } catch (err) {
         jsonResponse(res, { error: 'Upload update failed: ' + err.message }, 500);

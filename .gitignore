@@ -45,9 +45,6 @@ app-example
 /ios
 /android
 
-# Reference-only plugins (not our code, kept for dev reference)
-companion plugins/Refrence plugins ONLY/
-
 # Dashboard (buyer-local files)
 setup/.license
 setup/.backups/
