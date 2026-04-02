@@ -5,6 +5,7 @@
 // =============================================================================
 
 import { ExpoConfig, ConfigContext } from 'expo/config';
+import { buildExpoConfig } from './constants/expo-config';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   // =========================================================================
@@ -37,40 +38,5 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   // END YOUR CONFIG — Everything below is core. Do not edit.
   // =========================================================================
 
-  const hostname = new URL(siteUrl).hostname;
-
-  return {
-    ...config,
-    name,
-    slug,
-    ios: {
-      ...config.ios,
-      associatedDomains: [`applinks:${hostname}`],
-    },
-    android: {
-      ...config.android,
-      intentFilters: [
-        {
-          action: 'VIEW',
-          autoVerify: true,
-          data: [
-            // Core deep links
-            { scheme: 'https', host: hostname, pathPrefix: '/spaces/' },
-            { scheme: 'https', host: hostname, pathPrefix: '/u/' },
-            { scheme: 'https', host: hostname, pathPrefix: '/courses/' },
-            { scheme: 'https', host: hostname, pathPrefix: '/notifications' },
-            { scheme: 'https', host: hostname, pathPrefix: '/leaderboard' },
-            { scheme: 'https', host: hostname, pathPrefix: '/chat/' },
-            // Module deep links (from YOUR CONFIG above)
-            ...moduleDeepLinkPaths.map((p) => ({ scheme: 'https', host: hostname, pathPrefix: p })),
-          ],
-          category: ['BROWSABLE', 'DEFAULT'],
-        },
-      ],
-    },
-    extra: {
-      ...config.extra,
-      siteUrl,
-    },
-  };
+  return buildExpoConfig(config, { siteUrl, name, slug, moduleDeepLinkPaths });
 };

@@ -304,8 +304,8 @@ function applyUpdateFromTar(tarGzBuffer) {
 }
 
 /**
- * Merge dependency changes into the buyer's package.json.
- * Preserves name, version, scripts, and any buyer-added deps.
+ * Merge dependency and script changes into the buyer's package.json.
+ * Preserves name, version, and any buyer-added entries.
  */
 function mergePackageDeps(depChanges) {
   const pkgPath = PATHS.packageJson;
@@ -314,14 +314,14 @@ function mergePackageDeps(depChanges) {
 
   let changed = false;
 
-  for (const key of ['dependencies', 'devDependencies']) {
+  for (const key of ['dependencies', 'devDependencies', 'scripts']) {
     if (!depChanges[key]) continue;
     if (!pkg[key]) pkg[key] = {};
-    for (const [name, version] of Object.entries(depChanges[key])) {
-      if (version === null) {
+    for (const [name, value] of Object.entries(depChanges[key])) {
+      if (value === null) {
         if (pkg[key][name]) { delete pkg[key][name]; changed = true; }
-      } else if (pkg[key][name] !== version) {
-        pkg[key][name] = version;
+      } else if (pkg[key][name] !== value) {
+        pkg[key][name] = value;
         changed = true;
       }
     }

@@ -1,6 +1,6 @@
 {
   "product": "tbc-community-app",
-  "version": "3.4.2",
+  "version": "3.4.3",
   "dashboardVersion": 1,
   "updateUrl": "https://www.twobirdscode.com/wp-json/tbc-license/v1/check",
   "protectedPaths": [
@@ -12,7 +12,7 @@
     "assets/images/",
     "google-services.json",
     "GoogleService-Info.plist",
-    "modules/",
+    "modules/_registry.ts",
     "setup/.license",
     "setup/.backups/",
     "setup/dashboard.next.js",

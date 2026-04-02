@@ -33,7 +33,7 @@ PROTECTED_PATHS=(
   "assets/images/"
   "google-services.json"
   "GoogleService-Info.plist"
-  "modules/"
+  "modules/_registry.ts"
   "setup/.license"
   "setup/.backups/"
   "setup/dashboard.next.js"
@@ -142,6 +142,7 @@ done
 # Copy only module infrastructure (no module folders — those are add-ons)
 mkdir -p "$TARGET_DIR/modules"
 cp "$SOURCE_DIR/modules/_registry.ts" "$TARGET_DIR/modules/_registry.ts"
+cp "$SOURCE_DIR/modules/_registry-core.ts" "$TARGET_DIR/modules/_registry-core.ts"
 cp "$SOURCE_DIR/modules/_types.ts" "$TARGET_DIR/modules/_types.ts"
 
 echo "  Done."
@@ -372,14 +373,15 @@ echo "[8/9] Generating manifest.json, package-deps.json & core-update package...
 generate_manifest "$SOURCE_VERSION" "$TARGET_DIR/manifest.json"
 
 # Generate package-deps.json — the dashboard merges these into the buyer's
-# package.json during updates (preserving their name, version, scripts, etc.)
+# package.json during updates (preserving their name, version, etc.)
 node -e "
   var fs = require('fs');
   var pkg = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
-  var deps = {};
-  if (pkg.dependencies) deps.dependencies = pkg.dependencies;
-  if (pkg.devDependencies) deps.devDependencies = pkg.devDependencies;
-  fs.writeFileSync(process.argv[2], JSON.stringify(deps, null, 2) + '\n');
+  var out = {};
+  if (pkg.dependencies) out.dependencies = pkg.dependencies;
+  if (pkg.devDependencies) out.devDependencies = pkg.devDependencies;
+  if (pkg.scripts) out.scripts = pkg.scripts;
+  fs.writeFileSync(process.argv[2], JSON.stringify(out, null, 2) + '\n');
 " "$TARGET_DIR/package.json" "$TARGET_DIR/package-deps.json"
 echo "  Generated package-deps.json"
 
