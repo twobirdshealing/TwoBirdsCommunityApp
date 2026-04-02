@@ -380,7 +380,11 @@ node -e "
   var out = {};
   if (pkg.dependencies) out.dependencies = pkg.dependencies;
   if (pkg.devDependencies) out.devDependencies = pkg.devDependencies;
-  if (pkg.scripts) out.scripts = pkg.scripts;
+  if (pkg.scripts) {
+    out.scripts = Object.assign({}, pkg.scripts);
+    // dev:staging contains a buyer-specific URL — exclude from merge
+    delete out.scripts['dev:staging'];
+  }
   fs.writeFileSync(process.argv[2], JSON.stringify(out, null, 2) + '\n');
 " "$TARGET_DIR/package.json" "$TARGET_DIR/package-deps.json"
 echo "  Generated package-deps.json"
