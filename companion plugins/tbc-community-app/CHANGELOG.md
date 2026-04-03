@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.51.2
+- **Fix push notifications leaking to non-members of private spaces**: The "follower posted" push notification (`on_follower_post`, formerly `on_friend_post`) was sending to ALL followers of the post author, even when the post was in a private or secret space the followers couldn't access. Now checks the space's `privacy` field and intersects the follower list with actual space members for non-public spaces. Followers who are also space members still receive the notification. Also renamed method and label from "friend" to "follower" to match FC's naming (`friend_new_post` type ID kept for preference compatibility).
+
 ## v3.51.1
 - **Fix unread message count stuck after reading**: Removed `wp_cache` from `get_unread_message_count()`. On servers with persistent object caches (Redis), the cached count was never invalidated when threads were marked as read, causing `X-TBC-Unread-Messages` header to return stale values indefinitely. The underlying COUNT+EXISTS query is fast enough on indexed tables to run uncached. Also added `LIMIT 1` to EXISTS subquery to match Fluent Messaging's ChatHelper implementation.
 

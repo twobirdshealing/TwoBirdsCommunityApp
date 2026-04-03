@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Community App
  * Plugin URI: https://twobirdscode.com
  * Description: Support plugin for TBC Community App. Provides web sessions for WebView, app-specific styling, deep linking, and push notifications.
- * Version: 3.51.1
+ * Version: 3.51.2
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  * License: GPL v2 or later

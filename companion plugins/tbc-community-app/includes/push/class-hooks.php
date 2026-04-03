@@ -66,8 +66,8 @@ class TBC_CA_Push_Hooks {
 
         // Pro hooks — only register if corresponding FC feature is enabled
         if (TBC_CA_Push_Registry::is_fc_feature_active('followers_module')) {
-            // Friend posted - fires for ALL published posts
-            add_action('fluent_community/feed/created', [$this, 'on_friend_post'], 10, 1);
+            // Follower posted - fires for ALL published posts
+            add_action('fluent_community/feed/created', [$this, 'on_follower_post'], 10, 1);
             // followed_user: passes ($follow, $xProfile) - 2 args
             add_action('fluent_community/followed_user', [$this, 'on_new_follower'], 10, 2);
         }
@@ -438,10 +438,10 @@ class TBC_CA_Push_Hooks {
     }
 
     /**
-     * Friend posted - notify followers when someone they follow creates a post
+     * Follower posted - notify followers when someone they follow creates a post
      * Hook: fluent_community/feed/created - fires for ALL published posts
      */
-    public function on_friend_post($feed) {
+    public function on_follower_post($feed) {
         $author_id = $feed->user_id ?? null;
         if (!$author_id) {
             return;
@@ -459,6 +459,19 @@ class TBC_CA_Push_Hooks {
         $space_id = $feed->space_id ?? null;
         if ($space_id) {
             $space = $this->get_space_by_id($space_id);
+            if (!$space) {
+                return;
+            }
+
+            // Non-public spaces: only notify followers who are also space members
+            if (($space->privacy ?? 'public') !== 'public') {
+                $space_member_ids = $this->get_space_members($space_id);
+                $follower_ids = array_values(array_intersect($follower_ids, $space_member_ids));
+                if (empty($follower_ids)) {
+                    return;
+                }
+            }
+
             $space_name = $space->title ?? 'a space';
             $body = "{$author_name} shared a new post in {$space_name}";
         } else {
@@ -468,7 +481,7 @@ class TBC_CA_Push_Hooks {
         $this->send_to_users(
             $follower_ids,
             'friend_new_post',
-            'Friend posted',
+            'Follower posted',
             $body,
             "/feed/{$feed->id}",
             $author_id
