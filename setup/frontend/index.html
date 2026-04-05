@@ -840,6 +840,7 @@
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           <button class="btn btn-sm" x-show="showEasInstall" x-on:click="easInstallCli()">Install EAS CLI</button>
+          <button class="btn btn-sm" x-show="showEasUpdate" x-on:click="easInstallCli()">Update EAS CLI</button>
           <button class="btn btn-sm" x-show="showEasLogin" x-on:click="easLogin()" x-bind:disabled="easLoginWaiting" x-text="easLoginWaiting ? 'Waiting for login...' : 'Log In to EAS'">Log In to EAS</button>
           <button class="btn btn-sm" x-show="showEasLogout" x-on:click="easLogout()">Log Out</button>
           <button class="btn btn-sm btn-primary" x-show="showEasInit" x-on:click="easInit()">Link Project</button>
@@ -1449,11 +1450,13 @@
               <div class="build-log" x-text="'Cancelled \u00B7 ' + formatDate(build.createdAt)"></div>
             </template>
             <!-- Submission log -->
-            <template x-if="buildSubmissions[build.id] && buildSubmissions[build.id].ok">
-              <div class="build-log build-log-ok" x-text="'Sent to ' + (isIosBuild(build) ? 'App Store' : 'Google Play') + ' \u00B7 ' + formatDate(buildSubmissions[build.id].date)"></div>
-            </template>
-            <template x-if="buildSubmissions[build.id] && !buildSubmissions[build.id].ok">
-              <div class="build-log build-log-fail" x-text="(isIosBuild(build) ? 'App Store' : 'Google Play') + ' failed \u00B7 ' + formatDate(buildSubmissions[build.id].date) + (buildSubmissions[build.id].error && buildSubmissions[build.id].error !== 'Exit code 1' ? ' \u2014 ' + buildSubmissions[build.id].error : '')"></div>
+            <template x-if="buildSubmissions[build.id]">
+              <div class="build-log build-log-ok">
+                <span x-text="'Submitted to ' + (isIosBuild(build) ? 'App Store' : 'Google Play') + ' \u00B7 ' + formatDate(buildSubmissions[build.id].date)"></span>
+                <template x-if="buildSubmissions[build.id].submissionUrl || submissionsUrl">
+                  &mdash; <a x-bind:href="buildSubmissions[build.id].submissionUrl || submissionsUrl" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">View on EAS</a>
+                </template>
+              </div>
             </template>
           </div>
           <span class="build-status" x-bind:class="normStatus(build)" x-text="normStatus(build).replace(/-/g, ' ')"></span>
@@ -1473,10 +1476,10 @@
               <a class="btn btn-sm" x-bind:href="build.artifacts.buildUrl" target="_blank" rel="noopener" x-text="isIosBuild(build) ? 'Download .ipa' : 'Download .aab'"></a>
             </template>
             <!-- Submit to store button (production builds only) -->
-            <template x-if="normStatus(build) === 'finished' && !isInternalBuild(build) && !buildSubmissions[build.id]?.ok && isStoreConfigured(build)">
+            <template x-if="normStatus(build) === 'finished' && !isInternalBuild(build) && isStoreConfigured(build)">
               <button class="btn btn-sm btn-success" x-on:click="submitToStore(isIosBuild(build) ? 'ios' : 'android', build.id)" x-text="'Submit to ' + (isIosBuild(build) ? 'App Store' : 'Google Play')"></button>
             </template>
-            <template x-if="normStatus(build) === 'finished' && !isInternalBuild(build) && !buildSubmissions[build.id]?.ok && !isStoreConfigured(build)">
+            <template x-if="normStatus(build) === 'finished' && !isInternalBuild(build) && !isStoreConfigured(build)">
               <button class="btn btn-sm" disabled x-bind:title="isIosBuild(build) ? 'Set Apple Account and App Store Connect ID in Config tab first' : 'Upload Google Play service account key in Config tab first'">Submit (not configured)</button>
             </template>
             <!-- View on EAS -->
@@ -1945,7 +1948,7 @@ document.addEventListener('alpine:init', () => {
     depsOutput: '',
 
     // EAS
-    eas: { installed: false, loggedIn: false, user: '', version: '' },
+    eas: { installed: false, loggedIn: false, user: '', version: '', outdated: false },
     easStatusText: 'Checking EAS status...',
     easStatusColor: 'var(--text-muted)',
     _easLoginPoll: null,
@@ -1958,6 +1961,7 @@ document.addEventListener('alpine:init', () => {
     buildsNoProject: false,
     buildsError: '',
     buildSubmissions: {},
+    submissionsUrl: '',
     buildsShown: 10,
     bumpUp: true,
     showBuildQueued: false,
@@ -2558,7 +2562,7 @@ bumpVersion(type) {
       try {
         var [res, subRes] = await Promise.all([fetch('/api/builds'), fetch('/api/builds/submissions')]);
         var data = await res.json();
-        try { var subData = await subRes.json(); this.buildSubmissions = subData.submissions || {}; } catch(e) { this.buildSubmissions = {}; }
+        try { var subData = await subRes.json(); this.buildSubmissions = subData.submissions || {}; this.submissionsUrl = subData.submissionsUrl || ''; } catch(e) { this.buildSubmissions = {}; }
         this.buildsLoaded = true;
         if (!data.ok) { this.builds = []; this.buildsError = data.error || ''; return; }
         this.builds = data.builds || [];
@@ -2657,11 +2661,10 @@ bumpVersion(type) {
         var res = await this.postJson('/api/builds/submit', { platform, buildId });
         var data = await res.json();
         if (data.ok) {
-          this.showToast('Submitted to ' + storeName + ' successfully!', 'success');
-          this.buildSubmissions[buildId] = { platform, date: new Date().toISOString(), ok: true };
+          this.showToast('Submitted — check EAS for status', 'success');
+          this.buildSubmissions[buildId] = { platform, date: new Date().toISOString(), submissionUrl: data.submissionUrl || '' };
         } else {
-          this.showToast('Submit failed: ' + data.error, 'error');
-          this.buildSubmissions[buildId] = { platform, date: new Date().toISOString(), ok: false, error: data.error };
+          this.showToast('Failed to start submission: ' + (data.error || 'unknown error'), 'error');
         }
       } catch (err) { this.showToast('Submit error: ' + err.message, 'error'); }
     },
@@ -2765,13 +2768,16 @@ bumpVersion(type) {
         } else if (!data.loggedIn) {
           this.easStatusColor = 'var(--yellow)';
           this.easStatusText = 'EAS CLI v' + data.version + ' — not logged in';
+        } else if (data.outdated) {
+          this.easStatusColor = 'var(--yellow)';
+          this.easStatusText = 'EAS CLI v' + data.version + ' — update available';
         } else {
           this.easStatusColor = 'var(--green)';
           this.easStatusText = 'EAS CLI v' + data.version + ' — logged in as ' + data.user;
-          // Auto-fill owner
-          if (!this.config.easOwner || this.PLACEHOLDERS.indexOf(this.config.easOwner) !== -1) {
-            this.config.easOwner = data.user;
-          }
+        }
+        // Auto-fill owner
+        if (data.loggedIn && (!this.config.easOwner || this.PLACEHOLDERS.indexOf(this.config.easOwner) !== -1)) {
+          this.config.easOwner = data.user;
         }
       } catch (err) {
         this.easStatusColor = 'var(--red)';
@@ -2780,6 +2786,7 @@ bumpVersion(type) {
     },
 
     get showEasInstall() { return !this.eas.installed; },
+    get showEasUpdate() { return this.eas.installed && this.eas.outdated; },
     get showEasLogin() { return this.eas.installed && !this.eas.loggedIn; },
     get showEasLogout() { return this.eas.installed && this.eas.loggedIn; },
     get showEasInit() {

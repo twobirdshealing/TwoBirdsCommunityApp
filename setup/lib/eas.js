@@ -15,8 +15,8 @@ async function diagnoseEasError(originalError) {
   return { ok: false, error: originalError.message };
 }
 
-/** Run a command asynchronously (doesn't block the server) */
-function runCommand(args, timeout = 30000, env) {
+/** Run a command asynchronously. With raw: true, returns { stdout, stderr, code } instead of rejecting on non-zero exit. */
+function runCommand(args, timeout = 30000, { env, raw = false } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(args.join(' '), [], {
       cwd: PROJECT_DIR,
@@ -30,7 +30,8 @@ function runCommand(args, timeout = 30000, env) {
     child.stdout.on('data', (d) => { stdout += d; });
     child.stderr.on('data', (d) => { stderr += d; });
     child.on('close', (code) => {
-      if (code === 0) resolve(stdout);
+      if (raw) resolve({ stdout, stderr, code });
+      else if (code === 0) resolve(stdout);
       else reject(new Error(stderr || `Exit code ${code}`));
     });
     child.on('error', reject);
@@ -58,7 +59,7 @@ async function startEasBuild(platform, profile) {
     const output = await runCommand(
       ['eas', 'build', '--platform', platform, '--profile', profile, '--non-interactive', '--json'],
       300000,
-      env
+      { env }
     );
     return { ok: true, result: JSON.parse(output) };
   } catch (err) {
@@ -66,21 +67,25 @@ async function startEasBuild(platform, profile) {
   }
 }
 
-/** Submit a build to store (non-blocking) */
+/** Submit a build to store — dashboard is just a launcher, user checks status on EAS */
 async function submitBuild(platform, buildId) {
   if (!VALID_PLATFORMS.includes(platform)) return { ok: false, error: 'Invalid platform' };
   if (!BUILD_ID_PATTERN.test(buildId)) return { ok: false, error: 'Invalid build ID format' };
   try {
-    const output = await runCommand(
-      ['eas', 'submit', '--platform', platform, '--id', buildId, '--non-interactive'],
-      120000
+    const { stdout, stderr, code } = await runCommand(
+      ['eas', 'submit', '--platform', platform, '--id', buildId, '--no-wait', '--non-interactive'],
+      30000,
+      { raw: true }
     );
-    return { ok: true, output };
+    const combined = stdout + '\n' + stderr;
+    const urlMatch = combined.match(/Submission details:\s*(https:\/\/\S+)/);
+    if (code !== 0 && !urlMatch) {
+      const lines = combined.split('\n').map(l => l.trim()).filter(Boolean);
+      return { ok: false, error: lines[lines.length - 1] || 'Submit exited with code ' + code };
+    }
+    return { ok: true, submissionUrl: urlMatch ? urlMatch[1] : '' };
   } catch (err) {
-    // Extract last meaningful line from stderr for a cleaner error message
-    const lines = (err.message || '').split('\n').map(l => l.trim()).filter(Boolean);
-    const error = lines[lines.length - 1] || 'Unknown error';
-    return { ok: false, error };
+    return { ok: false, error: 'Failed to start submission' };
   }
 }
 
@@ -101,11 +106,20 @@ function getSubmissions() {
 }
 
 /** Save a build submission attempt to disk */
-function saveSubmission(buildId, platform, ok, error) {
+function saveSubmission(buildId, platform, submissionUrl) {
   fs.mkdirSync(PATHS.logsDir, { recursive: true });
   const subs = getSubmissions();
-  subs[buildId] = { platform, date: new Date().toISOString(), ok, ...(error ? { error } : {}) };
+  subs[buildId] = { platform, date: new Date().toISOString(), ...(submissionUrl ? { submissionUrl } : {}) };
   fs.writeFileSync(PATHS.submissionsLog, JSON.stringify(subs, null, 2));
 }
 
-module.exports = { diagnoseEasError, runCommand, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission };
+/** Build the EAS submissions list URL from app.json owner + slug */
+function getSubmissionsUrl() {
+  const appJson = readJsonSafe(PATHS.appJson);
+  const owner = appJson?.expo?.owner;
+  const slug = appJson?.expo?.slug;
+  if (owner && slug) return `https://expo.dev/accounts/${owner}/projects/${slug}/submissions`;
+  return '';
+}
+
+module.exports = { diagnoseEasError, runCommand, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission, getSubmissionsUrl };

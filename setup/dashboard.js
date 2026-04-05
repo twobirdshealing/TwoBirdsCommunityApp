@@ -48,7 +48,7 @@ const { fileExists, readJsonSafe, getSiteUrl, resolveUploadPath } = require('./l
 const { readProjectState } = require('./lib/state');
 const { writeConfigValues } = require('./lib/config-writer');
 const { checkConnectivity, parseMultipart, httpsRequest } = require('./lib/http-helpers');
-const { runCommand, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission } = require('./lib/eas');
+const { runCommand, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission, getSubmissionsUrl } = require('./lib/eas');
 const { getOTAStatus, pushOTAUpdate, listOTAUpdates, deleteOTAUpdate } = require('./lib/ota');
 const { getInstalledModules, toggleModule, removeModule, exportModule, importModule } = require('./lib/modules');
 const {
@@ -265,13 +265,23 @@ const server = http.createServer(async (req, res) => {
         easVersion = (await runCommand(['eas', '--version'], 10000)).trim();
         easInstalled = true;
       } catch (e) { /* not installed */ }
+      let outdated = false;
       if (easInstalled) {
         try {
           easUser = (await runCommand(['eas', 'whoami'], 10000)).trim().split('\n')[0].trim();
           easLoggedIn = true;
         } catch (e) { /* not logged in */ }
+        // Compare installed version against eas.json minimum
+        const easJson = readJsonSafe(PATHS.easJson);
+        const minMatch = (easJson?.cli?.version || '').match(/(\d+)\.(\d+)\.(\d+)/);
+        const curMatch = easVersion.match(/(\d+)\.(\d+)\.(\d+)/);
+        if (minMatch && curMatch) {
+          const min = minMatch.slice(1).map(Number);
+          const cur = curMatch.slice(1).map(Number);
+          outdated = cur[0] < min[0] || (cur[0] === min[0] && (cur[1] < min[1] || (cur[1] === min[1] && cur[2] < min[2])));
+        }
       }
-      jsonResponse(res, { ok: true, installed: easInstalled, version: easVersion, loggedIn: easLoggedIn, user: easUser });
+      jsonResponse(res, { ok: true, installed: easInstalled, version: easVersion, loggedIn: easLoggedIn, user: easUser, outdated });
       return;
     }
 
@@ -436,13 +446,13 @@ const server = http.createServer(async (req, res) => {
       if (!platform || !buildId) { jsonResponse(res, { ok: false, error: 'Missing platform or buildId' }, 400); return; }
       console.log(`  Submitting build ${buildId} to ${platform === 'ios' ? 'App Store' : 'Google Play'}...`);
       const result = await submitBuild(platform, buildId);
-      saveSubmission(buildId, platform, result.ok, result.error);
+      saveSubmission(buildId, platform, result.submissionUrl);
       jsonResponse(res, result);
       return;
     }
 
     if (pathname === '/api/builds/submissions' && req.method === 'GET') {
-      jsonResponse(res, { ok: true, submissions: getSubmissions() });
+      jsonResponse(res, { ok: true, submissions: getSubmissions(), submissionsUrl: getSubmissionsUrl() });
       return;
     }
 
