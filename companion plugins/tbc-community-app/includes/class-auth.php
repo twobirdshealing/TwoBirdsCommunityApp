@@ -109,6 +109,12 @@ class TBC_CA_Auth {
             return 0;
         }
 
+        // Rebuild Fluent Community space cache periodically (every 5 min per user).
+        // The web portal does this on every page load via PortalHandler, but JWT
+        // auth never hits that path. Without this, users added to spaces (e.g. via
+        // participant-frontend or automations) won't see posts until they re-login.
+        $this->maybe_rebuild_space_cache($result['user_id']);
+
         return $result['user_id'];
     }
 
@@ -408,6 +414,36 @@ class TBC_CA_Auth {
             }
         }
         return null;
+    }
+
+    /**
+     * Rebuild the user's Fluent Community space ID cache if stale.
+     *
+     * Throttled to once per 5 minutes per user via a transient to avoid
+     * running the query on every API request.
+     *
+     * @param int $user_id WordPress user ID.
+     */
+    private function maybe_rebuild_space_cache($user_id) {
+        $throttle_key = 'tbc_space_cache_' . $user_id;
+
+        if (get_transient($throttle_key)) {
+            return;
+        }
+
+        // Set BEFORE rebuild to prevent stampede from concurrent requests
+        set_transient($throttle_key, 1, 5 * MINUTE_IN_SECONDS);
+
+        if (class_exists('FluentCommunity\App\Models\User')) {
+            try {
+                $fc_user = \FluentCommunity\App\Models\User::find($user_id);
+                if ($fc_user) {
+                    $fc_user->cacheAccessSpaces();
+                }
+            } catch (\Exception $e) {
+                // Non-critical — cache will rebuild on next cycle
+            }
+        }
     }
 
     /**

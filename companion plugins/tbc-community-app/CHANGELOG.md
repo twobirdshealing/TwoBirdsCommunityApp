@@ -2,6 +2,12 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.52.1
+- **Fix stale space cache for app-only users**: Users added to spaces (via participant-frontend, automations, or admin) couldn't see posts in those spaces on the app until they logged out and back in. The web portal rebuilds the `_fcom_space_ids` cache on every page load, but JWT-authenticated API requests never triggered a rebuild. Now the JWT middleware rebuilds the space cache every 5 minutes per user, matching the web portal behavior. The login-time rebuild from v3.48.1 is preserved for immediate cache freshness on first login.
+
+## v3.52.0
+- **Rename `friend_new_post` notification type to `follower_new_post`**: Cleaned up legacy "friend" naming in the push notification type ID to match the "follower" terminology used everywhere else. Existing users get the default (enabled) for the new type.
+
 ## v3.51.2
 - **Fix push notifications leaking to non-members of private spaces**: The "follower posted" push notification (`on_follower_post`, formerly `on_friend_post`) was sending to ALL followers of the post author, even when the post was in a private or secret space the followers couldn't access. Now checks the space's `privacy` field and intersects the follower list with actual space members for non-public spaces. Followers who are also space members still receive the notification. Also renamed method and label from "friend" to "follower" to match FC's naming (`friend_new_post` type ID kept for preference compatibility).
 
