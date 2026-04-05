@@ -480,7 +480,7 @@ class TBC_CA_Push_Hooks {
 
         $this->send_to_users(
             $follower_ids,
-            'friend_new_post',
+            'follower_new_post',
             'Follower posted',
             $body,
             "/feed/{$feed->id}",

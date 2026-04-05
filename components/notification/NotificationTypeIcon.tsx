@@ -78,9 +78,9 @@ function getIconConfig(type: NotificationAction, tc: ColorTheme): IconConfig {
     };
   }
 
-  // Friend posted types
-  if (normalizedType === 'friend_new_post' ||
-      normalizedType === 'friend_post') {
+  // Follower posted types
+  if (normalizedType === 'follower_new_post' ||
+      normalizedType === 'follower_post') {
     return {
       icon: 'document-text',
       color: tc.primary,

@@ -166,7 +166,7 @@ class TBC_CA_Push_Registry {
 
         // Pro (Fluent Community Pro) - feature-gated types
         $this->register([
-            'id' => 'friend_new_post',
+            'id' => 'follower_new_post',
             'label' => __('Follower posted', 'tbc-ca'),
             'description' => __('When someone you follow creates a new post', 'tbc-ca'),
             'category' => 'social',
