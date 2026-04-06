@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.1.3 — 2026-04-05
+- Fix variation table layout — force `display: table-cell` on th/td to prevent Fluent Community CSS reset from stacking label and select vertically; keep label on one line with `white-space: nowrap`
+- Fix variation selector not matching dark theme on checkout — added broader `form.variations_form` selectors (without `div.product` ancestor requirement)
+
+## 3.1.1 — 2026-04-04
+- Remove redundant constrained-width CSS rules — Fluent Community already handles content width constraints via `.feeds_main`. Our extra `max-width`, `margin: 0 auto`, and `padding: 20px` was doubling up and squeezing product/cart/checkout content on mobile.
+
 ## 3.1.0 — 2026-04-01
 - Add WooCommerce fees support — `fees` array in cart response with name, amount, and tax per fee
 - Add `fee` total to totals object (from WC `fee_total`)

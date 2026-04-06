@@ -1,0 +1,517 @@
+/**
+ * TBC WooCommerce Donations — Frontend Styles
+ *
+ * Uses Fluent Community CSS variables (--fcom-*) with fallbacks.
+ * Dark mode handled via html.dark — only shadow overrides needed
+ * since --fcom-* variables auto-switch.
+ */
+
+/* =========================================================================
+   Shadow Variables (light/dark)
+   ========================================================================= */
+
+:root {
+	--tbc-don-shadow-sm: rgba(0, 0, 0, 0.08);
+	--tbc-don-shadow-md: rgba(0, 0, 0, 0.1);
+	--tbc-don-shadow-lg: rgba(0, 0, 0, 0.15);
+}
+
+html.dark {
+	--tbc-don-shadow-sm: rgba(0, 0, 0, 0.25);
+	--tbc-don-shadow-md: rgba(0, 0, 0, 0.3);
+	--tbc-don-shadow-lg: rgba(0, 0, 0, 0.4);
+}
+
+/* =========================================================================
+   Price Input
+   ========================================================================= */
+
+.tbc-don {
+	margin-bottom: 1em;
+}
+
+.tbc-don label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.3em;
+	color: var(--fcom-primary-text, #19283a);
+}
+
+/* Hide the manual input entirely when suggested amounts are present — value synced via JS */
+.tbc-don.has-suggested-amounts .tbc-don-input-wrap {
+	display: none;
+}
+
+.tbc-don-input {
+	width: 100%;
+	max-width: 200px;
+	padding: 8px 12px;
+	font-size: 1.1em;
+	background: var(--fcom-primary-bg, #ffffff);
+	color: inherit;
+	border: 1px solid var(--fcom-primary-border, #e3e8ee);
+	border-radius: 6px;
+	transition: border-color 0.2s ease;
+}
+
+.tbc-don-input:focus {
+	border-color: var(--fcom-text-link, #2271b1);
+	outline: none;
+}
+
+.tbc-don-minimum-price,
+.tbc-don-terms {
+	font-size: 0.9em;
+	color: var(--fcom-secondary-text, #525866);
+	margin-top: 0.3em;
+}
+
+.tbc-don-message {
+	color: var(--fcom-danger-color, #e74c3c);
+	font-size: 0.9em;
+	margin-top: 0.3em;
+}
+
+/* =========================================================================
+   Variation Table — match donation section styling
+   ========================================================================= */
+
+/* Style the variations table to match donation sections —
+   these selectors work regardless of whether .tbc-don wraps it,
+   since WC renders the variations form separately.
+   Only applies on pages where our CSS is enqueued (donation products). */
+
+/* Make the variation table display as stacked blocks so label sits above the card */
+.woocommerce div.product form.variations_form table.variations,
+.woocommerce form.variations_form table.variations {
+	display: block !important;
+	border: none !important;
+	background: transparent !important;
+	padding: 0 !important;
+	margin-bottom: 0.8em !important;
+}
+
+.woocommerce div.product form.variations_form table.variations tbody,
+.woocommerce form.variations_form table.variations tbody,
+.woocommerce div.product form.variations_form table.variations tr,
+.woocommerce form.variations_form table.variations tr {
+	display: block !important;
+}
+
+/* Label — styled like section headings (Non-refundable Deposit, Cover Donation Fees) */
+.woocommerce div.product form.variations_form table.variations th.label,
+.woocommerce form.variations_form table.variations th.label {
+	display: block !important;
+	color: var(--fcom-text-link, #2271b1) !important;
+	font-weight: 700 !important;
+	font-size: 0.85em !important;
+	padding: 0 0 0.5em 0 !important;
+	background: transparent !important;
+	border: none !important;
+}
+
+/* Value cell — card around the select */
+.woocommerce div.product form.variations_form table.variations td.value,
+.woocommerce form.variations_form table.variations td.value {
+	display: block !important;
+	background: var(--fcom-secondary-bg, #f0f2f5) !important;
+	border: 1px solid var(--fcom-primary-border, #e3e8ee) !important;
+	border-radius: 8px !important;
+	padding: 12px 14px !important;
+}
+
+/* Select dropdown */
+.woocommerce div.product form.variations_form table.variations select,
+.woocommerce form.variations_form table.variations select {
+	background: var(--fcom-primary-bg, #ffffff) !important;
+	color: inherit !important;
+	border: 1px solid var(--fcom-primary-border, #e3e8ee) !important;
+	border-radius: 6px !important;
+	padding: 10px 12px !important;
+	width: 100% !important;
+	font-size: 0.9em !important;
+}
+
+html.dark .woocommerce form.variations_form table.variations select {
+	color-scheme: dark;
+}
+
+/* Variation description + price — no card, just clean text */
+.woocommerce div.product form.variations_form .woocommerce-variation-description,
+.woocommerce form.variations_form .woocommerce-variation-description {
+	color: var(--fcom-secondary-text, #525866) !important;
+	font-size: 0.9em !important;
+	line-height: 1.5 !important;
+	padding: 8px 0 !important;
+}
+
+.woocommerce div.product form.variations_form .woocommerce-variation-price,
+.woocommerce form.variations_form .woocommerce-variation-price {
+	font-weight: 600 !important;
+	font-size: 1.05em !important;
+	padding-bottom: 8px !important;
+}
+
+/* Edit price link in cart */
+.tbc-don-edit-price {
+	font-size: 0.85em;
+	color: var(--fcom-text-link, #2271b1);
+}
+
+/* Hide quantity */
+.tbc-don-hide-quantity .quantity {
+	display: none !important;
+}
+
+/* =========================================================================
+   Suggested Amounts (Radio Grid)
+   ========================================================================= */
+
+.tbc-don-suggested-amounts {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 0.5rem;
+	margin: 1em 0;
+	border: none;
+	padding: 0;
+}
+
+@media (max-width: 600px) {
+	.tbc-don-suggested-amounts {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+.tbc-don-suggested-amount {
+	display: flex;
+	aspect-ratio: 1 / 1;
+}
+
+.tbc-don-suggested-amount input[type="radio"] {
+	position: absolute;
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.tbc-don-suggested-amount label.tbc-don-btn {
+	display: flex !important;
+	flex-direction: column !important;
+	align-items: center !important;
+	justify-content: center !important;
+	width: 100% !important;
+	border-radius: 10px !important;
+	background: var(--fcom-text-link, #2271b1) !important;
+	color: var(--fcom-primary-button-text, #ffffff) !important;
+	font-weight: 700 !important;
+	font-size: 1em !important;
+	cursor: pointer !important;
+	text-align: center !important;
+	box-shadow: 0 2px 5px var(--tbc-don-shadow-md) !important;
+	transition: all 0.15s ease !important;
+	box-sizing: border-box !important;
+	border: none !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	text-decoration: none !important;
+	float: none !important;
+}
+
+.tbc-don-suggested-amount label.tbc-don-btn:hover {
+	filter: brightness(1.1) !important;
+	transform: translateY(-2px) !important;
+	box-shadow: 0 4px 10px var(--tbc-don-shadow-lg) !important;
+}
+
+.tbc-don-suggested-amount input[type="radio"]:checked + label.tbc-don-btn {
+	filter: brightness(1) !important;
+	transform: scale(0.95) !important;
+	box-shadow: inset 0 3px 8px var(--tbc-don-shadow-lg) !important;
+}
+
+.tbc-don-suggested-amount .amount-text {
+	display: block;
+	font-size: 1.6em;
+	line-height: 1.2;
+}
+
+/* Strip inner wc_price spans to inherit color */
+.tbc-don-suggested-amount .amount-text .woocommerce-Price-amount,
+.tbc-don-suggested-amount .amount-text .woocommerce-Price-currencySymbol {
+	color: inherit;
+}
+
+.tbc-don-suggested-amount .label-text {
+	display: block;
+	font-weight: 400;
+	font-size: 0.75em;
+	opacity: 0.8;
+	margin-top: 4px;
+}
+
+/* Custom amount inline — currency symbol + input inside the button */
+.tbc-don-custom-wrap {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	width: 100%;
+}
+
+.tbc-don-custom-symbol {
+	font-size: 1.6em;
+	font-weight: 700;
+}
+
+.tbc-don-custom-input,
+.tbc-don-custom-input[type="text"] {
+	all: unset;
+	font-size: 1.6em;
+	font-weight: 700;
+	text-align: center;
+	width: 4ch;
+	min-width: 4ch;
+	color: inherit;
+	border-bottom: 2px solid currentColor;
+	caret-color: currentColor;
+}
+
+.tbc-don-custom-input::placeholder {
+	color: inherit;
+	opacity: 0.4;
+}
+
+/* =========================================================================
+   Section Headings (shared by all donation features)
+   ========================================================================= */
+
+.tbc-don-heading {
+	font-weight: 700;
+	font-size: 0.85em;
+	color: var(--fcom-text-link, #2271b1);
+	margin: 1.2em 0 0.5em;
+}
+
+/* =========================================================================
+   Donation Feature Containers
+   ========================================================================= */
+
+.tbc-don-deposit-container,
+.tbc-don-fee-recovery,
+.tbc-don-give-extra {
+	background: var(--fcom-secondary-bg, #f0f2f5);
+	border: 1px solid var(--fcom-primary-border, #e3e8ee);
+	padding: 12px 14px;
+	border-radius: 8px;
+	margin-bottom: 0.8em;
+}
+
+.tbc-don-deposit-checkbox label,
+.tbc-don-fee-recovery-wrapper label {
+	font-weight: normal;
+	display: inline;
+	color: var(--fcom-primary-text, #19283a);
+}
+
+/* =========================================================================
+   Non-Refundable Deposit
+   ========================================================================= */
+
+.tbc-don-deposit-wrapper {
+	margin-top: 0.5em;
+}
+
+/* =========================================================================
+   Fee Recovery
+   ========================================================================= */
+
+.tbc-don-fee-recovery .tbc-don-fee-amount {
+	font-weight: 600;
+	color: var(--fcom-text-link, #2271b1);
+}
+
+/* =========================================================================
+   Give Extra (Donate Extra) — Inline
+   ========================================================================= */
+
+.tbc-don-give-extra {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+	padding: 10px 14px;
+}
+
+.tbc-don-give-extra-label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 500;
+	font-size: 0.9em;
+	color: var(--fcom-primary-text, #19283a);
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.tbc-don-give-extra-input {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+}
+
+.tbc-don-give-extra-symbol {
+	font-weight: 600;
+	font-size: 0.95em;
+	color: var(--fcom-secondary-text, #525866);
+}
+
+#tbc_don_extra_amount {
+	width: 70px;
+	padding: 5px 8px;
+	background: var(--fcom-primary-bg, #ffffff);
+	color: inherit;
+	border: 1px solid var(--fcom-primary-border, #e3e8ee);
+	border-radius: 4px;
+	font-size: 0.95em;
+	transition: border-color 0.2s ease;
+	-moz-appearance: textfield;
+}
+
+#tbc_don_extra_amount::-webkit-outer-spin-button,
+#tbc_don_extra_amount::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+#tbc_don_extra_amount:focus {
+	border-color: var(--fcom-text-link, #2271b1);
+	outline: none;
+}
+
+/* =========================================================================
+   One-Time / Recurring Frequency — Inline Toggle
+   ========================================================================= */
+
+.tbc-don-frequency {
+	margin: 1em 0;
+}
+
+.tbc-don-frequency-options {
+	display: flex;
+	gap: 4px;
+	margin-top: 0.5em;
+}
+
+.tbc-don-freq-option {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 12px 14px;
+	cursor: pointer;
+	font-size: 0.9em;
+	font-weight: 500;
+	color: var(--fcom-primary-text, #19283a);
+	background: var(--fcom-secondary-bg, #f0f2f5);
+	border: 2px solid var(--fcom-primary-border, #e3e8ee);
+	border-radius: 8px;
+	transition: all 0.2s ease;
+}
+
+.tbc-don-freq-option:hover {
+	border-color: var(--fcom-text-link, #2271b1);
+}
+
+.tbc-don-freq-option input[type="radio"] {
+	display: none;
+}
+
+.tbc-don-freq-option:has(input:checked) {
+	background: var(--fcom-text-link, #2271b1);
+	color: var(--fcom-primary-button-text, #ffffff);
+	border-color: var(--fcom-text-link, #2271b1);
+	font-weight: 600;
+}
+
+.tbc-don-freq-price {
+	font-weight: 700;
+}
+
+.tbc-don-freq-price:empty {
+	display: none;
+}
+
+/* =========================================================================
+   Cancellation Policy Link
+   ========================================================================= */
+
+/* =========================================================================
+   Guest Quantity Label
+   ========================================================================= */
+
+.tbc-don-guest-section {
+	margin-bottom: 0.8em;
+}
+
+.tbc-don-guest-card {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	background: var(--fcom-secondary-bg, #f0f2f5);
+	border: 1px solid var(--fcom-primary-border, #e3e8ee);
+	border-radius: 8px;
+	padding: 10px 14px;
+}
+
+/* Quantity input inside the guest card */
+.tbc-don-guest-card .quantity {
+	flex-shrink: 0;
+}
+
+.tbc-don-guest-card .quantity input.qty {
+	width: 50px !important;
+	text-align: center;
+	padding: 6px;
+	background: var(--fcom-primary-bg, #ffffff);
+	border: 1px solid var(--fcom-primary-border, #e3e8ee);
+	border-radius: 6px;
+	color: inherit;
+	font-size: 0.95em;
+}
+
+html.dark .tbc-don-guest-card .quantity input.qty {
+	color-scheme: dark;
+}
+
+.tbc-don-guest-label {
+	font-weight: 500;
+	font-size: 0.9em;
+	color: var(--fcom-primary-text, #19283a);
+}
+
+.tbc-don-guest-price {
+	color: var(--fcom-secondary-text, #525866);
+}
+
+/* =========================================================================
+   Cancellation Policy Link
+   ========================================================================= */
+
+.tbc-don-policy-link {
+	color: var(--fcom-text-link, #2271b1);
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+/* =========================================================================
+   Dark Mode — Native form elements need color-scheme
+   ========================================================================= */
+
+html.dark .tbc-don select,
+html.dark .tbc-don input,
+html.dark .tbc-don-give-extra input,
+html.dark .tbc-don-fee-recovery input,
+html.dark .tbc-don-deposit-container input {
+	color-scheme: dark;
+}

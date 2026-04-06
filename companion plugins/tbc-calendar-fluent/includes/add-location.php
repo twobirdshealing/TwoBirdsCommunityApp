@@ -85,11 +85,8 @@ function tbc_wc_generate_google_map($business_name, $address) {
         'address'  => sanitize_text_field($address),
     ];
     $data_attr = esc_attr(json_encode($map_info));
-    $html = '<div id="' . esc_attr($map_id) . '" class="tbc-wc-google-map" data-map-info="' . $data_attr . '"></div>';
-    
-    wp_enqueue_script('tbc-wc-google-maps-script');
-    
-    return $html;
+
+    return '<div id="' . esc_attr($map_id) . '" class="tbc-wc-google-map" data-map-info="' . $data_attr . '"></div>';
 }
 
 /**
@@ -110,4 +107,35 @@ function tbc_wc_display_map($product_id, $event_address = null) {
     }
     
     return '';
+}
+
+/**
+ * Get inline map scripts HTML (toggle handler + Google Maps API loader)
+ *
+ * @return string Script tags or empty string if already loaded
+ */
+function tbc_wc_get_inline_map_scripts() {
+    static $loaded = false;
+    if ($loaded) return '';
+    $loaded = true;
+
+    $html = '';
+
+    // Always load toggle/map JS
+    $js_url = plugins_url('js/google-maps.js', dirname(__FILE__)) . '?ver=' . TBC_WC_VERSION;
+    $html .= '<script src="' . esc_url($js_url) . '"></script>';
+
+    // Load Google Maps API if key is configured
+    $api_key = get_option('tbc_wc_google_maps_api_key', '');
+    if (!empty($api_key)) {
+        $html .= "<script>
+            (g=>{var h,a,k,p='The Google Maps JavaScript API',c='google',l='importLibrary',q='__ib__',m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement('script'));e.set('libraries',[...r]+'');for(k in g)e.set(k.replace(/[A-Z]/g,t=>'_'+t[0].toLowerCase()),g[k]);e.set('callback',c+'.maps.'+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+' could not load.'));a.nonce=m.querySelector('script[nonce]')?.nonce||'';m.head.append(a)}));d[l]?console.warn(p+' only loads once. Ignoring:',g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+                key: '{$api_key}',
+                v: 'weekly',
+                libraries: 'places'
+            });
+        </script>";
+    }
+
+    return $html;
 }

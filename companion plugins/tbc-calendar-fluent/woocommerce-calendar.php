@@ -3,7 +3,7 @@
  * Plugin Name: TBC WooCommerce Calendar
  * Plugin URI: https://twobirdscode.com
  * Description: Event calendar system - sorts WooCommerce products by event date and displays them in a calendar view.
- * Version: 5.1.0
+ * Version: 5.1.24
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  * Text Domain: tbc-wc-calendar
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 defined('ABSPATH') || exit;
 
 // Plugin version constant
-define('TBC_WC_VERSION', '5.1.0');
+define('TBC_WC_VERSION', '5.1.24');
 
 // Include files
 require_once plugin_dir_path(__FILE__) . 'includes/add-recurring-dates.php';
@@ -81,18 +81,8 @@ function tbc_wc_enqueue_frontend_assets() {
     // ICS Calendar Subscription scripts
     wp_enqueue_script('tbc-wc-ics-subscription-script', plugins_url('js/ics-subscription.js', __FILE__), ['jquery'], TBC_WC_VERSION, true);
 
-    // Google Maps - only load if API key is configured
-    $api_key = get_option('tbc_wc_google_maps_api_key', '');
-    if (!empty($api_key)) {
-        wp_register_script('tbc-wc-google-maps-script', plugins_url('js/google-maps.js', __FILE__), ['jquery'], TBC_WC_VERSION, true);
-        wp_add_inline_script('tbc-wc-google-maps-script', "
-            (g=>{var h,a,k,p='The Google Maps JavaScript API',c='google',l='importLibrary',q='__ib__',m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement('script'));e.set('libraries',[...r]+'');for(k in g)e.set(k.replace(/[A-Z]/g,t=>'_'+t[0].toLowerCase()),g[k]);e.set('callback',c+'.maps.'+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+' could not load.'));a.nonce=m.querySelector('script[nonce]')?.nonce||'';m.head.append(a)}));d[l]?console.warn(p+' only loads once. Ignoring:',g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
-                key: '{$api_key}',
-                v: 'weekly',
-                libraries: 'places'
-            });
-        ");
-    }
+    // Google Maps scripts are inlined directly in the template output (see add-location.php)
+    // to ensure they load inside Fluent Community's headless templates where wp_footer() may not fire
 }
 add_action('wp_enqueue_scripts', 'tbc_wc_enqueue_frontend_assets');
 

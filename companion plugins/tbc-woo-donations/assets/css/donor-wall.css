@@ -1,0 +1,124 @@
+/**
+ * TBC WooCommerce Donations — Donor Wall Styles
+ * Uses Fluent Community CSS variables (--fcom-*) with fallbacks.
+ * Lazy loaded only on products with donor wall enabled.
+ */
+
+/* Shadow variables defined in frontend.css (always loaded before this) */
+
+/* Tabs */
+.tbc-don-donor-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 16px;
+}
+
+.tbc-don-donor-tab {
+	padding: 8px 16px;
+	border: none;
+	border-radius: 20px;
+	background: var(--fcom-secondary-bg, #f0f2f5);
+	color: var(--fcom-primary-text, #19283a);
+	cursor: pointer;
+	font-size: 0.85em;
+	font-weight: 500;
+	box-shadow: 0 2px 4px var(--tbc-don-shadow-sm);
+	transition: background 0.2s ease, color 0.2s ease;
+}
+
+.tbc-don-donor-tab:hover {
+	background: var(--fcom-text-link, #2271b1);
+	color: var(--fcom-primary-button-text, #ffffff);
+}
+
+.tbc-don-donor-tab.active {
+	background: var(--fcom-text-link, #2271b1);
+	color: var(--fcom-primary-button-text, #ffffff);
+}
+
+/* Grid */
+.tbc-don-donor-grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+}
+
+.tbc-don-donor-card {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 16px;
+	border-radius: 10px;
+	background: var(--fcom-primary-bg, #ffffff);
+	border: 1px solid var(--fcom-primary-border, #e3e8ee);
+	box-shadow: 0 2px 8px var(--tbc-don-shadow-md);
+	transition: box-shadow 0.2s ease, transform 0.2s ease;
+	width: calc(25% - 12px);
+	min-width: 200px;
+}
+
+.tbc-don-donor-card:hover {
+	box-shadow: 0 4px 16px var(--tbc-don-shadow-lg);
+	transform: translateY(-2px);
+}
+
+@media (max-width: 1024px) {
+	.tbc-don-donor-card { width: calc(33.33% - 12px); }
+}
+@media (max-width: 768px) {
+	.tbc-don-donor-card { width: calc(50% - 8px); }
+}
+@media (max-width: 480px) {
+	.tbc-don-donor-card { width: 100%; }
+}
+
+/* Avatar */
+.tbc-don-donor-avatar img {
+	border-radius: 50%;
+	width: 48px;
+	height: 48px;
+	object-fit: cover;
+}
+
+/* Info */
+.tbc-don-donor-info {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.tbc-don-donor-name {
+	font-weight: 600;
+	font-size: 0.95em;
+	color: var(--fcom-primary-text, #19283a);
+	text-decoration: none;
+}
+
+a.tbc-don-donor-name:hover {
+	color: var(--fcom-text-link, #2271b1);
+}
+
+.tbc-don-donor-date {
+	font-size: 0.8em;
+	color: var(--fcom-secondary-text, #525866);
+}
+
+/* Badges — intentionally non-themed (status colors) */
+.tbc-don-badge {
+	display: inline-block;
+	font-size: 0.7em;
+	font-weight: 600;
+	padding: 2px 8px;
+	border-radius: 10px;
+	color: #fff;
+	width: fit-content;
+}
+
+.tbc-don-badge--recurring {
+	background: linear-gradient(135deg, #7b2ff7, #9c5ff7);
+}
+
+.tbc-don-badge--onetime {
+	background: linear-gradient(135deg, #27ae60, #2ecc71);
+}

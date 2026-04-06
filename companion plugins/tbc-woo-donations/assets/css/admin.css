@@ -1,0 +1,110 @@
+/**
+ * TBC WooCommerce Donations — Admin Styles
+ */
+
+/* Donations tab icon */
+#woocommerce-product-data ul.wc-tabs li.tbc_donations_options a::before {
+	content: '\f487';
+	font-family: dashicons;
+}
+
+/* Section headers */
+#tbc_donations_product_data h4 {
+	margin: 0;
+	padding: 12px 12px 4px;
+	font-size: 0.95em;
+	color: #23282d;
+	border-bottom: 1px solid #eee;
+}
+
+#tbc_donations_product_data .options_group {
+	border-bottom: 1px solid #eee;
+	padding-bottom: 8px;
+}
+
+/* =========================================================================
+   Suggested Amounts — Simple List
+   ========================================================================= */
+
+.tbc-don-amounts-list {
+	list-style: none;
+	margin: 10px 12px;
+	padding: 0;
+}
+
+.tbc-don-amounts-list li {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 12px;
+	margin-bottom: 4px;
+	background: #fafafa;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+}
+
+.tbc-don-amounts-list li:hover {
+	background: #f0f0f1;
+}
+
+.tbc-don-drag {
+	cursor: move;
+	color: #999;
+}
+
+.tbc-don-amounts-list strong {
+	flex: 1;
+	font-size: 1em;
+}
+
+.tbc-don-amount-label {
+	width: 140px;
+	padding: 3px 6px;
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	font-size: 0.85em;
+	color: #555;
+}
+
+.tbc-don-amount-label:focus {
+	border-color: #2271b1;
+	outline: none;
+}
+
+.tbc-don-default-label {
+	font-size: 0.85em;
+	color: #666;
+	cursor: pointer;
+}
+
+.tbc-don-default-label input[type="radio"] {
+	margin-right: 3px;
+}
+
+.tbc-don-remove-amount {
+	background: none;
+	border: none;
+	color: #a00;
+	font-size: 1.2em;
+	cursor: pointer;
+	padding: 0 4px;
+	line-height: 1;
+}
+
+.tbc-don-remove-amount:hover {
+	color: #dc3232;
+}
+
+/* Sortable placeholder */
+.tbc-don-sort-placeholder {
+	border: 2px dashed #c3c4c7;
+	background: #f6f7f7;
+	height: 40px;
+	border-radius: 4px;
+	margin-bottom: 4px;
+}
+
+/* Toggle hidden class */
+.tbc-don-amounts-ui.hidden {
+	display: none;
+}

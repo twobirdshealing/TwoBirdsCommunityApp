@@ -1,12 +1,16 @@
 /**
  * TBC WooCommerce Calendar - Google Maps Integration
- * 
+ *
  * @package TBC_WC_Calendar
  */
-let map;
 
 async function initMap() {
     try {
+        if (typeof google === 'undefined' || !google.maps) {
+            console.warn('Google Maps API not yet loaded');
+            return;
+        }
+
         const [{ Map, InfoWindow }, { AdvancedMarkerElement }, { Place }] =
             await Promise.all([
                 google.maps.importLibrary("maps"),
@@ -18,12 +22,14 @@ async function initMap() {
         if (!mapElements.length) return;
 
         for (const element of mapElements) {
+            if (element.dataset.initialized) continue;
+            element.dataset.initialized = 'true';
+
             const { business, address } = JSON.parse(element.dataset.mapInfo);
             if (!business && !address) continue;
 
             try {
-                // Create map with default center
-                map = new Map(element, {
+                const map = new Map(element, {
                     zoom: 16,
                     center: { lat: 0, lng: 0 },
                     mapId: 'DEMO_MAP_ID',
@@ -32,16 +38,9 @@ async function initMap() {
                     fullscreenControl: false,
                 });
 
-                // New API: Use Place class instead of PlacesService
                 const query = `${business} ${address}`.trim();
                 if (!query) continue;
 
-                const place = new Place({
-                    id: query,
-                    requestedLanguage: "en"
-                });
-
-                // Use Text Search with new Places API
                 const request = {
                     textQuery: query,
                     fields: ['id', 'displayName', 'formattedAddress', 'location'],
@@ -53,7 +52,6 @@ async function initMap() {
                 const found = places[0];
                 const location = found.location;
 
-                // Center map and add marker
                 map.setCenter(location);
 
                 const marker = new AdvancedMarkerElement({
@@ -62,7 +60,6 @@ async function initMap() {
                     title: business || found.displayName || 'Location',
                 });
 
-                // Add info window
                 const infoWindow = new InfoWindow({
                     content: `
                         <strong>${business || found.displayName || 'Location'}</strong><br>
@@ -83,20 +80,21 @@ async function initMap() {
     }
 }
 
-function setupMapToggle() {
-    document.querySelectorAll('.tbc-wc-map-toggle-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const mapContainer = this.closest('.tbc-wc-event-details-location').nextElementSibling;
-            const icon = this.querySelector('.tbc-wc-toggle-icon');
-            const isVisible = mapContainer.classList.toggle('show');
+document.body.addEventListener('click', function(e) {
+    const btn = e.target.closest('.tbc-wc-map-toggle-btn');
+    if (!btn) return;
 
-            icon.textContent = isVisible ? '−' : '+';
-            this.setAttribute('aria-expanded', isVisible);
+    const locationDiv = btn.closest('.tbc-wc-event-details-location');
+    if (!locationDiv) return;
 
-            if (isVisible) initMap();
-        });
-    });
-}
+    const mapContainer = locationDiv.parentElement.querySelector('.tbc-wc-map-container');
+    if (!mapContainer) return;
 
-document.addEventListener('DOMContentLoaded', setupMapToggle);
-window.initMap = initMap;
+    const icon = btn.querySelector('.tbc-wc-toggle-icon');
+    const isVisible = mapContainer.classList.toggle('show');
+
+    icon.textContent = isVisible ? '\u2212' : '+';
+    btn.setAttribute('aria-expanded', isVisible);
+
+    if (isVisible) initMap();
+});

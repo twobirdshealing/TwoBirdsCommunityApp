@@ -91,3 +91,8 @@
     transition: max-height 0.3s ease-out;
     max-height: 0;
 }
+
+/* Info window text — force black on white for readability in all themes */
+.gm-style .gm-style-iw-d * {
+    color: #000 !important;
+}

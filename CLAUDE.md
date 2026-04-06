@@ -192,10 +192,10 @@ Admin module — custom to Two Birds Church, not a public add-on.
 
 ### Reference Plugins (outside repo)
 
-Fluent Community/Cart/Messaging plugin source code kept at `../../Refrence plugins ONLY/` (outside the project directory) for dev reference. Not part of the product, not tracked in git.
+Fluent Community/Cart/Messaging plugin source code kept at `../../playground/Refrence plugins ONLY/` (outside the project directory) for dev reference. Not part of the product, not tracked in git.
 
-### Site-Specific Plugins (not in repo — on server only)
-Donation addons, donor dashboard, messaging center, checkout prerequisites, participant frontend, space manager, bulk tools, entry review — these are Two Birds Church site-specific and not part of the product. We occasionally bring them into the companion folder for reference.
+### Site-Specific Plugins (in companion folder — not sold)
+Donation addons, donor dashboard, messaging center, checkout prerequisites, participant frontend, message roles, entry review — these are Two Birds Church site-specific plugins kept in `companion plugins/` for reference. Not part of the product and excluded from the white-label snapshot.
 
 ### Versioning — Core vs App
 

@@ -90,6 +90,9 @@ function tbc_wc_get_event_details($product) {
             $event_details .= '<div class="tbc-wc-map-container">';
             $event_details .= tbc_wc_display_map($product->get_id(), $event_location);
             $event_details .= '</div>';
+
+            // Inline map scripts — wp_enqueue_script won't work inside Fluent Community's headless templates
+            $event_details .= tbc_wc_get_inline_map_scripts();
         }
     }
 

@@ -1,0 +1,622 @@
+/* ===== SMS Scheduler Styles - Complete Clean Version ===== */
+
+/* Schedule Section - Main Container */
+.tbc-mc-schedule-section {
+    margin: 30px 0;
+    padding-bottom: 25px;
+}
+
+.tbc-mc-schedule-section h3 {
+    margin: 0 0 20px 0;
+    color: var(--fcom-primary-text);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* Send Timing Radio Buttons - Each in Their Own Container */
+.tbc-mc-send-timing-container {
+    margin-bottom: 20px;
+}
+
+.tbc-mc-send-timing-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.tbc-mc-send-timing-options label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px 20px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    border: 2px solid var(--fcom-primary-border);
+    border-radius: 8px;
+    background: var(--fcom-primary-bg);
+    transition: all 0.3s ease;
+}
+
+.tbc-mc-send-timing-options label:hover {
+    border-color: var(--fcom-text-link);
+    background-color: var(--fcom-secondary-bg);
+}
+
+.tbc-mc-send-timing-options label i {
+    font-size: 18px;
+}
+
+.tbc-mc-send-timing-options input[type="radio"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Highlight checked radio button's label */
+.tbc-mc-send-timing-options label:has(input[type="radio"]:checked) {
+    border-color: var(--fcom-text-link);
+    background: var(--fcom-active-bg);
+    color: var(--fcom-text-link);
+}
+
+/* Schedule Options Container */
+.tbc-mc-schedule-options {
+    border: 2px solid var(--fcom-text-link);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    background: linear-gradient(135deg, var(--fcom-secondary-bg) 0%, var(--fcom-light-bg) 100%);
+    display: none;
+}
+
+.tbc-mc-schedule-options h4 {
+    margin: 0 0 15px 0;
+    color: var(--fcom-text-link);
+    font-size: 18px;
+}
+
+/* Message Title Container */
+.tbc-mc-message-title-container {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: var(--fcom-primary-bg);
+    border-radius: 5px;
+    border: 1px solid var(--fcom-primary-border);
+}
+
+.tbc-mc-message-title-container label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: var(--fcom-primary-text);
+}
+
+.tbc-mc-message-title-container input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--fcom-primary-border);
+    border-radius: 4px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+.tbc-mc-message-title-container input[type="text"]:focus {
+    outline: 2px solid var(--fcom-text-link);
+    outline-offset: 2px;
+    border-color: var(--fcom-text-link);
+}
+
+/* Schedule Type Selector */
+.tbc-mc-schedule-type-container {
+    margin-bottom: 20px;
+}
+
+.tbc-mc-schedule-type-container label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: var(--fcom-primary-text);
+}
+
+.tbc-mc-schedule-type-container select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--fcom-primary-border);
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+/* Schedule Option Sections */
+.tbc-mc-schedule-once-options,
+.tbc-mc-schedule-recurring-options {
+    display: none;
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid var(--fcom-primary-border);
+    border-radius: 5px;
+    background: var(--fcom-primary-bg);
+}
+
+.tbc-mc-schedule-option-row {
+    display: flex;
+    gap: 15px;
+    align-items: end;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.tbc-mc-schedule-option-group {
+    flex: 1;
+    min-width: 150px;
+}
+
+.tbc-mc-schedule-option-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--fcom-secondary-text);
+}
+
+.tbc-mc-schedule-option-group input,
+.tbc-mc-schedule-option-group select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--fcom-primary-border);
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* Scheduled Messages Container */
+.tbc-mc-message-scheduler-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.tbc-mc-scheduled-messages-header {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.tbc-mc-scheduled-messages-header h3 {
+    color: var(--fcom-text-link);
+    margin-bottom: 10px;
+}
+
+.tbc-mc-scheduled-messages-header p {
+    color: var(--fcom-secondary-text);
+    font-size: 16px;
+}
+
+/* No Scheduled Messages State */
+.tbc-mc-no-scheduled-messages {
+    text-align: center;
+    padding: 60px 20px;
+    background: var(--fcom-secondary-bg);
+    border-radius: 8px;
+    border: 2px dashed var(--fcom-primary-border);
+}
+
+.tbc-mc-no-scheduled-messages h3 {
+    color: var(--fcom-secondary-text);
+    margin-bottom: 15px;
+}
+
+.tbc-mc-no-scheduled-messages p {
+    color: var(--fcom-secondary-text);
+    margin-bottom: 10px;
+}
+
+.tbc-mc-no-scheduled-messages ul {
+    text-align: left;
+    display: inline-block;
+    color: var(--fcom-secondary-text);
+}
+
+/* Scheduled Message Groups */
+.tbc-mc-scheduled-messages-list {
+    display: grid;
+    gap: 25px;
+}
+
+.tbc-mc-scheduled-message-group {
+    border: 2px solid var(--fcom-primary-border);
+    border-radius: 12px;
+    padding: 15px;
+    background: var(--fcom-primary-bg);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.tbc-mc-scheduled-message-group:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    border-color: var(--fcom-text-link);
+}
+
+/* Message Header */
+.tbc-mc-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    gap: 15px;
+}
+
+.tbc-mc-group-title {
+    flex: 1;
+}
+
+.tbc-mc-group-title h4 {
+    margin: 0 0 8px 0;
+    color: var(--fcom-primary-text);
+    font-size: 18px;
+    line-height: 1.3;
+}
+
+.tbc-mc-group-actions {
+    flex-shrink: 0;
+}
+
+/* Badge Styles */
+.tbc-mc-schedule-type-badge,
+.tbc-mc-recipients-badge,
+.tbc-mc-batch-status-pending,
+.tbc-mc-batch-status-processing,
+.tbc-mc-batch-status-completed,
+.tbc-mc-batch-status-failed,
+.tbc-mc-batch-status-cancelled {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 6px 6px 0;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tbc-mc-schedule-type-badge.immediate {
+    background: var(--tbc-success-bg, rgba(40, 167, 69, 0.15));
+    color: var(--tbc-success, #28a745);
+}
+
+.tbc-mc-schedule-type-badge.scheduled {
+    background: var(--tbc-info-bg, rgba(23, 162, 184, 0.15));
+    color: var(--tbc-info, #17a2b8);
+}
+
+.tbc-mc-schedule-type-badge.recurring {
+    background: var(--tbc-purple-bg, rgba(111, 66, 193, 0.15));
+    color: var(--tbc-purple, #6f42c1);
+}
+
+.tbc-mc-recipients-badge {
+    background: var(--tbc-neutral-bg, rgba(108, 117, 125, 0.15));
+    color: var(--fcom-secondary-text, #6c757d);
+}
+
+.tbc-mc-batch-status-pending {
+    background: var(--tbc-warning-bg, rgba(212, 136, 15, 0.15));
+    color: var(--tbc-warning, #d4880f);
+}
+
+.tbc-mc-batch-status-processing {
+    background: var(--tbc-info-bg, rgba(23, 162, 184, 0.15));
+    color: var(--tbc-info, #17a2b8);
+}
+
+.tbc-mc-batch-status-completed {
+    background: var(--tbc-success-bg, rgba(40, 167, 69, 0.15));
+    color: var(--tbc-success, #28a745);
+}
+
+.tbc-mc-batch-status-failed {
+    background: var(--tbc-danger-bg, rgba(220, 53, 69, 0.15));
+    color: var(--tbc-danger, #dc3545);
+}
+
+.tbc-mc-batch-status-cancelled {
+    background: var(--tbc-neutral-bg, rgba(108, 117, 125, 0.15));
+    color: var(--fcom-secondary-text, #6c757d);
+}
+
+/* Cancel/Delete Buttons */
+.tbc-mc-cancel-all-btn,
+.tbc-mc-delete-all-btn {
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.tbc-mc-cancel-all-btn {
+    background: var(--tbc-danger, #dc3545);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.tbc-mc-cancel-all-btn:hover {
+    filter: brightness(0.85);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.tbc-mc-delete-all-btn {
+    background: var(--tbc-neutral, #6c757d);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.tbc-mc-delete-all-btn:hover {
+    filter: brightness(0.85);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.tbc-mc-cancel-all-btn:disabled,
+.tbc-mc-delete-all-btn:disabled {
+    background: var(--tbc-neutral, #6c757d);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Message Details */
+.tbc-mc-scheduled-message-details {
+    background: var(--fcom-secondary-bg);
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.tbc-mc-message-text-preview {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--fcom-primary-text);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Date Information */
+.tbc-mc-date-information-section {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.tbc-mc-date-info-grid {
+    display: grid;
+    gap: 8px;
+}
+
+.tbc-mc-date-info-item {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--fcom-primary-border);
+}
+
+.tbc-mc-date-info-item strong {
+    font-weight: 600;
+    color: var(--fcom-secondary-text);
+}
+
+.tbc-mc-date-info-item span {
+    color: var(--fcom-primary-text);
+}
+
+/* Meta Information */
+.tbc-mc-message-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.tbc-mc-message-meta-grid .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: var(--fcom-secondary-bg);
+    border-radius: 6px;
+    border: 1px solid var(--fcom-primary-border);
+}
+
+.tbc-mc-message-meta-grid .meta-item i {
+    font-size: 18px;
+    color: var(--fcom-text-link);
+}
+
+.tbc-mc-message-meta-grid .meta-item strong {
+    color: var(--fcom-secondary-text);
+    margin-right: 5px;
+}
+
+.tbc-mc-message-meta-grid .meta-item span.yes {
+    color: var(--tbc-success, #28a745);
+    font-weight: bold;
+}
+
+.tbc-mc-message-meta-grid .meta-item span.no {
+    color: var(--tbc-danger, #dc3545);
+    font-weight: bold;
+}
+
+/* Media Attachments - Matching Message Center */
+.tbc-mc-message-media-attachments {
+    margin-top: 10px;
+    padding: 10px;
+    background: var(--fcom-secondary-bg);
+    border-radius: 6px;
+    border: 1px solid var(--fcom-primary-border);
+}
+
+.tbc-mc-message-media-attachments strong {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--fcom-secondary-text);
+}
+
+.tbc-mc-attachment-link {
+    display: inline-block;
+    text-decoration: none;
+    margin: 5px 5px 5px 0;
+    transition: transform 0.2s ease;
+}
+
+.tbc-mc-attachment-link:hover {
+    transform: scale(1.05);
+}
+
+.tbc-mc-attachment-thumbnail {
+    width: 80px;
+    height: 80px;
+    display: block;
+    border-radius: 8px;
+    border: 2px solid var(--fcom-primary-border);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    object-fit: cover;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tbc-mc-attachment-thumbnail:hover {
+    border-color: var(--fcom-text-link);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Accessibility */
+.tbc-mc-schedule-option-group input:focus,
+.tbc-mc-schedule-option-group select:focus {
+    outline: 2px solid var(--fcom-text-link);
+    outline-offset: 2px;
+}
+
+.tbc-mc-cancel-all-btn:focus,
+.tbc-mc-delete-all-btn:focus {
+    outline: 2px solid var(--fcom-text-link);
+    outline-offset: 2px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .tbc-mc-send-timing-options {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .tbc-mc-send-timing-options label {
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+    
+    .tbc-mc-schedule-option-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .tbc-mc-schedule-option-group {
+        min-width: 100%;
+    }
+    
+    .tbc-mc-message-title-container {
+        padding: 10px;
+    }
+    
+    .tbc-mc-message-title-container input[type="text"] {
+        font-size: 14px;
+        padding: 8px;
+    }
+    
+    .tbc-mc-scheduled-message-group {
+        padding: 12px;
+    }
+    
+    .tbc-mc-group-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+        margin-bottom: 12px;
+    }
+    
+    .tbc-mc-group-title {
+        width: 100%;
+    }
+    
+    .tbc-mc-group-title h4 {
+        font-size: 16px;
+        margin-bottom: 8px;
+        line-height: 1.3;
+    }
+    
+    .tbc-mc-schedule-type-badge,
+    .tbc-mc-recipients-badge,
+    .tbc-mc-batch-status-pending,
+    .tbc-mc-batch-status-processing,
+    .tbc-mc-batch-status-completed,
+    .tbc-mc-batch-status-failed,
+    .tbc-mc-batch-status-cancelled {
+        display: block;
+        margin: 4px auto;
+        text-align: center;
+        max-width: 180px;
+        font-size: 11px;
+        padding: 5px 10px;
+    }
+    
+    .tbc-mc-group-actions {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+    
+    .tbc-mc-cancel-all-btn,
+    .tbc-mc-delete-all-btn {
+        width: 100%;
+        max-width: 250px;
+        justify-content: center;
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+    
+    .tbc-mc-scheduled-message-details {
+        padding: 10px;
+    }
+    
+    .tbc-mc-message-text-preview {
+        font-size: 13px;
+    }
+    
+    .tbc-mc-date-info-item {
+        grid-template-columns: 1fr;
+        gap: 4px;
+        padding: 4px 0;
+    }
+    
+    .tbc-mc-message-meta-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: 10px;
+    }
+    
+    .tbc-mc-message-meta-grid .meta-item {
+        padding: 6px 10px;
+    }
+    
+    .tbc-mc-message-media-attachments {
+        padding: 8px;
+    }
+    
+    .tbc-mc-attachment-thumbnail {
+        width: 80px;
+        height: 80px;
+    }
+}

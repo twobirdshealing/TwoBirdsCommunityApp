@@ -1,0 +1,183 @@
+/* General styles - Two Birds Church Donation Addons */
+/* Using Fluent theme variables with fallbacks */
+
+/* Extra Fees Headings */
+.donor-fees-heading,
+.deposit-heading,
+.give-extra-heading {
+    font-weight: bold;
+    font-size: .8em;
+    color: var(--fcom-text-link, #3498db);
+    margin-bottom: 5px;
+}
+
+/* Full-width containers */
+.donation-frequency-container,
+.recover-donor-fees-container,
+.custom-deposit-container,
+.give-extra-checkbox-container {
+    border: 2px solid var(--fcom-text-link, #3498db);
+    background-color: var(--fcom-secondary-bg, #f9f9f9);
+    padding: 15px;
+    display: block;
+    width: 100%;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px var(--tbc-shadow-light, rgba(0, 0, 0, 0.1));
+    margin-bottom: 20px;
+}
+
+/* Adjust margin for labels inside checkbox wrappers */
+.donation-frequency-container label,
+.recover-donor-fees-wrapper label,
+.custom-deposit-container label,
+.give-extra-checkbox-wrapper label {
+    margin-left: 10px;
+}
+
+/* Give Extra */
+.give-extra-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Cover Donation Fees */
+.recover-donor-fees-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Non-refundable Deposit */
+.non-refundable-deposit-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Donation Frequency radio buttons */
+.donation-frequency-container input[type="radio"] {
+    display: inline;
+    vertical-align: middle;
+    margin-right: 8px;
+}
+
+.donation-frequency-container input[type="radio"] + label {
+    display: inline;
+    vertical-align: middle;
+}
+
+.currency-wrap {
+    position: relative;
+}
+
+.currency-code {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--fcom-secondary-text, rgba(0, 0, 0, 0.6));
+}
+
+#give_extra_amount {
+    width: 110px;
+    padding: 10px 30px;
+    border: solid 1px var(--fcom-primary-border, #ccc);
+    border-radius: 5px;
+    font-size: 1em;
+    transition: border-color 0.3s ease;
+}
+
+#give_extra_amount:focus {
+    border-color: var(--fcom-text-link, #3498db);
+}
+
+.give-extra-amount {
+    display: flex;
+    align-items: center;
+}
+
+.frequency-title {
+    font-weight: bold;
+    font-size: .8em;
+    color: var(--fcom-text-link, #3498db);
+    margin-bottom: 5px;
+}
+
+.minimum-price.nyp-terms {
+    display: none;
+}
+
+/* Keep appended deposit suffix tidy */
+.tbc-deposit-suffix {
+    white-space: nowrap;
+}
+
+/* Simple variations table styling to match other cards - maximum specificity */
+.woocommerce #content div.product form.cart .variations {
+    margin-bottom: 20px !important;
+}
+
+.woocommerce #content div.product form.cart .variations th.label {
+    display: block !important;
+    margin-bottom: 5px !important;
+    padding-left: 0 !important;
+}
+
+.woocommerce #content div.product form.cart .variations th.label label {
+    font-weight: bold !important;
+    font-size: .8em !important;
+    color: var(--fcom-text-link, #3498db) !important;
+    text-transform: none !important;
+    line-height: normal !important;
+    padding-bottom: 0 !important;
+}
+
+.woocommerce #content div.product form.cart .variations td.value {
+    display: block !important;
+    border: 2px solid var(--fcom-text-link, #3498db) !important;
+    background-color: var(--fcom-secondary-bg, #f9f9f9) !important;
+    padding: 15px !important;
+    border-radius: 5px !important;
+    box-shadow: 0 2px 4px var(--tbc-shadow-light, rgba(0, 0, 0, 0.1)) !important;
+    line-height: normal !important;
+    vertical-align: top !important;
+}
+
+.woocommerce #content div.product form.cart .variations td.value select {
+    width: 100% !important;
+    padding: 10px !important;
+    border: 1px solid var(--fcom-primary-border, #ccc) !important;
+    border-radius: 5px !important;
+    background: var(--fcom-primary-bg, #fff) !important;
+}
+
+.woocommerce #content div.product form.cart .variations td.value select:focus {
+    border-color: var(--fcom-text-link, #3498db) !important;
+}
+
+/* Style variation descriptions to match other cards */
+.woocommerce-variation-description {
+    border: 2px solid var(--fcom-text-link, #3498db) !important;
+    background-color: var(--fcom-secondary-bg, #f9f9f9) !important;
+    padding: 15px !important;
+    border-radius: 5px !important;
+    box-shadow: 0 2px 4px var(--tbc-shadow-light, rgba(0, 0, 0, 0.1)) !important;
+    margin-bottom: 20px !important;
+}
+
+.woocommerce-variation-description p {
+    margin: 0 !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+}
+
+/* Shadow variable for theme compatibility */
+:root {
+    --tbc-shadow-light: rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode shadow overrides */
+html.dark {
+    --tbc-shadow-light: rgba(0, 0, 0, 0.3);
+}

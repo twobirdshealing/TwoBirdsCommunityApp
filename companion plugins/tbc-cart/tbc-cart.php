@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Cart
  * Plugin URI: https://twobirdscode.com
  * Description: WooCommerce integration for the TBC Community App and Fluent Community. Provides cart count API, response headers, mini cart, WooCommerce page rendering in Fluent frame, and customizer settings.
- * Version: 3.1.0
+ * Version: 3.1.3
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  * License: GPL v2 or later
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('TBC_CART_VERSION', '3.1.0');
+define('TBC_CART_VERSION', '3.1.3');
 define('TBC_CART_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TBC_CART_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TBC_CART_REST_NAMESPACE', 'tbc-cart/v1');

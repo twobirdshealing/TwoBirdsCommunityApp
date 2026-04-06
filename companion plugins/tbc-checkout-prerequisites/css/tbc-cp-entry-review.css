@@ -1,0 +1,897 @@
+/* TBC Checkout Prerequisites - Entry Review Frontend Styles */
+
+.tbc-cp-er-wrap {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+    padding: 20px 30px;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--fcom-primary-text, #1e1e1e);
+}
+
+.tbc-cp-er-wrap h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0 0 16px;
+}
+
+/* Buttons (self-contained, no WP admin dependency) */
+.tbc-cp-er-btn {
+    display: inline-block;
+    padding: 6px 14px;
+    border: 1px solid var(--fcom-primary-border, #ddd);
+    border-radius: 6px;
+    background: var(--fcom-secondary-bg, #f8f9fa);
+    color: var(--fcom-primary-text, #1e1e1e);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.15s, border-color 0.15s;
+    line-height: 1.4;
+}
+
+.tbc-cp-er-btn:hover {
+    background: var(--fcom-active-bg, #e9ecef);
+    border-color: var(--fcom-secondary-border, #ccc);
+}
+
+.tbc-cp-er-btn-sm {
+    padding: 3px 10px;
+    font-size: 12px;
+}
+
+.tbc-cp-er-btn-primary {
+    background: var(--fcom-primary-button, #2271b1);
+    border-color: var(--fcom-primary-button, #2271b1);
+    color: var(--fcom-primary-button-text, #fff);
+}
+
+.tbc-cp-er-btn-primary:hover {
+    background: var(--fcom-primary-button, #135e96);
+    border-color: var(--fcom-primary-button, #135e96);
+    color: var(--fcom-primary-button-text, #fff);
+    filter: brightness(0.85);
+}
+
+.tbc-cp-er-btn-danger {
+    color: #a00;
+    border-color: var(--fcom-primary-border, #ddd);
+}
+
+.tbc-cp-er-btn-danger:hover {
+    color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* Workflow Banner */
+.tbc-cp-er-workflow-banner {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 0 0 16px;
+    font-size: 14px;
+    color: #856404;
+    line-height: 1.5;
+}
+
+.tbc-cp-er-workflow-banner strong {
+    display: inline;
+    margin-right: 4px;
+}
+
+/* Tabs */
+.tbc-cp-er-tabs {
+    margin: 0 0 12px;
+    padding: 0;
+    font-size: 14px;
+    line-height: 2;
+}
+
+.tbc-cp-er-tab {
+    text-decoration: none;
+    color: var(--fcom-text-link, #2271b1);
+    padding: 4px 2px;
+}
+
+.tbc-cp-er-tab:hover {
+    color: var(--fcom-text-link, #135e96);
+    filter: brightness(0.85);
+}
+
+.tbc-cp-er-tab-current {
+    font-weight: 600;
+    color: var(--fcom-primary-text, #1e1e1e);
+    border-bottom: 2px solid var(--fcom-text-link, #2271b1);
+}
+
+.tbc-cp-er-count {
+    color: var(--fcom-text-off, #999);
+    font-weight: normal;
+}
+
+.tbc-cp-er-tab-current .tbc-cp-er-count {
+    color: inherit;
+}
+
+/* Filters Bar */
+.tbc-cp-er-filters {
+    margin: 0 0 12px;
+}
+
+.tbc-cp-er-filters form {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.tbc-cp-er-filters input[type="text"] {
+    width: 160px !important;
+    max-width: 160px !important;
+    padding: 6px 10px;
+    border: 1px solid var(--fcom-primary-border, #ddd);
+    border-radius: 6px;
+    font-size: 13px;
+    flex: 0 0 auto;
+    background-color: var(--fcom-primary-bg, #fff);
+    color: inherit;
+}
+
+.tbc-cp-er-filters select {
+    width: auto !important;
+    max-width: 150px !important;
+    min-width: 110px;
+    padding: 6px 10px;
+    border: 1px solid var(--fcom-primary-border, #ddd);
+    border-radius: 6px;
+    font-size: 13px;
+    background-color: var(--fcom-primary-bg, #fff);
+    color: inherit;
+    flex: 0 0 auto;
+}
+
+.tbc-cp-er-clear-filters {
+    margin-left: 4px;
+    color: #a00;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.tbc-cp-er-clear-filters:hover {
+    color: #dc3545;
+}
+
+/* Table */
+.tbc-cp-er-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tbc-cp-er-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 8px;
+    background: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e9ecef);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.tbc-cp-er-table thead {
+    background: var(--fcom-secondary-bg, #f8f9fa);
+}
+
+.tbc-cp-er-table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--fcom-secondary-text, #555);
+    white-space: nowrap;
+    border-bottom: 2px solid var(--fcom-primary-border, #e9ecef);
+}
+
+.tbc-cp-er-table td {
+    padding: 10px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--fcom-primary-border, #f0f0f1);
+}
+
+.tbc-cp-er-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.tbc-cp-er-table tbody tr:hover {
+    background: var(--fcom-active-bg, #f8f9fa);
+}
+
+/* Sortable Column Headers */
+.tbc-cp-er-sortable a {
+    color: var(--fcom-text-link, #2271b1);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.tbc-cp-er-sortable a:hover {
+    color: var(--fcom-text-link, #135e96);
+    filter: brightness(0.85);
+}
+
+.tbc-cp-er-sorted a {
+    font-weight: 700;
+}
+
+/* Blocked Toggle */
+.tbc-cp-er-block-toggle[data-blocked="0"] {
+    background: rgba(40, 167, 69, 0.1);
+    border-color: rgba(40, 167, 69, 0.3);
+    color: #28a745;
+    font-weight: 600;
+}
+
+.tbc-cp-er-block-toggle[data-blocked="0"]:hover {
+    background: rgba(40, 167, 69, 0.2);
+    border-color: rgba(40, 167, 69, 0.4);
+    color: #28a745;
+}
+
+.tbc-cp-er-block-toggle[data-blocked="1"] {
+    background: rgba(220, 53, 69, 0.1);
+    border-color: rgba(220, 53, 69, 0.3);
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.tbc-cp-er-block-toggle[data-blocked="1"]:hover {
+    background: rgba(220, 53, 69, 0.2);
+    border-color: rgba(220, 53, 69, 0.4);
+    color: #dc3545;
+}
+
+/* Medications Badges */
+.tbc-cp-er-meds-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.tbc-cp-er-meds-yes {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.tbc-cp-er-meds-no {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.tbc-cp-er-meds-unknown {
+    color: var(--fcom-text-off, #999);
+}
+
+/* Colored Dropdowns */
+.tbc-cp-er-approval-dropdown,
+.tbc-cp-er-screening-dropdown,
+.tbc-cp-er-spirit-dropdown {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--fcom-primary-border, #ddd);
+    font-size: 13px;
+    min-width: 130px;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.tbc-cp-er-approval-dropdown:disabled,
+.tbc-cp-er-screening-dropdown:disabled,
+.tbc-cp-er-spirit-dropdown:disabled,
+.tbc-cp-er-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.tbc-cp-er-na {
+    color: var(--fcom-text-off, #999);
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* Consult Notes Button */
+.tbc-cp-er-edit-notes {
+    background: rgba(255, 193, 7, 0.1) !important;
+    border-color: rgba(255, 193, 7, 0.3) !important;
+    color: #856404 !important;
+    font-weight: 600 !important;
+}
+
+.tbc-cp-er-edit-notes:hover {
+    background: rgba(255, 193, 7, 0.2) !important;
+    border-color: rgba(255, 193, 7, 0.4) !important;
+}
+
+.tbc-cp-er-notes-filled {
+    background: rgba(40, 167, 69, 0.1) !important;
+    border-color: rgba(40, 167, 69, 0.3) !important;
+    color: #28a745 !important;
+}
+
+.tbc-cp-er-notes-filled:hover {
+    background: rgba(40, 167, 69, 0.2) !important;
+    border-color: rgba(40, 167, 69, 0.4) !important;
+}
+
+/* Actions Column */
+.tbc-cp-er-actions-header,
+.tbc-cp-er-actions {
+    border-left: 2px solid var(--fcom-primary-border, #e9ecef) !important;
+}
+
+.tbc-cp-er-actions {
+    white-space: nowrap;
+}
+
+.tbc-cp-er-actions .tbc-cp-er-btn {
+    margin: 2px;
+}
+
+/* Modal */
+.tbc-cp-er-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tbc-cp-er-modal-content {
+    background: var(--fcom-primary-bg, #fff);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    max-width: 600px;
+    width: 90%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.tbc-cp-er-modal-wide {
+    max-width: 800px;
+}
+
+.tbc-cp-er-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--fcom-primary-border, #e9ecef);
+}
+
+.tbc-cp-er-modal-header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.tbc-cp-er-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--fcom-secondary-text, #666);
+    padding: 0;
+    line-height: 1;
+}
+
+.tbc-cp-er-modal-close:hover {
+    color: var(--fcom-primary-text, #333);
+}
+
+.tbc-cp-er-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.tbc-cp-er-modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--fcom-primary-border, #e9ecef);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* Entry Fields Display */
+.tbc-cp-er-entry-fields {
+    columns: 2;
+    column-gap: 24px;
+}
+
+.tbc-cp-er-field {
+    break-inside: avoid;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: var(--fcom-secondary-bg, #f8f9fa);
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.tbc-cp-er-field strong {
+    color: var(--fcom-primary-text, #333);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.tbc-cp-er-field-admin {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+/* Loading State */
+.tbc-cp-er-loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--fcom-secondary-text, #666);
+    font-size: 16px;
+}
+
+/* Pagination */
+.tbc-cp-er-pagination {
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tbc-cp-er-entry-count {
+    color: var(--fcom-secondary-text, #666);
+    font-size: 13px;
+}
+
+.tbc-cp-er-page-links .page-numbers {
+    display: inline-block;
+    padding: 4px 10px;
+    margin: 0 2px;
+    text-decoration: none;
+    border: 1px solid var(--fcom-primary-border, #ddd);
+    border-radius: 4px;
+    color: var(--fcom-text-link, #2271b1);
+    background: var(--fcom-primary-bg, #fff);
+    font-size: 13px;
+}
+
+.tbc-cp-er-page-links .page-numbers.current {
+    background: var(--fcom-text-link, #2271b1);
+    border-color: var(--fcom-text-link, #2271b1);
+    color: var(--fcom-primary-button-text, #fff);
+    font-weight: 600;
+}
+
+.tbc-cp-er-page-links .page-numbers:hover:not(.current) {
+    background: var(--fcom-active-bg, #f0f0f1);
+    border-color: var(--fcom-text-link, #2271b1);
+}
+
+/* Phone Screening Layout */
+.tbc-cp-er-screening-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+/* Phone Screening Schedule */
+.tbc-cp-er-schedule-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+}
+
+.tbc-cp-er-schedule-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.tbc-cp-er-schedule-set {
+    background: rgba(0, 123, 255, 0.1);
+    color: #0056b3;
+    border: 1px solid rgba(0, 123, 255, 0.3);
+}
+
+.tbc-cp-er-schedule-overdue {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.tbc-cp-er-schedule-completed {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.3);
+    font-style: italic;
+}
+
+.tbc-cp-er-schedule-call {
+    font-size: 11px !important;
+    padding: 2px 8px !important;
+}
+
+.tbc-cp-er-schedule-edit {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 13px !important;
+    padding: 0 0 0 4px !important;
+    color: var(--fcom-secondary-text, #666);
+    vertical-align: middle;
+    line-height: 1;
+}
+
+.tbc-cp-er-schedule-edit:hover {
+    color: var(--fcom-text-link, #2271b1);
+}
+
+.tbc-cp-er-schedule-copy {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px !important;
+    padding: 0 0 0 3px !important;
+    color: var(--fcom-secondary-text, #666);
+    vertical-align: middle;
+    line-height: 1;
+}
+
+.tbc-cp-er-schedule-copy:hover {
+    color: var(--fcom-text-link, #2271b1);
+}
+
+.tbc-cp-er-schedule-calendar {
+    font-size: 12px !important;
+    padding: 0 0 0 3px !important;
+    color: var(--fcom-secondary-text, #666);
+    vertical-align: middle;
+    line-height: 1;
+    text-decoration: none;
+}
+
+.tbc-cp-er-schedule-calendar:hover {
+    color: var(--fcom-text-link, #2271b1);
+}
+
+/* Schedule Modal Field Labels */
+.tbc-cp-er-schedule-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+    font-size: 13px;
+}
+
+.tbc-cp-er-schedule-field input {
+    padding: 8px 10px;
+    border: 1px solid var(--fcom-primary-border, #ddd);
+    border-radius: 6px;
+    font-size: 14px;
+    background: var(--fcom-primary-bg, #fff);
+    color: var(--fcom-primary-text, #1e1e1e);
+}
+
+/* Description text */
+.tbc-cp-er-description {
+    color: var(--fcom-secondary-text, #666);
+    font-size: 13px;
+    margin: 0 0 12px;
+}
+
+/* Upcoming Calls Banner */
+.tbc-cp-er-upcoming-banner {
+    background: rgba(0, 123, 255, 0.1);
+    border: 1px solid rgba(0, 123, 255, 0.3);
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #055160;
+    line-height: 1.5;
+}
+
+.tbc-cp-er-upcoming-banner strong {
+    margin-right: 4px;
+}
+
+.tbc-cp-er-upcoming-banner .tbc-cp-er-overdue-item {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+/* Responsive: stack table into cards below 768px */
+@media (max-width: 768px) {
+    .tbc-cp-er-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding: 16px !important;
+    }
+
+    .tbc-cp-er-table thead {
+        display: none;
+    }
+
+    .tbc-cp-er-table,
+    .tbc-cp-er-table tbody,
+    .tbc-cp-er-table tr,
+    .tbc-cp-er-table td {
+        display: block;
+    }
+
+    .tbc-cp-er-table tr {
+        border: 1px solid var(--fcom-primary-border, #e9ecef);
+        border-radius: 8px;
+        margin-bottom: 12px;
+        padding: 8px 0;
+        background: var(--fcom-primary-bg, #fff);
+    }
+
+    .tbc-cp-er-table td {
+        padding: 6px 12px;
+        border-bottom: none;
+        text-align: left;
+    }
+
+    .tbc-cp-er-table td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        color: var(--fcom-text-off, #888);
+        margin-bottom: 2px;
+    }
+
+    .tbc-cp-er-actions-header,
+    .tbc-cp-er-actions {
+        border-left: none !important;
+    }
+
+    .tbc-cp-er-screening-cell {
+        flex-wrap: wrap;
+    }
+
+    .tbc-cp-er-filters form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tbc-cp-er-filters input[type="text"],
+    .tbc-cp-er-filters select {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .tbc-cp-er-pagination {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-start;
+    }
+
+    .tbc-cp-er-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .tbc-cp-er-entry-fields {
+        columns: 1;
+    }
+}
+
+/* Dark mode: color-scheme for native form elements */
+html.dark .tbc-cp-er-wrap {
+    color-scheme: dark;
+}
+
+html.dark .tbc-cp-er-filters select,
+html.dark .tbc-cp-er-filters input[type="text"],
+html.dark .tbc-cp-er-approval-dropdown,
+html.dark .tbc-cp-er-screening-dropdown,
+html.dark .tbc-cp-er-spirit-dropdown,
+html.dark .tbc-cp-er-schedule-field input {
+    color-scheme: dark;
+}
+
+/* Lighten semantic text that would be too dark on dark backgrounds */
+html.dark .tbc-cp-er-workflow-banner {
+    color: #ffc107;
+}
+
+html.dark .tbc-cp-er-upcoming-banner {
+    color: #6db3f2;
+}
+
+html.dark .tbc-cp-er-edit-notes {
+    color: #ffc107 !important;
+}
+
+html.dark .tbc-cp-er-schedule-set {
+    color: #6db3f2;
+}
+
+html.dark .tbc-cp-er-toast-success {
+    color: #a3d9a5;
+}
+
+html.dark .tbc-cp-er-toast-error {
+    color: #f5a0a0;
+}
+
+/* Header row with gear icon */
+.tbc-cp-er-header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tbc-cp-er-settings-gear {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: var(--fcom-secondary-text, #666);
+    padding: 4px;
+    line-height: 1;
+    margin-bottom: 16px;
+    transition: color 0.2s;
+}
+
+.tbc-cp-er-settings-gear:hover {
+    color: var(--fcom-primary-text, #333);
+}
+
+/* Message settings modal */
+.tbc-cp-er-msg-settings-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.tbc-cp-er-msg-field label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.tbc-cp-er-msg-merge-tags {
+    padding: 12px;
+    background: var(--fcom-active-bg, #f0f0f1);
+    border: 1px solid var(--fcom-primary-border, #ddd);
+    border-radius: 6px;
+    line-height: 2;
+}
+
+.tbc-cp-er-msg-merge-tags code {
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 2px 4px;
+    background: var(--fcom-secondary-bg, #e9ecef);
+    border: 1px solid var(--fcom-primary-border, #ddd);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--fcom-primary-text, #1e1e1e);
+    cursor: pointer;
+    user-select: all;
+}
+
+.tbc-cp-er-msg-settings-grid h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.tbc-cp-er-msg-settings-grid hr {
+    border: none;
+    border-top: 1px solid var(--fcom-primary-border, #e9ecef);
+    margin: 4px 0;
+}
+
+/* Approval preview */
+.tbc-cp-er-preview-box {
+    white-space: pre-wrap;
+    padding: 16px;
+    background: var(--fcom-secondary-bg, #f8f9fa);
+    border: 1px solid var(--fcom-primary-border, #e9ecef);
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.6;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.tbc-cp-er-preview-warning {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 193, 7, 0.15);
+    border: 1px solid rgba(255, 193, 7, 0.4);
+    border-radius: 6px;
+    color: #856404;
+    font-size: 13px;
+}
+
+/* FluentCommunity template compatibility
+   When the page uses Fluent's frame template, content is nested inside
+   .fcom_wp_content > .wp_content_wrapper (max-width: 1120px) and
+   .feed_layout (overflow-y: hidden). The 100vw breakout trick fails,
+   so we fill the container instead. */
+.fcom_wp_content .tbc-cp-er-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+/* Fluent's .wp_content_wrapper constrains width — remove for entry review */
+.fcom_wp_content .wp_content_wrapper:has(.tbc-cp-er-wrap) {
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* Fluent overrides link color — restore for our tabs and pagination */
+.fcom_wp_content .tbc-cp-er-tab,
+.fcom_wp_content .tbc-cp-er-sortable a,
+.fcom_wp_content .tbc-cp-er-page-links .page-numbers {
+    color: var(--fcom-text-link, #2271b1);
+}
+
+.fcom_wp_content .tbc-cp-er-tab-current {
+    color: var(--fcom-primary-text, #1e1e1e);
+}
+
+/* Fluent resets list/ul styling — prevent that inside our wrap */
+.fcom_wp_content .tbc-cp-er-wrap ul,
+.fcom_wp_content .tbc-cp-er-wrap li {
+    margin: 0;
+    list-style: none;
+}
+
+/* Fluent overrides code styling — protect merge tag badges */
+.fcom_wp_content .tbc-cp-er-msg-merge-tags code {
+    background: var(--fcom-secondary-bg, #e9ecef);
+    font-size: 12px;
+    padding: 2px 8px;
+}
+
+/* Ensure modals render above Fluent's portal chrome */
+.fcom_wp_content .tbc-cp-er-modal {
+    position: fixed;
+    z-index: 100001;
+}

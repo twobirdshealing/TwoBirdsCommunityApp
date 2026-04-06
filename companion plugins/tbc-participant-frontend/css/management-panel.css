@@ -1,0 +1,115 @@
+/**
+ * Management Panel CSS
+ * 
+ * @package TBC_Participant_Frontend
+ * @since 3.0.0
+ */
+
+.tbc-pf-management-panel-container {
+    background-color: var(--fcom-secondary-bg, #f8f9fa);
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-bottom: 25px;
+}
+
+.tbc-pf-management-panel-header {
+    background-color: var(--fcom-primary-button, #007bff);
+    color: var(--fcom-primary-button-text, #ffffff);
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 15px;
+    text-align: center;
+    position: relative;
+    cursor: pointer;
+}
+
+.tbc-pf-management-panel-header span {
+    display: inline-block;
+}
+
+.tbc-pf-toggle-panel-btn {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.tbc-pf-toggle-panel-btn:hover {
+    background-color: #5a6268;
+}
+
+.tbc-pf-management-panel-content {
+    background-color: var(--fcom-primary-bg, #ffffff);
+}
+
+.tbc-pf-management-tabs {
+    display: flex;
+    border-bottom: 2px solid var(--fcom-primary-border, #dee2e6);
+    background-color: var(--fcom-secondary-bg, #f8f9fa);
+}
+
+.tbc-pf-tab-btn {
+    flex: 1;
+    padding: 12px 20px;
+    background-color: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--fcom-secondary-text, #6c757d);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.tbc-pf-tab-btn:hover {
+    background-color: var(--fcom-active-bg, #e9ecef);
+    color: var(--fcom-primary-text, #495057);
+}
+
+.tbc-pf-tab-btn.active {
+    color: var(--fcom-text-link, #007bff);
+    border-bottom-color: var(--fcom-text-link, #007bff);
+    background-color: var(--fcom-primary-bg, #ffffff);
+}
+
+.tbc-pf-tab-content-wrapper {
+    padding: 20px;
+}
+
+.tbc-pf-tab-content {
+    display: none;
+}
+
+.tbc-pf-tab-content.active {
+    display: block;
+}
+
+@media screen and (max-width: 768px) {
+    .tbc-pf-management-tabs {
+        flex-direction: column;
+    }
+    
+    .tbc-pf-tab-btn {
+        border-bottom: 1px solid var(--fcom-primary-border, #dee2e6);
+        border-left: 3px solid transparent;
+    }
+    
+    .tbc-pf-tab-btn.active {
+        border-bottom-color: var(--fcom-primary-border, #dee2e6);
+        border-left-color: var(--fcom-text-link, #007bff);
+    }
+    
+    .tbc-pf-tab-content-wrapper {
+        padding: 15px;
+    }
+}
