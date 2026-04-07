@@ -1,0 +1,35 @@
+/**
+ * Member Perks - Price Labels & Sale Badges
+ * Fluent Community Theme Compatible
+ */
+
+.price {
+    background-color: var(--fcom-secondary-bg, #f0f2f5);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 5px;
+    padding: 10px;
+    margin-top: 0px !important;
+    margin-bottom: 10px !important;
+    font-size: 16px !important;
+    line-height: 1.5;
+    display: block;
+    font-weight: bold;
+    color: var(--fcom-primary-text, #19283a) !important;
+}
+
+.price:empty {
+    display: none;
+}
+
+.custom-onsale {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: linear-gradient(135deg, #6a3093 0%, #a044ff 100%);
+    color: #ffffff;
+    position: relative;
+    margin-bottom: 10px;
+    font-size: 1.2em;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}

@@ -1,0 +1,194 @@
+/**
+ * TBC New Members - Navigation Styles
+ * Fluent Community Theme Compatible
+ */
+
+/* Navigation Container */
+.tbc-navigation-wrapper {
+    max-width: 1400px;
+    margin: 0 auto 30px;
+}
+
+/* Tabs */
+.tbc-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--fcom-primary-bg, #fff);
+    padding: 5px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+html.dark .tbc-tabs {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.tab-button {
+    padding: 12px 24px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    color: var(--fcom-secondary-text, #525866);
+    flex: 1;
+    max-width: 200px;
+}
+
+.tab-button:hover:not(.active) {
+    background: var(--fcom-active-bg, #f0f3f5);
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.tab-button.active {
+    background: var(--fcom-primary-button, #2B2E33);
+    color: var(--fcom-primary-button-text, #fff);
+}
+
+/* Date Range Selection */
+.quick-ranges {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    background: var(--fcom-primary-bg, #fff);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.quick-range-btn {
+    padding: 8px 16px;
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.quick-range-btn:hover {
+    background: var(--fcom-primary-button, #2B2E33);
+    color: var(--fcom-primary-button-text, #fff);
+    border-color: var(--fcom-primary-button, #2B2E33);
+}
+
+.quick-range-btn.active {
+    background: var(--fcom-primary-button, #2B2E33);
+    color: var(--fcom-primary-button-text, #fff);
+    border-color: var(--fcom-primary-button, #2B2E33);
+}
+
+/* Date Range Panel */
+.date-range-panel {
+    display: none;
+    margin-top: 15px;
+    background: var(--fcom-primary-bg, #fff);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.date-range-panel.visible {
+    display: block;
+}
+
+.date-range-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: flex-end;
+}
+
+.date-inputs {
+    display: flex;
+    gap: 15px;
+    flex-grow: 1;
+}
+
+.input-group {
+    flex: 1;
+}
+
+.input-group label {
+    display: block;
+    font-size: 14px;
+    color: var(--fcom-secondary-text, #525866);
+    margin-bottom: 5px;
+}
+
+.input-group input[type="date"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 6px;
+    font-family: inherit;
+    color: inherit;
+    background: var(--fcom-primary-bg, #fff);
+}
+
+.input-group input[type="date"]:focus {
+    border-color: var(--fcom-text-link, #2271b1);
+    outline: none;
+}
+
+html.dark .input-group input[type="date"] {
+    color-scheme: dark;
+}
+
+/* Primary button */
+.btn-primary {
+    padding: 8px 20px;
+    background: var(--fcom-primary-button, #2B2E33);
+    color: var(--fcom-primary-button-text, #fff);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.btn-primary:hover {
+    filter: brightness(1.15);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .tbc-tabs {
+        gap: 1px;
+        padding: 4px;
+    }
+
+    .tab-button {
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+
+    .date-inputs {
+        flex-direction: column;
+    }
+
+    .quick-ranges {
+        padding: 10px;
+    }
+
+    .quick-range-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 576px) {
+    .date-range-form {
+        flex-direction: column;
+    }
+
+    .input-group {
+        width: 100%;
+    }
+}

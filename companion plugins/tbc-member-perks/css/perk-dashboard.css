@@ -1,0 +1,126 @@
+/**
+ * Member Perks Dashboard - Frontend Styles
+ * Fluent Community Theme Compatible
+ */
+
+.member-perks-container {
+    color: var(--fcom-primary-text, #19283a);
+    overflow-x: auto;
+}
+
+.member-perks-container h1,
+.member-perks-container h2 {
+    color: var(--fcom-primary-text, #19283a);
+}
+
+.dashboard-title {
+    text-align: center;
+    color: var(--fcom-primary-text, #19283a);
+    margin: 0;
+    padding: 20px 0;
+}
+
+.perk-totals {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: var(--fcom-secondary-bg, #f0f2f5);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+html.dark .perk-totals {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.no-data {
+    color: #dc3545;
+}
+
+.member-subscriptions {
+    background-color: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+html.dark .member-subscriptions {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.level-info {
+    margin: 0;
+    padding: 0;
+}
+
+.level-info p {
+    margin: 0;
+    padding: 2px 0;
+    color: var(--fcom-secondary-text, #525866);
+}
+
+.level-select-form {
+    margin-bottom: 20px;
+}
+
+.level-select-form select {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    background-color: var(--fcom-primary-bg, #fff);
+    color: inherit;
+}
+
+html.dark .level-select-form select {
+    color-scheme: dark;
+}
+
+/* Tables */
+.member-perks-table,
+.subscribers-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.member-perks-table th,
+.subscribers-table th {
+    text-align: left;
+    padding: 8px;
+    background-color: var(--fcom-secondary-bg, #f0f2f5);
+    color: var(--fcom-secondary-text, #525866);
+    border-bottom: 2px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.member-perks-table td,
+.subscribers-table td {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.member-perks-table a,
+.subscribers-table a {
+    color: var(--fcom-text-link, #2271b1);
+}
+
+.member-perks-container .member-perks-table th,
+.member-perks-container .member-perks-table td,
+.member-perks-container .subscribers-table th,
+.member-perks-container .subscribers-table td {
+    white-space: nowrap;
+}
+
+/* Role dropdowns in table */
+.role-dropdown {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    background-color: var(--fcom-primary-bg, #fff);
+    color: inherit;
+}
+
+html.dark .role-dropdown {
+    color-scheme: dark;
+}

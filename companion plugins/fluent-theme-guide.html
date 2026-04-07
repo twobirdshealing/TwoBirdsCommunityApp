@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fluent Community Theming — Complete Guide</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; color: #19283a; padding: 30px; line-height: 1.6; max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 28px; margin-bottom: 8px; }
+    .subtitle { color: #697386; margin-bottom: 30px; font-size: 14px; }
+    .section { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 20px; border: 1px solid #e3e8ee; }
+    .section h2 { font-size: 18px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e3e8ee; }
+    .section h3 { font-size: 14px; font-weight: 600; color: #697386; text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px 12px; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: #697386; background: #f8f9fa; border-bottom: 2px solid #e3e8ee; }
+    td { padding: 8px 12px; border-bottom: 1px solid #f0f2f5; vertical-align: top; }
+    code { background: #f0f2f5; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: "SF Mono", "Fira Code", monospace; }
+    .swatch { display: inline-block; width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); vertical-align: middle; margin-right: 6px; }
+    .dark-note { background: #1e1e1e; color: #e5eaf3; padding: 16px; border-radius: 8px; margin-top: 12px; font-size: 13px; }
+    .dark-note code { background: #333; color: #e5eaf3; }
+    .example { background: #f8f9fa; border: 1px solid #e3e8ee; border-radius: 8px; padding: 16px; margin-top: 12px; font-family: monospace; font-size: 12px; white-space: pre; overflow-x: auto; }
+    .tip { background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #856404; }
+    .tip-green { background: rgba(40, 167, 69, 0.1); border: 1px solid rgba(40, 167, 69, 0.3); border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #155724; }
+    .tip-blue { background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #004085; }
+    .tip-red { background: rgba(220, 53, 69, 0.1); border: 1px solid rgba(220, 53, 69, 0.3); border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #721c24; }
+    ol.steps { list-style: none; padding: 0; counter-reset: step; }
+    ol.steps li { counter-increment: step; margin-bottom: 14px; padding-left: 36px; position: relative; }
+    ol.steps li::before { content: counter(step); position: absolute; left: 0; top: 0; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: #2B2E33; color: #fff; font-size: 12px; font-weight: 700; }
+    .toc { list-style: none; padding: 0; }
+    .toc li { margin-bottom: 6px; }
+    .toc a { color: #2271b1; text-decoration: none; font-size: 14px; }
+    .toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>Fluent Community Theming — Complete Guide</h1>
+<p class="subtitle">Everything you need to make any WordPress plugin match FluentCommunity's light/dark theme. Covers PHP setup, CSS variables, component patterns, and anti-patterns.</p>
+
+<!-- ==================== -->
+<!-- TABLE OF CONTENTS    -->
+<!-- ==================== -->
+<div class="section">
+    <h2>Contents</h2>
+    <ul class="toc">
+        <li><a href="#setup">1. PHP Setup — Get the Variables on Your Page</a></li>
+        <li><a href="#darkmode">2. How Dark Mode Works</a></li>
+        <li><a href="#variables">3. CSS Variable Reference</a></li>
+        <li><a href="#golden-rule">4. The Golden Rule: Always Use Fallbacks</a></li>
+        <li><a href="#mapping">5. Quick Mapping: Hardcoded &rarr; Variable</a></li>
+        <li><a href="#components">6. Component Patterns</a></li>
+        <li><a href="#status">7. Status Colors (Non-Themed)</a></li>
+        <li><a href="#template">8. CSS File Template</a></li>
+        <li><a href="#mistakes">9. Common Mistakes</a></li>
+        <li><a href="#checklist">10. Theming Checklist</a></li>
+        <li><a href="#source">11. Source: Where Variables Come From</a></li>
+    </ul>
+</div>
+
+<!-- ==================== -->
+<!-- PHP SETUP            -->
+<!-- ==================== -->
+<div class="section" id="setup">
+    <h2>1. PHP Setup — Get the Variables on Your Page</h2>
+
+    <p style="margin-bottom: 12px;">The <code>--fcom-*</code> variables are injected as inline CSS by Fluent Community's
+    <code>fluent_community/enqueue_global_assets</code> action. This loads <code>global.css</code>,
+    <code>theme-default.css</code>, the color scheme CSS (light + dark), and the dark mode detection script.</p>
+
+    <div class="tip-green">
+        <strong>Key insight:</strong> You don't need to hardcode dark mode colors. Fire this one action and Fluent
+        handles light/dark switching automatically via the customizer. If the user picks a blue dark theme, your
+        plugin matches. No extra CSS needed.
+    </div>
+
+    <h3>PHP: Enqueue in your plugin</h3>
+    <div class="example">// In your wp_enqueue_scripts callback, before your own styles:
+public function maybe_enqueue_assets() {
+    // Load Fluent Community global styles + color variables (light/dark)
+    if (did_action('fluent_community/enqueue_global_assets') === 0) {
+        do_action('fluent_community/enqueue_global_assets', true);
+    }
+
+    // Now enqueue your plugin CSS - variables are available
+    wp_enqueue_style('my-plugin', MY_PLUGIN_URL . 'css/my-plugin.css', [], MY_VERSION);
+}</div>
+
+    <h3>What this does</h3>
+    <ol class="steps">
+        <li>Enqueues <code>global.css</code> and <code>theme-default.css</code> from Fluent Community</li>
+        <li>Calls <code>Utility::getColorCssVariables()</code> which generates inline CSS setting all <code>--fcom-*</code> variables on <code>body</code> (light) and <code>html.dark body</code> (dark)</li>
+        <li>Enqueues <code>portal_general.js</code> which handles the dark mode <code>html.dark</code> class toggle</li>
+    </ol>
+
+    <div class="tip">
+        <strong>Guard with <code>did_action()</code></strong> — If the page already uses the Fluent Community template
+        (like portal pages), the action has already fired. The guard prevents double-loading.
+    </div>
+</div>
+
+<!-- ==================== -->
+<!-- HOW DARK MODE WORKS  -->
+<!-- ==================== -->
+<div class="section" id="darkmode">
+    <h2>2. How Dark Mode Works</h2>
+
+    <div class="dark-note">
+        <strong>The flow:</strong><br><br>
+        1. Fluent's customizer lets users pick light + dark color schemes<br><br>
+        2. <code>Utility::getColorCssVariables()</code> generates CSS for both:<br>
+        &nbsp;&nbsp;&nbsp;<code>body { --fcom-primary-bg: #FFFFFF; --fcom-primary-text: #19283a; ... }</code><br>
+        &nbsp;&nbsp;&nbsp;<code>html.dark body { --fcom-primary-bg: #1d1e1f; --fcom-primary-text: #E5EAF3; ... }</code><br><br>
+        3. <code>portal_general.js</code> checks <code>localStorage('fcom_global_storage')</code> and adds/removes <code>html.dark</code><br><br>
+        4. Your CSS uses <code>var(--fcom-primary-bg, #fff)</code> — the variable handles both modes automatically
+    </div>
+
+    <h3>What you DON'T need to do</h3>
+    <table>
+        <tr><th>Anti-pattern</th><th>Why it's wrong</th></tr>
+        <tr>
+            <td>Writing <code>html.dark .my-thing { background: #1d1e1f; }</code></td>
+            <td>Hardcoded dark values won't sync if user picks a different dark scheme in Fluent customizer</td>
+        </tr>
+        <tr>
+            <td>Duplicating every rule with <code>html.dark</code> overrides</td>
+            <td>The variables already flip automatically — one rule handles both modes</td>
+        </tr>
+        <tr>
+            <td>Using <code>@media (prefers-color-scheme: dark)</code></td>
+            <td>Fluent uses <code>html.dark</code> class, not the OS media query</td>
+        </tr>
+    </table>
+
+    <h3>What you DO need for dark mode (minimal)</h3>
+    <div class="example">/* 1. Native form elements need color-scheme for browser rendering */
+html.dark .my-wrapper select,
+html.dark .my-wrapper input {
+    color-scheme: dark;
+}
+
+/* 2. box-shadow needs higher opacity on dark backgrounds */
+html.dark .my-card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* 3. Semantic colors with hardcoded dark text (e.g. #856404)
+      may need lightening since they sit on dark backgrounds */
+html.dark .my-warning-banner {
+    color: #ffc107;  /* lighten the dark-amber #856404 */
+}</div>
+</div>
+
+<!-- ==================== -->
+<!-- CSS VARIABLE REF     -->
+<!-- ==================== -->
+<div class="section" id="variables">
+    <h2>3. CSS Variable Reference</h2>
+
+    <p style="margin-bottom: 16px;">Use <code>var(--fcom-*, fallback)</code> everywhere instead of hardcoded colors. The fallback only applies if Fluent Community isn't active.</p>
+
+    <h3>Backgrounds</h3>
+    <table>
+        <tr><th>Variable</th><th>Light Default</th><th>Use For</th></tr>
+        <tr>
+            <td><code>--fcom-primary-bg</code></td>
+            <td><span class="swatch" style="background:#FFFFFF"></span><code>#FFFFFF</code></td>
+            <td>Cards, modals, table body, panels, page content</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-secondary-bg</code></td>
+            <td><span class="swatch" style="background:#f0f2f5"></span><code>#f0f2f5</code></td>
+            <td>Subtle backgrounds, table headers, badges, sidebar</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-secondary-content-bg</code></td>
+            <td><span class="swatch" style="background:#f8f9fa"></span><code>#f8f9fa</code></td>
+            <td>Content boxes, nested panels</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-active-bg</code></td>
+            <td><span class="swatch" style="background:#f0f3f5"></span><code>#f0f3f5</code></td>
+            <td>Hover/active states for rows, menu items, buttons</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-highlight-bg</code></td>
+            <td><span class="swatch" style="background:#fffce3"></span><code>#fffce3</code></td>
+            <td>Highlighted/pinned content</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-light-bg</code></td>
+            <td>Theme-dependent</td>
+            <td>Light surface backgrounds</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-deep-bg</code></td>
+            <td>Theme-dependent</td>
+            <td>Deep/dark backgrounds</td>
+        </tr>
+    </table>
+
+    <h3>Text</h3>
+    <table>
+        <tr><th>Variable</th><th>Light Default</th><th>Use For</th></tr>
+        <tr>
+            <td><code>--fcom-primary-text</code></td>
+            <td><span class="swatch" style="background:#19283a"></span><code>#19283a</code></td>
+            <td>Headings, body text, strong labels</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-secondary-text</code></td>
+            <td><span class="swatch" style="background:#525866"></span><code>#525866</code></td>
+            <td>Descriptions, meta text, timestamps, placeholders</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-text-soft</code></td>
+            <td><span class="swatch" style="background:#606266"></span><code>#606266</code></td>
+            <td>Softer body text</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-text-off</code></td>
+            <td><span class="swatch" style="background:#959595"></span><code>#959595</code></td>
+            <td>Disabled/placeholder text, inactive items</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-text-link</code></td>
+            <td><span class="swatch" style="background:#2271b1"></span><code>#2271b1</code></td>
+            <td>Links, accent color, active indicators</td>
+        </tr>
+    </table>
+
+    <h3>Borders</h3>
+    <table>
+        <tr><th>Variable</th><th>Light Default</th><th>Use For</th></tr>
+        <tr>
+            <td><code>--fcom-primary-border</code></td>
+            <td><span class="swatch" style="background:#e3e8ee"></span><code>#e3e8ee</code></td>
+            <td>Cards, tables, dividers, inputs</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-secondary-border</code></td>
+            <td><span class="swatch" style="background:#9CA3AF"></span><code>#9CA3AF</code></td>
+            <td>Focus rings, stronger emphasis borders</td>
+        </tr>
+    </table>
+
+    <h3>Buttons</h3>
+    <table>
+        <tr><th>Variable</th><th>Light Default</th><th>Use For</th></tr>
+        <tr>
+            <td><code>--fcom-primary-button</code></td>
+            <td><span class="swatch" style="background:#2B2E33"></span><code>#2B2E33</code></td>
+            <td>Primary button background + border</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-primary-button-text</code></td>
+            <td><span class="swatch" style="background:#FFFFFF"></span><code>#FFFFFF</code></td>
+            <td>Primary button text</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-primary-color</code></td>
+            <td><span class="swatch" style="background:#3b82f6"></span><code>#3b82f6</code></td>
+            <td>Brand/accent color for special elements</td>
+        </tr>
+    </table>
+
+    <h3>Menu (if building navigation)</h3>
+    <table>
+        <tr><th>Variable</th><th>Light Default</th><th>Use For</th></tr>
+        <tr>
+            <td><code>--fcom-menu-text</code></td>
+            <td><span class="swatch" style="background:#545861"></span><code>#545861</code></td>
+            <td>Nav item text</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-menu-text-active</code></td>
+            <td><span class="swatch" style="background:#545861"></span><code>#545861</code></td>
+            <td>Active nav item</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-menu-text-hover</code></td>
+            <td>Falls back to <code>--fcom-menu-text</code></td>
+            <td>Hovered nav item text</td>
+        </tr>
+        <tr>
+            <td><code>--fcom-menu-bg-hover</code></td>
+            <td>Falls back to <code>--fcom-active-bg</code></td>
+            <td>Hovered nav item bg</td>
+        </tr>
+    </table>
+
+    <h3>Layout</h3>
+    <table>
+        <tr><th>Variable</th><th>Default</th><th>Use For</th></tr>
+        <tr>
+            <td><code>--fcom-header-height</code></td>
+            <td><code>0px</code></td>
+            <td>Offset for sticky elements below portal header</td>
+        </tr>
+    </table>
+</div>
+
+<!-- ==================== -->
+<!-- GOLDEN RULE          -->
+<!-- ==================== -->
+<div class="section" id="golden-rule">
+    <h2>4. The Golden Rule: Always Use Fallbacks</h2>
+
+    <div class="example">/* CORRECT — Works with or without Fluent Community */
+background: var(--fcom-primary-bg, #ffffff);
+color: var(--fcom-primary-text, #19283a);
+border: 1px solid var(--fcom-primary-border, #e3e8ee);
+
+/* WRONG — Breaks if Fluent is not active */
+background: var(--fcom-primary-bg);</div>
+
+    <div class="tip">
+        <strong>Why:</strong> If Fluent Community is deactivated or the action didn't fire, the fallback keeps your
+        plugin looking correct. Without a fallback, the property inherits or uses the initial value (often transparent
+        or black), which breaks the layout.
+    </div>
+</div>
+
+<!-- ==================== -->
+<!-- MAPPING TABLE        -->
+<!-- ==================== -->
+<div class="section" id="mapping">
+    <h2>5. Quick Mapping: Hardcoded &rarr; Variable</h2>
+
+    <p style="margin-bottom: 12px;">Use this when converting existing CSS. Find the hardcoded value in the left column, replace with the right.</p>
+
+    <table>
+        <tr><th>Instead of...</th><th>Use...</th></tr>
+        <tr><td><code>#fff</code> / <code>white</code> (backgrounds)</td><td><code>var(--fcom-primary-bg, #fff)</code></td></tr>
+        <tr><td><code>#f8f9fa</code> / <code>#f0f2f5</code> / <code>#f9f9f9</code> / <code>#f1f1f1</code> (subtle bg)</td><td><code>var(--fcom-secondary-bg, #f0f2f5)</code></td></tr>
+        <tr><td><code>#e9ecef</code> / <code>#f0f3f5</code> (hover bg)</td><td><code>var(--fcom-active-bg, #f0f3f5)</code></td></tr>
+        <tr><td><code>#19283a</code> / <code>#1e1e1e</code> / <code>#333</code> / <code>#000</code> (text)</td><td><code>var(--fcom-primary-text, #19283a)</code></td></tr>
+        <tr><td><code>#525866</code> / <code>#555</code> / <code>#666</code> (muted text)</td><td><code>var(--fcom-secondary-text, #525866)</code></td></tr>
+        <tr><td><code>#959595</code> / <code>#999</code> / <code>#888</code> (dim text)</td><td><code>var(--fcom-text-off, #959595)</code></td></tr>
+        <tr><td><code>#2271b1</code> (links)</td><td><code>var(--fcom-text-link, #2271b1)</code></td></tr>
+        <tr><td><code>#e3e8ee</code> / <code>#ddd</code> / <code>#e0e0e0</code> / <code>#e9ecef</code> (borders)</td><td><code>var(--fcom-primary-border, #e3e8ee)</code></td></tr>
+        <tr><td><code>#ccc</code> / <code>#9CA3AF</code> (strong borders)</td><td><code>var(--fcom-secondary-border, #9CA3AF)</code></td></tr>
+        <tr><td><code>#2B2E33</code> (button bg)</td><td><code>var(--fcom-primary-button, #2B2E33)</code></td></tr>
+        <tr><td><code>#fff</code> (button text)</td><td><code>var(--fcom-primary-button-text, #fff)</code></td></tr>
+    </table>
+</div>
+
+<!-- ==================== -->
+<!-- COMPONENT PATTERNS   -->
+<!-- ==================== -->
+<div class="section" id="components">
+    <h2>6. Component Patterns</h2>
+
+    <h3>Cards / Boxes</h3>
+    <div class="example">.my-card {
+    background: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.my-card:hover {
+    background: var(--fcom-active-bg, #f0f3f5);
+}
+
+html.dark .my-card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}</div>
+
+    <h3>Buttons</h3>
+    <div class="example">.my-btn {
+    background: var(--fcom-primary-button, #2B2E33);
+    color: var(--fcom-primary-button-text, #fff);
+    border: 1px solid var(--fcom-primary-button, #2B2E33);
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+}
+
+.my-btn:hover {
+    filter: brightness(1.1);
+}
+
+.my-btn.secondary {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    color: var(--fcom-secondary-text, #525866);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+}</div>
+
+    <h3>Form Inputs</h3>
+    <div class="example">.my-input {
+    background-color: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 6px;
+    color: inherit;
+    padding: 6px 10px;
+}
+
+.my-input:focus {
+    border-color: var(--fcom-text-link, #2271b1);
+    outline: none;
+}
+
+.my-input::placeholder {
+    color: var(--fcom-secondary-text, #525866);
+}
+
+/* Native elements need color-scheme in dark mode */
+html.dark .my-wrap select,
+html.dark .my-wrap input {
+    color-scheme: dark;
+}</div>
+
+    <h3>Tables</h3>
+    <div class="example">.my-table {
+    background: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.my-table thead {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+}
+
+.my-table th {
+    color: var(--fcom-secondary-text, #525866);
+    border-bottom: 2px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.my-table td {
+    border-bottom: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.my-table a {
+    color: var(--fcom-text-link, #2271b1);
+}</div>
+
+    <h3>Navigation / Tabs</h3>
+    <div class="example">.my-nav {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+}
+
+.my-nav-item {
+    color: var(--fcom-secondary-text, #525866);
+}
+
+.my-nav-item:hover {
+    color: var(--fcom-primary-text, #19283a);
+    background: var(--fcom-active-bg, #f0f3f5);
+}
+
+.my-nav-item.active {
+    background: var(--fcom-text-link, #2271b1);
+    color: #ffffff;
+}</div>
+
+    <h3>Links</h3>
+    <div class="example">.my-link {
+    color: var(--fcom-text-link, #2271b1);
+    text-decoration: none;
+}
+
+.my-link:hover {
+    text-decoration: underline;
+}</div>
+
+    <h3>Badges / Tags</h3>
+    <div class="example">/* Use rgba so they work on any background (light AND dark) */
+.my-badge-success {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.my-badge-danger {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.my-badge-warning {
+    background: rgba(255, 193, 7, 0.1);
+    color: #856404;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+/* Lighten dark text in warning badges for dark mode */
+html.dark .my-badge-warning {
+    color: #ffc107;
+}
+
+/* Neutral badge uses theme */
+.my-badge-neutral {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    color: var(--fcom-secondary-text, #525866);
+}</div>
+</div>
+
+<!-- ==================== -->
+<!-- STATUS COLORS        -->
+<!-- ==================== -->
+<div class="section" id="status">
+    <h2>7. Status Colors (Non-Themed)</h2>
+
+    <p style="margin-bottom: 12px;">Some colors should <strong>not</strong> change with theme — status indicators, alerts, brand badges. Use solid backgrounds with white text so they're readable on any surface.</p>
+
+    <div class="example">/* Success / Available — Always green */
+.status-success {
+    background: linear-gradient(to bottom, #28a745, #34ce57);
+    color: #ffffff;
+}
+
+/* Error / Closed — Always red */
+.status-error {
+    background: linear-gradient(to bottom, #FF4B47, #FF6B65);
+    color: #ffffff;
+}
+
+/* Info / Open — Always blue */
+.status-info {
+    background: linear-gradient(to bottom, #345BFF, #527DFF);
+    color: #ffffff;
+}
+
+/* Warning — Always amber */
+.status-warning {
+    background: linear-gradient(to bottom, #f0ad4e, #ec971f);
+    color: #ffffff;
+}</div>
+
+    <div class="tip-blue">
+        <strong>When to use themed vs fixed colors:</strong> If the color carries <em>semantic meaning</em> (success, error, brand),
+        keep it fixed. If it's a <em>surface</em> (background, border, text), use <code>--fcom-*</code> variables.
+    </div>
+</div>
+
+<!-- ==================== -->
+<!-- CSS FILE TEMPLATE    -->
+<!-- ==================== -->
+<div class="section" id="template">
+    <h2>8. CSS File Template</h2>
+
+    <p style="margin-bottom: 12px;">Copy this structure when starting a new plugin's stylesheet:</p>
+
+    <div class="example">/**
+ * Plugin Name — Frontend Styles
+ * Fluent Community Theme Compatible
+ */
+
+/* ==========================================================================
+   Custom Variables (plugin-specific, not colors)
+   ========================================================================== */
+
+:root {
+    --my-plugin-gap: 1rem;
+    --my-plugin-radius: 8px;
+}
+
+/* ==========================================================================
+   Base Styles (uses Fluent variables — works in light AND dark)
+   ========================================================================== */
+
+.my-plugin-wrap {
+    color: var(--fcom-primary-text, #19283a);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.my-plugin-card {
+    background: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: var(--my-plugin-radius);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.my-plugin-header {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    border-bottom: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.my-plugin-link {
+    color: var(--fcom-text-link, #2271b1);
+}
+
+.my-plugin-button {
+    background: var(--fcom-primary-button, #2B2E33);
+    color: var(--fcom-primary-button-text, #fff);
+}
+
+.my-plugin-meta {
+    color: var(--fcom-secondary-text, #525866);
+}
+
+.my-plugin-input {
+    background-color: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    color: inherit;
+}
+
+/* ==========================================================================
+   Dark Mode — Only override what variables can't handle
+   ========================================================================== */
+
+html.dark .my-plugin-card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+html.dark .my-plugin-wrap select,
+html.dark .my-plugin-wrap input {
+    color-scheme: dark;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .my-plugin-card {
+        border-radius: 0;
+    }
+}
+
+/* ==========================================================================
+   Accessibility
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .my-plugin-card,
+    .my-plugin-button {
+        animation: none !important;
+        transition: none !important;
+    }
+}</div>
+</div>
+
+<!-- ==================== -->
+<!-- COMMON MISTAKES      -->
+<!-- ==================== -->
+<div class="section" id="mistakes">
+    <h2>9. Common Mistakes</h2>
+
+    <table>
+        <tr><th>Mistake</th><th>Fix</th></tr>
+        <tr>
+            <td>No fallback values: <code>var(--fcom-primary-bg)</code></td>
+            <td>Always use <code>var(--fcom-primary-bg, #fff)</code></td>
+        </tr>
+        <tr>
+            <td>Same shadows in dark mode</td>
+            <td>Increase shadow opacity: <code>rgba(0,0,0,0.3)</code> for dark</td>
+        </tr>
+        <tr>
+            <td>Hardcoded white/black text</td>
+            <td>Use <code>--fcom-primary-text</code> / <code>--fcom-secondary-text</code></td>
+        </tr>
+        <tr>
+            <td>Hardcoding dark mode colors: <code>html.dark { background: #1d1e1f }</code></td>
+            <td>Won't sync if user picks a different dark scheme — use variables instead</td>
+        </tr>
+        <tr>
+            <td>Duplicating every rule with <code>html.dark</code> overrides</td>
+            <td>Variables flip automatically — only override shadows, form color-scheme, and hardcoded semantic text</td>
+        </tr>
+        <tr>
+            <td>Using <code>@media (prefers-color-scheme: dark)</code></td>
+            <td>Fluent uses <code>html.dark</code> class, not the OS media query</td>
+        </tr>
+        <tr>
+            <td>Using <code>!important</code> on colors</td>
+            <td>Breaks theme customization — avoid unless absolutely necessary</td>
+        </tr>
+        <tr>
+            <td>Explicit text color on inputs</td>
+            <td>Use <code>color: inherit</code> — inherits from themed parent</td>
+        </tr>
+    </table>
+</div>
+
+<!-- ==================== -->
+<!-- CHECKLIST            -->
+<!-- ==================== -->
+<div class="section" id="checklist">
+    <h2>10. Theming Checklist for New Plugins</h2>
+    <table>
+        <tr><th>#</th><th>Task</th><th>Done?</th></tr>
+        <tr><td>1</td><td>Add <code>do_action('fluent_community/enqueue_global_assets', true)</code> in enqueue callback (with <code>did_action</code> guard)</td><td></td></tr>
+        <tr><td>2</td><td>Replace all hardcoded background colors with <code>--fcom-primary-bg</code> / <code>--fcom-secondary-bg</code> / <code>--fcom-active-bg</code></td><td></td></tr>
+        <tr><td>3</td><td>Replace all hardcoded text colors with <code>--fcom-primary-text</code> / <code>--fcom-secondary-text</code> / <code>--fcom-text-off</code> / <code>--fcom-text-link</code></td><td></td></tr>
+        <tr><td>4</td><td>Replace all hardcoded border colors with <code>--fcom-primary-border</code> / <code>--fcom-secondary-border</code></td><td></td></tr>
+        <tr><td>5</td><td>Replace button colors with <code>--fcom-primary-button</code> / <code>--fcom-primary-button-text</code></td><td></td></tr>
+        <tr><td>6</td><td>Use <code>rgba()</code> for semantic status badges (success/danger/warning) so they work on any background</td><td></td></tr>
+        <tr><td>7</td><td>Add <code>html.dark .my-wrap select, input { color-scheme: dark; }</code> for native form elements</td><td></td></tr>
+        <tr><td>8</td><td>Check any hardcoded dark text colors in banners/badges — lighten under <code>html.dark</code> if needed</td><td></td></tr>
+        <tr><td>9</td><td>Use <code>color: inherit</code> on inputs/selects instead of explicit text color</td><td></td></tr>
+        <tr><td>10</td><td>Add <code>html.dark</code> shadow overrides (increase <code>rgba</code> opacity) for elevated elements</td><td></td></tr>
+        <tr><td>11</td><td>Include fallback values on every <code>var(--fcom-*)</code></td><td></td></tr>
+        <tr><td>12</td><td>Test in Fluent customizer with different light + dark schemes to confirm sync</td><td></td></tr>
+    </table>
+</div>
+
+<!-- ==================== -->
+<!-- SOURCE REFERENCE     -->
+<!-- ==================== -->
+<div class="section" id="source">
+    <h2>11. Source: Where Variables Come From</h2>
+
+    <table>
+        <tr><th>File</th><th>What it does</th></tr>
+        <tr>
+            <td><code>app/Functions/Utility.php</code></td>
+            <td><code>getColorCssVariables()</code> — reads customizer config, generates inline CSS for both light (<code>body</code>) and dark (<code>html.dark body</code>) selectors</td>
+        </tr>
+        <tr>
+            <td><code>app/Functions/Utility.php</code></td>
+            <td><code>getColorSchemas()</code> — returns all available light/dark skin presets with their variable values</td>
+        </tr>
+        <tr>
+            <td><code>app/Hooks/Handlers/PortalHandler.php</code></td>
+            <td>Registers the <code>fluent_community/enqueue_global_assets</code> action that loads CSS + injects variables</td>
+        </tr>
+        <tr>
+            <td><code>Modules/Theming/TemplateLoader.php</code></td>
+            <td>Fires <code>fluent_community/enqueue_global_assets</code> when page uses Fluent template. Also injects dark mode detection script from <code>localStorage</code></td>
+        </tr>
+        <tr>
+            <td><code>app/Hooks/Handlers/CustomizerHandler.php</code></td>
+            <td>Handles customizer settings — where users pick their light + dark color schemes</td>
+        </tr>
+        <tr>
+            <td><code>assets/global.css</code></td>
+            <td>Core layout styles that consume <code>--fcom-*</code> variables</td>
+        </tr>
+        <tr>
+            <td><code>assets/theme-default.css</code></td>
+            <td>Default theme skin styles</td>
+        </tr>
+    </table>
+
+    <h3>How the CSS gets generated</h3>
+    <div class="example">// Utility::getColorCssVariables() output example:
+
+// Light:
+body {
+    --fcom-primary-bg: #FFFFFF;
+    --fcom-primary-text: #19283a;
+    --fcom-secondary-text: #525866;
+    --fcom-primary-border: #e3e8ee;
+    --fcom-primary-button: #2B2E33;
+    --fcom-text-link: #2271b1;
+    /* ... etc */
+}
+
+// Dark (auto-generated from customizer dark scheme):
+html.dark body {
+    --fcom-primary-bg: #1d1e1f;
+    --fcom-primary-text: #E5EAF3;
+    --fcom-secondary-text: #A3A6AD;
+    --fcom-primary-border: #414243;
+    --fcom-primary-button: #3a3d42;
+    --fcom-text-link: #6db3f2;
+    /* ... etc — values depend on chosen dark scheme */
+}</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,67 @@
+/**
+ * Member Perks - Import Table Styles (Admin)
+ */
+
+#subscribers_table {
+    width: 100%;
+    max-width: 100%;
+    border-collapse: collapse;
+}
+
+#subscribers_table th,
+#subscribers_table td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+}
+
+#subscribers_table th {
+    background-color: #f9f9f9;
+}
+
+/* Input styles for different sizes */
+.small-input {
+    width: 80px;
+}
+
+.medium-input {
+    width: 120px;
+}
+
+.large-input {
+    width: 200px;
+}
+
+.regular-text {
+    width: 150px;
+}
+
+.button {
+    cursor: pointer;
+}
+
+/* Remove button */
+.subscriber_remove {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 0.875em;
+    cursor: pointer;
+}
+
+.subscriber_remove:hover {
+    background-color: #c82333;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .small-input, .medium-input, .large-input, .regular-text {
+        width: 100%;
+    }
+
+    #subscribers_table th, #subscribers_table td {
+        padding: 4px;
+    }
+}
