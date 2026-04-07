@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 /**
  * Theme Constants
  */
-define('FLUENT_STARTER_VERSION', '1.0.57');
+define('FLUENT_STARTER_VERSION', '1.0.59');
 define('FLUENT_STARTER_DIR', get_template_directory());
 define('FLUENT_STARTER_URI', get_template_directory_uri());
 

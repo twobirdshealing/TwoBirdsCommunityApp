@@ -67,7 +67,7 @@ function tbc_mc_render_sms_form($nonce_action, $nonce_name, $contact_list_html) 
                     <!-- Multiple media items will be inserted here by JS -->
                 </div>
                 <input type="hidden" name="upload_image" class="tbc-mc-media-url" value="" />
-                <p class="tooltip no-margin-bottom">' . esc_html__('Attach up to 10 images to your text message. Keep file sizes small for best results.', 'twobirdschurch') . '</p>
+                <p class="tooltip no-margin-bottom">' . esc_html__('Attach up to 10 images (jpg, png, gif only — webp not supported by Twilio). Keep file sizes small for best results.', 'twobirdschurch') . '</p>
             </div>
 
             <!-- MMS Toggle -->

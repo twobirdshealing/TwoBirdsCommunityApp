@@ -1327,10 +1327,10 @@ html.dark .fs-comments-section textarea#comment {
     padding: 0;
 }
 
-.feeds_main.fcom_theme_full .fs-single-content {
-    max-width: 100%;
-    padding: 0;
-}
+// .feeds_main.fcom_theme_full .fs-single-content {
+//    max-width: 100%;
+//    padding: 0;
+//  }
 
 .feeds_main.fcom_theme_full .fs-hero-post {
     border-radius: 16px;

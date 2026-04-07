@@ -1,5 +1,8 @@
 # Changelog - TBC Messaging Center
 
+## 3.5.1
+- Fix: Clarified supported media types in upload tooltip (jpg, png, gif only — webp not supported by Twilio)
+
 ## 3.5.0
 - Replaced tbc-fluent-profiles dependency with FC 2.3.0 native custom_fields for phone lookup
 - Added "Fluent Community Integration" settings section with configurable Phone Field and SMS Opt-In Field dropdowns (populated from FC native custom field definitions)
