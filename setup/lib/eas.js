@@ -15,8 +15,9 @@ async function diagnoseEasError(originalError) {
   return { ok: false, error: originalError.message };
 }
 
-/** Run a command asynchronously. With raw: true, returns { stdout, stderr, code } instead of rejecting on non-zero exit. */
-function runCommand(args, timeout = 30000, { env, raw = false } = {}) {
+/** Run a command asynchronously. With raw: true, returns { stdout, stderr, code } instead of rejecting on non-zero exit.
+ *  onSpawn(child) lets the caller hold the child handle (e.g. to kill it on HTTP disconnect). */
+function runCommand(args, timeout = 30000, { env, raw = false, onSpawn } = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(args.join(' '), [], {
       cwd: PROJECT_DIR,
@@ -26,6 +27,7 @@ function runCommand(args, timeout = 30000, { env, raw = false } = {}) {
       windowsHide: true,
       ...(env ? { env: { ...process.env, ...env } } : {}),
     });
+    if (onSpawn) onSpawn(child);
     let stdout = '', stderr = '';
     child.stdout.on('data', (d) => { stdout += d; });
     child.stderr.on('data', (d) => { stderr += d; });
@@ -48,22 +50,36 @@ async function getEasBuilds() {
   }
 }
 
-/** Start an EAS build (non-blocking) */
-async function startEasBuild(platform, profile) {
+/** Start an EAS build and await the result. Returns success, or failure with full output + fix hint.
+ *  onSpawn(child) lets the caller kill the subprocess if the HTTP client disconnects mid-build. */
+async function startEasBuild(platform, profile, { onSpawn } = {}) {
   if (!VALID_PLATFORMS.includes(platform)) return { ok: false, error: 'Invalid platform' };
   if (!VALID_PROFILES.includes(profile)) return { ok: false, error: 'Invalid profile' };
   // Auto-detect git — if no repo, tell EAS to skip VCS and use .easignore instead
   const hasGit = fileExists(path.join(PROJECT_DIR, '.git'));
   const env = hasGit ? undefined : { EAS_NO_VCS: '1' };
   try {
-    const output = await runCommand(
-      ['eas', 'build', '--platform', platform, '--profile', profile, '--non-interactive', '--json'],
+    // --no-wait: return immediately after the upload is queued on EAS, instead of blocking until the
+    // build itself finishes (which can take hours). The dashboard polls EAS via loadBuilds() for status.
+    const { stdout, stderr, code } = await runCommand(
+      ['eas', 'build', '--platform', platform, '--profile', profile, '--non-interactive', '--no-wait', '--json'],
       300000,
-      { env }
+      { env, raw: true, onSpawn }
     );
-    return { ok: true, result: JSON.parse(output) };
+    const fullOutput = (stdout + (stderr ? '\n' + stderr : '')).trim();
+    if (code === 0) {
+      try { return { ok: true, result: JSON.parse(stdout) }; }
+      catch { return { ok: true, result: null, fullOutput }; }
+    }
+    // iOS credentials is the only fix hint with a UI flow today; everything else routes through
+    // diagnoseEasError so the user gets a CLI/login-aware message.
+    if (/Failed to set up credentials|couldn't find any credentials/i.test(fullOutput)) {
+      return { ok: false, error: "iOS credentials aren't set up yet", fullOutput, fixHint: 'iosCredentials' };
+    }
+    const diag = await diagnoseEasError(new Error(fullOutput));
+    return { ok: false, error: diag.error, fullOutput, fixHint: null };
   } catch (err) {
-    return { ok: false, error: err.message };
+    return { ok: false, error: err.message, fullOutput: err.message, fixHint: null };
   }
 }
 

@@ -259,6 +259,8 @@
   .build-status.in-progress, .build-status.new { background: var(--purple-bg); color: var(--purple); }
   .build-status.errored { background: var(--red-bg); color: var(--red); }
   .build-status.canceled { background: var(--yellow-bg); color: var(--yellow); }
+  .build-status.submitting { background: var(--purple-bg); color: var(--purple); }
+  .build-status.failed-locally { background: var(--red-bg); color: var(--red); }
   .build-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
   .new-build-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
@@ -273,11 +275,6 @@
   .build-preset-toggles { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
   .build-preset-chip { border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-secondary); transition: all 0.15s; }
   .build-preset-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .build-preset-progress { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
-  .build-preset-progress-item { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 12px; border-radius: var(--radius); background: var(--bg-primary); border: 1px solid var(--border); }
-  .build-preset-progress-item.queued { border-color: #93c5fd; background: #eff6ff; }
-  .build-preset-progress-item.error { border-color: #fca5a5; background: #fef2f2; }
-  .build-preset-progress-item.queuing { border-color: #fcd34d; background: #fffbeb; }
   .build-preset-status { margin-left: auto; font-weight: 500; font-size: 11px; }
 
   .build-banner { border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
@@ -289,9 +286,6 @@
   .build-banner.warning { background: #fffbeb; border: 1px solid #fcd34d; }
   .build-banner.warning .build-banner-title,
   .build-banner.warning .build-banner-list { color: #92400e; }
-  .build-banner.queued { background: #eff6ff; border: 1px solid #93c5fd; }
-  .build-banner.queued .build-banner-title { color: #1d4ed8; margin-bottom: 2px; }
-  .build-banner.queued .build-banner-hint { font-size: 13px; color: #1e40af; }
 
   .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: var(--radius); font-size: 14px; font-weight: 500; z-index: 1000; animation: slideUp 0.3s ease; max-width: 400px; }
   .toast.success { background: var(--green); color: #fff; }
@@ -899,6 +893,15 @@
           <input type="text" x-model="config.ascAppId" x-on:input="onConfigInput('ascAppId')" placeholder="0000000000">
           <div class="field-help" x-bind:class="fieldHelpState.ascAppId ? 'expanded' : 'collapsed'" x-html="getFieldHelpHtml('ascAppId')"></div>
         </div>
+        <div class="field" id="section-ios-credentials">
+          <label>iOS Credentials <span class="file-hint">eas credentials</span></label>
+          <p style="font-size:13px;color:var(--text-secondary);margin:4px 0 8px">First time building for iOS? Run this once in your terminal — you'll be asked for your Apple ID password and a 2FA code:</p>
+          <div class="input-with-copy">
+            <input type="text" readonly value="eas credentials --platform ios" style="font-family:monospace">
+            <button type="button" class="copy-btn" x-on:click="copyFieldValue('eas credentials --platform ios')">Copy</button>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:6px">If your iOS build fails with "iOS credentials aren't set up yet", come back here and run this command. See the <strong>Setup Guide → Builds → iOS Credentials</strong> section for the full walkthrough.</p>
+        </div>
       </div>
       <h4>Android</h4>
       <div class="field-group">
@@ -1323,16 +1326,6 @@
           </template>
         </ul>
       </div>
-      <!-- Build queued banner -->
-      <div class="build-banner queued" x-show="showBuildQueued" style="display:none">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="flex:1">
-            <div class="build-banner-title" x-text="buildQueuedText"></div>
-            <div class="build-banner-hint" x-text="buildQueuedHint"></div>
-          </div>
-          <button class="btn btn-sm" x-on:click="loadBuilds()">Refresh</button>
-        </div>
-      </div>
       <!-- Version bar -->
       <div class="build-version-bar">
         <span class="build-version-label">App Version</span>
@@ -1353,6 +1346,7 @@
             <template x-for="combo in [
               {p:'ios',pr:'development',label:'iOS Dev'},
               {p:'ios',pr:'preview',label:'iOS Preview'},
+              {p:'ios',pr:'simulator',label:'iOS Sim'},
               {p:'ios',pr:'production',label:'iOS Prod'},
               {p:'android',pr:'development',label:'Android Dev'},
               {p:'android',pr:'preview',label:'Android Preview'},
@@ -1373,15 +1367,6 @@
             <span x-show="presetRunning">Building...</span>
           </button>
         </div>
-        <div class="build-preset-progress" x-show="presetProgress.length > 0" style="display:none">
-          <template x-for="item in presetProgress" :key="item.key">
-            <div class="build-preset-progress-item" x-bind:class="item.status">
-              <ion-icon x-bind:name="item.platform==='ios' ? 'logo-apple' : 'logo-android'" style="font-size:14px"></ion-icon>
-              <span x-text="item.label"></span>
-              <span class="build-preset-status" x-text="item.status==='queued'?'✓ Queued':item.status==='error'?'✗ Failed':item.status==='queuing'?'Starting...':'Waiting'"></span>
-            </div>
-          </template>
-        </div>
       </div>
       <!-- New build grid -->
       <div class="new-build-grid">
@@ -1391,6 +1376,7 @@
           <div class="btn-group">
             <button class="btn btn-sm" x-on:click="startBuild('ios','development')" x-bind:disabled="buildBlockers.length > 0">Dev</button>
             <button class="btn btn-sm" x-on:click="startBuild('ios','preview')" x-bind:disabled="buildBlockers.length > 0">Preview</button>
+            <button class="btn btn-sm" x-on:click="startBuild('ios','simulator')" x-bind:disabled="buildBlockers.length > 0" title="iOS Simulator build — no Apple credentials needed. Upload to Appetize.io for browser-based screenshots.">Simulator</button>
             <button class="btn btn-sm btn-primary" x-on:click="startBuild('ios','production')" x-bind:disabled="buildBlockers.length > 0">Production</button>
           </div>
         </div>
@@ -1423,7 +1409,7 @@
       <!-- Error state -->
       <div x-show="!buildsLoading && buildsError" style="padding:16px;color:var(--text-secondary)" x-text="buildsError"></div>
       <!-- Empty state -->
-      <div x-show="!buildsLoading && !buildsNoProject && !buildsError && builds.length === 0 && buildsLoaded" style="padding:16px;color:var(--text-secondary)">No builds yet. Use the buttons above to start your first build.</div>
+      <div x-show="!buildsLoading && !buildsNoProject && !buildsError && builds.length === 0 && localBuilds.length === 0 && buildsLoaded" style="padding:16px;color:var(--text-secondary)">No builds yet. Use the buttons above to start your first build.</div>
       <!-- Build cards -->
       <template x-for="build in visibleBuilds" :key="build.id">
         <div class="build-card" x-bind:data-build-id="build.id">
@@ -1449,6 +1435,17 @@
             <template x-if="normStatus(build) === 'canceled'">
               <div class="build-log" x-text="'Cancelled \u00B7 ' + formatDate(build.createdAt)"></div>
             </template>
+            <template x-if="normStatus(build) === 'submitting'">
+              <div class="build-log"><span class="spinner" style="vertical-align:middle;margin-right:6px"></span>Submitting to EAS&hellip;</div>
+            </template>
+            <template x-if="normStatus(build) === 'failed-locally'">
+              <div>
+                <div class="build-log build-log-fail" x-text="build.error || 'Build failed'"></div>
+                <template x-if="build.detailsOpen && build.fullOutput">
+                  <pre class="deps-output" style="margin-top:6px;max-height:200px" x-text="build.fullOutput"></pre>
+                </template>
+              </div>
+            </template>
             <!-- Submission log -->
             <template x-if="buildSubmissions[build.id]">
               <div class="build-log build-log-ok">
@@ -1461,6 +1458,15 @@
           </div>
           <span class="build-status" x-bind:class="normStatus(build)" x-text="normStatus(build).replace(/-/g, ' ')"></span>
           <div class="build-actions">
+            <template x-if="normStatus(build) === 'failed-locally' && build.fixHint === 'iosCredentials'">
+              <button class="btn btn-sm btn-primary" x-on:click="goToSection({tab:'config', section:'ios-credentials'})">Open Config to set up</button>
+            </template>
+            <template x-if="normStatus(build) === 'failed-locally' && build.fullOutput">
+              <button class="btn btn-sm" x-on:click="toggleLocalBuildDetails(build.id)" x-text="build.detailsOpen ? 'Hide details' : 'Show details'"></button>
+            </template>
+            <template x-if="normStatus(build) === 'failed-locally'">
+              <button class="btn btn-sm btn-danger-subtle" x-on:click="removeLocalBuild(build.id)">Dismiss</button>
+            </template>
             <!-- Cancel button for queued/in-progress -->
             <template x-if="normStatus(build) === 'new' || normStatus(build) === 'in-progress'">
               <button class="btn btn-sm btn-danger-subtle" x-on:click="cancelEasBuild(build.id)">Cancel</button>
@@ -1964,14 +1970,12 @@ document.addEventListener('alpine:init', () => {
     submissionsUrl: '',
     buildsShown: 10,
     bumpUp: true,
-    showBuildQueued: false,
-    buildQueuedText: '',
-    buildQueuedHint: '',
     easLoginWaiting: false,
     buildPreset: [],
     presetLoaded: false,
     presetRunning: false,
-    presetProgress: [],
+    // localBuilds: in-flight + pre-EAS-failed build attempts, rendered alongside real EAS builds
+    localBuilds: [],
 
     // Modules
     modules: [],
@@ -2086,7 +2090,7 @@ document.addEventListener('alpine:init', () => {
       return this.validation.pass + '/' + total + ' checks passing';
     },
 
-    get visibleBuilds() { return this.builds.slice(0, this.buildsShown); },
+    get visibleBuilds() { return [...this.localBuilds, ...this.builds.slice(0, this.buildsShown)]; },
 
     get otaPushDisabled() { return !this.otaMessage.trim(); },
 
@@ -2567,16 +2571,6 @@ bumpVersion(type) {
         if (!data.ok) { this.builds = []; this.buildsError = data.error || ''; return; }
         this.builds = data.builds || [];
         this.buildsShown = 10;
-        // Update queued banner
-        if (this.showBuildQueued) {
-          var hasActive = this.builds.some(b => { var s = this.normStatus(b); return s === 'new' || s === 'in-progress'; });
-          if (hasActive) {
-            var avg = this.getAverageWaitTime();
-            var waitText = avg ? 'Average build time: ~' + avg + ' min.' : 'Builds typically take 10–20 minutes.';
-            this.buildQueuedText = 'Build is queued';
-            this.buildQueuedHint = waitText + ' Check back and hit Refresh.';
-          } else { this.showBuildQueued = false; }
-        }
       } catch (err) { this.builds = []; this.buildsError = err.message; }
       finally { this.buildsLoading = false; }
     },
@@ -2588,17 +2582,55 @@ bumpVersion(type) {
       }
       if (this.dirty) { alert('You have unsaved changes. Save your changes on the Config tab before building.'); return; }
       if (!confirm('Start a ' + profile + ' build for ' + platform + '?\n\nThis will queue a build on EAS servers.')) return;
-      this.showToast('Starting ' + platform + ' ' + profile + ' build...', 'info');
+      await this.attemptBuild(platform, profile);
+    },
+
+    // ---- Local builds (in-flight + pre-EAS failures) ----
+    async attemptBuild(platform, profile, { skipReload = false } = {}) {
+      var localId = this.pushLocalBuild(platform, profile);
       try {
         var res = await this.postJson('/api/builds/new', { platform, profile });
         var data = await res.json();
-        if (data.ok) {
-          var label = platform === 'ios' ? 'iOS' : 'Android';
-          this.buildQueuedText = label + ' ' + profile + ' build started';
-          this.buildQueuedHint = 'It may take a minute to appear. Hit Refresh to check.';
-          this.showBuildQueued = true;
-        } else { this.showToast('Build failed: ' + data.error, 'error'); }
-      } catch (err) { this.showToast('Build error: ' + err.message, 'error'); }
+        if (data && data.ok) {
+          this.removeLocalBuild(localId);
+          if (!skipReload) await this.loadBuilds();
+        } else {
+          this.failLocalBuild(localId, (data && data.error) || 'Build failed', (data && data.fullOutput) || '', (data && data.fixHint) || null);
+        }
+      } catch (err) {
+        this.failLocalBuild(localId, 'Network error: ' + err.message, '', null);
+      }
+    },
+
+    pushLocalBuild(platform, profile) {
+      var id = 'lb_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      // Cap failed-locally pileup at 10
+      var failed = this.localBuilds.filter(b => b.status === 'failed-locally').slice(0, 9);
+      var inFlight = this.localBuilds.filter(b => b.status === 'submitting');
+      this.localBuilds = [{
+        id: id,
+        platform: platform,
+        appVersion: this.config.version || '',
+        buildProfile: profile,
+        status: 'submitting',
+        createdAt: new Date().toISOString(),
+        detailsOpen: false,
+      }, ...inFlight, ...failed];
+      return id;
+    },
+
+    failLocalBuild(id, error, fullOutput, fixHint) {
+      var idx = this.localBuilds.findIndex(b => b.id === id);
+      if (idx === -1) return;
+      this.localBuilds[idx] = { ...this.localBuilds[idx], status: 'failed-locally', error: error, fullOutput: fullOutput, fixHint: fixHint };
+    },
+
+    removeLocalBuild(id) { this.localBuilds = this.localBuilds.filter(b => b.id !== id); },
+
+    toggleLocalBuildDetails(id) {
+      var idx = this.localBuilds.findIndex(b => b.id === id);
+      if (idx === -1) return;
+      this.localBuilds[idx] = { ...this.localBuilds[idx], detailsOpen: !this.localBuilds[idx].detailsOpen };
     },
 
     // Build Presets
@@ -2632,25 +2664,21 @@ bumpVersion(type) {
       }
       if (this.dirty) { alert('You have unsaved changes. Save your changes on the Config tab before building.'); return; }
       if (this.buildPreset.length === 0) return;
-      this.presetProgress = this.buildPreset.map(k => { var p = k.split(':'); return { key: k, platform: p[0], profile: p[1], label: (p[0] === 'ios' ? 'iOS' : 'Android') + ' ' + p[1], status: 'pending' }; });
-      if (!confirm('Start ' + this.presetProgress.length + ' build(s)?\n\n' + this.presetProgress.map(p => p.label).join('\n') + '\n\nThis will queue builds on EAS servers.')) { this.presetProgress = []; return; }
+      var presetEntries = this.buildPreset.map(k => { var p = k.split(':'); return { platform: p[0], profile: p[1], label: (p[0] === 'ios' ? 'iOS' : 'Android') + ' ' + p[1] }; });
+      if (!confirm('Start ' + presetEntries.length + ' build(s)?\n\n' + presetEntries.map(p => p.label).join('\n') + '\n\nThis will queue builds on EAS servers.')) return;
       this.presetRunning = true;
-      for (var i = 0; i < this.presetProgress.length; i++) {
-        this.presetProgress = this.presetProgress.map((item, j) => j === i ? { ...item, status: 'queuing' } : item);
-        try {
-          var res = await this.postJson('/api/builds/new', { platform: this.presetProgress[i].platform, profile: this.presetProgress[i].profile });
-          var data = await res.json();
-          this.presetProgress = this.presetProgress.map((item, j) => j === i ? { ...item, status: data.ok ? 'queued' : 'error' } : item);
-        } catch (err) { this.presetProgress = this.presetProgress.map((item, j) => j === i ? { ...item, status: 'error' } : item); }
-        if (i < this.presetProgress.length - 1) await new Promise(r => setTimeout(r, 2000));
+      // Each attemptBuild awaits eas-cli for ~30-60s, which spaces submissions out enough for EAS
+      // on its own — no manual stagger needed. skipReload avoids N redundant build:list fetches;
+      // we refresh once at the end instead.
+      var hadSuccess = false;
+      for (var i = 0; i < presetEntries.length; i++) {
+        var beforeFailures = this.localBuilds.filter(b => b.status === 'failed-locally').length;
+        await this.attemptBuild(presetEntries[i].platform, presetEntries[i].profile, { skipReload: true });
+        var afterFailures = this.localBuilds.filter(b => b.status === 'failed-locally').length;
+        if (afterFailures === beforeFailures) hadSuccess = true;
       }
+      if (hadSuccess) await this.loadBuilds();
       this.presetRunning = false;
-      var queued = this.presetProgress.filter(p => p.status === 'queued').length;
-      if (queued > 0) {
-        this.buildQueuedText = queued + ' build' + (queued > 1 ? 's' : '') + ' started';
-        this.buildQueuedHint = 'It may take a minute to appear. Hit Refresh to check.';
-        this.showBuildQueued = true;
-      }
     },
 
     async submitToStore(platform, buildId) {

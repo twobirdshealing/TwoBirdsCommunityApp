@@ -2,6 +2,38 @@
 
 All notable changes to the TBC Community App white-label product.
 
+## [Unreleased]
+
+### Fixed
+- Dashboard build buttons no longer fail silently — `/api/builds/new` now awaits the EAS result and surfaces failures (credentials missing, EAS login expired, network errors, etc.) instead of always reporting "queued" ([setup/dashboard.js](setup/dashboard.js), [setup/lib/eas.js](setup/lib/eas.js))
+- Dashboard `eas build` invocations now use `--no-wait` so the request returns after the upload queues on EAS instead of blocking until the entire build completes
+- Server-side `eas build` subprocesses are now killed if the dashboard browser disconnects mid-upload, preventing orphaned processes
+
+### Added
+- Recent Builds list now shows in-flight build attempts (`submitting` state) and pre-EAS failures (`failed-locally` state) as local entries with the same card layout as EAS rows
+- Failed local builds show friendly error text, a "Show details" toggle for raw `eas` output, and a "Dismiss" button
+- iOS-credentials build failures show an "Open Config to set up" button that jumps to the new iOS Credentials section in the Config tab
+- New informational iOS Credentials row in Config → App Store Submission with the `eas credentials --platform ios` command and a Copy button
+- New iOS Simulator build button on the Builds tab (and "iOS Sim" Quick Build chip) for credential-free builds you can run in [Appetize.io](https://appetize.io)
+- New "iOS Credentials (first iOS build only)" step-card in [setup/setup-guide.html](setup/setup-guide.html) covering the full interactive walkthrough and the simulator/Appetize escape hatch
+
+### Removed
+- `presetProgress` strip and `buildQueuedBanner` from the Builds tab (their job is now done by local entries appearing in the Recent Builds list)
+
+## [3.4.5] — 2026-04-07
+
+### Changed
+- Dark mode, messaging, and courses are now fully auto-detected from Fluent Community — manual checkboxes removed from companion plugin settings
+- Startup batch conditionally includes messaging and courses paths based on cached feature flags (eliminates 404 spam when modules are off)
+- Companion plugin bumped to v3.53.0
+
+### Fixed
+- Repeated 404 errors on startup when Course module is disabled in Fluent Community
+- Push notification type renamed from `friend_new_post` to `follower_new_post` (companion plugin v3.52.0)
+- Push notifications leaking to non-members of private spaces (companion plugin v3.51.2)
+- Stale space cache for app-only users added to spaces via automations (companion plugin v3.52.1)
+- Stale unread counts caused by LiteSpeed caching authenticated responses (companion plugin v3.52.2)
+
 ## [3.4.4] — 2026-04-02
 
 ### Added

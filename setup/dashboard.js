@@ -84,6 +84,16 @@ function startNpmInstall() {
     installProcess.output += '\n' + err.message;
   });
 }
+/** After extracting an update tar, reload the updates module and merge deps with the latest code */
+function finalizeUpdate(result) {
+  if (result.pendingDeps) {
+    delete require.cache[require.resolve('./lib/updates')];
+    const { mergePackageDeps } = require('./lib/updates');
+    result.depsChanged = mergePackageDeps(result.pendingDeps);
+    startNpmInstall();
+  }
+}
+
 let lastHeartbeat = Date.now();
 
 // ---------------------------------------------------------------------------
@@ -398,11 +408,19 @@ const server = http.createServer(async (req, res) => {
       if (!VALID_PLATFORMS.includes(platform)) { jsonResponse(res, { ok: false, error: 'Invalid platform' }, 400); return; }
       if (!VALID_PROFILES.includes(profile)) { jsonResponse(res, { ok: false, error: 'Invalid profile' }, 400); return; }
       console.log(`  Starting EAS build: ${platform} / ${profile}...`);
-      startEasBuild(platform, profile).then(r => {
-        if (r.ok) console.log(`  ✓ EAS build queued: ${platform} / ${profile}`);
-        else console.log(`  ✗ EAS build failed: ${r.error}`);
-      });
-      jsonResponse(res, { ok: true });
+      // Kill the eas-cli subprocess if the client disconnects mid-build, otherwise it runs orphaned
+      let buildChild = null;
+      const onAbort = () => { if (buildChild && !buildChild.killed) { try { buildChild.kill(); } catch {} } };
+      req.on('close', onAbort);
+      let result;
+      try {
+        result = await startEasBuild(platform, profile, { onSpawn: (c) => { buildChild = c; } });
+      } finally {
+        req.off('close', onAbort);
+      }
+      if (result.ok) console.log(`  ✓ EAS build queued: ${platform} / ${profile}`);
+      else console.log(`  ✗ EAS build failed: ${result.error}`);
+      jsonResponse(res, result);
       return;
     }
 
@@ -645,7 +663,8 @@ const server = http.createServer(async (req, res) => {
         const tarGzBuffer = await downloadUpdate(downloadUrl, key);
         const result = applyUpdateFromTar(tarGzBuffer);
         pruneBackups(3);
-        if (result.depsChanged) startNpmInstall();
+
+        finalizeUpdate(result);
         jsonResponse(res, { ok: true, backup: backup.label, ...result });
       } catch (err) {
         jsonResponse(res, { error: 'Update failed: ' + err.message }, 500);
@@ -676,7 +695,8 @@ const server = http.createServer(async (req, res) => {
 
         const result = applyUpdateFromTar(tarGzBuffer);
         pruneBackups(3);
-        if (result.depsChanged) startNpmInstall();
+
+        finalizeUpdate(result);
         jsonResponse(res, { ok: true, backup: backup.label, ...result });
       } catch (err) {
         jsonResponse(res, { error: 'Upload update failed: ' + err.message }, 500);

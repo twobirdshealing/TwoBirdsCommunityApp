@@ -1392,9 +1392,62 @@ export const MODULES: ModuleManifest[] = [
           <li><strong>Install EAS CLI</strong> globally: <code>npm install -g eas-cli</code></li>
           <li><strong>Log in</strong> to your Expo account: <code>eas login</code></li>
           <li><strong>Initialize the project:</strong> <code>eas init</code> &mdash; generates a project ID. Copy it to <code>app.json</code> &rarr; <code>expo.extra.eas.projectId</code> and set <code>expo.owner</code> to your Expo username.</li>
-          <li><strong>iOS (first build only):</strong> EAS prompts for your Apple Developer login and manages provisioning profiles automatically.</li>
+          <li><strong>iOS (first build only):</strong> EAS prompts for your Apple Developer login and manages provisioning profiles automatically. See the <strong>iOS Credentials</strong> card below for the full walkthrough.</li>
           <li><strong>Android (first production build):</strong> EAS creates and securely stores your signing keystore.</li>
         </ol>
+      </div>
+    </details>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">iOS Credentials (first iOS build only)</span></div>
+  <div class="step-body">
+    <p>Before EAS can build for iOS, your Apple Developer account needs a distribution certificate and a provisioning profile for your app's bundle ID. EAS handles this through an interactive command &mdash; you only need to run it once per app.</p>
+
+    <div class="callout">
+      <strong>How you'll know you need this:</strong> If you click an iOS build button in the dashboard and the build fails with &ldquo;iOS credentials aren't set up yet,&rdquo; that's the trigger. The dashboard will show an <strong>Open Config to set up</strong> button that takes you to the <strong>iOS Credentials</strong> row in the Config tab &mdash; copy the command from there and follow the walkthrough below.
+    </div>
+
+    <details>
+      <summary>Full credentials setup walkthrough</summary>
+      <div class="details-content">
+        <ol>
+          <li><strong>Open a terminal</strong> in your project root and run:
+              <pre><code>eas credentials --platform ios</code></pre></li>
+          <li><strong>Pick &ldquo;Build Credentials&rdquo;</strong> from the menu (manages everything needed to build your project &mdash; not Push Notifications or App Store Connect).</li>
+          <li><strong>Pick &ldquo;All&rdquo;</strong> when asked what to do (sets up the certificate AND the provisioning profile in one pass).</li>
+          <li><strong>Sign in to Apple</strong> when prompted &mdash; your Apple ID email, password, and a 2FA code from your phone.</li>
+          <li><strong>Distribution certificate:</strong> if you already have other apps under the same Apple Developer account, EAS will offer to <strong>reuse an existing certificate</strong>. Pick yes &mdash; Apple limits you to 3 distribution certs at a time and reusing is the right move.</li>
+          <li><strong>Provisioning profile:</strong> pick yes to generate a new one. This is unique to your app's bundle ID and won't affect any other apps you have on the same account.</li>
+          <li><strong>Device registration:</strong> development and preview profiles need at least one registered device (because they install directly to phones, not through the App Store). If you have your iPhone handy, pick yes &mdash; EAS will give you a URL to open on your phone that auto-registers it. Otherwise pick no, and either:
+              <ul>
+                <li>Run <code>eas device:create</code> later when you have a device to register, or</li>
+                <li>Use the <strong>production</strong> profile instead, which doesn't need any registered devices (production builds go to the App Store, not directly to phones).</li>
+              </ul></li>
+          <li><strong>Done.</strong> EAS prints &ldquo;All credentials are ready to build your project.&rdquo; Pick &ldquo;Go back&rdquo; then &ldquo;Exit&rdquo; to leave the menu.</li>
+          <li><strong>Back in the dashboard,</strong> click the iOS build button again &mdash; this time it should succeed and the build will queue on EAS.</li>
+        </ol>
+        <div class="callout callout-warn" style="margin-top: 12px;">
+          <strong>Multi-app accounts:</strong> If you build multiple apps under the same Apple Developer account, each app needs its own provisioning profile (they're scoped per bundle ID), but they can all share the same distribution certificate. EAS will detect existing certs and offer to reuse them &mdash; always pick reuse to avoid burning your 3-cert limit.
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>No Apple Developer account? Use the iOS Simulator + Appetize</summary>
+      <div class="details-content">
+        <p>If you want to see your app running on iOS without setting up an Apple Developer account ($99/year), there's a fully credential-free path:</p>
+        <ol>
+          <li>In the dashboard's Builds tab, click the <strong>Simulator</strong> button on the iOS card (or use <code>eas build --platform ios --profile simulator</code> from the command line).</li>
+          <li>EAS builds an iOS Simulator binary (a <code>.app</code> file inside a <code>.tar.gz</code>) &mdash; this skips code signing entirely, so no Apple credentials, no certificates, no devices, and no Developer account needed.</li>
+          <li>When the build finishes, download the <code>.tar.gz</code> from EAS and extract it.</li>
+          <li>Upload the resulting <code>.app</code> folder to <a href="https://appetize.io" target="_blank" rel="noopener">appetize.io</a> &mdash; a free browser-based iOS Simulator service.</li>
+          <li>Open the Appetize URL in your browser to run your app in a simulated iPhone or iPad and take screenshots from your Windows or Linux machine.</li>
+        </ol>
+        <div class="callout" style="margin-top: 12px;">
+          <strong>What this is good for:</strong> showing your app to stakeholders, taking marketing screenshots, verifying the build works before committing to the Apple Developer signup. <strong>What it can't do:</strong> install on a real iPhone or submit to the App Store &mdash; both of those still require a real Apple Developer account and the credentials flow above.
+        </div>
       </div>
     </details>
   </div>
