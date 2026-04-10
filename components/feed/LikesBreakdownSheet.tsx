@@ -80,7 +80,7 @@ export function LikesBreakdownSheet({ visible, onClose, feedId }: LikesBreakdown
               <UserDisplayName
                 name={item.xprofile?.display_name || 'Unknown'}
                 verified={item.xprofile?.is_verified === 1}
-                badgeSlugs={item.xprofile?.meta?.badge_slug ? [item.xprofile.meta.badge_slug] : undefined}
+                badgeSlugs={item.xprofile?.meta?.badge_slug}
                 numberOfLines={1}
                 style={styles.nameRow}
               />

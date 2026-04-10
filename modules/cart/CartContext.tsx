@@ -9,8 +9,8 @@
 // anywhere in the app (header icon, launcher, deep links, etc).
 // =============================================================================
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, RefreshControl, StyleSheet } from 'react-native';
 import { addResponseHeaderListener } from '@/services/api/client';
 import { createLogger } from '@/utils/logger';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -35,6 +35,20 @@ const DEFAULT_SETTINGS: CartSettings = {
   price_decimals: 2,
 };
 
+/** Type guard for tbc-cart's coupon error payload: { success, message, cart }. */
+function parseCouponErrorPayload(raw: unknown): { message?: string; cart?: CartData } | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as Record<string, unknown>;
+  const message = typeof obj.message === 'string' ? obj.message : undefined;
+  const cartObj = obj.cart;
+  const cart =
+    cartObj && typeof cartObj === 'object' && !Array.isArray(cartObj)
+      && Array.isArray((cartObj as Record<string, unknown>).items)
+      ? (cartObj as CartData)
+      : undefined;
+  return message || cart ? { message, cart } : null;
+}
+
 // -----------------------------------------------------------------------------
 // Contexts
 // -----------------------------------------------------------------------------
@@ -57,7 +71,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [hasOpened, setHasOpened] = useState(false);
-  const hasOpenedRef = useRef(false);
 
   // -------------------------------------------------------------------------
   // Cart count from response headers
@@ -101,17 +114,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const openCart = useCallback(() => {
     log('Opening cart sheet');
     setSheetVisible(true);
-    if (hasOpenedRef.current) {
-      // Defer to next tick — bundling the refetch with setSheetVisible into
-      // one React commit caused an iPad-only present()/render race.
-      setTimeout(refresh, 0);
+    if (hasOpened) {
+      refresh();
     } else {
-      // Ref + state both intentional: ref for synchronous read in this
-      // callback, state for `enabled` gating in useAppQuery below.
-      hasOpenedRef.current = true;
+      // First open flips the useAppQuery `enabled` gate on, triggering the
+      // initial fetch. Subsequent opens call refresh() directly above.
       setHasOpened(true);
     }
-  }, [refresh]);
+  }, [hasOpened, refresh]);
 
   const closeCart = useCallback(() => {
     setSheetVisible(false);
@@ -150,12 +160,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (result.success) {
         mutate(result.data);
         return true;
-      } else {
-        const errorData = result.error?.data as any;
-        setCouponError(errorData?.message || result.error?.message || 'Could not apply coupon');
-        if (errorData?.cart) mutate(errorData.cart);
-        return false;
       }
+      // tbc-cart returns { success: false, message, cart } on coupon failure
+      // so the UI can refresh the cart state without a separate fetch.
+      const parsed = parseCouponErrorPayload(result.error?.data?.raw);
+      setCouponError(parsed?.message || result.error?.message || 'Could not apply coupon');
+      if (parsed?.cart) mutate(parsed.cart);
+      return false;
     } finally {
       setCouponLoading(false);
     }
@@ -174,49 +185,66 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // -------------------------------------------------------------------------
   // Sheet content
   // -------------------------------------------------------------------------
-  // Uses BottomSheetScrollView (not BottomSheetFlatList) to avoid an iOS-only
-  // crash on iPad. BottomSheetFlatList registers itself as a scrollable with
-  // gorhom's gesture system on mount; when the FlatList renders in the same
-  // React commit as the modal present() (which happens on the 2nd cart open
-  // because TanStack Query's cached data skips the isLoading branch), UIKit
-  // hits a view-tree commit assertion → NSException → SIGABRT.
-  // Carts are size-bounded (typically <20 items), so virtualization gives no
-  // real benefit and ScrollView is the right tool here.
+  // BottomSheetScrollView is always rendered as the root of the sheet
+  // content and stays mounted across open/close cycles. Loading, empty,
+  // and error states render as children inside it. This is load-bearing
+  // on iOS: conditionally remounting a ScrollView that contains a
+  // RefreshControl inside an animating BottomSheetModal hits a UIKit
+  // view-hierarchy assertion on the 2nd present() — the 1st open only
+  // works by accident because cart data isn't loaded yet so the
+  // ScrollView doesn't exist during the initial present animation.
   // -------------------------------------------------------------------------
 
   const renderSheetContent = () => {
-    if (isLoading) {
-      return (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      );
-    }
+    const hasItems = !!cart && cart.items.length > 0;
 
-    if (error && !cart) {
-      return (
-        <View style={styles.centered}>
-          <ErrorMessage message={error.message} onRetry={refresh} />
-        </View>
-      );
-    }
-
-    if (!cart || cart.items.length === 0) {
-      return (
-        <View style={styles.centered}>
+    const inner = (() => {
+      if (isLoading) {
+        return <ActivityIndicator size="large" color={colors.primary} />;
+      }
+      if (error && !cart) {
+        return <ErrorMessage message={error.message} onRetry={refresh} />;
+      }
+      if (!cart || cart.items.length === 0) {
+        return (
           <EmptyState
             icon="cart-outline"
             title="Your cart is empty"
             message="Browse products to add items to your cart"
           />
-        </View>
+        );
+      }
+      const settings = cart.settings ?? DEFAULT_SETTINGS;
+      return (
+        <>
+          {cart.items.map((item) => (
+            <CartItemRow
+              key={item.key}
+              item={item}
+              settings={settings}
+              onUpdateQuantity={handleUpdateQuantity}
+              onRemove={handleRemoveItem}
+              disabled={mutatingKey !== null}
+            />
+          ))}
+          <CartSummary
+            totals={cart.totals}
+            coupons={cart.coupons ?? []}
+            fees={cart.fees ?? []}
+            settings={settings}
+            onApplyCoupon={handleApplyCoupon}
+            onRemoveCoupon={handleRemoveCoupon}
+            onClose={closeCart}
+            couponLoading={couponLoading}
+            couponError={couponError}
+          />
+        </>
       );
-    }
-
-    const settings = cart.settings ?? DEFAULT_SETTINGS;
+    })();
 
     return (
       <BottomSheetScrollView
+        contentContainerStyle={hasItems ? undefined : styles.centeredContainer}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -226,27 +254,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           />
         }
       >
-        {cart.items.map((item) => (
-          <CartItemRow
-            key={item.key}
-            item={item}
-            settings={settings}
-            onUpdateQuantity={handleUpdateQuantity}
-            onRemove={handleRemoveItem}
-            disabled={mutatingKey !== null}
-          />
-        ))}
-        <CartSummary
-          totals={cart.totals}
-          coupons={cart.coupons ?? []}
-          fees={cart.fees ?? []}
-          settings={settings}
-          onApplyCoupon={handleApplyCoupon}
-          onRemoveCoupon={handleRemoveCoupon}
-          onClose={closeCart}
-          couponLoading={couponLoading}
-          couponError={couponError}
-        />
+        {inner}
       </BottomSheetScrollView>
     );
   };
@@ -292,8 +300,8 @@ export function useCartSheet() {
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
+  centeredContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,

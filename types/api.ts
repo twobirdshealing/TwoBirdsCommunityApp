@@ -13,5 +13,10 @@ export interface ApiError {
     status: number;
     field?: string;
     allowed_values?: string[];
+    /**
+     * The raw error payload from the server, preserved for endpoint-specific
+     * deserialization. Use a type guard before reading shaped fields from it.
+     */
+    raw?: unknown;
   };
 }

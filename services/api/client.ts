@@ -151,7 +151,7 @@ function normalizeApiError(data: unknown, statusCode: number): ApiError {
     return {
       code: 'error',
       message: typeof data === 'string' ? data : 'An unknown error occurred',
-      data: { status: statusCode },
+      data: { status: statusCode, raw: data },
     };
   }
 
@@ -159,15 +159,15 @@ function normalizeApiError(data: unknown, statusCode: number): ApiError {
 
   // Extract message — handle string, array, or missing
   let message: string;
-  const raw = obj.message;
+  const rawMessage = obj.message;
 
-  if (typeof raw === 'string') {
-    message = raw;
-  } else if (Array.isArray(raw)) {
-    message = raw.filter(m => typeof m === 'string').join('. ') || 'Validation failed';
-  } else if (raw && typeof raw === 'object') {
+  if (typeof rawMessage === 'string') {
+    message = rawMessage;
+  } else if (Array.isArray(rawMessage)) {
+    message = rawMessage.filter(m => typeof m === 'string').join('. ') || 'Validation failed';
+  } else if (rawMessage && typeof rawMessage === 'object') {
     // Nested validation errors: { field: ["error1", "error2"] }
-    const flat = Object.values(raw as Record<string, unknown>).flatMap(v =>
+    const flat = Object.values(rawMessage as Record<string, unknown>).flatMap(v =>
       Array.isArray(v) ? v : [v]
     );
     message = flat.filter(m => typeof m === 'string').join('. ') || 'An error occurred';
@@ -175,14 +175,15 @@ function normalizeApiError(data: unknown, statusCode: number): ApiError {
     message = typeof obj.error === 'string' ? obj.error : 'An error occurred';
   }
 
+  const nestedData =
+    obj.data && typeof obj.data === 'object' ? (obj.data as Record<string, unknown>) : null;
+
   return {
     code: typeof obj.code === 'string' ? obj.code : 'error',
     message,
     data: {
-      status:
-        obj.data && typeof obj.data === 'object' && typeof (obj.data as any).status === 'number'
-          ? (obj.data as any).status
-          : statusCode,
+      status: typeof nestedData?.status === 'number' ? nestedData.status : statusCode,
+      raw: data,
     },
   };
 }
