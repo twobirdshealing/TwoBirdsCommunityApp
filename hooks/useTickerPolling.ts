@@ -59,7 +59,7 @@ export function useTickerPolling(enabled: boolean): void {
       if (state === 'active') {
         if (!activeRef.current) {
           activeRef.current = true;
-          log('Resumed');
+          log.debug('Resumed');
           // Tick immediately on foreground, then schedule next
           tick();
         }
@@ -69,11 +69,11 @@ export function useTickerPolling(enabled: boolean): void {
           clearTimeout(timerRef.current);
           timerRef.current = null;
         }
-        log('Paused');
+        log.debug('Paused');
       }
     });
 
-    log('Started');
+    log.debug('Started');
 
     return () => {
       if (timerRef.current) {
@@ -82,7 +82,7 @@ export function useTickerPolling(enabled: boolean): void {
       }
       activeRef.current = false;
       subscription.remove();
-      log('Stopped');
+      log.debug('Stopped');
     };
   }, [enabled]);
 }

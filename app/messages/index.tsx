@@ -207,7 +207,7 @@ export default function MessagesScreen() {
                 Alert.alert('Error', 'Failed to delete conversation');
               }
             } catch (err) {
-              log.error('Delete thread error:', err);
+              log.error(err, 'Delete thread error');
               Alert.alert('Error', 'Failed to delete conversation');
             }
           },

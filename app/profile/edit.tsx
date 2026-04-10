@@ -142,7 +142,7 @@ export default function EditProfileScreen() {
           });
         }
       } catch (err) {
-        log.error('Failed to load profile for edit:', err);
+        log.error(err, 'Failed to load profile for edit');
         Alert.alert('Error', 'Failed to load profile.');
         router.back();
       } finally {
@@ -319,7 +319,7 @@ export default function EditProfileScreen() {
         Alert.alert('Error', message || 'Failed to save profile.');
       }
     } catch (err) {
-      log.error('Failed to save profile:', err);
+      log.error(err, 'Failed to save profile');
       Alert.alert('Error', 'Failed to save profile.');
     } finally {
       setSaving(false);

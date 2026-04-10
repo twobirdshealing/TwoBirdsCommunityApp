@@ -225,7 +225,7 @@ export function CreatePostContent({
         }
       }
     } catch (error) {
-      log.error('Image picker error:', error);
+      log.error(error, 'Image picker error');
       Alert.alert('Error', 'Failed to pick image');
     } finally {
       setIsUploading(false);
@@ -358,7 +358,7 @@ export function CreatePostContent({
       setPollData(null);
       onClose();
     } catch (error) {
-      log.error('Submit error:', error);
+      log.error(error, 'Submit error');
       Alert.alert('Error', error instanceof Error ? error.message : 'Failed to post. Please try again.');
     } finally {
       setIsSubmitting(false);

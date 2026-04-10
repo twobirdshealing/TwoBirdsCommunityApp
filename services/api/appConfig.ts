@@ -118,6 +118,13 @@ export interface FeaturesConfig {
   custom_fields: boolean;
 }
 
+export interface CrashReportingConfig {
+  /** Whether the buyer has opted into crash reporting in WP admin. */
+  enabled: boolean;
+  /** Sentry DSN. Empty string means crash reporting is effectively off. */
+  dsn: string;
+}
+
 /** Keys of FeaturesConfig whose value is boolean (excludes nested objects like profile_tabs) */
 export type BooleanFeatureKey = {
   [K in keyof FeaturesConfig]: FeaturesConfig[K] extends boolean ? K : never;
@@ -136,6 +143,8 @@ export interface AppConfigResponse {
   registration?: RegistrationConfig;
   /** Feature flags controlled from wp-admin */
   features?: FeaturesConfig;
+  /** Crash reporting (Sentry) config controlled from wp-admin */
+  crash_reporting?: CrashReportingConfig;
   /** WordPress time format string (e.g. 'g:i a' for 12h, 'H:i' for 24h) */
   time_format?: string;
 }

@@ -340,7 +340,7 @@ export default function UserProfileScreen() {
         } : prev);
       }
     } catch (err) {
-      log.error('Follow action failed:', err);
+      log.error(err, 'Follow action failed');
       Alert.alert('Error', 'Failed to update follow status');
     } finally {
       setFollowLoading(false);
@@ -355,7 +355,7 @@ export default function UserProfileScreen() {
     try {
       await profilesApi.toggleFollowNotification(username);
     } catch (err) {
-      log.error('Toggle email notification failed:', err);
+      log.error(err, 'Toggle email notification failed');
       mutate(prev => prev ? { ...prev, follow: isEmailNotifyOn ? 2 : 1 } : prev);
     }
   };
@@ -393,7 +393,7 @@ export default function UserProfileScreen() {
               }
             }
           } catch (err) {
-            log.error('Block action failed:', err);
+            log.error(err, 'Block action failed');
             Alert.alert('Error', `Failed to ${action.toLowerCase()} user`);
           } finally {
             setBlockLoading(false);
@@ -510,7 +510,7 @@ export default function UserProfileScreen() {
               Alert.alert('Error', 'Failed to delete comment');
             }
           } catch (err) {
-            log.error('Delete comment failed:', err);
+            log.error(err, 'Delete comment failed');
             Alert.alert('Error', 'Failed to delete comment');
           }
         },

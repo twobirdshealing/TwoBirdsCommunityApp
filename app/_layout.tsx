@@ -5,6 +5,22 @@
 // UnreadCountsProvider shares badge state between TopHeader and this layout.
 // =============================================================================
 
+// Sentry must initialize at module-load time, BEFORE any React code runs,
+// so that errors during provider/hook setup are captured. The DSN is read
+// synchronously from MMKV — first launch with no cached config silently
+// skips init and waits for the next session (acceptable tradeoff vs. the
+// complexity of deferring init to a React effect).
+// Wrapped in try/catch because a failing init must not take down the bundle
+// before React can mount — the whole point of this module is to REPORT
+// crashes, not cause them.
+import { initSentry, wrapWithSentry } from '@/services/sentry';
+import { getCrashReportingConfig } from '@/utils/crashReportingCache';
+try {
+  initSentry(getCrashReportingConfig());
+} catch {
+  // Swallowed on purpose — crash reporting is best-effort at startup.
+}
+
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ForceUpdateScreen } from '@/components/common/ForceUpdateScreen';
 import { MaintenanceScreen } from '@/components/common/MaintenanceScreen';
@@ -37,16 +53,19 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { getModuleProviders, getModuleRoutePrefixes, initModules, handleModuleNotification } from '@/modules/_registry';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { queryClient, queryPersister } from '@/services/queryClient';
+import { createLogger } from '@/utils/logger';
 import 'react-native-reanimated';
+
+const log = createLogger('Setup');
 
 // Keep the native splash screen visible until we're ready to render
 SplashScreen.preventAutoHideAsync();
 
-// Dev-mode setup validation — catch common white-label configuration mistakes
-if (__DEV__) {
-  if (APP_VERSION === '1.0.0') {
-    console.warn('[SETUP] APP_VERSION is still 1.0.0 — update version in package.json and app.json');
-  }
+// Setup validation — catch common white-label configuration mistakes.
+// log.warn is a no-op in production (only sent to Sentry as a breadcrumb),
+// so this is safe to leave un-wrapped.
+if (APP_VERSION === '1.0.0') {
+  log.warn('APP_VERSION is still 1.0.0 — update version in package.json and app.json');
 }
 
 // Transparent nav theme — lets the root View background show through card containers,
@@ -440,7 +459,7 @@ function ModuleProviders({ children }: { children: React.ReactNode }) {
 // Root Layout
 // -----------------------------------------------------------------------------
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.flex}>
       <ErrorBoundary>
@@ -467,6 +486,11 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+// Wrap with Sentry to enable automatic navigation breadcrumbs and the React
+// profiler integration. No-op when Sentry isn't initialized — safe to apply
+// unconditionally.
+export default wrapWithSentry(RootLayout);
 
 const styles = StyleSheet.create({
   flex: {

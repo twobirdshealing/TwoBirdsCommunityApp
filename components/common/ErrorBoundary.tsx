@@ -1,11 +1,14 @@
 // =============================================================================
 // ERROR BOUNDARY - Catches unhandled render errors, prevents full app crash
 // =============================================================================
-// Wraps the root layout. Falls back to a friendly retry screen instead of
-// a white screen crash. Class component required (React has no hook equivalent).
+// Wraps Sentry's ErrorBoundary so React render errors are automatically
+// captured (with full component stack) when crash reporting is enabled.
+// Falls back to a friendly retry screen instead of a white screen crash.
+// When Sentry isn't initialized, behavior is identical to a plain boundary.
 // =============================================================================
 
-import React, { Component, ReactNode } from 'react';
+import * as Sentry from '@sentry/react-native';
+import React, { ReactNode } from 'react';
 import {
   Appearance,
   Pressable,
@@ -16,44 +19,29 @@ import {
 import { sizing, spacing, typography } from '@/constants/layout';
 
 // -----------------------------------------------------------------------------
-// Props & State
+// Component
 // -----------------------------------------------------------------------------
 
 interface ErrorBoundaryProps {
   children: ReactNode;
 }
 
-interface ErrorBoundaryState {
-  hasError: boolean;
-}
-
-// -----------------------------------------------------------------------------
-// Component
-// -----------------------------------------------------------------------------
-
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { hasError: false };
-
-  static getDerivedStateFromError(): ErrorBoundaryState {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    if (__DEV__) {
-      console.error('[ErrorBoundary]', error, errorInfo.componentStack);
-    }
-  }
-
-  handleRetry = () => {
-    this.setState({ hasError: false });
-  };
-
-  render() {
-    if (this.state.hasError) {
-      return <ErrorFallback onRetry={this.handleRetry} />;
-    }
-    return this.props.children;
-  }
+export function ErrorBoundary({ children }: ErrorBoundaryProps) {
+  return (
+    <Sentry.ErrorBoundary
+      fallback={({ resetError }) => <ErrorFallback onRetry={resetError} />}
+      onError={(error, componentStack) => {
+        // Sentry captures these in production; dev console still needs the
+        // stack so developers see the failure immediately without switching
+        // to the Sentry dashboard.
+        if (__DEV__) {
+          console.error('[ErrorBoundary]', error, componentStack);
+        }
+      }}
+    >
+      {children}
+    </Sentry.ErrorBoundary>
+  );
 }
 
 // -----------------------------------------------------------------------------

@@ -92,7 +92,7 @@ export async function uploadMedia(
   // Add context
   formData.append('object_source', objectSource);
 
-  log('Uploading:', fileName, type);
+  log.debug('Uploading:', { fileName, type });
 
   const result = await request<MediaUploadApiData>('/feeds/media-upload', {
     method: 'POST',
@@ -110,7 +110,7 @@ export async function uploadMedia(
     };
   }
 
-  log('Response:', result.data);
+  log.debug('Response:', { data: result.data });
 
   // API returns { media: { url, width, height, type, media_key } }
   const media = result.data.media || result.data;

@@ -10,11 +10,15 @@
 <body>
 
 <h1>Logging System</h1>
-<p class="subtitle">Tagged debug logging with zero production cost</p>
+<p class="subtitle">Typed observability layer — dev console + Sentry breadcrumbs</p>
 
 <div class="callout">
   <strong>Source file:</strong> <span class="file-path">utils/logger.ts</span><br>
   All logging uses <code>createLogger(tag)</code>. Never use raw <code>console.log</code> / <code>console.warn</code> / <code>console.error</code> directly.
+</div>
+
+<div class="callout callout-success">
+  <strong>v3.5+ — typed API.</strong> The legacy untyped <code>log(...args)</code> form has been replaced with strict typed methods (<code>log.debug</code>, <code>log.info</code>, <code>log.warn</code>, <code>log.error</code>). Logs flow into Sentry as breadcrumbs in production once the SDK is configured.
 </div>
 
 <div class="toc">
@@ -35,32 +39,46 @@
 <!-- ================================================================== -->
 <h2 id="overview">1. Overview</h2>
 
-<p>The app uses a centralized tagged logger that automatically silences all output in production builds. In <code>__DEV__</code> mode, every log line is prefixed with a tag so you can quickly filter and trace issues by subsystem.</p>
+<p>The app uses a centralized tagged logger that serves two roles:</p>
+<ul>
+  <li><strong>In dev (<code>__DEV__</code>)</strong> — every log line is printed to the Metro console prefixed with a <code>[Tag]</code> so you can filter by subsystem.</li>
+  <li><strong>In production</strong> — <code>info</code>/<code>warn</code> become Sentry breadcrumbs, <code>error</code> becomes a captured exception. <code>debug</code> is dropped entirely. When a crash is captured, the breadcrumb trail shows you exactly what the user was doing in the seconds before it happened.</li>
+</ul>
 
 <div class="callout callout-success">
-  <strong>Zero production cost.</strong> In production, <code>createLogger</code> returns no-op functions — no string formatting, no console calls, no performance impact.
+  <strong>Sentry-aware.</strong> Once a Sentry DSN is configured in WP admin (TBC Community App → Crash Reporting), <code>log.info</code>, <code>log.warn</code>, and <code>log.error</code> automatically feed Sentry. No per-call-site changes needed.
 </div>
 
 <h3>How it works</h3>
-<pre><code>// utils/logger.ts — the entire implementation
+<pre><code>// utils/logger.ts — public API
 
-type LogFn = (...args: any[]) =&gt; void;
-type Logger = LogFn &amp; { warn: LogFn; error: LogFn };
+export interface Logger {
+  /** Verbose dev signal. Console only in __DEV__, dropped in production. */
+  debug(message: string, data?: Record&lt;string, unknown&gt;): void;
 
-const noop: LogFn = () =&gt; {};
+  /** Notable event. Console (dev) + Sentry breadcrumb (prod). */
+  info(message: string, data?: Record&lt;string, unknown&gt;): void;
 
-export function createLogger(tag: string): Logger {
-  if (__DEV__) {
-    return Object.assign(
-      (...args: any[]) =&gt; console.log(`[${tag}]`, ...args),
-      {
-        warn: (...args: any[]) =&gt; console.warn(`[${tag}]`, ...args),
-        error: (...args: any[]) =&gt; console.error(`[${tag}]`, ...args),
-      },
-    );
-  }
-  return Object.assign(noop, { warn: noop, error: noop });
-}</code></pre>
+  /** Warning. Console (dev) + Sentry breadcrumb level=warning (prod). */
+  warn(message: string, data?: Record&lt;string, unknown&gt;): void;
+
+  /**
+   * Captured error. First arg MUST be the error (Error instance preferred
+   * for stack traces; strings/unknowns are captured as messages).
+   * Second arg is an optional human description of what was happening.
+   * Third arg is optional structured context.
+   */
+  error(
+    error: unknown,
+    message?: string,
+    context?: Record&lt;string, unknown&gt;,
+  ): void;
+
+  /** Returns a child logger with persistent context merged into every call. */
+  withContext(context: Record&lt;string, unknown&gt;): Logger;
+}
+
+export function createLogger(tag: string): Logger;</code></pre>
 
 <!-- ================================================================== -->
 <h2 id="usage">2. Basic Usage</h2>
@@ -69,17 +87,24 @@ export function createLogger(tag: string): Logger {
 
 const log = createLogger('MyFeature');
 
-// General info
-log('initialized with', items.length, 'items');
+// Verbose dev tracing — dropped in production
+log.debug('initialized', { itemCount: items.length });
 
-// Warnings (non-fatal issues)
-log.warn('retrying after timeout');
+// Notable event — becomes a Sentry breadcrumb in production
+log.info('checkout started', { total, currency });
 
-// Errors (something broke)
-log.error('failed to load data:', error);</code></pre>
+// Warning — handled but unexpected
+log.warn('coupon expired', { code });
+
+// Error — captured by Sentry as an exception
+log.error(err, 'Failed to remove cart item', { itemId });
+
+// Child logger with persistent context
+const scoped = log.withContext({ userId: 42 });
+scoped.info('clicked checkout');  // ctx merged automatically</code></pre>
 
 <div class="callout callout-warn">
-  <strong>Always</strong> declare the logger at module level (top of file), not inside functions or components. This ensures the <code>__DEV__</code> check runs once at import time.
+  <strong>Always</strong> declare the logger at module level (top of file), not inside functions or components.
 </div>
 
 <!-- ================================================================== -->
@@ -87,26 +112,54 @@ log.error('failed to load data:', error);</code></pre>
 
 <table>
   <thead>
-    <tr><th>Method</th><th>Maps to</th><th>Use for</th></tr>
+    <tr><th>Method</th><th>Dev behavior</th><th>Production behavior</th><th>Use for</th></tr>
   </thead>
   <tbody>
     <tr>
-      <td><code>log(...args)</code></td>
+      <td><code>log.debug(msg, data?)</code></td>
       <td><code>console.log</code></td>
-      <td>General info — state changes, request details, lifecycle events</td>
+      <td>dropped (no-op)</td>
+      <td>Verbose tracing — request details, cache hits, internal state. Safe to leave in.</td>
     </tr>
     <tr>
-      <td><code>log.warn(...args)</code></td>
+      <td><code>log.info(msg, data?)</code></td>
+      <td><code>console.log</code></td>
+      <td>Sentry breadcrumb (info)</td>
+      <td>Notable events — auth state, navigation, write operations, lifecycle.</td>
+    </tr>
+    <tr>
+      <td><code>log.warn(msg, data?)</code></td>
       <td><code>console.warn</code></td>
-      <td>Non-fatal issues — retries, fallbacks, unexpected but handled states</td>
+      <td>Sentry breadcrumb (warning)</td>
+      <td>Handled but unexpected — retries, fallbacks, validation failures.</td>
     </tr>
     <tr>
-      <td><code>log.error(...args)</code></td>
+      <td><code>log.error(err, msg?, ctx?)</code></td>
       <td><code>console.error</code></td>
-      <td>Failures — API errors, caught exceptions, broken invariants</td>
+      <td><code>Sentry.captureException</code></td>
+      <td>Real failures — caught exceptions, broken invariants, 5xx responses. Error first, then optional human description, then optional structured context.</td>
+    </tr>
+    <tr>
+      <td><code>log.withContext(ctx)</code></td>
+      <td>returns child logger</td>
+      <td>returns child logger</td>
+      <td>Scope a logger to a request, screen, or user — context auto-merged into every call.</td>
     </tr>
   </tbody>
 </table>
+
+<div class="callout">
+  <strong>The first arg to <code>log.error</code> is the error itself</strong>, not a string label. Pass <code>Error</code> instances for full stack traces. The optional second arg is a short human description ("Failed to load space"), and the optional third arg is structured context. This argument order is the opposite of <code>log.info</code> / <code>log.warn</code> — Sentry needs the error first.
+</div>
+
+<pre><code>// Just the error
+log.error(err);
+
+// Error + description
+log.error(err, 'Failed to load space');
+
+// Error + description + structured context
+log.error(err, 'Checkout failed', { cartId: 42, total: 99.99 });</code></pre>
 
 <!-- ================================================================== -->
 <h2 id="when-to-log">4. When to Log</h2>
@@ -130,21 +183,23 @@ log.error('failed to load data:', error);</code></pre>
 </ul>
 
 <h3>Pattern: log on mutations, not on reads</h3>
-<pre><code>// GOOD — log the write operation
+<pre><code>// GOOD — log the write operation as info (becomes a breadcrumb)
 export async function createThread(data: CreateThreadRequest) {
-  log('createThread intent:', data.intent_type, data.intent_id);
+  log.info('createThread', { intentType: data.intent_type, intentId: data.intent_id });
   return post&lt;CreateThreadResponse&gt;(ENDPOINTS.CHAT_THREADS, data);
 }
 
-// GOOD — log errors and failures
-if (!response.success) {
-  log.error('batch failed:', response.error?.message);
-  throw new Error(response.error?.message || 'Batch request failed');
+// GOOD — log caught errors with the Error first
+try {
+  await batchRequest(...);
+} catch (err) {
+  log.error(err, 'Batch request failed', { phase: 'batch' });
+  throw err;
 }
 
-// BAD — don't log every read
+// BAD — don't use log.info for verbose tracing; use log.debug instead
 export async function getThreads() {
-  log('fetching threads');  // &lt;-- unnecessary, too noisy
+  log.debug('fetching threads');  // dev only, dropped in prod
   return get&lt;ThreadsResponse&gt;(ENDPOINTS.CHAT_THREADS);
 }</code></pre>
 
@@ -293,7 +348,7 @@ export async function getThreads() {
 
 const log = createLogger('YourTag');</code></pre>
 
-<p>Then use <code>log()</code>, <code>log.warn()</code>, and <code>log.error()</code> throughout the file.</p>
+<p>Then use <code>log.debug()</code>, <code>log.info()</code>, <code>log.warn()</code>, and <code>log.error()</code> throughout the file.</p>
 
 <h3>Step-by-step for an API service</h3>
 <pre><code>// services/api/widgets.ts
@@ -310,14 +365,14 @@ export async function getWidgets() {
 }
 
 export async function createWidget(data: CreateWidgetData) {
-  // Log the write operation
-  log('createWidget:', data.name);
+  // Log the write operation as info (becomes a Sentry breadcrumb)
+  log.info('createWidget', { name: data.name });
   return post('/widgets', data);
 }
 
 export async function deleteWidget(id: number) {
-  // Log destructive operations
-  log('deleteWidget:', id);
+  // Log destructive operations as info
+  log.info('deleteWidget', { id });
   return post(`/widgets/${id}/delete`, {});
 }</code></pre>
 
@@ -336,16 +391,15 @@ const log = createLogger('MyModuleAPI');
 <p>What you'll see in the Metro dev console when running the app:</p>
 
 <div class="output-example">
-  <div class="log"><span class="tag">[Auth]</span> login successful, storing token</div>
-  <div class="log"><span class="tag">[BatchAPI]</span> batch of 4 requests: ["/notifications/unread", "/chat/unread_threads", ...]</div>
-  <div class="log"><span class="tag">[Pusher]</span> connected to private-chat_user_42</div>
-  <div class="log"><span class="tag">[FeedsAPI]</span> Creating feed with: {"space": "general", ...}</div>
-  <div class="log"><span class="tag">[MessagesAPI]</span> sendMessage thread: 15 +2 attachments</div>
-  <div class="warn"><span class="tag">[BatchAPI]</span> 1 failed in batch: ["/chat/unread_threads (403)"]</div>
-  <div class="log"><span class="tag">[ProfilesAPI]</span> patchProfileMedia: johndoe avatar</div>
-  <div class="error"><span class="tag">[API]</span> 401 on /feeds — refreshing token</div>
-  <div class="log"><span class="tag">[Auth]</span> token refreshed successfully</div>
-  <div class="log"><span class="tag">[SpacesAPI]</span> joinSpace: general</div>
+  <div class="log"><span class="tag">[Auth]</span> Login response { status: 200, hasToken: true }</div>
+  <div class="log"><span class="tag">[BatchAPI]</span> batch request { count: 4, paths: ["/notifications/unread", ...] }</div>
+  <div class="log"><span class="tag">[Pusher]</span> Initializing Pusher { userId: 42, provider: "pusher" }</div>
+  <div class="log"><span class="tag">[FeedsAPI]</span> Creating feed { requestData: { ... } }</div>
+  <div class="log"><span class="tag">[MessagesAPI]</span> sendMessage { threadId: 15, attachmentCount: 2 }</div>
+  <div class="warn"><span class="tag">[BatchAPI]</span> partial batch failure { count: 1, failures: ["/chat/unread_threads (403)"] }</div>
+  <div class="log"><span class="tag">[ProfilesAPI]</span> patchProfileMedia { username: "johndoe", hasAvatar: true, hasCover: false }</div>
+  <div class="error"><span class="tag">[API]</span> Error: HTTP 401 { status: 401, data: { ... } }</div>
+  <div class="log"><span class="tag">[SpacesAPI]</span> joinSpace { spaceSlug: "general" }</div>
 </div>
 
 <p>Use your terminal's search/filter to isolate a specific tag when debugging. For example, search <code>[Pusher]</code> to see only WebSocket events.</p>
@@ -364,8 +418,8 @@ const log = createLogger('MyModuleAPI');
   <li><strong>Log writes, not reads</strong> — mutations, creates, deletes, state transitions. Skip GET requests.</li>
   <li><strong>Never log sensitive data</strong> — no tokens, passwords, full credentials, or personal data.</li>
   <li><strong>Keep tags short and unique</strong> — check the <a href="#current-tags">tag list</a> before picking a new one.</li>
-  <li><strong>Use the right level</strong> — <code>log()</code> for info, <code>log.warn()</code> for handled issues, <code>log.error()</code> for failures.</li>
-  <li><strong>No per-tag toggle config</strong> — all loggers are on in dev, all off in production. Use terminal search to filter.</li>
+  <li><strong>Use the right level</strong> — <code>log.debug()</code> for verbose dev tracing (dropped in prod), <code>log.info()</code> for breadcrumb-worthy events, <code>log.warn()</code> for handled issues, <code>log.error(err, msg?, ctx?)</code> for failures (passes <code>err</code> first).</li>
+  <li><strong>Production routes through Sentry</strong> — info/warn/error reach Sentry as breadcrumbs/exceptions when a DSN is configured. Debug never does.</li>
   <li><strong>Don't create a new logging utility</strong> — <code>createLogger</code> is the only one. Don't add dependencies like winston, pino, etc.</li>
 </ol>
 

@@ -70,7 +70,7 @@ export function VideoAttachModal({
         Alert.alert('Invalid URL', 'Could not get video information. Please check the URL.');
       }
     } catch (error: unknown) {
-      log.error('Error fetching oembed:', error);
+      log.error(error, 'Error fetching oembed');
       Alert.alert('Error', error instanceof Error ? error.message : 'Could not fetch video information.');
     } finally {
       setIsLoading(false);

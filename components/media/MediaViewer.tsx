@@ -204,7 +204,7 @@ export function MediaViewer({
         Alert.alert('Sharing not available', 'Sharing is not supported on this device.');
       }
     } catch (err) {
-      log.error('Failed to share image:', err);
+      log.error(err, 'Failed to share image');
       Alert.alert('Error', 'Failed to share image. Please try again.');
     } finally {
       setSaving(false);
@@ -238,7 +238,7 @@ export function MediaViewer({
       await MediaLibrary.saveToLibraryAsync(output.uri);
       Alert.alert('Saved', 'Image saved to your gallery.');
     } catch (err) {
-      log.error('Failed to save image:', err);
+      log.error(err, 'Failed to save image');
       Alert.alert('Error', 'Failed to save image. Please try again.');
     } finally {
       setSaving(false);

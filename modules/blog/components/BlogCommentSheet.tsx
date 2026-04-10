@@ -285,7 +285,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
       await Clipboard.setStringAsync(url);
       Alert.alert('Copied!', 'Link copied to clipboard');
     } catch (err) {
-      log.error('Copy failed:', err);
+      log.error(err, 'Copy failed');
       Alert.alert('Comment Link', url);
     }
   };
@@ -315,7 +315,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
                 Alert.alert('Error', response.error?.message || 'Failed to delete');
               }
             } catch (err) {
-              log.error('Delete error:', err);
+              log.error(err, 'Delete error');
               Alert.alert('Error', 'Failed to delete comment');
             }
           },

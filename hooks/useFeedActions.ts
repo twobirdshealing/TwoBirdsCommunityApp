@@ -113,7 +113,7 @@ export function useFeedActions({
         cacheEvents.emit(CACHE_EVENTS.BOOKMARKS);
       }
     } catch (err) {
-      log.error('Bookmark error:', err);
+      log.error(err, 'Bookmark error');
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update bookmark');
     }
   }, [setFeeds]);
@@ -141,7 +141,7 @@ export function useFeedActions({
                 Alert.alert('Error', response.error?.message || 'Failed to delete post');
               }
             } catch (err) {
-              log.error('Delete error:', err);
+              log.error(err, 'Delete error');
               Alert.alert('Error', 'Failed to delete post');
             }
           },

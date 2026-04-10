@@ -106,7 +106,7 @@ export function ImageMedia({
         onLoadStart={() => setLoading(true)}
         onLoad={() => setLoading(false)}
         onError={(e) => {
-          log('Image load error:', url, e.nativeEvent.error);
+          log.debug('Image load error:', { url, error: e.nativeEvent.error });
           setLoading(false);
           setError(true);
         }}

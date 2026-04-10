@@ -2,7 +2,7 @@
   "expo": {
     "name": "Two Birds Community",
     "slug": "TwoBirdsCommunity",
-    "version": "3.4.4",
+    "version": "3.5.0",
     "orientation": "portrait",
     "icon": "./assets/images/app_icon_ios.png",
     "scheme": "twobirdscommunity",
@@ -18,7 +18,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.twobirdschurch.community",
-      "buildNumber": "3.4.4",
+      "buildNumber": "3.5.0",
       "supportsTablet": true,
       "icon": "./assets/images/app_icon_ios.png",
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.community.twobirdschurch",
-      "versionCode": 344,
+      "versionCode": 350,
       "adaptiveIcon": {
         "backgroundColor": "#2196F3",
         "foregroundImage": "./assets/images/app_icon_android_adaptive_fg.png",
@@ -101,7 +101,8 @@
             "nativeDebugSymbolLevel": "FULL"
           }
         }
-      ]
+      ],
+      "@sentry/react-native/expo"
     ],
     "experiments": {
       "typedRoutes": true,

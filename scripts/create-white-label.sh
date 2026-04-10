@@ -177,6 +177,12 @@ sed -i \
   "$TARGET_DIR/app.json"
 
 # --- eas.json ---
+# Note: Sentry env var refs ($SENTRY_AUTH_TOKEN, $SENTRY_ORG, $SENTRY_PROJECT,
+# SENTRY_ALLOW_FAILURE) are deliberately PASSED THROUGH untouched. They resolve
+# to nothing for buyers who haven't set EAS secrets, which is the right default
+# (builds succeed without source-map upload). Buyers who want symbolicated
+# stack traces run `eas secret:create --name SENTRY_AUTH_TOKEN ...` themselves
+# — see setup-guide.html "Crash Reporting (Sentry)" card.
 sed -i \
   -e 's|https://community.twobirdschurch.com|https://community.yoursite.com|g' \
   -e 's|https://staging.twobirdschurch.com|https://community.yoursite.com|g' \

@@ -62,7 +62,7 @@ export function ProfileIncompleteProvider({ children }: { children: React.ReactN
     // Debounce: skip if a redirect is already in flight
     if (isRedirecting.current) return;
 
-    log('Profile incomplete — redirecting to /profile-complete');
+    log.debug('Profile incomplete — redirecting to /profile-complete');
     isRedirecting.current = true;
     router.replace('/profile-complete' as any);
   }, [isAuthenticated, isLoading, needsProfileCompletion, segments, router]);

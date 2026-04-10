@@ -74,6 +74,9 @@ class TBC_CA_App_Config {
         // ─── Feature flags (admin-controlled) ──────────────────────────────
         $response['features'] = $this->get_features_config();
 
+        // ─── Crash reporting (Sentry, admin-controlled) ───────────────────
+        $response['crash_reporting'] = $this->get_crash_reporting_config();
+
         // ─── Time format (WordPress general setting) ─────────────────────
         $response['time_format'] = get_option('time_format', 'g:i a');
 
@@ -469,6 +472,30 @@ class TBC_CA_App_Config {
         $features = apply_filters('tbc_ca_features_config', $features);
 
         return $features;
+    }
+
+    // =========================================================================
+    // Crash Reporting (Sentry)
+    // =========================================================================
+
+    /**
+     * Get crash reporting config from plugin settings.
+     * Returns the buyer-configured Sentry DSN + enable flag. The mobile app
+     * reads this on startup and initializes Sentry only when both
+     * `enabled` is true AND `dsn` is non-empty.
+     *
+     * Note: this is sent over a public endpoint. Sentry DSNs are not secret
+     * (they live in client-side bundles for web apps too — they're write-only
+     * tokens scoped to a single project), so exposing the DSN here is safe.
+     */
+    private function get_crash_reporting_config() {
+        $settings = TBC_CA_Core::get_settings();
+        $cr       = $settings['crash_reporting'] ?? [];
+
+        return [
+            'enabled' => !empty($cr['enabled']),
+            'dsn'     => isset($cr['dsn']) ? (string) $cr['dsn'] : '',
+        ];
     }
 
     // =========================================================================

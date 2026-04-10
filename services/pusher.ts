@@ -72,13 +72,13 @@ export function setConnectionStateCallback(cb: ((connected: boolean) => void) | 
 export async function initializePusher(userId: number, socketConfig: SocketConfig): Promise<boolean> {
   // Don't reinitialize if already connected for same user
   if (pusherClient && currentUserId === userId) {
-    log('Already connected for user', userId);
+    log.debug('Already connected for user', { userId });
     return true;
   }
 
   // Disconnect existing connection if different user
   if (pusherClient && currentUserId !== userId) {
-    log('Switching user, disconnecting...');
+    log.debug('Switching user, disconnecting...');
     disconnectPusher();
   }
 
@@ -88,12 +88,12 @@ export async function initializePusher(userId: number, socketConfig: SocketConfi
     const cluster = socketConfig.options?.cluster || 'mt1';
     const provider = socketConfig.options?.wsHost ? 'soketi' : 'pusher';
 
-    log('Initializing Pusher for user', userId, '| provider:', provider);
+    log.info('Initializing Pusher', { userId, provider });
 
     // Get auth token for private channel authentication
     const token = await getAuthToken();
     if (!token) {
-      log('No auth token available');
+      log.debug('No auth token available');
       return false;
     }
 
@@ -103,7 +103,7 @@ export async function initializePusher(userId: number, socketConfig: SocketConfi
       authorizer: (channel: { name: string }) => ({
         authorize: async (socketId: string, callback: (error: Error | null, data: any) => void) => {
           try {
-            log('Authorizing channel:', channel.name);
+            log.debug('Authorizing channel:', { name: channel.name });
 
             // Get fresh token each time (may have been refreshed since init)
             const freshToken = await getAuthToken();
@@ -126,16 +126,16 @@ export async function initializePusher(userId: number, socketConfig: SocketConfi
 
             if (!response.ok) {
               const errorText = await response.text();
-              log('Auth failed:', response.status, errorText);
+              log.debug('Auth failed:', { status: response.status, errorText });
               callback(new Error('Auth failed'), null);
               return;
             }
 
             const data = await response.json();
-            log('Auth successful:', data);
+            log.debug('Auth successful:', { data });
             callback(null, data);
           } catch (error) {
-            log('Auth error:', error);
+            log.debug('Auth error:', { error });
             callback(error as Error, null);
           }
         },
@@ -156,42 +156,42 @@ export async function initializePusher(userId: number, socketConfig: SocketConfi
 
     // Connection event handlers
     pusherClient.connection.bind('connected', () => {
-      log('Connected to Pusher, socket_id:', pusherClient?.connection.socket_id);
+      log.debug('Connected to Pusher, socket_id:', { socket_id: pusherClient?.connection.socket_id });
       connectedAt = Date.now();
       reconnectAttempts = 0;
       connectionStateCallback?.(true);
     });
 
     pusherClient.connection.bind('disconnected', () => {
-      log('Disconnected from Pusher');
+      log.debug('Disconnected from Pusher');
       connectionStateCallback?.(false);
     });
 
     pusherClient.connection.bind('unavailable', () => {
-      log('Pusher connection unavailable');
+      log.debug('Pusher connection unavailable');
       connectionStateCallback?.(false);
     });
 
     pusherClient.connection.bind('error', (error: any) => {
-      log('Connection error:', error);
+      log.debug('Connection error:', { error });
     });
 
     // Subscribe to user's private channel
     const channelName = `private-chat_user_${userId}`;
-    log('Subscribing to channel:', channelName);
+    log.debug('Subscribing to channel:', { channelName });
 
     userChannel = pusherClient.subscribe(channelName);
 
     userChannel.bind('pusher:subscription_succeeded', () => {
-      log('Successfully subscribed to', channelName);
+      log.debug('Successfully subscribed to', { channelName });
     });
 
     userChannel.bind('pusher:subscription_error', (error: any) => {
-      log('Subscription error:', error);
+      log.debug('Subscription error:', { error });
       // Channel auth can fail after auto-reconnect (stale token) — force full reconnect
       // Exponential backoff with cap to prevent infinite loops on permanent auth failure
       if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-        log('Max reconnect attempts reached, giving up');
+        log.debug('Max reconnect attempts reached, giving up');
         return;
       }
       reconnectAttempts++;
@@ -207,19 +207,19 @@ export async function initializePusher(userId: number, socketConfig: SocketConfi
     if (__DEV__) {
       userChannel.bind_global((eventName: string, data: any) => {
         if (eventName !== 'message' && eventName !== 'reaction') {
-          log('Channel event:', eventName, '| data:', JSON.stringify(data).slice(0, 200));
+          log.debug('Channel event', { eventName, dataPreview: JSON.stringify(data).slice(0, 200) });
         }
       });
     }
 
     // Bind to server-fired events
     userChannel.bind('message', (data: PusherMessage) => {
-      log('Received message, handlers:', messageHandlers.size);
+      log.debug('Received message, handlers:', { size: messageHandlers.size });
       messageHandlers.forEach(handler => handler(data));
     });
 
     userChannel.bind('reaction', (data: PusherReaction) => {
-      log('Received reaction, handlers:', reactionHandlers.size);
+      log.debug('Received reaction, handlers:', { size: reactionHandlers.size });
       reactionHandlers.forEach(handler => handler(data));
     });
 
@@ -227,7 +227,7 @@ export async function initializePusher(userId: number, socketConfig: SocketConfi
     currentSocketConfig = socketConfig;
     return true;
   } catch (error) {
-    log('Initialize error:', error);
+    log.debug('Initialize error:', { error });
     return false;
   }
 }
@@ -237,7 +237,7 @@ export async function initializePusher(userId: number, socketConfig: SocketConfi
 // -----------------------------------------------------------------------------
 
 export function disconnectPusher(): void {
-  log('Disconnecting Pusher');
+  log.debug('Disconnecting Pusher');
 
   if (reconnectTimeout) {
     clearTimeout(reconnectTimeout);
@@ -269,7 +269,7 @@ export function disconnectPusher(): void {
 export function clearHandlers(): void {
   messageHandlers.clear();
   reactionHandlers.clear();
-  log('Cleared all handlers');
+  log.debug('Cleared all handlers');
 }
 
 // -----------------------------------------------------------------------------
@@ -278,20 +278,20 @@ export function clearHandlers(): void {
 
 export async function reconnectPusher(): Promise<boolean> {
   if (!currentUserId) {
-    log('Cannot reconnect - no current user');
+    log.debug('Cannot reconnect - no current user');
     return false;
   }
 
   // Skip reconnect if already connected and connection is fresh
   const RECONNECT_COOLDOWN = 10_000;
   if (connectedAt && Date.now() - connectedAt < RECONNECT_COOLDOWN) {
-    log('Skipping reconnect — connection is fresh');
+    log.debug('Skipping reconnect — connection is fresh');
     return true;
   }
 
   // Skip full teardown if WebSocket is still alive (brief background)
   if (pusherClient?.connection.state === 'connected') {
-    log('Already connected — skipping reconnect');
+    log.debug('Already connected — skipping reconnect');
     connectedAt = Date.now();
     return true;
   }
@@ -300,11 +300,11 @@ export async function reconnectPusher(): Promise<boolean> {
   const savedSocketConfig = currentSocketConfig;
 
   if (!savedSocketConfig) {
-    log('Cannot reconnect — no socket config');
+    log.debug('Cannot reconnect — no socket config');
     return false;
   }
 
-  log('Reconnecting Pusher for user', userId);
+  log.debug('Reconnecting Pusher for user', { userId });
 
   // Disconnect client and channel WITHOUT clearing handler Sets
   if (userChannel && currentUserId) {
@@ -329,12 +329,12 @@ export async function reconnectPusher(): Promise<boolean> {
 
 export function onNewMessage(handler: MessageHandler): () => void {
   messageHandlers.add(handler);
-  log('Added message handler, total:', messageHandlers.size);
+  log.debug('Added message handler, total:', { size: messageHandlers.size });
 
   // Return unsubscribe function
   return () => {
     messageHandlers.delete(handler);
-    log('Removed message handler, total:', messageHandlers.size);
+    log.debug('Removed message handler, total:', { size: messageHandlers.size });
   };
 }
 

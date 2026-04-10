@@ -69,7 +69,7 @@ export default function WebViewScreen() {
     const initSession = async () => {
       const url = params.url;
 
-      log('Init with URL:', url);
+      log.debug('Init with URL:', { url });
 
       if (!url) {
         setError('No URL provided');
@@ -79,17 +79,17 @@ export default function WebViewScreen() {
 
       // Public pages (e.g., privacy policy) don't need authentication
       if (params.noAuth) {
-        log('Loading public URL (noAuth):', url);
+        log.debug('Loading public URL (noAuth):', { url });
         setSessionUrl(url);
         setLoading(false);
         return;
       }
 
       try {
-        log('Creating session...');
+        log.debug('Creating session...');
         const response = await appApi.createWebSession(url);
 
-        log('Session created:', response.success);
+        log.debug('Session created:', { success: response.success });
 
         if (response.success && response.url) {
           setSessionUrl(response.url);
@@ -97,7 +97,7 @@ export default function WebViewScreen() {
           throw new Error('Invalid session response');
         }
       } catch (err) {
-        log('Error:', err);
+        log.debug('Error:', { err });
         const message = err instanceof Error ? err.message : 'Failed to load';
         setError(message);
       } finally {
@@ -143,13 +143,13 @@ export default function WebViewScreen() {
 
   const handleError = useCallback((event: WebViewErrorEvent) => {
     const { description } = event.nativeEvent;
-    log('Load error:', description);
+    log.debug('Load error:', { description });
     setError(description || 'Failed to load page');
   }, []);
 
   const handleHttpError = useCallback((event: WebViewHttpErrorEvent) => {
     const { statusCode, description } = event.nativeEvent;
-    log('HTTP error:', statusCode, description);
+    log.debug('HTTP error:', { statusCode, description });
     if (statusCode >= 400) {
       setError(`Page returned error ${statusCode}`);
     }

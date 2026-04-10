@@ -133,7 +133,7 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
         () => messagesApi.toggleReaction(message.id, emojiToToggle),
       );
     } catch (err) {
-      log.error('Default reaction error:', err);
+      log.error(err, 'Default reaction error');
     }
   }, [currentUserId, setMessages, makeReactionUpdater]);
 
@@ -146,7 +146,7 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
         () => messagesApi.toggleReaction(message.id, emoji),
       );
     } catch (err) {
-      log.error('Reaction toggle error:', err);
+      log.error(err, 'Reaction toggle error');
     }
   }, [setMessages, makeReactionUpdater]);
 

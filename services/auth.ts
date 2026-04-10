@@ -124,7 +124,7 @@ function getReadableErrorMessage(status: number, data: any): string {
  * Returns access + refresh tokens + user profile in a single call.
  */
 export async function login(username: string, password: string): Promise<LoginResult> {
-  log('Login attempt for:', username);
+  log.debug('Login attempt for:', { username });
 
   try {
     const response = await fetch(AUTH_LOGIN_URL, {
@@ -137,10 +137,10 @@ export async function login(username: string, password: string): Promise<LoginRe
     });
 
     const data = await response.json();
-    log('Login response:', response.status, data.access_token ? 'TOKEN_RECEIVED' : 'FAILED');
+    log.info('Login response', { status: response.status, hasToken: !!data.access_token });
 
     if (!response.ok || !data.access_token) {
-      log('Login failed:', data);
+      log.debug('Login failed:', { data });
       return {
         success: false,
         error: getReadableErrorMessage(response.status, data),
@@ -152,7 +152,7 @@ export async function login(username: string, password: string): Promise<LoginRe
     // Store tokens
     await SecureStore.setItemAsync(AUTH_KEY, loginData.access_token);
     await SecureStore.setItemAsync(REFRESH_KEY, loginData.refresh_token);
-    log('Tokens stored');
+    log.debug('Tokens stored');
 
     // Build user from login response (no extra profile fetch needed)
     const user: AuthUser = {
@@ -169,19 +169,19 @@ export async function login(username: string, password: string): Promise<LoginRe
 
     // Store user info
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
-    log('User info stored:', user.username, 'id:', user.id);
+    log.info('User info stored', { username: user.username, id: user.id });
 
     // Register device for push notifications (non-blocking)
     if (getFeatureFlag('push_notifications')) {
       registerDeviceToken(loginData.access_token).catch(err => {
-        log('Failed to register push token:', err);
+        log.debug('Failed to register push token:', { err });
       });
     }
 
     return { success: true, user };
 
   } catch (error) {
-    log('Login error:', error);
+    log.debug('Login error:', { error });
 
     if (error instanceof TypeError && error.message.includes('Network')) {
       return {
@@ -201,7 +201,7 @@ export async function login(username: string, password: string): Promise<LoginRe
  * Logout - revoke server session and clear stored tokens
  */
 export async function logout(): Promise<void> {
-  log('Logging out...');
+  log.debug('Logging out...');
 
   const token = await getAuthToken();
   const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
@@ -209,7 +209,7 @@ export async function logout(): Promise<void> {
   // Unregister device from push notifications
   if (getFeatureFlag('push_notifications') && token) {
     await unregisterDeviceToken(token).catch((e) => {
-      log.warn('Failed to unregister device token:', e);
+      log.warn('Failed to unregister device token:', { e });
     });
   }
 
@@ -225,7 +225,7 @@ export async function logout(): Promise<void> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ refresh_token: refreshToken }),
-    }).catch((e) => log.warn('Server logout failed (non-blocking):', e));
+    }).catch((e) => log.warn('Server logout failed (non-blocking):', { e }));
   }
 
   await clearAuth();
@@ -250,11 +250,11 @@ export async function getAuthToken(): Promise<string | null> {
   try {
     const token = await SecureStore.getItemAsync(AUTH_KEY);
     if (token) {
-      log('Retrieved JWT token');
+      log.debug('Retrieved JWT token');
     }
     return token;
   } catch (error) {
-    log('Error getting token:', error);
+    log.debug('Error getting token:', { error });
     return null;
   }
 }
@@ -268,12 +268,12 @@ export async function getStoredUser(): Promise<AuthUser | null> {
     const userJson = await SecureStore.getItemAsync(USER_KEY);
     if (userJson) {
       const user = JSON.parse(userJson);
-      log('Retrieved user:', user.username);
+      log.debug('Retrieved user:', { username: user.username });
       return user;
     }
     return null;
   } catch (error) {
-    log('Error getting user:', error);
+    log.debug('Error getting user:', { error });
     return null;
   }
 }
@@ -293,13 +293,13 @@ export async function clearAuth(): Promise<void> {
     await SecureStore.deleteItemAsync(AUTH_KEY);
     await SecureStore.deleteItemAsync(REFRESH_KEY);
     await SecureStore.deleteItemAsync(USER_KEY);
-    log('Auth cleared');
+    log.debug('Auth cleared');
 
     if (onAuthCleared) {
       onAuthCleared();
     }
   } catch (error) {
-    log('Error clearing auth:', error);
+    log.debug('Error clearing auth:', { error });
   }
 }
 
@@ -312,17 +312,17 @@ let refreshInProgress: Promise<boolean> | null = null;
 export async function silentRefresh(): Promise<boolean> {
   // If a refresh is already in progress, wait for it
   if (refreshInProgress) {
-    log('Silent refresh already in progress, waiting...');
+    log.debug('Silent refresh already in progress, waiting...');
     return refreshInProgress;
   }
 
   refreshInProgress = (async () => {
     try {
-      log('Attempting token refresh...');
+      log.debug('Attempting token refresh...');
 
       const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
       if (!refreshToken) {
-        log('No refresh token available');
+        log.debug('No refresh token available');
         await clearAuth();
         return false;
       }
@@ -339,7 +339,7 @@ export async function silentRefresh(): Promise<boolean> {
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);
-        log('Token refresh failed:', data?.code || response.status);
+        log.warn('Token refresh failed', { reason: data?.code ?? response.status });
         // Refresh token expired or revoked — clear everything
         await clearAuth();
         return false;
@@ -349,10 +349,10 @@ export async function silentRefresh(): Promise<boolean> {
 
       // Store the new access token
       await SecureStore.setItemAsync(AUTH_KEY, data.access_token);
-      log('Token refresh successful, new access token stored');
+      log.debug('Token refresh successful, new access token stored');
       return true;
     } catch (error) {
-      log('Token refresh error:', error);
+      log.debug('Token refresh error:', { error });
       return false;
     } finally {
       refreshInProgress = null;
@@ -374,7 +374,7 @@ export async function storeAuthDirect(
   await SecureStore.setItemAsync(AUTH_KEY, accessToken);
   await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
   await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
-  log('Auth stored directly (registration)');
+  log.debug('Auth stored directly (registration)');
 }
 
 /**
@@ -386,9 +386,9 @@ export async function updateStoredUser(updates: Partial<AuthUser>): Promise<void
     if (current) {
       const updated = { ...current, ...updates };
       await SecureStore.setItemAsync(USER_KEY, JSON.stringify(updated));
-      log('User info updated');
+      log.debug('User info updated');
     }
   } catch (error) {
-    log('Error updating user:', error);
+    log.debug('Error updating user:', { error });
   }
 }

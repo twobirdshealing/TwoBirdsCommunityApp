@@ -101,7 +101,7 @@ export async function getSpaceGroups(options: { with_spaces?: boolean; include_e
 // -----------------------------------------------------------------------------
 
 export async function joinSpace(spaceSlug: string) {
-  log('joinSpace:', spaceSlug);
+  log.debug('joinSpace:', { spaceSlug });
   return post<JoinSpaceResponse>(`${ENDPOINTS.SPACES}/${spaceSlug}/join`);
 }
 
@@ -110,7 +110,7 @@ export async function joinSpace(spaceSlug: string) {
 // -----------------------------------------------------------------------------
 
 export async function leaveSpace(spaceSlug: string) {
-  log('leaveSpace:', spaceSlug);
+  log.debug('leaveSpace:', { spaceSlug });
   return post<{ message: string }>(`${ENDPOINTS.SPACES}/${spaceSlug}/leave`);
 }
 

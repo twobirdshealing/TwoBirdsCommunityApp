@@ -131,6 +131,28 @@ class TBC_CA_Admin_Settings {
             ],
         ];
 
+        // Crash reporting (Sentry) — DSN is trimmed and validated below
+        $raw_dsn = isset($input['crash_reporting']['dsn']) ? trim((string) $input['crash_reporting']['dsn']) : '';
+        $valid_dsn = '';
+        if ($raw_dsn !== '') {
+            // Sentry DSN: https://<publicKey>[:<secretKey>]@<host>/<projectId>
+            // Modern DSNs omit the secret. Both forms are accepted here.
+            if (preg_match('#^https?://[^@/\s:]+(?::[^@/\s]+)?@[^/\s]+/\d+$#', $raw_dsn)) {
+                $valid_dsn = esc_url_raw($raw_dsn);
+            } else {
+                add_settings_error(
+                    'tbc_ca_settings',
+                    'tbc_ca_invalid_sentry_dsn',
+                    __('Invalid Sentry DSN format. Expected: https://&lt;key&gt;@&lt;host&gt;/&lt;projectId&gt; — paste it directly from your Sentry project settings.', 'tbc-ca'),
+                    'error'
+                );
+            }
+        }
+        $sanitized['crash_reporting'] = [
+            'enabled' => !empty($input['crash_reporting']['enabled']),
+            'dsn'     => $valid_dsn,
+        ];
+
         // Data management
         $sanitized['delete_data_on_uninstall'] = !empty($input['delete_data_on_uninstall']);
 
@@ -167,6 +189,7 @@ class TBC_CA_Admin_Settings {
         $min_app_version = $settings['min_app_version'] ?? '';
         $store_urls = $settings['store_urls'] ?? [];
         $features = $settings['features'] ?? [];
+        $crash_reporting = $settings['crash_reporting'] ?? ['enabled' => false, 'dsn' => ''];
 
         // Core elements (hardcoded isHidden() checks in app UI, not from modules)
         $hideable_elements = [
@@ -200,6 +223,9 @@ class TBC_CA_Admin_Settings {
                 </a>
                 <a href="#features" class="nav-tab<?php echo $current_tab === 'features' ? ' nav-tab-active' : ''; ?>" data-tab="features">
                     <?php _e('Features', 'tbc-ca'); ?>
+                </a>
+                <a href="#crash-reporting" class="nav-tab<?php echo $current_tab === 'crash-reporting' ? ' nav-tab-active' : ''; ?>" data-tab="crash-reporting">
+                    <?php _e('Crash Reporting', 'tbc-ca'); ?>
                 </a>
                 <a href="#visibility" class="nav-tab<?php echo $current_tab === 'visibility' ? ' nav-tab-active' : ''; ?>" data-tab="visibility">
                     <?php _e('UI Visibility', 'tbc-ca'); ?>
@@ -546,6 +572,65 @@ class TBC_CA_Admin_Settings {
                 </div>
 
                 </div><!-- /.tbc-ca-tab-panel features -->
+
+                <!-- Tab: Crash Reporting -->
+                <div class="tbc-ca-tab-panel<?php echo $current_tab === 'crash-reporting' ? ' tbc-ca-tab-panel--active' : ''; ?>" data-panel="crash-reporting">
+
+                <div class="tbc-ca-section">
+                    <h2><?php _e('Crash Reporting (Sentry)', 'tbc-ca'); ?></h2>
+                    <p class="description">
+                        <?php _e('When enabled, the mobile app sends crash reports and errors to your Sentry account so you can diagnose issues without physical device access.', 'tbc-ca'); ?>
+                    </p>
+                    <p class="description">
+                        <?php
+                        printf(
+                            /* translators: %s: link to sentry.io */
+                            __('Sign up free at %s, create a "React Native" project, then copy the DSN from Project Settings → Client Keys (DSN) and paste it below. The free tier includes 5,000 errors/month — plenty for most communities.', 'tbc-ca'),
+                            '<a href="https://sentry.io/" target="_blank" rel="noopener">sentry.io</a>'
+                        );
+                        ?>
+                    </p>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><?php _e('Enable Crash Reporting', 'tbc-ca'); ?></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox"
+                                           name="tbc_ca_settings[crash_reporting][enabled]"
+                                           value="1"
+                                           <?php checked(!empty($crash_reporting['enabled'])); ?> />
+                                    <?php _e('Send crash reports and errors to Sentry', 'tbc-ca'); ?>
+                                </label>
+                                <p class="description">
+                                    <?php _e('Requires a valid DSN below. When unchecked, the Sentry SDK stays dormant — zero data is sent and there is no performance cost.', 'tbc-ca'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">
+                                <label for="tbc-ca-sentry-dsn"><?php _e('Sentry DSN', 'tbc-ca'); ?></label>
+                            </th>
+                            <td>
+                                <input type="url"
+                                       id="tbc-ca-sentry-dsn"
+                                       name="tbc_ca_settings[crash_reporting][dsn]"
+                                       value="<?php echo esc_attr($crash_reporting['dsn'] ?? ''); ?>"
+                                       class="large-text code"
+                                       placeholder="https://abcdef1234567890@o123456.ingest.sentry.io/1234567" />
+                                <p class="description">
+                                    <?php _e('Paste your full Sentry DSN URL. Format: <code>https://&lt;publicKey&gt;@&lt;host&gt;/&lt;projectId&gt;</code>. Leave blank to disable.', 'tbc-ca'); ?>
+                                </p>
+                                <p class="description">
+                                    <strong><?php _e('Privacy:', 'tbc-ca'); ?></strong>
+                                    <?php _e('Sentry receives crash stack traces, device info (model, OS version), app version, and recent log breadcrumbs. It does not see user content, messages, passwords, or auth tokens — those are stripped automatically before transmission.', 'tbc-ca'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                </div><!-- /.tbc-ca-tab-panel crash-reporting -->
 
                 <!-- Tab: UI Visibility -->
                 <div class="tbc-ca-tab-panel<?php echo $current_tab === 'visibility' ? ' tbc-ca-tab-panel--active' : ''; ?>" data-panel="visibility">

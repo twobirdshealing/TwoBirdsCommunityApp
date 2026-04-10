@@ -45,6 +45,6 @@ export interface ReportResponse {
 // -----------------------------------------------------------------------------
 
 export async function submitReport(data: ReportData) {
-  log('Submitting report:', data.content_type, 'post_id:', data.post_id);
+  log.debug('Submitting report', { contentType: data.content_type, postId: data.post_id });
   return post<ReportResponse>(ENDPOINTS.MODERATION_REPORT, data);
 }

@@ -46,7 +46,7 @@ interface BatchPayload {
 export async function batchRequest(
   requests: BatchRequest[],
 ): Promise<BatchResponseItem[]> {
-  log(`batch of ${requests.length} requests:`, requests.map(r => r.path));
+  log.debug('batch request', { count: requests.length, paths: requests.map(r => r.path) });
   const response = await request<BatchPayload>('/batch', {
     method: 'POST',
     body: { requests },
@@ -54,13 +54,16 @@ export async function batchRequest(
   });
 
   if (!response.success) {
-    log.error('batch failed:', response.error?.message);
+    log.error(response.error?.message, 'batch failed');
     throw new Error(response.error?.message || 'Batch request failed');
   }
 
   const failures = response.data.responses.filter(r => r.status >= 400);
   if (failures.length) {
-    log.warn(`${failures.length} failed in batch:`, failures.map(f => `${f.path} (${f.status})`));
+    log.warn('partial batch failure', {
+      count: failures.length,
+      failures: failures.map(f => `${f.path} (${f.status})`),
+    });
   }
 
   return response.data.responses;

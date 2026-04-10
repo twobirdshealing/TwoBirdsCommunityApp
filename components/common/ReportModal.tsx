@@ -99,7 +99,7 @@ export function ReportModal({ visible, onClose, contentType, postId, parentId, u
         Alert.alert('Unable to Report', msg);
       }
     } catch (err) {
-      log.error('Report failed:', err);
+      log.error(err, 'Report failed');
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);

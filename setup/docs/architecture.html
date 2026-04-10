@@ -77,7 +77,8 @@ services/               Core services
   push.ts               Push notification service
   cacheRegistry.ts      Cache invalidation events + clear-all on logout
 types/                  TypeScript type definitions
-utils/                  Utility functions (logger, formatters, etc.)
+utils/                  Utility functions (logger, formatters, crashReportingCache, etc.)
+services/sentry.ts      Sentry init + logger sink wiring (crash reporting)
 setup/                  Buyer setup tools
   dashboard.js          Local web dashboard (config, assets, builds, updates)
 docs/                   Developer documentation (you are here)
@@ -90,7 +91,12 @@ scripts/                Dev-only scripts (white-label snapshot, not shipped)</di
 
 <p>What happens when a user opens the app, from cold start to interactive:</p>
 
-<div class="diagram">1. Expo loads &rarr; app/_layout.tsx mounts
+<div class="diagram">0. Expo loads app/_layout.tsx
+   &rarr; Module body (BEFORE React mounts) calls initSentry(getCrashReportingConfig())
+   &rarr; If a Sentry DSN is cached in MMKV, Sentry.init() runs synchronously
+   &rarr; Logger sinks (utils/logger.ts) are wired to Sentry breadcrumb/capture
+   &rarr; Any JS error from this point on is captured automatically
+1. RootLayout component mounts (wrapped by Sentry.wrap when SDK is initialized)
 2. Provider stack wraps the app (Theme, Auth, Config, Pusher, Modules...)
 3. AuthContext.checkAuthStatus()
    &rarr; Reads SecureStore for stored JWT + user info
@@ -119,7 +125,7 @@ scripts/                Dev-only scripts (white-label snapshot, not shipped)</di
 <table>
   <tr><th>#</th><th>Provider</th><th>File</th><th>Purpose</th></tr>
   <tr><td>1</td><td>GestureHandlerRootView</td><td>react-native-gesture-handler</td><td>Gesture handling for bottom sheets, swipes</td></tr>
-  <tr><td>2</td><td>ErrorBoundary</td><td>components/common/ErrorBoundary.tsx</td><td>App-wide crash recovery</td></tr>
+  <tr><td>2</td><td>ErrorBoundary</td><td>components/common/ErrorBoundary.tsx</td><td>App-wide crash recovery. Wraps <code>Sentry.ErrorBoundary</code> — caught render errors are auto-reported with the full React component stack when crash reporting is enabled.</td></tr>
   <tr><td>3</td><td>PersistQueryClientProvider</td><td>@tanstack/react-query-persist-client</td><td>TanStack Query cache persistence to MMKV</td></tr>
   <tr><td>4</td><td>ThemeProvider</td><td>contexts/ThemeContext.tsx</td><td>Colors, dark mode, branding</td></tr>
   <tr><td>5</td><td>AuthProvider</td><td>contexts/AuthContext.tsx</td><td>JWT auth state, login/logout</td></tr>

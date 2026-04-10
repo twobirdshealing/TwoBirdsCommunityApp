@@ -89,7 +89,7 @@ export function GifPickerModal({
         offsetRef.current = offset + newGifs.length;
       }
     } catch (error) {
-      log.error('Error fetching GIFs:', error);
+      log.error(error, 'Error fetching GIFs');
     }
   }, []);
 

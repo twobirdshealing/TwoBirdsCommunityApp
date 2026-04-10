@@ -100,7 +100,7 @@ export function useStartupData({
     if (!username) return;
     setStatus('loading');
 
-    log('Firing startup batch...');
+    log.debug('Firing startup batch...');
 
     try {
       // Build batch paths — conditional paths use cached features from previous session.
@@ -118,7 +118,7 @@ export function useStartupData({
 
       const responses = await batchRequest(batchPaths);
 
-      log('Batch returned', responses.length, 'responses');
+      log.debug('Batch returned', { count: responses.length });
 
       // -- Distribute core data --
 
@@ -179,9 +179,9 @@ export function useStartupData({
       }
 
       setStatus('success');
-      log('Startup batch complete');
+      log.debug('Startup batch complete');
     } catch (err) {
-      log.error('Failed:', err);
+      log.error(err, 'Startup batch failed');
       // Batch failed — check if we have cached features from a previous session (synchronous)
       const cached = getJSON(FEATURES_CACHE_KEY);
       setStatus(cached ? 'success' : 'error');

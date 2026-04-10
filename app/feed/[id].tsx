@@ -91,7 +91,7 @@ export default function SinglePostScreen() {
         cacheEvents.emit(CACHE_EVENTS.BOOKMARKS);
       }
     } catch (err) {
-      log.error('Failed to bookmark:', err);
+      log.error(err, 'Failed to bookmark');
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update bookmark');
     }
   };

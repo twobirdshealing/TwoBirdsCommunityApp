@@ -9,6 +9,7 @@
 import { AppConfigResponse, FeaturesConfig, RegistrationConfig, SocketConfig, VisibilityConfig } from '@/services/api/appConfig';
 import { createLogger } from '@/utils/logger';
 import { DEFAULT_FEATURES, FEATURES_CACHE_KEY, setFeatureFlagCache } from '@/utils/featureFlags';
+import { setCrashReportingCache } from '@/utils/crashReportingCache';
 import { getJSON, setJSON } from '@/services/storage';
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
@@ -90,11 +91,19 @@ export function AppConfigProvider({ children }: { children: React.ReactNode }) {
       setJSON(REGISTRATION_CACHE_KEY, data.registration);
     }
     if (data.features) {
-      // Stable-reference guard: only update if values actually changed
+      // Stable-ref guard: skip state + cache churn if values are unchanged.
       const incoming = JSON.stringify(data.features);
-      setFeatures(prev => JSON.stringify(prev) === incoming ? prev : data.features!);
-      setFeatureFlagCache(data.features);
-      setJSON(FEATURES_CACHE_KEY, data.features);
+      setFeatures(prev => {
+        if (JSON.stringify(prev) === incoming) return prev;
+        setFeatureFlagCache(data.features!);
+        setJSON(FEATURES_CACHE_KEY, data.features);
+        return data.features!;
+      });
+    }
+    if (data.crash_reporting) {
+      // No React state — only the MMKV cache is consumed (at module-load time
+      // by app/_layout.tsx via getCrashReportingConfig). Write-through only.
+      setCrashReportingCache(data.crash_reporting);
     }
     // WordPress PHP time format: 'H' or 'G' = 24-hour, 'g' or 'h' = 12-hour
     if (data.time_format) {

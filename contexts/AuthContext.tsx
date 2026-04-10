@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Re-register push token on every app start (token may have changed)
           if (getFeatureFlag('push_notifications')) {
             authService.getAuthToken().then(token => {
-              if (token) registerDeviceToken(token).catch((e) => log.warn('Push token registration failed:', e));
+              if (token) registerDeviceToken(token).catch((e) => log.warn('Push token registration failed:', { e }));
             });
           }
 
@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(false);
       }
     } catch (error) {
-      log.error('Check status error:', error);
+      log.error(error, 'Check status error');
       setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: result.error || 'Login failed' };
       }
     } catch (error) {
-      log.error('Login error:', error);
+      log.error(error, 'Login error');
       return { success: false, error: 'An unexpected error occurred' };
     }
   }, []);
@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {
-      log.error('Logout error:', error);
+      log.error(error, 'Logout error');
       setUser(null);
       setIsAuthenticated(false);
     }
@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Register push token for new registrations
     if (getFeatureFlag('push_notifications')) {
-      registerDeviceToken(accessToken).catch((e) => log.warn('Push token registration failed:', e));
+      registerDeviceToken(accessToken).catch((e) => log.warn('Push token registration failed:', { e }));
     }
   }, []);
 

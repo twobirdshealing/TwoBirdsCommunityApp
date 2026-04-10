@@ -90,10 +90,10 @@ export function useChatMessages({
       }
 
       messagesApi.markThreadsRead([threadId]).catch((e) => {
-        log.warn('Mark read failed:', e);
+        log.warn('Mark read failed:', { e });
       });
     } catch (err) {
-      log.error('Load error:', err);
+      log.error(err, 'Load error');
       setError('Failed to load conversation');
     } finally {
       setLoading(false);
@@ -137,13 +137,13 @@ export function useChatMessages({
         }
 
         messagesApi.markThreadsRead([selectedThread.id]).catch((e) => {
-          log.warn('Mark read failed:', e);
+          log.warn('Mark read failed:', { e });
         });
       } else if (response.data.intended_object) {
         setIntendedUser(response.data.intended_object);
       }
     } catch (err) {
-      log.error('Resolve error:', err);
+      log.error(err, 'Resolve error');
       setError('Failed to load conversation');
     } finally {
       setLoading(false);
@@ -215,7 +215,7 @@ export function useChatMessages({
         setHasMore(response.data.has_more || false);
       }
     } catch (err) {
-      log.error('Load older error:', err);
+      log.error(err, 'Load older error');
     } finally {
       setLoadingOlder(false);
     }
@@ -280,7 +280,7 @@ export function useChatMessages({
               }
             }
           } catch (err) {
-            log.error('Block error:', err);
+            log.error(err, 'Block error');
             Alert.alert('Error', `Failed to ${action.toLowerCase()} user`);
           } finally {
             setBlockLoading(false);
@@ -301,7 +301,7 @@ export function useChatMessages({
         Alert.alert('Error', 'Failed to unblock user');
       }
     } catch (err) {
-      log.error('Unblock error:', err);
+      log.error(err, 'Unblock error');
       Alert.alert('Error', 'Failed to unblock user');
     } finally {
       setBlockLoading(false);
@@ -363,7 +363,7 @@ export function useChatMessages({
         }
       }
     } catch (err) {
-      log.error('Send error:', err);
+      log.error(err, 'Send error');
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to send message');
     } finally {
       setSending(false);

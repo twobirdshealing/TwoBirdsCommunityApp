@@ -39,7 +39,7 @@ export function useFollowToggle() {
           : profilesApi.followUser(username),
       );
     } catch (err) {
-      log.error('Toggle error:', err);
+      log.error(err, 'Toggle error');
       Alert.alert('Error', 'Failed to update follow status');
     } finally {
       setFollowLoadingMap(prev => ({ ...prev, [memberId]: false }));
@@ -63,7 +63,7 @@ export function useFollowToggle() {
         () => profilesApi.toggleFollowNotification(username),
       );
     } catch (err) {
-      log.error('Toggle notification error:', err);
+      log.error(err, 'Toggle notification error');
     }
   }, [followMap]);
 

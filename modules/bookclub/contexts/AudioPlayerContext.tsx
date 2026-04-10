@@ -143,7 +143,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
   const loadBook = useCallback((book: BookDetail) => {
     if (!book.single_audio_url) {
-      log('No audio URL for book:', book.title);
+      log.debug('No audio URL for book:', { title: book.title });
       setError('This book has no audio file');
       return;
     }
@@ -163,9 +163,9 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
         artworkUrl: book.cover_image ?? undefined,
       });
 
-      log('Loading book:', book.title);
+      log.debug('Loading book:', { title: book.title });
     } catch (err) {
-      log('Failed to load audio:', err);
+      log.debug('Failed to load audio:', { err });
       setError('Failed to load audio');
     }
   }, [player]);

@@ -145,7 +145,7 @@ export default function NotificationsScreen() {
         setPage(nextPage);
       }
     } catch (err) {
-      log.error('Load more error:', err);
+      log.error(err, 'Load more error');
     } finally {
       setLoadingMore(false);
     }
@@ -284,9 +284,9 @@ export default function NotificationsScreen() {
         return;
       }
 
-      log('Could not determine navigation for:', notification.route);
+      log.debug('Could not determine navigation for:', { route: notification.route });
     } catch (err) {
-      log.error('Navigation error:', err);
+      log.error(err, 'Navigation error');
     }
   };
 

@@ -98,9 +98,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   } = useAppQuery<CartData>({
     cacheKey: 'tbc_cart',
     fetcher: async () => {
-      log('Fetching cart...');
+      log.debug('Fetching cart...');
       const result = await cartApi.getCart();
-      log('Cart result:', result.success ? `${result.data.items.length} items` : `error: ${result.error?.message}`);
+      log.debug('Cart result', result.success
+        ? { itemCount: result.data.items.length }
+        : { error: result.error?.message });
       if (!result.success) throw new Error(result.error?.message || 'Failed to load cart');
       return result.data;
     },
@@ -112,7 +114,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // -------------------------------------------------------------------------
 
   const openCart = useCallback(() => {
-    log('Opening cart sheet');
+    log.debug('Opening cart sheet');
     setSheetVisible(true);
     if (hasOpened) {
       refresh();

@@ -2,6 +2,9 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.54.0
+- **Crash Reporting (Sentry) settings tab**: Added a new "Crash Reporting" tab to the plugin settings UI. Buyers can paste their Sentry DSN and toggle crash reporting on/off without touching app code or rebuilding. The mobile app reads `crash_reporting: { enabled, dsn }` from the existing `/app-config` endpoint on startup and initializes Sentry only when both are valid. DSN format is validated server-side (`https://<key>@<host>/<projectId>`). When disabled or DSN blank, the SDK stays dormant — zero data sent, zero performance cost.
+
 ## v3.53.0
 - **Auto-detect dark mode, messaging, and courses from Fluent Community**: Dark mode, messaging, and courses are no longer manual checkboxes in the plugin settings. They are now auto-detected alongside followers, giphy, emoji, badges, and custom fields in the "Site Features (Auto-Detected)" section. Dark mode reads from FC's Appearance settings, courses uses `Helper::isFeatureEnabled('course_module')`, and messaging checks for the Fluent Messaging plugin. Removes stale saved values from overriding actual module state.
 

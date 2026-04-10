@@ -94,7 +94,7 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
         setMembers([]);
       }
     } catch (err) {
-      log.error('Search error:', err);
+      log.error(err, 'Search error');
       setError('Failed to search members');
       setMembers([]);
     } finally {

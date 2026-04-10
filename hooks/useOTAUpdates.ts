@@ -20,12 +20,12 @@ export function useOTAUpdates() {
       try {
         const check = await Updates.checkForUpdateAsync();
         if (check.isAvailable) {
-          log('Update available, downloading...');
+          log.debug('Update available, downloading...');
           await Updates.fetchUpdateAsync();
-          log('Update downloaded — will apply on next launch');
+          log.debug('Update downloaded — will apply on next launch');
         }
       } catch (e) {
-        log.warn('Update check failed:', e);
+        log.warn('Update check failed:', { e });
       }
     })();
   }, []);

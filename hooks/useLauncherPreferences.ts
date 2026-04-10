@@ -64,10 +64,10 @@ export function useLauncherPreferences(availableIds: string[]) {
     if (saved) {
       const merged = mergeOrder(saved.order, availableIds);
       setOrderedIds(merged);
-      log('loaded & merged', merged.length, 'items');
+      log.debug('loaded & merged items', { count: merged.length });
     } else {
       setOrderedIds(availableIds);
-      log('using defaults', availableIds.length, 'items');
+      log.debug('using defaults', { count: availableIds.length });
     }
   }, [availableIds]);
 

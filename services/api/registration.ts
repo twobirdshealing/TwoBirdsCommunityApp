@@ -115,7 +115,7 @@ export async function getRegistrationFields(): Promise<FieldsResponse | null> {
   if (result.success) {
     return result.data;
   }
-  log.error('Failed to get fields:', result.error);
+  log.error(result.error, 'Failed to get fields');
   return null;
 }
 

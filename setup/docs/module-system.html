@@ -734,7 +734,7 @@ useEffect(() =&gt; {
 <pre><code>// Example: pre-fetch events on app start
 onInit: async () =&gt; {
   const log = createLogger('Events');
-  log('Initializing events module');
+  log.info('Initializing events module');
   await prefetchUpcomingEvents();
 },</code></pre>
 
@@ -1078,7 +1078,7 @@ async function wpRequest&lt;T&gt;(endpoint: string, options = {}) {
 const log = createLogger('EventsAPI');
 
 export async function createEvent(data) {
-  log('createEvent:', data.title);
+  log.info('createEvent', { title: data.title });
   return request('/events', { baseUrl: API_BASE, method: 'POST', body: data });
 }</code></pre>
 

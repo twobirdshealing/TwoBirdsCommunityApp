@@ -1823,6 +1823,49 @@ export const MODULES: ModuleManifest[] = [
 </div>
 
 <div class="step-card">
+  <div class="step-header"><span class="step-title">Crash Reporting (Sentry) — Optional but Recommended</span></div>
+  <div class="step-body">
+    <p>The app ships with the Sentry SDK pre-installed, but it stays dormant until you give it a DSN. With crash reporting enabled, you'll see every crash from every user's device in a web dashboard within seconds — no Mac, Xcode, or device required.</p>
+
+    <ol>
+      <li>Sign up free at <a href="https://sentry.io/" target="_blank" rel="noopener">sentry.io</a> (5,000 errors/month on the free tier — plenty for most communities).</li>
+      <li>Create a new project, choose <strong>React Native</strong> as the platform.</li>
+      <li>Copy the DSN from <em>Project Settings → Client Keys (DSN)</em>.</li>
+      <li>In your WordPress admin, go to <strong>TBC Community App → Crash Reporting</strong>, paste the DSN, check <em>Enable Crash Reporting</em>, and save.</li>
+      <li>Force-quit and relaunch the app on your test device <strong>twice</strong> (see callout below).</li>
+      <li>Long-press the header logo for 2 seconds to open the dev debug menu, then tap <em>Send test event to Sentry</em>. Within 30 seconds the event should appear in your Sentry dashboard's Issues feed.</li>
+    </ol>
+
+    <div class="callout callout-warn">
+      <strong>Why two relaunches?</strong> Sentry must initialize at module-load time, before React mounts, so that errors during app startup are captured. The init reads the DSN <em>synchronously</em> from a local cache. The first launch after saving a new DSN fetches the config and writes it to the cache; only the <em>second</em> launch initializes Sentry from that cache. After this one-time bootstrap, Sentry initializes instantly on every cold start.
+    </div>
+
+    <h4 style="margin-top: 16px;">Symbolicated stack traces (optional but recommended)</h4>
+    <p>Without source map upload, crash stack traces show minified function names like <code>t.a.b()</code>. To get readable names like <code>CartProvider.openCart</code>, configure source-map upload as a one-time setup:</p>
+    <ol>
+      <li>In Sentry, go to <em>Settings → Auth Tokens</em> and create a new token with <code>project:releases</code> scope. Copy it.</li>
+      <li>From your terminal, set three EAS secrets (one-time, runs once on your machine):</li>
+    </ol>
+<pre><code>eas secret:create --name SENTRY_AUTH_TOKEN --value sntrys_YOUR_TOKEN_HERE
+eas secret:create --name SENTRY_ORG --value your-sentry-org-slug
+eas secret:create --name SENTRY_PROJECT --value your-sentry-project-slug</code></pre>
+    <p>Done. Every <code>eas build</code> from now on automatically uploads source maps. To verify, check the build logs for <code>Bundled and uploaded source maps to Sentry</code>.</p>
+
+    <div class="callout">
+      <strong>Builds never fail because of Sentry:</strong> all four EAS profiles ship with <code>SENTRY_ALLOW_FAILURE=true</code>. If the secrets above aren't set, or your auth token expires, Sentry's source-map upload step skips silently and the build still succeeds. You'll lose symbolication for that build, but you won't be blocked.
+    </div>
+
+    <div class="callout">
+      <strong>Privacy:</strong> Sentry receives crash stack traces, device info (model, OS version), app version, and recent log breadcrumbs. It does not see user content, messages, passwords, or auth tokens — those are stripped automatically before transmission.
+    </div>
+
+    <div class="callout callout-warn">
+      <strong>To disable:</strong> uncheck <em>Enable Crash Reporting</em> in WordPress, or clear the DSN field. Either disables Sentry on the next app launch with zero performance cost — the SDK stays in the binary but never initializes.
+    </div>
+  </div>
+</div>
+
+<div class="step-card">
   <div class="step-header"><span class="step-title">Submitting to Stores</span></div>
   <div class="step-body">
     <p>After a successful production build, submit directly from the dashboard or via CLI:</p>
@@ -1994,7 +2037,7 @@ eas submit --platform android</code></pre>
     <p>Verify your <strong>Service Account Key</strong> (.json file) is uploaded in the Config tab. The service account must have the correct permissions in Google Play Console (<strong>Users and permissions &rarr; Invite user</strong> with Admin access). Also ensure the app exists in Google Play Console and you've uploaded at least one build to any testing track.</p>
 
     <h4 style="margin-top: 12px;">Build succeeds but app crashes on launch</h4>
-    <p>This usually means a native module mismatch. Check that your <code>app.json</code> plugins array hasn't changed unexpectedly. If you recently added or removed a package, make sure it was a full native build (not an OTA update). Review the crash logs in App Store Connect (Crashes) or Google Play Console (Crashes and ANRs).</p>
+    <p>This usually means a native module mismatch. Check that your <code>app.json</code> plugins array hasn't changed unexpectedly. If you recently added or removed a package, make sure it was a full native build (not an OTA update). Review the crash logs in <strong>your Sentry dashboard</strong> if you have crash reporting enabled (much faster — see the Crash Reporting card above), or fall back to App Store Connect (Crashes) / Google Play Console (Crashes and ANRs).</p>
 
     <h4 style="margin-top: 12px;">App rejected by store review</h4>
     <p>The most common reasons: (1) the reviewer can't log in &mdash; make sure you provided working <strong>demo credentials</strong> in the review notes, (2) the app crashes on launch, (3) missing <strong>privacy policy</strong> URL. See the <a href="#builds">Publishing to the Stores</a> card for the full checklist.</p>

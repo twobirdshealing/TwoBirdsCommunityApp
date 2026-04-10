@@ -103,12 +103,11 @@ async function getAuthHeader(): Promise<string | null> {
   const token = await getAuthToken();
 
   if (token) {
-    log('Using JWT token');
-    log('Token (first 20 chars):', token.substring(0, 20) + '...');
+    log.debug('Using JWT token', { tokenPreview: token.substring(0, 20) + '...' });
     return `Bearer ${token}`;
   }
 
-  log('WARNING: No auth token available!');
+  log.warn('No auth token available');
   return null;
 }
 
@@ -199,7 +198,7 @@ async function request<T>(
   const { method = 'GET', body, params, headers = {}, baseUrl, rawBody, includeHeaders, timeout = DEFAULT_TIMEOUT_MS } = config;
 
   const url = buildUrl(endpoint, params, baseUrl);
-  log(`${method} ${url}`);
+  log.debug('request', { method, url });
 
   // Pre-flight connectivity check — fail fast instead of waiting for fetch timeout
   try {
@@ -236,11 +235,11 @@ async function request<T>(
       if (debugHeaders.Authorization) {
         debugHeaders.Authorization = debugHeaders.Authorization.substring(0, 30) + '...';
       }
-      log('Request headers:', JSON.stringify(debugHeaders, null, 2));
+      log.debug('Request headers', { headers: debugHeaders });
     }
 
     if (__DEV__ && body && !isRaw) {
-      log('Request body (preview):', JSON.stringify(body).substring(0, 500));
+      log.debug('Request body preview', { body: JSON.stringify(body).substring(0, 500) });
     }
 
     // Set up request timeout via AbortController
@@ -260,7 +259,7 @@ async function request<T>(
     }
 
     // Debug: Log response status
-    log('Response status:', response.status, response.statusText);
+    log.debug('Response status:', { status: response.status, statusText: response.statusText });
 
     // Parse JSON — handle non-JSON responses (e.g. HTML from 502 proxy errors)
     let data: any;
@@ -268,7 +267,7 @@ async function request<T>(
       data = await response.json();
     } catch {
       const text = await response.text().catch(() => '');
-      log.warn('Failed to parse JSON response, status:', response.status, 'body preview:', text.substring(0, 200));
+      log.warn('Failed to parse JSON response', { status: response.status, bodyPreview: text.substring(0, 200) });
       return {
         success: false,
         error: {
@@ -281,7 +280,7 @@ async function request<T>(
 
     // Debug: Log first 500 chars of response
     if (__DEV__) {
-      log('Response data (preview):', JSON.stringify(data).substring(0, 500));
+      log.debug('Response data preview', { data: JSON.stringify(data).substring(0, 500) });
     }
 
     // Extract custom response headers (unread counts, maintenance, min version, module headers)
@@ -321,9 +320,9 @@ async function request<T>(
 
     if (!response.ok) {
       if (response.status >= 500) {
-        log.error('HTTP', response.status, data);
+        log.error(new Error(`HTTP ${response.status}`), 'Server error', { status: response.status, data });
       } else {
-        log.warn('HTTP', response.status, data);
+        log.warn('HTTP error', { status: response.status, data });
       }
 
       // Handle JWT expiration or invalid token
@@ -337,11 +336,11 @@ async function request<T>(
       );
 
       if (isJwtExpired && !config._isRetry) {
-        log('JWT expired, attempting silent refresh...');
+        log.debug('JWT expired, attempting silent refresh...');
         const refreshed = await silentRefresh();
 
         if (refreshed) {
-          log('Token refreshed, retrying request...');
+          log.debug('Token refreshed, retrying request...');
           return request<T>(endpoint, { ...config, _isRetry: true });
         }
 
@@ -366,7 +365,7 @@ async function request<T>(
   } catch (error) {
     // Distinguish timeout from other network errors
     if (error instanceof Error && error.name === 'AbortError') {
-      log.warn('Request timed out:', url);
+      log.warn('Request timed out:', { url });
       return {
         success: false,
         error: {
@@ -377,7 +376,7 @@ async function request<T>(
       };
     }
 
-    log.error('Network error', error);
+    log.error(error, 'Network error');
 
     return {
       success: false,

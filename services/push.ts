@@ -55,7 +55,7 @@ function getProjectId(): string | undefined {
 export async function registerForPushNotifications(): Promise<string | null> {
   // Must be on physical device
   if (!Device.isDevice) {
-    log('Push notifications require a physical device');
+    log.debug('Push notifications require a physical device');
     return null;
   }
 
@@ -65,29 +65,29 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
   // Request permission if not already granted
   if (existingStatus !== 'granted') {
-    log('Requesting push notification permission...');
+    log.debug('Requesting push notification permission...');
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }
 
   if (finalStatus !== 'granted') {
-    log('Push notification permission denied');
+    log.debug('Push notification permission denied');
     return null;
   }
 
-  log('Push notification permission granted');
+  log.debug('Push notification permission granted');
 
   // Get Expo push token
   try {
     const projectId = getProjectId();
-    log('Project ID:', projectId);
+    log.debug('Project ID:', { projectId });
 
     const tokenData = await Notifications.getExpoPushTokenAsync({
       projectId,
     });
 
     storedPushToken = tokenData.data;
-    log('Got push token:', storedPushToken.substring(0, 30) + '...');
+    log.debug('Got push token', { tokenPreview: storedPushToken.substring(0, 30) + '...' });
 
     // Android needs notification channel
     if (Platform.OS === 'android') {
@@ -101,7 +101,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
     return storedPushToken;
   } catch (error) {
-    log('Error getting push token:', error);
+    log.debug('Error getting push token:', { error });
     return null;
   }
 }
@@ -117,28 +117,28 @@ export async function registerForPushNotifications(): Promise<string | null> {
  */
 export async function registerDeviceToken(authToken: string): Promise<boolean> {
   if (!authToken) {
-    log('Cannot register device - no auth token provided');
+    log.debug('Cannot register device - no auth token provided');
     return false;
   }
 
   // Get push token (requests permission if needed)
   const pushToken = await registerForPushNotifications();
   if (!pushToken) {
-    log('Cannot register device - no push token');
+    log.debug('Cannot register device - no push token');
     return false;
   }
 
   // Register with backend
   const platform = Platform.OS as 'ios' | 'android';
-  log(`Registering device with backend (${platform})...`);
+  log.info('Registering device with backend', { platform });
 
   const result = await registerDevice(authToken, pushToken, platform);
 
   if (result.success) {
-    log('Device registered successfully');
+    log.debug('Device registered successfully');
     return true;
   } else {
-    log('Device registration failed:', result.error);
+    log.debug('Device registration failed:', { error: result.error });
     return false;
   }
 }
@@ -154,27 +154,27 @@ export async function registerDeviceToken(authToken: string): Promise<boolean> {
  */
 export async function unregisterDeviceToken(authToken: string): Promise<void> {
   if (!storedPushToken) {
-    log('No stored push token to unregister');
+    log.debug('No stored push token to unregister');
     return;
   }
 
   if (!authToken) {
-    log('Cannot unregister device - no auth token provided');
+    log.debug('Cannot unregister device - no auth token provided');
     storedPushToken = null;
     return;
   }
 
-  log('Unregistering device from backend...');
+  log.debug('Unregistering device from backend...');
 
   try {
     const result = await unregisterDevice(authToken, storedPushToken);
     if (result.success) {
-      log('Device unregistered successfully');
+      log.debug('Device unregistered successfully');
     } else {
-      log('Device unregistration failed:', result.error);
+      log.debug('Device unregistration failed:', { error: result.error });
     }
   } catch (error) {
-    log('Error unregistering device:', error);
+    log.debug('Error unregistering device:', { error });
   }
 
   storedPushToken = null;
@@ -222,9 +222,9 @@ export async function syncBadgeCount(count: number): Promise<void> {
   lastBadgeCount = count;
   try {
     await Notifications.setBadgeCountAsync(count);
-    log('Badge synced to', count);
+    log.debug('Badge synced to', { count });
   } catch (error) {
-    log('Badge sync failed:', error);
+    log.debug('Badge sync failed:', { error });
   }
 }
 
@@ -235,9 +235,9 @@ export async function clearBadgeCount(): Promise<void> {
   lastBadgeCount = null;
   try {
     await Notifications.setBadgeCountAsync(0);
-    log('Badge cleared');
+    log.debug('Badge cleared');
   } catch (error) {
-    log('Badge clear failed:', error);
+    log.debug('Badge clear failed:', { error });
   }
 }
 

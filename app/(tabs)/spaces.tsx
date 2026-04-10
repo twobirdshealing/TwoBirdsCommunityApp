@@ -181,7 +181,7 @@ export default function SpacesScreen() {
         Alert.alert('Error', response.error?.message || 'Failed to join space');
       }
     } catch (err) {
-      log.error('Join space error:', err);
+      log.error(err, 'Join space error');
       Alert.alert('Error', 'Failed to join space');
     } finally {
       setJoiningSlug(null);

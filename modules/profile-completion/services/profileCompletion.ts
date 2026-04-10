@@ -48,7 +48,7 @@ export async function checkProfileComplete(): Promise<ProfileStatusResponse> {
   }
 
   // Default to complete on error so we don't block users
-  log.error('checkProfileComplete failed:', result.error);
+  log.error(result.error, 'checkProfileComplete failed');
   return { profile_complete: true, missing: [] };
 }
 
@@ -65,6 +65,6 @@ export async function completeRegistration(): Promise<boolean> {
     return result.data.success;
   }
 
-  log.error('completeRegistration failed:', result.error);
+  log.error(result.error, 'completeRegistration failed');
   return false;
 }

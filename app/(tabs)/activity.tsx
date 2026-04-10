@@ -102,7 +102,7 @@ export default function ActivityScreen() {
         Alert.alert('Error', response.error?.message || 'Failed to update pin status');
       }
     } catch (err) {
-      log.error('Pin error:', err);
+      log.error(err, 'Pin error');
       Alert.alert('Error', 'Failed to update pin status');
     }
   };

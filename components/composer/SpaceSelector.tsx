@@ -93,11 +93,11 @@ export function SpaceSelector({
       // Process spaces
       if (spacesRes.success) {
         const spacesList = spacesRes.data.spaces || [];
-        log('Spaces count:', spacesList.length);
+        log.debug('Spaces count:', { length: spacesList.length });
         setSpaces(spacesList);
       }
     } catch (error) {
-      log.error('Error fetching spaces:', error);
+      log.error(error, 'Error fetching spaces');
     } finally {
       setLoading(false);
     }
@@ -173,7 +173,7 @@ export function SpaceSelector({
   // ---------------------------------------------------------------------------
 
   const handleSelect = (space: Space) => {
-    log('Selected:', space.slug, space.title);
+    log.debug('Selected:', { slug: space.slug, title: space.title });
     onSelect(space.slug, space.title);
     setIsOpen(false);
     setSearchQuery('');

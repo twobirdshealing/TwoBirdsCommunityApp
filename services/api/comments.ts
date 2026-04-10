@@ -91,7 +91,7 @@ export async function createComment(postId: number, data: CreateCommentData) {
     requestData.media_images = data.media_images;
   }
   
-  log('Creating comment with:', JSON.stringify(requestData, null, 2));
+  log.debug('Creating comment', { requestData });
   
   return post<CreateCommentResponse>(ENDPOINTS.POST_COMMENTS(postId), requestData);
 }
@@ -107,7 +107,7 @@ export interface UpdateCommentData {
 }
 
 export async function updateComment(postId: number, commentId: number, data: UpdateCommentData) {
-  log('Updating comment:', { postId, commentId, data });
+  log.debug('Updating comment', { postId, commentId, data });
   
   return post<{ message: string; data: Comment }>(
     `${ENDPOINTS.POST_COMMENTS(postId)}/${commentId}`,
@@ -139,7 +139,7 @@ export async function reactToComment(
     state: hasReacted ? 0 : 1,
   };
 
-  log('Reacting to comment:', { postId, commentId, payload });
+  log.debug('Reacting to comment', { postId, commentId, payload });
 
   return post<ReactResponse>(`${ENDPOINTS.POST_COMMENTS(postId)}/${commentId}/reactions`, payload);
 }

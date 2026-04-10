@@ -62,7 +62,7 @@ async function fetchReactionConfig(): Promise<ConfigResult> {
     const result = await request<{ reactions?: ReactionConfig[]; display?: Partial<DisplayConfig> }>('/config', { baseUrl: TBC_MR_URL });
 
     if (!result.success) {
-      log.warn('API error:', result.error.message);
+      log.warn('API error:', { message: result.error.message });
       return EMPTY_CONFIG;
     }
 
@@ -91,7 +91,7 @@ async function fetchReactionConfig(): Promise<ConfigResult> {
 
     return EMPTY_CONFIG;
   } catch (err) {
-    log.warn('Fetch failed:', err);
+    log.warn('Fetch failed:', { err });
     return EMPTY_CONFIG;
   }
 }

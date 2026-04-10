@@ -111,7 +111,7 @@ export async function updateProfile(username: string, data: {
   badge_slugs?: string[];
   status?: string;
 }) {
-  log('updateProfile:', username);
+  log.debug('updateProfile:', { username });
   return post<{ profile: Profile }>(ENDPOINTS.PROFILE(username), { data });
 }
 
@@ -123,7 +123,7 @@ export async function patchProfileMedia(username: string, data: {
   avatar?: string;
   cover_photo?: string;
 }) {
-  log('patchProfileMedia:', username, data.avatar ? 'avatar' : '', data.cover_photo ? 'cover' : '');
+  log.debug('patchProfileMedia', { username, hasAvatar: !!data.avatar, hasCover: !!data.cover_photo });
   return put<{ message: string }>(ENDPOINTS.PROFILE(username), { data });
 }
 
@@ -132,7 +132,7 @@ export async function patchProfileMedia(username: string, data: {
 // -----------------------------------------------------------------------------
 
 export async function toggleFollowNotification(username: string) {
-  log('toggleFollowNotification:', username);
+  log.debug('toggleFollowNotification:', { username });
   return post<{ message: string }>(`${ENDPOINTS.PROFILE(username)}/notification`);
 }
 
@@ -141,7 +141,7 @@ export async function toggleFollowNotification(username: string) {
 // -----------------------------------------------------------------------------
 
 export async function blockUser(username: string) {
-  log('blockUser:', username);
+  log.debug('blockUser:', { username });
   return post<{ follow: { status: string } | null; xprofile: XProfile }>(
     `${ENDPOINTS.PROFILE(username)}/block`
   );
@@ -152,7 +152,7 @@ export async function blockUser(username: string) {
 // -----------------------------------------------------------------------------
 
 export async function unblockUser(username: string) {
-  log('unblockUser:', username);
+  log.debug('unblockUser:', { username });
   return post<{ message: string }>(
     `${ENDPOINTS.PROFILE(username)}/unblock`
   );

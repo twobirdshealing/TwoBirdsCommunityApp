@@ -85,7 +85,7 @@ export default function SpacePage() {
       setIsPending(false);
 
     } catch (err) {
-      log.error('Failed to load space:', err);
+      log.error(err, 'Failed to load space');
     }
   }, [slug]);
 
@@ -192,7 +192,7 @@ export default function SpacePage() {
         Alert.alert('Error', response.error?.message || 'Failed to update pin');
       }
     } catch (err) {
-      log.error('Pin toggle error:', err);
+      log.error(err, 'Pin toggle error');
       Alert.alert('Error', 'Failed to pin post');
     }
   };
@@ -269,7 +269,7 @@ export default function SpacePage() {
       }
     } catch (err) {
       if (isPublic) fetchSpace();
-      log.error('Join space error:', err);
+      log.error(err, 'Join space error');
       Alert.alert('Error', 'Failed to join space');
     } finally {
       setIsRequesting(false);

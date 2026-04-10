@@ -18,6 +18,10 @@ import { BottomSheet, BottomSheetScrollView } from '@/components/common/BottomSh
 import { Button } from '@/components/common/Button';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, typography } from '@/constants/layout';
+import { flushSentry, getSentryStatus, isSentryInitialized } from '@/services/sentry';
+import { createLogger } from '@/utils/logger';
+
+const log = createLogger('DebugInfoSheet');
 
 interface DebugInfoSheetProps {
   visible: boolean;
@@ -38,7 +42,6 @@ export function DebugInfoSheet({ visible, onClose }: DebugInfoSheetProps) {
   const [checking, setChecking] = useState(false);
   const [reloading, setReloading] = useState(false);
 
-  // All values read fresh on every render so the sheet always reflects current state
   const expoVersion = Constants.expoConfig?.version ?? 'unknown';
   const runtimeVersion = Updates.runtimeVersion ?? 'unknown';
   const updateId = Updates.updateId ?? null;
@@ -89,6 +92,56 @@ export function DebugInfoSheet({ visible, onClose }: DebugInfoSheetProps) {
     }
   }, []);
 
+  const sentryActive = isSentryInitialized();
+  const sentryStatus = getSentryStatus();
+  const [sendingTest, setSendingTest] = useState(false);
+
+  const handleTestSentryCrash = useCallback(() => {
+    if (!sentryActive) {
+      Alert.alert(
+        'Sentry not initialized',
+        'No DSN cached yet. Open the WordPress admin → TBC Community App → Crash Reporting, paste your Sentry DSN, save, then force-quit and relaunch the app twice (once to fetch the config, once to load it on cold start).',
+      );
+      return;
+    }
+    Alert.alert(
+      'Send test crash?',
+      'This will send a synthetic error to your Sentry dashboard so you can verify the integration. The app will not actually crash.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          style: 'destructive',
+          onPress: async () => {
+            setSendingTest(true);
+            try {
+              const err = new Error(
+                `Sentry test event from DebugInfoSheet at ${new Date().toISOString()}`,
+              );
+              log.error(err, 'Manual Sentry test from debug menu', {
+                triggeredBy: 'DebugInfoSheet',
+                appVersion: expoVersion,
+                channel,
+              });
+              // Flush before showing the success alert — without this, the user
+              // could background the app before the HTTP request completes and
+              // lose the test event entirely.
+              const flushed = await flushSentry();
+              Alert.alert(
+                flushed ? 'Test event sent' : 'Sent (flush timed out)',
+                flushed
+                  ? 'Check your Sentry dashboard within ~30 seconds. The event will appear in the Issues feed tagged with source: DebugInfoSheet.'
+                  : 'The flush call timed out, but Sentry may still deliver the event in the background. Check your dashboard in a minute.',
+              );
+            } finally {
+              setSendingTest(false);
+            }
+          },
+        },
+      ],
+    );
+  }, [sentryActive, expoVersion, channel]);
+
   return (
     <BottomSheet visible={visible} onClose={onClose} heightPercentage={75} title="Debug Info">
       <BottomSheetScrollView contentContainerStyle={styles.content}>
@@ -103,6 +156,33 @@ export function DebugInfoSheet({ visible, onClose }: DebugInfoSheetProps) {
           <Row label="Bundle source" value={bundleSource} highlight={!isEmbedded} />
           <Row label="Update ID" value={updateId ?? '(none — embedded bundle)'} mono />
           <Row label="Published" value={formatDate(createdAt)} />
+        </Section>
+
+        <Section title="Crash Reporting (Sentry)">
+          <Row
+            label="SDK initialized"
+            value={sentryActive ? 'yes' : 'no'}
+            highlight={sentryActive}
+          />
+          <Row
+            label="DSN host"
+            value={sentryStatus?.dsnHost ?? '(not configured)'}
+            mono
+          />
+          <Row label="Environment" value={__DEV__ ? 'development' : 'production'} />
+          <View style={styles.buttonRow}>
+            <Button
+              title={sendingTest ? 'Sending...' : 'Send test event to Sentry'}
+              variant="secondary"
+              onPress={handleTestSentryCrash}
+              disabled={checking || reloading || sendingTest}
+            />
+          </View>
+          <Text style={[styles.hint, { color: colors.textTertiary }]}>
+            {sentryActive
+              ? 'Tap to verify the full pipeline (logger → Sentry → dashboard).'
+              : 'Configure a DSN in WP admin → TBC Community App → Crash Reporting, then relaunch.'}
+          </Text>
         </Section>
 
         <Section title="Actions">

@@ -68,10 +68,10 @@ export function clearAllUserCaches(): void {
       }
     }
     if (cleared > 0) {
-      log('Cleared', cleared, 'cached keys');
+      log.debug('Cleared cached keys', { count: cleared });
     }
   } catch (e) {
-    log.error('MMKV clear failed:', e);
+    log.error(e, 'MMKV clear failed');
   }
 
   // 2. Clear TanStack Query cache
@@ -82,7 +82,7 @@ export function clearAllUserCaches(): void {
     try {
       clear();
     } catch (e) {
-      log.error('Memory cache clear failed:', e);
+      log.error(e, 'Memory cache clear failed');
     }
   }
 }

@@ -62,7 +62,7 @@ export function LikesCount({ feedId, reactionsCount, reactions }: LikesCountProp
                   {
                     zIndex: MAX_AVATARS - i,
                     marginLeft: i === 0 ? 0 : AVATAR_OVERLAP,
-                    borderColor: themeColors.card,
+                    borderColor: themeColors.surface,
                   },
                 ]}
               >

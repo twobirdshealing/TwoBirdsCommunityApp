@@ -205,7 +205,7 @@ export async function createFeed(data: CreateFeedData) {
     requestData.survey = data.survey;
   }
 
-  log('Creating feed with:', JSON.stringify(requestData, null, 2));
+  log.debug('Creating feed', { requestData });
 
   return post<{ feed: Feed }>(ENDPOINTS.FEEDS, requestData);
 }
@@ -226,7 +226,7 @@ export async function updateFeed(id: number, data: Partial<CreateFeedData>) {
 // Web app sends: {is_sticky: 1, query_timestamp: ...}
 
 export async function toggleSticky(id: number, isSticky: boolean) {
-  log('toggleSticky using PATCH:', { id, isSticky: isSticky ? 1 : 0 });
+  log.debug('toggleSticky', { id, isSticky: isSticky ? 1 : 0 });
   
   // Use PATCH for partial update (doesn't require all fields)
   return patch<{ message: string; data: Feed }>(`${ENDPOINTS.FEEDS}/${id}`, {

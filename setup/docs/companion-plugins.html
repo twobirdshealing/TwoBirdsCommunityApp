@@ -100,7 +100,7 @@
   <tr><td><code>push/class-log.php</code></td><td>TBC_CA_Push_Log</td><td>Push notification logging (DB table)</td></tr>
   <tr><td><code>push/class-manual.php</code></td><td>TBC_CA_Push_Manual</td><td>Manual push notification form (admin)</td></tr>
   <tr><td><code>admin/class-admin.php</code></td><td>TBC_CA_Admin</td><td>Admin menu registration</td></tr>
-  <tr><td><code>admin/class-settings.php</code></td><td>TBC_CA_Admin_Settings</td><td>Settings page (7 tabs)</td></tr>
+  <tr><td><code>admin/class-settings.php</code></td><td>TBC_CA_Admin_Settings</td><td>Settings page (8 tabs)</td></tr>
 </table>
 
 <h3>Registration Endpoints</h3>
@@ -125,7 +125,7 @@
 <h3>App Configuration</h3>
 <table>
   <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
-  <tr><td>GET</td><td><code>/app-config</code></td><td>Optional</td><td>Theme colors, branding, feature flags, socket config, maintenance, update info, social providers, portal slug, registration capabilities, time format. When authenticated: UI visibility flags + maintenance bypass.</td></tr>
+  <tr><td>GET</td><td><code>/app-config</code></td><td>Optional</td><td>Theme colors, branding, feature flags, socket config, maintenance, update info, social providers, portal slug, registration capabilities, time format, crash reporting (Sentry DSN + enable flag). When authenticated: UI visibility flags + maintenance bypass.</td></tr>
   <tr><td>GET</td><td><code>/badge-definitions</code></td><td>No</td><td>Achievement badge definitions (slugs, labels, icons)</td></tr>
 </table>
 
@@ -181,11 +181,12 @@
 </ul>
 
 <h3>Admin Settings</h3>
-<p>The plugin adds a settings page under WP admin with 7 tabs:</p>
+<p>The plugin adds a settings page under WP admin with 8 tabs:</p>
 <table>
   <tr><th>Tab</th><th>Settings</th></tr>
   <tr><td><strong>General</strong></td><td>App version control (min version, store URLs), maintenance mode (toggle, message, bypass roles), deep linking (bundle ID, package name, URL scheme, Apple Team ID, Android SHA256, App Store ID, smart banner), data management (delete on uninstall)</td></tr>
   <tr><td><strong>Features</strong></td><td>Feature flags: dark mode, push notifications, messaging (requires Fluent Messaging), courses (requires FC Course module). Profile tabs: posts, spaces, comments.</td></tr>
+  <tr><td><strong>Crash Reporting</strong></td><td>Sentry DSN field + Enable Crash Reporting toggle. When enabled with a valid DSN, the mobile app initializes Sentry on cold start (after a one-time two-relaunch bootstrap) and sends all native crashes, JS exceptions, and breadcrumbs to your Sentry dashboard. DSN is validated server-side. Both fields blank = SDK stays dormant. See <a href="../setup-guide.html#builds">setup guide</a> for the full flow.</td></tr>
   <tr><td><strong>UI Visibility</strong></td><td>Role-based element hiding matrix (cart, blog, courses, bookmarks, directory, notification settings). Custom visibility elements for module integration.</td></tr>
   <tr><td><strong>Notifications</strong></td><td>Push notification type management: enable/disable types, set defaults, control user visibility. Types are grouped by category.</td></tr>
   <tr><td><strong>Push Log</strong></td><td>30-day push notification statistics and recent activity log (read-only).</td></tr>

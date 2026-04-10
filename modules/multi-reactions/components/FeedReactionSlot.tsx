@@ -89,7 +89,7 @@ export function FeedReactionSlot({
       // Sync optimistic state with server-accurate breakdown
       reconcileViaItemUpdate('feed', objectId, onFeedUpdate);
     } catch (err) {
-      log.error('Reaction failed, reverting:', err);
+      log.error(err, 'Reaction failed, reverting');
       if (snapshot) {
         onFeedUpdate(() => snapshot!);
       }

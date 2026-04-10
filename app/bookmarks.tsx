@@ -109,7 +109,7 @@ export default function BookmarksScreen() {
         cacheEvents.emit(CACHE_EVENTS.FEEDS);
       }
     } catch (err) {
-      log.error('Bookmark error:', err);
+      log.error(err, 'Bookmark error');
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update bookmark');
     }
   };

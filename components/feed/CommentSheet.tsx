@@ -212,7 +212,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         }
       }
     } catch (error) {
-      log.error('Image picker error:', error);
+      log.error(error, 'Image picker error');
       Alert.alert('Error', 'Failed to pick image');
     } finally {
       setIsUploading(false);
@@ -286,7 +286,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         },
       } : undefined;
 
-      log('Submitting comment:', {
+      log.debug('Submitting comment', {
         comment: markdown,
         parent_id: parentId,
         replyingToId: replyingTo?.id,
@@ -316,7 +316,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         throw new Error(response.error?.message || 'Failed to post comment');
       }
     } catch (err) {
-      log.error('Submit error:', err);
+      log.error(err, 'Submit error');
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to post comment');
     } finally {
       setIsSubmitting(false);
@@ -410,7 +410,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
     try {
       await commentsApi.reactToComment(postId, comment.id, willRemove);
     } catch (err) {
-      log.error('Reaction error:', err);
+      log.error(err, 'Reaction error');
       // Revert on error
       setComments(prevComments =>
         prevComments.map(c => c.id === comment.id ? comment : c)
@@ -481,7 +481,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
       Alert.alert('Copied!', 'Link copied to clipboard');
     } catch (err) {
       // If clipboard fails, show URL so user can manually copy
-      log.error('Copy failed:', err);
+      log.error(err, 'Copy failed');
       Alert.alert('Comment Link', url);
     }
   };
@@ -516,7 +516,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                 Alert.alert('Error', response.error?.message || 'Failed to delete');
               }
             } catch (err) {
-              log.error('Delete error:', err);
+              log.error(err, 'Delete error');
               Alert.alert('Error', 'Failed to delete comment');
             }
           },
@@ -546,7 +546,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         Alert.alert('Error', response.error?.message || 'Failed to update pin');
       }
     } catch (err) {
-      log.error('Pin error:', err);
+      log.error(err, 'Pin error');
       Alert.alert('Error', 'Failed to update pin');
     }
   };

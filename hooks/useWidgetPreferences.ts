@@ -91,11 +91,11 @@ export function useWidgetPreferences() {
     if (saved) {
       const merged = mergePreferences(saved, available);
       setPreferences(merged);
-      log('loaded & merged', merged.order.length, 'widgets');
+      log.debug('loaded & merged widgets', { count: merged.order.length });
     } else {
       const defaults = buildDefaults(available);
       setPreferences(defaults);
-      log('using defaults', defaults.order.length, 'widgets');
+      log.debug('using default widgets', { count: defaults.order.length });
     }
     setIsLoading(false);
   }, [features]);

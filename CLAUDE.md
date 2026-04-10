@@ -126,8 +126,10 @@ After completing a task, tell the user whether their change is OTA-safe or requi
 ## Development & Debugging
 
 - **Dev client**: App uses `expo-dev-client` (NOT Expo Go). After adding native modules, a new dev client build is needed via EAS.
-- **Logging**: Use `createLogger(tag)` from `@/utils/logger` — never raw `console.log`. See `docs/logging.html`.
+- **Logging**: Use `createLogger(tag)` from `@/utils/logger` — never raw `console.log`. The logger is **typed** with four levels: `log.debug` (dev only, dropped in prod), `log.info` / `log.warn` (console in dev + Sentry breadcrumb in prod), and `log.error(err, message?, ctx?)` (console in dev + `Sentry.captureException` in prod). The error method takes the **Error first**, then an optional human description, then optional structured context. See `setup/docs/logging.html`.
+- **Crash reporting**: `@sentry/react-native` is wired into the app via `services/sentry.ts`. Sentry initializes at module-load time in `app/_layout.tsx` (BEFORE React mounts) by reading the buyer-configured DSN from MMKV (`utils/crashReportingCache.ts`). The DSN is set in WP admin → TBC Community App → Crash Reporting. When no DSN is configured, the SDK stays dormant — zero data sent, zero performance cost. The dev debug menu (long-press header logo for 2s) has a "Send test event" button to verify the pipeline.
 - **`__DEV__` checks**: Used for dev-only validation. Never wrap user-facing logic in `__DEV__`.
+- **No Mac required for iOS crashes**: with crash reporting enabled, native iOS crashes (including UIKit assertions) flow into the Sentry dashboard automatically. You no longer need physical device + Xcode access to investigate iOS-specific bugs.
 
 ## General Rules
 
