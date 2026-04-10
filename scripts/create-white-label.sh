@@ -131,6 +131,7 @@ tar -cf - \
   --exclude='companion plugins' \
   --exclude='modules' \
   --exclude='setup/.app-presets.json' \
+  --exclude='setup/logs' \
   -C "$SOURCE_DIR" . | tar -xf - -C "$TARGET_DIR"
 
 # Copy only core companion plugins (allowlist — new plugins won't leak in)
@@ -435,6 +436,7 @@ CORE_UPDATE_TAR="$TARGET_DIR/core-update-${SOURCE_VERSION}.tar.gz"
 FIND_EXCLUDES=()
 FIND_EXCLUDES+=( ! -path './node_modules/*' ! -path './.git/*' ! -path './core-update-*' )
 FIND_EXCLUDES+=( ! -path './setup/.temp/*' ! -path './setup/.backups/*' ! -path './setup/.license' ! -path './setup/.app-presets.json' )
+FIND_EXCLUDES+=( ! -path './setup/logs/*' )
 FIND_EXCLUDES+=( ! -path './package-lock.json' )
 
 cd "$TARGET_DIR"

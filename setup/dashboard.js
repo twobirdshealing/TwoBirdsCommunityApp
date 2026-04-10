@@ -254,11 +254,10 @@ const server = http.createServer(async (req, res) => {
 
     // --- Install Dependencies ---
     if (pathname === '/api/install-deps' && req.method === 'POST') {
-      if (installProcess.status === 'running') {
-        jsonResponse(res, { ok: false, error: 'Install already in progress' });
-        return;
-      }
-      startNpmInstall();
+      // If an install is already running (e.g. auto-started by finalizeUpdate after a
+      // core update added a new dep), don't start a second one — just report running so
+      // the caller can poll /api/install-deps/status for the real outcome.
+      if (installProcess.status !== 'running') startNpmInstall();
       jsonResponse(res, { ok: true, status: 'running' });
       return;
     }

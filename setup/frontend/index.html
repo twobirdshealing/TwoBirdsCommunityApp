@@ -2902,8 +2902,8 @@ bumpVersion(type) {
           try {
             var r = await fetch('/api/install-deps/status');
             var d = await r.json();
-            var lines = d.output.split('\n');
-            self.depsOutput = lines.slice(-80).join('\n');
+            var tail = (d.output || '').split('\n').slice(-80).join('\n');
+            if (self.depsOutput !== tail) self.depsOutput = tail;
             if (d.status === 'done') {
               clearInterval(self._depsPoll);
               self.depsStatusText = 'Dependencies installed successfully!';
