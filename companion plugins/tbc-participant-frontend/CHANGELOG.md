@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.3.0 - Settings Tab (Event Categories)
+- **New:** Admin-only **⚙️ Settings** tab on the participant list page for choosing which WooCommerce product categories feed the event list
+- **Removed:** Hardcoded product ID allowlist (`[35059, 34696, 34698]`) — products are now pulled by product category via `tax_query` so any product in one of the selected categories shows up automatically
+- New option: `tbc_pf_event_category_ids` (array of term IDs)
+- New helpers: `tbc_pf_get_event_category_ids()`, `tbc_pf_get_product_ids_by_categories()`
+- New AJAX action: `tbc_pf_save_event_settings` (admin-only, nonce-protected)
+- Settings form uses Select2 for the multi-select category picker (already enqueued on the page)
+- Shows a clear "No event categories configured" message with a pointer to the Settings tab on first load
+- **Migration:** After updating, go to the Settings tab and choose your event categories (e.g. "Sapo", "Ceremony") — the old hardcoded product IDs will no longer drive the list
+
 ## 4.2.0 - Markdown Editor (EasyMDE)
 - **BREAKING:** Replaced TinyMCE (HTML) editor with EasyMDE markdown editor for post templates
 - Templates now store markdown directly — no HTML→markdown conversion needed

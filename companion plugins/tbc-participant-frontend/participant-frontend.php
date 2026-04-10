@@ -2,9 +2,9 @@
 /**
  * Plugin Name: TBC - Participant Frontend
  * Description: Display WooCommerce event products and attendee management.
- * Version: 4.2.0
+ * Version: 4.3.0
  * Author: Two Birds Code
- * 
+ *
  * @package TBC_Participant_Frontend
  */
 
@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('TBC_PF_VERSION', '4.2.01');
+define('TBC_PF_VERSION', '4.3.0');
 
 // Fluent Community course IDs (configurable via wp_options, with known defaults)
 define('TBC_PF_COURSE_SAPO_PRE', intval(get_option('tbc_pf_course_sapo_pre', 116)));

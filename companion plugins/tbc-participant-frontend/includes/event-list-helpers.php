@@ -279,8 +279,83 @@ function tbc_pf_ajax_get_products_by_status() {
     $base_url = isset($_POST['base_url']) ? esc_url_raw($_POST['base_url']) : get_home_url();
 
     $event_list = new TBC_PF_Event_List_Display();
+
+    if ($status === 'settings') {
+        if (!current_user_can('manage_options')) {
+            echo '<p>You do not have permission to view settings.</p>';
+            wp_die();
+        }
+        echo $event_list->get_settings_html();
+        wp_die();
+    }
+
     echo $event_list->get_product_list_html($status, $base_url);
     wp_die();
 }
 add_action('wp_ajax_tbc_pf_get_products_by_status', 'tbc_pf_ajax_get_products_by_status');
 add_action('wp_ajax_nopriv_tbc_pf_get_products_by_status', 'tbc_pf_ajax_get_products_by_status');
+
+/**
+ * Get the saved event category term IDs (multi-select).
+ *
+ * @return int[]
+ */
+function tbc_pf_get_event_category_ids() {
+    $raw = get_option('tbc_pf_event_category_ids', []);
+    if (!is_array($raw)) {
+        return [];
+    }
+    return array_values(array_filter(array_map('intval', $raw)));
+}
+
+/**
+ * Get all WooCommerce product IDs belonging to any of the given product_cat term IDs.
+ *
+ * @param int[] $category_ids
+ * @return int[]
+ */
+function tbc_pf_get_product_ids_by_categories($category_ids) {
+    if (empty($category_ids)) {
+        return [];
+    }
+
+    $query = new WP_Query([
+        'post_type'      => 'product',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'no_found_rows'  => true,
+        'tax_query'      => [
+            [
+                'taxonomy' => 'product_cat',
+                'field'    => 'term_id',
+                'terms'    => array_map('intval', $category_ids),
+                'operator' => 'IN',
+            ],
+        ],
+    ]);
+
+    return array_map('intval', $query->posts);
+}
+
+/**
+ * AJAX: Save event category selection (admin only).
+ */
+function tbc_pf_ajax_save_event_settings() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Permission denied.'], 403);
+    }
+
+    check_ajax_referer('tbc_pf_event_settings', 'nonce');
+
+    $raw = isset($_POST['category_ids']) ? (array) $_POST['category_ids'] : [];
+    $ids = array_values(array_unique(array_filter(array_map('intval', $raw))));
+
+    update_option('tbc_pf_event_category_ids', $ids, false);
+
+    wp_send_json_success([
+        'message' => 'Settings saved.',
+        'category_ids' => $ids,
+    ]);
+}
+add_action('wp_ajax_tbc_pf_save_event_settings', 'tbc_pf_ajax_save_event_settings');

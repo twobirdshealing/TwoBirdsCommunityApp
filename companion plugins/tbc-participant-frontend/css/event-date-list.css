@@ -112,6 +112,80 @@
     color: var(--fcom-secondary-text, #666);
 }
 
+.tbc-pf-settings-form {
+    background-color: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #ddd);
+    border-radius: 6px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    color: var(--fcom-primary-text, #333);
+}
+
+.tbc-pf-settings-form h3 {
+    margin: 0 0 8px;
+    color: var(--fcom-primary-text, #333);
+}
+
+.tbc-pf-settings-help {
+    color: var(--fcom-secondary-text, #666);
+    font-size: 13px;
+    margin: 0 0 16px;
+}
+
+.tbc-pf-settings-form label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--fcom-primary-text, #333);
+}
+
+.tbc-pf-settings-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.tbc-pf-settings-actions .button-primary {
+    background-color: var(--fcom-primary-button, #007bff);
+    color: var(--fcom-primary-button-text, #fff);
+    border: none;
+    padding: 8px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.tbc-pf-settings-actions .button-primary:hover {
+    opacity: 0.9;
+}
+
+.tbc-pf-settings-actions .button-primary[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.tbc-pf-settings-status {
+    font-size: 13px;
+    color: var(--fcom-secondary-text, #666);
+}
+
+.tbc-pf-settings-status.is-success {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.tbc-pf-settings-status.is-error {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.tbc-pf-settings-summary {
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--fcom-secondary-text, #666);
+}
+
 .tbc-pf-action-cell {
     text-align: center;
 }

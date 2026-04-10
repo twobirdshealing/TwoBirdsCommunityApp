@@ -33,8 +33,13 @@ class TBC_PF_Event_List_Display {
 
         $output = '<div id="tbc-pf-participant-list-tabs">
                     <button class="tbc-pf-tab-link active" data-status="current">Current Events</button>
-                    <button class="tbc-pf-tab-link" data-status="past">Past Events</button>
-                   </div>';
+                    <button class="tbc-pf-tab-link" data-status="past">Past Events</button>';
+
+        if (current_user_can('manage_options')) {
+            $output .= '<button class="tbc-pf-tab-link" data-status="settings">⚙️ Settings</button>';
+        }
+
+        $output .= '</div>';
 
         $output .= '<div id="tbc-pf-product-list">' . $this->get_product_list_html('current', $current_page_url) . '</div>';
 
@@ -66,7 +71,23 @@ class TBC_PF_Event_List_Display {
             return $html;
         }
 
-        $allowed_products = [35059, 34696, 34698];
+        $category_ids = tbc_pf_get_event_category_ids();
+        if (empty($category_ids)) {
+            $html .= '<tr><td colspan="6">No event categories configured.';
+            if (current_user_can('manage_options')) {
+                $html .= ' Open the <strong>⚙️ Settings</strong> tab to choose which product categories appear here.';
+            }
+            $html .= '</td></tr>';
+            $html .= '</tbody></table>';
+            return $html;
+        }
+
+        $allowed_products = tbc_pf_get_product_ids_by_categories($category_ids);
+        if (empty($allowed_products)) {
+            $html .= '<tr><td colspan="6">No products found in the selected categories.</td></tr>';
+            $html .= '</tbody></table>';
+            return $html;
+        }
 
         if ($status_type === 'current') {
             $all_product_dates = tbc_wc_get_events($allowed_products, [
@@ -184,6 +205,56 @@ class TBC_PF_Event_List_Display {
 
         $html .= '</tbody></table>';
         
+        return $html;
+    }
+
+    public function get_settings_html() {
+        if (!current_user_can('manage_options')) {
+            return '<p>You do not have permission to view settings.</p>';
+        }
+
+        $selected_ids = tbc_pf_get_event_category_ids();
+        $selected_product_count = !empty($selected_ids)
+            ? count(tbc_pf_get_product_ids_by_categories($selected_ids))
+            : 0;
+
+        $terms = get_terms([
+            'taxonomy'   => 'product_cat',
+            'hide_empty' => false,
+            'orderby'    => 'name',
+            'order'      => 'ASC',
+        ]);
+
+        $nonce = wp_create_nonce('tbc_pf_event_settings');
+
+        $html  = '<div class="tbc-pf-settings-form" data-nonce="' . esc_attr($nonce) . '">';
+        $html .= '<h3>Event Categories</h3>';
+        $html .= '<p class="tbc-pf-settings-help">Select which WooCommerce product categories appear in the event list. Products only need to belong to <em>one</em> of the selected categories to show up.</p>';
+
+        if (is_wp_error($terms) || empty($terms)) {
+            $html .= '<p><em>No product categories found.</em></p>';
+            $html .= '</div>';
+            return $html;
+        }
+
+        $html .= '<label for="tbc-pf-event-categories"><strong>Categories:</strong></label><br>';
+        $html .= '<select id="tbc-pf-event-categories" name="tbc_pf_event_categories[]" multiple="multiple" style="width:100%;max-width:560px;">';
+        foreach ($terms as $term) {
+            $is_selected = in_array((int) $term->term_id, $selected_ids, true) ? ' selected' : '';
+            $html .= '<option value="' . esc_attr($term->term_id) . '"' . $is_selected . '>'
+                  . esc_html($term->name) . ' (' . (int) $term->count . ')'
+                  . '</option>';
+        }
+        $html .= '</select>';
+
+        $html .= '<div class="tbc-pf-settings-actions">';
+        $html .= '<button type="button" class="button button-primary" id="tbc-pf-save-settings">Save Settings</button>';
+        $html .= '<span class="tbc-pf-settings-status" id="tbc-pf-settings-status"></span>';
+        $html .= '</div>';
+
+        $html .= '<p class="tbc-pf-settings-summary">Currently matching <strong>' . (int) $selected_product_count . '</strong> product' . ($selected_product_count === 1 ? '' : 's') . '.</p>';
+
+        $html .= '</div>';
         return $html;
     }
 
