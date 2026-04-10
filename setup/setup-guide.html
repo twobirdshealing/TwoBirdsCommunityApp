@@ -578,6 +578,33 @@
 <h4 style="margin-top: 24px; margin-bottom: 12px;">Optional Services</h4>
 <p>These are only needed if you use the features they power. The app works fine without them.</p>
 
+<div class="prereq-card" id="prereq-sentry">
+  <div class="prereq-card-header">
+    <a href="https://sentry.io" target="_blank">Sentry</a>
+    <span class="prereq-badge sentry">Sentry</span>
+    <span class="prereq-card-cost">Free tier (5,000 errors/month)</span>
+  </div>
+  <p class="prereq-card-desc">Crash reporting &mdash; captures every native iOS/Android crash, JS exception, and React render error from any user's device and surfaces them in a web dashboard with full stack traces, breadcrumbs, device info, and OTA channel. <strong>You no longer need a Mac, Xcode, or physical device access to investigate iOS crashes.</strong> Skip if you're fine relying on App Store Connect / Google Play Console crash reports (which are slower, less detailed, and platform-specific).</p>
+  <details>
+    <summary>Walkthrough: Create a Sentry account and project</summary>
+    <div class="details-content">
+      <ol>
+        <li>Go to <a href="https://sentry.io/signup/" target="_blank">sentry.io/signup</a> and create a free account.</li>
+        <li>Choose the <strong>Developer (Free)</strong> plan &mdash; 5,000 errors/month is plenty for most communities.</li>
+        <li>When prompted to create a project, choose <strong>React Native</strong> as the platform.</li>
+        <li>Sentry will show you a setup screen with installation commands &mdash; <strong>ignore those</strong>, the SDK is already integrated. You only need the DSN.</li>
+        <li>After the project is created, go to <strong>Project Settings &rarr; Client Keys (DSN)</strong> and copy the full DSN URL (starts with <code>https://</code> and contains <code>@</code> and <code>.ingest.sentry.io</code>).</li>
+        <li>In your WordPress admin, go to <strong>TBC Community App &rarr; Crash Reporting</strong>, paste the DSN, check <em>Enable Crash Reporting</em>, and save.</li>
+        <li>Force-quit and relaunch the app on your test device <strong>twice</strong> (one-time bootstrap &mdash; explained in the Companion Plugin &rarr; Crash Reporting Tab section).</li>
+        <li>Long-press the header logo for 2 seconds to open the dev debug menu, then tap <em>Send test event to Sentry</em>. Within 30 seconds the event should appear in your Sentry dashboard's Issues feed.</li>
+      </ol>
+      <div class="callout" style="margin-top: 12px;">
+        <strong>Completely optional.</strong> The Sentry SDK ships in every app build but stays dormant until you give it a DSN. With no DSN configured, zero data is sent and there is no performance cost. Source-map upload (for readable function names in production stack traces) is also optional &mdash; see the <a href="#builds">Crash Reporting card in the Builds section</a> for the full trade-off.
+      </div>
+    </div>
+  </details>
+</div>
+
 <div class="prereq-card" id="prereq-firebase">
   <div class="prereq-card-header">
     <a href="https://console.firebase.google.com" target="_blank">Firebase</a>
@@ -1446,7 +1473,7 @@ export const MODULES: ModuleManifest[] = [
 <div class="guide-section" id="sec-companion-plugin">
 <h2 id="companion-plugin">Companion Plugin</h2>
 
-<p>The <strong>TBC Community App</strong> companion plugin adds a settings page in your WordPress admin (<strong>TBC Community App &rarr; App Settings</strong>) with 7 tabs that control app behavior, features, notifications, and more. Install the plugin first (see <a href="#plugins">Companion Plugins</a>), then configure these settings.</p>
+<p>The <strong>TBC Community App</strong> companion plugin adds a settings page in your WordPress admin (<strong>TBC Community App &rarr; App Settings</strong>) with 8 tabs that control app behavior, features, notifications, crash reporting, and more. Install the plugin first (see <a href="#plugins">Companion Plugins</a>), then configure these settings.</p>
 
 <div class="step-card">
   <div class="step-header"><span class="step-title">General Tab</span></div>
@@ -1569,6 +1596,33 @@ export const MODULES: ModuleManifest[] = [
       <li><strong>User Badges</strong> &mdash; customized badges on user profiles</li>
       <li><strong>Custom Profile Fields</strong> &mdash; additional fields on member profiles</li>
     </ul>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Crash Reporting Tab</span></div>
+  <div class="step-body">
+    <p>The Crash Reporting tab connects the mobile app to your Sentry account. When enabled, every crash, JS exception, and React render error from any user's device flows into your Sentry dashboard automatically — with full stack traces, breadcrumbs, device info, app version, and OTA channel attached. You no longer need physical device access or App Store Connect crash logs to investigate iOS-specific bugs.</p>
+
+    <table>
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>Enable Crash Reporting</td><td>Master switch. When unchecked, the Sentry SDK stays dormant — zero data sent, zero performance cost, even though the SDK ships in every app build.</td></tr>
+      <tr><td>Sentry DSN</td><td>Your project's write-only public key. Format: <code>https://&lt;publicKey&gt;@&lt;host&gt;/&lt;projectId&gt;</code>. The plugin validates the format on save. Leave blank to disable. The DSN is sent to the app over the existing <code>/app-config</code> endpoint and cached in MMKV — there is no per-call configuration.</td></tr>
+    </table>
+
+    <div class="callout callout-success">
+      <strong>Free tier is plenty.</strong> Sentry's free plan gives you 5,000 errors/month, 1 user seat, 30-day retention, email alerts, and source-map upload — enough for most communities indefinitely. <a href="https://sentry.io/" target="_blank" rel="noopener">Sign up at sentry.io</a>, create a "React Native" project, and copy the DSN from <em>Project Settings → Client Keys (DSN)</em>.
+    </div>
+
+    <h4 style="margin-top: 16px;">Two-relaunch bootstrap (one-time)</h4>
+    <p>Sentry must initialize at module-load time, before React mounts, so that errors during app startup are captured. The init reads the DSN <em>synchronously</em> from a local cache (MMKV). The first launch after saving a new DSN fetches the config and writes it to the cache; only the <em>second</em> launch initializes Sentry from that cache. After this one-time bootstrap, Sentry initializes instantly on every cold start. To verify, long-press the header logo for 2 seconds to open the dev debug menu — the "Crash Reporting (Sentry)" section shows whether the SDK initialized this session, plus a "Send test event to Sentry" button.</p>
+
+    <h4 style="margin-top: 16px;">Privacy</h4>
+    <p>Sentry receives crash stack traces, device info (model, OS version), app version, and recent log breadcrumbs. It does <em>not</em> see user content, messages, passwords, or auth tokens — those are stripped automatically before transmission. For full privacy details and source-map upload (optional), see the <a href="#builds">Crash Reporting (Sentry) card</a> in the Builds section below.</p>
+
+    <div class="callout callout-warn">
+      <strong>To disable:</strong> uncheck <em>Enable Crash Reporting</em> or clear the DSN field. Either disables Sentry on the next app launch with zero performance cost — the SDK stays in the binary but never initializes.
+    </div>
   </div>
 </div>
 
@@ -1840,20 +1894,39 @@ export const MODULES: ModuleManifest[] = [
       <strong>Why two relaunches?</strong> Sentry must initialize at module-load time, before React mounts, so that errors during app startup are captured. The init reads the DSN <em>synchronously</em> from a local cache. The first launch after saving a new DSN fetches the config and writes it to the cache; only the <em>second</em> launch initializes Sentry from that cache. After this one-time bootstrap, Sentry initializes instantly on every cold start.
     </div>
 
-    <h4 style="margin-top: 16px;">Symbolicated stack traces (optional but recommended)</h4>
-    <p>Without source map upload, crash stack traces show minified function names like <code>t.a.b()</code>. To get readable names like <code>CartProvider.openCart</code>, configure source-map upload as a one-time setup:</p>
+    <h4 style="margin-top: 16px;">Source maps (optional — skip this section to start)</h4>
+    <p><strong>You don't need to do anything here for crash reporting to work.</strong> Crashes, breadcrumbs, device info, app version, and the test button all function the same whether or not source maps are uploaded. This section is purely about <em>readability</em> of stack traces in production builds.</p>
+
+    <p>The trade-off:</p>
+    <table>
+      <tr><th>Without source maps (default)</th><th>With source maps</th></tr>
+      <tr>
+        <td>Stack frames in production builds show <strong>minified function names</strong> like <code>t.a.b()</code> or <code>n.<anonymous></code>. You can still tell which file the crash came from and the line number, but figuring out which function is harder.</td>
+        <td>Stack frames show <strong>real function names</strong> like <code>CartProvider.openCart</code> and <code>useCartFlow</code>. Much faster to debug.</td>
+      </tr>
+      <tr>
+        <td>Dev builds (the kind you build for testing on your own device with <code>eas build --profile development</code>) <strong>already have inline source maps</strong> — you'll see real function names without doing any setup. This section only matters for production / preview builds you ship to real users.</td>
+        <td>Production / preview builds upload their source maps to Sentry during <code>eas build</code>. Sentry then resolves the minified bytecode back to readable names when displaying crashes.</td>
+      </tr>
+    </table>
+
+    <p><strong>Recommendation:</strong> ship a few production builds without this. If reading minified stack traces is bothering you, come back and set it up — it's a 5-minute one-time configuration.</p>
+
+    <div class="callout">
+      <strong>Builds never fail because of this:</strong> all four EAS profiles ship with <code>SENTRY_ALLOW_FAILURE=true</code>. If the secrets below aren't set, or your auth token expires, Sentry's source-map upload step skips silently and the build still succeeds. You can adopt source-map uploads at any time without rebuilding existing released versions.
+    </div>
+
+    <h5 style="margin-top: 16px;">If you want to enable source-map upload</h5>
     <ol>
-      <li>In Sentry, go to <em>Settings → Auth Tokens</em> and create a new token with <code>project:releases</code> scope. Copy it.</li>
-      <li>From your terminal, set three EAS secrets (one-time, runs once on your machine):</li>
+      <li>In Sentry, go to <em>Settings → Auth Tokens</em> and create a new token with <code>project:releases</code> scope. Copy it (this is your <code>SENTRY_AUTH_TOKEN</code>).</li>
+      <li>Find your Sentry org slug (the URL after <code>sentry.io/organizations/</code>) — that's your <code>SENTRY_ORG</code>.</li>
+      <li>Find your project slug (visible in Project Settings) — that's your <code>SENTRY_PROJECT</code>.</li>
+      <li>From your terminal, set three EAS secrets (one-time, runs once on your machine — the values are stored on EAS servers, never in your repo):</li>
     </ol>
 <pre><code>eas secret:create --name SENTRY_AUTH_TOKEN --value sntrys_YOUR_TOKEN_HERE
 eas secret:create --name SENTRY_ORG --value your-sentry-org-slug
 eas secret:create --name SENTRY_PROJECT --value your-sentry-project-slug</code></pre>
-    <p>Done. Every <code>eas build</code> from now on automatically uploads source maps. To verify, check the build logs for <code>Bundled and uploaded source maps to Sentry</code>.</p>
-
-    <div class="callout">
-      <strong>Builds never fail because of Sentry:</strong> all four EAS profiles ship with <code>SENTRY_ALLOW_FAILURE=true</code>. If the secrets above aren't set, or your auth token expires, Sentry's source-map upload step skips silently and the build still succeeds. You'll lose symbolication for that build, but you won't be blocked.
-    </div>
+    <p>Done. Every <code>eas build</code> from now on automatically uploads source maps. To verify, check the next build's logs for <code>Bundled and uploaded source maps to Sentry</code>. If you ever want to remove a secret, run <code>eas secret:delete --name SENTRY_AUTH_TOKEN</code>.</p>
 
     <div class="callout">
       <strong>Privacy:</strong> Sentry receives crash stack traces, device info (model, OS version), app version, and recent log breadcrumbs. It does not see user content, messages, passwords, or auth tokens — those are stripped automatically before transmission.

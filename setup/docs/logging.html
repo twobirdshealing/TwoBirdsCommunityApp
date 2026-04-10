@@ -32,6 +32,7 @@
     <li><a href="#current-tags">All Current Tags</a></li>
     <li><a href="#adding-logging">Adding Logging to a New File</a></li>
     <li><a href="#console-output">Console Output Examples</a></li>
+    <li><a href="#sentry">Sentry Integration</a></li>
     <li><a href="#rules">Rules</a></li>
   </ol>
 </div>
@@ -405,7 +406,60 @@ const log = createLogger('MyModuleAPI');
 <p>Use your terminal's search/filter to isolate a specific tag when debugging. For example, search <code>[Pusher]</code> to see only WebSocket events.</p>
 
 <!-- ================================================================== -->
-<h2 id="rules">9. Rules</h2>
+<h2 id="sentry">9. Sentry Integration</h2>
+
+<p>The logger doubles as the input pipe for Sentry crash reporting. In production builds, every <code>log.info</code> / <code>log.warn</code> / <code>log.error</code> call passes through to Sentry automatically — but only when a Sentry DSN is configured in WP admin (TBC Community App → Crash Reporting). When no DSN is set, the SDK stays dormant: zero data sent, zero performance cost.</p>
+
+<table>
+  <thead>
+    <tr><th>Logger call</th><th>What Sentry receives</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>log.debug(...)</code></td>
+      <td>Nothing. Debug calls are dropped entirely in production builds.</td>
+    </tr>
+    <tr>
+      <td><code>log.info(msg, data?)</code></td>
+      <td>A breadcrumb at level <code>info</code>. Breadcrumbs are stored in memory and attached to any exception that fires later — they show what the user was doing in the seconds before a crash.</td>
+    </tr>
+    <tr>
+      <td><code>log.warn(msg, data?)</code></td>
+      <td>A breadcrumb at level <code>warning</code>. Same behavior as info, just a different severity tag.</td>
+    </tr>
+    <tr>
+      <td><code>log.error(err, msg?, ctx?)</code></td>
+      <td>A captured exception via <code>Sentry.captureException(err)</code>. The optional <code>msg</code> string and <code>ctx</code> object become Sentry "extra" context attached to the event. The event also picks up all breadcrumbs from the current session, device info, app version, and OTA channel automatically.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout callout-success">
+  <strong>You don't need to do anything per call site.</strong> Every existing logger call already feeds Sentry once a DSN is configured. The wiring lives in <code>services/sentry.ts</code> via <code>setLoggerSinks()</code> — called once at app startup, after <code>Sentry.init()</code> succeeds.
+</div>
+
+<h3>How initialization works</h3>
+<p>Sentry initializes at <strong>module-load time</strong> in <code>app/_layout.tsx</code>, BEFORE any React code runs. This is intentional: errors during provider setup, hook initialization, or even the splash screen are captured. The init reads the DSN <em>synchronously</em> from MMKV (written by <code>AppConfigContext</code> when the server returns it). On the very first launch with no cached config, init silently no-ops; the second launch picks up the cached DSN and initializes for real.</p>
+
+<p>If init fails (bad DSN, SDK startup error, anything else), the failure is swallowed in a try/catch — crash reporting is best-effort and must never take down the bundle before React can mount.</p>
+
+<h3>Source maps in production builds</h3>
+<p>By default, production stack traces in Sentry show <strong>minified function names</strong> like <code>t.a.b()</code> because Hermes bytecode-compiles the JS bundle and strips inline source maps. You can still see the file name and line number, but the function name is gone.</p>
+
+<p>If readable function names matter to you, you can enable automatic source-map upload by setting three EAS secrets one time. This is <strong>completely optional</strong> — crashes are still captured without it, you just lose function-name resolution. See the <a href="../setup-guide.html#builds">setup guide → Crash Reporting card</a> for the full procedure (and the trade-off table).</p>
+
+<div class="callout">
+  <strong>Dev builds get readable stack traces for free.</strong> When you run <code>npm run dev</code> or <code>eas build --profile development</code>, source maps are inlined into the bundle and Sentry's React Native SDK reads them in-process. Test events from the dev client (e.g. tapping the "Send test event" button in the long-press debug menu) will show real function names like <code>onPress(C:\...\DebugInfoSheet.tsx)</code> in your Sentry dashboard.
+</div>
+
+<h3>Builds never fail because of Sentry</h3>
+<p>All four EAS profiles ship with <code>SENTRY_ALLOW_FAILURE=true</code> in <code>eas.json</code>. If the source-map upload secrets aren't set, or your auth token expires, Sentry's upload step skips silently and the build still succeeds. You can adopt source-map uploads at any time without rebuilding existing released versions, and you can never get blocked from shipping because of a Sentry config issue.</p>
+
+<h3>Verifying the integration</h3>
+<p>The dev debug menu (long-press the header logo for 2 seconds) has a "Crash Reporting (Sentry)" section that shows whether Sentry initialized this session, the masked DSN host, and the current environment. There's a "Send test event to Sentry" button that fires a synthetic error through <code>log.error()</code> (not <code>Sentry.captureException</code> directly) so you're actually testing the full pipeline: logger → sink → Sentry transport → flush → dashboard. The button awaits the flush before showing a success Alert, so you can trust that "Test event sent" really means it landed.</p>
+
+<!-- ================================================================== -->
+<h2 id="rules">10. Rules</h2>
 
 <div class="callout callout-error">
   <strong>Never use raw <code>console.log</code> / <code>console.warn</code> / <code>console.error</code>.</strong><br>

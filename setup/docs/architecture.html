@@ -96,6 +96,7 @@ scripts/                Dev-only scripts (white-label snapshot, not shipped)</di
    &rarr; If a Sentry DSN is cached in MMKV, Sentry.init() runs synchronously
    &rarr; Logger sinks (utils/logger.ts) are wired to Sentry breadcrumb/capture
    &rarr; Any JS error from this point on is captured automatically
+   &rarr; (No DSN cached? init silently no-ops; SDK stays dormant.)
 1. RootLayout component mounts (wrapped by Sentry.wrap when SDK is initialized)
 2. Provider stack wraps the app (Theme, Auth, Config, Pusher, Modules...)
 3. AuthContext.checkAuthStatus()
@@ -139,6 +140,19 @@ scripts/                Dev-only scripts (white-label snapshot, not shipped)</di
 
 <div class="callout callout-warn">
   <strong>Order matters.</strong> AuthProvider must be inside ThemeProvider (login screen needs colors). PusherProvider must be inside AuthProvider (needs auth token for private channels). ModuleProviders are inside both (modules may use auth + theme).
+</div>
+
+<h3>Pre-mount initialization</h3>
+<p>Two pieces of work happen in <code>app/_layout.tsx</code> at module-load time, BEFORE the React tree mounts:</p>
+<ol>
+  <li><code>SplashScreen.preventAutoHideAsync()</code> — keeps the native splash visible until the React tree is ready to render.</li>
+  <li><code>initSentry(getCrashReportingConfig())</code> — synchronously reads the cached Sentry DSN from MMKV and calls <code>Sentry.init()</code> if one is configured. Wrapped in a try/catch because crash reporting is best-effort and must never take down the bundle before React can mount. If no DSN is cached (first launch ever, or buyer hasn't enabled crash reporting), init silently no-ops and the SDK stays dormant — zero data sent, zero performance cost.</li>
+</ol>
+
+<p>Initializing at module load (instead of inside a React effect) is what lets Sentry capture errors during provider setup, hook initialization, splash screen handoff, and any other "before React" failure mode. The trade-off is the two-relaunch dance after first DSN configuration: launch 1 fetches the config and writes it to MMKV, launch 2 reads it and initializes. After that one-time bootstrap, Sentry initializes instantly on every cold start.</p>
+
+<div class="callout">
+  <strong>Source maps are optional.</strong> Production builds ship without source-map upload by default — crashes are still captured, but stack frames show minified function names. Buyers can enable readable function names by setting three EAS secrets one time (<code>SENTRY_AUTH_TOKEN</code>, <code>SENTRY_ORG</code>, <code>SENTRY_PROJECT</code>). All four EAS profiles ship with <code>SENTRY_ALLOW_FAILURE=true</code> so missing secrets never break a build. See <a href="../setup-guide.html#builds">setup guide → Crash Reporting card</a> for the trade-off and full procedure.
 </div>
 
 <!-- ================================================================== -->
