@@ -16,7 +16,7 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import { Avatar } from '@/components/common/Avatar';
 import { UserDisplayName } from '@/components/common/UserDisplayName';
-import { BottomSheet, BottomSheetFlatList, BottomSheetScrollView } from '@/components/common/BottomSheet';
+import { BottomSheet, BottomSheetScrollView } from '@/components/common/BottomSheet';
 import { ReactionIcon } from './ReactionIcon';
 import { getReactionBreakdownUsers, BreakdownItem, BreakdownUser } from '../api';
 import { spacing, typography } from '@/constants/layout';
@@ -49,31 +49,35 @@ export function ReactionBreakdownModal({
   const [activeTab, setActiveTab] = useState<string>('all');
 
   useEffect(() => {
-    if (visible && objectId) {
-      fetchBreakdown();
-    }
     if (!visible) {
       setActiveTab('all');
       setBreakdown([]);
       setLoading(true);
+      return;
     }
-  }, [visible, objectId]);
+    if (!objectId) return;
 
-  const fetchBreakdown = async () => {
+    let cancelled = false;
     setLoading(true);
-    try {
-      const result = await getReactionBreakdownUsers(objectType, objectId);
-      if (result.success) {
-        setBreakdown(result.data.breakdown || []);
-        setTotal(result.data.total || 0);
-      }
-    } catch (err) {
-      setBreakdown([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
-    }
-  };
+    getReactionBreakdownUsers(objectType, objectId)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.success) {
+          setBreakdown(result.data.breakdown || []);
+          setTotal(result.data.total || 0);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setBreakdown([]);
+        setTotal(0);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [visible, objectId, objectType]);
 
   // Get users for active tab
   type ActiveUser = BreakdownUser & { reactionType: string; emoji: string; icon_url?: string | null };
@@ -143,12 +147,12 @@ export function ReactionBreakdownModal({
           <Text style={{ color: themeColors.textSecondary }}>No reactions yet</Text>
         </View>
       ) : (
-        <BottomSheetFlatList
-          data={activeUsers}
-          keyExtractor={(item: ActiveUser, index: number) => `${item.user_id}-${index}`}
-          style={styles.userList}
-          renderItem={({ item }: { item: ActiveUser }) => (
-            <View style={[styles.userRow, { borderBottomColor: themeColors.borderLight }]}>
+        <BottomSheetScrollView style={styles.userList}>
+          {activeUsers.map((item, index) => (
+            <View
+              key={`${item.user_id}-${index}`}
+              style={[styles.userRow, { borderBottomColor: themeColors.borderLight }]}
+            >
               <Avatar source={item.avatar} size="sm" />
               <UserDisplayName
                 name={item.display_name}
@@ -161,11 +165,10 @@ export function ReactionBreakdownModal({
                 <ReactionIcon iconUrl={item.icon_url} emoji={item.emoji} size={30} />
               )}
             </View>
-          )}
-        />
+          ))}
+        </BottomSheetScrollView>
       )}
     </BottomSheet>
-
   );
 }
 

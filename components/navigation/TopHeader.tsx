@@ -23,6 +23,7 @@ import * as Notifications from 'expo-notifications';
 import { useNewMessageListener } from '@/contexts/PusherContext';
 import { HeaderIconButton } from './HeaderIconButton';
 import { Launcher } from './Launcher';
+import { DebugInfoSheet } from '@/components/dev/DebugInfoSheet';
 import { getModuleHeaderIcons } from '@/modules/_registry';
 import type { HeaderIconRegistration } from '@/modules/_types';
 import { EMPTY_HIDE_MENU, isItemHidden } from '@/utils/visibility';
@@ -65,6 +66,7 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
 
   // State
   const [menuVisible, setMenuVisible] = useState(false);
+  const [debugVisible, setDebugVisible] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Real-time: Pusher new_message → bump message badge
@@ -167,21 +169,23 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
       <View style={styles.content}>
         {/* Left: Logo or Title */}
         <View style={styles.leftSection}>
-          {IS_STAGING ? (
-            <Text style={{ color: themeColors.error, fontWeight: '800', fontSize: 16, letterSpacing: 1 }}>STAGING</Text>
-          ) : showLogo && logoSource ? (
-            <Image
-              source={logoSource}
-              style={styles.logo}
-              contentFit="contain"
-              transition={200}
-              cachePolicy="memory-disk"
-            />
-          ) : title ? (
-            <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>
-              {title}
-            </Text>
-          ) : null}
+          <Pressable onLongPress={() => setDebugVisible(true)} delayLongPress={2000}>
+            {IS_STAGING ? (
+              <Text style={{ color: themeColors.error, fontWeight: '800', fontSize: 16, letterSpacing: 1 }}>STAGING</Text>
+            ) : showLogo && logoSource ? (
+              <Image
+                source={logoSource}
+                style={styles.logo}
+                contentFit="contain"
+                transition={200}
+                cachePolicy="memory-disk"
+              />
+            ) : title ? (
+              <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>
+                {title}
+              </Text>
+            ) : null}
+          </Pressable>
         </View>
 
         {/* Right: Icons + Avatar */}
@@ -234,6 +238,9 @@ export function TopHeader({ showLogo = true, title }: TopHeaderProps) {
         onNotificationSettingsPress={handleNotificationSettingsPress}
         onLogout={handleLogout}
       />
+
+      {/* Debug Info Sheet — long-press the header logo to open */}
+      {debugVisible && <DebugInfoSheet visible={true} onClose={() => setDebugVisible(false)} />}
     </View>
   );
 }

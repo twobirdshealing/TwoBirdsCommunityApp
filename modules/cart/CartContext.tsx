@@ -14,7 +14,7 @@ import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react
 import { addResponseHeaderListener } from '@/services/api/client';
 import { createLogger } from '@/utils/logger';
 import { useTheme } from '@/contexts/ThemeContext';
-import { BottomSheet, BottomSheetFlatList } from '@/components/common/BottomSheet';
+import { BottomSheet, BottomSheetScrollView } from '@/components/common/BottomSheet';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { useAppQuery } from '@/hooks/useAppQuery';
@@ -22,7 +22,7 @@ import { spacing } from '@/constants/layout';
 import { cartApi } from './services/cartApi';
 import { CartItemRow } from './components/CartItem';
 import { CartSummary } from './components/CartSummary';
-import type { CartData, CartItem, CartSettings } from './types';
+import type { CartData, CartSettings } from './types';
 
 const log = createLogger('Cart');
 
@@ -102,9 +102,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     log('Opening cart sheet');
     setSheetVisible(true);
     if (hasOpenedRef.current) {
-      // Already fetched before — refresh to get fresh data
-      refresh();
+      // Defer to next tick — bundling the refetch with setSheetVisible into
+      // one React commit caused an iPad-only present()/render race.
+      setTimeout(refresh, 0);
     } else {
+      // Ref + state both intentional: ref for synchronous read in this
+      // callback, state for `enabled` gating in useAppQuery below.
       hasOpenedRef.current = true;
       setHasOpened(true);
     }
@@ -169,23 +172,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [mutate]);
 
   // -------------------------------------------------------------------------
-  // Render item
-  // -------------------------------------------------------------------------
-
-  const renderItem = useCallback(({ item }: { item: CartItem }) => (
-    <CartItemRow
-      item={item}
-      settings={cart?.settings ?? DEFAULT_SETTINGS}
-      onUpdateQuantity={handleUpdateQuantity}
-      onRemove={handleRemoveItem}
-      disabled={mutatingKey !== null}
-    />
-  ), [cart?.settings, handleUpdateQuantity, handleRemoveItem, mutatingKey]);
-
-  const keyExtractor = useCallback((item: CartItem) => item.key, []);
-
-  // -------------------------------------------------------------------------
   // Sheet content
+  // -------------------------------------------------------------------------
+  // Uses BottomSheetScrollView (not BottomSheetFlatList) to avoid an iOS-only
+  // crash on iPad. BottomSheetFlatList registers itself as a scrollable with
+  // gorhom's gesture system on mount; when the FlatList renders in the same
+  // React commit as the modal present() (which happens on the 2nd cart open
+  // because TanStack Query's cached data skips the isLoading branch), UIKit
+  // hits a view-tree commit assertion → NSException → SIGABRT.
+  // Carts are size-bounded (typically <20 items), so virtualization gives no
+  // real benefit and ScrollView is the right tool here.
   // -------------------------------------------------------------------------
 
   const renderSheetContent = () => {
@@ -217,11 +213,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       );
     }
 
+    const settings = cart.settings ?? DEFAULT_SETTINGS;
+
     return (
-      <BottomSheetFlatList
-        data={cart.items}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
+      <BottomSheetScrollView
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -230,20 +225,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             tintColor={colors.primary}
           />
         }
-        ListFooterComponent={
-          <CartSummary
-            totals={cart.totals}
-            coupons={cart.coupons ?? []}
-            fees={cart.fees ?? []}
-            settings={cart.settings ?? DEFAULT_SETTINGS}
-            onApplyCoupon={handleApplyCoupon}
-            onRemoveCoupon={handleRemoveCoupon}
-            onClose={closeCart}
-            couponLoading={couponLoading}
-            couponError={couponError}
+      >
+        {cart.items.map((item) => (
+          <CartItemRow
+            key={item.key}
+            item={item}
+            settings={settings}
+            onUpdateQuantity={handleUpdateQuantity}
+            onRemove={handleRemoveItem}
+            disabled={mutatingKey !== null}
           />
-        }
-      />
+        ))}
+        <CartSummary
+          totals={cart.totals}
+          coupons={cart.coupons ?? []}
+          fees={cart.fees ?? []}
+          settings={settings}
+          onApplyCoupon={handleApplyCoupon}
+          onRemoveCoupon={handleRemoveCoupon}
+          onClose={closeCart}
+          couponLoading={couponLoading}
+          couponError={couponError}
+        />
+      </BottomSheetScrollView>
     );
   };
 

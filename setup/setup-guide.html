@@ -393,6 +393,7 @@
   <a data-section="branding-assets">Assets</a>
   <a data-section="plugins">Companion Plugins</a>
   <a data-section="modules">Modules</a>
+  <a data-section="companion-plugin">Companion Plugin</a>
   <a data-section="builds">Builds</a>
   <a data-section="ota">OTA Updates</a>
   <a data-section="updates-tab">Updates</a>
@@ -467,9 +468,19 @@
     <div class="details-content">
       <ol>
         <li>Go to <a href="https://developer.apple.com/programs/enroll/" target="_blank">developer.apple.com/programs/enroll</a> and sign in with your Apple ID (or create one).</li>
+        <li>
+          Choose your <strong>enrollment type</strong>:
+          <ul>
+            <li><strong>Individual / Sole Proprietor</strong> &mdash; apps are listed under your personal name. Simpler signup.</li>
+            <li><strong>Organization</strong> &mdash; apps are listed under your company name and you can add team members. Requires a <strong>D-U-N-S Number</strong> (free from Dun &amp; Bradstreet, but can take 5+ business days to issue).</li>
+          </ul>
+        </li>
         <li>Follow the enrollment steps. You'll need to agree to the Apple Developer Agreement and pay the <strong>$99/year</strong> fee.</li>
         <li>Enrollment can take <strong>up to 48 hours</strong> to process, so do this early.</li>
       </ol>
+      <div class="callout" style="margin-top: 12px;">
+        <strong>Nonprofits &amp; education:</strong> Accredited educational institutions and eligible nonprofits may qualify for a fee waiver. Check <a href="https://developer.apple.com/support/membership-fee-waiver/" target="_blank">Apple's fee waiver page</a> before paying.
+      </div>
     </div>
   </details>
   <details>
@@ -518,9 +529,19 @@
     <div class="details-content">
       <ol>
         <li>Go to <a href="https://play.google.com/console/signup" target="_blank">play.google.com/console/signup</a> and sign in with your Google account.</li>
+        <li>
+          Choose your <strong>account type</strong>:
+          <ul>
+            <li><strong>Personal</strong> &mdash; uses your personal information. Ideal if you don't have a registered business.</li>
+            <li><strong>Organization</strong> &mdash; requires official business details. Lets you add team members to manage apps.</li>
+          </ul>
+        </li>
         <li>Accept the Developer Distribution Agreement and pay the <strong>$25 one-time</strong> registration fee.</li>
         <li>Complete your developer profile (name, address, contact info). Google may take <strong>a few days</strong> to verify your identity.</li>
       </ol>
+      <div class="callout callout-warn" style="margin-top: 12px;">
+        <strong>New account testing requirement:</strong> Google now requires new developer accounts to run a <strong>closed test with at least 20 testers for 14 consecutive days</strong> before you can submit to production. Register your account and start testing early to avoid delays at launch time.
+      </div>
     </div>
   </details>
   <details>
@@ -618,6 +639,31 @@
       </ol>
       <div class="callout" style="margin-top: 12px;">
         <strong>Completely optional.</strong> Registration works without Twilio &mdash; the phone number field simply won't appear on the signup form. Only set this up if phone verification is important for your community.
+      </div>
+    </div>
+  </details>
+</div>
+
+<h4 style="margin-top: 24px; margin-bottom: 12px;">Hosting Requirements</h4>
+<p>Your WordPress site needs to meet these minimum requirements for the app to connect successfully.</p>
+
+<div class="prereq-card" id="prereq-hosting">
+  <div class="prereq-card-header">
+    Server Requirements
+  </div>
+  <p class="prereq-card-desc">Minimum server configuration for the app's REST API to function properly.</p>
+  <details>
+    <summary>Required server configuration</summary>
+    <div class="details-content">
+      <table>
+        <tr><th>Requirement</th><th>Details</th></tr>
+        <tr><td>WordPress</td><td>6.0 or higher</td></tr>
+        <tr><td>PHP</td><td>8.1 or higher</td></tr>
+        <tr><td>HTTPS / SSL</td><td>Required &mdash; the app will not connect to HTTP sites</td></tr>
+        <tr><td>REST API</td><td>Must be accessible to external requests (not blocked by firewall, security plugin, or hosting restriction)</td></tr>
+      </table>
+      <div class="callout callout-warn" style="margin-top: 12px;">
+        <strong>Common hosting issue:</strong> Some managed WordPress hosts block external API requests or force proprietary caching that interferes with dynamic responses. If the app can't connect to your site, check with your host that the WordPress REST API is accessible from outside the browser. Security plugins (Wordfence, Sucuri, etc.) can also block API requests &mdash; make sure <code>/wp-json/</code> is not restricted.
       </div>
     </div>
   </details>
@@ -757,6 +803,20 @@
     <img class="step-img" src="images/step3-dependencies.webp" alt="Dashboard showing install dependencies banner">
   </div>
 </div>
+
+<details style="margin-top: 24px;">
+  <summary><strong>Troubleshooting</strong></summary>
+  <div class="details-content">
+    <h4><code>npm run dashboard</code> won't start</h4>
+    <p>Port 3456 is likely still in use from a previous session. Run <code>npm run kill-dashboard</code> to free the port, then try again.</p>
+
+    <h4 style="margin-top: 12px;"><code>npm install</code> fails</h4>
+    <p>Make sure you're running <strong>Node.js 18+</strong> (check with <code>node -v</code>). If the error persists, try deleting <code>node_modules</code> and <code>package-lock.json</code>, then run <code>npm install</code> again.</p>
+
+    <h4 style="margin-top: 12px;">Dashboard opens but shows errors</h4>
+    <p>Make sure you extracted the project files completely and didn't accidentally nest folders (e.g. <code>MyApp/MyApp/</code>). The dashboard expects <code>package.json</code> in the root of the folder you opened.</p>
+  </div>
+</details>
 
 </div><!-- /sec-prerequisites -->
 
@@ -1027,6 +1087,23 @@
 <div class="callout callout-success">
   <strong>Config tab complete!</strong> Make sure you&rsquo;ve saved your changes before moving on to the next tab.
 </div>
+
+<details style="margin-top: 24px;">
+  <summary><strong>Troubleshooting</strong></summary>
+  <div class="details-content">
+    <h4>EAS login keeps failing</h4>
+    <p>Try running <code>eas logout</code> first, then <code>eas login</code> again. VPNs can sometimes interfere with Expo's auth &mdash; try disconnecting temporarily. Make sure you're using your Expo account credentials (not Apple or Google).</p>
+
+    <h4 style="margin-top: 12px;">Can't find my App Store Connect ID</h4>
+    <p>In App Store Connect, go to your app &rarr; <strong>General &rarr; App Information</strong>. The <strong>Apple ID</strong> field (a numeric string like <code>1234567890</code>) is your App Store Connect ID.</p>
+
+    <h4 style="margin-top: 12px;">Push notifications not working after setup</h4>
+    <p>Both Firebase config files are required &mdash; <code>GoogleService-Info.plist</code> (iOS) and <code>google-services.json</code> (Android). Also verify that <strong>Firebase Cloud Messaging API (V1)</strong> is enabled in your Google Cloud Console. Check the <a href="#companion-plugin">Companion Plugin</a> &rarr; Push Log tab for error details.</p>
+
+    <h4 style="margin-top: 12px;">Save button doesn't appear or changes don't stick</h4>
+    <p>The floating save bar only appears when you make changes. If changes aren't persisting, check your browser console for errors. Try a hard refresh (<code>Ctrl+Shift+R</code>) or a different browser.</p>
+  </div>
+</details>
 
 </div><!-- /sec-setup -->
 
@@ -1366,6 +1443,285 @@ export const MODULES: ModuleManifest[] = [
 </div><!-- /sec-modules -->
 
 
+<div class="guide-section" id="sec-companion-plugin">
+<h2 id="companion-plugin">Companion Plugin</h2>
+
+<p>The <strong>TBC Community App</strong> companion plugin adds a settings page in your WordPress admin (<strong>TBC Community App &rarr; App Settings</strong>) with 7 tabs that control app behavior, features, notifications, and more. Install the plugin first (see <a href="#plugins">Companion Plugins</a>), then configure these settings.</p>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">General Tab</span></div>
+  <div class="step-body">
+    <p>The General tab has four sections that control app-level behavior.</p>
+
+    <h4 style="margin-top: 16px;">App Version Control</h4>
+    <p>Enforce a minimum app version. Users running an older version see a mandatory update screen until they update.</p>
+    <table>
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>Minimum App Version</td><td>Semver string (e.g. <code>1.2.0</code>). Users below this see a blocking update screen. Leave empty to disable.</td></tr>
+      <tr><td>iOS App Store URL</td><td>Link shown on the update screen for iOS users (e.g. <code>https://apps.apple.com/app/...</code>).</td></tr>
+      <tr><td>Android Play Store URL</td><td>Link shown on the update screen for Android users. Leave empty if not yet published.</td></tr>
+    </table>
+
+    <h4 style="margin-top: 16px;">Maintenance / Coming Soon Mode</h4>
+    <p>Block app access with a custom message. Useful during initial setup or planned downtime.</p>
+    <table>
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>Enable</td><td>Checkbox &mdash; activates the blocking screen.</td></tr>
+      <tr><td>Message</td><td>Text shown to users on the maintenance screen.</td></tr>
+      <tr><td>Bypass Roles</td><td>Select which WordPress roles can still access the app during maintenance. Administrators always bypass automatically.</td></tr>
+    </table>
+    <div class="callout">
+      <strong>Tip:</strong> Enable maintenance mode before your first production release so early users see a "coming soon" message while you finish setup.
+    </div>
+
+    <h4 style="margin-top: 16px;">Deep Linking</h4>
+    <p>Configure Universal Links (iOS) and App Links (Android) so website URLs open directly in the app. Also controls the Smart App Banner shown to website visitors.</p>
+    <table>
+      <tr><th>Field</th><th>Description</th><th>Where to Find It</th></tr>
+      <tr><td>App Name</td><td>Display name in the Smart App Banner.</td><td>Should match your app name in <code>app.json</code></td></tr>
+      <tr><td>Bundle Identifier (iOS)</td><td>iOS bundle ID for the AASA file.</td><td><code>app.json</code> &rarr; <code>ios.bundleIdentifier</code></td></tr>
+      <tr><td>Package Name (Android)</td><td>Android package name for the Asset Links file.</td><td><code>app.json</code> &rarr; <code>android.package</code></td></tr>
+      <tr><td>URL Scheme</td><td>Custom URL scheme (without <code>://</code>) for direct app opening.</td><td><code>app.json</code> &rarr; <code>scheme</code></td></tr>
+      <tr><td>Apple Team ID</td><td>Required for iOS Universal Links.</td><td>Apple Developer account (see walkthrough below)</td></tr>
+      <tr><td>Android SHA256 Fingerprint</td><td>Required for Android App Links.</td><td>Google Play Console (see walkthrough below)</td></tr>
+      <tr><td>App Store ID</td><td>Apple numeric app ID for the iOS Smart App Banner.</td><td>App Store Connect &rarr; General &rarr; App Information &rarr; Apple ID</td></tr>
+      <tr><td>Smart App Banner</td><td>Checkbox &mdash; show "Open in App" banner on community pages. iOS uses native Smart App Banner; Android shows a custom bottom banner on Chrome.</td><td>&mdash;</td></tr>
+    </table>
+
+    <details>
+      <summary>Walkthrough: Find your Apple Team ID</summary>
+      <div class="details-content">
+        <ol>
+          <li>Sign in to <a href="https://developer.apple.com/account" target="_blank">developer.apple.com/account</a>.</li>
+          <li>Look for <strong>Membership Details</strong> (or go to Membership in the sidebar).</li>
+          <li>Copy the <strong>Team ID</strong> &mdash; a 10-character alphanumeric string (e.g. <code>A1B2C3D4E5</code>).</li>
+          <li>Paste it into the <strong>Apple Team ID</strong> field in the plugin settings.</li>
+        </ol>
+      </div>
+    </details>
+
+    <details>
+      <summary>Walkthrough: Find your Android SHA256 Fingerprint</summary>
+      <div class="details-content">
+        <ol>
+          <li>Go to <a href="https://play.google.com/console" target="_blank">Google Play Console</a> and select your app.</li>
+          <li>Navigate to <strong>Release &rarr; Setup &rarr; App signing</strong> (previously under App integrity).</li>
+          <li>Under <strong>App signing key certificate</strong>, copy the <strong>SHA-256 certificate fingerprint</strong>.</li>
+          <li>Paste it into the <strong>Android SHA256 Fingerprint</strong> field in the plugin settings.</li>
+        </ol>
+        <div class="callout" style="margin-top: 12px;">
+          <strong>Important:</strong> Use the fingerprint from the <strong>App signing key</strong>, not the Upload key. Google manages the signing key after your first upload.
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Walkthrough: Verify deep linking is working</summary>
+      <div class="details-content">
+        <p>After saving your deep linking settings, the plugin generates verification files automatically. Test them:</p>
+        <ol>
+          <li><strong>iOS:</strong> Visit <code>https://yoursite.com/.well-known/apple-app-site-association</code> in a browser. You should see a JSON file containing your Team ID and Bundle ID.</li>
+          <li><strong>Android:</strong> Visit <code>https://yoursite.com/.well-known/assetlinks.json</code> in a browser. You should see a JSON file containing your package name and SHA256 fingerprint.</li>
+        </ol>
+        <div class="callout" style="margin-top: 12px;">
+          <strong>Requirements:</strong> Your site must serve these files over HTTPS without redirects. If you use a CDN (e.g. Cloudflare), make sure it doesn't cache or block the <code>.well-known</code> directory.
+        </div>
+      </div>
+    </details>
+
+    <h4 style="margin-top: 16px;">Data Management</h4>
+    <table>
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td>Delete all plugin data when uninstalled</td><td>When enabled, uninstalling the plugin permanently removes all settings, device tokens, push logs, JWT secrets, and database tables. Leave unchecked to preserve data if reinstalling later.</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Features Tab</span></div>
+  <div class="step-body">
+    <p>Controls which features are available in the app. Changes take effect on the user's next app launch.</p>
+
+    <h4 style="margin-top: 16px;">App Feature Flags</h4>
+    <table>
+      <tr><th>Feature</th><th>Default</th><th>Description</th></tr>
+      <tr><td>Push Notifications</td><td>On</td><td>When disabled, no push tokens are registered and no notifications are sent. Requires Firebase configuration in the app.</td></tr>
+    </table>
+
+    <h4 style="margin-top: 16px;">Profile Tabs</h4>
+    <p>Toggle which tabs appear on user profile pages. The About tab is always visible.</p>
+    <table>
+      <tr><th>Tab</th><th>Default</th><th>Description</th></tr>
+      <tr><td>Posts</td><td>On</td><td>Show user's feed posts on their profile</td></tr>
+      <tr><td>Spaces</td><td>On</td><td>Show spaces the user has joined</td></tr>
+      <tr><td>Comments</td><td>On</td><td>Show user's comments</td></tr>
+    </table>
+
+    <h4 style="margin-top: 16px;">Site Features (Auto-Detected)</h4>
+    <p>These are read-only &mdash; they reflect what's enabled in <strong>Fluent Community &rarr; Settings &rarr; Features</strong>. The app reads them automatically; no configuration needed here.</p>
+    <ul>
+      <li><strong>Dark Mode</strong> &mdash; light/dark theme switching</li>
+      <li><strong>Direct Messaging</strong> &mdash; requires Fluent Community Pro + Fluent Messaging</li>
+      <li><strong>Courses</strong> &mdash; requires Fluent Community Pro with Course module</li>
+      <li><strong>Followers</strong> &mdash; follow users and filter posts by followings</li>
+      <li><strong>Giphy / GIF Picker</strong> &mdash; attach GIFs to posts and comments</li>
+      <li><strong>Emoji Reactions</strong> &mdash; reactions on posts and comments</li>
+      <li><strong>User Badges</strong> &mdash; customized badges on user profiles</li>
+      <li><strong>Custom Profile Fields</strong> &mdash; additional fields on member profiles</li>
+    </ul>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">UI Visibility Tab</span></div>
+  <div class="step-body">
+    <p>Fine-grained role-based visibility control for menu items and UI elements. For each element, you can choose:</p>
+    <ul>
+      <li><strong>Everyone</strong> &mdash; visible to all users</li>
+      <li><strong>Only these roles</strong> &mdash; hidden from everyone except selected roles</li>
+      <li><strong>Everyone except</strong> &mdash; hidden from selected roles only</li>
+    </ul>
+
+    <h4 style="margin-top: 16px;">Core Elements</h4>
+    <table>
+      <tr><th>Element</th><th>Description</th></tr>
+      <tr><td>Courses</td><td>Courses menu item</td></tr>
+      <tr><td>Bookmarks</td><td>Bookmarks menu item</td></tr>
+      <tr><td>Directory</td><td>Member directory menu item</td></tr>
+      <tr><td>Notification Settings</td><td>Notification preferences menu item</td></tr>
+      <tr><td>Privacy Policy</td><td>Privacy policy menu item</td></tr>
+    </table>
+
+    <h4 style="margin-top: 16px;">Custom Elements</h4>
+    <p>If you have modules that register custom menu items, you can add them here using the module's <code>hideMenuKey</code> from its manifest. This lets you control visibility for module-added UI elements the same way as core elements.</p>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Notifications Tab</span></div>
+  <div class="step-body">
+    <p>Configure which push notification types are active and how they behave. For each notification type you can set:</p>
+    <ul>
+      <li><strong>Enabled</strong> &mdash; whether this type fires at all</li>
+      <li><strong>Default</strong> &mdash; ON or OFF for new users</li>
+      <li><strong>User Visible</strong> &mdash; whether users can toggle this in their notification preferences</li>
+    </ul>
+
+    <details>
+      <summary>All notification types</summary>
+      <div class="details-content">
+        <h4 style="margin-top: 8px;">Admin</h4>
+        <table>
+          <tr><th>Type</th><th>Default</th><th>User Configurable</th></tr>
+          <tr><td>Manual notification</td><td>ON</td><td>No (always fires)</td></tr>
+        </table>
+
+        <h4 style="margin-top: 12px;">Community</h4>
+        <table>
+          <tr><th>Type</th><th>Default</th><th>User Configurable</th></tr>
+          <tr><td>Comment on your post</td><td>ON</td><td>Yes</td></tr>
+          <tr><td>Mentioned in comment</td><td>ON</td><td>Yes</td></tr>
+          <tr><td>Reply to your comment</td><td>ON</td><td>Yes</td></tr>
+          <tr><td>Comment on post you follow</td><td>OFF</td><td>Yes</td></tr>
+          <tr><td>New post in your space</td><td>OFF</td><td>Yes</td></tr>
+          <tr><td>Reaction on your post</td><td>ON</td><td>Yes</td></tr>
+          <tr><td>Reaction on your comment</td><td>ON</td><td>Yes</td></tr>
+          <tr><td>Mentioned in a post</td><td>ON</td><td>Yes</td></tr>
+          <tr><td>Someone joined your space</td><td>OFF</td><td>Yes</td></tr>
+          <tr><td>Your role changed</td><td>ON</td><td>Yes</td></tr>
+          <tr><td>Invitation received</td><td>ON</td><td>Yes</td></tr>
+          <tr><td>Space join request</td><td>ON</td><td>Yes</td></tr>
+          <tr><td>Automated notifications</td><td>ON</td><td>Yes</td></tr>
+        </table>
+
+        <h4 style="margin-top: 12px;">Messaging</h4>
+        <table>
+          <tr><th>Type</th><th>Default</th><th>User Configurable</th><th>Requires</th></tr>
+          <tr><td>New direct message</td><td>ON</td><td>No (always fires)</td><td>Fluent Messaging</td></tr>
+        </table>
+
+        <h4 style="margin-top: 12px;">Social (Fluent Community Pro)</h4>
+        <table>
+          <tr><th>Type</th><th>Default</th><th>User Configurable</th><th>Requires</th></tr>
+          <tr><td>Follower posted</td><td>ON</td><td>Yes</td><td>Followers module</td></tr>
+          <tr><td>New follower</td><td>ON</td><td>Yes</td><td>Followers module</td></tr>
+          <tr><td>You leveled up</td><td>ON</td><td>Yes</td><td>Leaderboard module</td></tr>
+          <tr><td>Points earned</td><td>OFF</td><td>Yes</td><td>Leaderboard module</td></tr>
+          <tr><td>Quiz submitted</td><td>ON</td><td>Yes</td><td>Course module</td></tr>
+          <tr><td>Course enrollment</td><td>ON</td><td>Yes</td><td>Course module</td></tr>
+        </table>
+      </div>
+    </details>
+
+    <div class="callout" style="margin-top: 12px;">
+      <strong>Tip:</strong> Types with missing dependencies (e.g. messaging notifications without Fluent Messaging installed) are automatically disabled and grayed out.
+    </div>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Push Log &amp; Statistics Tabs</span></div>
+  <div class="step-body">
+    <p>Read-only dashboards showing push notification activity from the last 30 days. No configuration needed.</p>
+    <table>
+      <tr><th>Metric</th><th>Description</th></tr>
+      <tr><td>Registered Devices</td><td>Total devices with push tokens, broken down by iOS and Android</td></tr>
+      <tr><td>Unique Users</td><td>Number of distinct users with registered devices</td></tr>
+      <tr><td>Active Sessions</td><td>Current JWT auth sessions (max 3 per user)</td></tr>
+      <tr><td>Recent Activity</td><td>Last 50 push notifications sent &mdash; type, title, recipients, sent/failed counts, source (manual or auto)</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Tools Tab</span></div>
+  <div class="step-body">
+    <p>Admin utilities for session management and manual push notifications.</p>
+
+    <h4 style="margin-top: 16px;">Session Management</h4>
+    <ul>
+      <li><strong>Purge All Sessions</strong> &mdash; logs out every app user on all devices. Use this if you need a clean slate (e.g. after a security incident).</li>
+      <li><strong>Per-user logout</strong> &mdash; view all users with active sessions and log out individual users from all their devices.</li>
+    </ul>
+
+    <h4 style="margin-top: 16px;">Send Manual Notification</h4>
+    <p>Send a push notification directly from WordPress. Select an audience, write a title and message, and optionally set a deep link route in the app.</p>
+    <table>
+      <tr><th>Audience Option</th><th>Description</th></tr>
+      <tr><td>All Users</td><td>Every user with a registered device</td></tr>
+      <tr><td>Specific Space</td><td>Members of a specific community space</td></tr>
+      <tr><td>Specific Roles</td><td>Users with selected WordPress roles</td></tr>
+      <tr><td>Single User</td><td>One specific user</td></tr>
+    </table>
+    <div class="callout" style="margin-top: 12px;">
+      <strong>Preview before sending:</strong> The form shows a device count for your selected audience before you send, so you know how many people will receive the notification.
+    </div>
+  </div>
+</div>
+
+<details style="margin-top: 24px;">
+  <summary><strong>Troubleshooting</strong></summary>
+  <div class="details-content">
+    <h4>Deep links not working</h4>
+    <p>Verify the <code>.well-known</code> verification files are accessible over HTTPS without redirects. Check that your CDN or caching plugin isn't blocking them. After changing deep linking settings, users may need to reinstall the app for OS-level link association to update.</p>
+
+    <h4 style="margin-top: 12px;">Maintenance mode not blocking users</h4>
+    <p>Check the <strong>Bypass Roles</strong> setting &mdash; the user's role may be in the bypass list. Also check that the feature is enabled and settings are saved. The app reads maintenance status on each launch.</p>
+
+    <h4 style="margin-top: 12px;">Smart App Banner not appearing</h4>
+    <p>Requires <strong>Deep Linking</strong> to be configured with at least the App Name, Bundle ID (iOS), URL Scheme, and App Store ID filled in. The banner only shows on community pages served by Fluent Community.</p>
+
+    <h4 style="margin-top: 12px;">Push notifications not sending</h4>
+    <p>Check the <strong>Push Log</strong> tab for errors. Verify Firebase is configured correctly (both platform config files uploaded). Make sure the notification type is enabled on the <strong>Notifications</strong> tab. Users must have the app installed with push permissions granted.</p>
+
+    <h4 style="margin-top: 12px;">Feature changes not taking effect</h4>
+    <p>Feature flags are fetched on app launch. Users need to fully close and reopen the app to pick up changes. If you just saved settings, wait a moment for any server-side caching to clear.</p>
+  </div>
+</details>
+
+</div><!-- /sec-companion-plugin -->
+
+
 <div class="guide-section" id="sec-builds">
 <h2 id="builds">Builds Tab</h2>
 
@@ -1482,6 +1838,129 @@ eas submit --platform android</code></pre>
 </div>
 
 <div class="step-card">
+  <div class="step-header"><span class="step-title">Testing Before Production</span></div>
+  <div class="step-body">
+    <p>Before submitting to production, test your app through each platform's testing track. This catches issues early and &mdash; for Google Play &mdash; is now mandatory for new accounts.</p>
+
+    <details>
+      <summary>iOS &mdash; TestFlight</summary>
+      <div class="details-content">
+        <ol>
+          <li>After running <code>eas submit --platform ios</code>, your build is uploaded to App Store Connect and automatically appears in <strong>TestFlight</strong>.</li>
+          <li>In App Store Connect, go to <strong>TestFlight &rarr; Internal Testing</strong> and add yourself (and any team members) as testers.</li>
+          <li>Testers receive an email invite &mdash; install the <strong>TestFlight</strong> app from the App Store and accept the invitation to download the build.</li>
+          <li>Test the app thoroughly. When you're satisfied, submit the build for App Store review from the <strong>App Store</strong> tab.</li>
+        </ol>
+        <div class="callout" style="margin-top: 12px;">
+          <strong>Internal vs External testing:</strong> Internal testers (up to 100 members of your App Store Connect team) get builds immediately with no review. External testers (up to 10,000 via a public link) require a brief Beta App Review first.
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Android &mdash; Internal / Closed Testing</summary>
+      <div class="details-content">
+        <ol>
+          <li>After running <code>eas submit --platform android</code>, your build is uploaded to Google Play Console.</li>
+          <li>Go to <strong>Testing &rarr; Internal testing</strong> (or Closed testing) and create a new release with the uploaded build.</li>
+          <li>Add tester email addresses or a Google Group under <strong>Testers</strong>.</li>
+          <li>Share the <strong>opt-in link</strong> with testers &mdash; they need to accept the invitation and then install via Google Play.</li>
+          <li>Once testing is complete, promote the release to <strong>Production</strong>.</li>
+        </ol>
+        <div class="callout callout-warn" style="margin-top: 12px;">
+          <strong>New accounts must test first.</strong> Google requires new developer accounts to have at least <strong>20 testers opted in for 14 consecutive days</strong> in closed testing before you can create a production release. Start this early &mdash; it's the #1 cause of launch delays.
+        </div>
+      </div>
+    </details>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-header"><span class="step-title">Publishing to the Stores</span></div>
+  <div class="step-body">
+    <p>After your build uploads, you still need to complete each store's setup checklist before your app can go live. <code>eas submit</code> handles the binary &mdash; but the store listing, content declarations, and review info are on you.</p>
+
+    <details>
+      <summary>Google Play Console checklist</summary>
+      <div class="details-content">
+        <p>Google Play requires you to complete several sections before you can create a release. You'll find these under <strong>Grow &rarr; Store presence</strong> and <strong>Policy &rarr; App content</strong> in the Play Console sidebar.</p>
+
+        <h4 style="margin-top: 16px;">App content (required before release)</h4>
+        <ul>
+          <li><strong>Privacy policy</strong> &mdash; provide a URL to your privacy policy page. Host it on your website (e.g. <code>yoursite.com/privacy-policy</code>). It must describe what data the app collects and how it's used.</li>
+          <li><strong>App access</strong> &mdash; since the app requires login, select <strong>"All or some functionality is restricted"</strong> and provide test credentials so reviewers can sign in.</li>
+          <li><strong>Ads</strong> &mdash; select <strong>No</strong> (the app does not contain ads).</li>
+          <li><strong>Content rating</strong> &mdash; complete the IARC questionnaire. For a community/social app with user-generated content, answer honestly &mdash; this typically results in a <strong>Teen</strong> or equivalent rating.</li>
+          <li><strong>Target audience</strong> &mdash; select <strong>18 and over</strong> (or your actual target). Do <em>not</em> target under-13 unless you comply with COPPA.</li>
+          <li><strong>Data safety</strong> &mdash; declare the data your app collects. Key items: account info (name, email), user-generated content (posts, messages, photos), device identifiers (push token). The app does <em>not</em> collect location, contacts, or financial data. Data is <em>not</em> shared with third parties for advertising.</li>
+          <li><strong>Government apps</strong> &mdash; select <strong>No</strong>.</li>
+          <li><strong>Financial features</strong> &mdash; select <strong>No</strong> unless your community includes purchases/donations.</li>
+        </ul>
+
+        <h4 style="margin-top: 16px;">Store listing</h4>
+        <ul>
+          <li><strong>App name, short description, full description</strong> &mdash; describe your community app for users browsing the Play Store.</li>
+          <li><strong>App icon</strong> &mdash; 512&times;512 PNG (no transparency). Use your app icon.</li>
+          <li><strong>Feature graphic</strong> &mdash; 1024&times;500 JPG or PNG. Displayed at the top of your listing.</li>
+          <li><strong>Screenshots</strong> &mdash; at least 2 phone screenshots required (recommended: 4&ndash;8). Take them from your app running on a device or emulator.</li>
+          <li><strong>App category</strong> &mdash; select <strong>Social</strong> (or the category that best fits your community).</li>
+          <li><strong>Contact details</strong> &mdash; a support email is required. A website and phone number are optional.</li>
+        </ul>
+
+        <h4 style="margin-top: 16px;">Testing &amp; release</h4>
+        <ul>
+          <li><strong>Closed testing</strong> (recommended first) &mdash; invite a small group by email to test before going public.</li>
+          <li><strong>Open testing</strong> &mdash; anyone on Google Play can join your test.</li>
+          <li><strong>Production release</strong> &mdash; submit to production when ready. First review typically takes <strong>1&ndash;3 days</strong>.</li>
+        </ul>
+
+        <div class="callout" style="margin-top: 12px;">
+          <strong>Google requires 20 testers for 14 days.</strong> Before you can submit to production, Google Play now requires your app to have been in closed testing with at least 20 opted-in testers for at least 14 consecutive days. Plan for this lead time.
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Apple App Store Connect checklist</summary>
+      <div class="details-content">
+        <p>In App Store Connect, go to your app and fill in the required sections under the <strong>App Store</strong> tab before submitting for review.</p>
+
+        <h4 style="margin-top: 16px;">App information</h4>
+        <ul>
+          <li><strong>Privacy policy URL</strong> &mdash; required. Same URL as Google Play.</li>
+          <li><strong>App category</strong> &mdash; select <strong>Social Networking</strong> (primary) and optionally a secondary category.</li>
+          <li><strong>Age rating</strong> &mdash; complete the questionnaire. A community app with user-generated content typically gets a <strong>12+</strong> or <strong>17+</strong> rating.</li>
+          <li><strong>App privacy (nutrition labels)</strong> &mdash; declare data types collected: contact info (email, name), user content (posts, messages, photos), identifiers (push token). Select <strong>"Data not linked to user"</strong> for push token. No data is used for tracking.</li>
+        </ul>
+
+        <h4 style="margin-top: 16px;">Store listing</h4>
+        <ul>
+          <li><strong>Screenshots</strong> &mdash; required for 6.7" and 5.5" iPhone sizes (at minimum). iPad screenshots if you support tablets.</li>
+          <li><strong>Description</strong> &mdash; your app's full description.</li>
+          <li><strong>Keywords</strong> &mdash; up to 100 characters of comma-separated keywords for search.</li>
+          <li><strong>Support URL</strong> &mdash; a link to your support/contact page.</li>
+        </ul>
+
+        <h4 style="margin-top: 16px;">Review information</h4>
+        <ul>
+          <li><strong>Sign-in required</strong> &mdash; check this box and provide demo account credentials so Apple reviewers can log in.</li>
+          <li><strong>Contact information</strong> &mdash; a phone number and email Apple can reach you at during review.</li>
+          <li><strong>Notes</strong> &mdash; briefly explain what the app is (e.g. "Private community app for [your org]. Requires an account on our website to log in.").</li>
+        </ul>
+
+        <div class="callout" style="margin-top: 12px;">
+          <strong>Apple review typically takes 24&ndash;48 hours</strong> but can vary. Make sure your demo account works and the app doesn't crash on launch &mdash; these are the most common rejection reasons.
+        </div>
+      </div>
+    </details>
+
+    <div class="callout callout-warn" style="margin-top: 12px;">
+      <strong>Both stores require a privacy policy.</strong> You need a publicly accessible URL to a privacy policy page before either store will approve your app. Host it on your website &mdash; it should describe what data the app collects (account info, user content, push tokens) and how it's used.
+    </div>
+  </div>
+</div>
+
+<div class="step-card">
   <div class="step-header"><span class="step-title">Local Development</span></div>
   <div class="step-body">
     <p>This app uses an <strong>Expo dev client</strong> (not Expo Go). The dev client is a custom build that includes all native modules.</p>
@@ -1501,6 +1980,26 @@ eas submit --platform android</code></pre>
     </details>
   </div>
 </div>
+
+<details style="margin-top: 24px;">
+  <summary><strong>Troubleshooting</strong></summary>
+  <div class="details-content">
+    <h4>Build fails immediately</h4>
+    <p>Run <code>npx expo install --check</code> to detect outdated or incompatible packages, then <code>npx expo install --fix</code> to resolve them. Also check <code>app.json</code> for syntax errors (missing commas, trailing commas, etc.).</p>
+
+    <h4 style="margin-top: 12px;"><code>eas submit</code> fails for iOS</h4>
+    <p>Verify your <strong>Apple Account email</strong> and <strong>App Store Connect ID</strong> are set correctly in the Config tab. You also need an <strong>App-Specific Password</strong> &mdash; generate one at <a href="https://appleid.apple.com/account/manage" target="_blank">appleid.apple.com</a> under Sign-In and Security &rarr; App-Specific Passwords.</p>
+
+    <h4 style="margin-top: 12px;"><code>eas submit</code> fails for Android</h4>
+    <p>Verify your <strong>Service Account Key</strong> (.json file) is uploaded in the Config tab. The service account must have the correct permissions in Google Play Console (<strong>Users and permissions &rarr; Invite user</strong> with Admin access). Also ensure the app exists in Google Play Console and you've uploaded at least one build to any testing track.</p>
+
+    <h4 style="margin-top: 12px;">Build succeeds but app crashes on launch</h4>
+    <p>This usually means a native module mismatch. Check that your <code>app.json</code> plugins array hasn't changed unexpectedly. If you recently added or removed a package, make sure it was a full native build (not an OTA update). Review the crash logs in App Store Connect (Crashes) or Google Play Console (Crashes and ANRs).</p>
+
+    <h4 style="margin-top: 12px;">App rejected by store review</h4>
+    <p>The most common reasons: (1) the reviewer can't log in &mdash; make sure you provided working <strong>demo credentials</strong> in the review notes, (2) the app crashes on launch, (3) missing <strong>privacy policy</strong> URL. See the <a href="#builds">Publishing to the Stores</a> card for the full checklist.</p>
+  </div>
+</details>
 
 </div><!-- /sec-builds -->
 

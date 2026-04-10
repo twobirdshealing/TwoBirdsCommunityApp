@@ -44,6 +44,12 @@ class TBC_CA_Response_Headers {
             return $response;
         }
 
+        // Prevent LiteSpeed (and other caches) from caching authenticated responses.
+        // These contain per-user headers (unread counts, maintenance bypass, profile gate)
+        // that must not be served to other users or persist after state changes.
+        $response->header('X-LiteSpeed-Cache-Control', 'no-cache');
+        $response->header('Cache-Control', 'no-cache, no-store, private');
+
         // Unread notifications
         $notif_count = $this->get_unread_notification_count($user_id);
         $response->header('X-TBC-Unread-Notifications', (string) $notif_count);

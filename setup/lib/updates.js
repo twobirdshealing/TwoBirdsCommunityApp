@@ -219,8 +219,8 @@ function isProtectedPath(filePath, protectedPaths) {
  * - Skips protected paths (buyer-customized files)
  * - Writes core files to the project directory
  * - Handles dashboard self-update via dashboard.next.js
- * - Merges package.json dependencies if package-deps.json is included
- * Returns { filesWritten, filesSkipped, dashboardUpdated, depsChanged }
+ * - Parses package-deps.json and returns it as pendingDeps (caller merges after module reload)
+ * Returns { filesWritten, filesSkipped, dashboardUpdated, newVersion, pendingDeps }
  */
 function applyUpdateFromTar(tarGzBuffer) {
   const manifest = readManifest();
@@ -233,7 +233,6 @@ function applyUpdateFromTar(tarGzBuffer) {
   let filesWritten = 0;
   let filesSkipped = 0;
   let dashboardUpdated = false;
-  let depsChanged = false;
   let newVersion = null;
 
   // Check for an embedded manifest in the update (paths already normalized by parseTar)
@@ -278,12 +277,11 @@ function applyUpdateFromTar(tarGzBuffer) {
     filesWritten++;
   }
 
-  // Merge package.json dependencies if included
+  // Parse package-deps.json but don't merge yet — dashboard.js will reload
+  // this module after file extraction so the merge uses the latest code.
+  let pendingDeps = null;
   if (packageDeps) {
-    try {
-      const depChanges = JSON.parse(packageDeps.data.toString());
-      depsChanged = mergePackageDeps(depChanges);
-    } catch { /* ignore malformed deps file */ }
+    try { pendingDeps = JSON.parse(packageDeps.data.toString()); } catch { /* ignore */ }
   }
 
   // Update manifest.json version from the update's manifest
@@ -300,7 +298,7 @@ function applyUpdateFromTar(tarGzBuffer) {
     } catch { /* ignore */ }
   }
 
-  return { filesWritten, filesSkipped, dashboardUpdated, depsChanged, newVersion };
+  return { filesWritten, filesSkipped, dashboardUpdated, newVersion, pendingDeps };
 }
 
 /**
@@ -365,5 +363,6 @@ module.exports = {
   deleteBackup,
   pruneBackups,
   applyUpdateFromTar,
+  mergePackageDeps,
   downloadUpdate,
 };

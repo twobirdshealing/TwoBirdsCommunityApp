@@ -377,14 +377,41 @@ class TBC_CA_App_Config {
      * Used by both the API (get_features_config) and admin settings UI.
      */
     public static function get_detected_features() {
-        // Use FC's native Helper::isFeatureEnabled() to check actual module state,
-        // not class_exists() which only checks if the file is on disk.
+        // FC modules use Helper::isFeatureEnabled() to check actual module state.
+        // Fluent Messaging is a separate plugin (not an FC module), so it uses
+        // class_exists() — there is no isFeatureEnabled key for it.
+        // Dark mode is a customization setting, not a module — checked via Utility.
         $hasHelper = class_exists('FluentCommunity\App\Services\Helper');
         $isEnabled = function ($key) use ($hasHelper) {
             return $hasHelper && \FluentCommunity\App\Services\Helper::isFeatureEnabled($key);
         };
 
+        // Dark mode lives in FC's customization settings, not module flags
+        $darkModeEnabled = false;
+        if (class_exists('FluentCommunity\App\Functions\Utility')) {
+            $custSettings = \FluentCommunity\App\Functions\Utility::getCustomizationSettings();
+            $darkModeEnabled = isset($custSettings['dark_mode']) && $custSettings['dark_mode'] === 'yes';
+        }
+
         return [
+            [
+                'key'         => 'dark_mode',
+                'label'       => __('Dark Mode', 'tbc-ca'),
+                'description' => __('Enable switching between dark and light themes. Controlled in Fluent Community → Appearance.', 'tbc-ca'),
+                'active'      => $darkModeEnabled,
+            ],
+            [
+                'key'         => 'messaging',
+                'label'       => __('Direct Messaging', 'tbc-ca'),
+                'description' => __('Direct messaging via Fluent Community Pro with Fluent Messaging.', 'tbc-ca'),
+                'active'      => class_exists('FluentMessaging\App\Services\PusherHelper'),
+            ],
+            [
+                'key'         => 'courses',
+                'label'       => __('Courses', 'tbc-ca'),
+                'description' => __('Course enrollment via Fluent Community Pro with Course module.', 'tbc-ca'),
+                'active'      => $isEnabled('course_module'),
+            ],
             [
                 'key'         => 'followers',
                 'label'       => __('Followers', 'tbc-ca'),
@@ -428,17 +455,7 @@ class TBC_CA_App_Config {
         $settings = TBC_CA_Core::get_settings();
         $features = $settings['features'] ?? [];
 
-        // Auto-detect: force messaging off if Fluent Messaging is not active
-        if (!class_exists('FluentMessaging\App\Services\PusherHelper')) {
-            $features['messaging'] = false;
-        }
-
-        // Auto-detect: force courses off if Fluent LMS Course module is not active
-        if (!class_exists('FluentCommunity\Modules\Course\Model\Course')) {
-            $features['courses'] = false;
-        }
-
-        // Auto-detect: FC module availability (read-only — not stored in settings)
+        // Auto-detect: FC module/plugin availability (read-only — overrides stored settings)
         foreach (self::get_detected_features() as $df) {
             $features[$df['key']] = $df['active'];
         }

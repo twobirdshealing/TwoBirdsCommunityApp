@@ -8,13 +8,16 @@
 // ┌─────────────────────────────────────────────────────────────────────┐
 // │ BATCH REQUEST PATHS (core only — modules self-fetch via widgets)   │
 // │                                                                    │
+// │  Always included:                                                  │
 // │  1. /tbc-ca/v1/app-config              → config + visibility       │
 // │  2. /fluent-community/v2/profile/{user} → profile refresh          │
 // │  3. /fluent-community/v2/notifications/unread → notification count │
-// │  4. /fluent-community/v2/chat/unread_threads  → message count      │
-// │  5. /fluent-community/v2/feeds/welcome-banner → welcome widget     │
-// │  6. /fluent-community/v2/courses?type=enrolled&per_page=5 → courses│
-// │  (cart count now handled by cart module via response headers)       │
+// │  4. /fluent-community/v2/feeds/welcome-banner → welcome widget     │
+// │                                                                    │
+// │  Conditional (based on cached feature flags):                      │
+// │  5. /fluent-community/v2/chat/unread_threads  → if messaging on    │
+// │  6. /fluent-community/v2/courses?...          → if courses on      │
+// │  (cart count handled by cart module via response headers)           │
 // └─────────────────────────────────────────────────────────────────────┘
 // Module widgets (calendar, bookclub, etc.) use useAppQuery to
 // self-fetch on mount. No batch registration needed.
@@ -24,7 +27,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { batchRequest, findBatchResponse } from '@/services/api/batch';
 import { getJSON } from '@/services/storage';
-import { FEATURES_CACHE_KEY } from '@/utils/featureFlags';
+import { FEATURES_CACHE_KEY, getFeatureFlag } from '@/utils/featureFlags';
 import { createLogger } from '@/utils/logger';
 import type { AppConfigResponse } from '@/services/api/appConfig';
 import type { AuthUser } from '@/types/user';
@@ -100,15 +103,17 @@ export function useStartupData({
     log('Firing startup batch...');
 
     try {
+      // Build batch paths — conditional paths use cached features from previous session.
+      // On first launch defaults are all OFF (conservative), so no wasted 404s.
       const batchPaths = [
-        // Core data
+        // Core data (always included)
         { path: '/tbc-ca/v1/app-config' },
         { path: `/fluent-community/v2/profile/${username}` },
         { path: '/fluent-community/v2/notifications/unread' },
-        { path: '/fluent-community/v2/chat/unread_threads' },
-        // Core widget data (module widgets self-fetch via useAppQuery)
         { path: '/fluent-community/v2/feeds/welcome-banner' },
-        { path: '/fluent-community/v2/courses?type=enrolled&per_page=5' },
+        // Conditional — only include if feature was enabled last session
+        ...(getFeatureFlag('messaging') ? [{ path: '/fluent-community/v2/chat/unread_threads' }] : []),
+        ...(getFeatureFlag('courses') ? [{ path: '/fluent-community/v2/courses?type=enrolled&per_page=5' }] : []),
       ];
 
       const responses = await batchRequest(batchPaths);
@@ -144,7 +149,7 @@ export function useStartupData({
       const notifCount = notifData?.unread_count ?? 0;
       onUnreadNotifications(notifCount);
 
-      // 4. Message unread count (response is { unread_threads: Record<string, number> })
+      // 4. Message unread count (response: { unread_threads: Record<id, count> })
       const chatData = findBatchResponse<{ unread_threads?: Record<string, number> }>(
         responses,
         '/fluent-community/v2/chat/unread_threads',

@@ -53,6 +53,9 @@ function CommentItemInner({ item, themeColors, commentContentWidth, menuButtonRe
   const isVerified = author?.is_verified === 1;
   const timestamp = formatRelativeTime(item.created_at);
   const isReply = item.parent_id !== null;
+  const commentReactionsCount = typeof item.reactions_count === 'string'
+    ? parseInt(item.reactions_count, 10)
+    : item.reactions_count || 0;
 
   // Check for images in comment - multiple possible locations
   const meta = item.meta || {};
@@ -141,7 +144,7 @@ function CommentItemInner({ item, themeColors, commentContentWidth, menuButtonRe
                 hasReacted={!!(item.has_user_react || item.user_reaction_type)}
                 userReactionType={item.user_reaction_type || null}
                 userReactionIconUrl={item.user_reaction_icon_url || null}
-                reactionsCount={typeof item.reactions_count === 'string' ? parseInt(item.reactions_count, 10) : item.reactions_count || 0}
+                reactionsCount={commentReactionsCount}
                 reactionBreakdown={item.reaction_breakdown || []}
                 onReact={(type: string) => onReaction(item, type)}
               />
@@ -178,10 +181,14 @@ function CommentItemInner({ item, themeColors, commentContentWidth, menuButtonRe
               hasReacted={!!(item.has_user_react || item.user_reaction_type)}
               userReactionType={item.user_reaction_type || null}
               userReactionIconUrl={item.user_reaction_icon_url || null}
-              reactionsCount={typeof item.reactions_count === 'string' ? parseInt(item.reactions_count, 10) : item.reactions_count || 0}
+              reactionsCount={commentReactionsCount}
               reactionBreakdown={item.reaction_breakdown || []}
               onReact={(type: string) => onReaction(item, type)}
             />
+          ) : commentReactionsCount > 0 ? (
+            <Text style={[styles.likesCountText, { color: themeColors.textSecondary }]}>
+              {commentReactionsCount} {commentReactionsCount === 1 ? 'like' : 'likes'}
+            </Text>
           ) : null}
         </View>
       </View>
@@ -287,6 +294,10 @@ const styles = StyleSheet.create({
 
   commentActionText: {
     fontSize: typography.size.sm,
+  },
+
+  likesCountText: {
+    fontSize: typography.size.xs,
   },
 
 });

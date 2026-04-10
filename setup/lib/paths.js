@@ -29,6 +29,7 @@ const PATHS = {
   configTs: path.join(PROJECT_DIR, 'constants', 'config.ts'),
   appConfigTs: path.join(PROJECT_DIR, 'app.config.ts'),
   packageJson: path.join(PROJECT_DIR, 'package.json'),
+  packageLockJson: path.join(PROJECT_DIR, 'package-lock.json'),
   assetsDir: path.join(PROJECT_DIR, 'assets', 'images'),
   pluginsDir: path.join(PROJECT_DIR, 'companion plugins'),
   modulesDir: path.join(PROJECT_DIR, 'modules'),

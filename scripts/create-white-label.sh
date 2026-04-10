@@ -213,9 +213,9 @@ node -e "
 " "$TARGET_DIR/package.json"
 
 # --- package-lock.json ---
-sed -i \
-  -e 's|"name": "twobirdscommunity"|"name": "community-app"|g' \
-  "$TARGET_DIR/package-lock.json"
+# Not shipped in tar — buyer generates their own via npm install.
+# Remove from snapshot to prevent stale lock files causing npm ci failures.
+rm -f "$TARGET_DIR/package-lock.json"
 
 # --- tbc-community-app plugin: replace hardcoded user agent ---
 sed -i \
@@ -377,19 +377,46 @@ generate_manifest "$SOURCE_VERSION" "$TARGET_DIR/manifest.json"
 
 # Generate package-deps.json — the dashboard merges these into the buyer's
 # package.json during updates (preserving their name, version, etc.)
+# Deps removed since the last snapshot are marked as null so mergePackageDeps()
+# deletes them from the buyer's package.json.
+
+# Find the most recent previous snapshot's package-deps.json to diff against
+PREV_DEPS=""
+if [ -d "$WHITE_LABEL_ROOT" ]; then
+  PREV_DEPS=$(ls -d "$WHITE_LABEL_ROOT"/*/package-deps.json 2>/dev/null | sort -V | tail -1)
+fi
+
 node -e "
   var fs = require('fs');
   var pkg = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
+  var outFile = process.argv[2];
+  var prevFile = process.argv[3] || '';
+
+  // Read previous package-deps.json (if it exists) to detect removals
+  var prev = {};
+  try { if (prevFile) prev = JSON.parse(fs.readFileSync(prevFile, 'utf8')); } catch(e) {}
+
   var out = {};
-  if (pkg.dependencies) out.dependencies = pkg.dependencies;
-  if (pkg.devDependencies) out.devDependencies = pkg.devDependencies;
-  if (pkg.scripts) {
-    out.scripts = Object.assign({}, pkg.scripts);
-    // dev:staging contains a buyer-specific URL — exclude from merge
-    delete out.scripts['dev:staging'];
-  }
-  fs.writeFileSync(process.argv[2], JSON.stringify(out, null, 2) + '\n');
-" "$TARGET_DIR/package.json" "$TARGET_DIR/package-deps.json"
+  var sections = ['dependencies', 'devDependencies', 'scripts'];
+
+  sections.forEach(function(key) {
+    if (pkg[key]) out[key] = Object.assign({}, pkg[key]);
+    // Mark removals: anything in previous that's no longer in current
+    if (prev[key]) {
+      if (!out[key]) out[key] = {};
+      Object.keys(prev[key]).forEach(function(name) {
+        if (prev[key][name] !== null && !(pkg[key] && pkg[key][name] !== undefined)) {
+          out[key][name] = null;
+        }
+      });
+    }
+  });
+
+  // dev:staging contains a buyer-specific URL — exclude from merge
+  if (out.scripts) delete out.scripts['dev:staging'];
+
+  fs.writeFileSync(outFile, JSON.stringify(out, null, 2) + '\n');
+" "$TARGET_DIR/package.json" "$TARGET_DIR/package-deps.json" "$PREV_DEPS"
 echo "  Generated package-deps.json"
 
 # The core-update tar.gz contains the FULL snapshot — everything a buyer needs.
@@ -402,6 +429,7 @@ CORE_UPDATE_TAR="$TARGET_DIR/core-update-${SOURCE_VERSION}.tar.gz"
 FIND_EXCLUDES=()
 FIND_EXCLUDES+=( ! -path './node_modules/*' ! -path './.git/*' ! -path './core-update-*' )
 FIND_EXCLUDES+=( ! -path './setup/.temp/*' ! -path './setup/.backups/*' ! -path './setup/.license' ! -path './setup/.app-presets.json' )
+FIND_EXCLUDES+=( ! -path './package-lock.json' )
 
 cd "$TARGET_DIR"
 

@@ -113,6 +113,13 @@ class TBC_Cart_WC_Integration {
         .fs_cart_item_details { flex: 1; min-width: 0; }
         .fs_cart_item_name { display: block; font-size: 14px; font-weight: 500; color: var(--fcom-primary-text, #19283a); text-decoration: none; line-height: 1.3; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .fs_cart_item_qty { font-size: 13px; color: var(--fcom-secondary-text, #525866); }
+        .fs_cart_item_meta { font-size: 12px; color: var(--fcom-secondary-text, #525866); margin-top: 4px; line-height: 1.35; }
+        .fs_cart_item_meta dl.variation { margin: 0; padding: 0; display: block; }
+        .fs_cart_item_meta dl.variation dt, .fs_cart_item_meta dl.variation dd { display: inline; margin: 0; padding: 0; font-weight: 400; }
+        .fs_cart_item_meta dl.variation dt { font-weight: 500; }
+        .fs_cart_item_meta dl.variation dd { margin-right: 6px; }
+        .fs_cart_item_meta dl.variation dd p { display: inline; margin: 0; }
+        .fs_cart_item_meta dl.variation dd::after { content: ""; display: block; }
         .fs_cart_item_remove { flex-shrink: 0; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; align-self: center; padding: 0 !important; margin: 0; border-radius: 50%; color: var(--fcom-secondary-text, #525866); text-decoration: none; transition: background 0.15s, color 0.15s; }
         .fs_cart_item_remove svg { display: block; }
         .fs_cart_item_remove:hover { background: var(--fcom-light-bg, #E1E4EA); color: var(--fcom-primary-text, #19283a); }
@@ -501,6 +508,12 @@ class TBC_Cart_WC_Integration {
                                             <?php echo esc_html($product_name); ?>
                                         </a>
                                         <span class="fs_cart_item_qty"><?php echo esc_html($quantity); ?> &times; <?php echo wp_kses_post($product_price); ?></span>
+                                        <?php
+                                        $item_data = wc_get_formatted_cart_item_data($cart_item);
+                                        if (!empty($item_data)) {
+                                            echo '<div class="fs_cart_item_meta">' . wp_kses_post($item_data) . '</div>';
+                                        }
+                                        ?>
                                     </div>
                                     <a href="<?php echo esc_url(wc_get_cart_remove_url($cart_item_key)); ?>" class="fs_cart_item_remove" data-cart-item-key="<?php echo esc_attr($cart_item_key); ?>" aria-label="<?php esc_attr_e('Remove item', 'tbc-cart'); ?>"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg></a>
                                 </div>

@@ -123,10 +123,7 @@ class TBC_CA_Admin_Settings {
 
         // Feature flags
         $sanitized['features'] = [
-            'dark_mode'          => !empty($input['features']['dark_mode']),
             'push_notifications' => !empty($input['features']['push_notifications']),
-            'messaging'          => !empty($input['features']['messaging']),
-            'courses'            => !empty($input['features']['courses']),
             'profile_tabs'       => [
                 'posts'    => !empty($input['features']['profile_tabs']['posts']),
                 'spaces'   => !empty($input['features']['profile_tabs']['spaces']),
@@ -466,19 +463,6 @@ class TBC_CA_Admin_Settings {
 
                     <table class="form-table">
                         <tr>
-                            <th scope="row"><?php _e('Dark Mode', 'tbc-ca'); ?></th>
-                            <td>
-                                <label>
-                                    <input type="checkbox"
-                                           name="tbc_ca_settings[features][dark_mode]"
-                                           value="1"
-                                           <?php checked(!empty($features['dark_mode'])); ?> />
-                                    <?php _e('Enable dark mode support', 'tbc-ca'); ?>
-                                </label>
-                                <p class="description"><?php _e('Dark mode colors are synced from your Fluent Community theme settings.', 'tbc-ca'); ?></p>
-                            </td>
-                        </tr>
-                        <tr>
                             <th scope="row"><?php _e('Push Notifications', 'tbc-ca'); ?></th>
                             <td>
                                 <label>
@@ -489,46 +473,6 @@ class TBC_CA_Admin_Settings {
                                     <?php _e('Enable push notifications', 'tbc-ca'); ?>
                                 </label>
                                 <p class="description"><?php _e('Requires Firebase configuration in the app. When disabled, no push tokens are registered and no notifications are sent.', 'tbc-ca'); ?></p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><?php _e('Messaging', 'tbc-ca'); ?></th>
-                            <td>
-                                <?php $messaging_available = class_exists('FluentMessaging\App\Services\PusherHelper'); ?>
-                                <label>
-                                    <input type="checkbox"
-                                           name="tbc_ca_settings[features][messaging]"
-                                           value="1"
-                                           <?php checked(!empty($features['messaging'])); ?>
-                                           <?php disabled(!$messaging_available); ?> />
-                                    <?php _e('Enable direct messaging', 'tbc-ca'); ?>
-                                </label>
-                                <?php if (!$messaging_available): ?>
-                                    <span class="tbc-ca-feature-badge"><?php _e('NOT AVAILABLE', 'tbc-ca'); ?></span>
-                                    <p class="description" style="color: #b32d2e;"><?php _e('Requires Fluent Community Pro with Fluent Messaging enabled. Automatically disabled.', 'tbc-ca'); ?></p>
-                                <?php else: ?>
-                                    <p class="description"><?php _e('Direct messaging via Fluent Community Pro with Fluent Messaging.', 'tbc-ca'); ?></p>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><?php _e('Courses', 'tbc-ca'); ?></th>
-                            <td>
-                                <?php $courses_available = class_exists('FluentCommunity\Modules\Course\Model\Course'); ?>
-                                <label>
-                                    <input type="checkbox"
-                                           name="tbc_ca_settings[features][courses]"
-                                           value="1"
-                                           <?php checked(!empty($features['courses'])); ?>
-                                           <?php disabled(!$courses_available); ?> />
-                                    <?php _e('Enable courses', 'tbc-ca'); ?>
-                                </label>
-                                <?php if (!$courses_available): ?>
-                                    <span class="tbc-ca-feature-badge"><?php _e('NOT AVAILABLE', 'tbc-ca'); ?></span>
-                                    <p class="description" style="color: #b32d2e;"><?php _e('Requires Fluent Community Pro with Course module enabled. Automatically disabled.', 'tbc-ca'); ?></p>
-                                <?php else: ?>
-                                    <p class="description"><?php _e('Course enrollment via Fluent Community Pro with Course module.', 'tbc-ca'); ?></p>
-                                <?php endif; ?>
                             </td>
                         </tr>
                     </table>

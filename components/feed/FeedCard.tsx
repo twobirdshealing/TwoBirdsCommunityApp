@@ -37,6 +37,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { extractYouTubeId } from '@/utils/youtube';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { SurveyCard } from '@/components/feed/SurveyCard';
+import { LikesCount } from '@/components/feed/LikesCount';
 
 // -----------------------------------------------------------------------------
 // Media Detection Helper
@@ -563,13 +564,13 @@ export const FeedCard = React.memo(function FeedCard({
             onReact={(type: string) => onReact?.(feed.id, type)}
             onFeedUpdate={onFeedUpdate}
           />
-        ) : reactionsCount > 0 ? (
-          <View style={styles.footerRight}>
-            <Text style={[styles.reactionSummaryCount, { color: themeColors.textSecondary }]}>
-              {formatCompactNumber(reactionsCount)} {reactionsCount === 1 ? 'like' : 'likes'}
-            </Text>
-          </View>
-        ) : null}
+        ) : (
+          <LikesCount
+            feedId={feed.id}
+            reactionsCount={reactionsCount}
+            reactions={feed.reactions}
+          />
+        )}
       </View>
 
     </View>

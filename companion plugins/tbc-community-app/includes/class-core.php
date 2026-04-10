@@ -182,10 +182,7 @@ class TBC_CA_Core {
             'app_store_id'             => '',
             'smart_banner_enabled'     => false,
             'features'                 => [
-                'dark_mode'          => true,
                 'push_notifications' => true,
-                'messaging'          => true,
-                'courses'            => true,
                 'profile_tabs'       => [
                     'posts'    => true,
                     'spaces'   => true,

@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.1.4 — 2026-04-09
+- Mini cart dropdown now shows cart item meta (event dates, variation attributes, custom line item data) using `wc_get_formatted_cart_item_data()` — matches what the full cart/checkout page displays.
+
 ## 3.1.3 — 2026-04-05
 - Fix variation table layout — force `display: table-cell` on th/td to prevent Fluent Community CSS reset from stacking label and select vertically; keep label on one line with `white-space: nowrap`
 - Fix variation selector not matching dark theme on checkout — added broader `form.variations_form` selectors (without `div.product` ancestor requirement)

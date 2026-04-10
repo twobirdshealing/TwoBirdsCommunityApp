@@ -180,6 +180,16 @@ function writeConfigValues(changes) {
       }
       fs.writeFileSync(PATHS.packageJson, JSON.stringify(pkgJson, null, 2) + '\n');
       results.push('package.json updated');
+
+      // Sync version into package-lock.json so npm ci doesn't fail
+      if (changes.version !== undefined) {
+        const lock = readJsonSafe(PATHS.packageLockJson);
+        if (lock) {
+          lock.version = changes.version;
+          if (lock.packages && lock.packages['']) lock.packages[''].version = changes.version;
+          fs.writeFileSync(PATHS.packageLockJson, JSON.stringify(lock, null, 2) + '\n');
+        }
+      }
     }
   }
 

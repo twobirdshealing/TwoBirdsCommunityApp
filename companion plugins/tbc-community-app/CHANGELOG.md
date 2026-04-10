@@ -2,6 +2,12 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.53.0
+- **Auto-detect dark mode, messaging, and courses from Fluent Community**: Dark mode, messaging, and courses are no longer manual checkboxes in the plugin settings. They are now auto-detected alongside followers, giphy, emoji, badges, and custom fields in the "Site Features (Auto-Detected)" section. Dark mode reads from FC's Appearance settings, courses uses `Helper::isFeatureEnabled('course_module')`, and messaging checks for the Fluent Messaging plugin. Removes stale saved values from overriding actual module state.
+
+## v3.52.2
+- **Fix stale unread counts due to LiteSpeed caching authenticated responses**: LiteSpeed Cache was caching REST API responses that contain per-user headers (`X-TBC-Unread-Messages`, `X-TBC-Unread-Notifications`, etc.) as public with a 7-day TTL. This caused unread badge counts to stay at 0 (or whatever value was first cached) regardless of new messages/notifications. Now sets `X-LiteSpeed-Cache-Control: no-cache` and `Cache-Control: no-cache, no-store, private` on all authenticated REST responses to prevent caching of per-user data.
+
 ## v3.52.1
 - **Fix stale space cache for app-only users**: Users added to spaces (via participant-frontend, automations, or admin) couldn't see posts in those spaces on the app until they logged out and back in. The web portal rebuilds the `_fcom_space_ids` cache on every page load, but JWT-authenticated API requests never triggered a rebuild. Now the JWT middleware rebuilds the space cache every 5 minutes per user, matching the web portal behavior. The login-time rebuild from v3.48.1 is preserved for immediate cache freshness on first login.
 
