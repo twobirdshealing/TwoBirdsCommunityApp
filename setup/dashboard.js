@@ -463,7 +463,7 @@ const server = http.createServer(async (req, res) => {
       if (!platform || !buildId) { jsonResponse(res, { ok: false, error: 'Missing platform or buildId' }, 400); return; }
       console.log(`  Submitting build ${buildId} to ${platform === 'ios' ? 'App Store' : 'Google Play'}...`);
       const result = await submitBuild(platform, buildId);
-      saveSubmission(buildId, platform, result.submissionUrl);
+      if (result.ok) saveSubmission(buildId, platform, result.submissionUrl);
       jsonResponse(res, result);
       return;
     }

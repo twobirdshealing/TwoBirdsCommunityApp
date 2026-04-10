@@ -90,18 +90,19 @@ async function submitBuild(platform, buildId) {
   try {
     const { stdout, stderr, code } = await runCommand(
       ['eas', 'submit', '--platform', platform, '--id', buildId, '--no-wait', '--non-interactive'],
-      30000,
+      120000,
       { raw: true }
     );
-    const combined = stdout + '\n' + stderr;
+    const combined = (stdout + '\n' + stderr).trim();
+    console.log('  [eas submit output]\n' + combined.split('\n').map(l => '    ' + l).join('\n'));
     const urlMatch = combined.match(/Submission details:\s*(https:\/\/\S+)/);
     if (code !== 0 && !urlMatch) {
-      const lines = combined.split('\n').map(l => l.trim()).filter(Boolean);
-      return { ok: false, error: lines[lines.length - 1] || 'Submit exited with code ' + code };
+      return { ok: false, error: combined || 'Submit exited with code ' + code };
     }
     return { ok: true, submissionUrl: urlMatch ? urlMatch[1] : '' };
   } catch (err) {
-    return { ok: false, error: 'Failed to start submission' };
+    console.log('  [eas submit error] ' + err.message);
+    return { ok: false, error: 'Failed to start submission: ' + err.message };
   }
 }
 
