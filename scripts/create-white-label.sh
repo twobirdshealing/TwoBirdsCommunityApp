@@ -33,6 +33,8 @@ PROTECTED_PATHS=(
   "assets/images/"
   "google-services.json"
   "GoogleService-Info.plist"
+  "google-play-service-account.json"
+  "asc-api-key.p8"
   "modules/_registry.ts"
   "setup/.license"
   "setup/.backups/"
@@ -132,6 +134,8 @@ tar -cf - \
   --exclude='modules' \
   --exclude='setup/.app-presets.json' \
   --exclude='setup/logs' \
+  --exclude='asc-api-key.p8' \
+  --exclude='google-play-service-account.json' \
   -C "$SOURCE_DIR" . | tar -xf - -C "$TARGET_DIR"
 
 # Copy only core companion plugins (allowlist — new plugins won't leak in)
@@ -184,11 +188,15 @@ sed -i \
 # (builds succeed without source-map upload). Buyers who want symbolicated
 # stack traces run `eas secret:create --name SENTRY_AUTH_TOKEN ...` themselves
 # — see setup-guide.html "Crash Reporting (Sentry)" card.
+# ASC API Key fields (ascApiKey*) get sed-deleted here — buyers upload their
+# own via the dashboard. Trailing commas left by deletes are repaired by the
+# JSON round-trip pass at the end of the package.json edits below.
 sed -i \
   -e 's|https://community.twobirdschurch.com|https://community.yoursite.com|g' \
   -e 's|https://staging.twobirdschurch.com|https://community.yoursite.com|g' \
   -e 's|"appleId": "[^"]*"|"appleId": "your-apple-id@example.com"|' \
   -e 's|"ascAppId": "[^"]*"|"ascAppId": "YOUR_ASC_APP_ID"|' \
+  -e '/"ascApiKey/d' \
   "$TARGET_DIR/eas.json"
 
 # --- app.config.ts ---
@@ -210,14 +218,16 @@ sed -i \
   -e '/"changelog":/d' \
   "$TARGET_DIR/package.json"
 
-# Fix trailing commas in JSON (sed deletes can leave them)
-# Use node for reliable JSON round-trip — sed can't handle edge cases with escaped quotes
+# Fix trailing commas in JSON (sed deletes can leave them) — single node spawn
+# handles every JSON file we sed-edited above. Round-trips through JSON.parse
+# for reliability — sed can't handle edge cases with escaped quotes.
 node -e "
   var fs = require('fs');
-  var raw = fs.readFileSync(process.argv[1], 'utf8');
-  var fixed = raw.replace(/,(\s*[}\]])/g, '\$1');
-  fs.writeFileSync(process.argv[1], JSON.stringify(JSON.parse(fixed), null, 2) + '\n');
-" "$TARGET_DIR/package.json"
+  process.argv.slice(1).forEach(function(p) {
+    var raw = fs.readFileSync(p, 'utf8').replace(/,(\s*[}\]])/g, '\$1');
+    fs.writeFileSync(p, JSON.stringify(JSON.parse(raw), null, 2) + '\n');
+  });
+" "$TARGET_DIR/package.json" "$TARGET_DIR/eas.json"
 
 # --- package-lock.json ---
 # Not shipped in tar — buyer generates their own via npm install.

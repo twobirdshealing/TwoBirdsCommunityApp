@@ -44,7 +44,7 @@ if (fs.existsSync(_nextDashboard)) {
 // ---------------------------------------------------------------------------
 
 const { PROJECT_DIR, PORT, PATHS, VALID_PLATFORMS, VALID_PROFILES, BUILD_ID_PATTERN, BACKUP_ID_PATTERN, isPlaceholder } = require('./lib/paths');
-const { fileExists, readJsonSafe, getSiteUrl, resolveUploadPath } = require('./lib/file-utils');
+const { fileExists, readJsonSafe, getSiteUrl, resolveUploadPath, ensurePath } = require('./lib/file-utils');
 const { readProjectState } = require('./lib/state');
 const { writeConfigValues } = require('./lib/config-writer');
 const { checkConnectivity, parseMultipart, httpsRequest } = require('./lib/http-helpers');
@@ -515,13 +515,12 @@ const server = http.createServer(async (req, res) => {
         destPath = path.join(PATHS.assetsDir, path.basename(file.filename));
       }
       if (!destPath) { jsonResponse(res, { error: 'Unknown upload target' }, 400); return; }
-      if (target === 'google-play-key') {
+      if (target === 'google-play-key' || target === 'asc-api-key') {
         const easJson = readJsonSafe(PATHS.easJson);
         if (easJson) {
-          if (!easJson.submit) easJson.submit = {};
-          if (!easJson.submit.production) easJson.submit.production = {};
-          if (!easJson.submit.production.android) easJson.submit.production.android = {};
-          easJson.submit.production.android.serviceAccountKeyPath = './google-play-service-account.json';
+          const relPath = './' + path.basename(destPath);
+          if (target === 'google-play-key') ensurePath(easJson, 'submit', 'production', 'android').serviceAccountKeyPath = relPath;
+          else ensurePath(easJson, 'submit', 'production', 'ios').ascApiKeyPath = relPath;
           fs.writeFileSync(PATHS.easJson, JSON.stringify(easJson, null, 2) + '\n');
         }
       }
@@ -536,12 +535,16 @@ const server = http.createServer(async (req, res) => {
       const target = pathname.replace('/api/upload/', '');
       const destPath = resolveUploadPath(target);
       if (!destPath) { jsonResponse(res, { error: 'Unknown upload target' }, 400); return; }
-      if (target === 'google-play-key') {
+      if (target === 'google-play-key' || target === 'asc-api-key') {
+        // Leave ascApiKeyId / ascApiKeyIssuerId in place — user may re-upload a new
+        // .p8 for the same key; they can clear the text fields manually if desired.
         const easJson = readJsonSafe(PATHS.easJson);
-        if (easJson?.submit?.production?.android?.serviceAccountKeyPath) {
-          delete easJson.submit.production.android.serviceAccountKeyPath;
-          fs.writeFileSync(PATHS.easJson, JSON.stringify(easJson, null, 2) + '\n');
-        }
+        const ios = easJson?.submit?.production?.ios;
+        const android = easJson?.submit?.production?.android;
+        let touched = false;
+        if (target === 'asc-api-key' && ios?.ascApiKeyPath) { delete ios.ascApiKeyPath; touched = true; }
+        if (target === 'google-play-key' && android?.serviceAccountKeyPath) { delete android.serviceAccountKeyPath; touched = true; }
+        if (touched) fs.writeFileSync(PATHS.easJson, JSON.stringify(easJson, null, 2) + '\n');
       }
       try {
         fs.unlinkSync(destPath);

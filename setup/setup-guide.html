@@ -980,7 +980,7 @@
 </div>
 
 <!-- Step 7: App Store Submission -->
-<div class="step-card">
+<div class="step-card" id="step-app-store-submission">
   <div class="step-header">
     <span class="step-title">App Store Submission</span>
   </div>
@@ -995,6 +995,9 @@
     <table class="field-ref-table">
       <tr><td>Apple Account (Email)</td><td>The email you sign into <a href="https://appstoreconnect.apple.com" target="_blank">App Store Connect</a> with. Find it under your name &rarr; Settings &rarr; <strong>Apple Account</strong>.</td></tr>
       <tr><td>App Store Connect ID</td><td>Numeric ID Apple assigns to your app. Find it in App Store Connect &rarr; your app &rarr; General &rarr; App Information &rarr; the field labeled <strong>Apple ID</strong> (e.g. <code>1563113528</code>).</td></tr>
+      <tr><td>App Store Connect API Key ID</td><td>10-character Key ID from <a href="https://appstoreconnect.apple.com/access/integrations/api" target="_blank">App Store Connect &rarr; Users and Access &rarr; Integrations</a>. See the API Key section below for the full setup.</td></tr>
+      <tr><td>App Store Connect Issuer ID</td><td>Your team's Issuer ID (a UUID), shown at the top of the same Integrations page. Same value for every key your team generates.</td></tr>
+      <tr><td>App Store Connect API Key (.p8)</td><td>The private key file you download from App Store Connect when you create the API key. Drop it into the upload area &mdash; it lands at the project root and gets ignored by git automatically.</td></tr>
     </table>
 
     <details style="margin-top: 12px;">
@@ -1009,8 +1012,97 @@
       </div>
     </details>
 
+    <details id="asc-api-key-walkthrough" style="margin-top: 12px;">
+      <summary>Walkthrough: Set up the App Store Connect API Key (required for one-click submissions)</summary>
+      <div class="details-content">
+        <p>
+          Without an API key, the dashboard's <strong>Submit to App Store</strong> button fails on a fresh setup with the error
+          <code>App Store Connect API Keys cannot be set up in --non-interactive mode</code>. The API key lets EAS upload your IPA without prompting for an Apple password or 2FA code &mdash; this is what makes the dashboard's one-click submit work end-to-end.
+        </p>
+        <div class="callout callout-warn" style="margin-top: 8px;">
+          <strong>Heads up &mdash; this is <em>different</em> from <code>eas credentials --platform ios</code>.</strong> That command sets up <strong>build credentials</strong> (signing cert + provisioning profile, used by <code>eas build</code> to compile and sign the IPA). The API key on this page is for <strong>submission</strong> (used by <code>eas submit</code> to upload the signed IPA to App Store Connect). You need both for a fresh setup, but they are completely separate Apple credentials.
+        </div>
+
+        <div class="callout callout-info" style="margin-top: 8px;">
+          <strong>Generate once, reuse everywhere.</strong> The <code>.p8</code> file (and the Key ID + Issuer ID that go with it) is <strong>per Apple Developer team &mdash; not per app</strong>. If you have multiple apps under the same Apple account, you only ever need to generate <em>one</em> API key &mdash; then paste the same Key ID, the same Issuer ID, and drop the same <code>.p8</code> file into each project's dashboard. <strong>One key rules them all.</strong> Save the original <code>.p8</code> somewhere safe outside any project folder (e.g. 1Password or an encrypted USB) since Apple won't let you re-download it after the initial generation &mdash; if you lose it, you'd have to revoke and regenerate, then re-upload to every project.
+        </div>
+
+        <p style="margin-top: 12px;">
+          <a href="https://appstoreconnect.apple.com/access/integrations/api" target="_blank">Open App Store Connect API page &rarr;</a>
+        </p>
+
+        <ol style="margin-top: 12px;">
+          <li><strong>Sign in</strong> to <a href="https://appstoreconnect.apple.com/access/integrations/api" target="_blank">App Store Connect &rarr; Users and Access &rarr; Integrations &rarr; App Store Connect API</a>. (If the link drops you on the homepage, click your name &rarr; <strong>Users and Access</strong> &rarr; the <strong>Integrations</strong> tab &rarr; <strong>App Store Connect API</strong> in the left sidebar.) You must be the <em>Account Holder</em> or an <em>Admin</em> on the team to see this page.</li>
+          <li><strong>Copy the Issuer ID</strong> from the very top of the page &mdash; it's a UUID like <code>69a6de70-...</code>. <strong>This is the same for every key your team ever generates</strong>, so once you have it, you have it forever.</li>
+          <li><strong>Click the &nbsp;<code>+</code>&nbsp; button</strong> next to <em>Active</em> to generate a new key.</li>
+          <li><strong>Name it</strong> something memorable like <em>Setup Dashboard</em> or <em>EAS Submit</em>.</li>
+          <li><strong>Set Access to <em>Admin</em></strong>. (App Manager works too, but Admin is the safest bet for submission.) Click <strong>Generate</strong>.</li>
+          <li>The new key appears in the table. <strong>Copy the Key ID</strong> &mdash; it's the 10-character string in the &ldquo;Key ID&rdquo; column (e.g. <code>ABC123XYZ4</code>).</li>
+          <li>Click <strong>Download API Key</strong> on the right side of the row. This downloads a file named something like <code>AuthKey_ABC123XYZ4.p8</code>.
+            <div class="callout callout-warn" style="margin-top: 8px;">
+              <strong>Apple only lets you download the .p8 once.</strong> If you close the page or lose the file, you can't download it again &mdash; you'd have to revoke the key and generate a new one. Save it somewhere safe immediately (a password manager works great).
+            </div>
+          </li>
+          <li><strong>Back in the dashboard</strong> &rarr; <strong>Config</strong> tab &rarr; <strong>App Store Submission</strong>:
+            <ul>
+              <li>Paste the <strong>Key ID</strong> into the <em>App Store Connect API Key ID</em> field.</li>
+              <li>Paste the <strong>Issuer ID</strong> into the <em>App Store Connect Issuer ID</em> field.</li>
+              <li>Drag the <code>.p8</code> file onto the drop zone (or click and pick it). The dashboard saves it to <code>./asc-api-key.p8</code> at your project root and writes the path into <code>eas.json</code> automatically.</li>
+            </ul>
+          </li>
+          <li>The status row flips from red &ldquo;No API key&rdquo; to green &ldquo;API key uploaded&rdquo;. You're done.</li>
+          <li><strong>Test it.</strong> Go to the <strong>Builds</strong> tab, find a finished iOS production build, and click <strong>Submit to App Store</strong>. The submission should run end-to-end with no prompts and land in TestFlight within a few minutes.</li>
+        </ol>
+
+        <div class="callout callout-info" style="margin-top: 12px;">
+          <strong>Where it lives:</strong> The <code>.p8</code> file sits at the root of your project as <code>asc-api-key.p8</code>. It's automatically excluded from git (the <code>*.p8</code> rule in <code>.gitignore</code>) and from EAS uploads, so it never leaves your machine. If you ever rotate the key, just upload a new <code>.p8</code> from the same drop zone &mdash; the old one is overwritten. Remember: you can drop the same file into other projects under the same Apple team (see &ldquo;Generate once, reuse everywhere&rdquo; at the top of this walkthrough).
+        </div>
+      </div>
+    </details>
+
+    <details id="ios-build-credentials-walkthrough" style="margin-top: 12px;">
+      <summary>Walkthrough: Set up iOS Build Credentials with <code>eas credentials</code> (first iOS build only)</summary>
+      <div class="details-content">
+        <p>
+          Before EAS can build for iOS, your Apple Developer account needs a <strong>distribution certificate</strong> and a <strong>provisioning profile</strong> for your app's bundle ID. EAS handles both through one interactive command &mdash; you only need to run it once per app.
+        </p>
+        <div class="callout callout-warn" style="margin-top: 8px;">
+          <strong>This is <em>different</em> from the App Store Connect API Key above.</strong> Build credentials sign the IPA so iOS will install it; the API key authenticates the upload to App Store Connect. You need <strong>both</strong> for a fresh setup, but they're separate Apple credentials with separate setup flows.
+        </div>
+
+        <p style="margin-top: 12px;"><strong>How you'll know you need this:</strong> If you click an iOS build button in the dashboard and the build fails with &ldquo;iOS credentials aren't set up yet,&rdquo; that's the trigger. The <strong>iOS Credentials</strong> field in the App Store Submission card has a one-click <strong>Copy</strong> button for the command below.</p>
+
+        <ol style="margin-top: 12px;">
+          <li><strong>Open a terminal</strong> in your project root and run:
+            <pre><code>eas credentials --platform ios</code></pre>
+          </li>
+          <li><strong>Pick &ldquo;Build Credentials&rdquo;</strong> from the menu (not Push Notifications or App Store Connect &mdash; Build Credentials is the one that sets up signing for <code>eas build</code>).</li>
+          <li><strong>Pick &ldquo;All&rdquo;</strong> when asked what to do &mdash; this sets up the distribution certificate AND the provisioning profile in one pass.</li>
+          <li><strong>Sign in to Apple</strong> when prompted &mdash; your Apple ID email, password, and a 2FA code from your phone or trusted device.</li>
+          <li><strong>Distribution certificate:</strong> if you already have other apps under the same Apple Developer account, EAS will offer to <strong>reuse an existing certificate</strong>. Always pick yes &mdash; Apple limits you to 3 distribution certs at a time, so reusing is the right move. If this is your first app, EAS will generate a fresh one for you.</li>
+          <li><strong>Provisioning profile:</strong> pick yes to generate a new one. Profiles are scoped per-bundle-ID, so this doesn't affect any other apps you have on the same account.</li>
+          <li><strong>Device registration:</strong> only matters for <em>development</em> and <em>preview</em> profiles (those install directly to phones, not via the App Store). If you have your iPhone handy, pick yes &mdash; EAS gives you a URL to open on your phone that auto-registers it. Otherwise pick no, and either:
+            <ul>
+              <li>Run <code>eas device:create</code> later when you have a device to register, or</li>
+              <li>Use the <strong>production</strong> profile instead &mdash; production builds go to the App Store, not directly to phones, so they don't need any registered devices.</li>
+            </ul>
+          </li>
+          <li><strong>Done.</strong> EAS prints &ldquo;All credentials are ready to build your project.&rdquo; Pick &ldquo;Go back&rdquo; then &ldquo;Exit&rdquo; to leave the menu.</li>
+          <li><strong>Back in the dashboard,</strong> click the iOS build button again &mdash; this time it should succeed and the build will queue on EAS.</li>
+        </ol>
+
+        <div class="callout callout-warn" style="margin-top: 12px;">
+          <strong>Multi-app accounts:</strong> If you build multiple apps under the same Apple Developer account, each app needs its own provisioning profile (scoped per bundle ID), but they can all share the same distribution certificate. EAS will detect existing certs and offer to reuse them &mdash; always pick reuse to avoid burning your 3-cert limit.
+        </div>
+
+        <div class="callout callout-info" style="margin-top: 8px;">
+          <strong>Where the credentials live:</strong> Unlike the .p8 API key, build credentials are stored <strong>on EAS's servers</strong>, not in your project folder. There's no local file to back up &mdash; if you switch machines, just run <code>eas login</code> on the new machine and EAS pulls them automatically.
+        </div>
+      </div>
+    </details>
+
     <div class="callout callout-info" style="margin-top: 12px;">
-      <strong>App-Specific Password:</strong> EAS submit needs one for authentication. Generate it at <a href="https://appleid.apple.com/account/manage" target="_blank">appleid.apple.com</a> &rarr; Sign-In and Security &rarr; App-Specific Passwords. You'll be prompted on first submit, or set <code>EXPO_APPLE_APP_SPECIFIC_PASSWORD</code> as an environment variable.
+      <strong>App-Specific Password (legacy fallback):</strong> If you skip the API key setup above, EAS falls back to prompting for an <a href="https://appleid.apple.com/account/manage" target="_blank">app-specific password</a> on every submit, or you can set <code>EXPO_APPLE_APP_SPECIFIC_PASSWORD</code> as an environment variable. The API key approach is strongly recommended &mdash; it's what unlocks the dashboard's one-click submit.
     </div>
 
     <h5 style="margin-top: 20px;">Android</h5>
@@ -1810,10 +1902,14 @@ export const MODULES: ModuleManifest[] = [
   </div>
 </div>
 
-<div class="step-card">
+<div class="step-card" id="step-ios-credentials">
   <div class="step-header"><span class="step-title">iOS Credentials (first iOS build only)</span></div>
   <div class="step-body">
     <p>Before EAS can build for iOS, your Apple Developer account needs a distribution certificate and a provisioning profile for your app's bundle ID. EAS handles this through an interactive command &mdash; you only need to run it once per app.</p>
+
+    <div class="callout callout-info" style="margin-top: 8px;">
+      <strong>Build credentials vs submission credentials &mdash; don't mix them up.</strong> This card sets up <em>build</em> credentials (signing cert + provisioning profile for <code>eas build</code>). The dashboard's <strong>Submit to App Store</strong> button uses a different credential &mdash; an <strong>App Store Connect API Key</strong> &mdash; configured in the <a href="#step-app-store-submission">App Store Submission</a> card. The most common cause of a first-time iOS submit failure is a missing API key, not missing build credentials. If <code>eas submit</code> fails with <code>App Store Connect API Keys cannot be set up in --non-interactive mode</code>, jump to the App Store Connect API Key section.
+    </div>
 
     <div class="callout">
       <strong>How you'll know you need this:</strong> If you click an iOS build button in the dashboard and the build fails with &ldquo;iOS credentials aren't set up yet,&rdquo; that's the trigger. The dashboard will show an <strong>Open Config to set up</strong> button that takes you to the <strong>iOS Credentials</strong> row in the Config tab &mdash; copy the command from there and follow the walkthrough below.
@@ -2342,6 +2438,28 @@ eas submit --platform android</code></pre>
       showSection(this.dataset.section);
     });
   });
+
+  // Deep-link support: if URL has #anchor, find which guide-section it lives in,
+  // activate that section, open the nearest <details>, and scroll to the target.
+  function handleHash() {
+    var hash = window.location.hash.replace(/^#/, '');
+    if (!hash) return;
+    var target = document.getElementById(hash);
+    if (!target) return;
+    var section = target.closest('.guide-section');
+    if (section) {
+      var id = section.id.replace(/^sec-/, '');
+      showSection(id);
+    }
+    var details = target.closest('details');
+    if (details) details.open = true;
+    // Also open nested details inside the target itself, in case the anchor IS the <details>
+    if (target.tagName === 'DETAILS') target.open = true;
+    // Scroll after layout settles
+    setTimeout(function() { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+  }
+  handleHash();
+  window.addEventListener('hashchange', handleHash);
 })();
 </script>
 

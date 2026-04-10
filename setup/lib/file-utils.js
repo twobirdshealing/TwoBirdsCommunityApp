@@ -58,7 +58,15 @@ function resolveUploadPath(target) {
   if (target === 'firebase-android') return PATHS.googleServicesJson;
   if (target === 'firebase-ios') return PATHS.googleServiceInfoPlist;
   if (target === 'google-play-key') return PATHS.googlePlayKeyFile;
+  if (target === 'asc-api-key') return PATHS.ascApiKeyFile;
   return null;
 }
 
-module.exports = { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, getPluginVersion, findPluginConfig, resolveUploadPath };
+/** Walk a nested object, creating empty objects along the way, and return the deepest one. */
+function ensurePath(obj, ...keys) {
+  let o = obj;
+  for (const k of keys) { if (!o[k]) o[k] = {}; o = o[k]; }
+  return o;
+}
+
+module.exports = { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, getPluginVersion, findPluginConfig, resolveUploadPath, ensurePath };

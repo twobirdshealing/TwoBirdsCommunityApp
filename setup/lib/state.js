@@ -32,6 +32,8 @@ function readProjectState() {
     state.config.siteUrl = getSiteUrl(easJson);
     state.config.appleId = easJson.submit?.production?.ios?.appleId || '';
     state.config.ascAppId = easJson.submit?.production?.ios?.ascAppId || '';
+    state.config.ascApiKeyId = easJson.submit?.production?.ios?.ascApiKeyId || '';
+    state.config.ascApiKeyIssuerId = easJson.submit?.production?.ios?.ascApiKeyIssuerId || '';
     // Google Play submit config
     state.config.googlePlayTrack = easJson.submit?.production?.android?.track || 'production';
     state.config.googlePlayServiceAccountKeyPath = easJson.submit?.production?.android?.serviceAccountKeyPath || '';
@@ -69,6 +71,9 @@ function readProjectState() {
 
   // --- Google Play service account key ---
   state.config.googlePlayKeyExists = fileExists(PATHS.googlePlayKeyFile);
+
+  // --- App Store Connect API key (.p8) ---
+  state.config.ascApiKeyExists = fileExists(PATHS.ascApiKeyFile);
 
   // --- Assets ---
   for (const asset of REQUIRED_ASSETS) {
@@ -193,6 +198,7 @@ function runValidation(state) {
   // --- App Store Submission ---
   checkWarn(isPlaceholder(c.appleId), 'Apple ID not set (needed for iOS submission)', 'App Store Submission', REF.storeSubmission);
   checkWarn(isPlaceholder(c.ascAppId), 'App Store Connect ID not set (needed for iOS submission)', 'App Store Submission', REF.storeSubmission);
+  checkWarn(!c.ascApiKeyExists, 'App Store Connect API key not uploaded (needed for iOS submission)', 'App Store Submission', REF.storeSubmission);
   checkWarn(!c.googlePlayKeyExists, 'Google Play service account key not uploaded', 'App Store Submission', REF.storeSubmission);
   if (c.version && c.packageVersion && c.version !== c.packageVersion) {
     checks.push({ pass: 'warn', label: `Version mismatch: app.json="${c.version}" vs package.json="${c.packageVersion}"`, category: 'App Store Submission', ref: REF.storeSubmission });

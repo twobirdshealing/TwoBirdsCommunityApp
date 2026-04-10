@@ -38,6 +38,7 @@ const PATHS = {
   googleServicesJson: path.join(PROJECT_DIR, 'google-services.json'),
   googleServiceInfoPlist: path.join(PROJECT_DIR, 'GoogleService-Info.plist'),
   googlePlayKeyFile: path.join(PROJECT_DIR, 'google-play-service-account.json'),
+  ascApiKeyFile: path.join(PROJECT_DIR, 'asc-api-key.p8'),
   manifest: path.join(PROJECT_DIR, 'manifest.json'),
   licenseFile: path.join(PROJECT_DIR, 'setup', '.license'),
   backupsDir: path.join(PROJECT_DIR, 'setup', '.backups'),

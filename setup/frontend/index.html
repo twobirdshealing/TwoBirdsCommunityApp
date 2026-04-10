@@ -893,14 +893,62 @@
           <input type="text" x-model="config.ascAppId" x-on:input="onConfigInput('ascAppId')" placeholder="0000000000">
           <div class="field-help" x-bind:class="fieldHelpState.ascAppId ? 'expanded' : 'collapsed'" x-html="getFieldHelpHtml('ascAppId')"></div>
         </div>
+        <div class="field">
+          <label>App Store Connect API Key ID <span class="file-hint">submit.production.ios.ascApiKeyId</span>
+            <template x-if="FIELD_HELP.ascApiKeyId">
+              <button class="help-toggle" type="button" x-on:click="toggleFieldHelp('ascApiKeyId')" title="Toggle help">?</button>
+            </template>
+          </label>
+          <input type="text" x-model="config.ascApiKeyId" x-on:input="onConfigInput('ascApiKeyId')" placeholder="ABC1234DEF">
+          <div class="field-help" x-bind:class="fieldHelpState.ascApiKeyId ? 'expanded' : 'collapsed'" x-html="getFieldHelpHtml('ascApiKeyId')"></div>
+        </div>
+        <div class="field">
+          <label>App Store Connect Issuer ID <span class="file-hint">submit.production.ios.ascApiKeyIssuerId</span>
+            <template x-if="FIELD_HELP.ascApiKeyIssuerId">
+              <button class="help-toggle" type="button" x-on:click="toggleFieldHelp('ascApiKeyIssuerId')" title="Toggle help">?</button>
+            </template>
+          </label>
+          <input type="text" x-model="config.ascApiKeyIssuerId" x-on:input="onConfigInput('ascApiKeyIssuerId')" placeholder="00000000-0000-0000-0000-000000000000">
+          <div class="field-help" x-bind:class="fieldHelpState.ascApiKeyIssuerId ? 'expanded' : 'collapsed'" x-html="getFieldHelpHtml('ascApiKeyIssuerId')"></div>
+        </div>
+        <div class="field">
+          <label>App Store Connect API Key <span class="file-hint">asc-api-key.p8</span>
+            <template x-if="FIELD_HELP.ascApiKey">
+              <button class="help-toggle" type="button" x-on:click="toggleFieldHelp('ascApiKey')" title="Toggle help">?</button>
+            </template>
+          </label>
+          <div style="font-size:13px;padding:8px 0">
+            <template x-if="config.ascApiKeyExists">
+              <span style="display:flex;align-items:center;gap:8px">
+                <span><span class="status-icon status-pass"><ion-icon name="checkmark-circle"></ion-icon></span> API key uploaded</span>
+                <button class="btn-icon-remove" type="button" x-on:click="removeUpload('asc-api-key', 'API key')" title="Remove file"><ion-icon name="trash-outline"></ion-icon></button>
+              </span>
+            </template>
+            <template x-if="!config.ascApiKeyExists">
+              <span><span class="status-icon status-fail"><ion-icon name="close-circle"></ion-icon></span> No API key — needed for App Store submissions</span>
+            </template>
+          </div>
+          <div class="drop-zone" x-on:click="$refs.ascApiKeyInput.click()"
+               x-on:dragover.prevent="$el.classList.add('dragover')"
+               x-on:dragleave="$el.classList.remove('dragover')"
+               x-on:drop.prevent="$el.classList.remove('dragover'); handleDropUpload($event, 'asc-api-key')" style="margin-top:4px">
+            Drop your <code>.p8</code> private key here or click to upload
+            <input type="file" accept=".p8" x-ref="ascApiKeyInput" style="display:none"
+                   x-on:change="handleFileUpload($event, 'asc-api-key')">
+          </div>
+          <div class="field-help" x-bind:class="fieldHelpState.ascApiKey ? 'expanded' : 'collapsed'" x-html="getFieldHelpHtml('ascApiKey')"></div>
+        </div>
         <div class="field" id="section-ios-credentials">
-          <label>iOS Credentials <span class="file-hint">eas credentials</span></label>
-          <p style="font-size:13px;color:var(--text-secondary);margin:4px 0 8px">First time building for iOS? Run this once in your terminal — you'll be asked for your Apple ID password and a 2FA code:</p>
+          <label>iOS Credentials <span class="file-hint">eas credentials</span>
+            <template x-if="FIELD_HELP.iosCredentials">
+              <button class="help-toggle" type="button" x-on:click="toggleFieldHelp('iosCredentials')" title="Toggle help">?</button>
+            </template>
+          </label>
           <div class="input-with-copy">
             <input type="text" readonly value="eas credentials --platform ios" style="font-family:monospace">
             <button type="button" class="copy-btn" x-on:click="copyFieldValue('eas credentials --platform ios')">Copy</button>
           </div>
-          <p style="font-size:12px;color:var(--text-muted);margin-top:6px">If your iOS build fails with "iOS credentials aren't set up yet", come back here and run this command. See the <strong>Setup Guide → Builds → iOS Credentials</strong> section for the full walkthrough.</p>
+          <div class="field-help" x-bind:class="fieldHelpState.iosCredentials ? 'expanded' : 'collapsed'" x-html="getFieldHelpHtml('iosCredentials')"></div>
         </div>
       </div>
       <h4>Android</h4>
@@ -2032,7 +2080,7 @@ document.addEventListener('alpine:init', () => {
     // Constants
     CONFIG_FIELDS: ['appName', 'slug', 'scheme', 'version', 'iosBundleId', 'androidPackage',
       'siteUrl', 'stagingUrl', 'easOwner', 'easProjectId', 'appNameConfig', 'userAgent',
-      'appleId', 'ascAppId', 'packageName', 'appToken'],
+      'appleId', 'ascAppId', 'ascApiKeyId', 'ascApiKeyIssuerId', 'packageName', 'appToken'],
     PLACEHOLDERS: ["My Community App","MyCommunityApp","mycommunityapp","My Community","com.yourcompany.communityapp","CommunityApp/1.0","community-app","your-expo-account","YOUR_EAS_PROJECT_ID","https://community.yoursite.com","community.yoursite.com","your-apple-id@example.com","YOUR_ASC_APP_ID"],
     DERIVABLE_FIELDS: ['slug', 'scheme', 'appNameConfig', 'userAgent', 'packageName', 'androidPackage', 'version'],
     FIELD_HELP: {
@@ -2050,6 +2098,10 @@ document.addEventListener('alpine:init', () => {
       userAgent: { text: 'Identifies your app in HTTP requests to your WordPress site. Auto-derived from app name. Format: <code>YourAppName/1.0</code>.' },
       appleId: { text: 'The email you use to sign into App Store Connect — your Apple Developer account email.', link: 'https://appstoreconnect.apple.com', linkLabel: 'App Store Connect' },
       ascAppId: { text: 'The numeric ID Apple assigns to your app. Find it in App Store Connect → your app → General → App Information → "Apple ID" (the number, e.g. <code>1563113528</code>).', link: 'https://appstoreconnect.apple.com/apps', linkLabel: 'App Store Connect' },
+      ascApiKeyId: { text: 'The 10-character Key ID shown next to your App Store Connect API key. Find it in App Store Connect → Users and Access → Integrations → App Store Connect API. Required so <code>eas submit</code> can upload iOS builds without prompting for your Apple password.', link: 'https://appstoreconnect.apple.com/access/integrations/api', linkLabel: 'App Store Connect API' },
+      ascApiKeyIssuerId: { text: 'Your team\'s Issuer ID — a UUID shown at the top of the App Store Connect API page. Same value for every key your team generates. Required alongside the Key ID and the .p8 file for non-interactive submissions.', link: 'https://appstoreconnect.apple.com/access/integrations/api', linkLabel: 'App Store Connect API' },
+      ascApiKey: { text: 'The <code>.p8</code> private key file Apple gives you when you generate an App Store Connect API key. Required (along with the Key ID and Issuer ID above) so <code>eas submit</code> can upload iOS builds without prompting for an Apple password. Apple only lets you download the .p8 once — keep it safe. <strong>One key, every app:</strong> the .p8 is per Apple Developer team, not per app — reuse the same Key ID, Issuer ID, and .p8 file across every project under the same team. Full walkthrough: <a href="setup-guide.html#asc-api-key-walkthrough" target="_blank">Setup Guide → App Store Connect API Key →</a>', link: 'https://appstoreconnect.apple.com/access/integrations/api', linkLabel: 'Generate key in App Store Connect' },
+      iosCredentials: { text: 'Build credentials (signing certificate + provisioning profile) are needed before <code>eas build</code> can compile your iOS binary. EAS sets these up through an interactive command — first iOS build only. <strong>This is different from the App Store Connect API Key above</strong>: build credentials sign the IPA, the API key uploads it. You need both for a fresh setup. Full walkthrough: <a href="setup-guide.html#step-ios-credentials" target="_blank">Setup Guide → iOS Credentials →</a>' },
       googlePlayTrack: { text: 'Which track to submit Android builds to. Use <strong>internal</strong> for testing, <strong>production</strong> for release.', link: 'https://play.google.com/console', linkLabel: 'Google Play Console' },
       packageName: { text: 'The npm package name in <code>package.json</code>. Not user-visible — just for repo cleanliness. Auto-derived from slug.' },
     },
@@ -2204,6 +2256,7 @@ document.addEventListener('alpine:init', () => {
         this.config.googlePlayTrack = state.config.googlePlayTrack || 'production';
         this.originalValues.googlePlayTrack = state.config.googlePlayTrack || 'production';
         this.config.googlePlayKeyExists = state.config.googlePlayKeyExists || false;
+        this.config.ascApiKeyExists = state.config.ascApiKeyExists || false;
         // Auto-derive empty fields (don't set originalValues — so saveConfig detects them as changes)
         var self = this;
         Object.entries(this.deriveMap()).forEach(function(entry) {
@@ -2226,6 +2279,9 @@ document.addEventListener('alpine:init', () => {
           this.fieldAlerts[key] = false;
           this.fieldRebuildNotices[key] = false;
         });
+        // Non-CONFIG_FIELDS help state: tied to file existence / always-open
+        this.fieldHelpState.ascApiKey = !this.config.ascApiKeyExists;
+        this.fieldHelpState.iosCredentials = true;
         // Assets, firebase, plugins, validation
         this.assets = state.assets || [];
         this.adaptiveIconBg = state.adaptiveIconBg || { mode: 'image', color: '#FFFFFF' };

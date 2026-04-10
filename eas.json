@@ -57,7 +57,10 @@
     "production": {
       "ios": {
         "appleId": "jay@twobirdshealing.org",
-        "ascAppId": "1563113528"
+        "ascAppId": "1563113528",
+        "ascApiKeyPath": "./asc-api-key.p8",
+        "ascApiKeyId": "ZCLZHKXW8Q",
+        "ascApiKeyIssuerId": "ab7b67d5-4a14-4249-ab12-3836a8600a8b"
       }
     }
   }

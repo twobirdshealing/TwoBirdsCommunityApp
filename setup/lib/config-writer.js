@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const { PATHS } = require('./paths');
-const { readJsonSafe, findPluginConfig } = require('./file-utils');
+const { readJsonSafe, findPluginConfig, ensurePath } = require('./file-utils');
 
 // ---------------------------------------------------------------------------
 // Config Writer
@@ -80,6 +80,7 @@ function writeConfigValues(changes) {
 
   // --- eas.json ---
   if (changes.siteUrl !== undefined || changes.stagingUrl !== undefined || changes.appleId !== undefined || changes.ascAppId !== undefined ||
+      changes.ascApiKeyId !== undefined || changes.ascApiKeyIssuerId !== undefined ||
       changes.googlePlayTrack !== undefined || changes.googlePlayServiceAccountKeyPath !== undefined) {
     const easJson = readJsonSafe(PATHS.easJson);
     if (easJson) {
@@ -99,20 +100,20 @@ function writeConfigValues(changes) {
         if (!easJson.build.development.env) easJson.build.development.env = {};
         easJson.build.development.env.EXPO_PUBLIC_SITE_URL = changes.stagingUrl;
       }
-      // Helper: ensure nested path exists in eas.json
-      const ensurePath = (...keys) => {
-        let obj = easJson;
-        for (const k of keys) { if (!obj[k]) obj[k] = {}; obj = obj[k]; }
-        return obj;
-      };
       if (changes.appleId !== undefined) {
-        ensurePath('submit', 'production', 'ios').appleId = changes.appleId;
+        ensurePath(easJson, 'submit', 'production', 'ios').appleId = changes.appleId;
       }
       if (changes.ascAppId !== undefined) {
-        ensurePath('submit', 'production', 'ios').ascAppId = changes.ascAppId;
+        ensurePath(easJson, 'submit', 'production', 'ios').ascAppId = changes.ascAppId;
+      }
+      if (changes.ascApiKeyId !== undefined) {
+        ensurePath(easJson, 'submit', 'production', 'ios').ascApiKeyId = changes.ascApiKeyId;
+      }
+      if (changes.ascApiKeyIssuerId !== undefined) {
+        ensurePath(easJson, 'submit', 'production', 'ios').ascApiKeyIssuerId = changes.ascApiKeyIssuerId;
       }
       if (changes.googlePlayTrack !== undefined || changes.googlePlayServiceAccountKeyPath !== undefined) {
-        const android = ensurePath('submit', 'production', 'android');
+        const android = ensurePath(easJson, 'submit', 'production', 'android');
         if (changes.googlePlayTrack !== undefined) android.track = changes.googlePlayTrack;
         if (changes.googlePlayServiceAccountKeyPath !== undefined) android.serviceAccountKeyPath = changes.googlePlayServiceAccountKeyPath;
       }
