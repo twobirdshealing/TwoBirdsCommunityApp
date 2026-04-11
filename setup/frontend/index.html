@@ -267,15 +267,12 @@
   .new-build-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
   .new-build-card h4 { font-size: 14px; margin-bottom: 4px; }
   .new-build-card p { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; }
-  .new-build-card .btn-group { justify-content: center; margin-top: 8px; }
+  .new-build-card .btn-group { justify-content: center; margin-top: 8px; flex-wrap: wrap; }
+  .new-build-action { display: flex; justify-content: center; margin-top: 4px; }
+  .new-build-action .btn { min-width: 140px; }
 
-  .build-preset-section { margin-bottom: 16px; }
-  .build-preset-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); flex-wrap: wrap; }
-  .build-preset-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
-  .build-preset-toggles { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
   .build-preset-chip { border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-secondary); transition: all 0.15s; }
   .build-preset-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .build-preset-status { margin-left: auto; font-weight: 500; font-size: 11px; }
 
   .build-banner { border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
   .build-banner-title { font-weight: 600; margin-bottom: 4px; }
@@ -1386,57 +1383,43 @@
           <ion-icon x-bind:name="bumpUp ? 'chevron-up-outline' : 'chevron-down-outline'"></ion-icon>
         </button>
       </div>
-      <!-- Quick Build preset -->
-      <div class="build-preset-section" x-show="presetLoaded" style="display:none">
-        <div class="build-preset-bar">
-          <span class="build-preset-label">Quick Build</span>
-          <div class="build-preset-toggles">
-            <template x-for="combo in [
-              {p:'ios',pr:'development',label:'iOS Dev'},
-              {p:'ios',pr:'preview',label:'iOS Preview'},
-              {p:'ios',pr:'simulator',label:'iOS Sim'},
-              {p:'ios',pr:'production',label:'iOS Prod'},
-              {p:'android',pr:'development',label:'Android Dev'},
-              {p:'android',pr:'preview',label:'Android Preview'},
-              {p:'android',pr:'production',label:'Android Prod'}
-            ]" :key="combo.p+':'+combo.pr">
-              <button class="btn btn-sm build-preset-chip"
-                      x-bind:class="{ active: presetHas(combo.p, combo.pr) }"
-                      x-on:click="togglePreset(combo.p, combo.pr)"
-                      x-text="combo.label"
-                      x-bind:disabled="presetRunning">
-              </button>
-            </template>
+      <div class="new-build-grid" x-show="presetLoaded" style="display:none">
+        <template x-for="card in [
+          {platform:'ios',title:'iOS',subtitle:'Build for iPhone / iPad',profiles:[
+            {p:'development',label:'Dev'},
+            {p:'preview',label:'Preview'},
+            {p:'simulator',label:'Simulator',title:'iOS Simulator build — no Apple credentials needed. Upload to Appetize.io for browser-based screenshots.'},
+            {p:'production',label:'Production'}
+          ]},
+          {platform:'android',title:'Android',subtitle:'Build for Android devices',profiles:[
+            {p:'development',label:'Dev'},
+            {p:'preview',label:'Preview'},
+            {p:'production',label:'Production'}
+          ]}
+        ]" :key="card.platform">
+          <div class="new-build-card">
+            <h4 x-text="card.title"></h4>
+            <p x-text="card.subtitle"></p>
+            <div class="btn-group">
+              <template x-for="prof in card.profiles" :key="prof.p">
+                <button class="btn btn-sm build-preset-chip"
+                        x-bind:class="{ active: presetHas(card.platform, prof.p) }"
+                        x-on:click="togglePreset(card.platform, prof.p)"
+                        x-bind:disabled="buildBlockers.length > 0 || presetRunning"
+                        x-bind:title="prof.title || null"
+                        x-text="prof.label"></button>
+              </template>
+            </div>
           </div>
-          <button class="btn btn-sm btn-primary"
-                  x-on:click="runPreset()"
-                  x-bind:disabled="buildBlockers.length > 0 || buildPreset.length === 0 || presetRunning">
-            <span x-show="!presetRunning">Build All (<span x-text="buildPreset.length"></span>)</span>
-            <span x-show="presetRunning">Building...</span>
-          </button>
-        </div>
+        </template>
       </div>
-      <!-- New build grid -->
-      <div class="new-build-grid">
-        <div class="new-build-card">
-          <h4>iOS</h4>
-          <p>Build for iPhone / iPad</p>
-          <div class="btn-group">
-            <button class="btn btn-sm" x-on:click="startBuild('ios','development')" x-bind:disabled="buildBlockers.length > 0">Dev</button>
-            <button class="btn btn-sm" x-on:click="startBuild('ios','preview')" x-bind:disabled="buildBlockers.length > 0">Preview</button>
-            <button class="btn btn-sm" x-on:click="startBuild('ios','simulator')" x-bind:disabled="buildBlockers.length > 0" title="iOS Simulator build — no Apple credentials needed. Upload to Appetize.io for browser-based screenshots.">Simulator</button>
-            <button class="btn btn-sm btn-primary" x-on:click="startBuild('ios','production')" x-bind:disabled="buildBlockers.length > 0">Production</button>
-          </div>
-        </div>
-        <div class="new-build-card">
-          <h4>Android</h4>
-          <p>Build for Android devices</p>
-          <div class="btn-group">
-            <button class="btn btn-sm" x-on:click="startBuild('android','development')" x-bind:disabled="buildBlockers.length > 0">Dev</button>
-            <button class="btn btn-sm" x-on:click="startBuild('android','preview')" x-bind:disabled="buildBlockers.length > 0">Preview</button>
-            <button class="btn btn-sm btn-primary" x-on:click="startBuild('android','production')" x-bind:disabled="buildBlockers.length > 0">Production</button>
-          </div>
-        </div>
+      <div class="new-build-action" x-show="presetLoaded" style="display:none">
+        <button class="btn btn-primary"
+                x-on:click="runPreset()"
+                x-bind:disabled="buildBlockers.length > 0 || buildPreset.length === 0 || presetRunning">
+          <span x-show="!presetRunning">Build (<span x-text="buildPreset.length"></span>)</span>
+          <span x-show="presetRunning">Building...</span>
+        </button>
       </div>
     </div>
   </div>
@@ -1646,15 +1629,26 @@
             <div style="flex:1;min-width:0">
               <div style="font-weight:600;margin-bottom:4px" x-text="getOtaMessage(group)"></div>
               <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--text-muted)">
-                <span style="background:var(--accent);color:#fff;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:500" x-text="group.branch || group.channel || '?'"></span>
+                <template x-if="group.branch || group.channel">
+                  <span style="background:var(--accent);color:#fff;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:500" x-text="group.branch || group.channel"></span>
+                </template>
                 <template x-if="group.runtimeVersion">
                   <span style="background:var(--bg-primary);padding:1px 8px;border-radius:10px;font-size:11px;border:1px solid var(--border)" x-text="'v' + group.runtimeVersion"></span>
                 </template>
-                <span x-text="getOtaPlatforms(group)"></span>
-                <span x-text="group.createdAt || group.updatedAt ? formatDate(group.createdAt || group.updatedAt) : '?'"></span>
+                <template x-for="platform in getOtaPlatformList(group)" :key="platform">
+                  <span style="background:var(--bg-primary);padding:1px 8px;border-radius:10px;font-size:11px;border:1px solid var(--border)" x-text="platform"></span>
+                </template>
+                <template x-if="group.createdAt || group.updatedAt">
+                  <span x-text="formatDate(group.createdAt || group.updatedAt)"></span>
+                </template>
               </div>
             </div>
-            <button class="btn btn-sm btn-danger-subtle" x-on:click="deleteOTA(group.group || group.id)">Remove from EAS</button>
+            <div style="display:flex;gap:6px;flex-shrink:0">
+              <template x-if="getOtaPageUrl(group)">
+                <a class="btn btn-sm" x-bind:href="getOtaPageUrl(group)" target="_blank" rel="noopener">View on EAS</a>
+              </template>
+              <button class="btn btn-sm btn-danger-subtle" x-on:click="deleteOTA(group.group || group.id)">Remove from EAS</button>
+            </div>
           </div>
         </template>
       </div>
@@ -2579,12 +2573,23 @@ bumpVersion(type) {
       return (mins > 0 && mins < 120) ? ' \u00B7 ' + mins + ' min' : '';
     },
 
+    expoProjectUrl(path) {
+      var owner = this.config.easOwner;
+      var slug = this.config.slug;
+      if (!owner || !slug || !path) return '';
+      return 'https://expo.dev/accounts/' + owner + '/projects/' + slug + '/' + path;
+    },
+
     getBuildPageUrl(build) {
       if (build.buildDetailsPageUrl) return build.buildDetailsPageUrl;
-      if (build.project && build.project.ownerAccount && build.project.slug && build.id) {
-        return 'https://expo.dev/accounts/' + build.project.ownerAccount.name + '/projects/' + build.project.slug + '/builds/' + build.id;
-      }
+      if (build.id) return this.expoProjectUrl('builds/' + build.id);
       return '';
+    },
+
+    getOtaPageUrl(group) {
+      var id = group.group || group.id;
+      if (!id) return '';
+      return this.expoProjectUrl('updates/' + id);
     },
 
     isInternalBuild(build) {
@@ -2629,16 +2634,6 @@ bumpVersion(type) {
         this.buildsShown = 10;
       } catch (err) { this.builds = []; this.buildsError = err.message; }
       finally { this.buildsLoading = false; }
-    },
-
-    async startBuild(platform, profile) {
-      if (this.buildBlockers.length > 0) {
-        alert('Cannot build — fix these issues first:\n\n' + this.buildBlockers.map(b => '  x ' + b).join('\n'));
-        return;
-      }
-      if (this.dirty) { alert('You have unsaved changes. Save your changes on the Config tab before building.'); return; }
-      if (!confirm('Start a ' + profile + ' build for ' + platform + '?\n\nThis will queue a build on EAS servers.')) return;
-      await this.attemptBuild(platform, profile);
     },
 
     // ---- Local builds (in-flight + pre-EAS failures) ----
@@ -2709,8 +2704,11 @@ bumpVersion(type) {
       this.presetLoaded = true;
     },
 
-    async savePreset() {
-      try { await this.postJson('/api/builds/presets', { selected: this.buildPreset }); } catch (e) { this.showToast('Failed to save preset', 'error'); }
+    savePreset() {
+      clearTimeout(this._savePresetTimer);
+      this._savePresetTimer = setTimeout(async () => {
+        try { await this.postJson('/api/builds/presets', { selected: this.buildPreset }); } catch (e) { this.showToast('Failed to save preset', 'error'); }
+      }, 300);
     },
 
     async runPreset() {
@@ -3034,10 +3032,11 @@ bumpVersion(type) {
       return match ? match[1] : rawMsg.replace(/^"|"$/g, '');
     },
 
-    getOtaPlatforms(group) {
-      if (typeof group.platforms === 'string') return group.platforms;
-      if (Array.isArray(group.platforms)) return group.platforms.join(', ');
-      return group.platform || '?';
+    getOtaPlatformList(group) {
+      if (Array.isArray(group.platforms)) return group.platforms;
+      if (typeof group.platforms === 'string') return group.platforms.split(',').map(s => s.trim()).filter(Boolean);
+      if (group.platform) return [group.platform];
+      return [];
     },
 
     async pushOTA() {

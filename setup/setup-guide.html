@@ -599,7 +599,7 @@
         <li>Long-press the header logo for 2 seconds to open the dev debug menu, then tap <em>Send test event to Sentry</em>. Within 30 seconds the event should appear in your Sentry dashboard's Issues feed.</li>
       </ol>
       <div class="callout" style="margin-top: 12px;">
-        <strong>Completely optional.</strong> The Sentry SDK ships in every app build but stays dormant until you give it a DSN. With no DSN configured, zero data is sent and there is no performance cost. Source-map upload (for readable function names in production stack traces) is also optional &mdash; see the <a href="#builds">Crash Reporting card in the Builds section</a> for the full trade-off.
+        <strong>Completely optional.</strong> The Sentry SDK ships in every app build but stays dormant until you give it a DSN. With no DSN configured, zero data is sent and there is no performance cost. Source-map upload (for readable function names in production stack traces) is also optional &mdash; see <code>setup/docs/logging.html#sentry</code> for the one-time EAS secrets setup.
       </div>
     </div>
   </details>
@@ -1710,7 +1710,7 @@ export const MODULES: ModuleManifest[] = [
     <p>Sentry must initialize at module-load time, before React mounts, so that errors during app startup are captured. The init reads the DSN <em>synchronously</em> from a local cache (MMKV). The first launch after saving a new DSN fetches the config and writes it to the cache; only the <em>second</em> launch initializes Sentry from that cache. After this one-time bootstrap, Sentry initializes instantly on every cold start. To verify, long-press the header logo for 2 seconds to open the dev debug menu — the "Crash Reporting (Sentry)" section shows whether the SDK initialized this session, plus a "Send test event to Sentry" button.</p>
 
     <h4 style="margin-top: 16px;">Privacy</h4>
-    <p>Sentry receives crash stack traces, device info (model, OS version), app version, and recent log breadcrumbs. It does <em>not</em> see user content, messages, passwords, or auth tokens — those are stripped automatically before transmission. For full privacy details and source-map upload (optional), see the <a href="#builds">Crash Reporting (Sentry) card</a> in the Builds section below.</p>
+    <p>Sentry receives crash stack traces, device info (model, OS version), app version, and recent log breadcrumbs. It does <em>not</em> see user content, messages, passwords, or auth tokens — those are stripped automatically before transmission. Source-map upload for readable stack traces in production is optional &mdash; see <code>setup/docs/logging.html#sentry</code> for the EAS secrets setup.</p>
 
     <div class="callout callout-warn">
       <strong>To disable:</strong> uncheck <em>Enable Crash Reporting</em> or clear the DSN field. Either disables Sentry on the next app launch with zero performance cost — the SDK stays in the binary but never initializes.
@@ -1871,88 +1871,81 @@ export const MODULES: ModuleManifest[] = [
 <div class="guide-section" id="sec-builds">
 <h2 id="builds">Builds Tab</h2>
 
-<p>The <strong>Builds</strong> tab in the dashboard shows your current app version and provides quick-action buttons for building and submitting to app stores via EAS (Expo Application Services).</p>
+<p>The <strong>Builds</strong> tab is where you <em>build</em>, <em>submit</em>, and <em>publish</em> your app. It's a thin wrapper around EAS (Expo Application Services) &mdash; the tab reads your version, lets you bump it, kicks off native builds for iOS and Android, and lists every build EAS has ever made for this project with one-click actions (download, install, submit).</p>
+
+<p style="color: var(--text-secondary); font-size: 14px; margin-top: -4px;">Everything configured in the <a href="#sec-config">Config tab</a> (app identity, EAS project ID, Apple/Google submission keys, Firebase, branding) feeds into the Builds tab. If a build fails because something's missing, the error will point you back to the Config card that needs fixing.</p>
+
+<img class="step-img" src="images/Builds Tab.webp" alt="Setup dashboard Builds tab showing the New Build card with version bumper and iOS/Android build buttons, and the Recent Builds list below">
 
 <div class="step-card">
-  <div class="step-header"><span class="step-title">Version Bumping</span></div>
+  <div class="step-header"><span class="step-title">1. Bump the Version</span></div>
   <div class="step-body">
-    <p>Use the <strong>version bump buttons</strong> in the dashboard to increment your version. This updates all required files automatically (<code>package.json</code>, <code>app.json</code> version, iOS build number, and Android version code).</p>
-    <div class="callout">
-      <strong>Tip:</strong> Always bump the version before submitting a new build to the stores. The stores reject builds with duplicate version numbers.
+    <p>The top of the New Build card shows your current <strong>App Version</strong> with three bump buttons: <strong>Major</strong>, <strong>Minor</strong>, and <strong>Patch</strong>. Clicking any of them updates four files at once:</p>
+    <ul>
+      <li><code>package.json</code> &rarr; <code>version</code></li>
+      <li><code>app.json</code> &rarr; <code>expo.version</code></li>
+      <li><code>app.json</code> &rarr; <code>expo.ios.buildNumber</code> (iOS requires this to be unique per upload)</li>
+      <li><code>app.json</code> &rarr; <code>expo.android.versionCode</code> (Play Store requires this to increase every upload)</li>
+    </ul>
+    <div class="callout callout-warn">
+      <strong>Always bump before a new production build.</strong> Both stores <em>reject</em> uploads with a duplicate version number. If you built <code>3.5.0</code> yesterday and try to submit another <code>3.5.0</code> today, the store will error out with &ldquo;version already exists.&rdquo; Bump first, build second, submit third.
     </div>
+    <p style="margin-top: 12px;">Which bump to pick? <strong>Patch</strong> for bug fixes (<code>3.5.0</code> &rarr; <code>3.5.1</code>). <strong>Minor</strong> for new features that don't break anything (<code>3.5.0</code> &rarr; <code>3.6.0</code>). <strong>Major</strong> for breaking changes or a big redesign (<code>3.5.0</code> &rarr; <code>4.0.0</code>). When in doubt, patch.</p>
   </div>
 </div>
 
 <div class="step-card">
-  <div class="step-header"><span class="step-title">First-Time EAS Setup</span></div>
+  <div class="step-header"><span class="step-title">2. Pick a Profile and Build</span></div>
   <div class="step-body">
-    <p>Before your first build, you need EAS CLI installed and linked to your Expo account.</p>
+    <p>Below the version bumper, the New Build card splits into two platforms &mdash; <strong>iOS</strong> (Build for iPhone / iPad) and <strong>Android</strong> (Build for Android devices) &mdash; each with profile buttons. Select a profile on one or both platforms, then click the big <strong>Build</strong> button at the bottom of the card to queue the build(s) on EAS.</p>
+
+    <table>
+      <tr><th>Profile</th><th>What it's for</th><th>Installs where</th></tr>
+      <tr><td><strong>Dev</strong></td><td>Dev client with hot reload. Rebuild only when you add or remove a native package.</td><td>Your registered test devices (iOS) or any Android phone.</td></tr>
+      <tr><td><strong>Preview</strong></td><td>Release-optimized build for internal testing. No dev menu, no hot reload &mdash; behaves like a real store build.</td><td>Your registered test devices (iOS) or any Android phone.</td></tr>
+      <tr><td><strong>Simulator</strong> (iOS only)</td><td>iOS Simulator binary. Skips code signing entirely &mdash; no Apple Developer account needed.</td><td>iOS Simulator or <a href="https://appetize.io" target="_blank" rel="noopener">appetize.io</a>.</td></tr>
+      <tr><td><strong>Production</strong></td><td>The build you ship to the App Store / Play Store.</td><td>Submitted to store via the Recent Builds list (see below).</td></tr>
+    </table>
+
+    <div class="callout">
+      <strong>Pre-build warnings:</strong> the top of the New Build card shows any blockers before you click Build &mdash; e.g. &ldquo;Google Play service account key not uploaded.&rdquo; You can still build (the warning is soft), but you won't be able to submit that build to the Play Store until you fix the warning in the Config tab.
+    </div>
+
     <details>
-      <summary>Setup walkthrough</summary>
+      <summary>First-time EAS setup (do this once per machine)</summary>
       <div class="details-content">
+        <p>The dashboard <strong>Build Service</strong> card (in the Config tab) detects whether EAS CLI is installed, you're logged in, and the project is linked &mdash; and gives you one-click install / login / link buttons. If you'd rather do it manually:</p>
         <ol>
           <li><strong>Install EAS CLI</strong> globally: <code>npm install -g eas-cli</code></li>
           <li><strong>Log in</strong> to your Expo account: <code>eas login</code></li>
-          <li><strong>Initialize the project:</strong> <code>eas init</code> &mdash; generates a project ID. Copy it to <code>app.json</code> &rarr; <code>expo.extra.eas.projectId</code> and set <code>expo.owner</code> to your Expo username.</li>
-          <li><strong>iOS (first build only):</strong> EAS prompts for your Apple Developer login and manages provisioning profiles automatically. See the <strong>iOS Credentials</strong> card below for the full walkthrough.</li>
-          <li><strong>Android (first production build):</strong> EAS creates and securely stores your signing keystore.</li>
+          <li><strong>Initialize the project:</strong> <code>eas init</code> &mdash; generates a project ID. The dashboard writes this to <code>app.json</code> automatically.</li>
         </ol>
       </div>
     </details>
-  </div>
-</div>
-
-<div class="step-card" id="step-ios-credentials">
-  <div class="step-header"><span class="step-title">iOS Credentials (first iOS build only)</span></div>
-  <div class="step-body">
-    <p>Before EAS can build for iOS, your Apple Developer account needs a distribution certificate and a provisioning profile for your app's bundle ID. EAS handles this through an interactive command &mdash; you only need to run it once per app.</p>
-
-    <div class="callout callout-info" style="margin-top: 8px;">
-      <strong>Build credentials vs submission credentials &mdash; don't mix them up.</strong> This card sets up <em>build</em> credentials (signing cert + provisioning profile for <code>eas build</code>). The dashboard's <strong>Submit to App Store</strong> button uses a different credential &mdash; an <strong>App Store Connect API Key</strong> &mdash; configured in the <a href="#step-app-store-submission">App Store Submission</a> card. The most common cause of a first-time iOS submit failure is a missing API key, not missing build credentials. If <code>eas submit</code> fails with <code>App Store Connect API Keys cannot be set up in --non-interactive mode</code>, jump to the App Store Connect API Key section.
-    </div>
-
-    <div class="callout">
-      <strong>How you'll know you need this:</strong> If you click an iOS build button in the dashboard and the build fails with &ldquo;iOS credentials aren't set up yet,&rdquo; that's the trigger. The dashboard will show an <strong>Open Config to set up</strong> button that takes you to the <strong>iOS Credentials</strong> row in the Config tab &mdash; copy the command from there and follow the walkthrough below.
-    </div>
 
     <details>
-      <summary>Full credentials setup walkthrough</summary>
+      <summary>First iOS build: iOS credentials walkthrough</summary>
       <div class="details-content">
-        <ol>
-          <li><strong>Open a terminal</strong> in your project root and run:
-              <pre><code>eas credentials --platform ios</code></pre></li>
-          <li><strong>Pick &ldquo;Build Credentials&rdquo;</strong> from the menu (manages everything needed to build your project &mdash; not Push Notifications or App Store Connect).</li>
-          <li><strong>Pick &ldquo;All&rdquo;</strong> when asked what to do (sets up the certificate AND the provisioning profile in one pass).</li>
-          <li><strong>Sign in to Apple</strong> when prompted &mdash; your Apple ID email, password, and a 2FA code from your phone.</li>
-          <li><strong>Distribution certificate:</strong> if you already have other apps under the same Apple Developer account, EAS will offer to <strong>reuse an existing certificate</strong>. Pick yes &mdash; Apple limits you to 3 distribution certs at a time and reusing is the right move.</li>
-          <li><strong>Provisioning profile:</strong> pick yes to generate a new one. This is unique to your app's bundle ID and won't affect any other apps you have on the same account.</li>
-          <li><strong>Device registration:</strong> development and preview profiles need at least one registered device (because they install directly to phones, not through the App Store). If you have your iPhone handy, pick yes &mdash; EAS will give you a URL to open on your phone that auto-registers it. Otherwise pick no, and either:
-              <ul>
-                <li>Run <code>eas device:create</code> later when you have a device to register, or</li>
-                <li>Use the <strong>production</strong> profile instead, which doesn't need any registered devices (production builds go to the App Store, not directly to phones).</li>
-              </ul></li>
-          <li><strong>Done.</strong> EAS prints &ldquo;All credentials are ready to build your project.&rdquo; Pick &ldquo;Go back&rdquo; then &ldquo;Exit&rdquo; to leave the menu.</li>
-          <li><strong>Back in the dashboard,</strong> click the iOS build button again &mdash; this time it should succeed and the build will queue on EAS.</li>
-        </ol>
-        <div class="callout callout-warn" style="margin-top: 12px;">
-          <strong>Multi-app accounts:</strong> If you build multiple apps under the same Apple Developer account, each app needs its own provisioning profile (they're scoped per bundle ID), but they can all share the same distribution certificate. EAS will detect existing certs and offer to reuse them &mdash; always pick reuse to avoid burning your 3-cert limit.
+        <p>The <em>very first</em> time you click an iOS build button, EAS will fail with &ldquo;iOS credentials aren't set up yet&rdquo; &mdash; because your Apple Developer account needs a distribution certificate and a provisioning profile for your app's bundle ID. This is a one-time setup per app.</p>
+        <p>The full walkthrough lives with the Config tab's App Store Submission card &mdash; see <a href="#ios-build-credentials-walkthrough"><strong>Walkthrough: Set up iOS Build Credentials with <code>eas credentials</code></strong></a>. Run it once, then come back to the Builds tab and click the iOS button again &mdash; it'll queue on EAS.</p>
+        <div class="callout callout-info" style="margin-top: 8px;">
+          <strong>Don't confuse build credentials with submission credentials.</strong> The <code>eas credentials</code> walkthrough above sets up <em>signing</em> (so iOS will install the IPA). The <strong>Submit to App Store</strong> button uses a <em>separate</em> credential &mdash; the <strong>App Store Connect API Key</strong> &mdash; also configured in the Config tab's <a href="#step-app-store-submission">App Store Submission</a> card. You need both for a fresh iOS setup.
         </div>
       </div>
     </details>
 
     <details>
-      <summary>No Apple Developer account? Use the iOS Simulator + Appetize</summary>
+      <summary>No Apple Developer account? Use the Simulator profile + Appetize</summary>
       <div class="details-content">
-        <p>If you want to see your app running on iOS without setting up an Apple Developer account ($99/year), there's a fully credential-free path:</p>
+        <p>If you want to preview the app on iOS without paying for an Apple Developer account ($99/year), there's a credential-free path:</p>
         <ol>
-          <li>In the dashboard's Builds tab, click the <strong>Simulator</strong> button on the iOS card (or use <code>eas build --platform ios --profile simulator</code> from the command line).</li>
-          <li>EAS builds an iOS Simulator binary (a <code>.app</code> file inside a <code>.tar.gz</code>) &mdash; this skips code signing entirely, so no Apple credentials, no certificates, no devices, and no Developer account needed.</li>
-          <li>When the build finishes, download the <code>.tar.gz</code> from EAS and extract it.</li>
-          <li>Upload the resulting <code>.app</code> folder to <a href="https://appetize.io" target="_blank" rel="noopener">appetize.io</a> &mdash; a free browser-based iOS Simulator service.</li>
-          <li>Open the Appetize URL in your browser to run your app in a simulated iPhone or iPad and take screenshots from your Windows or Linux machine.</li>
+          <li>Click the iOS <strong>Simulator</strong> button on the New Build card. EAS builds a <code>.app</code> bundle inside a <code>.tar.gz</code> &mdash; no code signing, no credentials, no Developer account.</li>
+          <li>When the build finishes, download the <code>.tar.gz</code> from the Recent Builds list and extract it.</li>
+          <li>Upload the <code>.app</code> folder to <a href="https://appetize.io" target="_blank" rel="noopener">appetize.io</a> &mdash; a free browser-based iOS Simulator.</li>
+          <li>Open the Appetize URL to run your app in a simulated iPhone and take marketing screenshots from Windows or Linux.</li>
         </ol>
-        <div class="callout" style="margin-top: 12px;">
-          <strong>What this is good for:</strong> showing your app to stakeholders, taking marketing screenshots, verifying the build works before committing to the Apple Developer signup. <strong>What it can't do:</strong> install on a real iPhone or submit to the App Store &mdash; both of those still require a real Apple Developer account and the credentials flow above.
+        <div class="callout">
+          <strong>What this is good for:</strong> showing stakeholders, marketing screenshots, verifying the build before committing to Apple's $99/year. <strong>What it can't do:</strong> install on a real iPhone or submit to the App Store &mdash; both still require a Developer account.
         </div>
       </div>
     </details>
@@ -1960,214 +1953,146 @@ export const MODULES: ModuleManifest[] = [
 </div>
 
 <div class="step-card">
-  <div class="step-header"><span class="step-title">Build Profiles</span></div>
+  <div class="step-header"><span class="step-title">3. Read the Recent Builds List</span></div>
   <div class="step-body">
-    <table>
-      <tr><th>Profile</th><th>Use Case</th><th>Command</th></tr>
-      <tr><td><code>development</code></td><td>Dev client with hot reload</td><td><code>eas build --profile development</code></td></tr>
-      <tr><td><code>simulator</code></td><td>iOS Simulator build</td><td><code>eas build --profile simulator --platform ios</code></td></tr>
-      <tr><td><code>preview</code></td><td>Internal testing (device installs)</td><td><code>eas build --profile preview</code></td></tr>
-      <tr><td><code>production</code></td><td>App Store / Play Store submission</td><td><code>eas build --profile production</code></td></tr>
-    </table>
-  </div>
-</div>
+    <p>Below the New Build card, <strong>Recent Builds</strong> lists every build EAS has ever made for this project, newest first. The list is fetched live from EAS &mdash; hit <strong>Refresh</strong> to re-poll. Each row shows:</p>
+    <ul>
+      <li><strong>Platform + version + profile</strong> &mdash; e.g. <em>Android v3.5.0 (production)</em>. Tells you at a glance which binary this is.</li>
+      <li><strong>Build ID</strong> &mdash; EAS's short ID (e.g. <code>b10b584d-290</code>). Useful if you're comparing against an EAS dashboard link.</li>
+      <li><strong>Status line</strong> &mdash; <em>Built &middot; Apr 10, 02:40 PM</em> / <em>Build failed</em> / <em>Cancelled</em> / <em>In progress</em>. Finished production iOS builds also show whether they've been submitted to the App Store yet.</li>
+      <li><strong>Action buttons</strong> &mdash; change based on status and profile (see table below).</li>
+    </ul>
 
-<div class="step-card">
-  <div class="step-header"><span class="step-title">Crash Reporting (Sentry) — Optional but Recommended</span></div>
-  <div class="step-body">
-    <p>The app ships with the Sentry SDK pre-installed, but it stays dormant until you give it a DSN. With crash reporting enabled, you'll see every crash from every user's device in a web dashboard within seconds — no Mac, Xcode, or device required.</p>
-
-    <ol>
-      <li>Sign up free at <a href="https://sentry.io/" target="_blank" rel="noopener">sentry.io</a> (5,000 errors/month on the free tier — plenty for most communities).</li>
-      <li>Create a new project, choose <strong>React Native</strong> as the platform.</li>
-      <li>Copy the DSN from <em>Project Settings → Client Keys (DSN)</em>.</li>
-      <li>In your WordPress admin, go to <strong>TBC Community App → Crash Reporting</strong>, paste the DSN, check <em>Enable Crash Reporting</em>, and save.</li>
-      <li>Force-quit and relaunch the app on your test device <strong>twice</strong> (see callout below).</li>
-      <li>Long-press the header logo for 2 seconds to open the dev debug menu, then tap <em>Send test event to Sentry</em>. Within 30 seconds the event should appear in your Sentry dashboard's Issues feed.</li>
-    </ol>
-
-    <div class="callout callout-warn">
-      <strong>Why two relaunches?</strong> Sentry must initialize at module-load time, before React mounts, so that errors during app startup are captured. The init reads the DSN <em>synchronously</em> from a local cache. The first launch after saving a new DSN fetches the config and writes it to the cache; only the <em>second</em> launch initializes Sentry from that cache. After this one-time bootstrap, Sentry initializes instantly on every cold start.
-    </div>
-
-    <h4 style="margin-top: 16px;">Source maps (optional — skip this section to start)</h4>
-    <p><strong>You don't need to do anything here for crash reporting to work.</strong> Crashes, breadcrumbs, device info, app version, and the test button all function the same whether or not source maps are uploaded. This section is purely about <em>readability</em> of stack traces in production builds.</p>
-
-    <p>The trade-off:</p>
-    <table>
-      <tr><th>Without source maps (default)</th><th>With source maps</th></tr>
-      <tr>
-        <td>Stack frames in production builds show <strong>minified function names</strong> like <code>t.a.b()</code> or <code>n.<anonymous></code>. You can still tell which file the crash came from and the line number, but figuring out which function is harder.</td>
-        <td>Stack frames show <strong>real function names</strong> like <code>CartProvider.openCart</code> and <code>useCartFlow</code>. Much faster to debug.</td>
-      </tr>
-      <tr>
-        <td>Dev builds (the kind you build for testing on your own device with <code>eas build --profile development</code>) <strong>already have inline source maps</strong> — you'll see real function names without doing any setup. This section only matters for production / preview builds you ship to real users.</td>
-        <td>Production / preview builds upload their source maps to Sentry during <code>eas build</code>. Sentry then resolves the minified bytecode back to readable names when displaying crashes.</td>
-      </tr>
+    <table style="margin-top: 12px;">
+      <tr><th>Button</th><th>When it appears</th><th>What it does</th></tr>
+      <tr><td><strong>Install</strong></td><td>Finished dev or preview Android builds only</td><td>Shows an install QR code / direct-install link you can open on an Android phone.</td></tr>
+      <tr><td><strong>Download .aab</strong> / <strong>Download .ipa</strong></td><td>Any finished production build</td><td>Downloads the binary from EAS to your machine. Rarely needed &mdash; the dashboard's Submit button uploads directly to the store.</td></tr>
+      <tr><td><strong>Submit to App Store</strong></td><td>Finished iOS production builds, <em>if</em> App Store Connect API key is configured</td><td>Triggers <code>eas submit --platform ios --id &lt;build-id&gt;</code>. See the next card.</td></tr>
+      <tr><td><strong>Submit to Play Store</strong></td><td>Finished Android production builds, <em>if</em> Google service account key is uploaded</td><td>Triggers <code>eas submit --platform android --id &lt;build-id&gt;</code>. Uploads to the track (internal / production) set in the Config tab.</td></tr>
+      <tr><td><strong>Submit (not configured)</strong></td><td>Production builds when submission credentials are missing</td><td>Disabled placeholder &mdash; hover for what's missing. Fix it in the Config tab's <strong>App Store Submission</strong> card.</td></tr>
+      <tr><td><strong>View on EAS</strong></td><td>Every row</td><td>Opens the build page on <code>expo.dev</code> &mdash; use this to see full logs, artifact details, or to cancel an in-progress build.</td></tr>
     </table>
 
-    <p><strong>Recommendation:</strong> ship a few production builds without this. If reading minified stack traces is bothering you, come back and set it up — it's a 5-minute one-time configuration.</p>
-
-    <div class="callout">
-      <strong>Builds never fail because of this:</strong> all four EAS profiles ship with <code>SENTRY_ALLOW_FAILURE=true</code>. If the secrets below aren't set, or your auth token expires, Sentry's source-map upload step skips silently and the build still succeeds. You can adopt source-map uploads at any time without rebuilding existing released versions.
-    </div>
-
-    <h5 style="margin-top: 16px;">If you want to enable source-map upload</h5>
-    <ol>
-      <li>In Sentry, go to <em>Settings → Auth Tokens</em> and create a new token with <code>project:releases</code> scope. Copy it (this is your <code>SENTRY_AUTH_TOKEN</code>).</li>
-      <li>Find your Sentry org slug (the URL after <code>sentry.io/organizations/</code>) — that's your <code>SENTRY_ORG</code>.</li>
-      <li>Find your project slug (visible in Project Settings) — that's your <code>SENTRY_PROJECT</code>.</li>
-      <li>From your terminal, set three EAS secrets (one-time, runs once on your machine — the values are stored on EAS servers, never in your repo):</li>
-    </ol>
-<pre><code>eas secret:create --name SENTRY_AUTH_TOKEN --value sntrys_YOUR_TOKEN_HERE
-eas secret:create --name SENTRY_ORG --value your-sentry-org-slug
-eas secret:create --name SENTRY_PROJECT --value your-sentry-project-slug</code></pre>
-    <p>Done. Every <code>eas build</code> from now on automatically uploads source maps. To verify, check the next build's logs for <code>Bundled and uploaded source maps to Sentry</code>. If you ever want to remove a secret, run <code>eas secret:delete --name SENTRY_AUTH_TOKEN</code>.</p>
-
-    <div class="callout">
-      <strong>Privacy:</strong> Sentry receives crash stack traces, device info (model, OS version), app version, and recent log breadcrumbs. It does not see user content, messages, passwords, or auth tokens — those are stripped automatically before transmission.
-    </div>
-
-    <div class="callout callout-warn">
-      <strong>To disable:</strong> uncheck <em>Enable Crash Reporting</em> in WordPress, or clear the DSN field. Either disables Sentry on the next app launch with zero performance cost — the SDK stays in the binary but never initializes.
-    </div>
+    <p style="margin-top: 12px;">At the bottom of the list, <strong>Show More</strong> pages in older builds (EAS keeps builds for 30 days on the free plan).</p>
   </div>
 </div>
 
 <div class="step-card">
-  <div class="step-header"><span class="step-title">Submitting to Stores</span></div>
+  <div class="step-header"><span class="step-title">4. Submit to the Store</span></div>
   <div class="step-body">
-    <p>After a successful production build, submit directly from the dashboard or via CLI:</p>
-<pre><code># Submit to App Store
-eas submit --platform ios
-
-# Submit to Play Store
-eas submit --platform android</code></pre>
-    <div class="callout callout-warn">
-      <strong>iOS:</strong> Make sure your Apple Account email and App Store Connect ID are set in the Config tab before submitting.
-    </div>
-  </div>
-</div>
-
-<div class="step-card">
-  <div class="step-header"><span class="step-title">Testing Before Production</span></div>
-  <div class="step-body">
-    <p>Before submitting to production, test your app through each platform's testing track. This catches issues early and &mdash; for Google Play &mdash; is now mandatory for new accounts.</p>
+    <p>Once a production build finishes, the <strong>Submit to App Store</strong> / <strong>Submit to Play Store</strong> button appears on that row. Clicking it uploads the binary to the store without another build &mdash; no re-compilation, no queue wait.</p>
 
     <details>
-      <summary>iOS &mdash; TestFlight</summary>
+      <summary>iOS &mdash; Submit to App Store walkthrough</summary>
       <div class="details-content">
+        <p><strong>Prerequisite:</strong> the <a href="#step-app-store-submission">App Store Submission</a> card in the Config tab must have the App Store Connect API Key ID, Issuer ID, and <code>.p8</code> file set. Without those the button will show <em>Submit (not configured)</em>.</p>
         <ol>
-          <li>After running <code>eas submit --platform ios</code>, your build is uploaded to App Store Connect and automatically appears in <strong>TestFlight</strong>.</li>
-          <li>In App Store Connect, go to <strong>TestFlight &rarr; Internal Testing</strong> and add yourself (and any team members) as testers.</li>
-          <li>Testers receive an email invite &mdash; install the <strong>TestFlight</strong> app from the App Store and accept the invitation to download the build.</li>
-          <li>Test the app thoroughly. When you're satisfied, submit the build for App Store review from the <strong>App Store</strong> tab.</li>
+          <li>Find a finished <strong>iOS production</strong> row in Recent Builds and click <strong>Submit to App Store</strong>.</li>
+          <li>EAS uploads the IPA directly to App Store Connect using the API key &mdash; no Apple ID password prompt, no 2FA. This usually takes 2&ndash;5 minutes.</li>
+          <li>The row updates to <em>Submitted to App Store &middot; [timestamp]</em> when it's done. The build is now in App Store Connect &mdash; head to <a href="https://appstoreconnect.apple.com" target="_blank">appstoreconnect.apple.com</a> to continue.</li>
+          <li><strong>TestFlight (first stop).</strong> The build shows up in <strong>TestFlight &rarr; Builds</strong> within a couple minutes &mdash; usually with a yellow &ldquo;Missing Compliance&rdquo; banner. Click the build, answer the <em>Export Compliance</em> question (the app uses HTTPS only &mdash; select <strong>Yes &rarr; exempt</strong>), and Apple will process it for TestFlight.</li>
+          <li><strong>Add internal testers.</strong> Under <strong>TestFlight &rarr; Internal Testing</strong>, add yourself and any team members. They get an email invite &mdash; install the <strong>TestFlight</strong> app from the App Store, accept the invite, and the build downloads immediately (no Beta App Review for internal testers).</li>
+          <li><strong>Test thoroughly.</strong> At minimum: cold-launch, log in, post something, receive a push notification. When satisfied, move on to submission.</li>
+          <li><strong>Submit for App Store review.</strong> Under the <strong>App Store</strong> tab, create a new version (matching the version number you just built), attach the TestFlight build, and fill in the required fields (see <a href="#publish-checklist">Publishing Checklist</a> below). Click <strong>Add for Review</strong> &rarr; <strong>Submit for Review</strong>.</li>
+          <li><strong>Wait for review.</strong> Apple review takes 24&ndash;48 hours typically. You'll get an email when it's approved (or rejected &mdash; see Troubleshooting).</li>
+          <li><strong>Release.</strong> Once approved, the app goes live automatically (if you chose <em>Automatically release</em>) or stays in <em>Pending Developer Release</em> until you hit the release button manually.</li>
         </ol>
-        <div class="callout" style="margin-top: 12px;">
-          <strong>Internal vs External testing:</strong> Internal testers (up to 100 members of your App Store Connect team) get builds immediately with no review. External testers (up to 10,000 via a public link) require a brief Beta App Review first.
+        <div class="callout callout-info" style="margin-top: 12px;">
+          <strong>External testing (optional).</strong> To let non-team-members test via a public link, add them as <strong>External testers</strong> in TestFlight. External builds require a <em>Beta App Review</em> (~24 hours) on the first build, but subsequent builds in the same major version skip review.
         </div>
       </div>
     </details>
 
     <details>
-      <summary>Android &mdash; Internal / Closed Testing</summary>
+      <summary>Android &mdash; Submit to Play Store walkthrough</summary>
       <div class="details-content">
+        <p><strong>Prerequisite:</strong> the <a href="#step-app-store-submission">App Store Submission</a> card must have the Google Play service account key (JSON) uploaded, and the track (<em>internal</em> or <em>production</em>) set. Without those the button will show <em>Submit (not configured)</em>.</p>
         <ol>
-          <li>After running <code>eas submit --platform android</code>, your build is uploaded to Google Play Console.</li>
-          <li>Go to <strong>Testing &rarr; Internal testing</strong> (or Closed testing) and create a new release with the uploaded build.</li>
-          <li>Add tester email addresses or a Google Group under <strong>Testers</strong>.</li>
-          <li>Share the <strong>opt-in link</strong> with testers &mdash; they need to accept the invitation and then install via Google Play.</li>
-          <li>Once testing is complete, promote the release to <strong>Production</strong>.</li>
+          <li>Find a finished <strong>Android production</strong> row in Recent Builds and click <strong>Submit to Play Store</strong>.</li>
+          <li>EAS uploads the <code>.aab</code> bundle to Google Play Console via the service account key &mdash; no login prompt. Usually takes 1&ndash;3 minutes.</li>
+          <li>The build lands in <a href="https://play.google.com/console" target="_blank">Google Play Console</a> on whichever track you configured.</li>
+          <li><strong>Internal testing first.</strong> Under <strong>Testing &rarr; Internal testing</strong>, create a new release from the uploaded build, add tester email addresses (up to 100), and share the opt-in link. Testers accept the invite and install via Google Play &mdash; no review delay.</li>
+          <li><strong>Closed testing (if this is a new developer account).</strong> Before you can create a production release, Google requires at least <strong>20 opted-in testers for 14 consecutive days</strong> in closed testing. Start this early &mdash; it's the #1 cause of launch delays for new accounts.</li>
+          <li><strong>Promote to production.</strong> Once testing is done, go to <strong>Production &rarr; Create new release</strong>, promote the tested build, fill in the release notes, and click <strong>Review release</strong> &rarr; <strong>Start rollout to production</strong>. Google review typically takes 1&ndash;3 days on a first release.</li>
+          <li>Once approved, the app appears on the Play Store. You can optionally roll out gradually (e.g. 20% &rarr; 50% &rarr; 100%) from the same release page.</li>
         </ol>
         <div class="callout callout-warn" style="margin-top: 12px;">
-          <strong>New accounts must test first.</strong> Google requires new developer accounts to have at least <strong>20 testers opted in for 14 consecutive days</strong> in closed testing before you can create a production release. Start this early &mdash; it's the #1 cause of launch delays.
+          <strong>New Play Console accounts must complete closed testing first.</strong> The 20-tester / 14-day requirement applies to any developer account created after late 2023. If you're launching under an established account (existing apps in production), this doesn't apply &mdash; you can go straight to production.
         </div>
       </div>
     </details>
+
+    <div class="callout" style="margin-top: 12px;">
+      <strong>CLI equivalents:</strong> the Submit buttons just run <code>eas submit --platform ios --latest</code> or <code>eas submit --platform android --latest</code> under the hood. You can run these from the terminal if you ever need to.
+    </div>
   </div>
 </div>
 
-<div class="step-card">
-  <div class="step-header"><span class="step-title">Publishing to the Stores</span></div>
+<div class="step-card" id="publish-checklist">
+  <div class="step-header"><span class="step-title">5. Publish &mdash; Store Listing Checklist</span></div>
   <div class="step-body">
-    <p>After your build uploads, you still need to complete each store's setup checklist before your app can go live. <code>eas submit</code> handles the binary &mdash; but the store listing, content declarations, and review info are on you.</p>
-
-    <details>
-      <summary>Google Play Console checklist</summary>
-      <div class="details-content">
-        <p>Google Play requires you to complete several sections before you can create a release. You'll find these under <strong>Grow &rarr; Store presence</strong> and <strong>Policy &rarr; App content</strong> in the Play Console sidebar.</p>
-
-        <h4 style="margin-top: 16px;">App content (required before release)</h4>
-        <ul>
-          <li><strong>Privacy policy</strong> &mdash; provide a URL to your privacy policy page. Host it on your website (e.g. <code>yoursite.com/privacy-policy</code>). It must describe what data the app collects and how it's used.</li>
-          <li><strong>App access</strong> &mdash; since the app requires login, select <strong>"All or some functionality is restricted"</strong> and provide test credentials so reviewers can sign in.</li>
-          <li><strong>Ads</strong> &mdash; select <strong>No</strong> (the app does not contain ads).</li>
-          <li><strong>Content rating</strong> &mdash; complete the IARC questionnaire. For a community/social app with user-generated content, answer honestly &mdash; this typically results in a <strong>Teen</strong> or equivalent rating.</li>
-          <li><strong>Target audience</strong> &mdash; select <strong>18 and over</strong> (or your actual target). Do <em>not</em> target under-13 unless you comply with COPPA.</li>
-          <li><strong>Data safety</strong> &mdash; declare the data your app collects. Key items: account info (name, email), user-generated content (posts, messages, photos), device identifiers (push token). The app does <em>not</em> collect location, contacts, or financial data. Data is <em>not</em> shared with third parties for advertising.</li>
-          <li><strong>Government apps</strong> &mdash; select <strong>No</strong>.</li>
-          <li><strong>Financial features</strong> &mdash; select <strong>No</strong> unless your community includes purchases/donations.</li>
-        </ul>
-
-        <h4 style="margin-top: 16px;">Store listing</h4>
-        <ul>
-          <li><strong>App name, short description, full description</strong> &mdash; describe your community app for users browsing the Play Store.</li>
-          <li><strong>App icon</strong> &mdash; 512&times;512 PNG (no transparency). Use your app icon.</li>
-          <li><strong>Feature graphic</strong> &mdash; 1024&times;500 JPG or PNG. Displayed at the top of your listing.</li>
-          <li><strong>Screenshots</strong> &mdash; at least 2 phone screenshots required (recommended: 4&ndash;8). Take them from your app running on a device or emulator.</li>
-          <li><strong>App category</strong> &mdash; select <strong>Social</strong> (or the category that best fits your community).</li>
-          <li><strong>Contact details</strong> &mdash; a support email is required. A website and phone number are optional.</li>
-        </ul>
-
-        <h4 style="margin-top: 16px;">Testing &amp; release</h4>
-        <ul>
-          <li><strong>Closed testing</strong> (recommended first) &mdash; invite a small group by email to test before going public.</li>
-          <li><strong>Open testing</strong> &mdash; anyone on Google Play can join your test.</li>
-          <li><strong>Production release</strong> &mdash; submit to production when ready. First review typically takes <strong>1&ndash;3 days</strong>.</li>
-        </ul>
-
-        <div class="callout" style="margin-top: 12px;">
-          <strong>Google requires 20 testers for 14 days.</strong> Before you can submit to production, Google Play now requires your app to have been in closed testing with at least 20 opted-in testers for at least 14 consecutive days. Plan for this lead time.
-        </div>
-      </div>
-    </details>
+    <p><code>eas submit</code> uploads the binary, but each store still needs a listing (description, screenshots, privacy policy, content ratings) before the app goes live. Complete these <em>before</em> you submit your first production build &mdash; they take longer than the build itself.</p>
 
     <details>
       <summary>Apple App Store Connect checklist</summary>
       <div class="details-content">
-        <p>In App Store Connect, go to your app and fill in the required sections under the <strong>App Store</strong> tab before submitting for review.</p>
+        <p>In App Store Connect, open your app and fill in the required sections under the <strong>App Store</strong> tab before submitting for review.</p>
 
         <h4 style="margin-top: 16px;">App information</h4>
         <ul>
-          <li><strong>Privacy policy URL</strong> &mdash; required. Same URL as Google Play.</li>
+          <li><strong>Privacy policy URL</strong> &mdash; required. Host it on your website.</li>
           <li><strong>App category</strong> &mdash; select <strong>Social Networking</strong> (primary) and optionally a secondary category.</li>
-          <li><strong>Age rating</strong> &mdash; complete the questionnaire. A community app with user-generated content typically gets a <strong>12+</strong> or <strong>17+</strong> rating.</li>
-          <li><strong>App privacy (nutrition labels)</strong> &mdash; declare data types collected: contact info (email, name), user content (posts, messages, photos), identifiers (push token). Select <strong>"Data not linked to user"</strong> for push token. No data is used for tracking.</li>
+          <li><strong>Age rating</strong> &mdash; complete the questionnaire. A community app with user-generated content typically gets <strong>12+</strong> or <strong>17+</strong>.</li>
+          <li><strong>App privacy (nutrition labels)</strong> &mdash; declare data types collected: contact info (email, name), user content (posts, messages, photos), identifiers (push token). Select <strong>Data not linked to user</strong> for push token. No data is used for tracking.</li>
         </ul>
 
         <h4 style="margin-top: 16px;">Store listing</h4>
         <ul>
           <li><strong>Screenshots</strong> &mdash; required for 6.7" and 5.5" iPhone sizes (at minimum). iPad screenshots if you support tablets.</li>
           <li><strong>Description</strong> &mdash; your app's full description.</li>
-          <li><strong>Keywords</strong> &mdash; up to 100 characters of comma-separated keywords for search.</li>
+          <li><strong>Keywords</strong> &mdash; up to 100 characters, comma-separated, for search.</li>
           <li><strong>Support URL</strong> &mdash; a link to your support/contact page.</li>
         </ul>
 
         <h4 style="margin-top: 16px;">Review information</h4>
         <ul>
-          <li><strong>Sign-in required</strong> &mdash; check this box and provide demo account credentials so Apple reviewers can log in.</li>
+          <li><strong>Sign-in required</strong> &mdash; check this box and provide demo account credentials so Apple reviewers can log in. The #1 cause of iOS rejection is reviewers unable to sign in.</li>
           <li><strong>Contact information</strong> &mdash; a phone number and email Apple can reach you at during review.</li>
-          <li><strong>Notes</strong> &mdash; briefly explain what the app is (e.g. "Private community app for [your org]. Requires an account on our website to log in.").</li>
+          <li><strong>Notes</strong> &mdash; briefly explain what the app is (e.g. &ldquo;Private community app for [your org]. Requires an account on our website to log in.&rdquo;).</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Google Play Console checklist</summary>
+      <div class="details-content">
+        <p>Google Play requires several sections completed before you can create a production release. Find them under <strong>Grow &rarr; Store presence</strong> and <strong>Policy &rarr; App content</strong>.</p>
+
+        <h4 style="margin-top: 16px;">App content</h4>
+        <ul>
+          <li><strong>Privacy policy</strong> &mdash; URL to your privacy policy page.</li>
+          <li><strong>App access</strong> &mdash; select <em>All or some functionality is restricted</em> and provide demo credentials.</li>
+          <li><strong>Ads</strong> &mdash; select <strong>No</strong> (the app has no ads).</li>
+          <li><strong>Content rating</strong> &mdash; complete the IARC questionnaire (typically results in <strong>Teen</strong>).</li>
+          <li><strong>Target audience</strong> &mdash; select <strong>18 and over</strong> unless you comply with COPPA.</li>
+          <li><strong>Data safety</strong> &mdash; declare: account info, user-generated content, push token. <em>Not</em> shared with third parties for advertising.</li>
+          <li><strong>Government apps</strong> / <strong>Financial features</strong> &mdash; select <strong>No</strong> unless applicable.</li>
         </ul>
 
-        <div class="callout" style="margin-top: 12px;">
-          <strong>Apple review typically takes 24&ndash;48 hours</strong> but can vary. Make sure your demo account works and the app doesn't crash on launch &mdash; these are the most common rejection reasons.
-        </div>
+        <h4 style="margin-top: 16px;">Store listing</h4>
+        <ul>
+          <li><strong>App name, short description, full description</strong>.</li>
+          <li><strong>App icon</strong> &mdash; 512&times;512 PNG, no transparency.</li>
+          <li><strong>Feature graphic</strong> &mdash; 1024&times;500 JPG or PNG.</li>
+          <li><strong>Screenshots</strong> &mdash; at least 2 phone screenshots (4&ndash;8 recommended).</li>
+          <li><strong>App category</strong> &mdash; <strong>Social</strong> or closest fit.</li>
+          <li><strong>Contact details</strong> &mdash; support email required.</li>
+        </ul>
       </div>
     </details>
 
     <div class="callout callout-warn" style="margin-top: 12px;">
-      <strong>Both stores require a privacy policy.</strong> You need a publicly accessible URL to a privacy policy page before either store will approve your app. Host it on your website &mdash; it should describe what data the app collects (account info, user content, push tokens) and how it's used.
+      <strong>Both stores require a publicly accessible privacy policy URL.</strong> It must describe what data the app collects (account info, user content, push tokens) and how it's used. Write this early &mdash; neither store will approve your app without it.
     </div>
   </div>
 </div>
@@ -2206,10 +2131,10 @@ eas submit --platform android</code></pre>
     <p>Verify your <strong>Service Account Key</strong> (.json file) is uploaded in the Config tab. The service account must have the correct permissions in Google Play Console (<strong>Users and permissions &rarr; Invite user</strong> with Admin access). Also ensure the app exists in Google Play Console and you've uploaded at least one build to any testing track.</p>
 
     <h4 style="margin-top: 12px;">Build succeeds but app crashes on launch</h4>
-    <p>This usually means a native module mismatch. Check that your <code>app.json</code> plugins array hasn't changed unexpectedly. If you recently added or removed a package, make sure it was a full native build (not an OTA update). Review the crash logs in <strong>your Sentry dashboard</strong> if you have crash reporting enabled (much faster — see the Crash Reporting card above), or fall back to App Store Connect (Crashes) / Google Play Console (Crashes and ANRs).</p>
+    <p>This usually means a native module mismatch. Check that your <code>app.json</code> plugins array hasn't changed unexpectedly. If you recently added or removed a package, make sure it was a full native build (not an OTA update). Review the crash logs in <strong>your Sentry dashboard</strong> if you have crash reporting enabled (see the <a href="#sec-companion-plugin">Companion Plugin &rarr; Crash Reporting</a> tab), or fall back to App Store Connect (Crashes) / Google Play Console (Crashes and ANRs).</p>
 
     <h4 style="margin-top: 12px;">App rejected by store review</h4>
-    <p>The most common reasons: (1) the reviewer can't log in &mdash; make sure you provided working <strong>demo credentials</strong> in the review notes, (2) the app crashes on launch, (3) missing <strong>privacy policy</strong> URL. See the <a href="#builds">Publishing to the Stores</a> card for the full checklist.</p>
+    <p>The most common reasons: (1) the reviewer can't log in &mdash; make sure you provided working <strong>demo credentials</strong> in the review notes, (2) the app crashes on launch, (3) missing <strong>privacy policy</strong> URL. See the <a href="#publish-checklist">Store Listing Checklist</a> for the full required fields per store.</p>
   </div>
 </details>
 
