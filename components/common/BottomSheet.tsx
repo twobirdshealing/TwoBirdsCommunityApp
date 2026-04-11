@@ -28,12 +28,23 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, us
 import type { NativeSyntheticEvent } from 'react-native';
 import {
   findNodeHandle,
+  Platform,
   TextInput as RNTextInput,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FullWindowOverlay } from 'react-native-screens';
+
+// iOS-only: render sheets in a native FullWindowOverlay so they sit above any
+// `fullScreenModal`/`formSheet`/`modal` screen from react-native-screens.
+// Without it, gorhom's portal lives under the root provider — which on iOS is
+// beneath the native modal VC — so sheets mount invisibly behind the screen.
+// Cast needed: FullWindowOverlay requires `children`, gorhom's prop has it optional.
+const IOSContainerComponent = (
+  Platform.OS === 'ios' ? FullWindowOverlay : undefined
+) as React.ComponentType<{ children?: React.ReactNode }> | undefined;
 
 // -----------------------------------------------------------------------------
 // Re-export gorhom components for use inside sheets
@@ -300,6 +311,7 @@ export function BottomSheet({
       enablePanDownToClose={enableSwipeToClose}
       onDismiss={handleDismiss}
       backdropComponent={renderBackdrop}
+      containerComponent={IOSContainerComponent}
       handleIndicatorStyle={{ backgroundColor: themeColors.borderLight }}
       backgroundStyle={{
         backgroundColor: themeColors.surface,
