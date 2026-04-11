@@ -10,7 +10,7 @@
 // =============================================================================
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, RefreshControl, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { addResponseHeaderListener } from '@/services/api/client';
 import { createLogger } from '@/utils/logger';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -91,7 +91,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const {
     data: cart,
     isLoading,
-    isRefreshing,
     error,
     refresh,
     mutate,
@@ -187,76 +186,52 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // -------------------------------------------------------------------------
   // Sheet content
   // -------------------------------------------------------------------------
-  // BottomSheetScrollView is always rendered as the root of the sheet
-  // content and stays mounted across open/close cycles. Loading, empty,
-  // and error states render as children inside it. This is load-bearing
-  // on iOS: conditionally remounting a ScrollView that contains a
-  // RefreshControl inside an animating BottomSheetModal hits a UIKit
-  // view-hierarchy assertion on the 2nd present() — the 1st open only
-  // works by accident because cart data isn't loaded yet so the
-  // ScrollView doesn't exist during the initial present animation.
-  // -------------------------------------------------------------------------
 
   const renderSheetContent = () => {
     const hasItems = !!cart && cart.items.length > 0;
+    const settings = cart?.settings ?? DEFAULT_SETTINGS;
 
-    const inner = (() => {
-      if (isLoading) {
-        return <ActivityIndicator size="large" color={colors.primary} />;
-      }
-      if (error && !cart) {
-        return <ErrorMessage message={error.message} onRetry={refresh} />;
-      }
-      if (!cart || cart.items.length === 0) {
-        return (
+    return (
+      <BottomSheetScrollView contentContainerStyle={hasItems ? undefined : styles.centeredContainer}>
+        {isLoading && <ActivityIndicator size="large" color={colors.primary} />}
+
+        {!isLoading && error && !cart && (
+          <ErrorMessage message={error.message} onRetry={refresh} fullScreen={false} />
+        )}
+
+        {!isLoading && !error && !hasItems && (
           <EmptyState
             icon="cart-outline"
             title="Your cart is empty"
             message="Browse products to add items to your cart"
           />
-        );
-      }
-      const settings = cart.settings ?? DEFAULT_SETTINGS;
-      return (
-        <>
-          {cart.items.map((item) => (
-            <CartItemRow
-              key={item.key}
-              item={item}
-              settings={settings}
-              onUpdateQuantity={handleUpdateQuantity}
-              onRemove={handleRemoveItem}
-              disabled={mutatingKey !== null}
-            />
-          ))}
-          <CartSummary
-            totals={cart.totals}
-            coupons={cart.coupons ?? []}
-            fees={cart.fees ?? []}
-            settings={settings}
-            onApplyCoupon={handleApplyCoupon}
-            onRemoveCoupon={handleRemoveCoupon}
-            onClose={closeCart}
-            couponLoading={couponLoading}
-            couponError={couponError}
-          />
-        </>
-      );
-    })();
+        )}
 
-    return (
-      <BottomSheetScrollView
-        contentContainerStyle={hasItems ? undefined : styles.centeredContainer}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={refresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
-          />
-        }
-      >
-        {inner}
+        {hasItems && (
+          <>
+            {cart!.items.map((item) => (
+              <CartItemRow
+                key={item.key}
+                item={item}
+                settings={settings}
+                onUpdateQuantity={handleUpdateQuantity}
+                onRemove={handleRemoveItem}
+                disabled={mutatingKey !== null}
+              />
+            ))}
+            <CartSummary
+              totals={cart!.totals}
+              coupons={cart!.coupons ?? []}
+              fees={cart!.fees ?? []}
+              settings={settings}
+              onApplyCoupon={handleApplyCoupon}
+              onRemoveCoupon={handleRemoveCoupon}
+              onClose={closeCart}
+              couponLoading={couponLoading}
+              couponError={couponError}
+            />
+          </>
+        )}
       </BottomSheetScrollView>
     );
   };
