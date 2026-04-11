@@ -9,14 +9,15 @@ import React, { useState, useCallback } from 'react';
 import {
   Alert,
   Dimensions,
-  FlatList,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   Pressable,
   View,
-  ViewToken,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -154,22 +155,14 @@ export function MediaViewer({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [saving, setSaving] = useState(false);
 
-  const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length > 0 && viewableItems[0].index != null) {
-        setCurrentIndex(viewableItems[0].index);
+  const handleMomentumScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+      if (index >= 0 && index < images.length) {
+        setCurrentIndex(index);
       }
     },
-    []
-  );
-
-  const renderItem = useCallback(
-    ({ item }: { item: MediaViewerImage }) => (
-      <View style={styles.slide}>
-        <ZoomableImage uri={item.url} />
-      </View>
-    ),
-    []
+    [images.length]
   );
 
   // ---------------------------------------------------------------------------
@@ -262,23 +255,17 @@ export function MediaViewer({
             <View style={styles.backdrop} />
           </View>
 
-          {/* Image Gallery */}
-          <FlatList
-            data={images}
-            renderItem={renderItem}
-            keyExtractor={(_, index) => index.toString()}
+          <ScrollView
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            initialScrollIndex={initialIndex}
-            getItemLayout={(_, index) => ({
-              length: SCREEN_WIDTH,
-              offset: SCREEN_WIDTH * index,
-              index,
-            })}
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-          />
+            contentOffset={{ x: SCREEN_WIDTH * initialIndex, y: 0 }}
+            onMomentumScrollEnd={handleMomentumScrollEnd}
+          >
+            {images.map((image, idx) => (
+              <ZoomableImage key={idx} uri={image.url} />
+            ))}
+          </ScrollView>
 
           {/* Top Bar - Close + Counter + Share */}
           <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
@@ -405,14 +392,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
-  },
-
-  // Image slides
-  slide: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 
   imageWrapper: {
