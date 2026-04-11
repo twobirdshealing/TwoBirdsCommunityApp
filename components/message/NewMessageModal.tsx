@@ -17,7 +17,6 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Modal,
   Pressable,
   StyleSheet,
@@ -25,6 +24,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createLogger } from '@/utils/logger';
 
@@ -263,7 +263,7 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
             </Text>
           </View>
         ) : (
-          <FlatList
+          <FlashList
             data={members}
             keyExtractor={(item) => String(item.user_id)}
             renderItem={renderMemberItem}

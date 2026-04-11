@@ -9,13 +9,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   StyleSheet,
   Text,
   Pressable,
   useWindowDimensions,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { RichText } from '@10play/tentap-editor';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
@@ -616,7 +616,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
                 <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>Be the first to comment!</Text>
               </View>
             ) : (
-              <FlatList
+              <FlashList
                 data={comments}
                 keyExtractor={(item: Comment) => item.id.toString()}
                 renderItem={renderComment}

@@ -10,13 +10,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   StyleSheet,
   Text,
   Pressable,
   useWindowDimensions,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -36,8 +36,7 @@ import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { RichText } from '@10play/tentap-editor';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { htmlToMarkdown } from '@/utils/htmlToMarkdown';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { formatRelativeTime } from '@/utils/formatDate';
@@ -392,7 +391,6 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
   const canSubmit = !isSubmitting;
 
   // ---------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
@@ -423,7 +421,7 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
               </Text>
             </View>
           ) : (
-            <FlatList
+            <FlashList
               data={comments}
               keyExtractor={(item: WPComment) => item.id.toString()}
               renderItem={renderComment}

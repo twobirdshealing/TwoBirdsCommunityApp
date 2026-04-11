@@ -8,7 +8,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Modal,
   Pressable,
   StyleSheet,
@@ -16,6 +15,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
@@ -292,7 +292,7 @@ export function SpaceSelector({
               </Text>
             </View>
           ) : (
-            <FlatList
+            <FlashList
               data={listData}
               keyExtractor={(item) => item._type === 'group_header' ? `group-${item.id}` : `space-${item.space.id}`}
               renderItem={renderListItem}
