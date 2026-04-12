@@ -165,12 +165,12 @@ function listBackups() {
         version: parts ? parts[1] : d.name,
         timestamp: ts,
         date: new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-        sizeMB: 0, // Calculated below
+        sizeMB: '?',
       };
     })
     .sort((a, b) => b.timestamp - a.timestamp);
 
-  // Read cached sizes (written at backup creation) or fall back to walking
+  // Read cached sizes and app version from each backup
   for (const backup of dirs) {
     try {
       const sizeFile = path.join(PATHS.backupsDir, backup.id, '.size');
@@ -179,6 +179,8 @@ function listBackups() {
         : getDirSize(path.join(PATHS.backupsDir, backup.id));
       backup.sizeMB = (totalSize / (1024 * 1024)).toFixed(1);
     } catch { backup.sizeMB = '?'; }
+    const appJson = readJsonSafe(path.join(PATHS.backupsDir, backup.id, 'app.json'));
+    backup.appVersion = appJson?.expo?.version || '';
   }
   return dirs;
 }

@@ -63,7 +63,10 @@
   .header-brand-icon { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); }
   .header-brand-icon-placeholder { width: 32px; height: 32px; border-radius: 8px; background: var(--brand-color, #6366F1); opacity: 0.18; flex-shrink: 0; }
   .header-identity { display: flex; flex-direction: column; gap: 1px; }
-  .header-site-url { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
+  .header-meta { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
+  .header-meta-sep { opacity: 0.5; }
+  .header-site-url { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
+  .header-app-version { white-space: nowrap; }
   .header-right { display: flex; align-items: center; gap: 12px; }
   .version-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; background: rgba(88,166,255,0.1); color: var(--accent); border: 1px solid rgba(88,166,255,0.25); white-space: nowrap; }
   .server-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 20px; font-size: 12px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border); }
@@ -347,7 +350,8 @@
 
   .backup-card { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; }
   .backup-info { display: flex; flex-direction: column; gap: 2px; }
-  .backup-version { font-weight: 600; font-size: 14px; }
+  .backup-version { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .backup-app-version { font-weight: 400; font-size: 12px; color: var(--text-secondary); }
   .backup-meta { font-size: 12px; color: var(--text-secondary); }
   .backup-actions { display: flex; gap: 8px; }
   .no-backups { color: var(--text-secondary); font-size: 13px; font-style: italic; }
@@ -458,7 +462,11 @@
       </template>
       <div class="header-identity">
         <h1 x-text="headerAppName">Setup Dashboard</h1>
-        <div class="header-site-url" x-show="config.siteUrl" x-text="config.siteUrl" title="WordPress site URL"></div>
+        <div class="header-meta" x-show="config.siteUrl || config.version">
+          <span class="header-site-url" x-show="config.siteUrl" x-text="config.siteUrl" title="WordPress site URL"></span>
+          <span class="header-meta-sep" x-show="config.siteUrl && config.version">&middot;</span>
+          <span class="header-app-version" x-show="config.version" x-text="'App v' + config.version" title="App Store version (app.json)"></span>
+        </div>
       </div>
     </div>
     <div class="app-switcher" x-on:click.outside="appSwitcherOpen = false">
@@ -514,7 +522,7 @@
       <ion-icon name="help-circle-outline"></ion-icon>
     </a>
     <span class="version-badge" title="Core product version — updates automatically when you apply an update.">
-      <span x-text="'Dashboard v' + (config.coreVersion || '?')">--</span>
+      <span x-text="'Core v' + (config.coreVersion || '?')">--</span>
     </span>
     <button class="theme-toggle" x-on:click="toggleTheme()" title="Toggle light/dark mode">
       <ion-icon x-bind:name="darkMode ? 'moon-outline' : 'sunny-outline'"></ion-icon>
@@ -2023,7 +2031,10 @@
       <template x-for="b in backups" :key="b.id">
         <div class="backup-card">
           <div class="backup-info">
-            <div class="backup-version" x-text="'v' + b.version"></div>
+            <div class="backup-version">
+              <span x-text="'Core v' + b.version"></span>
+              <span x-show="b.appVersion" class="backup-app-version" x-text="'· App v' + b.appVersion"></span>
+            </div>
             <div class="backup-meta" x-text="b.date + ' · ' + b.sizeMB + ' MB'"></div>
           </div>
           <div class="backup-actions">
