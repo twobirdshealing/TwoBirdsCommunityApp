@@ -229,6 +229,7 @@ tar -cf - \
   --exclude='.expo' \
   --exclude='.git' \
   --exclude='.claude' \
+  --exclude='.vscode' \
   --exclude='.gitignore' \
   --exclude='dist' \
   --exclude='web-build' \
@@ -238,6 +239,8 @@ tar -cf - \
   --exclude='app-example' \
   --exclude='scripts' \
   --exclude='companion plugins' \
+  --exclude='setup/.backups' \
+  --exclude='setup/.temp' \
   --exclude='modules' \
   --exclude='setup/.app-presets.json' \
   --exclude='setup/logs' \
