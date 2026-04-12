@@ -124,10 +124,10 @@ function writeConfigValues(changes) {
       if (changes.ascApiKeyIssuerId !== undefined) {
         ensurePath(easJson, 'submit', 'production', 'ios').ascApiKeyIssuerId = changes.ascApiKeyIssuerId;
       }
-      if (changes.googlePlayTrack !== undefined || changes.googlePlayServiceAccountKeyPath !== undefined) {
+      if (changes.googlePlayTrack || changes.googlePlayServiceAccountKeyPath) {
         const android = ensurePath(easJson, 'submit', 'production', 'android');
-        if (changes.googlePlayTrack !== undefined) android.track = changes.googlePlayTrack;
-        if (changes.googlePlayServiceAccountKeyPath !== undefined) android.serviceAccountKeyPath = changes.googlePlayServiceAccountKeyPath;
+        if (changes.googlePlayTrack) android.track = changes.googlePlayTrack;
+        if (changes.googlePlayServiceAccountKeyPath) android.serviceAccountKeyPath = changes.googlePlayServiceAccountKeyPath;
       }
       fs.writeFileSync(PATHS.easJson, JSON.stringify(easJson, null, 2) + '\n');
       results.push('eas.json updated');
