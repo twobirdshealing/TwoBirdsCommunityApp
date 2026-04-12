@@ -34,16 +34,37 @@ function getSiteUrl(easJson) {
 
 function getPluginVersion(pluginFolder) {
   const dir = path.join(PATHS.pluginsDir, pluginFolder);
-  if (!fileExists(dir)) return null;
-  // Resolve which PHP file to read: main file or first .php found
-  let phpFile = path.join(dir, pluginFolder + '.php');
-  if (!fileExists(phpFile)) {
-    const files = fs.readdirSync(dir).filter(f => f.endsWith('.php'));
-    if (files.length === 0) return 'unknown';
-    phpFile = path.join(dir, files[0]);
+  const zipFile = path.join(PATHS.pluginsDir, pluginFolder + '.zip');
+
+  // Check extracted folder first
+  if (fileExists(dir) && fs.statSync(dir).isDirectory()) {
+    let phpFile = path.join(dir, pluginFolder + '.php');
+    if (!fileExists(phpFile)) {
+      const files = fs.readdirSync(dir).filter(f => f.endsWith('.php'));
+      if (files.length === 0) return 'unknown';
+      phpFile = path.join(dir, files[0]);
+    }
+    const m = fs.readFileSync(phpFile, 'utf8').match(/Version:\s*(.+)/i);
+    return m ? m[1].trim() : 'unknown';
   }
-  const m = fs.readFileSync(phpFile, 'utf8').match(/Version:\s*(.+)/i);
-  return m ? m[1].trim() : 'unknown';
+
+  // Check for shipped zip (core updates ship companion plugins as zips)
+  if (fileExists(zipFile)) {
+    try {
+      const { parseZip } = require('./http-helpers');
+      const zipData = fs.readFileSync(zipFile);
+      const files = parseZip(zipData);
+      const phpEntry = files.find(f => f.path === pluginFolder + '/' + pluginFolder + '.php')
+        || files.find(f => f.path.endsWith('.php') && f.path.includes(pluginFolder));
+      if (phpEntry) {
+        const m = phpEntry.data.toString().match(/Version:\s*(.+)/i);
+        return m ? m[1].trim() : 'unknown';
+      }
+    } catch {}
+    return 'bundled';
+  }
+
+  return null;
 }
 
 function findPluginConfig(plugins, pluginName) {
