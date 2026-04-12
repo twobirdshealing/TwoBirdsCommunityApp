@@ -40,7 +40,6 @@ BUYER_FILES=(
   "setup/dashboard.next.js"
   "manifest.json"
   "CLAUDE.md"
-  "FIREBASE_SETUP.md"
 )
 
 # Hybrid files: contain both core structure and buyer values.
@@ -407,29 +406,10 @@ echo "  Done."
 # Step 4: Handle Firebase config files
 # ---------------------------------------------------------------------------
 
-echo "[4/9] Replacing Firebase configs with placeholders..."
+echo "[4/9] Removing Firebase configs (buyers upload via dashboard)..."
 
 rm -f "$STAGING_DIR/google-services.json"
 rm -f "$STAGING_DIR/GoogleService-Info.plist"
-
-cat > "$STAGING_DIR/FIREBASE_SETUP.md" << 'FIREBASE_EOF'
-# Firebase Setup
-
-Replace these placeholder files with your own Firebase config files:
-
-## Android — `google-services.json`
-1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Create a project or select an existing one
-3. Add an Android app with your package name (from `app.json` → `android.package`)
-4. Download `google-services.json`
-5. Place it in the project root (same level as `app.json`)
-
-## iOS — `GoogleService-Info.plist`
-1. In the same Firebase project, add an iOS app
-2. Use your bundle ID (from `app.json` → `ios.bundleIdentifier`)
-3. Download `GoogleService-Info.plist`
-4. Place it in the project root (same level as `app.json`)
-FIREBASE_EOF
 
 echo "  Done."
 

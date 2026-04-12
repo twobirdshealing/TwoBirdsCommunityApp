@@ -16,8 +16,7 @@
     "setup/.temp/",
     "setup/dashboard.next.js",
     "manifest.json",
-    "CLAUDE.md",
-    "FIREBASE_SETUP.md"
+    "CLAUDE.md"
   ],
   "hybridFiles": [
     "app.json",
