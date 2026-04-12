@@ -34,6 +34,7 @@ function readProjectState() {
     state.config.ascAppId = easJson.submit?.production?.ios?.ascAppId || '';
     state.config.ascApiKeyId = easJson.submit?.production?.ios?.ascApiKeyId || '';
     state.config.ascApiKeyIssuerId = easJson.submit?.production?.ios?.ascApiKeyIssuerId || '';
+    state.config.ascApiKeyPath = easJson.submit?.production?.ios?.ascApiKeyPath || '';
     // Google Play submit config
     state.config.googlePlayTrack = easJson.submit?.production?.android?.track || 'production';
     state.config.googlePlayServiceAccountKeyPath = easJson.submit?.production?.android?.serviceAccountKeyPath || '';

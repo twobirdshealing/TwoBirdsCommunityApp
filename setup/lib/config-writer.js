@@ -112,17 +112,14 @@ function writeConfigValues(changes) {
         if (!easJson.build.development.env) easJson.build.development.env = {};
         easJson.build.development.env.EXPO_PUBLIC_SITE_URL = changes.stagingUrl;
       }
-      if (changes.appleId !== undefined) {
-        ensurePath(easJson, 'submit', 'production', 'ios').appleId = changes.appleId;
-      }
-      if (changes.ascAppId !== undefined) {
-        ensurePath(easJson, 'submit', 'production', 'ios').ascAppId = changes.ascAppId;
-      }
-      if (changes.ascApiKeyId !== undefined) {
-        ensurePath(easJson, 'submit', 'production', 'ios').ascApiKeyId = changes.ascApiKeyId;
-      }
-      if (changes.ascApiKeyIssuerId !== undefined) {
-        ensurePath(easJson, 'submit', 'production', 'ios').ascApiKeyIssuerId = changes.ascApiKeyIssuerId;
+      // Apple submit config — skip empty values (EAS CLI rejects partial fields)
+      if (changes.appleId || changes.ascAppId || changes.ascApiKeyPath || changes.ascApiKeyId || changes.ascApiKeyIssuerId) {
+        const ios = ensurePath(easJson, 'submit', 'production', 'ios');
+        if (changes.appleId) ios.appleId = changes.appleId;
+        if (changes.ascAppId) ios.ascAppId = changes.ascAppId;
+        if (changes.ascApiKeyPath) ios.ascApiKeyPath = changes.ascApiKeyPath;
+        if (changes.ascApiKeyId) ios.ascApiKeyId = changes.ascApiKeyId;
+        if (changes.ascApiKeyIssuerId) ios.ascApiKeyIssuerId = changes.ascApiKeyIssuerId;
       }
       if (changes.googlePlayTrack || changes.googlePlayServiceAccountKeyPath) {
         const android = ensurePath(easJson, 'submit', 'production', 'android');
