@@ -50,13 +50,15 @@ const { writeConfigValues } = require('./lib/config-writer');
 const { checkConnectivity, parseMultipart, httpsRequest } = require('./lib/http-helpers');
 const { runCommand, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission, getSubmissionsUrl } = require('./lib/eas');
 const { getOTAStatus, pushOTAUpdate, listOTAUpdates, deleteOTAUpdate } = require('./lib/ota');
-const { getInstalledModules, toggleModule, removeModule, exportModule, importModule } = require('./lib/modules');
+const { getInstalledModules, toggleModule, removeModule, exportModule, importModule, applyModuleUpdate } = require('./lib/modules');
 const {
   readLicense, writeLicense, readManifest, validateLicense, deactivateLicense,
+  readModuleLicenses, writeModuleLicense, removeModuleLicense,
   createBackup, listBackups, restoreFromBackup, deleteBackup, pruneBackups,
   applyUpdateFromZip, downloadUpdate, isUpdateInProgress, setUpdateInProgress,
 } = require('./lib/updates');
 const { loadPresets, savePresets, addPreset, removePreset, validateProjectPath, listDirectory } = require('./lib/app-presets');
+const { extractIdentity, createIdentityZip, applyIdentityZip } = require('./lib/identity');
 
 // ---------------------------------------------------------------------------
 // Shared state
@@ -321,8 +323,7 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/eas/init' && req.method === 'POST') {
       try {
-        const appJsonPath = path.join(PROJECT_DIR, 'app.json');
-        const preInit = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
+        const preInit = JSON.parse(fs.readFileSync(PATHS.appJson, 'utf8'));
         const currentPid = preInit.expo?.extra?.eas?.projectId || '';
         const currentOwner = preInit.expo?.owner || '';
         if (isPlaceholder(currentPid) || isPlaceholder(currentOwner)) {
@@ -332,10 +333,10 @@ const server = http.createServer(async (req, res) => {
           if (isPlaceholder(currentOwner) && preInit.expo) {
             delete preInit.expo.owner;
           }
-          fs.writeFileSync(appJsonPath, JSON.stringify(preInit, null, 2) + '\n');
+          fs.writeFileSync(PATHS.appJson, JSON.stringify(preInit, null, 2) + '\n');
         }
         const initOutput = await runCommand(['eas', 'init', '--non-interactive', '--force'], 30000);
-        const freshExpo = JSON.parse(fs.readFileSync(path.join(PROJECT_DIR, 'app.json'), 'utf8'));
+        const freshExpo = JSON.parse(fs.readFileSync(PATHS.appJson, 'utf8'));
         const newOwner = (freshExpo.expo && freshExpo.expo.owner) || '';
         const newProjectId = (freshExpo.expo && freshExpo.expo.extra && freshExpo.expo.extra.eas && freshExpo.expo.extra.eas.projectId) || '';
         jsonResponse(res, { ok: true, owner: newOwner, projectId: newProjectId, output: initOutput });
@@ -389,7 +390,6 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/modules/upload' && req.method === 'POST') {
-      const { applyModuleUpdate } = require('./lib/modules');
       const parts = await parseMultipart(req);
       if (parts.length === 0) { jsonResponse(res, { ok: false, error: 'No file uploaded' }, 400); return; }
       const result = applyModuleUpdate(parts[0].data);
@@ -398,15 +398,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/modules/licenses' && req.method === 'GET') {
-      const { readModuleLicenses } = require('./lib/updates');
       jsonResponse(res, { ok: true, licenses: readModuleLicenses() });
       return;
     }
 
     if (pathname === '/api/modules/license' && req.method === 'POST') {
-      const { writeModuleLicense, readManifest } = require('./lib/updates');
-      const { httpsRequest } = require('./lib/http-helpers');
-      const { getSiteUrl, readJsonSafe } = require('./lib/file-utils');
       const body = await readBody(req);
       const { moduleId, licenseKey } = JSON.parse(body);
       if (!moduleId || !licenseKey) { jsonResponse(res, { ok: false, error: 'moduleId and licenseKey required' }, 400); return; }
@@ -436,7 +432,6 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/modules/license' && req.method === 'DELETE') {
-      const { removeModuleLicense } = require('./lib/updates');
       const body = await readBody(req);
       const { moduleId } = JSON.parse(body);
       if (!moduleId) { jsonResponse(res, { ok: false, error: 'moduleId required' }, 400); return; }
@@ -448,7 +443,6 @@ const server = http.createServer(async (req, res) => {
     // --- Manual Backup ---
 
     if (pathname === '/api/backups/create' && req.method === 'POST') {
-      const { createBackup, readManifest } = require('./lib/updates');
       try {
         const manifest = readManifest();
         const result = createBackup(manifest.version || '0.0.0');
@@ -462,18 +456,16 @@ const server = http.createServer(async (req, res) => {
     // --- Identity (Backup & Restore) ---
 
     if (pathname === '/api/identity/preview' && req.method === 'GET') {
-      const { extractIdentity } = require('./lib/identity');
       try {
         const identity = extractIdentity();
         jsonResponse(res, { ok: true, identity });
       } catch (err) {
-        jsonResponse(res, { error: 'Preview failed: ' + err.message }, 500);
+        jsonResponse(res, { ok: false, error: 'Preview failed: ' + err.message }, 500);
       }
       return;
     }
 
     if (pathname === '/api/identity/export' && req.method === 'GET') {
-      const { createIdentityZip } = require('./lib/identity');
       try {
         const zipBuffer = createIdentityZip();
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
@@ -486,21 +478,20 @@ const server = http.createServer(async (req, res) => {
         });
         res.end(zipBuffer);
       } catch (err) {
-        jsonResponse(res, { error: 'Export failed: ' + err.message }, 500);
+        jsonResponse(res, { ok: false, error: 'Export failed: ' + err.message }, 500);
       }
       return;
     }
 
     if (pathname === '/api/identity/import' && req.method === 'POST') {
-      const { applyIdentityZip } = require('./lib/identity');
       try {
         const parts = await parseMultipart(req);
         const filePart = parts.find(p => p.filename);
-        if (!filePart) { jsonResponse(res, { error: 'No file uploaded' }, 400); return; }
+        if (!filePart) { jsonResponse(res, { ok: false, error: 'No file uploaded' }, 400); return; }
         const result = applyIdentityZip(filePart.data);
         jsonResponse(res, result);
       } catch (err) {
-        jsonResponse(res, { error: 'Import failed: ' + err.message }, 500);
+        jsonResponse(res, { ok: false, error: 'Import failed: ' + err.message }, 500);
       }
       return;
     }
@@ -620,13 +611,13 @@ const server = http.createServer(async (req, res) => {
     if (pathname.startsWith('/api/upload/') && req.method === 'POST') {
       const target = pathname.replace('/api/upload/', '');
       const parts = await parseMultipart(req);
-      if (parts.length === 0) { jsonResponse(res, { error: 'No file uploaded' }, 400); return; }
+      if (parts.length === 0) { jsonResponse(res, { ok: false, error: 'No file uploaded' }, 400); return; }
       const file = parts[0];
       let destPath = resolveUploadPath(target);
       if (!destPath && target === 'asset') {
         destPath = path.join(PATHS.assetsDir, path.basename(file.filename));
       }
-      if (!destPath) { jsonResponse(res, { error: 'Unknown upload target' }, 400); return; }
+      if (!destPath) { jsonResponse(res, { ok: false, error: 'Unknown upload target' }, 400); return; }
       if (target === 'google-play-key' || target === 'asc-api-key') {
         const easJson = readJsonSafe(PATHS.easJson);
         if (easJson) {
@@ -646,7 +637,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname.startsWith('/api/upload/') && req.method === 'DELETE') {
       const target = pathname.replace('/api/upload/', '');
       const destPath = resolveUploadPath(target);
-      if (!destPath) { jsonResponse(res, { error: 'Unknown upload target' }, 400); return; }
+      if (!destPath) { jsonResponse(res, { ok: false, error: 'Unknown upload target' }, 400); return; }
       if (target === 'google-play-key' || target === 'asc-api-key') {
         // Leave ascApiKeyId / ascApiKeyIssuerId in place — user may re-upload a new
         // .p8 for the same key; they can clear the text fields manually if desired.
@@ -663,7 +654,7 @@ const server = http.createServer(async (req, res) => {
         jsonResponse(res, { ok: true, deleted: target });
       } catch (err) {
         if (err.code === 'ENOENT') jsonResponse(res, { ok: true, deleted: target, note: 'File did not exist' });
-        else jsonResponse(res, { error: err.message }, 500);
+        else jsonResponse(res, { ok: false, error: err.message }, 500);
       }
       return;
     }
@@ -673,7 +664,7 @@ const server = http.createServer(async (req, res) => {
       const { mode, color } = JSON.parse(body);
       const appJson = readJsonSafe(PATHS.appJson);
       if (!appJson?.expo?.android?.adaptiveIcon) {
-        jsonResponse(res, { error: 'adaptiveIcon not found in app.json' }, 400);
+        jsonResponse(res, { ok: false, error: 'adaptiveIcon not found in app.json' }, 400);
         return;
       }
       const ai = appJson.expo.android.adaptiveIcon;
@@ -696,7 +687,7 @@ const server = http.createServer(async (req, res) => {
       const body = await readBody(req);
       const { mode } = JSON.parse(body);
       if (mode !== 'dynamic' && mode !== 'static') {
-        jsonResponse(res, { error: 'Invalid mode. Must be "dynamic" or "static".' }, 400);
+        jsonResponse(res, { ok: false, error: 'Invalid mode. Must be "dynamic" or "static".' }, 400);
         return;
       }
       const results = writeConfigValues({ loginLogoMode: mode });
@@ -727,7 +718,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/updates/license' && req.method === 'POST') {
       const body = JSON.parse(await readBody(req));
       const key = (body.key || '').trim();
-      if (!key) { jsonResponse(res, { error: 'License key is required' }, 400); return; }
+      if (!key) { jsonResponse(res, { ok: false, error: 'License key is required' }, 400); return; }
       writeLicense(key);
       try {
         const result = await validateLicense(key);
@@ -764,10 +755,10 @@ const server = http.createServer(async (req, res) => {
 
     // --- Updates: Apply ---
     if (pathname === '/api/updates/apply' && req.method === 'POST') {
-      if (isUpdateInProgress()) { jsonResponse(res, { error: 'An update is already in progress' }, 409); return; }
+      if (isUpdateInProgress()) { jsonResponse(res, { ok: false, error: 'An update is already in progress' }, 409); return; }
       const body = JSON.parse(await readBody(req));
       const downloadUrl = body.downloadUrl;
-      if (!downloadUrl) { jsonResponse(res, { error: 'No download URL provided' }, 400); return; }
+      if (!downloadUrl) { jsonResponse(res, { ok: false, error: 'No download URL provided' }, 400); return; }
 
       setUpdateInProgress(true);
       try {
@@ -781,7 +772,7 @@ const server = http.createServer(async (req, res) => {
         finalizeUpdate(result);
         jsonResponse(res, { ok: true, backup: backup.label, ...result });
       } catch (err) {
-        jsonResponse(res, { error: 'Update failed: ' + err.message }, 500);
+        jsonResponse(res, { ok: false, error: 'Update failed: ' + err.message }, 500);
       } finally {
         setUpdateInProgress(false);
       }
@@ -790,16 +781,16 @@ const server = http.createServer(async (req, res) => {
 
     // --- Updates: Manual upload ---
     if (pathname === '/api/updates/upload' && req.method === 'POST') {
-      if (isUpdateInProgress()) { jsonResponse(res, { error: 'An update is already in progress' }, 409); return; }
+      if (isUpdateInProgress()) { jsonResponse(res, { ok: false, error: 'An update is already in progress' }, 409); return; }
       setUpdateInProgress(true);
       try {
         const parts = await parseMultipart(req);
         const filePart = parts.find((p) => p.filename);
-        if (!filePart) { jsonResponse(res, { error: 'No file uploaded' }, 400); return; }
+        if (!filePart) { jsonResponse(res, { ok: false, error: 'No file uploaded' }, 400); return; }
 
         const filename = (filePart.filename || '').toLowerCase();
         if (!filename.endsWith('.zip')) {
-          jsonResponse(res, { error: 'Please upload a .zip core update file.' }, 400);
+          jsonResponse(res, { ok: false, error: 'Please upload a .zip core update file.' }, 400);
           return;
         }
 
@@ -812,7 +803,7 @@ const server = http.createServer(async (req, res) => {
         finalizeUpdate(result);
         jsonResponse(res, { ok: true, backup: backup.label, ...result });
       } catch (err) {
-        jsonResponse(res, { error: 'Upload update failed: ' + err.message }, 500);
+        jsonResponse(res, { ok: false, error: 'Upload update failed: ' + err.message }, 500);
       } finally {
         setUpdateInProgress(false);
       }
@@ -828,13 +819,13 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/updates/rollback' && req.method === 'POST') {
       const body = JSON.parse(await readBody(req));
       const backupId = body.backupId;
-      if (!backupId) { jsonResponse(res, { error: 'Backup ID is required' }, 400); return; }
-      if (!BACKUP_ID_PATTERN.test(backupId)) { jsonResponse(res, { error: 'Invalid backup ID' }, 400); return; }
+      if (!backupId) { jsonResponse(res, { ok: false, error: 'Backup ID is required' }, 400); return; }
+      if (!BACKUP_ID_PATTERN.test(backupId)) { jsonResponse(res, { ok: false, error: 'Invalid backup ID' }, 400); return; }
       try {
         restoreFromBackup(backupId);
         jsonResponse(res, { ok: true, restored: backupId });
       } catch (err) {
-        jsonResponse(res, { error: 'Restore failed: ' + err.message }, 500);
+        jsonResponse(res, { ok: false, error: 'Restore failed: ' + err.message }, 500);
       }
       return;
     }
@@ -848,7 +839,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/updates/backups/delete' && req.method === 'POST') {
       const body = JSON.parse(await readBody(req));
       const backupId = body.backupId;
-      if (!backupId || !/^v[\d.]+-\d+$/.test(backupId)) { jsonResponse(res, { error: 'Invalid backup ID' }, 400); return; }
+      if (!backupId || !BACKUP_ID_PATTERN.test(backupId)) { jsonResponse(res, { ok: false, error: 'Invalid backup ID' }, 400); return; }
       deleteBackup(backupId);
       jsonResponse(res, { ok: true });
       return;
@@ -890,7 +881,7 @@ const server = http.createServer(async (req, res) => {
   } catch (err) {
     console.error('Server error:', err);
     res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: err.message }));
+    res.end(JSON.stringify({ ok: false, error: err.message }));
   }
 });
 

@@ -80,7 +80,9 @@ types/                  TypeScript type definitions
 utils/                  Utility functions (logger, formatters, crashReportingCache, etc.)
 services/sentry.ts      Sentry init + logger sink wiring (crash reporting)
 setup/                  Buyer setup tools
-  dashboard.js          Local web dashboard (config, assets, builds, updates)
+  dashboard.js          Local web dashboard (zero-dependency Node.js server)
+  frontend/             Dashboard UI (single-file HTML/CSS/JS, served by dashboard.js)
+  lib/                  Dashboard helper modules (paths, state, config, eas, ota, modules, updates, identity, etc.)
 docs/                   Developer documentation (you are here)
 manifest.json           Core version, update URL, protected paths (update system)
 scripts/                Dev-only scripts (white-label snapshot, not shipped)</div>
@@ -642,7 +644,7 @@ useAppQuery({
 
 <h3>Setup Dashboard &amp; Update System</h3>
 
-<p>The setup dashboard (<code>npm run dashboard</code>) is a zero-dependency local web app that handles the entire app lifecycle. It runs on Node built-ins only and serves at <code>localhost:3456</code>. Seven tabs: <strong>Config</strong> (visual editor for all buyer-editable values), <strong>Assets</strong> (branding checklist with thumbnails), <strong>Modules</strong> (import and manage feature modules), <strong>Builds</strong> (EAS build management and store submission), <strong>OTA Updates</strong> (push over-the-air JS updates to users), <strong>Updates</strong> (license activation, one-click core updates with automatic backup/restore), and <strong>Status</strong> (live validation and connectivity checks).</p>
+<p>The setup dashboard (<code>npm run dashboard</code>) is a zero-dependency local web app that handles the entire app lifecycle. It runs on Node built-ins only and serves at <code>localhost:3456</code>. Six tabs: <strong>Config</strong> (visual editor for all buyer-editable values), <strong>Assets</strong> (branding checklist with thumbnails), <strong>Builds</strong> (EAS build management, store submission, and EAS login), <strong>OTA Updates</strong> (push over-the-air JS updates to users), <strong>Updates</strong> (license activation, one-click core updates with automatic backup/restore, module management including import/toggle/remove/export/update, and module licensing), and <strong>Backup</strong> (identity backup and restore, manual backup creation). Additional features include an app switcher for managing multiple projects and live validation with connectivity checks.</p>
 
 <h4>Update Flow</h4>
 <ol>
@@ -657,7 +659,7 @@ useAppQuery({
 <h4>Key Files</h4>
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
-  <tr><td><span class="file-path">setup/dashboard.js</span></td><td>The dashboard itself &mdash; single-file Node.js web server with embedded HTML/CSS/JS. Config editor, asset management, build management, module import, update system, status checks. Zero npm dependencies.</td></tr>
+  <tr><td><span class="file-path">setup/dashboard.js</span></td><td>The dashboard server &mdash; zero-dependency Node.js HTTP server. Routes all API endpoints (config, assets, builds, OTA, modules, updates, identity, app switcher). Frontend served from <code>setup/frontend/index.html</code>; helpers in <code>setup/lib/</code>.</td></tr>
   <tr><td><span class="file-path">manifest.json</span></td><td>Core version, update URL, protected paths list, core plugins list. Read by the dashboard for update checks; updated automatically when an update is applied.</td></tr>
   <tr><td><span class="file-path">setup/.license</span></td><td>Buyer&rsquo;s license key (gitignored). Stored by the dashboard, sent to the license server with the buyer&rsquo;s site URL for validation and activation.</td></tr>
   <tr><td><span class="file-path">setup/.backups/</span></td><td>Automatic backups created before each update (gitignored). Full project snapshots for one-click restore. Auto-pruned to last 3.</td></tr>

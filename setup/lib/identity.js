@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { PATHS, REQUIRED_ASSETS } = require('./paths');
-const { fileExists, readJsonSafe } = require('./file-utils');
+const { fileExists, readJsonSafe, findPluginConfig } = require('./file-utils');
 const { writeConfigValues } = require('./config-writer');
 const { createZip, parseZip } = require('./http-helpers');
 const { readProjectState } = require('./state');
@@ -45,7 +45,6 @@ function extractIdentity() {
   // Splash + notification colors live in app.json plugin configs, not state.config
   const appJson = readJsonSafe(PATHS.appJson);
   if (appJson?.expo?.plugins) {
-    const { findPluginConfig } = require('./file-utils');
     const splashCfg = findPluginConfig(appJson.expo.plugins, 'expo-splash-screen');
     config.splashColorLight = splashCfg?.backgroundColor || '';
     config.splashColorDark = splashCfg?.dark?.backgroundColor || '';

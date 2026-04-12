@@ -298,4 +298,4 @@ function httpsRequest(url, options = {}, redirects = 0) {
   });
 }
 
-module.exports = { checkConnectivity, httpGet, httpsRequest, parseMultipart, createZip, parseZip };
+module.exports = { checkConnectivity, httpsRequest, parseMultipart, createZip, parseZip };

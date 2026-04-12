@@ -52,6 +52,10 @@
   <strong>Zero core changes.</strong> Adding or removing a module requires exactly two edits: one import line and one array entry in <code>modules/_registry.ts</code>. If the module needs deep linking, also add its path prefix to <code>moduleDeepLinkPaths</code> in <code>app.config.ts</code>. Core code reads from the registry at build time &mdash; no runtime discovery, no dynamic imports.
 </div>
 
+<div class="callout">
+  <strong>Dashboard automation.</strong> The setup dashboard (<code>npm run dashboard</code>) handles module management automatically &mdash; import from zip, toggle on/off, remove, export, and apply module updates. It edits <code>_registry.ts</code> programmatically. The &ldquo;two edits&rdquo; above describe what happens under the hood; buyers don&rsquo;t need to touch code.
+</div>
+
 <p>The system is static by design. All modules are resolved at import time, producing a flat list of registrations that core code maps over. This keeps the bundle predictable, startup fast, and debugging simple.</p>
 
 <!-- ================================================================== -->
