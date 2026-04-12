@@ -56,9 +56,14 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; min-height: 100vh; padding-bottom: 70px; }
 
-  .header { background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-  .header h1 { font-size: 20px; font-weight: 600; }
+  .header { background: var(--bg-secondary); border-bottom: 1px solid var(--border); border-top: 3px solid var(--brand-color, #6366F1); padding: 13px 24px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .header h1 { font-size: 18px; font-weight: 600; line-height: 1.2; }
   .header .subtitle { color: var(--text-secondary); font-size: 13px; margin-left: 12px; }
+  .header-brand { display: flex; align-items: center; gap: 10px; }
+  .header-brand-icon { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); }
+  .header-brand-icon-placeholder { width: 32px; height: 32px; border-radius: 8px; background: var(--brand-color, #6366F1); opacity: 0.18; flex-shrink: 0; }
+  .header-identity { display: flex; flex-direction: column; gap: 1px; }
+  .header-site-url { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
   .header-right { display: flex; align-items: center; gap: 12px; }
   .version-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; background: rgba(88,166,255,0.1); color: var(--accent); border: 1px solid rgba(88,166,255,0.25); white-space: nowrap; }
   .server-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 20px; font-size: 12px; color: var(--text-secondary); background: var(--bg-tertiary); border: 1px solid var(--border); }
@@ -442,9 +447,20 @@
 </head>
 <body x-data="dashboard">
 
-<div class="header">
+<div class="header" x-bind:style="'--brand-color:' + (brandingColors.notificationColor || '#6366F1')">
   <div style="display:flex;align-items:center;gap:12px">
-    <h1 x-text="headerTitle">Setup Dashboard</h1>
+    <div class="header-brand">
+      <template x-if="appIconExists">
+        <img class="header-brand-icon" x-bind:src="'/api/asset/app_icon_ios.png?' + assetCacheBust" alt="" aria-hidden="true">
+      </template>
+      <template x-if="!appIconExists">
+        <div class="header-brand-icon-placeholder"></div>
+      </template>
+      <div class="header-identity">
+        <h1 x-text="headerAppName">Setup Dashboard</h1>
+        <div class="header-site-url" x-show="config.siteUrl" x-text="config.siteUrl" title="WordPress site URL"></div>
+      </div>
+    </div>
     <div class="app-switcher" x-on:click.outside="appSwitcherOpen = false">
       <button class="app-switcher-btn" x-on:click="appSwitcherOpen = !appSwitcherOpen">
         <span class="label" x-text="appSwitcherLabel"></span>
@@ -1753,18 +1769,10 @@
       <div x-show="manualUpdate.state === 'error'" style="color:var(--red)" x-text="'Upload failed: ' + manualUpdate.error"></div>
     </div>
 
-    <!-- Core companion plugins -->
-    <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px" id="section-companion-plugins">
-      <template x-for="plugin in (plugins.core || [])" :key="plugin.label">
-        <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
-          <span class="status-icon" x-bind:class="plugin.exists ? 'status-pass' : 'status-fail'" style="font-size:14px">
-            <ion-icon x-bind:name="plugin.exists ? 'checkmark-circle' : 'close-circle'"></ion-icon>
-          </span>
-          <span x-text="plugin.label"></span>
-          <template x-if="plugin.exists"><span style="font-family:var(--font-mono);color:var(--text-muted)" x-text="'v' + plugin.version"></span></template>
-          <template x-if="!plugin.exists"><span style="color:var(--red)">Not installed</span></template>
-        </div>
-      </template>
+    <!-- Core companion plugin -->
+    <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)" id="section-companion-plugins">
+      <ion-icon name="information-circle-outline" style="font-size:14px;vertical-align:middle;margin-right:4px"></ion-icon>
+      Companion plugin: <strong>tbc-community-app</strong> — install on your WordPress site
     </div>
 
   </div>
@@ -1810,14 +1818,9 @@
         </div>
       </template>
       <template x-if="mod.companionPlugin">
-        <div style="padding:6px 16px;border-top:1px solid var(--border);font-size:12px;display:flex;align-items:center;gap:8px">
-          <span style="color:var(--text-muted)">WP Plugin:</span>
-          <span class="status-icon" x-bind:class="mod.companionExists ? 'status-pass' : 'status-fail'" style="font-size:14px">
-            <ion-icon x-bind:name="mod.companionExists ? 'checkmark-circle' : 'close-circle'"></ion-icon>
-          </span>
-          <span x-text="mod.companionPlugin"></span>
-          <template x-if="mod.companionExists"><span style="font-family:var(--font-mono);color:var(--text-muted)" x-text="'v' + mod.companionVersion"></span></template>
-          <template x-if="!mod.companionExists"><span style="color:var(--red);font-size:11px">Not found — install on your WordPress site</span></template>
+        <div style="padding:6px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)">
+          <ion-icon name="information-circle-outline" style="font-size:14px;vertical-align:middle;margin-right:4px"></ion-icon>
+          WP Plugin: <strong x-text="mod.companionPlugin"></strong> — install on your WordPress site
         </div>
       </template>
 
@@ -2332,10 +2335,21 @@ document.addEventListener('alpine:init', () => {
     // =========================================================================
     // Computed
     // =========================================================================
-    get headerTitle() {
+    get headerAppName() {
       var name = (this.config.appName || '').trim();
       var isDefault = !name || this.PLACEHOLDERS.indexOf(name) !== -1;
-      return (isDefault ? 'TBC Community App' : name) + ' — Setup Dashboard';
+      return isDefault ? 'TBC Community App' : name;
+    },
+
+    get headerTitle() {
+      return this.headerAppName + ' — Setup Dashboard';
+    },
+
+    get appIconExists() {
+      for (var i = 0; i < this.assets.length; i++) {
+        if (this.assets[i].file === 'app_icon_ios.png') return !!this.assets[i].exists;
+      }
+      return false;
     },
 
     get appSwitcherLabel() {
