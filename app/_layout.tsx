@@ -410,7 +410,6 @@ function RootLayoutNav() {
         {/* FULL SCREEN MODALS — slide up from bottom */}
         <Stack.Screen name="create-post" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="comments/[postId]" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="blog-comments/[postId]" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="webview" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
 
         {/* All other routes auto-discover from file stubs with defaults:

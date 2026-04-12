@@ -16,7 +16,7 @@ function writeConfigValues(changes) {
       changes.version !== undefined || changes.iosBundleId !== undefined || changes.androidPackage !== undefined ||
       changes.easOwner !== undefined || changes.easProjectId !== undefined ||
       changes.splashColorLight !== undefined || changes.splashColorDark !== undefined ||
-      changes.notificationColor !== undefined) {
+      changes.notificationColor !== undefined || changes.adaptiveIconBgMode !== undefined) {
     const appJson = readJsonSafe(PATHS.appJson);
     if (appJson) {
       const expo = appJson.expo;
@@ -63,6 +63,18 @@ function writeConfigValues(changes) {
             if (!splashCfg.dark) splashCfg.dark = {};
             splashCfg.dark.backgroundColor = changes.splashColorDark;
           }
+        }
+      }
+      // Adaptive icon background mode
+      if (changes.adaptiveIconBgMode !== undefined) {
+        if (!expo.android) expo.android = {};
+        if (!expo.android.adaptiveIcon) expo.android.adaptiveIcon = {};
+        if (changes.adaptiveIconBgMode === 'color') {
+          delete expo.android.adaptiveIcon.backgroundImage;
+          expo.android.adaptiveIcon.backgroundColor = changes.adaptiveIconBgColor || '#FFFFFF';
+        } else {
+          expo.android.adaptiveIcon.backgroundImage = './assets/images/app_icon_android_adaptive_bg.png';
+          if (changes.adaptiveIconBgColor) expo.android.adaptiveIcon.backgroundColor = changes.adaptiveIconBgColor;
         }
       }
       // Notification accent color + fix icon path

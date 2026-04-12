@@ -1,23 +1,30 @@
 {
   "product": "tbc-community-app",
-  "version": "3.5.0",
+  "version": "1.0.0",
   "dashboardVersion": 1,
   "updateUrl": "https://www.twobirdscode.com/wp-json/tbc-license/v1/check",
-  "protectedPaths": [
+  "buyerFiles": [
     "constants/config.ts",
+    "assets/images/",
+    "google-services.json",
+    "GoogleService-Info.plist",
+    "asc-api-key.p8",
+    "google-play-service-account.json",
+    "setup/.license",
+    "setup/.module-licenses.json",
+    "setup/.backups/",
+    "setup/.temp/",
+    "setup/dashboard.next.js",
+    "manifest.json",
+    "CLAUDE.md",
+    "FIREBASE_SETUP.md"
+  ],
+  "hybridFiles": [
     "app.json",
     "eas.json",
     "app.config.ts",
     "package.json",
-    "assets/images/",
-    "google-services.json",
-    "GoogleService-Info.plist",
-    "modules/_registry.ts",
-    "setup/.license",
-    "setup/.backups/",
-    "setup/dashboard.next.js",
-    "manifest.json",
-    "CLAUDE.md"
+    "modules/_registry.ts"
   ],
   "corePlugins": [
     "tbc-community-app",

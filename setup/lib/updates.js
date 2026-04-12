@@ -2,10 +2,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const zlib = require('zlib');
 const { PROJECT_DIR, PATHS, BACKUP_EXCLUDES } = require('./paths');
 const { readJsonSafe, getSiteUrl } = require('./file-utils');
-const { httpsRequest, parseTar } = require('./http-helpers');
+const { httpsRequest, parseZip } = require('./http-helpers');
 
 // ---------------------------------------------------------------------------
 // Concurrency guard — prevent overlapping update operations
@@ -30,7 +29,30 @@ function writeLicense(key) {
 }
 
 function readManifest() {
-  return readJsonSafe(PATHS.manifest) || { version: '0.0.0', protectedPaths: [] };
+  return readJsonSafe(PATHS.manifest) || { version: '0.0.0', buyerFiles: [], hybridFiles: [] };
+}
+
+// ---------------------------------------------------------------------------
+// Module Licenses
+// ---------------------------------------------------------------------------
+
+const MODULE_LICENSES_PATH = path.join(PROJECT_DIR, 'setup', '.module-licenses.json');
+
+function readModuleLicenses() {
+  return readJsonSafe(MODULE_LICENSES_PATH) || {};
+}
+
+function writeModuleLicense(moduleId, key) {
+  const licenses = readModuleLicenses();
+  licenses[moduleId] = key.trim();
+  fs.mkdirSync(path.dirname(MODULE_LICENSES_PATH), { recursive: true });
+  fs.writeFileSync(MODULE_LICENSES_PATH, JSON.stringify(licenses, null, 2) + '\n');
+}
+
+function removeModuleLicense(moduleId) {
+  const licenses = readModuleLicenses();
+  delete licenses[moduleId];
+  fs.writeFileSync(MODULE_LICENSES_PATH, JSON.stringify(licenses, null, 2) + '\n');
 }
 
 /**
@@ -42,6 +64,13 @@ async function validateLicense(key) {
   const updateUrl = manifest.updateUrl;
   if (!updateUrl) return { valid: false, error: 'No update URL configured in manifest.json' };
 
+  // Build installed modules list with their license keys
+  const moduleLicenses = readModuleLicenses();
+  const { getInstalledModules } = require('./modules');
+  const installedModules = getInstalledModules()
+    .filter(m => moduleLicenses[m.id])
+    .map(m => ({ id: m.id, version: m.version || '0.0.0', licenseKey: moduleLicenses[m.id] }));
+
   try {
     const res = await httpsRequest(updateUrl, {
       method: 'POST',
@@ -51,6 +80,7 @@ async function validateLicense(key) {
         currentVersion: manifest.version,
         product: manifest.product || 'tbc-community-app',
         siteUrl: getSiteUrl(readJsonSafe(PATHS.easJson)) || '',
+        installedModules,
       }),
       timeout: 15000,
     });
@@ -101,7 +131,6 @@ function copyDirRecursive(src, dest, excludes, baseDir) {
     const destPath = path.join(dest, entry.name);
     const relPath = path.relative(baseDir, srcPath).replace(/\\/g, '/');
 
-    // Check excludes
     if (excludes.some((ex) => relPath === ex || relPath.startsWith(ex + '/'))) continue;
 
     if (entry.isDirectory()) {
@@ -196,17 +225,15 @@ function pruneBackups(keep = 3) {
 // ---------------------------------------------------------------------------
 
 /**
- * Check if a file path is protected (buyer-customized, should not be overwritten).
- * Uses the protectedPaths from manifest.json.
+ * Check if a file path matches a buyer-owned file or directory.
+ * Buyer files are never overwritten during updates.
  */
-function isProtectedPath(filePath, protectedPaths) {
+function isBuyerFile(filePath, buyerFiles) {
   const normalized = filePath.replace(/\\/g, '/');
-  for (const p of protectedPaths) {
+  for (const p of buyerFiles) {
     if (p.endsWith('/')) {
-      // Directory prefix match
       if (normalized.startsWith(p) || normalized === p.slice(0, -1)) return true;
     } else {
-      // Exact file match
       if (normalized === p) return true;
     }
   }
@@ -214,121 +241,96 @@ function isProtectedPath(filePath, protectedPaths) {
 }
 
 /**
- * Apply a core update from a tar.gz buffer.
- * - Extracts the tar
- * - Skips protected paths (buyer-customized files)
- * - Writes core files to the project directory
- * - Handles dashboard self-update via dashboard.next.js
- * - Parses package-deps.json and returns it as pendingDeps (caller merges after module reload)
- * Returns { filesWritten, filesSkipped, dashboardUpdated, newVersion, pendingDeps }
+ * Apply a core update from a ZIP buffer.
+ *
+ * Identity-preserving flow:
+ *   1. Auto-export buyer identity (config values, assets, credentials, module imports)
+ *   2. Extract all files from zip (skip buyer-owned files, write hybrid + core files)
+ *   3. Update manifest.json version
+ *   4. Restore buyer identity into fresh hybrid files
+ *   5. Clean up temp identity file
+ *
+ * Returns { filesWritten, filesSkipped, dashboardUpdated, newVersion }
  */
-function applyUpdateFromTar(tarGzBuffer) {
+function applyUpdateFromZip(zipBuffer) {
+  const identity = require('./identity');
   const manifest = readManifest();
-  const protectedPaths = manifest.protectedPaths || [];
+  const buyerFiles = manifest.buyerFiles || [];
 
-  // Decompress
-  const tarBuffer = zlib.gunzipSync(tarGzBuffer);
-  const files = parseTar(tarBuffer);
+  const files = parseZip(zipBuffer);
+
+  // --- Step 1: Auto-export identity BEFORE any writes ---
+  let savedIdentity;
+  try {
+    savedIdentity = identity.createIdentityZip();
+  } catch (err) {
+    throw new Error('Failed to capture buyer identity before update: ' + err.message);
+  }
 
   let filesWritten = 0;
   let filesSkipped = 0;
   let dashboardUpdated = false;
   let newVersion = null;
 
-  // Check for an embedded manifest in the update (paths already normalized by parseTar)
   const updateManifest = files.find((f) => f.path === 'manifest.json');
 
-  // Check for package-deps.json (dependency changes)
-  const packageDeps = files.find((f) => f.path === 'package-deps.json');
-
+  // --- Step 2: Extract files ---
   for (const file of files) {
-    // Paths already normalized by parseTar (no ./ prefix, forward slashes)
-    const relPath = file.path;
+      const relPath = file.path;
 
-    // Skip directories (path ends with /)
-    if (relPath.endsWith('/')) continue;
-    // Skip the update's own manifest and deps file — processed separately
-    if (relPath === 'manifest.json' || relPath === 'package-deps.json') continue;
+      if (relPath.endsWith('/')) continue;
+      if (relPath === 'manifest.json') continue;
 
-    // Handle dashboard self-update
-    if (relPath === 'setup/dashboard.js') {
-      const destPath = path.join(PROJECT_DIR, 'setup', 'dashboard.next.js');
+      // Dashboard self-update
+      if (relPath === 'setup/dashboard.js') {
+        const destPath = path.join(PROJECT_DIR, 'setup', 'dashboard.next.js');
+        fs.mkdirSync(path.dirname(destPath), { recursive: true });
+        fs.writeFileSync(destPath, file.data);
+        dashboardUpdated = true;
+        filesWritten++;
+        continue;
+      }
+
+      // Skip buyer-owned files (never touched)
+      if (isBuyerFile(relPath, buyerFiles)) {
+        filesSkipped++;
+        continue;
+      }
+
+      // Path traversal guard
+      const destPath = path.resolve(PROJECT_DIR, relPath);
+      if (!destPath.startsWith(PROJECT_DIR + path.sep) && destPath !== PROJECT_DIR) {
+        filesSkipped++;
+        continue;
+      }
       fs.mkdirSync(path.dirname(destPath), { recursive: true });
       fs.writeFileSync(destPath, file.data);
-      dashboardUpdated = true;
       filesWritten++;
-      continue;
     }
 
-    // Skip protected paths
-    if (isProtectedPath(relPath, protectedPaths)) {
-      filesSkipped++;
-      continue;
+    // --- Step 3: Update manifest.json version ---
+    if (updateManifest) {
+      try {
+        const um = JSON.parse(updateManifest.data.toString());
+        if (um.version) {
+          newVersion = um.version;
+          const localManifest = readManifest();
+          localManifest.version = um.version;
+          if (um.dashboardVersion) localManifest.dashboardVersion = um.dashboardVersion;
+          if (um.buyerFiles) localManifest.buyerFiles = um.buyerFiles;
+          if (um.hybridFiles) localManifest.hybridFiles = um.hybridFiles;
+          fs.writeFileSync(PATHS.manifest, JSON.stringify(localManifest, null, 2) + '\n');
+        }
+      } catch { /* ignore */ }
     }
 
-    // Write the file (with path traversal guard)
-    const destPath = path.resolve(PROJECT_DIR, relPath);
-    if (!destPath.startsWith(PROJECT_DIR + path.sep) && destPath !== PROJECT_DIR) {
-      filesSkipped++;
-      continue;
+    // --- Step 4: Restore buyer identity ---
+    const restoreResult = identity.applyIdentityZip(savedIdentity);
+    if (!restoreResult.ok) {
+      throw new Error('Identity restore failed: ' + restoreResult.error);
     }
-    fs.mkdirSync(path.dirname(destPath), { recursive: true });
-    fs.writeFileSync(destPath, file.data);
-    filesWritten++;
-  }
 
-  // Parse package-deps.json but don't merge yet — dashboard.js will reload
-  // this module after file extraction so the merge uses the latest code.
-  let pendingDeps = null;
-  if (packageDeps) {
-    try { pendingDeps = JSON.parse(packageDeps.data.toString()); } catch { /* ignore */ }
-  }
-
-  // Update manifest.json version from the update's manifest
-  if (updateManifest) {
-    try {
-      const um = JSON.parse(updateManifest.data.toString());
-      if (um.version) {
-        newVersion = um.version;
-        const localManifest = readManifest();
-        localManifest.version = um.version;
-        if (um.dashboardVersion) localManifest.dashboardVersion = um.dashboardVersion;
-        fs.writeFileSync(PATHS.manifest, JSON.stringify(localManifest, null, 2) + '\n');
-      }
-    } catch { /* ignore */ }
-  }
-
-  return { filesWritten, filesSkipped, dashboardUpdated, newVersion, pendingDeps };
-}
-
-/**
- * Merge dependency and script changes into the buyer's package.json.
- * Preserves name, version, and any buyer-added entries.
- */
-function mergePackageDeps(depChanges) {
-  const pkgPath = PATHS.packageJson;
-  const pkg = readJsonSafe(pkgPath);
-  if (!pkg) return false;
-
-  let changed = false;
-
-  for (const key of ['dependencies', 'devDependencies', 'scripts']) {
-    if (!depChanges[key]) continue;
-    if (!pkg[key]) pkg[key] = {};
-    for (const [name, value] of Object.entries(depChanges[key])) {
-      if (value === null) {
-        if (pkg[key][name]) { delete pkg[key][name]; changed = true; }
-      } else if (pkg[key][name] !== value) {
-        pkg[key][name] = value;
-        changed = true;
-      }
-    }
-  }
-
-  if (changed) {
-    fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-  }
-  return changed;
+  return { filesWritten, filesSkipped, dashboardUpdated, newVersion };
 }
 
 /**
@@ -355,6 +357,9 @@ module.exports = {
   readLicense,
   writeLicense,
   readManifest,
+  readModuleLicenses,
+  writeModuleLicense,
+  removeModuleLicense,
   validateLicense,
   deactivateLicense,
   createBackup,
@@ -362,7 +367,6 @@ module.exports = {
   restoreFromBackup,
   deleteBackup,
   pruneBackups,
-  applyUpdateFromTar,
-  mergePackageDeps,
+  applyUpdateFromZip,
   downloadUpdate,
 };

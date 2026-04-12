@@ -2,14 +2,13 @@
 
 const fs   = require('fs');
 const path = require('path');
-const zlib = require('zlib');
 
 const { PATHS }                    = require('./paths');
 const { fileExists, extractTsValue, getPluginVersion } = require('./file-utils');
-const { createTar, parseTar }      = require('./http-helpers');
+const { createZip, parseZip }      = require('./http-helpers');
 
 // ---------------------------------------------------------------------------
-// Shared helper — extract files from a tar with path traversal guard
+// Shared helper — extract files from a zip with path traversal guard
 // ---------------------------------------------------------------------------
 
 function safeExtractFiles(files, prefix, destDir) {
@@ -45,6 +44,14 @@ function parseModuleManifest(moduleDir) {
   const hasTab = /\btab:\s*\{/.test(content);
   const apiBase = extractTsValue(content, /apiBase:\s*'([^']*)'/);
 
+  // routePrefixes: ['/blog', '/blog-comments'] — declares which app/<prefix>/ folders this module owns
+  const routePrefixes = [];
+  const routePrefixMatch = content.match(/routePrefixes:\s*\[([^\]]*)\]/);
+  if (routePrefixMatch) {
+    const entries = routePrefixMatch[1].matchAll(/'([^']+)'/g);
+    for (const m of entries) routePrefixes.push(m[1]);
+  }
+
   // Detect which integration slots this module uses
   const integrations = [];
   if (hasTab) integrations.push('Tab');
@@ -65,7 +72,7 @@ function parseModuleManifest(moduleDir) {
   const hideMenuKeyMatches = content.matchAll(/hideMenuKey:\s*'([^']*)'/g);
   for (const m of hideMenuKeyMatches) { if (!visibilityKeys.includes(m[1])) visibilityKeys.push(m[1]); }
 
-  return { id, name, version, description, author, authorUrl, license, minAppVersion, companionPlugin, hasTab, apiBase, visibilityKeys, integrations };
+  return { id, name, version, description, author, authorUrl, license, minAppVersion, companionPlugin, hasTab, apiBase, visibilityKeys, integrations, routePrefixes };
 }
 
 /** Get all installed modules */
@@ -88,9 +95,19 @@ function getInstalledModules() {
     const manifest = parseModuleManifest(moduleDir);
     if (!manifest) continue;
 
-    // Check if module is registered (active) in _registry.ts
+    // Check if module is registered (active) in _registry.ts.
+    // A module is only truly active if BOTH the import line exists AND it
+    // appears as an entry inside the MODULES array. The import alone isn't
+    // enough — without the array entry the module never gets loaded at
+    // runtime (toggleModule had a regex bug in older core versions that
+    // could leave things in that stuck half-registered state).
     const importPattern = new RegExp(`from\\s+['\\./"]+${dir}/module['\"]`);
-    const isActive = importPattern.test(registryContent);
+    const hasImport = importPattern.test(registryContent);
+    const exportName = dir.replace(/-([a-z])/g, (_, c) => c.toUpperCase()) + 'Module';
+    const arrayMatch = registryContent.match(/export const MODULES: ModuleManifest\[\] = \[([\s\S]*?)\n\];/);
+    const arrayBody = arrayMatch ? arrayMatch[1] : '';
+    const inArray = new RegExp(`\\b${exportName}\\b`).test(arrayBody);
+    const isActive = hasImport && inArray;
 
     // Check for route stub
     const routeStub = manifest.hasTab
@@ -146,17 +163,19 @@ function toggleModule(moduleId, active, mod) {
   const exportName = mod.folder.replace(/-/g, '') + 'Module';
 
   if (active && !mod.active) {
-    // Add import line — insert before the blank line preceding `export const MODULES`
+    // Add import line — insert before `export const MODULES`
     const importLine = `import { ${exportName} } from './${mod.folder}/module';`;
     content = content.replace(
       /(\n)(export const MODULES)/,
       `\n${importLine}\n$2`
     );
 
-    // Add entry to MODULES array — insert before the closing bracket
+    // Add entry to the MODULES array — anchor on the array declaration itself
+    // and insert before its closing `];`. Works regardless of what comes after
+    // the array (e.g. a `setModules(MODULES);` call between it and any comment).
     content = content.replace(
-      /(\n)(];[\s\n]*\/\/ =+[\s\n]*\/\/ END YOUR MODULES)/,
-      `\n  ${exportName},\n$2`
+      /(export const MODULES: ModuleManifest\[\] = \[)([\s\S]*?)(\n\];)/,
+      (_m, open, body, close) => `${open}${body}\n  ${exportName},${close}`
     );
 
     // Clean up triple+ blank lines
@@ -195,10 +214,18 @@ function removeModule(moduleId) {
   const moduleDir = path.join(PATHS.modulesDir, mod.folder);
   fs.rmSync(moduleDir, { recursive: true, force: true });
 
-  // Remove route stub if exists
+  // Remove tab stub if exists
   if (mod.hasTab) {
     const stubPath = path.join(PATHS.tabsDir, mod.folder + '.tsx');
     if (fileExists(stubPath)) fs.unlinkSync(stubPath);
+  }
+
+  // Remove non-tab route directories the module owned (app/<prefix>/)
+  for (const p of mod.routePrefixes || []) {
+    const folderName = String(p).replace(/^\/+/, '').replace(/\/+$/, '');
+    if (!folderName || folderName.includes('/') || folderName.includes('..')) continue;
+    const routeDir = path.join(PATHS.appDir, folderName);
+    if (fileExists(routeDir)) fs.rmSync(routeDir, { recursive: true, force: true });
   }
 
   return { ok: true, message: `${mod.name} removed` };
@@ -225,15 +252,16 @@ function collectFiles(dir, base) {
 }
 
 /**
- * Create a .tar.gz package for a module.
+ * Create a .zip package for a module (sellable as an add-on).
  * Format:
- *   manifest.json           — metadata
- *   module/<files>           — the module folder contents
- *   route-stubs/<file>.tsx   — tab route stub (if module has a tab)
- *   companion-plugin/<files> — companion WordPress plugin (if exists)
+ *   manifest.json                 — metadata (includes routePrefixes so import knows what to unpack)
+ *   module/<files>                — the module folder (modules/<folder>/)
+ *   route-stubs/<file>.tsx        — tab stub file (if the module has a bottom tab)
+ *   app-routes/<prefix>/<files>   — non-tab route directories declared via routePrefixes
+ *                                   (e.g. app/blog/*, app/blog-comments/*)
+ *   companion-plugin/<files>      — companion WordPress plugin (if any)
  *
- * Uses tar format (built-in to Node via manual implementation) since
- * Node doesn't have built-in zip. .tar.gz is universally extractable.
+ * Zero-dep DEFLATE zip via createZip() in http-helpers.js.
  */
 function exportModule(moduleId) {
   const modules = getInstalledModules();
@@ -243,7 +271,11 @@ function exportModule(moduleId) {
   const moduleDir = path.join(PATHS.modulesDir, mod.folder);
   const files = [];
 
-  // Manifest
+  // Normalize routePrefixes -> folder names (strip leading slash, drop empties)
+  const routeFolders = (mod.routePrefixes || [])
+    .map((p) => String(p).replace(/^\/+/, '').replace(/\/+$/, ''))
+    .filter((p) => p && !p.includes('/') && !p.includes('..'));
+
   const manifest = {
     id: mod.id,
     name: mod.name,
@@ -257,8 +289,9 @@ function exportModule(moduleId) {
     hasTab: mod.hasTab,
     companionPlugin: mod.companionPlugin || null,
     apiBase: mod.apiBase || null,
+    routePrefixes: mod.routePrefixes || [],
     exportedAt: new Date().toISOString(),
-    format: 1,
+    format: 2,
   };
   files.push({ path: 'manifest.json', data: Buffer.from(JSON.stringify(manifest, null, 2)) });
 
@@ -268,11 +301,23 @@ function exportModule(moduleId) {
     files.push({ path: 'module/' + f.path, data: f.data });
   }
 
-  // Route stub
+  // Tab stub (if module has a bottom tab)
   if (mod.hasTab) {
     const stubPath = path.join(PATHS.tabsDir, mod.folder + '.tsx');
     if (fileExists(stubPath)) {
       files.push({ path: 'route-stubs/' + mod.folder + '.tsx', data: fs.readFileSync(stubPath) });
+    }
+  }
+
+  // Non-tab route directories (app/<prefix>/) declared via routePrefixes.
+  // These hold the actual screens for modules like blog, bookclub, youtube —
+  // without them the imported module would be missing its feature pages.
+  for (const folderName of routeFolders) {
+    const routeDir = path.join(PATHS.appDir, folderName);
+    if (!fileExists(routeDir)) continue;
+    const routeFiles = collectFiles(routeDir);
+    for (const f of routeFiles) {
+      files.push({ path: `app-routes/${folderName}/${f.path}`, data: f.data });
     }
   }
 
@@ -287,33 +332,27 @@ function exportModule(moduleId) {
     }
   }
 
-  // Build tar
-  const tarBuffer = createTar(files);
-  const gzipped = zlib.gzipSync(tarBuffer);
+  const zipBuffer = createZip(files);
 
   return {
     ok: true,
-    filename: `${mod.id}-module-${mod.version}.tar.gz`,
-    data: gzipped,
+    filename: `${mod.id}-module-${mod.version}.zip`,
+    data: zipBuffer,
     manifest,
   };
 }
 
 // ---------------------------------------------------------------------------
-// Module Import — extract a .tar.gz package and install
+// Module Import — extract a .zip package and install
 // ---------------------------------------------------------------------------
 
-function importModule(tarGzBuffer) {
-  // Decompress
-  let tarBuffer;
+function importModule(zipBuffer) {
+  let files;
   try {
-    tarBuffer = zlib.gunzipSync(tarGzBuffer);
-  } catch {
-    return { ok: false, error: 'Failed to decompress — is this a valid .tar.gz file?' };
+    files = parseZip(zipBuffer);
+  } catch (err) {
+    return { ok: false, error: 'Failed to read zip — ' + err.message };
   }
-
-  // Parse tar
-  const files = parseTar(tarBuffer);
   if (files.length === 0) return { ok: false, error: 'Empty archive' };
 
   // Find manifest
@@ -341,12 +380,34 @@ function importModule(tarGzBuffer) {
 
   safeExtractFiles(moduleFiles, /^module\//, moduleDir);
 
-  // Extract route stubs
+  // Extract tab stubs
   const routeStubs = files.filter(f => f.path.startsWith('route-stubs/'));
   for (const file of routeStubs) {
     const filename = path.basename(file.path);
     const destPath = path.join(PATHS.tabsDir, filename);
     fs.writeFileSync(destPath, file.data);
+  }
+
+  // Extract non-tab app route directories (app-routes/<prefix>/...)
+  // Replace each target app/<prefix>/ folder to keep the state clean on update.
+  const appRouteFiles = files.filter(f => f.path.startsWith('app-routes/'));
+  const touchedPrefixes = new Set();
+  for (const file of appRouteFiles) {
+    const rest = file.path.slice('app-routes/'.length);
+    const firstSlash = rest.indexOf('/');
+    if (firstSlash === -1) continue;
+    const prefix = rest.slice(0, firstSlash);
+    if (!prefix || prefix.includes('..') || prefix.startsWith('.')) continue;
+    if (!touchedPrefixes.has(prefix)) {
+      const prefixDir = path.join(PATHS.appDir, prefix);
+      if (fileExists(prefixDir)) fs.rmSync(prefixDir, { recursive: true, force: true });
+      touchedPrefixes.add(prefix);
+    }
+  }
+  for (const prefix of touchedPrefixes) {
+    const prefixDir = path.join(PATHS.appDir, prefix);
+    const scoped = appRouteFiles.filter(f => f.path.startsWith(`app-routes/${prefix}/`));
+    safeExtractFiles(scoped, new RegExp(`^app-routes/${prefix}/`), prefixDir);
   }
 
   // Extract companion plugin
@@ -369,6 +430,75 @@ function importModule(tarGzBuffer) {
 }
 
 // ---------------------------------------------------------------------------
+// Module Update — simple overlay (like WordPress plugin update)
+// ---------------------------------------------------------------------------
+
+function applyModuleUpdate(zipBuffer) {
+  const files = parseZip(zipBuffer);
+
+  // Find module.ts or module.tsx to determine module ID
+  const manifestFile = files.find(f =>
+    /^[^/]+\/module\.(ts|tsx)$/.test(f.path) || f.path === 'module.ts' || f.path === 'module.tsx'
+  );
+  if (!manifestFile) return { ok: false, error: 'No module.ts found in zip — not a valid module package' };
+
+  // Determine module folder name from zip structure
+  const parts = manifestFile.path.split('/');
+  let moduleId;
+  if (parts.length > 1) {
+    moduleId = parts[0]; // e.g., "blog/module.ts" → "blog"
+  } else {
+    // Flat zip — try to parse module ID from the manifest content
+    const content = manifestFile.data.toString();
+    const idMatch = content.match(/id:\s*['"]([^'"]+)['"]/);
+    if (!idMatch) return { ok: false, error: 'Could not determine module ID from module.ts' };
+    moduleId = idMatch[1];
+  }
+
+  const moduleDir = path.join(PATHS.modulesDir, moduleId);
+
+  // Extract all files to modules/<id>/ (simple overlay)
+  let filesWritten = 0;
+  for (const file of files) {
+    if (file.path.endsWith('/')) continue;
+
+    // Determine destination path: strip leading folder if present
+    let relPath = file.path;
+    if (parts.length > 1 && relPath.startsWith(moduleId + '/')) {
+      relPath = relPath.substring(moduleId.length + 1);
+    }
+
+    // Path traversal guard
+    const destPath = path.resolve(moduleDir, relPath);
+    if (!destPath.startsWith(moduleDir + path.sep) && destPath !== moduleDir) continue;
+
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    fs.writeFileSync(destPath, file.data);
+    filesWritten++;
+  }
+
+  // Auto-activate if not yet in _registry.ts
+  const modules = getInstalledModules();
+  const existing = modules.find(m => m.id === moduleId);
+  let activated = false;
+  if (!existing || !existing.active) {
+    const result = toggleModule(moduleId, true);
+    activated = result.ok || false;
+  }
+
+  const manifest = parseModuleManifest(moduleDir);
+
+  return {
+    ok: true,
+    moduleId,
+    filesWritten,
+    activated,
+    version: manifest?.version || 'unknown',
+    name: manifest?.name || moduleId,
+  };
+}
+
+// ---------------------------------------------------------------------------
 
 module.exports = {
   parseModuleManifest,
@@ -377,4 +507,5 @@ module.exports = {
   removeModule,
   exportModule,
   importModule,
+  applyModuleUpdate,
 };

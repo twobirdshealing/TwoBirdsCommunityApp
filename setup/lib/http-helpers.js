@@ -37,82 +37,182 @@ function httpGet(url, timeout) {
   });
 }
 
-/** Create a minimal tar archive from a list of {path, data} entries */
-function createTar(files) {
-  const blocks = [];
-  for (const file of files) {
-    const header = Buffer.alloc(512, 0);
-    // name (100 bytes)
-    const nameBytes = Buffer.from(file.path, 'utf8');
-    nameBytes.copy(header, 0, 0, Math.min(nameBytes.length, 100));
-    // mode (8 bytes at offset 100)
-    Buffer.from('0000644\0', 'ascii').copy(header, 100);
-    // uid (8 bytes at offset 108)
-    Buffer.from('0001000\0', 'ascii').copy(header, 108);
-    // gid (8 bytes at offset 116)
-    Buffer.from('0001000\0', 'ascii').copy(header, 116);
-    // size (12 bytes at offset 124, octal)
-    const sizeOctal = file.data.length.toString(8).padStart(11, '0') + '\0';
-    Buffer.from(sizeOctal, 'ascii').copy(header, 124);
-    // mtime (12 bytes at offset 136)
-    const mtime = Math.floor(Date.now() / 1000).toString(8).padStart(11, '0') + '\0';
-    Buffer.from(mtime, 'ascii').copy(header, 136);
-    // Initialize checksum field with spaces (8 bytes at offset 148)
-    Buffer.from('        ', 'ascii').copy(header, 148);
-    // typeflag (1 byte at offset 156) — '0' for regular file
-    header[156] = 0x30;
-    // magic (6 bytes at offset 257)
-    Buffer.from('ustar\0', 'ascii').copy(header, 257);
-    // version (2 bytes at offset 263)
-    Buffer.from('00', 'ascii').copy(header, 263);
-
-    // Calculate checksum
-    let checksum = 0;
-    for (let i = 0; i < 512; i++) checksum += header[i];
-    const checksumStr = checksum.toString(8).padStart(6, '0') + '\0 ';
-    Buffer.from(checksumStr, 'ascii').copy(header, 148);
-
-    blocks.push(header);
-    blocks.push(file.data);
-    // Pad to 512-byte boundary
-    const remainder = file.data.length % 512;
-    if (remainder > 0) blocks.push(Buffer.alloc(512 - remainder, 0));
+// CRC-32 lookup table (IEEE 802.3 polynomial, used by ZIP)
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    table[i] = c >>> 0;
   }
-  // End-of-archive marker (two empty blocks)
-  blocks.push(Buffer.alloc(1024, 0));
-  return Buffer.concat(blocks);
+  return table;
+})();
+
+function crc32(buf) {
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) crc = CRC32_TABLE[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
 }
 
-/** Parse a tar buffer into an array of {path, data} */
-function parseTar(buffer) {
-  const files = [];
+/**
+ * Create a minimal ZIP archive from a list of {path, data} entries.
+ * Uses DEFLATE compression, falls back to STORED when the deflated payload
+ * would be larger (very small files). Writes local file headers, then a
+ * central directory, then an end-of-central-directory record. No ZIP64.
+ */
+function createZip(files) {
+  const LFH_SIG = 0x04034b50;
+  const CD_SIG = 0x02014b50;
+  const EOCD_SIG = 0x06054b50;
+
+  const parts = [];
+  const cdEntries = [];
   let offset = 0;
-  while (offset < buffer.length - 512) {
-    const header = buffer.subarray(offset, offset + 512);
-    // Check for end-of-archive (first byte zero means null header)
-    if (header[0] === 0) break;
 
-    // Extract name (normalize: strip leading ./ and backslashes)
-    let name = '';
-    for (let i = 0; i < 100 && header[i] !== 0; i++) name += String.fromCharCode(header[i]);
-    name = name.trim().replace(/\\/g, '/').replace(/^\.\//, '');
+  for (const file of files) {
+    const nameBuf = Buffer.from(file.path, 'utf8');
+    const uncompressed = file.data;
+    const uncompressedSize = uncompressed.length;
+    const crc = crc32(uncompressed);
 
-    // Extract size (octal, 12 bytes at offset 124)
-    const sizeStr = header.subarray(124, 136).toString('ascii').trim().replace(/\0/g, '');
-    const size = parseInt(sizeStr, 8) || 0;
-
-    // Type flag
-    const typeflag = header[156];
-
-    offset += 512;
-
-    if (size > 0 && (typeflag === 0x30 || typeflag === 0)) { // regular file
-      const data = buffer.subarray(offset, offset + size);
-      files.push({ path: name, data });
+    let method, payload;
+    if (uncompressedSize === 0) {
+      method = 0;
+      payload = uncompressed;
+    } else {
+      const deflated = zlib.deflateRawSync(uncompressed);
+      if (deflated.length < uncompressedSize) {
+        method = 8;
+        payload = deflated;
+      } else {
+        method = 0;
+        payload = uncompressed;
+      }
     }
 
-    // Skip data blocks (padded to 512)
-    offset += Math.ceil(size / 512) * 512;
+    const lfh = Buffer.alloc(30);
+    lfh.writeUInt32LE(LFH_SIG, 0);
+    lfh.writeUInt16LE(20, 4);                  // version needed
+    lfh.writeUInt16LE(0, 6);                   // general purpose bit flag (utf8 off — we only use ASCII paths)
+    lfh.writeUInt16LE(method, 8);
+    lfh.writeUInt16LE(0, 10);                  // mod time
+    lfh.writeUInt16LE(0x21, 12);               // mod date (1980-01-01)
+    lfh.writeUInt32LE(crc, 14);
+    lfh.writeUInt32LE(payload.length, 18);     // compressed size
+    lfh.writeUInt32LE(uncompressedSize, 22);
+    lfh.writeUInt16LE(nameBuf.length, 26);
+    lfh.writeUInt16LE(0, 28);                  // extra field length
+
+    const localHeaderOffset = offset;
+    parts.push(lfh, nameBuf, payload);
+    offset += 30 + nameBuf.length + payload.length;
+
+    cdEntries.push({ nameBuf, method, crc, compressedSize: payload.length, uncompressedSize, localHeaderOffset });
+  }
+
+  const cdStart = offset;
+  for (const e of cdEntries) {
+    const cd = Buffer.alloc(46);
+    cd.writeUInt32LE(CD_SIG, 0);
+    cd.writeUInt16LE(20, 4);                   // version made by
+    cd.writeUInt16LE(20, 6);                   // version needed
+    cd.writeUInt16LE(0, 8);
+    cd.writeUInt16LE(e.method, 10);
+    cd.writeUInt16LE(0, 12);                   // mod time
+    cd.writeUInt16LE(0x21, 14);                // mod date
+    cd.writeUInt32LE(e.crc, 16);
+    cd.writeUInt32LE(e.compressedSize, 20);
+    cd.writeUInt32LE(e.uncompressedSize, 24);
+    cd.writeUInt16LE(e.nameBuf.length, 28);
+    cd.writeUInt16LE(0, 30);                   // extra field length
+    cd.writeUInt16LE(0, 32);                   // comment length
+    cd.writeUInt16LE(0, 34);                   // disk number start
+    cd.writeUInt16LE(0, 36);                   // internal file attrs
+    cd.writeUInt32LE(0, 38);                   // external file attrs
+    cd.writeUInt32LE(e.localHeaderOffset, 42);
+    parts.push(cd, e.nameBuf);
+    offset += 46 + e.nameBuf.length;
+  }
+
+  const cdSize = offset - cdStart;
+
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(EOCD_SIG, 0);
+  eocd.writeUInt16LE(0, 4);                    // disk number
+  eocd.writeUInt16LE(0, 6);                    // disk with CD
+  eocd.writeUInt16LE(cdEntries.length, 8);
+  eocd.writeUInt16LE(cdEntries.length, 10);
+  eocd.writeUInt32LE(cdSize, 12);
+  eocd.writeUInt32LE(cdStart, 16);
+  eocd.writeUInt16LE(0, 20);                   // comment length
+  parts.push(eocd);
+
+  return Buffer.concat(parts);
+}
+
+/**
+ * Parse a ZIP buffer into an array of {path, data}.
+ * Walks the central directory (robust — works even when entries use data
+ * descriptors where local-file-header sizes are zeroed). Supports STORED
+ * and DEFLATE compression methods, which is everything `zip`/`python -m
+ * zipfile` produce. No ZIP64, no encryption — we don't need them.
+ */
+function parseZip(buffer) {
+  const EOCD_SIG = 0x06054b50;
+  const CD_ENTRY_SIG = 0x02014b50;
+  const LFH_SIG = 0x04034b50;
+
+  // Find End of Central Directory Record. It sits at the end of the file,
+  // optionally followed by a comment up to 65535 bytes long.
+  const maxBack = Math.min(buffer.length, 22 + 65535);
+  let eocdOffset = -1;
+  for (let i = buffer.length - 22; i >= buffer.length - maxBack && i >= 0; i--) {
+    if (buffer.readUInt32LE(i) === EOCD_SIG) { eocdOffset = i; break; }
+  }
+  if (eocdOffset === -1) throw new Error('Not a valid ZIP file (no EOCD record found)');
+
+  const totalEntries = buffer.readUInt16LE(eocdOffset + 10);
+  const cdOffset = buffer.readUInt32LE(eocdOffset + 16);
+
+  const files = [];
+  let cdPos = cdOffset;
+  for (let i = 0; i < totalEntries; i++) {
+    if (buffer.readUInt32LE(cdPos) !== CD_ENTRY_SIG) {
+      throw new Error('Invalid ZIP central directory entry at offset ' + cdPos);
+    }
+    const compressionMethod = buffer.readUInt16LE(cdPos + 10);
+    const compressedSize = buffer.readUInt32LE(cdPos + 20);
+    const fileNameLen = buffer.readUInt16LE(cdPos + 28);
+    const extraFieldLen = buffer.readUInt16LE(cdPos + 30);
+    const fileCommentLen = buffer.readUInt16LE(cdPos + 32);
+    const localHeaderOffset = buffer.readUInt32LE(cdPos + 42);
+    const rawName = buffer.subarray(cdPos + 46, cdPos + 46 + fileNameLen).toString('utf8');
+
+    cdPos += 46 + fileNameLen + extraFieldLen + fileCommentLen;
+
+    // Skip directory entries
+    if (rawName.endsWith('/')) continue;
+
+    // Jump to the local file header to find where the data actually starts
+    if (buffer.readUInt32LE(localHeaderOffset) !== LFH_SIG) {
+      throw new Error('Invalid ZIP local file header for ' + rawName);
+    }
+    const lfhNameLen = buffer.readUInt16LE(localHeaderOffset + 26);
+    const lfhExtraLen = buffer.readUInt16LE(localHeaderOffset + 28);
+    const dataStart = localHeaderOffset + 30 + lfhNameLen + lfhExtraLen;
+    const compressed = buffer.subarray(dataStart, dataStart + compressedSize);
+
+    let data;
+    if (compressionMethod === 0) {
+      data = compressed;
+    } else if (compressionMethod === 8) {
+      data = zlib.inflateRawSync(compressed);
+    } else {
+      throw new Error('Unsupported ZIP compression method ' + compressionMethod + ' for ' + rawName);
+    }
+
+    const name = rawName.replace(/\\/g, '/').replace(/^\.\//, '');
+    files.push({ path: name, data });
   }
   return files;
 }
@@ -198,4 +298,4 @@ function httpsRequest(url, options = {}, redirects = 0) {
   });
 }
 
-module.exports = { checkConnectivity, httpGet, httpsRequest, parseMultipart, parseTar, createTar };
+module.exports = { checkConnectivity, httpGet, httpsRequest, parseMultipart, createZip, parseZip };

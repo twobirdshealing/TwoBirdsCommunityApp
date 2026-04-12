@@ -2,7 +2,7 @@
 
 const { PATHS, VALID_OTA_CHANNELS, VALID_OTA_PLATFORMS, OTA_GROUP_ID_PATTERN } = require('./paths');
 const { readJsonSafe } = require('./file-utils');
-const { runCommand, diagnoseEasError } = require('./eas');
+const { runCommand, diagnoseEasError, getEasVcsEnv } = require('./eas');
 
 /** Check if OTA updates are properly configured */
 async function getOTAStatus() {
@@ -47,7 +47,7 @@ async function pushOTAUpdate(channel, message, platform) {
   }
   try {
     args.push('--json');
-    const output = await runCommand(args, 300000);
+    const output = await runCommand(args, 300000, { env: getEasVcsEnv() });
     try {
       const parsed = JSON.parse(output);
       const items = Array.isArray(parsed) ? parsed : [];

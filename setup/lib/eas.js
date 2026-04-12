@@ -6,6 +6,16 @@ const { spawn } = require('child_process');
 const { PROJECT_DIR, PATHS, VALID_PLATFORMS, VALID_PROFILES, BUILD_ID_PATTERN } = require('./paths');
 const { readJsonSafe, fileExists } = require('./file-utils');
 
+/** Env override for EAS commands when the project has no git repo.
+ *  EAS CLI otherwise prompts the user to run `git init`, which hangs
+ *  any non-TTY call (dashboard HTTP handlers). Returns undefined when
+ *  git IS present so EAS uses its normal VCS flow. */
+let _easVcsEnv;
+function getEasVcsEnv() {
+  if (_easVcsEnv === undefined) _easVcsEnv = fileExists(path.join(PROJECT_DIR, '.git')) ? null : { EAS_NO_VCS: '1' };
+  return _easVcsEnv || undefined;
+}
+
 /** Diagnose EAS CLI errors — checks if eas is installed and logged in */
 async function diagnoseEasError(originalError) {
   try { await runCommand(['eas', '--version'], 5000); }
@@ -55,9 +65,7 @@ async function getEasBuilds() {
 async function startEasBuild(platform, profile, { onSpawn } = {}) {
   if (!VALID_PLATFORMS.includes(platform)) return { ok: false, error: 'Invalid platform' };
   if (!VALID_PROFILES.includes(profile)) return { ok: false, error: 'Invalid profile' };
-  // Auto-detect git — if no repo, tell EAS to skip VCS and use .easignore instead
-  const hasGit = fileExists(path.join(PROJECT_DIR, '.git'));
-  const env = hasGit ? undefined : { EAS_NO_VCS: '1' };
+  const env = getEasVcsEnv();
   try {
     // --no-wait: return immediately after the upload is queued on EAS, instead of blocking until the
     // build itself finishes (which can take hours). The dashboard polls EAS via loadBuilds() for status.
@@ -139,4 +147,4 @@ function getSubmissionsUrl() {
   return '';
 }
 
-module.exports = { diagnoseEasError, runCommand, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission, getSubmissionsUrl };
+module.exports = { diagnoseEasError, runCommand, getEasVcsEnv, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission, getSubmissionsUrl };

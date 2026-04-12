@@ -54,7 +54,7 @@ const { getInstalledModules, toggleModule, removeModule, exportModule, importMod
 const {
   readLicense, writeLicense, readManifest, validateLicense, deactivateLicense,
   createBackup, listBackups, restoreFromBackup, deleteBackup, pruneBackups,
-  applyUpdateFromTar, downloadUpdate, isUpdateInProgress, setUpdateInProgress,
+  applyUpdateFromZip, downloadUpdate, isUpdateInProgress, setUpdateInProgress,
 } = require('./lib/updates');
 const { loadPresets, savePresets, addPreset, removePreset, validateProjectPath, listDirectory } = require('./lib/app-presets');
 
@@ -84,14 +84,9 @@ function startNpmInstall() {
     installProcess.output += '\n' + err.message;
   });
 }
-/** After extracting an update tar, reload the updates module and merge deps with the latest code */
+/** After extracting an update zip, run npm install if package.json changed */
 function finalizeUpdate(result) {
-  if (result.pendingDeps) {
-    delete require.cache[require.resolve('./lib/updates')];
-    const { mergePackageDeps } = require('./lib/updates');
-    result.depsChanged = mergePackageDeps(result.pendingDeps);
-    startNpmInstall();
-  }
+  startNpmInstall();
 }
 
 let lastHeartbeat = Date.now();
@@ -377,7 +372,7 @@ const server = http.createServer(async (req, res) => {
       const result = exportModule(moduleId);
       if (!result.ok) { jsonResponse(res, result, 400); return; }
       res.writeHead(200, {
-        'Content-Type': 'application/gzip',
+        'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="${result.filename}"`,
         'Content-Length': result.data.length,
       });
@@ -390,6 +385,123 @@ const server = http.createServer(async (req, res) => {
       if (parts.length === 0) { jsonResponse(res, { ok: false, error: 'No file uploaded' }, 400); return; }
       const result = importModule(parts[0].data);
       jsonResponse(res, result);
+      return;
+    }
+
+    if (pathname === '/api/modules/upload' && req.method === 'POST') {
+      const { applyModuleUpdate } = require('./lib/modules');
+      const parts = await parseMultipart(req);
+      if (parts.length === 0) { jsonResponse(res, { ok: false, error: 'No file uploaded' }, 400); return; }
+      const result = applyModuleUpdate(parts[0].data);
+      jsonResponse(res, result);
+      return;
+    }
+
+    if (pathname === '/api/modules/licenses' && req.method === 'GET') {
+      const { readModuleLicenses } = require('./lib/updates');
+      jsonResponse(res, { ok: true, licenses: readModuleLicenses() });
+      return;
+    }
+
+    if (pathname === '/api/modules/license' && req.method === 'POST') {
+      const { writeModuleLicense, readManifest } = require('./lib/updates');
+      const { httpsRequest } = require('./lib/http-helpers');
+      const { getSiteUrl, readJsonSafe } = require('./lib/file-utils');
+      const body = await readBody(req);
+      const { moduleId, licenseKey } = JSON.parse(body);
+      if (!moduleId || !licenseKey) { jsonResponse(res, { ok: false, error: 'moduleId and licenseKey required' }, 400); return; }
+
+      // Validate against license server before saving
+      const manifest = readManifest();
+      const activateUrl = (manifest.updateUrl || '').replace(/\/check\s*$/, '/activate');
+      const siteUrl = getSiteUrl(readJsonSafe(PATHS.easJson)) || '';
+      try {
+        const valRes = await httpsRequest(activateUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ licenseKey, siteUrl }),
+          timeout: 15000,
+        });
+        const data = JSON.parse(valRes.body.toString());
+        if (!data.valid) {
+          jsonResponse(res, { ok: false, error: data.error || 'Invalid license key' });
+          return;
+        }
+        writeModuleLicense(moduleId, licenseKey);
+        jsonResponse(res, { ok: true, plan: data.plan, name: data.name });
+      } catch (err) {
+        jsonResponse(res, { ok: false, error: 'Could not validate: ' + err.message });
+      }
+      return;
+    }
+
+    if (pathname === '/api/modules/license' && req.method === 'DELETE') {
+      const { removeModuleLicense } = require('./lib/updates');
+      const body = await readBody(req);
+      const { moduleId } = JSON.parse(body);
+      if (!moduleId) { jsonResponse(res, { ok: false, error: 'moduleId required' }, 400); return; }
+      removeModuleLicense(moduleId);
+      jsonResponse(res, { ok: true });
+      return;
+    }
+
+    // --- Manual Backup ---
+
+    if (pathname === '/api/backups/create' && req.method === 'POST') {
+      const { createBackup, readManifest } = require('./lib/updates');
+      try {
+        const manifest = readManifest();
+        const result = createBackup(manifest.version || '0.0.0');
+        jsonResponse(res, { ok: true, label: result.label });
+      } catch (err) {
+        jsonResponse(res, { ok: false, error: err.message }, 500);
+      }
+      return;
+    }
+
+    // --- Identity (Backup & Restore) ---
+
+    if (pathname === '/api/identity/preview' && req.method === 'GET') {
+      const { extractIdentity } = require('./lib/identity');
+      try {
+        const identity = extractIdentity();
+        jsonResponse(res, { ok: true, identity });
+      } catch (err) {
+        jsonResponse(res, { error: 'Preview failed: ' + err.message }, 500);
+      }
+      return;
+    }
+
+    if (pathname === '/api/identity/export' && req.method === 'GET') {
+      const { createIdentityZip } = require('./lib/identity');
+      try {
+        const zipBuffer = createIdentityZip();
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
+        const filename = `tbc-identity-${timestamp}.zip`;
+        res.writeHead(200, {
+          'Content-Type': 'application/zip',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+          'Content-Length': zipBuffer.length,
+          'Cache-Control': 'no-store',
+        });
+        res.end(zipBuffer);
+      } catch (err) {
+        jsonResponse(res, { error: 'Export failed: ' + err.message }, 500);
+      }
+      return;
+    }
+
+    if (pathname === '/api/identity/import' && req.method === 'POST') {
+      const { applyIdentityZip } = require('./lib/identity');
+      try {
+        const parts = await parseMultipart(req);
+        const filePart = parts.find(p => p.filename);
+        if (!filePart) { jsonResponse(res, { error: 'No file uploaded' }, 400); return; }
+        const result = applyIdentityZip(filePart.data);
+        jsonResponse(res, result);
+      } catch (err) {
+        jsonResponse(res, { error: 'Import failed: ' + err.message }, 500);
+      }
       return;
     }
 
@@ -662,8 +774,8 @@ const server = http.createServer(async (req, res) => {
         const manifest = readManifest();
         const backup = createBackup(manifest.version);
         const key = readLicense();
-        const tarGzBuffer = await downloadUpdate(downloadUrl, key);
-        const result = applyUpdateFromTar(tarGzBuffer);
+        const zipBuffer = await downloadUpdate(downloadUrl, key);
+        const result = applyUpdateFromZip(zipBuffer);
         pruneBackups(3);
 
         finalizeUpdate(result);
@@ -685,17 +797,16 @@ const server = http.createServer(async (req, res) => {
         const filePart = parts.find((p) => p.filename);
         if (!filePart) { jsonResponse(res, { error: 'No file uploaded' }, 400); return; }
 
-        const manifest = readManifest();
-        const backup = createBackup(manifest.version);
-
-        let tarGzBuffer = filePart.data;
         const filename = (filePart.filename || '').toLowerCase();
-        if (filename.endsWith('.zip')) {
-          jsonResponse(res, { error: 'ZIP format not supported yet. Please upload a .tar.gz file.' }, 400);
+        if (!filename.endsWith('.zip')) {
+          jsonResponse(res, { error: 'Please upload a .zip core update file.' }, 400);
           return;
         }
 
-        const result = applyUpdateFromTar(tarGzBuffer);
+        const manifest = readManifest();
+        const backup = createBackup(manifest.version);
+
+        const result = applyUpdateFromZip(filePart.data);
         pruneBackups(3);
 
         finalizeUpdate(result);

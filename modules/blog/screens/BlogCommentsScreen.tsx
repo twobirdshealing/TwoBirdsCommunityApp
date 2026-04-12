@@ -5,7 +5,7 @@
 // =============================================================================
 
 import React from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { BlogCommentSheet } from '@/modules/blog/components/BlogCommentSheet';
 
 export default function BlogCommentsScreen() {
@@ -13,9 +13,12 @@ export default function BlogCommentsScreen() {
   const router = useRouter();
 
   return (
-    <BlogCommentSheet
-      postId={postId ? Number(postId) : null}
-      onClose={() => router.back()}
-    />
+    <>
+      <Stack.Screen options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom', headerShown: false }} />
+      <BlogCommentSheet
+        postId={postId ? Number(postId) : null}
+        onClose={() => router.back()}
+      />
+    </>
   );
 }

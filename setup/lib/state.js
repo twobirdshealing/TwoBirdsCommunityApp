@@ -165,7 +165,7 @@ function runValidation(state) {
     storeSubmission:  { tab: 'config', section: 'app-store-submission' },
     pushNotifications:{ tab: 'config', section: 'push-notifications' },
     brandingAssets:   { tab: 'assets', section: 'branding-assets' },
-    companionPlugins: { tab: 'modules', section: 'companion-plugins' },
+    companionPlugins: { tab: 'updates', section: 'companion-plugins' },
   };
 
   function check(pass, label, category, ref) {

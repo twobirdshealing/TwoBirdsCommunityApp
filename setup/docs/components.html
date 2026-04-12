@@ -458,6 +458,8 @@ export default function HomeScreen() {
   <span class="file-path">components/common/BottomSheet.tsx</span>
   <p>Slide-up modal built on <code>@gorhom/bottom-sheet</code> with keyboard handling, backdrop, and optional title/footer. Also re-exports <code>BottomSheetFlatList</code>, <code>BottomSheetScrollView</code>, <code>BottomSheetTextInput</code>, and <code>BottomSheetFooter</code> for use inside sheets.</p>
 
+  <p class="note"><strong>iOS note:</strong> the shared wrapper passes <code>FullWindowOverlay</code> (from <code>react-native-screens</code>) as <code>containerComponent</code> on iOS. Without it, sheets spawned from a <code>fullScreenModal</code> route mount invisibly beneath the native modal VC (gorhom's portal lives under the root provider). Leave this in place on iOS.</p>
+
   <table class="prop-table">
     <tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr>
     <tr><td>visible</td><td>boolean</td><td>&mdash;</td><td>Show/hide the sheet</td></tr>

@@ -200,14 +200,15 @@ Fluent Community/Cart/Messaging plugin source code kept at `../../playground/Ref
 ### Site-Specific Plugins (in companion folder — not sold)
 Donation addons, donor dashboard, messaging center, checkout prerequisites, participant frontend, message roles, entry review — these are Two Birds Church site-specific plugins kept in `companion plugins/` for reference. Not part of the product and excluded from the white-label snapshot.
 
-### Versioning — Core vs App
+### Versioning — Core vs App (decoupled)
 
-There are two separate version numbers:
+There are two independent version numbers. They are **not** kept in sync:
 
-- **Core version** (`manifest.json` → `version`) — The version of the white-label product/engine. Only we (the devs) control this. Buyers never touch it — it gets overwritten when they apply an update zip. Displayed in the dashboard header badge so buyers can confirm their update applied correctly.
-- **App version** (`app.json` + `package.json`) — The buyer's App Store version. They bump this themselves via the dashboard when submitting to stores.
+- **Core version** (`manifest.json` → `version`) — The version of the white-label product we sell. Controlled entirely by us. Buyers see it as a badge in the dashboard header to confirm which update they have. Starts at `1.0.0` for the commercial launch and grows as we ship core updates (`1.0.1`, `1.1.0`, etc.). Bumped via `npm run snapshot`'s interactive prompt.
+- **Our Two Birds Church app version** (`app.json` + `package.json`) — The version of *our own* TBC church app for our App Store submissions. Bump it via the dashboard or manually when we submit a build. Completely independent of the core version.
+- **Buyer's app version** (`app.json` + `package.json` in their project) — Each buyer's own App Store version, starting at `1.0.0`. The snapshot sed-replaces our version values with `1.0.0` in staging, so buyers always start fresh regardless of where our TBC app is.
 
-When we bump the app version for a release, also bump `manifest.json` → `version` to match so the core version stays in sync.
+The snapshot script only bumps `manifest.json` when we release a new core version — it deliberately does not touch our `package.json` or `app.json`. For our own TBC church app releases, bump `package.json` and `app.json` separately via the dashboard's version buttons.
 
 ### White-Label Snapshot
 

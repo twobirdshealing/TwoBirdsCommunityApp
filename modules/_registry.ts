@@ -25,8 +25,9 @@ import { otpModule } from './otp/module';
 import { profileCompletionModule } from './profile-completion/module';
 import { cartModule } from './cart/module';
 import { multiReactionsModule } from './multi-reactions/module';
-import { adminModule } from './admin/module';
 
+
+import { adminModule } from './admin/module';
 export const MODULES: ModuleManifest[] = [
   calendarModule,
   bookclubModule,
@@ -39,12 +40,14 @@ export const MODULES: ModuleManifest[] = [
   cartModule,
   multiReactionsModule,
   adminModule,
+  adminModule,
 ];
 
 // Inject modules into the core registry (no circular dependency — one-way flow)
 setModules(MODULES);
 
 // =============================================================================
+
 // END YOUR MODULES — Everything below is core. Do not edit.
 // =============================================================================
 

@@ -7,6 +7,10 @@
 #
 # Usage: bash scripts/update-changelog.sh
 #        npm run changelog
+#
+# Environment variables (optional, set by create-white-label.sh):
+#   CHANGELOG_AUTO=1            Skip all interactive prompts (force regenerate)
+#   CHANGELOG_SINCE=<commit>    Override the "previous release" commit baseline
 # =============================================================================
 
 set -euo pipefail
@@ -14,7 +18,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 CHANGELOG="$SOURCE_DIR/CHANGELOG.md"
-VERSION=$(cd "$SOURCE_DIR" && node -p "require('./package.json').version")
+# Read CORE version from manifest.json — this is the product we ship to buyers,
+# not our own Two Birds Church app version (which lives in package.json).
+VERSION=$(cd "$SOURCE_DIR" && node -p "require('./manifest.json').version")
 DATE=$(date +%Y-%m-%d)
 
 # Clean up temp files on exit
@@ -26,32 +32,45 @@ trap 'rm -f "$TEMP" 2>/dev/null' EXIT
 # ---------------------------------------------------------------------------
 
 if [ -f "$CHANGELOG" ] && grep -q "## \[$VERSION\]" "$CHANGELOG"; then
-  echo "Version $VERSION already in CHANGELOG.md."
-  echo ""
-  read -p "Regenerate it? This will replace the existing entry. (y/N) " confirm
-  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    echo "Aborted."
-    exit 0
+  if [ "${CHANGELOG_AUTO:-0}" = "1" ]; then
+    REPLACING=true
+  else
+    echo "Version $VERSION already in CHANGELOG.md."
+    echo ""
+    read -p "Regenerate it? This will replace the existing entry. (y/N) " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+      echo "Aborted."
+      exit 0
+    fi
+    REPLACING=true
   fi
-  REPLACING=true
 else
   REPLACING=false
 fi
 
 # ---------------------------------------------------------------------------
-# Find the previous version bump commit (current branch only)
+# Determine the commit range for this release
 # ---------------------------------------------------------------------------
+# Priority:
+#   1. CHANGELOG_SINCE env var (set by create-white-label.sh from its cached
+#      .last-release-commit file)
+#   2. Most recent "chore: bump version to" commit in git history
+#   3. Fallback: last 50 commits
 
-# Skip the current version's bump, grab the one before it
-PREV_BUMP=$(git log --grep="^chore: bump version to" --format="%H" \
-  | grep -v "$(git log --grep="bump version to $VERSION" --format="%H" | head -1)" \
-  | head -1 || true)
-
-if [ -z "$PREV_BUMP" ]; then
-  echo "Could not find a previous version bump commit. Using last 50 commits."
-  RANGE="HEAD~50..HEAD"
+if [ -n "${CHANGELOG_SINCE:-}" ] && git -C "$SOURCE_DIR" cat-file -e "${CHANGELOG_SINCE}^{commit}" 2>/dev/null; then
+  RANGE="${CHANGELOG_SINCE}..HEAD"
 else
-  RANGE="${PREV_BUMP}..HEAD"
+  # Skip the current version's bump, grab the one before it
+  PREV_BUMP=$(git log --grep="^chore: bump version to" --format="%H" \
+    | grep -v "$(git log --grep="bump version to $VERSION" --format="%H" | head -1)" \
+    | head -1 || true)
+
+  if [ -z "$PREV_BUMP" ]; then
+    echo "Could not find a previous version bump commit. Using last 50 commits."
+    RANGE="HEAD~50..HEAD"
+  else
+    RANGE="${PREV_BUMP}..HEAD"
+  fi
 fi
 
 echo ""
@@ -113,10 +132,13 @@ echo "========================================="
 echo "$ENTRY"
 echo "========================================="
 echo ""
-read -p "Write this to CHANGELOG.md? (Y/n) " write_confirm
-if [[ "$write_confirm" =~ ^[Nn]$ ]]; then
-  echo "Aborted. You can edit CHANGELOG.md manually."
-  exit 0
+
+if [ "${CHANGELOG_AUTO:-0}" != "1" ]; then
+  read -p "Write this to CHANGELOG.md? (Y/n) " write_confirm
+  if [[ "$write_confirm" =~ ^[Nn]$ ]]; then
+    echo "Aborted. You can edit CHANGELOG.md manually."
+    exit 0
+  fi
 fi
 
 # ---------------------------------------------------------------------------

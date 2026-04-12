@@ -528,11 +528,10 @@
 <div class="tab-bar">
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'config' }" x-on:click="switchTab('config')">Config</button>
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'assets' }" x-on:click="switchTab('assets')">Assets</button>
-  <button class="tab-btn" x-bind:class="{ active: activeTab === 'modules' }" x-on:click="switchTab('modules')">Modules</button>
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'builds' }" x-on:click="switchTab('builds')">Builds</button>
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'ota' }" x-on:click="switchTab('ota')">OTA Updates</button>
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'updates' }" x-on:click="switchTab('updates')">Updates</button>
-  <button class="tab-btn" x-bind:class="{ active: activeTab === 'status' }" x-on:click="switchTab('status')">Status</button>
+  <button class="tab-btn" x-bind:class="{ active: activeTab === 'backup' }" x-on:click="switchTab('backup')">Backup</button>
 </div>
 
 <!-- Quick Commands Toolbar -->
@@ -1200,8 +1199,8 @@
   </div>
 </div>
 
-<!-- ============== Modules Tab ============== -->
-<div class="tab-content" x-bind:class="{ active: activeTab === 'modules' }">
+<!-- Modules tab merged into Updates tab -->
+<div style="display:none">
   <div class="card">
     <div class="card-header">
       <h3>Install Module</h3>
@@ -1212,9 +1211,9 @@
            x-on:dragover.prevent="$el.classList.add('dragover')"
            x-on:dragleave="$el.classList.remove('dragover')"
            x-on:drop.prevent="$el.classList.remove('dragover'); importModuleFile($event)">
-        <div style="font-size:16px;margin-bottom:4px">Drop a module package here (.tar.gz)</div>
+        <div style="font-size:16px;margin-bottom:4px">Drop a module package here (.zip)</div>
         <div style="font-size:12px;color:var(--text-muted)">Or click to browse. The module will be extracted, registered, and ready after your next build.</div>
-        <input type="file" accept=".tar.gz,.tgz" x-ref="moduleImportInput" style="display:none"
+        <input type="file" accept=".zip" x-ref="moduleImportInput" style="display:none"
                x-on:change="importModuleFile($event)">
       </div>
     </div>
@@ -1657,153 +1656,366 @@
 </div>
 <!-- ============== Updates Tab ============== -->
 <div class="tab-content" x-bind:class="{ active: activeTab === 'updates' }">
-  <!-- License Section -->
-  <div class="card">
-    <div class="card-header"><h3>License</h3></div>
-    <div class="card-body">
-      <div class="license-row">
-        <div class="license-input-group">
-          <input type="text" x-model="licenseKeyInput" class="input" placeholder="Enter your license key (e.g. TBC-XXXX-XXXX-XXXX)" spellcheck="false"
-                 x-show="!license.hasLicense" style="max-width:400px;font-family:monospace">
-          <button class="btn btn-primary" x-on:click="activateLicense()" x-show="!license.hasLicense">Activate</button>
-          <button class="btn btn-danger-subtle" x-on:click="removeLicense()" x-show="license.hasLicense">Remove</button>
-        </div>
-        <div class="license-status" x-bind:class="licenseStatus.cssClass">
-          <span x-show="licenseStatus.state === 'checking'">Checking license...</span>
-          <span x-show="licenseStatus.state === 'valid'"><ion-icon name="checkmark-circle" style="font-size:14px;vertical-align:middle;margin-right:4px"></ion-icon> Licensed<span x-show="licenseStatus.plan" x-text="' · ' + licenseStatus.plan + ' plan'"></span><span x-show="licenseStatus.expiry" x-text="' · Expires ' + licenseStatus.expiry"></span></span>
-          <span x-show="licenseStatus.state === 'invalid'" x-text="licenseStatus.error"></span>
-          <span x-show="licenseStatus.state === 'activating'">Activating...</span>
-        </div>
-      </div>
+
+  <!-- ============ Core App Card ============ -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <h3 style="margin:0">Core</h3>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" x-on:click="$refs.manualUpdateFile.click()">Upload Update</button>
+      <input type="file" x-ref="manualUpdateFile" accept=".zip" style="display:none"
+             x-on:change="handleManualUpdateFile($event)">
     </div>
   </div>
 
-  <!-- Version Info -->
-  <div class="card">
-    <div class="card-body" style="padding:12px 16px">
-      <div class="version-info-bar">
-        <div class="version-info-item">
-          <span class="version-info-label">Core</span>
-          <span class="version-info-value core" x-text="'v' + (config.coreVersion || '?')">--</span>
+  <div class="module-card" style="margin-bottom:16px">
+    <div class="module-card-header">
+      <div class="module-card-icon"><ion-icon name="cube-outline"></ion-icon></div>
+      <div style="flex:1;min-width:0">
+        <div class="module-card-title">
+          TBC Community App
+          <span class="module-card-version" x-text="'v' + (config.coreVersion || '?')"></span>
         </div>
-        <div class="version-info-item">
-          <span class="version-info-label">App</span>
-          <span class="version-info-value app" x-text="'v' + (config.version || '?')">--</span>
-        </div>
-        <span class="version-info-hint">Core = update engine &middot; App = your App Store version</span>
+        <div class="module-card-desc">Core app framework, screens, services, and dashboard</div>
       </div>
+    </div>
+
+    <!-- Core license -->
+    <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <template x-if="!license.hasLicense">
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <input type="text" x-model="licenseKeyInput" class="input" placeholder="Enter license key" spellcheck="false"
+                 style="max-width:320px;font-family:monospace;font-size:12px;padding:4px 8px">
+          <button class="btn btn-sm btn-primary" x-on:click="activateLicense()">Activate</button>
+        </div>
+      </template>
+      <template x-if="license.hasLicense">
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <span x-show="licenseStatus.state === 'valid'" style="color:var(--green)">
+            <ion-icon name="checkmark-circle" style="font-size:14px;vertical-align:middle"></ion-icon>
+            Licensed<span x-show="licenseStatus.plan" x-text="' · ' + licenseStatus.plan"></span><span x-show="licenseStatus.expiry" x-text="' · Expires ' + licenseStatus.expiry"></span>
+          </span>
+          <span x-show="licenseStatus.state === 'checking'" style="color:var(--text-muted)">Checking...</span>
+          <span x-show="licenseStatus.state === 'invalid'" style="color:var(--red)" x-text="licenseStatus.error"></span>
+          <button class="btn btn-sm btn-danger-subtle" x-on:click="removeLicense()">Remove</button>
+        </div>
+      </template>
+    </div>
+
+    <!-- Core update status -->
+    <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px">
+      <!-- Up to date -->
+      <div x-show="updateState.state === 'up-to-date'" style="color:var(--green)">
+        <ion-icon name="checkmark-circle" style="font-size:14px;vertical-align:middle;margin-right:4px"></ion-icon>
+        Up to date
+      </div>
+      <!-- No license -->
+      <div x-show="updateState.state === 'no-license'" style="color:var(--text-muted)">Enter a license key to check for updates</div>
+      <!-- Error -->
+      <div x-show="updateState.state === 'error'" style="color:var(--red)" x-text="updateState.error"></div>
+      <!-- Available -->
+      <div x-show="updateState.state === 'available'" class="update-available">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="color:var(--accent);font-weight:600" x-text="'Update available: v' + (updateState.version || '?')"></span>
+          <span style="color:var(--text-muted)" x-text="updateState.date || ''"></span>
+        </div>
+        <div x-show="updateState.changelog" class="update-changelog" x-html="sanitizeHtml(updateState.changelog)" style="max-height:120px;overflow-y:auto;margin-bottom:8px"></div>
+        <button class="btn btn-sm btn-primary" x-on:click="applyLicenseUpdate(updateState.downloadUrl, updateState.version)" x-text="'Update to v' + (updateState.version || '?')"></button>
+      </div>
+      <!-- Applying -->
+      <div x-show="updateState.state === 'applying'" class="update-progress">
+        <div class="step" x-bind:class="updateState.step >= 1 ? (updateState.step > 1 ? 'done' : 'active') : ''">
+          <span x-text="updateState.step > 1 && updateState.backupName ? 'Backed up' : 'Backing up...'"></span>
+        </div>
+        <div class="step" x-bind:class="updateState.step >= 2 ? (updateState.step > 2 ? 'done' : 'active') : ''">
+          <span x-text="updateState.step > 2 ? 'Downloaded' : 'Downloading...'"></span>
+        </div>
+        <div class="step" x-bind:class="updateState.step >= 3 ? 'done' : ''">
+          <span x-text="updateState.step >= 3 ? updateState.filesWritten + ' files updated' : 'Applying...'"></span>
+        </div>
+      </div>
+      <!-- Done -->
+      <div x-show="updateState.state === 'done'" style="color:var(--green)">
+        <ion-icon name="checkmark-circle" style="font-size:14px;vertical-align:middle;margin-right:4px"></ion-icon>
+        Updated to v<span x-text="updateState.version"></span> (<span x-text="updateState.filesWritten"></span> files)
+        <template x-if="updateState.dashboardUpdated">
+          <div style="color:var(--text-secondary);margin-top:4px"><ion-icon name="warning-outline" style="vertical-align:middle"></ion-icon> Dashboard updated — restart with <code>npm run dashboard</code></div>
+        </template>
+      </div>
+      <!-- Checking -->
+      <div x-show="updateState.state === 'checking'" style="color:var(--text-muted)"><span class="spinner"></span> Checking...</div>
+      <!-- Manual update status -->
+      <div x-show="manualUpdate.state === 'uploading'" style="color:var(--text-muted)"><span class="spinner"></span> Applying <span x-text="manualUpdate.fileName"></span>...</div>
+      <div x-show="manualUpdate.state === 'done'" style="color:var(--green)">
+        <ion-icon name="checkmark-circle" style="font-size:14px;vertical-align:middle;margin-right:4px"></ion-icon>
+        <span x-text="manualUpdate.filesWritten + ' files updated'"></span>
+        <template x-if="manualUpdate.newVersion"> — v<span x-text="manualUpdate.newVersion"></span></template>
+      </div>
+      <div x-show="manualUpdate.state === 'error'" style="color:var(--red)" x-text="'Upload failed: ' + manualUpdate.error"></div>
+    </div>
+
+    <!-- Core companion plugins -->
+    <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px" id="section-companion-plugins">
+      <template x-for="plugin in (plugins.core || [])" :key="plugin.label">
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+          <span class="status-icon" x-bind:class="plugin.exists ? 'status-pass' : 'status-fail'" style="font-size:14px">
+            <ion-icon x-bind:name="plugin.exists ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+          </span>
+          <span x-text="plugin.label"></span>
+          <template x-if="plugin.exists"><span style="font-family:var(--font-mono);color:var(--text-muted)" x-text="'v' + plugin.version"></span></template>
+          <template x-if="!plugin.exists"><span style="color:var(--red)">Not installed</span></template>
+        </div>
+      </template>
+    </div>
+
+  </div>
+
+  <!-- ============ Module Cards ============ -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <h3 style="margin:0">Modules</h3>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-sm" x-on:click="$refs.installModuleInput.click()">Upload Module</button>
+      <input type="file" accept=".zip" x-ref="installModuleInput" style="display:none"
+             x-on:change="uploadModuleUpdate($event)">
     </div>
   </div>
 
-  <!-- Core Updates Section -->
-  <div class="card">
-    <div class="card-header">
-      <h3>Core Updates</h3>
-      <button class="btn btn-sm" x-on:click="checkForUpdates()" x-bind:disabled="updateChecking"
-              x-text="updateChecking ? 'Checking...' : 'Check Now'">Check Now</button>
-    </div>
-    <div class="card-body">
-      <div class="update-status">
-        <!-- No license -->
-        <p x-show="updateState.state === 'no-license'" style="color:var(--text-secondary)">Enter your license key to check for updates.</p>
-        <!-- Checking -->
-        <p x-show="updateState.state === 'checking'" style="color:var(--text-secondary)">Checking for updates...</p>
-        <!-- Up to date -->
-        <div x-show="updateState.state === 'up-to-date'" class="update-up-to-date">
-          <ion-icon name="checkmark-circle" style="font-size:16px;vertical-align:middle;margin-right:4px"></ion-icon>
-          You are on the latest version (<span x-text="'v' + (updateState.currentVersion || '?')"></span>)
-        </div>
-        <!-- Error -->
-        <div x-show="updateState.state === 'error'" class="update-result error"><strong x-text="updateState.errorTitle || 'Error'"></strong> <span x-text="updateState.error"></span></div>
-        <!-- Available -->
-        <div x-show="updateState.state === 'available'" class="update-available">
-          <h4 x-text="'Update Available: v' + (updateState.version || '?')"></h4>
-          <div class="update-meta">
-            Released <span x-text="updateState.date || 'recently'"></span>
-            <span x-show="updateState.sizeMB" x-text="' · ' + updateState.sizeMB + ' MB'"></span>
-            · Current: <span x-text="'v' + (updateState.currentVersion || '?')"></span>
+  <div class="loading" x-show="modulesLoading"><span class="spinner"></span> Loading modules...</div>
+  <div x-show="!modulesLoading && modules.length === 0" style="padding:16px;color:var(--text-secondary)">No modules installed. Click "Install Module" to upload a module zip.</div>
+
+  <template x-for="mod in modules" :key="mod.id">
+    <div class="module-card" style="margin-bottom:12px">
+      <div class="module-card-header">
+        <div class="module-card-icon"><ion-icon name="extension-puzzle-outline"></ion-icon></div>
+        <div style="flex:1;min-width:0">
+          <div class="module-card-title">
+            <span x-text="mod.name"></span>
+            <span class="module-card-version" x-text="'v' + (mod.version || '?')"></span>
           </div>
-          <div x-show="updateState.changelog" class="update-changelog" x-html="sanitizeHtml(updateState.changelog)"></div>
-          <div class="update-actions">
-            <button class="btn btn-primary" x-on:click="applyLicenseUpdate(updateState.downloadUrl, updateState.version)" x-text="'Backup & Update to v' + (updateState.version || '?')"></button>
+          <div class="module-card-desc" x-text="mod.description || mod.folder"></div>
+          <div class="module-card-meta" style="margin-top:4px">
+            <template x-if="mod.author"><span class="meta-tag" x-text="mod.author"></span></template>
+            <span class="meta-tag" x-text="mod.fileCount + ' files'"></span>
           </div>
         </div>
-        <!-- Applying -->
-        <div x-show="updateState.state === 'applying'" class="update-progress">
-          <div class="step" x-bind:class="updateState.step >= 1 ? (updateState.step > 1 ? 'done' : 'active') : ''">
-            <template x-if="updateState.step > 1"><ion-icon name="checkmark-outline" style="vertical-align:middle;margin-right:4px"></ion-icon></template>
-            <span x-text="updateState.step > 1 && updateState.backupName ? 'Backed up (saved as ' + updateState.backupName + ')' : 'Backing up current project...'"></span>
-          </div>
-          <div class="step" x-bind:class="updateState.step >= 2 ? (updateState.step > 2 ? 'done' : 'active') : ''">
-            <template x-if="updateState.step > 2"><ion-icon name="checkmark-outline" style="vertical-align:middle;margin-right:4px"></ion-icon></template>
-            <span x-text="updateState.step > 2 ? 'Downloaded' : 'Downloading update...'"></span>
-          </div>
-          <div class="step" x-bind:class="updateState.step >= 3 ? 'done' : ''">
-            <template x-if="updateState.step >= 3"><ion-icon name="checkmark-outline" style="vertical-align:middle;margin-right:4px"></ion-icon></template>
-            <span x-text="updateState.step >= 3 ? 'Applied (' + updateState.filesWritten + ' files updated, config preserved)' : 'Applying update...'"></span>
-          </div>
-        </div>
-        <!-- Done -->
-        <div x-show="updateState.state === 'done'">
-          <div class="update-progress">
-            <div class="step done"><ion-icon name="checkmark-outline" style="vertical-align:middle;margin-right:4px"></ion-icon> <span x-text="'Backed up (saved as ' + updateState.backupName + ')'"></span></div>
-            <div class="step done"><ion-icon name="checkmark-outline" style="vertical-align:middle;margin-right:4px"></ion-icon> Downloaded</div>
-            <div class="step done"><ion-icon name="checkmark-outline" style="vertical-align:middle;margin-right:4px"></ion-icon> <span x-text="'Applied (' + updateState.filesWritten + ' files updated, config preserved)'"></span></div>
-          </div>
-          <div class="update-result success">
-            <strong>Update applied successfully!</strong>
-            <template x-if="updateState.depsChanged"><br><br><ion-icon name="sync-outline" style="font-size:14px;vertical-align:middle"></ion-icon> Dependencies updated &mdash; installing automatically. Check the banner above for progress.</template>
-          </div>
-          <template x-if="updateState.dashboardUpdated">
-            <div class="update-result" style="margin-top:12px"><strong><ion-icon name="warning-outline" style="font-size:14px;vertical-align:middle"></ion-icon> Dashboard updated.</strong><br>Stop the server, close this tab, then run <code>npm run dashboard</code> again.</div>
+      </div>
+      <!-- Integrations + visibility -->
+      <template x-if="(mod.integrations && mod.integrations.length > 0) || (mod.visibilityKeys && mod.visibilityKeys.length > 0)">
+        <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          <template x-for="intg in (mod.integrations || [])" :key="intg"><span class="int-tag" x-text="intg"></span></template>
+          <template x-if="mod.visibilityKeys && mod.visibilityKeys.length > 0">
+            <span style="color:var(--text-muted);margin-left:4px">
+              Visibility: <template x-for="vk in mod.visibilityKeys" :key="vk"><code style="margin:0 2px" x-text="vk"></code></template>
+            </span>
           </template>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Manual Update Section -->
-  <div class="card">
-    <div class="card-header"><h3>Manual Update</h3></div>
-    <div class="card-body">
-      <p class="hint-text">Upload a core update package (.tar.gz) to apply it manually. Useful for testing or offline updates.</p>
-      <div class="upload-zone" x-show="manualUpdate.showUpload"
-           x-on:dragover.prevent="$el.classList.add('dragover')"
-           x-on:dragleave="$el.classList.remove('dragover')"
-           x-on:drop.prevent="$el.classList.remove('dragover'); handleManualUpdateDrop($event)">
-        <input type="file" x-ref="manualUpdateFile" accept=".tar.gz,.tgz" style="display:none"
-               x-on:change="handleManualUpdateFile($event)">
-        <div class="upload-prompt" x-on:click="$refs.manualUpdateFile.click()">
-          <span class="upload-icon"><ion-icon name="archive-outline"></ion-icon></span>
-          <span>Drop a <strong>.tar.gz</strong> update file here or <strong>click to browse</strong></span>
+      </template>
+      <template x-if="mod.companionPlugin">
+        <div style="padding:6px 16px;border-top:1px solid var(--border);font-size:12px;display:flex;align-items:center;gap:8px">
+          <span style="color:var(--text-muted)">WP Plugin:</span>
+          <span class="status-icon" x-bind:class="mod.companionExists ? 'status-pass' : 'status-fail'" style="font-size:14px">
+            <ion-icon x-bind:name="mod.companionExists ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+          </span>
+          <span x-text="mod.companionPlugin"></span>
+          <template x-if="mod.companionExists"><span style="font-family:var(--font-mono);color:var(--text-muted)" x-text="'v' + mod.companionVersion"></span></template>
+          <template x-if="!mod.companionExists"><span style="color:var(--red);font-size:11px">Not found — install on your WordPress site</span></template>
         </div>
+      </template>
+
+      <!-- Module update available -->
+      <template x-if="moduleUpdates[mod.id]">
+        <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px" class="update-available">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="color:var(--accent);font-weight:600" x-text="'Update available: v' + moduleUpdates[mod.id].version"></span>
+            <span style="color:var(--text-muted)" x-text="moduleUpdates[mod.id].date || ''"></span>
+          </div>
+          <div x-show="moduleUpdates[mod.id].changelog" style="max-height:80px;overflow-y:auto;font-size:11px;color:var(--text-secondary);margin-bottom:6px" x-html="sanitizeHtml(moduleUpdates[mod.id].changelog)"></div>
+          <button class="btn btn-sm btn-primary" x-on:click="uploadModuleUpdateFor(mod.id)" x-text="'Update to v' + moduleUpdates[mod.id].version">Update</button>
+        </div>
+      </template>
+
+      <!-- Module license -->
+      <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <template x-if="!moduleLicenses[mod.id]">
+          <div style="display:flex;align-items:center;gap:8px;flex:1">
+            <input type="text" class="input" placeholder="License key (optional)" spellcheck="false"
+                   x-model="modLicenseInputs[mod.id]"
+                   style="max-width:280px;font-family:monospace;font-size:12px;padding:4px 8px">
+            <button class="btn btn-sm btn-primary" x-on:click="activateModuleLicense(mod.id)">Activate</button>
+          </div>
+        </template>
+        <template x-if="moduleLicenses[mod.id]">
+          <div style="display:flex;align-items:center;gap:8px;flex:1">
+            <span style="color:var(--green)">
+              <ion-icon name="checkmark-circle" style="font-size:14px;vertical-align:middle"></ion-icon> Licensed
+            </span>
+            <button class="btn btn-sm btn-danger-subtle" x-on:click="removeModuleLicense(mod.id)">Remove</button>
+          </div>
+        </template>
       </div>
-      <!-- Manual update status -->
-      <div x-show="manualUpdate.state === 'uploading'" class="update-progress">
-        <div class="step active" x-text="'Uploading and applying ' + manualUpdate.fileName + '...'"></div>
+      <div class="module-card-footer">
+        <template x-if="mod.active"><button class="btn btn-sm" x-on:click="toggleMod(mod.id, false)">Deactivate</button></template>
+        <template x-if="!mod.active"><button class="btn btn-sm btn-primary" x-on:click="toggleMod(mod.id, true)">Activate</button></template>
+        <button class="btn btn-sm" x-on:click="uploadModuleUpdateFor(mod.id)">Upload Update</button>
+        <a class="btn btn-sm" x-bind:href="'/api/modules/export/' + encodeURIComponent(mod.id)" download>Export</a>
+        <button class="btn btn-sm btn-danger-subtle" x-on:click="removeMod(mod.id, mod.name)">Remove</button>
       </div>
-      <div x-show="manualUpdate.state === 'done'" class="update-result success">
-        <strong>Update applied!</strong><br>
-        <span x-text="manualUpdate.filesWritten + ' files updated, config preserved.'"></span><br>
-        Backup saved as: <span x-text="manualUpdate.backupName"></span>
-        <template x-if="manualUpdate.newVersion"><br>Updated to version <span x-text="manualUpdate.newVersion"></span></template>
-        <template x-if="manualUpdate.depsChanged"><br><br><ion-icon name="sync-outline" style="font-size:14px;vertical-align:middle"></ion-icon> Dependencies updated &mdash; installing automatically. Check the banner above for progress.</template>
+    </div>
+  </template>
+</div>
+
+<!-- ============== Backup Tab ============== -->
+<div class="tab-content" x-bind:class="{ active: activeTab === 'backup' }">
+  <!-- Full identity preview -->
+  <div class="card">
+    <div class="card-header">
+      <h3>App Identity</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-sm" x-on:click="loadBackupPreview()" x-bind:disabled="backupPreviewLoading"
+                x-text="backupPreviewLoading ? 'Loading...' : 'Refresh'">Refresh</button>
+        <button class="btn btn-sm" x-on:click="$refs.identityImportInput.click()" x-bind:disabled="backupImporting"
+                x-text="backupImporting ? 'Restoring...' : 'Restore'">Restore</button>
+        <button class="btn btn-sm btn-primary" x-on:click="createManualBackup()" x-bind:disabled="manualBackupRunning"
+                x-text="manualBackupRunning ? 'Creating...' : 'Create Backup'">Create Backup</button>
+        <input type="file" accept=".zip" x-ref="identityImportInput" style="display:none"
+               x-on:change="uploadIdentityImport($event)">
       </div>
-      <div x-show="manualUpdate.state === 'error'" class="update-result error">
-        <strong>Upload failed:</strong> <span x-text="manualUpdate.error"></span>
-      </div>
+    </div>
+    <div class="card-body">
+      <template x-if="backupIdentity">
+        <div>
+          <div x-on:click="identityDetailsOpen = !identityDetailsOpen" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 0;user-select:none">
+            <ion-icon x-bind:name="identityDetailsOpen ? 'chevron-down' : 'chevron-forward'" style="font-size:16px;color:var(--text-secondary)"></ion-icon>
+            <span style="font-size:13px;color:var(--text-secondary)">
+              Identity details — <span x-text="Object.keys(backupIdentity.config).length"></span> config values,
+              <span x-text="backupIdentity.assets.length"></span> assets,
+              <span x-text="backupIdentity.activeModuleIds.length"></span> modules,
+              <span x-text="(backupIdentity.coreLicense ? 1 : 0) + Object.keys(backupIdentity.moduleLicenses || {}).length"></span> licenses
+            </span>
+            <span style="font-size:11px;margin-left:auto" x-text="validation.pass + ' pass / ' + validation.fail + ' fail / ' + validation.warn + ' warn'"
+                  x-bind:style="validation.fail > 0 ? 'color:var(--red)' : validation.warn > 0 ? 'color:var(--orange, #e67e22)' : 'color:var(--green)'"></span>
+          </div>
+          <div x-show="identityDetailsOpen" x-transition>
+          <!-- Config Values with validation status -->
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
+            Config Values
+          </div>
+          <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px">
+            <table style="width:100%;font-size:12px;border-collapse:collapse">
+              <template x-for="[key, val] in Object.entries(backupIdentity.config)" :key="key">
+                <tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:6px 8px;width:24px">
+                    <span class="status-icon" x-bind:class="val ? 'status-pass' : 'status-fail'" style="font-size:14px">
+                      <ion-icon x-bind:name="val ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+                    </span>
+                  </td>
+                  <td style="padding:6px 8px;font-weight:500;color:var(--text-secondary);white-space:nowrap;width:180px" x-text="key"></td>
+                  <td style="padding:6px 8px;font-family:var(--font-mono);word-break:break-all">
+                    <template x-if="val">
+                      <span>
+                        <span x-text="val"></span>
+                        <template x-if="typeof val === 'string' && val.match(/^#[0-9a-fA-F]{3,8}$/)">
+                          <span style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;margin-left:6px;border:1px solid var(--border)" x-bind:style="'background:' + val"></span>
+                        </template>
+                      </span>
+                    </template>
+                    <template x-if="!val">
+                      <span style="color:var(--text-muted);font-style:italic">not set</span>
+                    </template>
+                  </td>
+                  <td style="padding:6px 8px;width:100px;text-align:right">
+                    <a href="#" class="ref" x-on:click.prevent="goToSection(getConfigRef(key))" style="font-size:11px;white-space:nowrap">Go to setting &rarr;</a>
+                  </td>
+                </tr>
+              </template>
+            </table>
+          </div>
+
+          <!-- Assets -->
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
+            Branding Assets <span style="font-weight:400" x-text="'(' + backupIdentity.assets.length + ')'"></span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+            <template x-for="a in backupIdentity.assets" :key="a">
+              <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;font-size:11px;display:flex;align-items:center;gap:6px">
+                <span class="status-icon status-pass" style="font-size:14px"><ion-icon name="checkmark-circle"></ion-icon></span>
+                <span x-text="a"></span>
+              </div>
+            </template>
+          </div>
+
+          <!-- Credentials -->
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Credentials</div>
+          <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px">
+            <table style="width:100%;font-size:12px;border-collapse:collapse">
+              <template x-for="[label, key] in [['App Store Connect API Key (.p8)', 'hasAscApiKey'], ['Firebase Android (google-services.json)', 'hasGoogleServicesAndroid'], ['Firebase iOS (GoogleService-Info.plist)', 'hasGoogleServicesIos'], ['Google Play Service Account Key', 'hasGooglePlayKey']]" :key="key">
+                <tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:6px 8px;width:24px">
+                    <span class="status-icon" x-bind:class="backupIdentity.credentials[key] ? 'status-pass' : 'status-warn'" style="font-size:14px">
+                      <ion-icon x-bind:name="backupIdentity.credentials[key] ? 'checkmark-circle' : 'warning'"></ion-icon>
+                    </span>
+                  </td>
+                  <td style="padding:6px 8px" x-text="label"></td>
+                  <td style="padding:6px 8px;text-align:right" x-bind:style="backupIdentity.credentials[key] ? 'color:var(--green)' : 'color:var(--text-muted)'" x-text="backupIdentity.credentials[key] ? 'Found' : 'Not uploaded'"></td>
+                </tr>
+              </template>
+            </table>
+          </div>
+
+          <!-- Licenses -->
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Licenses</div>
+          <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px">
+            <table style="width:100%;font-size:12px;border-collapse:collapse">
+              <tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:6px 8px;width:24px">
+                  <span class="status-icon" x-bind:class="backupIdentity.coreLicense ? 'status-pass' : 'status-fail'" style="font-size:14px">
+                    <ion-icon x-bind:name="backupIdentity.coreLicense ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+                  </span>
+                </td>
+                <td style="padding:6px 8px">Core License</td>
+                <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono)" x-text="backupIdentity.coreLicense ? backupIdentity.coreLicense.substring(0, 12) + '...' : 'Not set'"></td>
+              </tr>
+              <template x-for="[modId, modKey] in Object.entries(backupIdentity.moduleLicenses || {})" :key="modId">
+                <tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:6px 8px;width:24px">
+                    <span class="status-icon status-pass" style="font-size:14px"><ion-icon name="checkmark-circle"></ion-icon></span>
+                  </td>
+                  <td style="padding:6px 8px" x-text="modId + ' license'"></td>
+                  <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono)" x-text="modKey.substring(0, 12) + '...'"></td>
+                </tr>
+              </template>
+            </table>
+          </div>
+
+          <!-- Active Modules -->
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
+            Active Modules <span style="font-weight:400" x-text="'(' + backupIdentity.activeModuleIds.length + ')'"></span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px">
+            <template x-for="m in backupIdentity.activeModuleIds" :key="m">
+              <span style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);padding:4px 10px;font-size:11px;font-family:var(--font-mono)" x-text="m"></span>
+            </template>
+            <span x-show="backupIdentity.activeModuleIds.length === 0" style="font-size:12px;color:var(--text-muted)">No modules active</span>
+          </div>
+
+          <!-- Module Imports -->
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Module Imports (from _registry.ts)</div>
+          <pre style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:11px;overflow-x:auto;margin-bottom:4px;white-space:pre-wrap" x-text="backupIdentity.moduleImportBlock || '(empty)'"></pre>
+          </div>
+        </div>
+      </template>
+
+      <div class="loading" x-show="backupPreviewLoading"><span class="spinner"></span> Loading identity...</div>
     </div>
   </div>
 
-  <!-- Backups Section -->
+  <!-- Backups -->
   <div class="card">
     <div class="card-header">
       <h3>Backups</h3>
-      <button class="btn btn-sm" x-on:click="loadBackups()">Refresh</button>
     </div>
     <div class="card-body">
       <template x-if="backups.length === 0">
-        <p class="no-backups">No backups yet. A backup is created automatically before each update.</p>
+        <p class="no-backups">No backups yet. Click "Create Backup" above or backups are created automatically before each core update.</p>
       </template>
       <template x-for="b in backups" :key="b.id">
         <div class="backup-card">
@@ -1812,6 +2024,7 @@
             <div class="backup-meta" x-text="b.date + ' · ' + b.sizeMB + ' MB'"></div>
           </div>
           <div class="backup-actions">
+            <a class="btn btn-sm" x-bind:href="'/api/identity/export'" download>Download</a>
             <button class="btn btn-sm" x-on:click="restoreBackup(b.id, b.version)">Restore</button>
             <button class="btn btn-sm btn-danger-subtle" x-on:click="deleteOneBackup(b.id)">Delete</button>
           </div>
@@ -1819,10 +2032,12 @@
       </template>
     </div>
   </div>
+
+
 </div>
 
-<!-- ============== Status Tab ============== -->
-<div class="tab-content" x-bind:class="{ active: activeTab === 'status' }">
+<!-- Status tab content kept for validation state — merged into Backup tab -->
+<div style="display:none">
   <div class="card">
     <div class="card-header">
       <h3>Validation Checks</h3>
@@ -1873,7 +2088,6 @@
       </div>
     </div>
   </div>
-  <div class="btn-group"><button class="btn" x-on:click="loadState()">Re-check All</button></div>
 </div>
 
 <!-- ============== Toast ============== -->
@@ -2038,6 +2252,21 @@ document.addEventListener('alpine:init', () => {
     otaHistoryLoading: false,
     otaHistoryError: '',
 
+    // Module licenses + updates
+    moduleLicenses: {},
+    modLicenseInputs: {},
+    moduleUpdates: {},
+
+    // Backup (Identity)
+    identityDetailsOpen: false,
+    manualBackupRunning: false,
+    backupTabLoaded: false,
+    backupIdentity: null,
+    backupPreviewLoading: false,
+    backupImporting: false,
+    backupImportResult: null,
+    backupImportError: '',
+
     // Updates
     updatesLoaded: false,
     license: { hasLicense: false, valid: false, key: '' },
@@ -2180,7 +2409,8 @@ document.addEventListener('alpine:init', () => {
         if (tab === 'builds' && !this.presetLoaded) this.loadPreset();
         if (tab === 'ota' && !this.otaLoaded) this.loadOTATab();
         if (tab === 'modules' && !this.modulesLoaded) this.loadModules();
-        if (tab === 'updates' && !this.updatesLoaded) this.loadUpdatesTab();
+        if (tab === 'updates' && !this.updatesLoaded) { this.loadUpdatesTab(); if (!this.modulesLoaded) this.loadModules(); this.loadModuleLicenses(); }
+        if (tab === 'backup' && !this.backupTabLoaded) this.loadBackupTab();
       });
     },
 
@@ -2834,6 +3064,147 @@ bumpVersion(type) {
       } catch (err) { this.showToast('Import error: ' + err.message, 'error'); }
     },
 
+    async loadModuleLicenses() {
+      try {
+        var res = await fetch('/api/modules/licenses');
+        var data = await res.json();
+        if (data.ok) this.moduleLicenses = data.licenses || {};
+      } catch {}
+    },
+
+    async activateModuleLicense(modId) {
+      var key = this.modLicenseInputs[modId];
+      if (!key) { this.showToast('Enter a license key', 'error'); return; }
+      try {
+        var res = await fetch('/api/modules/license', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ moduleId: modId, licenseKey: key })
+        });
+        var data = await res.json();
+        if (data.ok) {
+          this.moduleLicenses[modId] = key;
+          this.modLicenseInputs[modId] = '';
+          this.showToast('License activated for ' + modId, 'success');
+        } else this.showToast(data.error || 'Failed', 'error');
+      } catch (err) { this.showToast('Error: ' + err.message, 'error'); }
+    },
+
+    async removeModuleLicense(modId) {
+      try {
+        await fetch('/api/modules/license', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ moduleId: modId })
+        });
+        delete this.moduleLicenses[modId];
+        this.showToast('License removed for ' + modId, 'success');
+      } catch (err) { this.showToast('Error: ' + err.message, 'error'); }
+    },
+
+    uploadModuleUpdateFor(modId) {
+      var input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.zip';
+      input.onchange = (e) => this.uploadModuleUpdate(e);
+      input.click();
+    },
+
+    async uploadModuleUpdate(event) {
+      var file = event.dataTransfer ? event.dataTransfer.files[0] : event.target.files[0];
+      if (!file) return;
+      if (event.target) event.target.value = '';
+      var formData = new FormData();
+      formData.append('file', file);
+      this.showToast('Installing module update...', 'info');
+      try {
+        var res = await fetch('/api/modules/upload', { method: 'POST', body: formData });
+        var data = await res.json();
+        if (data.ok) {
+          this.showToast(data.name + ' v' + data.version + ' — ' + data.filesWritten + ' files updated' + (data.activated ? ' (activated)' : ''), 'success');
+          this.loadModules();
+        } else this.showToast('Module update failed: ' + data.error, 'error');
+      } catch (err) { this.showToast('Module update error: ' + err.message, 'error'); }
+    },
+
+    // =========================================================================
+    // Backup (Identity)
+    // =========================================================================
+
+    getConfigRef(key) {
+      var map = {
+        appName: 'app-identity', slug: 'app-identity', scheme: 'app-identity',
+        iosBundleId: 'app-identity', androidPackage: 'app-identity',
+        appNameConfig: 'app-identity', userAgent: 'app-identity',
+        loginLogoMode: 'app-identity', fallbackName: 'app-identity', fallbackSlug: 'app-identity',
+        version: 'app-identity', packageName: 'app-identity', packageVersion: 'app-identity',
+        siteUrl: 'wordpress-site', productionUrl: 'wordpress-site', stagingUrl: 'wordpress-site',
+        easOwner: 'build-service', easProjectId: 'build-service',
+        appleId: 'app-store-submission', ascAppId: 'app-store-submission',
+        ascApiKeyId: 'app-store-submission', ascApiKeyIssuerId: 'app-store-submission',
+        googlePlayTrack: 'app-store-submission', googlePlayServiceAccountKeyPath: 'app-store-submission',
+        splashColorLight: 'branding-assets', splashColorDark: 'branding-assets',
+        notificationColor: 'branding-assets', adaptiveIconBgMode: 'branding-assets', adaptiveIconBgColor: 'branding-assets',
+      };
+      var section = map[key];
+      if (!section) return { tab: 'config', section: 'app-identity' };
+      var tab = (section === 'branding-assets') ? 'assets' : 'config';
+      return { tab: tab, section: section };
+    },
+
+    async createManualBackup() {
+      this.manualBackupRunning = true;
+      try {
+        var res = await fetch('/api/backups/create', { method: 'POST' });
+        var data = await res.json();
+        if (data.ok) {
+          this.showToast('Backup created: ' + data.label, 'success');
+          this.loadBackups();
+        } else this.showToast('Backup failed: ' + (data.error || 'Unknown error'), 'error');
+      } catch (err) { this.showToast('Backup error: ' + err.message, 'error'); }
+      finally { this.manualBackupRunning = false; }
+    },
+
+    async loadBackupTab() {
+      await this.loadBackupPreview();
+      this.loadBackups();
+      this.backupTabLoaded = true;
+    },
+
+    async loadBackupPreview() {
+      this.backupPreviewLoading = true;
+      try {
+        var res = await fetch('/api/identity/preview');
+        var data = await res.json();
+        if (data.ok) this.backupIdentity = data.identity;
+      } catch (err) { this.showToast('Could not load identity preview: ' + err.message, 'error'); }
+      finally { this.backupPreviewLoading = false; }
+    },
+
+    async uploadIdentityImport(event) {
+      var file = event.dataTransfer ? event.dataTransfer.files[0] : event.target.files[0];
+      if (!file) return;
+      if (event.target) event.target.value = '';
+      if (!confirm('Restore identity from "' + file.name + '"?\n\nThis will overwrite your current config values, branding assets, and credentials.')) return;
+      this.backupImporting = true;
+      this.backupImportResult = null;
+      this.backupImportError = '';
+      try {
+        var formData = new FormData();
+        formData.append('file', file);
+        var res = await fetch('/api/identity/import', { method: 'POST', body: formData });
+        var data = await res.json();
+        if (data.error) throw new Error(data.error);
+        this.backupImportResult = data;
+        this.showToast('Identity restored!', 'success');
+        await this.loadState();
+        await this.loadBackupPreview();
+      } catch (err) {
+        this.backupImportError = err.message;
+        this.showToast('Import failed: ' + err.message, 'error');
+      } finally { this.backupImporting = false; }
+    },
+
     // =========================================================================
     // EAS Setup
     // =========================================================================
@@ -3077,9 +3448,9 @@ bumpVersion(type) {
     // Updates Tab
     // =========================================================================
     async loadUpdatesTab() {
-      var [licenseData] = await Promise.all([this.loadLicenseStatus(), this.loadBackups()]);
-      if (licenseData && licenseData.valid && licenseData.latest) {
-        this.showUpdateStatusFromData(licenseData);
+      await this.loadLicenseStatus();
+      if (this.license.hasLicense) {
+        this.checkForUpdates();
       }
       this.updatesLoaded = true;
     },
@@ -3153,18 +3524,25 @@ bumpVersion(type) {
       }
       if (!data.latest) {
         this.setUpdateState( { state: 'up-to-date', currentVersion: data.currentVersion || '?' });
-        return;
+      } else {
+        var latest = data.latest;
+        this.setUpdateState( {
+          state: 'available',
+          currentVersion: data.currentVersion || '?',
+          version: latest.version,
+          date: latest.date || 'recently',
+          sizeMB: latest.size ? (latest.size / 1024 / 1024).toFixed(1) : '',
+          changelog: latest.changelog || '',
+          downloadUrl: latest.downloadUrl
+        });
       }
-      var latest = data.latest;
-      this.setUpdateState( {
-        state: 'available',
-        currentVersion: data.currentVersion || '?',
-        version: latest.version,
-        date: latest.date || 'recently',
-        sizeMB: latest.size ? (latest.size / 1024 / 1024).toFixed(1) : '',
-        changelog: latest.changelog || '',
-        downloadUrl: latest.downloadUrl
-      });
+      // Store module updates keyed by module ID
+      this.moduleUpdates = {};
+      if (data.moduleUpdates) {
+        for (var mu of data.moduleUpdates) {
+          this.moduleUpdates[mu.id] = mu;
+        }
+      }
     },
 
     async checkForUpdates() {
@@ -3192,9 +3570,9 @@ bumpVersion(type) {
         var res = await this.postJson('/api/updates/apply', { downloadUrl });
         var data = await res.json();
         if (data.error) throw new Error(data.error);
-        this.setUpdateState( { state: 'done', step: 3, backupName: data.backup, filesWritten: data.filesWritten, depsChanged: !!data.depsChanged, dashboardUpdated: !!data.dashboardUpdated });
+        this.setUpdateState( { state: 'done', step: 3, backupName: data.backup, filesWritten: data.filesWritten, dashboardUpdated: !!data.dashboardUpdated });
         await this.loadBackups();
-        if (data.depsChanged) this.installDeps();
+        this.installDeps();
       } catch (err) {
         this.setUpdateState( { state: 'error', errorTitle: 'Update failed:', error: err.message + ' — Your backup is safe. Use the Backups section below to restore if needed.' });
       }
@@ -3213,8 +3591,8 @@ bumpVersion(type) {
     },
 
     async uploadManualUpdate(file) {
-      if (!file.name.endsWith('.tar.gz') && !file.name.endsWith('.tgz')) {
-        this.showToast('Please upload a .tar.gz file', 'error'); return;
+      if (!file.name.toLowerCase().endsWith('.zip')) {
+        this.showToast('Please upload a .zip file', 'error'); return;
       }
       if (!confirm('Apply update from "' + file.name + '"?\n\nCore files will be overwritten. Config, assets, and modules are preserved.\nA backup is created first.')) return;
       this.setManualState({ showUpload: false, state: 'uploading', fileName: file.name, error: '' });
@@ -3226,6 +3604,7 @@ bumpVersion(type) {
         if (data.error) throw new Error(data.error);
         this.setManualState({ state: 'done', filesWritten: data.filesWritten, backupName: data.backup, newVersion: data.newVersion || '', depsChanged: !!data.depsChanged });
         this.showToast('Update applied!', 'success');
+        if (data.newVersion) this.config.coreVersion = data.newVersion;
         await this.loadBackups();
         if (data.depsChanged) this.installDeps();
       } catch (err) {

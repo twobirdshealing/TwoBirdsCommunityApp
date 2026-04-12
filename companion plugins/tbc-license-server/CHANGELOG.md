@@ -2,64 +2,12 @@
 
 All notable changes to TBC License Server.
 
-## [3.0.0] — 2026-03-27
+## [1.0.0] — 2026-04-11
 
-- **Breaking:** Rewrite to use FluentCart Pro's native license API instead of direct DB queries
-- Activation, deactivation, and validation now delegate to FluentCart's built-in handlers (`?fluent-cart=activate_license`, etc.)
-- FluentCart natively enforces activation limits, local/staging site detection, and proper activation counting
-- Removed custom `activate_site()`, `is_site_activated()`, and direct model manipulation
-- Version/update checks now use FluentCart's `get_license_version` action with signed download URLs
-- Requires `siteUrl` — rejects requests without one
-- Better error messages translated from FluentCart's error types
-
-## [2.3.0] — 2026-03-19
-
-- Fix: Per-site license validation — verify the requesting site is actually activated, not just that the license is globally active
-- Fix: Auto-activation now works for any new site with available slots, not only on first-ever activation
-- Add: `/deactivate` endpoint to release a site's activation slot when license is removed from dashboard
-
-## [2.2.0] — 2026-03-16
-
-- Auto-activate license on first validation using FluentCart's site activation system
-- Creates proper records in `fct_license_sites` and `fct_license_activations` tables
-- License shows as Active with site URL in FluentCart admin
-- Dashboard now sends buyer's site URL with license validation requests
-
-## [2.1.0] — 2026-03-16
-
-- Add `tar.gz` and `gz` to WordPress allowed upload MIME types so FluentCart can accept update packages
-- Fix `wp_check_filetype_and_ext` for `.tar.gz` double extension detection
-
-## [2.0.0] — 2026-03-16
-
-**Breaking: Rebuilt as FluentCart Pro bridge plugin.**
-
-FluentCart Pro now handles all license management — key generation, subscription
-sync, admin UI, customer portal, file hosting. This plugin is now a thin bridge
-that exposes the REST endpoint the dashboard calls.
-
-- Removed: Custom post type (`tbc_license`) — FluentCart's `fct_licenses` table
-- Removed: WooCommerce/FluentCart hooks — FluentCart Pro auto-generates licenses
-- Removed: Admin upload page — upload update files via FluentCart product settings
-- Removed: Download endpoint — FluentCart serves files via signed URLs
-- Rewritten: `/check` endpoint reads from FluentCart's License model + product settings
-- Requires: FluentCart Pro with Licensing module enabled
-
-### Migration from v1.x
-
-1. Install FluentCart Pro and enable the Licensing module
-2. Create your product in FluentCart with license settings enabled
-3. Set `PRODUCT_ID` constant in `class-license-api.php`
-4. Upload your `core-update-{version}.tar.gz` as the product's downloadable file
-5. Existing v1.x license posts in WordPress are no longer used — re-issue via FluentCart
-
-## [1.1.0] — 2026-03-16
-
-- FluentCart integration: auto-generate license on `fluent_cart/order_paid_done`
-- Subscription lifecycle sync
-- Re-validate license on download
-- Status constants
-
-## [1.0.0] — 2026-03-16
-
-- Initial release
+- Initial release for white-label launch
+- FluentCart Pro native license API bridge (activate, deactivate, version check)
+- License keys are self-identifying — product resolved from key via FluentCart's License model, no hardcoded product ID mapping
+- Module update checking — `/check` endpoint accepts `installedModules` array with per-module license keys
+- Dedicated `/activate` endpoint for both core and module license activation
+- Returns `moduleUpdates` array with available updates for licensed modules
+- Error messages translated from FluentCart's error types to user-friendly text

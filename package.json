@@ -1,7 +1,7 @@
 {
   "name": "twobirdscommunity",
   "main": "expo-router/entry",
-  "version": "3.5.0",
+  "version": "3.5.2",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -14,6 +14,7 @@
     "dashboard": "node setup/dashboard.js",
     "kill-dashboard": "node -e \"const{execSync}=require('child_process');const win=process.platform==='win32';try{const cmd=win?'netstat -ano | findstr :3456 | findstr LISTENING':'lsof -ti :3456';const r=execSync(cmd,{encoding:'utf8'}).trim();if(!r){console.log('No dashboard running on port 3456');process.exit(0)}const p=win?r.split(/\\s+/).pop():r.split('\\n')[0];execSync(win?'taskkill /F /PID '+p:'kill -9 '+p);console.log('Dashboard killed (PID '+p+')')}catch{console.log('No dashboard running on port 3456')}\"",
     "snapshot": "bash scripts/create-white-label.sh",
+    "zip-plugin": "node scripts/zip-plugin.js",
     "changelog": "bash scripts/update-changelog.sh"
   },
   "dependencies": {

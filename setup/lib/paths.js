@@ -35,6 +35,7 @@ const PATHS = {
   modulesDir: path.join(PROJECT_DIR, 'modules'),
   registryTs: path.join(PROJECT_DIR, 'modules', '_registry.ts'),
   tabsDir: path.join(PROJECT_DIR, 'app', '(tabs)'),
+  appDir: path.join(PROJECT_DIR, 'app'),
   googleServicesJson: path.join(PROJECT_DIR, 'google-services.json'),
   googleServiceInfoPlist: path.join(PROJECT_DIR, 'GoogleService-Info.plist'),
   googlePlayKeyFile: path.join(PROJECT_DIR, 'google-play-service-account.json'),

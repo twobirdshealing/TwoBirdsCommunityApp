@@ -262,7 +262,7 @@
   </tr>
   <tr>
     <td><strong>Modules</strong></td>
-    <td>Browse installed modules and their registration status. Import new modules from <code>.tar.gz</code> packages &mdash; the dashboard extracts the module, registers it, and creates route stubs automatically.</td>
+    <td>Browse installed modules and their registration status. Import new modules from <code>.zip</code> packages &mdash; the dashboard extracts the module, registers it, and creates route stubs automatically.</td>
   </tr>
   <tr>
     <td><strong>Builds</strong></td>
@@ -292,14 +292,14 @@
   <li><strong>One-click update</strong> &mdash; "Backup &amp; Update" downloads the update package, creates a full backup of the current state, and applies only core files. Buyer customizations (config, assets, bundle IDs, modules, Firebase configs) are <strong>never overwritten</strong>. A confirmation dialog lists exactly which files will be updated and which are protected.</li>
   <li><strong>Dependency merging</strong> &mdash; if the update includes new npm dependencies, they're merged into the buyer's <code>package.json</code> (preserving their name, version, and scripts). Dashboard prompts to run <code>npm install</code> after.</li>
   <li><strong>Dashboard self-update</strong> &mdash; if the update includes a new dashboard version, it's written as <code>dashboard.next.js</code>. On next launch, the dashboard swaps itself and restarts automatically.</li>
-  <li><strong>Manual upload</strong> &mdash; buyers can also apply updates from a <code>.tar.gz</code> or <code>.zip</code> file (for air-gapped environments or manual delivery).</li>
+  <li><strong>Manual upload</strong> &mdash; buyers can also apply updates from a <code>.zip</code> file (for air-gapped environments or manual delivery).</li>
   <li><strong>Backup &amp; restore</strong> &mdash; automatic backup before every update in <code>setup/.backups/</code>. Dashboard lists all backups with dates and sizes. One-click restore to roll back. Auto-prunes to keep only the last 3 backups.</li>
 </ol>
 
 <h4>Technical Details</h4>
 <ul>
   <li><strong>Zero dependencies</strong> &mdash; built entirely on Node.js built-ins (<code>http</code>, <code>fs</code>, <code>path</code>, <code>https</code>, <code>zlib</code>). No npm install, no framework, no bundler. Entry point: <code>setup/dashboard.js</code>, with modular helpers in <code>setup/lib/</code>, routes in <code>setup/routes/</code>, and frontend in <code>setup/frontend/</code>.</li>
-  <li><strong>Custom tar parser</strong> &mdash; reads <code>.tar.gz</code> packages using built-in <code>zlib</code> and a hand-written tar header parser. No third-party archive libraries.</li>
+  <li><strong>Custom zip engine</strong> &mdash; core updates and module packages both ship as <code>.zip</code>. Reads and writes via hand-written central-directory + local-file-header parsers on top of built-in <code>zlib</code> (<code>deflateRawSync</code> / <code>inflateRawSync</code>) and a CRC-32 table. No third-party archive libraries.</li>
   <li><strong>Protected paths</strong> &mdash; defined in <code>manifest.json</code>. The update system checks this list before writing any file. Includes: <code>config.ts</code>, <code>app.json</code>, <code>eas.json</code>, <code>app.config.ts</code>, <code>package.json</code>, <code>assets/images/</code>, Firebase configs, <code>modules/</code>, and the license/backup files.</li>
   <li><strong>Manifest-driven</strong> &mdash; <code>manifest.json</code> contains the product version, update server URL, protected paths list, and core plugin list. Updated automatically when an update is applied.</li>
 </ul>

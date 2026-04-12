@@ -18,39 +18,50 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 WHITE_LABEL_ROOT="$(cd "$SOURCE_DIR/.." && pwd)/TBC-Community-App (White Lable)"
 
+# Path to the Node zip helper — same createZip() the dashboard uses.
+# Invoked as: node "$ZIP_PLUGIN_JS" <source-dir> <output-zip>
+ZIP_PLUGIN_JS="$SCRIPT_DIR/zip-plugin.js"
+
 # Allowlist: only these companion plugins ship with the base product
 CORE_PLUGINS=("tbc-community-app")
 
-# Protected paths: buyer-customized files that updates must NEVER overwrite
-# Used to generate manifest.json AND find exclusions for core-update tar
-PROTECTED_PATHS=(
+# Buyer files: 100% buyer-owned, never touched during updates
+BUYER_FILES=(
   "constants/config.ts"
+  "assets/images/"
+  "google-services.json"
+  "GoogleService-Info.plist"
+  "asc-api-key.p8"
+  "google-play-service-account.json"
+  "setup/.license"
+  "setup/.module-licenses.json"
+  "setup/.backups/"
+  "setup/.temp/"
+  "setup/dashboard.next.js"
+  "manifest.json"
+  "CLAUDE.md"
+  "FIREBASE_SETUP.md"
+)
+
+# Hybrid files: contain both core structure and buyer values.
+# During updates: buyer values extracted -> file replaced -> values injected back
+HYBRID_FILES=(
   "app.json"
   "eas.json"
   "app.config.ts"
   "package.json"
-  "package-lock.json"
-  "assets/images/"
-  "google-services.json"
-  "GoogleService-Info.plist"
-  "google-play-service-account.json"
-  "asc-api-key.p8"
   "modules/_registry.ts"
-  "setup/.license"
-  "setup/.backups/"
-  "setup/dashboard.next.js"
-  "manifest.json"
-  "CLAUDE.md"
 )
 
-# Helper: generate JSON array from PROTECTED_PATHS
-generate_protected_paths_json() {
-  local indent="${1:-    }"
-  local last=$(( ${#PROTECTED_PATHS[@]} - 1 ))
-  for i in "${!PROTECTED_PATHS[@]}"; do
+# Helper: generate JSON array from a bash array
+generate_json_array() {
+  local -n arr=$1
+  local indent="${2:-    }"
+  local last=$(( ${#arr[@]} - 1 ))
+  for i in "${!arr[@]}"; do
     local comma=","
     [ "$i" -eq "$last" ] && comma=""
-    echo "${indent}\"${PROTECTED_PATHS[$i]}\"${comma}"
+    echo "${indent}\"${arr[$i]}\"${comma}"
   done
 }
 
@@ -64,8 +75,11 @@ generate_manifest() {
   "version": "${version}",
   "dashboardVersion": 1,
   "updateUrl": "https://www.twobirdscode.com/wp-json/tbc-license/v1/check",
-  "protectedPaths": [
-$(generate_protected_paths_json "    ")
+  "buyerFiles": [
+$(generate_json_array BUYER_FILES "    ")
+  ],
+  "hybridFiles": [
+$(generate_json_array HYBRID_FILES "    ")
   ],
   "corePlugins": [
     "tbc-community-app"
@@ -74,9 +88,11 @@ $(generate_protected_paths_json "    ")
 GENMANIFEST_EOF
 }
 
-# Read version from source package.json
-SOURCE_VERSION=$(grep -o '"version": "[^"]*"' "$SOURCE_DIR/package.json" | head -1 | cut -d'"' -f4)
-TARGET_DIR="$WHITE_LABEL_ROOT/$SOURCE_VERSION"
+# Read the current CORE version from manifest.json. This is the version of the
+# white-label product we're selling — intentionally decoupled from our own
+# Two Birds Church app version in package.json/app.json (those track OUR
+# store releases, not the product we ship to buyers).
+CURRENT_VERSION=$(grep -o '"version": "[^"]*"' "$SOURCE_DIR/manifest.json" | head -1 | cut -d'"' -f4)
 
 echo ""
 echo "========================================"
@@ -84,8 +100,7 @@ echo "  White-Label Snapshot Creator"
 echo "========================================"
 echo ""
 echo "Source:  $SOURCE_DIR"
-echo "Target:  $TARGET_DIR"
-echo "Version: $SOURCE_VERSION"
+echo "Current core version: $CURRENT_VERSION"
 echo ""
 
 # ---------------------------------------------------------------------------
@@ -97,19 +112,111 @@ if [ ! -f "$SOURCE_DIR/app.json" ]; then
   exit 1
 fi
 
-# Warn if target exists
-if [ -d "$TARGET_DIR" ] && [ "$(ls -A "$TARGET_DIR" 2>/dev/null)" ]; then
-  echo "WARNING: Target folder is not empty. Contents will be replaced."
-  read -p "Continue? (y/N) " confirm
-  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-    echo "Aborted."
-    exit 0
-  fi
-  echo "Cleaning target folder..."
-  rm -rf "$TARGET_DIR"
+# ---------------------------------------------------------------------------
+# Interactive version bump (TTY only — skipped when piped)
+# ---------------------------------------------------------------------------
+
+parse_semver() {
+  local ver="$1"
+  if ! [[ "$ver" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then return 1; fi
+  echo "${BASH_REMATCH[1]} ${BASH_REMATCH[2]} ${BASH_REMATCH[3]}"
+}
+
+NEXT_PATCH=$(read M m p <<<"$(parse_semver "$CURRENT_VERSION")" && echo "$M.$m.$((p + 1))")
+NEXT_MINOR=$(read M m p <<<"$(parse_semver "$CURRENT_VERSION")" && echo "$M.$((m + 1)).0")
+NEXT_MAJOR=$(read M m p <<<"$(parse_semver "$CURRENT_VERSION")" && echo "$((M + 1)).0.0")
+
+SOURCE_VERSION="$CURRENT_VERSION"
+
+# Env var override — bypasses the interactive prompt (useful for CI / testing)
+# Accepts: p / m / M / patch / minor / major / X.Y.Z
+if [ -n "${SNAPSHOT_VERSION:-}" ]; then
+  case "$SNAPSHOT_VERSION" in
+    p|P|patch)    SOURCE_VERSION="$NEXT_PATCH" ;;
+    m|minor)      SOURCE_VERSION="$NEXT_MINOR" ;;
+    M|major)      SOURCE_VERSION="$NEXT_MAJOR" ;;
+    keep|current) SOURCE_VERSION="$CURRENT_VERSION" ;;
+    *)
+      if parse_semver "$SNAPSHOT_VERSION" >/dev/null; then
+        SOURCE_VERSION="$SNAPSHOT_VERSION"
+      else
+        echo "ERROR: invalid SNAPSHOT_VERSION='$SNAPSHOT_VERSION'"
+        exit 1
+      fi
+      ;;
+  esac
+elif [ -t 0 ]; then
+  echo "Core version options:"
+  echo "  [Enter]   Keep $CURRENT_VERSION"
+  echo "  p         Bump patch  ($CURRENT_VERSION -> $NEXT_PATCH)"
+  echo "  m         Bump minor  ($CURRENT_VERSION -> $NEXT_MINOR)"
+  echo "  M         Bump major  ($CURRENT_VERSION -> $NEXT_MAJOR)"
+  echo "  X.Y.Z     Custom version"
+  echo ""
+  read -p "Choice: " version_choice
+  echo ""
+
+  case "$version_choice" in
+    "")           SOURCE_VERSION="$CURRENT_VERSION" ;;
+    p|P|patch)    SOURCE_VERSION="$NEXT_PATCH" ;;
+    m|minor)      SOURCE_VERSION="$NEXT_MINOR" ;;
+    M|major)      SOURCE_VERSION="$NEXT_MAJOR" ;;
+    *)
+      if parse_semver "$version_choice" >/dev/null; then
+        SOURCE_VERSION="$version_choice"
+      else
+        echo "ERROR: invalid version '$version_choice' (expected X.Y.Z or p/m/M)"
+        exit 1
+      fi
+      ;;
+  esac
 fi
 
-mkdir -p "$TARGET_DIR"
+# Apply the version bump to manifest.json ONLY — this is the core product
+# version buyers see. Our own Two Birds Church app version in package.json /
+# app.json is deliberately left alone; that tracks OUR App Store submissions
+# and has nothing to do with the white-label product we sell.
+if [ "$SOURCE_VERSION" != "$CURRENT_VERSION" ]; then
+  echo "Bumping core version $CURRENT_VERSION -> $SOURCE_VERSION"
+
+  sed -i -e "s|\"version\": \"$CURRENT_VERSION\"|\"version\": \"$SOURCE_VERSION\"|" "$SOURCE_DIR/manifest.json"
+
+  echo "  manifest.json -> $SOURCE_VERSION"
+  echo ""
+
+  # Regenerate CHANGELOG.md using git history since the last release.
+  # Baseline is read from the cached .last-release-commit file if present;
+  # otherwise update-changelog.sh falls back to finding the last bump commit.
+  PREV_RELEASE_COMMIT=""
+  if [ -f "$WHITE_LABEL_ROOT/.last-release-commit" ]; then
+    PREV_RELEASE_COMMIT=$(cat "$WHITE_LABEL_ROOT/.last-release-commit" 2>/dev/null || echo "")
+  fi
+  echo "Regenerating CHANGELOG.md for $SOURCE_VERSION..."
+  CHANGELOG_AUTO=1 CHANGELOG_SINCE="$PREV_RELEASE_COMMIT" bash "$SCRIPT_DIR/update-changelog.sh"
+  echo ""
+else
+  echo "Keeping current version $SOURCE_VERSION"
+  echo ""
+fi
+
+# ---------------------------------------------------------------------------
+# Staging directory — ephemeral. Script emits only the zip at the end.
+# ---------------------------------------------------------------------------
+
+STAGING_DIR="$WHITE_LABEL_ROOT/.staging"
+FINAL_ZIP="$WHITE_LABEL_ROOT/core-update-${SOURCE_VERSION}.zip"
+
+mkdir -p "$WHITE_LABEL_ROOT"
+rm -rf "$STAGING_DIR"
+mkdir -p "$STAGING_DIR"
+
+# Nuke staging no matter how we exit (success or failure)
+cleanup_staging() { rm -rf "$STAGING_DIR"; }
+trap cleanup_staging EXIT
+
+echo "Staging: $STAGING_DIR"
+echo "Output:  $FINAL_ZIP"
+echo ""
 
 # ---------------------------------------------------------------------------
 # Step 1: Copy project (excluding build artifacts, deps, git, plugins, etc.)
@@ -136,19 +243,39 @@ tar -cf - \
   --exclude='setup/logs' \
   --exclude='asc-api-key.p8' \
   --exclude='google-play-service-account.json' \
-  -C "$SOURCE_DIR" . | tar -xf - -C "$TARGET_DIR"
+  -C "$SOURCE_DIR" . | tar -xf - -C "$STAGING_DIR"
 
-# Copy only core companion plugins (allowlist — new plugins won't leak in)
-mkdir -p "$TARGET_DIR/companion plugins"
+# Zip only core companion plugins (allowlist — new plugins won't leak in).
+# Each plugin is staged to a temp dir so we can apply white-label sed edits
+# BEFORE zipping, then the zip lands in the snapshot's "companion plugins/"
+# folder ready for buyers to upload via WP Admin -> Plugins -> Add New.
+mkdir -p "$STAGING_DIR/companion plugins"
+PLUGIN_STAGING_DIR="$STAGING_DIR/.plugin-staging"
+mkdir -p "$PLUGIN_STAGING_DIR"
 for plugin in "${CORE_PLUGINS[@]}"; do
-  cp -r "$SOURCE_DIR/companion plugins/$plugin" "$TARGET_DIR/companion plugins/$plugin"
+  STAGED="$PLUGIN_STAGING_DIR/$plugin"
+  cp -r "$SOURCE_DIR/companion plugins/$plugin" "$STAGED"
+
+  # Plugin-specific white-label edits on the staged copy
+  if [ "$plugin" = "tbc-community-app" ]; then
+    sed -i \
+      -e "s|define('TBC_CA_APP_USER_AGENT', 'TBCCommunityApp');|define('TBC_CA_APP_USER_AGENT', 'CommunityApp');|" \
+      "$STAGED/tbc-community-app.php"
+  fi
+
+  # Strip dev-only junk from the staged copy (kept out of the shipped zip)
+  find "$STAGED" -name ".claude" -type d -exec rm -rf {} + 2>/dev/null || true
+  find "$STAGED" \( -name "*.orig" -o -name ".DS_Store" -o -name "nul" \) -delete 2>/dev/null || true
+
+  node "$ZIP_PLUGIN_JS" "$STAGED" "$STAGING_DIR/companion plugins/$plugin.zip"
 done
+rm -rf "$PLUGIN_STAGING_DIR"
 
 # Copy only module infrastructure (no module folders — those are add-ons)
-mkdir -p "$TARGET_DIR/modules"
-cp "$SOURCE_DIR/modules/_registry.ts" "$TARGET_DIR/modules/_registry.ts"
-cp "$SOURCE_DIR/modules/_registry-core.ts" "$TARGET_DIR/modules/_registry-core.ts"
-cp "$SOURCE_DIR/modules/_types.ts" "$TARGET_DIR/modules/_types.ts"
+mkdir -p "$STAGING_DIR/modules"
+cp "$SOURCE_DIR/modules/_registry.ts" "$STAGING_DIR/modules/_registry.ts"
+cp "$SOURCE_DIR/modules/_registry-core.ts" "$STAGING_DIR/modules/_registry-core.ts"
+cp "$SOURCE_DIR/modules/_types.ts" "$STAGING_DIR/modules/_types.ts"
 
 echo "  Done."
 
@@ -163,7 +290,7 @@ sed -i \
   -e "s|export const APP_NAME = 'Two Birds Community';|export const APP_NAME = 'My Community';|" \
   -e "s|export const APP_USER_AGENT = 'TBCCommunityApp/1.0';|export const APP_USER_AGENT = 'CommunityApp/1.0';|" \
   -e "/export const TBC_YT_URL/d" \
-  "$TARGET_DIR/constants/config.ts"
+  "$STAGING_DIR/constants/config.ts"
 
 # --- app.json ---
 sed -i \
@@ -179,7 +306,7 @@ sed -i \
   -e 's|"owner": "twobirdschurch"|"owner": "your-expo-account"|' \
   -e 's|Allow Two Birds Community to|Allow this app to|g' \
   -e 's|https://u.expo.dev/[^"]*|https://u.expo.dev/YOUR_EAS_PROJECT_ID|' \
-  "$TARGET_DIR/app.json"
+  "$STAGING_DIR/app.json"
 
 # --- eas.json ---
 # Note: Sentry env var refs ($SENTRY_AUTH_TOKEN, $SENTRY_ORG, $SENTRY_PROJECT,
@@ -197,7 +324,7 @@ sed -i \
   -e 's|"appleId": "[^"]*"|"appleId": "your-apple-id@example.com"|' \
   -e 's|"ascAppId": "[^"]*"|"ascAppId": "YOUR_ASC_APP_ID"|' \
   -e '/"ascApiKey/d' \
-  "$TARGET_DIR/eas.json"
+  "$STAGING_DIR/eas.json"
 
 # --- app.config.ts ---
 sed -i \
@@ -207,7 +334,7 @@ sed -i \
   -e "s|config.slug ?? 'twobirdscommunityapp'|config.slug ?? 'mycommunityapp'|" \
   -e "/'\\/blog\\//d" \
   -e "/'\\/bookclub\\//d" \
-  "$TARGET_DIR/app.config.ts"
+  "$STAGING_DIR/app.config.ts"
 
 # --- package.json ---
 sed -i \
@@ -215,8 +342,9 @@ sed -i \
   -e 's|"version": "[^"]*"|"version": "1.0.0"|' \
   -e 's|https://staging.twobirdschurch.com|https://staging.yoursite.com|g' \
   -e '/"snapshot":/d' \
+  -e '/"zip-plugin":/d' \
   -e '/"changelog":/d' \
-  "$TARGET_DIR/package.json"
+  "$STAGING_DIR/package.json"
 
 # Fix trailing commas in JSON (sed deletes can leave them) — single node spawn
 # handles every JSON file we sed-edited above. Round-trips through JSON.parse
@@ -227,17 +355,12 @@ node -e "
     var raw = fs.readFileSync(p, 'utf8').replace(/,(\s*[}\]])/g, '\$1');
     fs.writeFileSync(p, JSON.stringify(JSON.parse(raw), null, 2) + '\n');
   });
-" "$TARGET_DIR/package.json" "$TARGET_DIR/eas.json"
+" "$STAGING_DIR/package.json" "$STAGING_DIR/eas.json"
 
 # --- package-lock.json ---
 # Not shipped in tar — buyer generates their own via npm install.
 # Remove from snapshot to prevent stale lock files causing npm ci failures.
-rm -f "$TARGET_DIR/package-lock.json"
-
-# --- tbc-community-app plugin: replace hardcoded user agent ---
-sed -i \
-  -e "s|define('TBC_CA_APP_USER_AGENT', 'TBCCommunityApp');|define('TBC_CA_APP_USER_AGENT', 'CommunityApp');|" \
-  "$TARGET_DIR/companion plugins/tbc-community-app/tbc-community-app.php"
+rm -f "$STAGING_DIR/package-lock.json"
 
 echo "  Done."
 
@@ -248,20 +371,17 @@ echo "  Done."
 echo "[3/9] Cleaning module system..."
 
 # Remove module tab stubs from app/(tabs)/
-rm -f "$TARGET_DIR/app/(tabs)/calendar.tsx"
-rm -f "$TARGET_DIR/app/(tabs)/donate.tsx"
+rm -f "$STAGING_DIR/app/(tabs)/calendar.tsx"
+rm -f "$STAGING_DIR/app/(tabs)/donate.tsx"
 
 # Remove module route stub directories from app/
-rm -rf "$TARGET_DIR/app/blog"
-rm -rf "$TARGET_DIR/app/blog-comments"
-rm -rf "$TARGET_DIR/app/bookclub"
-rm -rf "$TARGET_DIR/app/youtube"
+rm -rf "$STAGING_DIR/app/blog"
+rm -rf "$STAGING_DIR/app/blog-comments"
+rm -rf "$STAGING_DIR/app/bookclub"
+rm -rf "$STAGING_DIR/app/youtube"
 
 # Remove module login gate route stub
-rm -f "$TARGET_DIR/app/profile-complete.tsx"
-
-# Remove module-specific Stack.Screen declarations from _layout.tsx
-sed -i '/blog-comments\/\[postId\]/d' "$TARGET_DIR/app/_layout.tsx"
+rm -f "$STAGING_DIR/app/profile-complete.tsx"
 
 # Clean _registry.ts: remove module imports and entries from the MODULES array
 sed -i \
@@ -276,7 +396,7 @@ sed -i \
   -e "/^  profileCompletionModule,$/d" \
   -e "/^  cartModule,$/d" \
   -e "/^  multiReactionsModule,$/d" \
-  "$TARGET_DIR/modules/_registry.ts"
+  "$STAGING_DIR/modules/_registry.ts"
 
 echo "  Done."
 
@@ -286,10 +406,10 @@ echo "  Done."
 
 echo "[4/9] Replacing Firebase configs with placeholders..."
 
-rm -f "$TARGET_DIR/google-services.json"
-rm -f "$TARGET_DIR/GoogleService-Info.plist"
+rm -f "$STAGING_DIR/google-services.json"
+rm -f "$STAGING_DIR/GoogleService-Info.plist"
 
-cat > "$TARGET_DIR/FIREBASE_SETUP.md" << 'FIREBASE_EOF'
+cat > "$STAGING_DIR/FIREBASE_SETUP.md" << 'FIREBASE_EOF'
 # Firebase Setup
 
 Replace these placeholder files with your own Firebase config files:
@@ -319,26 +439,23 @@ echo "[5/9] Cleaning up..."
 # scripts/ excluded from tar — only setup/ ships to buyers
 
 # Remove branded assets (buyers replace via dashboard — empty = dashboard shows what's needed)
-rm -f "$TARGET_DIR/assets/images/app_icon_ios.png"
-rm -f "$TARGET_DIR/assets/images/app_icon_android.png"
-rm -f "$TARGET_DIR/assets/images/app_icon_android_adaptive_fg.png"
-rm -f "$TARGET_DIR/assets/images/app_icon_android_adaptive_bg.png"
-rm -f "$TARGET_DIR/assets/images/app_icon_android_notification.png"
-rm -f "$TARGET_DIR/assets/images/splash_screen_img.png"
-rm -f "$TARGET_DIR/assets/images/login_logo.png"
-rm -f "$TARGET_DIR/assets/images/login_background_img.png"
+rm -f "$STAGING_DIR/assets/images/app_icon_ios.png"
+rm -f "$STAGING_DIR/assets/images/app_icon_android.png"
+rm -f "$STAGING_DIR/assets/images/app_icon_android_adaptive_fg.png"
+rm -f "$STAGING_DIR/assets/images/app_icon_android_adaptive_bg.png"
+rm -f "$STAGING_DIR/assets/images/app_icon_android_notification.png"
+rm -f "$STAGING_DIR/assets/images/splash_screen_img.png"
+rm -f "$STAGING_DIR/assets/images/login_logo.png"
+rm -f "$STAGING_DIR/assets/images/login_background_img.png"
 
 # Strip site-specific section from CLAUDE.md (keep marker, remove content below it)
-if [ -f "$TARGET_DIR/CLAUDE.md" ]; then
-  sed -i '/<!-- CUSTOM_INSTRUCTIONS_BELOW -->/q' "$TARGET_DIR/CLAUDE.md"
-  echo "" >> "$TARGET_DIR/CLAUDE.md"
+if [ -f "$STAGING_DIR/CLAUDE.md" ]; then
+  sed -i '/<!-- CUSTOM_INSTRUCTIONS_BELOW -->/q' "$STAGING_DIR/CLAUDE.md"
+  echo "" >> "$STAGING_DIR/CLAUDE.md"
 fi
 
-# Remove .claude directories from companion plugins (dev-only)
-find "$TARGET_DIR/companion plugins" -name ".claude" -type d -exec rm -rf {} + 2>/dev/null || true
-
 # Remove any backup or temp files (single find traversal)
-find "$TARGET_DIR" \( -name "*.orig" -o -name ".DS_Store" -o -name "nul" \) -delete 2>/dev/null || true
+find "$STAGING_DIR" \( -name "*.orig" -o -name ".DS_Store" -o -name "nul" \) -delete 2>/dev/null || true
 
 echo "  Done."
 
@@ -353,13 +470,13 @@ ISSUES=0
 
 # Single grep pass checking all site-specific patterns
 if grep -rlE "twobirdschurch|Two Birds Community|2ee0dcc0255ee7f9a996|TBCCommunityApp" \
-    "$TARGET_DIR" --include="*.ts" --include="*.tsx" --include="*.json" 2>/dev/null; then
+    "$STAGING_DIR" --include="*.ts" --include="*.tsx" --include="*.json" 2>/dev/null; then
   echo "  WARNING: Found site-specific references in the above files!"
   ISSUES=$((ISSUES + 1))
 fi
 
 # Separate check for "Two Birds" in source files (excluding "Two Birds Code" dev brand)
-MATCHES=$(grep -rlE "Two Birds[^C]|Two Birds'" "$TARGET_DIR" --include="*.ts" --include="*.tsx" 2>/dev/null || true)
+MATCHES=$(grep -rlE "Two Birds[^C]|Two Birds'" "$STAGING_DIR" --include="*.ts" --include="*.tsx" 2>/dev/null || true)
 if [ -n "$MATCHES" ]; then
   echo "$MATCHES"
   echo "  WARNING: Found 'Two Birds' references in the above files!"
@@ -377,7 +494,7 @@ fi
 echo "[7/9] Copying CHANGELOG..."
 
 if [ -f "$SOURCE_DIR/CHANGELOG.md" ]; then
-  cp "$SOURCE_DIR/CHANGELOG.md" "$TARGET_DIR/CHANGELOG.md"
+  cp "$SOURCE_DIR/CHANGELOG.md" "$STAGING_DIR/CHANGELOG.md"
 else
   echo "  WARNING: No CHANGELOG.md found in source. Skipping."
 fi
@@ -385,123 +502,72 @@ fi
 echo "  Done."
 
 # ---------------------------------------------------------------------------
-# Step 8: Generate package-deps.json, manifest.json & core-update tar.gz
+# Step 8: Generate manifest.json & core-update zip
 # ---------------------------------------------------------------------------
 
-echo "[8/9] Generating manifest.json, package-deps.json & core-update package..."
+echo "[8/9] Generating manifest.json & core-update package..."
 
-generate_manifest "$SOURCE_VERSION" "$TARGET_DIR/manifest.json"
-
-# Generate package-deps.json — the dashboard merges these into the buyer's
-# package.json during updates (preserving their name, version, etc.)
-# Deps removed since the last snapshot are marked as null so mergePackageDeps()
-# deletes them from the buyer's package.json.
-
-# Find the most recent previous snapshot's package-deps.json to diff against
-PREV_DEPS=""
-if [ -d "$WHITE_LABEL_ROOT" ]; then
-  PREV_DEPS=$(ls -d "$WHITE_LABEL_ROOT"/*/package-deps.json 2>/dev/null | sort -V | tail -1)
-fi
-
-node -e "
-  var fs = require('fs');
-  var pkg = JSON.parse(fs.readFileSync(process.argv[1], 'utf8'));
-  var outFile = process.argv[2];
-  var prevFile = process.argv[3] || '';
-
-  // Read previous package-deps.json (if it exists) to detect removals
-  var prev = {};
-  try { if (prevFile) prev = JSON.parse(fs.readFileSync(prevFile, 'utf8')); } catch(e) {}
-
-  var out = {};
-  var sections = ['dependencies', 'devDependencies', 'scripts'];
-
-  sections.forEach(function(key) {
-    if (pkg[key]) out[key] = Object.assign({}, pkg[key]);
-    // Mark removals: anything in previous that's no longer in current
-    if (prev[key]) {
-      if (!out[key]) out[key] = {};
-      Object.keys(prev[key]).forEach(function(name) {
-        if (prev[key][name] !== null && !(pkg[key] && pkg[key][name] !== undefined)) {
-          out[key][name] = null;
-        }
-      });
-    }
-  });
-
-  // dev:staging contains a buyer-specific URL — exclude from merge
-  if (out.scripts) delete out.scripts['dev:staging'];
-
-  fs.writeFileSync(outFile, JSON.stringify(out, null, 2) + '\n');
-" "$TARGET_DIR/package.json" "$TARGET_DIR/package-deps.json" "$PREV_DEPS"
-echo "  Generated package-deps.json"
-
-# The core-update tar.gz contains the FULL snapshot — everything a buyer needs.
-# On first install, they extract the whole thing. On updates, the dashboard
-# reads PROTECTED_PATHS from manifest.json and skips buyer-customized files.
-
-CORE_UPDATE_TAR="$TARGET_DIR/core-update-${SOURCE_VERSION}.tar.gz"
+generate_manifest "$SOURCE_VERSION" "$STAGING_DIR/manifest.json"
 
 # Exclude only build/system paths that should never ship
 FIND_EXCLUDES=()
-FIND_EXCLUDES+=( ! -path './node_modules/*' ! -path './.git/*' ! -path './core-update-*' )
+FIND_EXCLUDES+=( ! -path './node_modules/*' ! -path './.git/*' ! -path './core-update-*' ! -path './.plugin-staging/*' )
 FIND_EXCLUDES+=( ! -path './setup/.temp/*' ! -path './setup/.backups/*' ! -path './setup/.license' ! -path './setup/.app-presets.json' )
 FIND_EXCLUDES+=( ! -path './setup/logs/*' )
 FIND_EXCLUDES+=( ! -path './package-lock.json' )
 
-cd "$TARGET_DIR"
+cd "$STAGING_DIR"
+rm -f "$FINAL_ZIP"
 
 find . -type f "${FIND_EXCLUDES[@]}" > /tmp/tbc-core-files.txt
 
-tar -czf "$CORE_UPDATE_TAR" -T /tmp/tbc-core-files.txt 2>/dev/null || true
+# Build the core-update zip with our zero-dep Node zip engine — same createZip()
+# the dashboard ships with. Works on any OS that has Node (guaranteed via npm run).
+TBC_CORE_REPO_ROOT="$SOURCE_DIR" \
+TBC_CORE_BASE_DIR="$STAGING_DIR" \
+TBC_CORE_OUT_ZIP="$FINAL_ZIP" \
+TBC_CORE_LIST_FILE="/tmp/tbc-core-files.txt" \
+node -e '
+  const { createZip } = require(process.env.TBC_CORE_REPO_ROOT + "/setup/lib/http-helpers");
+  const fs = require("fs");
+  const path = require("path");
+  const baseDir = process.env.TBC_CORE_BASE_DIR;
+  const outZip = process.env.TBC_CORE_OUT_ZIP;
+  const listFile = process.env.TBC_CORE_LIST_FILE;
+  const list = fs.readFileSync(listFile, "utf8").split("\n").filter(Boolean);
+  const files = list.map((rel) => {
+    const clean = rel.replace(/^\.\//, "");
+    return { path: clean, data: fs.readFileSync(path.join(baseDir, clean)) };
+  });
+  fs.writeFileSync(outZip, createZip(files));
+'
 
 rm -f /tmp/tbc-core-files.txt
 cd "$SOURCE_DIR"
 
-CORE_SIZE=$(du -h "$CORE_UPDATE_TAR" | cut -f1)
-echo "  Core update package: core-update-${SOURCE_VERSION}.tar.gz ($CORE_SIZE)"
-echo "  Done."
-
-# ---------------------------------------------------------------------------
-# Git tag (if target is a git repo)
-# ---------------------------------------------------------------------------
-
-if [ -d "$TARGET_DIR/.git" ]; then
-  echo ""
-  read -p "Tag this release as v${SOURCE_VERSION}? (y/N) " tag_confirm
-  if [[ "$tag_confirm" =~ ^[Yy]$ ]]; then
-    cd "$TARGET_DIR"
-    git add -A
-    git commit -m "Update to v${SOURCE_VERSION}" --allow-empty
-    if git tag -a "v${SOURCE_VERSION}" -m "Release v${SOURCE_VERSION}" 2>/dev/null; then
-      echo "  Tagged v${SOURCE_VERSION}"
-    else
-      echo "  Tag v${SOURCE_VERSION} already exists, skipping."
-    fi
-    cd "$SOURCE_DIR"
+# On a version bump, cache the current HEAD hash so the NEXT bumped snapshot
+# can use it as the baseline for changelog generation. We only update this on
+# bumps so that same-version reruns don't wipe the real baseline.
+if [ "$SOURCE_VERSION" != "$CURRENT_VERSION" ]; then
+  CURRENT_HEAD=$(git -C "$SOURCE_DIR" rev-parse HEAD 2>/dev/null || echo "")
+  if [ -n "$CURRENT_HEAD" ]; then
+    echo "$CURRENT_HEAD" > "$WHITE_LABEL_ROOT/.last-release-commit"
   fi
 fi
+
+CORE_SIZE=$(du -h "$FINAL_ZIP" | cut -f1)
+echo "  Core update package: $(basename "$FINAL_ZIP") ($CORE_SIZE)"
+echo "  Done."
 
 echo ""
 echo "========================================"
 echo "  White-Label Snapshot Complete!"
 echo "========================================"
 echo ""
-echo "Output:  $TARGET_DIR"
+echo "Output:  $FINAL_ZIP"
 echo "Version: $SOURCE_VERSION"
 echo ""
 echo "Next steps:"
-if [ -d "$TARGET_DIR/.git" ]; then
-  echo "  1. Review the changes: cd \"$TARGET_DIR\" && git diff HEAD~1"
-  echo "  2. Push: git push && git push --tags"
-  echo "  3. Upload core-update-${SOURCE_VERSION}.tar.gz to your license server for dashboard updates"
-else
-  echo "  1. Open the folder in VS Code and review"
-  echo "  2. cd into it, run: git init && git add . && git commit -m 'White-label release v${SOURCE_VERSION}'"
-  echo "  3. Create a private GitHub repo and push"
-  echo "  4. Test: npm install && npx expo start"
-fi
-echo ""
-echo "Update package: core-update-${SOURCE_VERSION}.tar.gz"
-echo "  Upload this to your license server for buyers to receive dashboard updates."
+echo "  - Upload $(basename "$FINAL_ZIP") to your license server for buyer dashboard updates."
+echo "  - Or sell it directly — buyers drop it into Dashboard -> Updates -> Manual Upload."
 echo ""
