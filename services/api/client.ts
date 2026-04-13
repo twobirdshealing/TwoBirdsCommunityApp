@@ -54,13 +54,6 @@ export function addResponseHeaderListener(listener: ResponseHeaderListener): () 
   return () => responseHeaderListeners.delete(listener);
 }
 
-/** @deprecated Use addResponseHeaderListener instead */
-export function setOnResponseHeaders(callback: ResponseHeaderListener | null): void {
-  // Backward compat: clear all and set single if non-null
-  responseHeaderListeners.clear();
-  if (callback) responseHeaderListeners.add(callback);
-}
-
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
@@ -103,7 +96,7 @@ async function getAuthHeader(): Promise<string | null> {
   const token = await getAuthToken();
 
   if (token) {
-    log.debug('Using JWT token', { tokenPreview: token.substring(0, 20) + '...' });
+    log.debug('Using JWT token', { hasToken: true });
     return `Bearer ${token}`;
   }
 
@@ -229,11 +222,11 @@ async function request<T>(
       ...headers,
     };
 
-    // Debug: Log headers (without full token)
+    // Debug: Log headers (Authorization is redacted — never log token bytes)
     if (__DEV__) {
       const debugHeaders = { ...requestHeaders };
       if (debugHeaders.Authorization) {
-        debugHeaders.Authorization = debugHeaders.Authorization.substring(0, 30) + '...';
+        debugHeaders.Authorization = 'Bearer [REDACTED]';
       }
       log.debug('Request headers', { headers: debugHeaders });
     }

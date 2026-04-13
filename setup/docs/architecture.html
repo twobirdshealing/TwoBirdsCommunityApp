@@ -318,7 +318,10 @@ Cross-Screen Invalidation:
 <ul>
   <li>Fires once per authentication (via <code>hasRun</code> ref)</li>
   <li>Resets on logout so it re-fires on next login</li>
-  <li>If the batch fails, widgets fall back to their own fetching &mdash; no user-visible error</li>
+  <li>If the user logs out or the hook unmounts mid-flight, the response is discarded (a mounted-ref + auth check guards every state update so a slow batch can never bleed into a logged-out session)</li>
+  <li>The batch is treated as <strong>success</strong> only when both the app-config and profile sub-responses come back. A 2xx transport with missing critical sub-responses surfaces the retry screen instead of silently entering the app with no profile</li>
+  <li>The retry button enforces an exponential backoff (1s/2s/4s) and caps at 3 attempts so a user can't hammer the server when something is wrong upstream</li>
+  <li>If the batch transport fails entirely, widgets fall back to their own fetching &mdash; no user-visible error provided cached features exist from a prior session</li>
 </ul>
 
 <!-- ================================================================== -->

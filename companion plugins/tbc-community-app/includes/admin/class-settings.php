@@ -1176,7 +1176,7 @@ class TBC_CA_Admin_Settings {
 
         // --- Push Notification Devices ---
         $table_name = $wpdb->prefix . 'tbc_ca_device_tokens';
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'") === $table_name;
+        $table_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table_name))) === $table_name;
 
         echo '<h3>' . esc_html__('Push Notification Devices', 'tbc-ca') . '</h3>';
 
@@ -1272,7 +1272,7 @@ class TBC_CA_Admin_Settings {
         global $wpdb;
         $log = TBC_CA_Push_Log::get_instance();
         $log_table = $wpdb->prefix . 'tbc_ca_push_log';
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$log_table}'") === $log_table;
+        $table_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($log_table))) === $log_table;
 
         if (!$table_exists) {
             echo '<p>' . esc_html__('Push log table not created. Please deactivate and reactivate the plugin.', 'tbc-ca') . '</p>';

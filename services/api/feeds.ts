@@ -1,9 +1,9 @@
 // =============================================================================
 // FEEDS API - All feed-related API calls
 // =============================================================================
-// FIXED: Send 'space' (slug) instead of 'space_id' (number)
-// Native web app uses: {"space": "book-club", ...} NOT {"space_id": 50, ...}
-// ADDED: getWelcomeBanner() for welcome banner feature
+// Fluent Community routes spaces by slug, not numeric ID. Always send
+// `{ space: "book-club" }` — sending `space_id` looks valid but the post
+// goes nowhere because FC's controller never resolves it.
 // =============================================================================
 
 import { DEFAULT_PER_PAGE, ENDPOINTS } from '@/constants/config';
@@ -119,14 +119,12 @@ export async function getOembed(url: string) {
 // -----------------------------------------------------------------------------
 // Create a New Feed Post
 // -----------------------------------------------------------------------------
-// FIXED: Use 'space' (slug) instead of 'space_id'
-// This matches what the native web app sends
-// -----------------------------------------------------------------------------
 
 export interface CreateFeedData {
   message: string;
   title?: string;
-  space?: string;  // SLUG, not ID!
+  /** FC routes spaces by slug — pass the slug here, NOT a numeric ID. */
+  space?: string;
   type?: 'text' | 'feed';
   content_type?: 'text' | 'markdown' | 'html';
   privacy?: 'public' | 'private';

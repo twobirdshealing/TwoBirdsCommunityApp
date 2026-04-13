@@ -368,11 +368,7 @@ function importModule(zipBuffer) {
   const folder = manifest.folder || manifest.id;
   const moduleDir = path.join(PATHS.modulesDir, folder);
 
-  // Check if already exists
-  if (fileExists(moduleDir)) {
-    // Overwrite (update)
-    fs.rmSync(moduleDir, { recursive: true, force: true });
-  }
+  fs.rmSync(moduleDir, { recursive: true, force: true });
 
   // Extract module files
   const moduleFiles = files.filter(f => f.path.startsWith('module/'));
@@ -430,75 +426,6 @@ function importModule(zipBuffer) {
 }
 
 // ---------------------------------------------------------------------------
-// Module Update — simple overlay (like WordPress plugin update)
-// ---------------------------------------------------------------------------
-
-function applyModuleUpdate(zipBuffer) {
-  const files = parseZip(zipBuffer);
-
-  // Find module.ts or module.tsx to determine module ID
-  const manifestFile = files.find(f =>
-    /^[^/]+\/module\.(ts|tsx)$/.test(f.path) || f.path === 'module.ts' || f.path === 'module.tsx'
-  );
-  if (!manifestFile) return { ok: false, error: 'No module.ts found in zip — not a valid module package' };
-
-  // Determine module folder name from zip structure
-  const parts = manifestFile.path.split('/');
-  let moduleId;
-  if (parts.length > 1) {
-    moduleId = parts[0]; // e.g., "blog/module.ts" → "blog"
-  } else {
-    // Flat zip — try to parse module ID from the manifest content
-    const content = manifestFile.data.toString();
-    const idMatch = content.match(/id:\s*['"]([^'"]+)['"]/);
-    if (!idMatch) return { ok: false, error: 'Could not determine module ID from module.ts' };
-    moduleId = idMatch[1];
-  }
-
-  const moduleDir = path.join(PATHS.modulesDir, moduleId);
-
-  // Extract all files to modules/<id>/ (simple overlay)
-  let filesWritten = 0;
-  for (const file of files) {
-    if (file.path.endsWith('/')) continue;
-
-    // Determine destination path: strip leading folder if present
-    let relPath = file.path;
-    if (parts.length > 1 && relPath.startsWith(moduleId + '/')) {
-      relPath = relPath.substring(moduleId.length + 1);
-    }
-
-    // Path traversal guard
-    const destPath = path.resolve(moduleDir, relPath);
-    if (!destPath.startsWith(moduleDir + path.sep) && destPath !== moduleDir) continue;
-
-    fs.mkdirSync(path.dirname(destPath), { recursive: true });
-    fs.writeFileSync(destPath, file.data);
-    filesWritten++;
-  }
-
-  // Auto-activate if not yet in _registry.ts
-  const modules = getInstalledModules();
-  const existing = modules.find(m => m.id === moduleId);
-  let activated = false;
-  if (!existing || !existing.active) {
-    const result = toggleModule(moduleId, true);
-    activated = result.ok || false;
-  }
-
-  const manifest = parseModuleManifest(moduleDir);
-
-  return {
-    ok: true,
-    moduleId,
-    filesWritten,
-    activated,
-    version: manifest?.version || 'unknown',
-    name: manifest?.name || moduleId,
-  };
-}
-
-// ---------------------------------------------------------------------------
 
 module.exports = {
   parseModuleManifest,
@@ -507,5 +434,4 @@ module.exports = {
   removeModule,
   exportModule,
   importModule,
-  applyModuleUpdate,
 };

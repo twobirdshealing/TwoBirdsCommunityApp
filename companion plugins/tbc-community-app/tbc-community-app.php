@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('TBC_CA_VERSION', '3.54.0');
+define('TBC_CA_VERSION', '3.55.0');
 define('TBC_CA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TBC_CA_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TBC_CA_PLUGIN_FILE', __FILE__);

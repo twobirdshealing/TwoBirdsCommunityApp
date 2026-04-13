@@ -4,8 +4,7 @@
 
 import * as authService from '@/services/auth';
 import { clearAllUserCaches } from '@/services/cacheRegistry';
-import { registerDeviceToken } from '@/services/push';
-import { getFeatureFlag } from '@/utils/featureFlags';
+import { ensurePushTokenRegistered } from '@/services/push';
 import { createLogger } from '@/utils/logger';
 import type { AuthUser } from '@/types/user';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -69,11 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAuthenticated(true);
 
           // Re-register push token on every app start (token may have changed)
-          if (getFeatureFlag('push_notifications')) {
-            authService.getAuthToken().then(token => {
-              if (token) registerDeviceToken(token).catch((e) => log.warn('Push token registration failed:', { e }));
-            });
-          }
+          authService.getAuthToken().then(ensurePushTokenRegistered);
 
         } else {
           // Has auth but no user info - clear it
@@ -143,10 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userData);
     setIsAuthenticated(true);
 
-    // Register push token for new registrations
-    if (getFeatureFlag('push_notifications')) {
-      registerDeviceToken(accessToken).catch((e) => log.warn('Push token registration failed:', { e }));
-    }
+    ensurePushTokenRegistered(accessToken);
   }, []);
 
   const value = useMemo(() => ({

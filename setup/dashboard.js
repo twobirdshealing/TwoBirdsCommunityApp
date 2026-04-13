@@ -50,7 +50,7 @@ const { writeConfigValues } = require('./lib/config-writer');
 const { checkConnectivity, parseMultipart, httpsRequest } = require('./lib/http-helpers');
 const { runCommand, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission, getSubmissionsUrl } = require('./lib/eas');
 const { getOTAStatus, pushOTAUpdate, listOTAUpdates, deleteOTAUpdate } = require('./lib/ota');
-const { getInstalledModules, toggleModule, removeModule, exportModule, importModule, applyModuleUpdate } = require('./lib/modules');
+const { getInstalledModules, toggleModule, removeModule, exportModule, importModule } = require('./lib/modules');
 const {
   readLicense, writeLicense, readManifest, validateLicense, deactivateLicense,
   readModuleLicenses, writeModuleLicense, removeModuleLicense,
@@ -153,7 +153,12 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const pathname = url.pathname;
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // The dashboard only serves its own browser tab on the same port. Restrict
+  // CORS to that origin so a random page in another tab can't reach in and
+  // hit /api/* endpoints (which mutate config and trigger builds).
+  const allowedOrigin = `http://localhost:${PORT}`;
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
@@ -385,14 +390,6 @@ const server = http.createServer(async (req, res) => {
       const parts = await parseMultipart(req);
       if (parts.length === 0) { jsonResponse(res, { ok: false, error: 'No file uploaded' }, 400); return; }
       const result = importModule(parts[0].data);
-      jsonResponse(res, result);
-      return;
-    }
-
-    if (pathname === '/api/modules/upload' && req.method === 'POST') {
-      const parts = await parseMultipart(req);
-      if (parts.length === 0) { jsonResponse(res, { ok: false, error: 'No file uploaded' }, 400); return; }
-      const result = applyModuleUpdate(parts[0].data);
       jsonResponse(res, result);
       return;
     }

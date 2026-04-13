@@ -4,8 +4,8 @@
 // Uses expo-video for native video playback of MP4, WebM, etc.
 // Shows thumbnail/first frame until user taps play.
 //
-// REQUIRED:
-//   npx expo install expo-video
+// The container background is fixed black on purpose: that's the standard
+// letterbox color every video player uses regardless of system theme.
 // =============================================================================
 
 import React, { useState } from 'react';

@@ -25,7 +25,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, typography, sizing } from '@/constants/layout';
-import { APP_USER_AGENT } from '@/constants/config';
+import { APP_USER_AGENT, SITE_URL } from '@/constants/config';
 import { appApi } from '@/services/api/app';
 import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
 import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
@@ -73,6 +73,16 @@ export default function WebViewScreen() {
 
       if (!url) {
         setError('No URL provided');
+        setLoading(false);
+        return;
+      }
+
+      // Defense-in-depth: only authenticate URLs that belong to this site.
+      // The server validates too, but a client-side check prevents the app
+      // from ever handing a real session token to an unrelated origin.
+      if (!params.noAuth && !url.startsWith(SITE_URL)) {
+        log.warn('Refusing to create session for off-site URL', { url });
+        setError('This page is not part of your community.');
         setLoading(false);
         return;
       }
@@ -224,7 +234,6 @@ export default function WebViewScreen() {
           onHttpError={handleHttpError}
           incognito={true}
           javaScriptEnabled={true}
-          domStorageEnabled={true}
           startInLoadingState={true}
           injectedJavaScript={themeInjectionScript}
           renderLoading={() => (

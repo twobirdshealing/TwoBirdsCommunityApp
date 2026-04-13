@@ -324,14 +324,13 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   };
 
   // ---------------------------------------------------------------------------
-  // Reply to comment - FIXED: Always reply to top-level parent
+  // Reply to comment — FC only supports a single level of nesting, so a
+  // "reply to a reply" still attaches to the top-level parent. We just
+  // pre-fill the input with an @mention so the thread reads naturally.
   // ---------------------------------------------------------------------------
 
   const handleReply = (comment: Comment) => {
     hapticLight();
-    // If this comment has a parent_id, it's already a reply
-    // We should reply to the TOP-LEVEL comment, not nest deeper
-    // Also pre-fill with @username mention
     setReplyingTo(comment);
 
     // Add @username mention to input
@@ -346,24 +345,15 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
     commentEditor.setContent('');
   };
 
-  // Get the correct parent_id for replies
-  // If replying to a reply, use the reply's parent_id (top-level comment)
-  // If replying to a top-level comment, use its ID
+  // Walk up to the top-level comment so a reply-to-a-reply still attaches
+  // at depth 1 (FC's max nesting).
   const getReplyParentId = (): number | undefined => {
     if (!replyingTo) return undefined;
-
-    // If the comment we're replying to already has a parent_id,
-    // use THAT parent_id (the top-level comment)
-    if (replyingTo.parent_id) {
-      return replyingTo.parent_id;
-    }
-
-    // Otherwise this IS a top-level comment, use its ID
-    return replyingTo.id;
+    return replyingTo.parent_id ?? replyingTo.id;
   };
 
   // ---------------------------------------------------------------------------
-  // Handle Comment Reaction - FIXED: Uses {state: 1} format
+  // Handle Comment Reaction
   // ---------------------------------------------------------------------------
 
   const handleCommentReaction = async (comment: Comment, reactionType: string = 'like') => {

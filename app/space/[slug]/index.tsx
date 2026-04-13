@@ -1,12 +1,6 @@
 // =============================================================================
 // SPACE PAGE - Individual space view with feeds
 // =============================================================================
-// FIXED: 
-// - Uses PageHeader component for consistent styling
-// - Stats read from correct fields (members_count, posts_count/feeds_count)
-// - SpaceMenu in header
-// - Sticky posts, bookmark, edit, delete, PIN support
-// =============================================================================
 
 import React, { useEffect, useState, useCallback } from 'react';
 import {

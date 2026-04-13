@@ -221,7 +221,7 @@ class TBC_CA_Core {
         // Check table existence once per process
         if (self::$messaging_tables_exist === null) {
             $table = $wpdb->prefix . 'fcom_chat_thread_users';
-            self::$messaging_tables_exist = (bool) $wpdb->get_var("SHOW TABLES LIKE '{$table}'");
+            self::$messaging_tables_exist = (bool) $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
         }
         if (!self::$messaging_tables_exist) {
             return 0;

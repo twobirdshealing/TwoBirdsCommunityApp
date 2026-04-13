@@ -177,6 +177,13 @@ class TBC_CA_Auth_API {
             }
         }
 
+        // Invalidate any unconsumed one-time WebView session tokens. Without
+        // this, a token created seconds before logout could still be redeemed
+        // by anyone holding the URL during its 2-minute lifetime.
+        if ($user_id && class_exists('TBC_CA_Web_Session')) {
+            TBC_CA_Web_Session::revoke_all_for_user($user_id);
+        }
+
         return new WP_REST_Response([
             'success' => true,
             'message' => 'Logged out successfully.',

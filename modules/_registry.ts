@@ -40,7 +40,6 @@ export const MODULES: ModuleManifest[] = [
   cartModule,
   multiReactionsModule,
   adminModule,
-  adminModule,
 ];
 
 // Inject modules into the core registry (no circular dependency — one-way flow)

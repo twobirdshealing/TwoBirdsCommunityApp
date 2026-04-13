@@ -2,6 +2,11 @@
 
 All notable changes to the TBC Community App plugin.
 
+## v3.55.0
+- **Security: rate-limit password reset endpoints**: `/password/forgot` and `/password/reset` now go through the same FluentCommunity `AuthHelper::isAuthRateLimit()` check used by login and registration. A small per-IP transient counter is used as a fallback if FC isn't loaded. Closes an enumeration/spam vector on the public reset endpoints.
+- **Security: revoke unconsumed WebView session tokens on logout**: One-time login tokens for the in-app WebView (`/create-web-session`) are now tracked in user meta and deleted by `/auth/logout`. Without this, a token created seconds before logout could still be redeemed by anyone holding the URL during its 2-minute lifetime.
+- **Hardening: switch `SHOW TABLES LIKE` queries to `$wpdb->prepare()`**: Five existence checks for plugin and Fluent tables now go through `$wpdb->prepare()` with `$wpdb->esc_like()`. Table names were already internal so no real injection vector existed, but the previous form would get flagged by any static security scanner and is a foot-gun for future edits. Affects admin stats, push hooks, and the messaging-table existence cache.
+
 ## v3.54.0
 - **Crash Reporting (Sentry) settings tab**: Added a new "Crash Reporting" tab to the plugin settings UI. Buyers can paste their Sentry DSN and toggle crash reporting on/off without touching app code or rebuilding. The mobile app reads `crash_reporting: { enabled, dsn }` from the existing `/app-config` endpoint on startup and initializes Sentry only when both are valid. DSN format is validated server-side (`https://<key>@<host>/<projectId>`). When disabled or DSN blank, the SDK stays dormant — zero data sent, zero performance cost.
 

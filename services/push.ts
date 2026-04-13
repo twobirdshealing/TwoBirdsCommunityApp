@@ -10,6 +10,7 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { registerDevice, unregisterDevice } from './api/push';
+import { getFeatureFlag } from '@/utils/featureFlags';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('Push');
@@ -141,6 +142,18 @@ export async function registerDeviceToken(authToken: string): Promise<boolean> {
     log.debug('Device registration failed:', { error: result.error });
     return false;
   }
+}
+
+/**
+ * Best-effort wrapper around `registerDeviceToken`. Skips silently when the
+ * push_notifications feature flag is off, and swallows any error so a
+ * registration failure can never block login or app startup. Use this from
+ * any auth-related code path that needs to (re-)register the current device.
+ */
+export function ensurePushTokenRegistered(authToken: string | null | undefined): void {
+  if (!authToken) return;
+  if (!getFeatureFlag('push_notifications')) return;
+  registerDeviceToken(authToken).catch((e) => log.warn('Push token registration failed:', { e }));
 }
 
 // -----------------------------------------------------------------------------

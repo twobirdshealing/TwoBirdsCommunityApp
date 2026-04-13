@@ -3,6 +3,12 @@
 // =============================================================================
 // Reusable component for viewing images in a gallery overlay.
 // Used from FeedCard image taps and Single Post View.
+//
+// Why the colors here are hard-coded black/white instead of useTheme() tokens:
+// fullscreen media lightboxes always use a dark backdrop and white controls
+// regardless of the system theme — the controls have to stay readable over
+// arbitrary user-uploaded photos. Apple Photos, Instagram, and Twitter all
+// follow this convention. Theming these would actively hurt usability.
 // =============================================================================
 
 import React, { useState, useCallback } from 'react';

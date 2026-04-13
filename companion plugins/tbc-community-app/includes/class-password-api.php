@@ -58,6 +58,14 @@ class TBC_CA_Password_API {
      * Initiate password reset via WordPress native email.
      */
     public function handle_forgot(WP_REST_Request $request) {
+        // Rate-limit by IP via FluentCommunity's built-in helper, when present.
+        // Without this, attackers can spam the endpoint to enumerate accounts
+        // and hammer the mail server.
+        $rate_limited = self::check_rate_limit();
+        if ($rate_limited) {
+            return $rate_limited;
+        }
+
         $data = $request->get_json_params();
         if (empty($data)) {
             $data = $request->get_params();
@@ -110,6 +118,11 @@ class TBC_CA_Password_API {
      * Set new password using a reset token.
      */
     public function handle_reset(WP_REST_Request $request) {
+        $rate_limited = self::check_rate_limit();
+        if ($rate_limited) {
+            return $rate_limited;
+        }
+
         $data = $request->get_json_params();
         if (empty($data)) {
             $data = $request->get_params();
@@ -150,5 +163,44 @@ class TBC_CA_Password_API {
             'success' => true,
             'message' => 'Password updated successfully. You can now sign in.',
         ], 200);
+    }
+
+    /**
+     * Per-IP rate-limit shared between forgot/reset endpoints. Returns a
+     * WP_REST_Response on throttle, or null when the request may proceed.
+     *
+     * Prefers FluentCommunity's AuthHelper::isAuthRateLimit() so the limits
+     * stay aligned with the rest of the auth surface. Falls back to a small
+     * transient counter when FC isn't available, so the endpoint is never
+     * left wide open.
+     */
+    private static function check_rate_limit() {
+        if (class_exists('FluentCommunity\\Modules\\Auth\\AuthHelper')) {
+            $helper = 'FluentCommunity\\Modules\\Auth\\AuthHelper';
+            $check = $helper::isAuthRateLimit();
+            if (is_wp_error($check)) {
+                return new WP_REST_Response([
+                    'success' => false,
+                    'message' => $check->get_error_message(),
+                ], 429);
+            }
+            return null;
+        }
+
+        // Fallback: 10 requests per IP per 5 minutes
+        $ip = isset($_SERVER['REMOTE_ADDR']) ? preg_replace('/[^0-9a-fA-F:.]/', '', $_SERVER['REMOTE_ADDR']) : '';
+        if (empty($ip)) {
+            return null;
+        }
+        $key = 'tbc_ca_pw_rate_' . md5($ip);
+        $count = (int) get_transient($key);
+        if ($count >= 10) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'Too many requests. Please try again in a few minutes.',
+            ], 429);
+        }
+        set_transient($key, $count + 1, 5 * MINUTE_IN_SECONDS);
+        return null;
     }
 }

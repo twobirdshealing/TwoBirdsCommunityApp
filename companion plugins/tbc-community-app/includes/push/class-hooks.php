@@ -752,7 +752,7 @@ class TBC_CA_Push_Hooks {
         $table = $wpdb->prefix . 'fcom_chat_thread_users';
 
         // Check if table exists (Fluent Messaging may not be active)
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table}'");
+        $table_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
         if (!$table_exists) {
             return;
         }
@@ -857,7 +857,7 @@ class TBC_CA_Push_Hooks {
         $table = $wpdb->prefix . 'fcom_followers';
 
         // Check if the followers table exists (Pro feature)
-        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table}'");
+        $table_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
         if (!$table_exists) {
             return [];
         }

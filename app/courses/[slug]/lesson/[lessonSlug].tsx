@@ -237,9 +237,7 @@ export default function LessonViewScreen() {
       });
 
       if (response.data.is_completed) {
-        setTimeout(() => {
-          setShowCelebration(true);
-        }, 1400);
+        setShowCelebration(true);
       }
     } catch (err) {
       // Revert optimistic update

@@ -65,6 +65,9 @@ generate_json_array() {
 }
 
 # Helper: generate manifest.json with a given version
+# NOTE: updateUrl points at twobirdscode.com on purpose — that is the
+# white-label license/update server we run for buyers, not a Two Birds Church
+# leak. Do NOT replace it with a placeholder.
 generate_manifest() {
   local version="$1"
   local dest="$2"

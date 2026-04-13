@@ -84,6 +84,11 @@ interface UseStartupDataResult {
   retry: () => Promise<void>;
 }
 
+// Hard cap on retry attempts before we stop hammering the server.
+// Beyond this, the startup error screen should suggest contacting support.
+const MAX_RETRIES = 3;
+const RETRY_BACKOFF_MS = [1000, 2000, 4000];
+
 export function useStartupData({
   isAuthenticated,
   username,
@@ -93,11 +98,25 @@ export function useStartupData({
   onUnreadMessages,
 }: UseStartupDataOptions): UseStartupDataResult {
   const hasRun = useRef(false);
+  const isMountedRef = useRef(true);
+  const retryCountRef = useRef(0);
   const [status, setStatus] = useState<StartupStatus>('idle');
   const queryClient = useQueryClient();
 
+  // Track mount lifetime so a slow batch can't update state after unmount or logout.
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const runBatch = useCallback(async () => {
     if (!username) return;
+
+    // Capture the username at start so a logout-then-login race can't apply
+    // a stale response to the wrong user.
+    const startUsername = username;
     setStatus('loading');
 
     log.debug('Firing startup batch...');
@@ -108,7 +127,7 @@ export function useStartupData({
       const batchPaths = [
         // Core data (always included)
         { path: '/tbc-ca/v1/app-config' },
-        { path: `/fluent-community/v2/profile/${username}` },
+        { path: `/fluent-community/v2/profile/${startUsername}` },
         { path: '/fluent-community/v2/notifications/unread' },
         { path: '/fluent-community/v2/feeds/welcome-banner' },
         // Conditional — only include if feature was enabled last session
@@ -117,6 +136,12 @@ export function useStartupData({
       ];
 
       const responses = await batchRequest(batchPaths);
+
+      // Bail if the user logged out or the hook unmounted while we were waiting.
+      if (!isMountedRef.current || !hasRun.current) {
+        log.debug('Batch returned after unmount/logout — discarding');
+        return;
+      }
 
       log.debug('Batch returned', { count: responses.length });
 
@@ -178,28 +203,60 @@ export function useStartupData({
         queryClient.setQueryData([WIDGET_CACHE_KEYS.courses], coursesData.courses?.data ?? []);
       }
 
-      setStatus('success');
-      log.debug('Startup batch complete');
+      // Treat the batch as a success only if the two critical sub-responses
+      // (app config + profile) actually arrived. Without them the user lands
+      // on the home screen with no profile or feature flags — worse than a
+      // retry screen.
+      if (appConfig?.success && profile?.profile) {
+        retryCountRef.current = 0;
+        setStatus('success');
+        log.debug('Startup batch complete');
+      } else {
+        log.warn('Batch transport OK but critical sub-responses missing', {
+          hasAppConfig: !!appConfig?.success,
+          hasProfile: !!profile?.profile,
+        });
+        setStatus('error');
+      }
     } catch (err) {
+      if (!isMountedRef.current || !hasRun.current) return;
       log.error(err, 'Startup batch failed');
-      // Batch failed — check if we have cached features from a previous session (synchronous)
+      // Batch failed — fall back to cached features from a previous session if any,
+      // otherwise show the retry screen.
       const cached = getJSON(FEATURES_CACHE_KEY);
       setStatus(cached ? 'success' : 'error');
     }
   }, [username, onAppConfig, onProfileUpdate, onUnreadNotifications, onUnreadMessages, queryClient]);
 
+  // Wrapper exposed as `retry` — enforces a max attempt count and exponential
+  // backoff so a user repeatedly tapping "retry" can't hammer the server.
+  const retry = useCallback(async () => {
+    if (retryCountRef.current >= MAX_RETRIES) {
+      log.warn('Max startup retries reached — refusing further attempts');
+      return;
+    }
+    const delay = RETRY_BACKOFF_MS[retryCountRef.current] ?? 4000;
+    retryCountRef.current += 1;
+    setStatus('loading');
+    await new Promise(resolve => setTimeout(resolve, delay));
+    if (!isMountedRef.current) return;
+    await runBatch();
+  }, [runBatch]);
+
   // Fire once when authenticated with a username
   useEffect(() => {
     if (isAuthenticated && username && !hasRun.current) {
       hasRun.current = true;
+      retryCountRef.current = 0;
       runBatch();
     }
 
     if (!isAuthenticated) {
       hasRun.current = false;
+      retryCountRef.current = 0;
       setStatus('idle');
     }
   }, [isAuthenticated, username, runBatch]);
 
-  return { status, retry: runBatch };
+  return { status, retry };
 }

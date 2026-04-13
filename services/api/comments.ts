@@ -1,8 +1,9 @@
 // =============================================================================
 // COMMENTS API - All comment-related API calls
 // =============================================================================
-// FIXED: Use 'comment' not 'message' - matches what web app sends
-// FIXED: Add media_images support for image comments
+// Fluent Community's REST contract uses `comment` (not `message`) for the
+// body field, and accepts `media_images` at the top level for attachments.
+// Match the web app's payload exactly or the server silently drops fields.
 // =============================================================================
 
 import { get, post, del, patch } from './client';
@@ -52,12 +53,9 @@ export async function getComment(commentId: number) {
 // -----------------------------------------------------------------------------
 // Create a Comment
 // -----------------------------------------------------------------------------
-// FIXED: Web app sends 'comment' not 'message'!
-// FIXED: Added media_images support
-// -----------------------------------------------------------------------------
 
 export interface CreateCommentData {
-  comment: string;  // FIXED: Web app uses 'comment' not 'message'
+  comment: string;
   content_type?: 'text' | 'markdown' | 'html';
   parent_id?: number;
   media_images?: Array<{
@@ -71,10 +69,11 @@ export interface CreateCommentData {
 }
 
 export async function createComment(postId: number, data: CreateCommentData) {
-  // Build request matching EXACTLY what web app sends
   const requestData: Record<string, any> = {
-    comment: data.comment,  // FIXED: 'comment' not 'message'
-    meta: data.meta || null, // Pass meta if provided (e.g. GIF attachment), null otherwise
+    comment: data.comment,
+    // Pass meta through (e.g. GIF attachment); FC expects an explicit null
+    // when there is none, otherwise the field gets dropped server-side.
+    meta: data.meta || null,
   };
   
   // Optional fields
@@ -99,10 +98,9 @@ export async function createComment(postId: number, data: CreateCommentData) {
 // -----------------------------------------------------------------------------
 // Update a Comment
 // -----------------------------------------------------------------------------
-// FIXED: Use 'comment' not 'message' to match web app
 
 export interface UpdateCommentData {
-  comment: string;  // FIXED: Use 'comment' not 'message'
+  comment: string;
   content_type?: 'text' | 'markdown' | 'html';
 }
 
@@ -126,15 +124,14 @@ export async function deleteComment(postId: number, commentId: number) {
 // -----------------------------------------------------------------------------
 // React to a Comment
 // -----------------------------------------------------------------------------
-// FIXED: Web app sends {state: 1} to toggle reaction on/off
-// state: 1 = add reaction, state: 0 = remove reaction (toggle)
+// Reaction endpoint takes a single `state` field: 1 to add, 0 to remove.
+// There is no separate add/remove endpoint — both flow through the same POST.
 
 export async function reactToComment(
   postId: number,
   commentId: number,
   hasReacted: boolean = false,
 ) {
-  // Web app format: {state: 1} to react, {state: 0} to unreact
   const payload = {
     state: hasReacted ? 0 : 1,
   };

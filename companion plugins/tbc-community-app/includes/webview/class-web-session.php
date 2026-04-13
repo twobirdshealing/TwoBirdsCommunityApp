@@ -9,6 +9,9 @@ if (!defined('ABSPATH')) {
 
 class TBC_CA_Web_Session {
 
+    /** User-meta key holding the index of active web-session tokens for a user. */
+    const ACTIVE_TOKENS_META = 'tbc_ca_active_web_tokens';
+
     private static $instance = null;
 
     public static function get_instance() {
@@ -74,6 +77,20 @@ class TBC_CA_Web_Session {
 
         set_transient('tbc_ca_login_token_' . $token, $token_data, $expiry);
 
+        // Track this token in user meta so the logout handler can revoke any
+        // unconsumed tokens. Stale entries (older than 2x expiry) are pruned
+        // here to keep the index from growing without bound.
+        $active = get_user_meta($user_id, self::ACTIVE_TOKENS_META, true);
+        if (!is_array($active)) {
+            $active = [];
+        }
+        $cutoff = time() - ($expiry * 2);
+        $active = array_filter($active, function ($created_at) use ($cutoff) {
+            return is_numeric($created_at) && $created_at > $cutoff;
+        });
+        $active[$token] = time();
+        update_user_meta($user_id, self::ACTIVE_TOKENS_META, $active);
+
         $login_url = add_query_arg(['tbc_app_token' => $token], home_url('/'));
 
         return new WP_REST_Response([
@@ -104,8 +121,15 @@ class TBC_CA_Web_Session {
             exit;
         }
 
-        // Delete token immediately (one-time use)
+        // Delete token immediately (one-time use) and remove from the active index
         delete_transient('tbc_ca_login_token_' . $token);
+        if (isset($token_data['user_id'])) {
+            $active = get_user_meta($token_data['user_id'], self::ACTIVE_TOKENS_META, true);
+            if (is_array($active) && isset($active[$token])) {
+                unset($active[$token]);
+                update_user_meta($token_data['user_id'], self::ACTIVE_TOKENS_META, $active);
+            }
+        }
 
         $user = get_user_by('ID', $token_data['user_id']);
 
@@ -122,5 +146,23 @@ class TBC_CA_Web_Session {
         $redirect = $token_data['redirect'] ?: home_url('/calendar/');
         wp_safe_redirect($redirect);
         exit;
+    }
+
+    /**
+     * Revoke every unconsumed web-session token for a user. Called from the
+     * /auth/logout handler so that a token created moments before logout
+     * cannot be redeemed by a third party during its remaining lifetime.
+     */
+    public static function revoke_all_for_user($user_id) {
+        if (empty($user_id)) {
+            return;
+        }
+        $active = get_user_meta($user_id, self::ACTIVE_TOKENS_META, true);
+        if (is_array($active)) {
+            foreach (array_keys($active) as $token) {
+                delete_transient('tbc_ca_login_token_' . $token);
+            }
+        }
+        delete_user_meta($user_id, self::ACTIVE_TOKENS_META);
     }
 }

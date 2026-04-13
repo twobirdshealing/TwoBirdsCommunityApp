@@ -1,8 +1,9 @@
 // =============================================================================
 // SPACE SELECTOR - Dropdown to select a space for posting
 // =============================================================================
-// FIXED: Pass space SLUG instead of ID
-// API /spaces endpoint returns user's spaces - no client-side filtering needed
+// Pass the space slug (not numeric ID) to feed creation — FC's space router
+// is slug-based. The /spaces endpoint already returns only the spaces the
+// current user can post to, so no extra client-side filtering is needed.
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';

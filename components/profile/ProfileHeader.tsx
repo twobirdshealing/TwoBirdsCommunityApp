@@ -89,11 +89,16 @@ export function ProfileHeader({
         {/* Subtle gradient overlay */}
         <View style={styles.coverOverlay} />
 
-        {/* Settings Button (own profile only) */}
+        {/* Settings Button (own profile only) — sits on top of an arbitrary
+            cover photo, so it uses a translucent dark/light pill instead of a
+            theme token to stay visible against any image. */}
         {isOwnProfile && onSettingsPress && (
           <Pressable
             style={[styles.settingsButton, { backgroundColor: isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)' }]}
             onPress={onSettingsPress}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile settings"
+            hitSlop={8}
           >
             <Ionicons name="settings-outline" size={20} color={themeColors.textSecondary} />
           </Pressable>

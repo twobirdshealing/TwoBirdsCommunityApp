@@ -38,7 +38,7 @@ import { useStartupData } from '@/hooks/useStartupData';
 import { addResponseHeaderListener } from '@/services/api/client';
 import { getAppConfig, AppConfigResponse } from '@/services/api/appConfig';
 import { syncBadgeCount } from '@/services/push';
-import { mapUrlToRoute } from '@/utils/deepLinkMapper';
+import { mapUrlToRoute, type AppRoute } from '@/utils/deepLinkMapper';
 import { ThemeProvider as NavThemeProvider, DefaultTheme, type Theme as NavTheme } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as Linking from 'expo-linking';
@@ -111,6 +111,16 @@ function isValidRoute(route: string): boolean {
 /** Sanitize a string parameter from notification data (strip non-alphanumeric except - and _) */
 function sanitizeParam(value: unknown): string {
   return String(value ?? '').replace(/[^a-zA-Z0-9_\-]/g, '');
+}
+
+/**
+ * expo-router's typed routes only accept its own Href union, but our deep
+ * link mapper returns a structurally-valid `AppRoute`. We funnel every push
+ * through this single cast so the rest of the file stays free of `as any`.
+ */
+type RouterPushArg = Parameters<ReturnType<typeof useRouter>['push']>[0];
+function toRouterArg(route: AppRoute | { pathname: string; params?: Record<string, string> }): RouterPushArg {
+  return route as unknown as RouterPushArg;
 }
 
 // -----------------------------------------------------------------------------
@@ -198,7 +208,7 @@ function RootLayoutNav() {
     if (!route) return;
 
     if (isAuthenticated) {
-      router.push(route as any);
+      router.push(toRouterArg(route));
     } else {
       // Queue for after login
       pendingDeepLink.current = route;
@@ -221,7 +231,7 @@ function RootLayoutNav() {
     if (isAuthenticated && pendingDeepLink.current) {
       const route = pendingDeepLink.current;
       pendingDeepLink.current = null;
-      setTimeout(() => router.push(route as any), 300);
+      setTimeout(() => router.push(toRouterArg(route)), 300);
     }
   }, [isAuthenticated, router]);
 
@@ -266,8 +276,9 @@ function RootLayoutNav() {
       // Route based on notification data
       if (data?.route && typeof data.route === 'string' && isValidRoute(data.route)) {
         // Server-specified route — highest priority
+        const target = data.route;
         setTimeout(() => {
-          router.push(data.route as any);
+          router.push(toRouterArg({ pathname: target }));
         }, 100);
       } else if (handleModuleNotification(data ?? {}, router)) {
         // Module handled it — stop here

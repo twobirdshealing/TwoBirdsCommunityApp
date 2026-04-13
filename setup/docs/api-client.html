@@ -388,10 +388,6 @@ useEffect(() =&gt; {
   return unsubscribe;
 }, []);</code></pre>
 
-<div class="callout callout-warn">
-  <strong>Deprecated:</strong> The older <code>setOnResponseHeaders(callback)</code> API still exists for backward compatibility but clears all listeners and sets a single one. New code should use <code>addResponseHeaderListener()</code>.
-</div>
-
 <div class="callout callout-success">
   <strong>Badges stay live without polling.</strong> Every API response piggybacks the latest counts, so badges update on every screen transition or data fetch &mdash; no dedicated polling or WebSocket channel needed for counts.
 </div>

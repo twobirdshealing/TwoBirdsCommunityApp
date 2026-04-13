@@ -1791,7 +1791,7 @@
     <div style="display:flex;gap:8px">
       <button class="btn btn-sm" x-on:click="$refs.installModuleInput.click()">Upload Module</button>
       <input type="file" accept=".zip" x-ref="installModuleInput" style="display:none"
-             x-on:change="uploadModuleUpdate($event)">
+             x-on:change="importModuleFile($event)">
     </div>
   </div>
 
@@ -1840,7 +1840,7 @@
             <span style="color:var(--text-muted)" x-text="moduleUpdates[mod.id].date || ''"></span>
           </div>
           <div x-show="moduleUpdates[mod.id].changelog" style="max-height:80px;overflow-y:auto;font-size:11px;color:var(--text-secondary);margin-bottom:6px" x-html="sanitizeHtml(moduleUpdates[mod.id].changelog)"></div>
-          <button class="btn btn-sm btn-primary" x-on:click="uploadModuleUpdateFor(mod.id)" x-text="'Update to v' + moduleUpdates[mod.id].version">Update</button>
+          <button class="btn btn-sm btn-primary" x-on:click="$refs.installModuleInput.click()" x-text="'Update to v' + moduleUpdates[mod.id].version">Update</button>
         </div>
       </template>
 
@@ -1866,7 +1866,7 @@
       <div class="module-card-footer">
         <template x-if="mod.active"><button class="btn btn-sm" x-on:click="toggleMod(mod.id, false)">Deactivate</button></template>
         <template x-if="!mod.active"><button class="btn btn-sm btn-primary" x-on:click="toggleMod(mod.id, true)">Activate</button></template>
-        <button class="btn btn-sm" x-on:click="uploadModuleUpdateFor(mod.id)">Upload Update</button>
+        <button class="btn btn-sm" x-on:click="$refs.installModuleInput.click()">Upload Update</button>
         <a class="btn btn-sm" x-bind:href="'/api/modules/export/' + encodeURIComponent(mod.id)" download>Export</a>
         <button class="btn btn-sm btn-danger-subtle" x-on:click="removeMod(mod.id, mod.name)">Remove</button>
       </div>
@@ -3078,6 +3078,7 @@ bumpVersion(type) {
     async importModuleFile(event) {
       var file = event.dataTransfer ? event.dataTransfer.files[0] : event.target.files[0];
       if (!file) return;
+      if (event.target) event.target.value = '';
       var formData = new FormData();
       formData.append('file', file);
       this.showToast('Installing module...', 'info');
@@ -3085,8 +3086,8 @@ bumpVersion(type) {
         var res = await fetch('/api/modules/import', { method: 'POST', body: formData });
         var data = await res.json();
         if (data.ok) { this.showToast(data.message, 'success'); this.loadModules(); }
-        else this.showToast('Import failed: ' + data.error, 'error');
-      } catch (err) { this.showToast('Import error: ' + err.message, 'error'); }
+        else this.showToast('Install failed: ' + data.error, 'error');
+      } catch (err) { this.showToast('Install error: ' + err.message, 'error'); }
     },
 
     async loadModuleLicenses() {
@@ -3125,31 +3126,6 @@ bumpVersion(type) {
         delete this.moduleLicenses[modId];
         this.showToast('License removed for ' + modId, 'success');
       } catch (err) { this.showToast('Error: ' + err.message, 'error'); }
-    },
-
-    uploadModuleUpdateFor(modId) {
-      var input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.zip';
-      input.onchange = (e) => this.uploadModuleUpdate(e);
-      input.click();
-    },
-
-    async uploadModuleUpdate(event) {
-      var file = event.dataTransfer ? event.dataTransfer.files[0] : event.target.files[0];
-      if (!file) return;
-      if (event.target) event.target.value = '';
-      var formData = new FormData();
-      formData.append('file', file);
-      this.showToast('Installing module update...', 'info');
-      try {
-        var res = await fetch('/api/modules/upload', { method: 'POST', body: formData });
-        var data = await res.json();
-        if (data.ok) {
-          this.showToast(data.name + ' v' + data.version + ' — ' + data.filesWritten + ' files updated' + (data.activated ? ' (activated)' : ''), 'success');
-          this.loadModules();
-        } else this.showToast('Module update failed: ' + data.error, 'error');
-      } catch (err) { this.showToast('Module update error: ' + err.message, 'error'); }
     },
 
     // =========================================================================
