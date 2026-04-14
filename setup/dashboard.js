@@ -49,7 +49,7 @@ const { readProjectState } = require('./lib/state');
 const { writeConfigValues } = require('./lib/config-writer');
 const { checkConnectivity, parseMultipart, httpsRequest } = require('./lib/http-helpers');
 const { runCommand, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission, getSubmissionsUrl, validateEasArtifactUrl, streamEasArtifact } = require('./lib/eas');
-const { getOTAStatus, pushOTAUpdate, listOTAUpdates, deleteOTAUpdate } = require('./lib/ota');
+const { getOTAStatus, pushOTAUpdate, listOTAUpdates, getBranchStatus, republishUpdate, deleteOTAUpdate } = require('./lib/ota');
 const { getInstalledModules, toggleModule, removeModule, exportModule, importModule } = require('./lib/modules');
 const {
   readLicense, writeLicense, readManifest, validateLicense, deactivateLicense,
@@ -609,6 +609,22 @@ const server = http.createServer(async (req, res) => {
       const { groupId } = JSON.parse(body);
       console.log(`  Deleting OTA update group ${groupId}...`);
       const result = await deleteOTAUpdate(groupId || '');
+      jsonResponse(res, result);
+      return;
+    }
+
+    if (pathname === '/api/ota/branch-status' && req.method === 'GET') {
+      const channel = url.searchParams.get('channel') || 'production';
+      const result = await getBranchStatus(channel);
+      jsonResponse(res, result);
+      return;
+    }
+
+    if (pathname === '/api/ota/republish' && req.method === 'POST') {
+      const body = await readBody(req);
+      const { groupId, targetBranch } = JSON.parse(body);
+      console.log(`  Republishing OTA group ${groupId} to ${targetBranch}...`);
+      const result = await republishUpdate(groupId || '', targetBranch || '');
       jsonResponse(res, result);
       return;
     }

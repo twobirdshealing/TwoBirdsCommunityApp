@@ -73,22 +73,109 @@ async function pushOTAUpdate(channel, message, platform) {
   }
 }
 
-/** List recent OTA updates */
+/** Collapse per-platform update rows into one entry per `group` id. */
+function groupUpdates(raw) {
+  const list = Array.isArray(raw) ? raw : (raw?.currentPage || []);
+  const byGroup = new Map();
+  for (const u of list) {
+    const key = u.group || u.id;
+    if (!key) continue;
+    if (!byGroup.has(key)) {
+      byGroup.set(key, {
+        group: u.group || u.id,
+        id: u.id,
+        branch: u.branch?.name || u.branch || u.branchName || null,
+        runtimeVersion: u.runtimeVersion || null,
+        message: u.message || '',
+        createdAt: u.createdAt || u.updatedAt || null,
+        gitCommitHash: u.gitCommitHash || null,
+        isRollBackToEmbedded: !!u.isRollBackToEmbedded,
+        platforms: [],
+      });
+    }
+    const entry = byGroup.get(key);
+    if (u.platform && !entry.platforms.includes(u.platform)) entry.platforms.push(u.platform);
+    // Prefer the earliest createdAt we see (they should all match anyway)
+    if (u.createdAt && (!entry.createdAt || new Date(u.createdAt) < new Date(entry.createdAt))) {
+      entry.createdAt = u.createdAt;
+    }
+  }
+  return Array.from(byGroup.values()).sort((a, b) => {
+    const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return tb - ta;
+  });
+}
+
+/** List recent OTA updates (grouped by push). */
 async function listOTAUpdates() {
   try {
     const output = await runCommand(['eas', 'update:list', '--all', '--json', '--non-interactive'], 30000);
-    return { ok: true, updates: JSON.parse(output) };
+    const parsed = JSON.parse(output);
+    const updates = groupUpdates(parsed);
+    const runtimeVersions = Array.from(new Set(updates.map(u => u.runtimeVersion).filter(Boolean)));
+    return { ok: true, updates, runtimeVersions };
   } catch (err) {
-    // When no updates exist yet, EAS CLI errors out — treat as empty list
     const msg = (err.message || '').toLowerCase();
     if (msg.includes('branch') || msg.includes('no updates') || msg.includes('not found') || msg.includes('could not find') || msg.includes('environment')) {
-      return { ok: true, updates: [] };
+      return { ok: true, updates: [], runtimeVersions: [] };
     }
     return diagnoseEasError(err);
   }
 }
 
-/** Delete an OTA update group */
+/** Read the current live state of a branch — what clients are actually being served. */
+async function getBranchStatus(channel) {
+  if (!VALID_OTA_CHANNELS.includes(channel)) return { ok: false, error: 'Invalid channel' };
+  try {
+    const output = await runCommand(['eas', 'branch:view', channel, '--json', '--non-interactive'], 20000);
+    const parsed = JSON.parse(output);
+    // `eas branch:view` returns { id, name, updates: [...] }. Latest update is first.
+    const rawUpdates = parsed?.updates?.currentPage || parsed?.updates || [];
+    const grouped = groupUpdates(rawUpdates);
+    const latest = grouped[0] || null;
+    return {
+      ok: true,
+      branch: parsed?.name || channel,
+      latest,
+      isRollBackToEmbedded: !!latest?.isRollBackToEmbedded,
+      hasAnyUpdates: grouped.length > 0,
+    };
+  } catch (err) {
+    const msg = (err.message || '').toLowerCase();
+    if (msg.includes('not found') || msg.includes('could not find') || msg.includes('no branch')) {
+      return { ok: true, branch: channel, latest: null, isRollBackToEmbedded: false, hasAnyUpdates: false };
+    }
+    return { ok: false, error: err.message };
+  }
+}
+
+/** Republish a previous update group to a branch. Safe alternative to delete. */
+async function republishUpdate(groupId, targetBranch) {
+  if (!OTA_GROUP_ID_PATTERN.test(groupId)) return { ok: false, error: 'Invalid group ID' };
+  if (!VALID_OTA_CHANNELS.includes(targetBranch)) return { ok: false, error: 'Invalid target branch' };
+  try {
+    const args = ['eas', 'update:republish', '--group', groupId, '--branch', targetBranch, '--non-interactive', '--json'];
+    const output = await runCommand(args, 120000, { env: getEasVcsEnv() });
+    try {
+      const parsed = JSON.parse(output);
+      const items = Array.isArray(parsed) ? parsed : (parsed?.currentPage || []);
+      const first = items[0] || {};
+      return {
+        ok: true,
+        runtimeVersion: first.runtimeVersion || null,
+        group: first.group || null,
+        platforms: items.map(i => i.platform).filter(Boolean),
+      };
+    } catch (_) {
+      return { ok: true };
+    }
+  } catch (err) {
+    return diagnoseEasError(err);
+  }
+}
+
+/** Delete an OTA update group. Publishes a rollback-to-embedded marker on the branch. */
 async function deleteOTAUpdate(groupId) {
   if (!OTA_GROUP_ID_PATTERN.test(groupId)) return { ok: false, error: 'Invalid group ID' };
   try {
@@ -99,4 +186,4 @@ async function deleteOTAUpdate(groupId) {
   }
 }
 
-module.exports = { getOTAStatus, pushOTAUpdate, listOTAUpdates, deleteOTAUpdate };
+module.exports = { getOTAStatus, pushOTAUpdate, listOTAUpdates, getBranchStatus, republishUpdate, deleteOTAUpdate };

@@ -113,7 +113,7 @@ const BUILD_ID_PATTERN = /^[0-9a-f-]{36}$/i;
 // ---------------------------------------------------------------------------
 
 const OTA_GROUP_ID_PATTERN = /^[0-9a-f-]{36}$/i;
-const VALID_OTA_CHANNELS = ['development', 'preview', 'simulator', 'production'];
+const VALID_OTA_CHANNELS = ['development', 'preview', 'production'];
 const VALID_OTA_PLATFORMS = ['ios', 'android', 'all'];
 
 // ---------------------------------------------------------------------------
