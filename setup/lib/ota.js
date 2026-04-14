@@ -41,7 +41,13 @@ async function pushOTAUpdate(channel, message, platform) {
   if (!VALID_OTA_PLATFORMS.includes(platform)) return { ok: false, error: 'Invalid platform' };
   if (!message || typeof message !== 'string' || message.length > 500) return { ok: false, error: 'Message is required (max 500 chars)' };
 
-  const args = ['eas', 'update', '--channel', channel, '--environment', channel, '--message', JSON.stringify(message), '--non-interactive'];
+  // `--environment` selects which EAS env-var group is baked into the published bundle.
+  // It must be one of: development, preview, production. For this project, channel names
+  // match env names 1:1, so we forward channel as environment. If a buyer ever adds a
+  // channel with a non-standard name, fall back to 'production'.
+  const VALID_ENVS = ['development', 'preview', 'production'];
+  const environment = VALID_ENVS.includes(channel) ? channel : 'production';
+  const args = ['eas', 'update', '--branch', channel, '--environment', environment, '--message', JSON.stringify(message), '--non-interactive'];
   if (platform !== 'all') {
     args.push('--platform', platform);
   }

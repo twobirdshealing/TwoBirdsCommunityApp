@@ -1604,7 +1604,7 @@
       </div>
       <div class="field-group" style="margin-bottom:16px">
         <div class="field">
-          <label>Environment</label>
+          <label>Channel</label>
           <select x-model="otaChannel">
             <template x-for="ch in otaChannelOptions" :key="ch.value">
               <option x-bind:value="ch.value" x-text="ch.label"></option>
@@ -3386,15 +3386,23 @@ bumpVersion(type) {
         var data = await res.json();
         if (!data.ok || !data.channels) return;
         this.otaHasBuilt = data.hasBuilt !== false;
-        this.otaChannelOptions = [];
         var self = this;
+        var opts = [];
         Object.entries(data.channels).forEach(function(entry) {
           var profile = entry[0], channel = entry[1];
           if (channel && profile !== 'simulator') {
-            self.otaChannelOptions.push({ value: channel, label: channel.charAt(0).toUpperCase() + channel.slice(1) });
-            if (channel === 'production') self.otaChannel = channel;
+            opts.push({ value: channel, label: channel.charAt(0).toUpperCase() + channel.slice(1) });
           }
         });
+        // Sort so "production" is always first — ensures the <select> defaults to it
+        // even when Alpine's x-model races with x-for during initial render.
+        opts.sort(function(a, b) {
+          if (a.value === 'production') return -1;
+          if (b.value === 'production') return 1;
+          return 0;
+        });
+        self.otaChannelOptions = opts;
+        self.otaChannel = opts.length > 0 ? opts[0].value : '';
       } catch (_) {}
     },
 

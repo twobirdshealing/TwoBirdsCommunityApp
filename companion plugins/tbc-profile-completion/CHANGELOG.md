@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 — 2026-04-14
+
+Cache-bust release. The overlay JS asset is cached by browsers under `?v=TBC_PCOM_VERSION`, so any browser that loaded 1.0.0's JS before the route move (when the JS still called `auth/register/complete`) would keep serving the stale code against the new `tbc-pcom/v1` namespace and 404. Bumping the plugin version forces every browser to re-fetch the JS.
+
 ## 1.0.0 — 2026-04-14
 
 Initial release.

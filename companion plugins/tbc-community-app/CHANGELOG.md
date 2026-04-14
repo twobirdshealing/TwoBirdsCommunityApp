@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 — 2026-04-14
+
+Version bump in lockstep with `tbc-profile-completion` 1.0.1 — they shipped together as a single refactor (profile-completion REST endpoints extracted out of core into the add-on plugin under its own `tbc-pcom/v1` namespace) and any site upgrading one should upgrade the other in the same step. No code changes in this release.
+
 ## 1.0.0 — 2026-04-14
 
 Initial release.
