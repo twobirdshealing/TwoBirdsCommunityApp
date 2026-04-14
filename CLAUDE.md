@@ -47,7 +47,7 @@ The dashboard owns a precise list of every file it ships (stored in `setup/.core
 - `package.json` — your buyer-added `dependencies` and `devDependencies` merged in (core's deps win on conflicts so core can upgrade shared packages safely)
 - `modules/_registry.ts` — your import block between the `// YOUR MODULES` markers
 
-> **Custom project notes:** Put your own notes, conventions, in-progress work, or AI-agent instructions in `NOTES.md` at the project root. `CLAUDE.md` is core-owned and gets overwritten on updates; `NOTES.md` is preserved forever and is read by AI agents per the directive at the top of this file.
+> **Custom project notes:** `NOTES.md` ships blank with the core and lives at the project root — put your own notes, conventions, in-progress work, or AI-agent instructions there. `CLAUDE.md` is core-owned and gets overwritten on updates; `NOTES.md` is preserved across updates by the dashboard's snapshot system and is read by AI agents per the directive at the top of this file.
 
 > **Warning:** If you modify core files, your changes will be lost when applying a core update. If you need custom behavior, build it as a module instead.
 

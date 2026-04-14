@@ -393,6 +393,43 @@ rm -f "$STAGING_DIR/assets/images/login_background_img.png"
 
 # CLAUDE.md is now pure core — TBC-specific content lives in NOTES.md (excluded from snapshot)
 
+# Write a blank NOTES.md into the staging dir. The project-root NOTES.md is
+# excluded from the tar above (keeps our internal dev notes private), and this
+# heredoc drops a fresh starter in its place so every buyer has the file from
+# day one. On buyer updates, the identity system restores their own NOTES.md
+# over this blank template — so existing content is never clobbered.
+cat > "$STAGING_DIR/NOTES.md" <<'NOTES_EOF'
+# Project Notes
+
+This file is **buyer-owned** and preserved across core updates via the
+dashboard's snapshot system. Put any project-specific notes, conventions,
+credentials, or instructions for AI agents here. CLAUDE.md is core-owned
+and gets overwritten on updates — keep your stuff in this file.
+
+AI agents read this file **before** CLAUDE.md, and any rule here takes
+precedence. Use it however you like.
+
+---
+
+## Site
+
+Site URL:
+Admin URL:
+Primary contact:
+
+## Conventions
+
+-
+
+## In-progress work
+
+-
+
+## Notes for AI agents
+
+-
+NOTES_EOF
+
 # Remove any backup or temp files (single find traversal)
 find "$STAGING_DIR" \( -name "*.orig" -o -name ".DS_Store" -o -name "nul" \) -delete 2>/dev/null || true
 
@@ -458,7 +495,12 @@ FIND_EXCLUDES+=( ! -path './package-lock.json' )
 cd "$STAGING_DIR"
 rm -f "$FINAL_ZIP"
 
-find . -type f "${FIND_EXCLUDES[@]}" > /tmp/tbc-core-files.txt
+# Use a temp file outside $STAGING_DIR (so find never sees it) but in a path
+# that both bash and Node resolve to the same location. On Git Bash for Windows,
+# `/tmp/` diverges (bash → MSYS /tmp, Node → C:\tmp), so we can't use /tmp here.
+CORE_FILES_LIST="$WHITE_LABEL_ROOT/.tbc-core-files.txt"
+
+find . -type f "${FIND_EXCLUDES[@]}" > "$CORE_FILES_LIST"
 
 # Snapshot package.json as setup/.core-package.json — the deps baseline for the
 # dashboard's snapshot system. Used by extractIdentity to compute "buyer-added" deps
@@ -470,9 +512,9 @@ cp "$STAGING_DIR/package.json" "$STAGING_DIR/setup/.core-package.json"
 # The dashboard's update flow reads this on the NEXT update to know exactly
 # which previous-core files to delete (cleanup is precise — buyer files like
 # .git, NOTES.md, custom modules, and anything they added are never touched).
-node -e '
+CORE_FILES_LIST="$CORE_FILES_LIST" node -e '
   var fs = require("fs");
-  var list = fs.readFileSync("/tmp/tbc-core-files.txt", "utf8")
+  var list = fs.readFileSync(process.env.CORE_FILES_LIST, "utf8")
     .split("\n").filter(Boolean).map(function(p) { return p.replace(/^\.\//, ""); });
   // Include both manifest files in the list so they get cleaned up on next update
   for (var extra of ["setup/.core-files.json", "setup/.core-package.json"]) {
@@ -483,14 +525,14 @@ node -e '
 ' "$STAGING_DIR/setup/.core-files.json"
 
 # Re-run find so the file list passed to the zipper now includes both manifest files
-find . -type f "${FIND_EXCLUDES[@]}" > /tmp/tbc-core-files.txt
+find . -type f "${FIND_EXCLUDES[@]}" > "$CORE_FILES_LIST"
 
 # Build the core-update zip with our zero-dep Node zip engine — same createZip()
 # the dashboard ships with. Works on any OS that has Node (guaranteed via npm run).
 TBC_CORE_REPO_ROOT="$SOURCE_DIR" \
 TBC_CORE_BASE_DIR="$STAGING_DIR" \
 TBC_CORE_OUT_ZIP="$FINAL_ZIP" \
-TBC_CORE_LIST_FILE="/tmp/tbc-core-files.txt" \
+TBC_CORE_LIST_FILE="$CORE_FILES_LIST" \
 node -e '
   const { createZip } = require(process.env.TBC_CORE_REPO_ROOT + "/setup/lib/http-helpers");
   const fs = require("fs");
@@ -506,7 +548,7 @@ node -e '
   fs.writeFileSync(outZip, createZip(files));
 '
 
-rm -f /tmp/tbc-core-files.txt
+rm -f "$CORE_FILES_LIST"
 cd "$SOURCE_DIR"
 
 # On a version bump, cache the current HEAD hash so the NEXT bumped snapshot

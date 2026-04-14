@@ -2007,13 +2007,13 @@
             <table style="width:100%;font-size:12px;border-collapse:collapse">
               <tr>
                 <td style="padding:6px 8px;width:24px">
-                  <span class="status-icon" x-bind:class="backupIdentity.notesMd ? 'status-pass' : 'status-warn'" style="font-size:14px">
-                    <ion-icon x-bind:name="backupIdentity.notesMd ? 'checkmark-circle' : 'remove-circle-outline'"></ion-icon>
+                  <span class="status-icon status-pass" style="font-size:14px">
+                    <ion-icon x-bind:name="backupIdentity.notesMd ? 'checkmark-circle' : 'information-circle'"></ion-icon>
                   </span>
                 </td>
                 <td style="padding:6px 8px"><code>NOTES.md</code></td>
                 <td style="padding:6px 8px;text-align:right;color:var(--text-secondary)"
-                    x-text="backupIdentity.notesMd ? (backupIdentity.notesMd.length.toLocaleString() + ' chars captured') : 'Not present (optional buyer notes file)'"></td>
+                    x-text="backupIdentity.notesMd ? (backupIdentity.notesMd.length.toLocaleString() + ' chars captured') : 'Empty — ready for your notes'"></td>
               </tr>
             </table>
           </div>
