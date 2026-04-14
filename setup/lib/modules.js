@@ -32,6 +32,11 @@ function parseModuleManifest(moduleDir) {
   if (!fileExists(moduleTs)) return null;
   const content = fs.readFileSync(moduleTs, 'utf8');
 
+  // Read the exported identifier from the file (source of truth) rather than
+  // deriving it from the folder name — the two can drift on hyphenated names.
+  const exportMatch = content.match(/export\s+const\s+(\w+)\s*:\s*ModuleManifest\b/);
+  const exportName = exportMatch ? exportMatch[1] : null;
+
   const id = extractTsValue(content, /id:\s*'([^']*)'/);
   const name = extractTsValue(content, /name:\s*'([^']*)'/);
   const version = extractTsValue(content, /version:\s*'([^']*)'/);
@@ -72,7 +77,7 @@ function parseModuleManifest(moduleDir) {
   const hideMenuKeyMatches = content.matchAll(/hideMenuKey:\s*'([^']*)'/g);
   for (const m of hideMenuKeyMatches) { if (!visibilityKeys.includes(m[1])) visibilityKeys.push(m[1]); }
 
-  return { id, name, version, description, author, authorUrl, license, minAppVersion, companionPlugin, hasTab, apiBase, visibilityKeys, integrations, routePrefixes };
+  return { id, name, version, description, author, authorUrl, license, minAppVersion, companionPlugin, hasTab, apiBase, visibilityKeys, integrations, routePrefixes, exportName };
 }
 
 /** Get all installed modules */
@@ -103,10 +108,11 @@ function getInstalledModules() {
     // could leave things in that stuck half-registered state).
     const importPattern = new RegExp(`from\\s+['\\./"]+${dir}/module['\"]`);
     const hasImport = importPattern.test(registryContent);
-    const exportName = dir.replace(/-([a-z])/g, (_, c) => c.toUpperCase()) + 'Module';
     const arrayMatch = registryContent.match(/export const MODULES: ModuleManifest\[\] = \[([\s\S]*?)\n\];/);
     const arrayBody = arrayMatch ? arrayMatch[1] : '';
-    const inArray = new RegExp(`\\b${exportName}\\b`).test(arrayBody);
+    const inArray = manifest.exportName
+      ? new RegExp(`\\b${manifest.exportName}\\b`).test(arrayBody)
+      : false;
     const isActive = hasImport && inArray;
 
     // Check for route stub
@@ -159,8 +165,12 @@ function toggleModule(moduleId, active, mod) {
   }
   if (!mod) return { ok: false, error: 'Module not found: ' + moduleId };
 
+  if (!mod.exportName) {
+    return { ok: false, error: `Could not find an "export const <name>: ModuleManifest" declaration in ${mod.folder}/module.ts` };
+  }
+
   let content = fs.readFileSync(PATHS.registryTs, 'utf8');
-  const exportName = mod.folder.replace(/-/g, '') + 'Module';
+  const { exportName } = mod;
 
   if (active && !mod.active) {
     // Add import line — insert before `export const MODULES`
