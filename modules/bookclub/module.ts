@@ -59,6 +59,7 @@ export const bookclubModule: ModuleManifest = {
   ],
 
   routePrefixes: ['/bookclub'],
+  routes: ['bookclub'],
   hideMenuKey: 'bookclub',
   companionPlugin: 'tbc-book-club',
   apiBase: '/wp-json/tbc-bc/v1',

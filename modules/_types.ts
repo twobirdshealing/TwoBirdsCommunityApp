@@ -264,6 +264,15 @@ export interface ModuleManifest {
   tabBarAddon?: React.ComponentType;
   /** Route prefixes for push notification / deep link validation (e.g. ['/bookclub']) */
   routePrefixes?: string[];
+  /**
+   * `app/` files this module owns. Each entry is a path relative to `app/`.
+   * Can be a directory (`'blog'` → `app/blog/`) or a single file
+   * (`'profile-complete.tsx'` → `app/profile-complete.tsx`). The dashboard
+   * uses this list to pack route stubs into the export zip and to delete
+   * them on uninstall — `routePrefixes` above is only for runtime deep-link
+   * routing and should not be conflated with filesystem ownership.
+   */
+  routes?: string[];
   /** Registration step registrations — adds steps to the registration flow */
   registrationSteps?: RegistrationStepRegistration[];
   /** Response header mappings — extracts custom headers from every API response */

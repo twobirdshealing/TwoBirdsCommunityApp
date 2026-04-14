@@ -25,6 +25,18 @@ function safeExtractFiles(files, prefix, destDir) {
 // Module System — read, export, import, remove modules
 // ---------------------------------------------------------------------------
 
+// A route entry is a path relative to app/, declared in module.routes.
+// It may resolve to either a directory (e.g. 'blog' -> app/blog/) or a
+// single file (e.g. 'profile-complete.tsx' -> app/profile-complete.tsx).
+// Filesystem decides which — the manifest just names it.
+function resolveRouteEntry(entry) {
+  const rel = String(entry || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  if (!rel || rel.split('/').some(seg => seg === '..' || seg === '')) return null;
+  const abs = path.join(PATHS.appDir, rel);
+  if (!fileExists(abs)) return { rel, abs, kind: null };
+  return { rel, abs, kind: fs.statSync(abs).isDirectory() ? 'dir' : 'file' };
+}
+
 /** Parse module.ts to extract id, name, version, companionPlugin, whether it has a tab */
 function parseModuleManifest(moduleDir) {
   let moduleTs = path.join(moduleDir, 'module.ts');
@@ -49,12 +61,21 @@ function parseModuleManifest(moduleDir) {
   const hasTab = /\btab:\s*\{/.test(content);
   const apiBase = extractTsValue(content, /apiBase:\s*'([^']*)'/);
 
-  // routePrefixes: ['/blog', '/blog-comments'] — declares which app/<prefix>/ folders this module owns
+  // routePrefixes: ['/blog'] — runtime-only, used for push/deep-link routing
   const routePrefixes = [];
   const routePrefixMatch = content.match(/routePrefixes:\s*\[([^\]]*)\]/);
   if (routePrefixMatch) {
     const entries = routePrefixMatch[1].matchAll(/'([^']+)'/g);
     for (const m of entries) routePrefixes.push(m[1]);
+  }
+
+  // routes: ['blog', 'profile-complete.tsx'] — physical app/ paths this module
+  // owns. Source of truth for export packaging and uninstall cleanup.
+  const routes = [];
+  const routesMatch = content.match(/\broutes:\s*\[([^\]]*)\]/);
+  if (routesMatch) {
+    const entries = routesMatch[1].matchAll(/'([^']+)'/g);
+    for (const m of entries) routes.push(m[1]);
   }
 
   // Detect which integration slots this module uses
@@ -77,7 +98,7 @@ function parseModuleManifest(moduleDir) {
   const hideMenuKeyMatches = content.matchAll(/hideMenuKey:\s*'([^']*)'/g);
   for (const m of hideMenuKeyMatches) { if (!visibilityKeys.includes(m[1])) visibilityKeys.push(m[1]); }
 
-  return { id, name, version, description, author, authorUrl, license, minAppVersion, companionPlugin, hasTab, apiBase, visibilityKeys, integrations, routePrefixes, exportName };
+  return { id, name, version, description, author, authorUrl, license, minAppVersion, companionPlugin, hasTab, apiBase, visibilityKeys, integrations, routePrefixes, routes, exportName };
 }
 
 /** Get all installed modules */
@@ -155,6 +176,20 @@ function countFiles(dir) {
   return count;
 }
 
+// Delete every app/ file or directory the module owns: tab stub + each entry
+// in module.routes. Used by both deactivate (toggleModule) and removeModule
+// so route ownership stays in one place.
+function deleteModuleRouteStubs(mod) {
+  if (mod.hasTab) {
+    const stubPath = path.join(PATHS.tabsDir, mod.folder + '.tsx');
+    if (fileExists(stubPath)) fs.unlinkSync(stubPath);
+  }
+  for (const entry of mod.routes || []) {
+    const r = resolveRouteEntry(entry);
+    if (r && fileExists(r.abs)) fs.rmSync(r.abs, { recursive: true, force: true });
+  }
+}
+
 /** Toggle a module active/inactive in _registry.ts. Pass mod to skip re-scan. */
 function toggleModule(moduleId, active, mod) {
   if (!fileExists(PATHS.registryTs)) return { ok: false, error: '_registry.ts not found' };
@@ -205,6 +240,11 @@ function toggleModule(moduleId, active, mod) {
     // Clean up triple+ blank lines
     content = content.replace(/\n{3,}/g, '\n\n');
     fs.writeFileSync(PATHS.registryTs, content);
+
+    // Tear down the route stubs the module owns so app/ doesn't grow ghost
+    // files. Module folder itself is left in place — that's removeModule's job.
+    deleteModuleRouteStubs(mod);
+
     return { ok: true, message: `${mod.name} deactivated` };
   }
 
@@ -217,26 +257,15 @@ function removeModule(moduleId) {
   const mod = modules.find(m => m.id === moduleId);
   if (!mod) return { ok: false, error: 'Module not found: ' + moduleId };
 
-  // Deactivate first (pass mod to avoid re-scanning)
+  // Deactivate first — already tears down route stubs.
   if (mod.active) toggleModule(moduleId, false, mod);
+  // Defensive cleanup for the inactive-but-stale case (stubs left from a
+  // previous broken uninstall).
+  deleteModuleRouteStubs(mod);
 
   // Remove module folder
   const moduleDir = path.join(PATHS.modulesDir, mod.folder);
   fs.rmSync(moduleDir, { recursive: true, force: true });
-
-  // Remove tab stub if exists
-  if (mod.hasTab) {
-    const stubPath = path.join(PATHS.tabsDir, mod.folder + '.tsx');
-    if (fileExists(stubPath)) fs.unlinkSync(stubPath);
-  }
-
-  // Remove non-tab route directories the module owned (app/<prefix>/)
-  for (const p of mod.routePrefixes || []) {
-    const folderName = String(p).replace(/^\/+/, '').replace(/\/+$/, '');
-    if (!folderName || folderName.includes('/') || folderName.includes('..')) continue;
-    const routeDir = path.join(PATHS.appDir, folderName);
-    if (fileExists(routeDir)) fs.rmSync(routeDir, { recursive: true, force: true });
-  }
 
   return { ok: true, message: `${mod.name} removed` };
 }
@@ -264,11 +293,11 @@ function collectFiles(dir, base) {
 /**
  * Create a .zip package for a module (sellable as an add-on).
  * Format:
- *   manifest.json                 — metadata (includes routePrefixes so import knows what to unpack)
+ *   manifest.json                 — metadata (includes `routes` so import knows what to unpack/clean)
  *   module/<files>                — the module folder (modules/<folder>/)
  *   route-stubs/<file>.tsx        — tab stub file (if the module has a bottom tab)
- *   app-routes/<prefix>/<files>   — non-tab route directories declared via routePrefixes
- *                                   (e.g. app/blog/*, app/blog-comments/*)
+ *   app-routes/<rel-from-app>     — route stub files & directories declared via module.routes
+ *                                   (e.g. app-routes/blog/index.tsx, app-routes/profile-complete.tsx)
  *   companion-plugin/<files>      — companion WordPress plugin (if any)
  *
  * Zero-dep DEFLATE zip via createZip() in http-helpers.js.
@@ -281,10 +310,20 @@ function exportModule(moduleId) {
   const moduleDir = path.join(PATHS.modulesDir, mod.folder);
   const files = [];
 
-  // Normalize routePrefixes -> folder names (strip leading slash, drop empties)
-  const routeFolders = (mod.routePrefixes || [])
-    .map((p) => String(p).replace(/^\/+/, '').replace(/\/+$/, ''))
-    .filter((p) => p && !p.includes('/') && !p.includes('..'));
+  // Resolve every route entry to a real filesystem path. Skip invalid entries
+  // and warn on entries that don't exist on disk — those are usually a typo
+  // in module.ts that would silently strand buyers, same bug class as before.
+  const resolvedRoutes = [];
+  const missingRoutes = [];
+  for (const entry of mod.routes || []) {
+    const r = resolveRouteEntry(entry);
+    if (!r) continue;
+    if (r.kind === null) { missingRoutes.push(entry); continue; }
+    resolvedRoutes.push(r);
+  }
+  if (missingRoutes.length) {
+    return { ok: false, error: `module.routes references files that don't exist: ${missingRoutes.join(', ')}` };
+  }
 
   const manifest = {
     id: mod.id,
@@ -300,8 +339,9 @@ function exportModule(moduleId) {
     companionPlugin: mod.companionPlugin || null,
     apiBase: mod.apiBase || null,
     routePrefixes: mod.routePrefixes || [],
+    routes: resolvedRoutes.map(r => r.rel),
     exportedAt: new Date().toISOString(),
-    format: 2,
+    format: 3,
   };
   files.push({ path: 'manifest.json', data: Buffer.from(JSON.stringify(manifest, null, 2)) });
 
@@ -319,15 +359,16 @@ function exportModule(moduleId) {
     }
   }
 
-  // Non-tab route directories (app/<prefix>/) declared via routePrefixes.
-  // These hold the actual screens for modules like blog, bookclub, youtube —
-  // without them the imported module would be missing its feature pages.
-  for (const folderName of routeFolders) {
-    const routeDir = path.join(PATHS.appDir, folderName);
-    if (!fileExists(routeDir)) continue;
-    const routeFiles = collectFiles(routeDir);
-    for (const f of routeFiles) {
-      files.push({ path: `app-routes/${folderName}/${f.path}`, data: f.data });
+  // Route stubs declared via module.routes — files OR directories under app/.
+  // Keys are stored relative to app/ so the importer can drop them straight back.
+  for (const r of resolvedRoutes) {
+    if (r.kind === 'file') {
+      files.push({ path: `app-routes/${r.rel}`, data: fs.readFileSync(r.abs) });
+    } else {
+      const dirFiles = collectFiles(r.abs);
+      for (const f of dirFiles) {
+        files.push({ path: `app-routes/${r.rel}/${f.path}`, data: f.data });
+      }
     }
   }
 
@@ -394,27 +435,33 @@ function importModule(zipBuffer) {
     fs.writeFileSync(destPath, file.data);
   }
 
-  // Extract non-tab app route directories (app-routes/<prefix>/...)
-  // Replace each target app/<prefix>/ folder to keep the state clean on update.
+  // Extract route stubs (app-routes/<rel-from-app>...).
+  // First, wipe whatever the manifest says we own so updates start clean.
+  // Falls back to scanning top-level subdirs for older zips (format < 3).
   const appRouteFiles = files.filter(f => f.path.startsWith('app-routes/'));
-  const touchedPrefixes = new Set();
-  for (const file of appRouteFiles) {
-    const rest = file.path.slice('app-routes/'.length);
-    const firstSlash = rest.indexOf('/');
-    if (firstSlash === -1) continue;
-    const prefix = rest.slice(0, firstSlash);
-    if (!prefix || prefix.includes('..') || prefix.startsWith('.')) continue;
-    if (!touchedPrefixes.has(prefix)) {
-      const prefixDir = path.join(PATHS.appDir, prefix);
-      if (fileExists(prefixDir)) fs.rmSync(prefixDir, { recursive: true, force: true });
-      touchedPrefixes.add(prefix);
+  const declaredRoutes = Array.isArray(manifest.routes) ? manifest.routes : null;
+  const cleanupTargets = new Set();
+  if (declaredRoutes) {
+    for (const entry of declaredRoutes) {
+      const r = resolveRouteEntry(entry);
+      if (r) cleanupTargets.add(r.rel);
+    }
+  } else {
+    // Legacy zip — infer from top-level subdirectories under app-routes/
+    for (const file of appRouteFiles) {
+      const rest = file.path.slice('app-routes/'.length);
+      const firstSlash = rest.indexOf('/');
+      if (firstSlash === -1) continue;
+      const prefix = rest.slice(0, firstSlash);
+      if (prefix && !prefix.includes('..') && !prefix.startsWith('.')) cleanupTargets.add(prefix);
     }
   }
-  for (const prefix of touchedPrefixes) {
-    const prefixDir = path.join(PATHS.appDir, prefix);
-    const scoped = appRouteFiles.filter(f => f.path.startsWith(`app-routes/${prefix}/`));
-    safeExtractFiles(scoped, new RegExp(`^app-routes/${prefix}/`), prefixDir);
+  for (const rel of cleanupTargets) {
+    const target = path.join(PATHS.appDir, rel);
+    if (fileExists(target)) fs.rmSync(target, { recursive: true, force: true });
   }
+  // Now drop everything in app-routes/ back into app/, preserving relative paths.
+  safeExtractFiles(appRouteFiles, /^app-routes\//, PATHS.appDir);
 
   // Extract companion plugin
   const pluginFiles = files.filter(f => f.path.startsWith('companion-plugin/'));

@@ -33,5 +33,6 @@ export const youtubeModule: ModuleManifest = {
   ],
 
   routePrefixes: ['/youtube'],
+  routes: ['youtube'],
   companionPlugin: 'tbc-youtube',
 };

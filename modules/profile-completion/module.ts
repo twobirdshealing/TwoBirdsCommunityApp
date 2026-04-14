@@ -20,6 +20,7 @@ export const profileCompletionModule: ModuleManifest = {
   license: 'Proprietary',
   companionPlugin: 'tbc-profile-completion',
   routePrefixes: ['/profile-complete'],
+  routes: ['profile-complete.tsx'],
 
   responseHeaders: [
     {

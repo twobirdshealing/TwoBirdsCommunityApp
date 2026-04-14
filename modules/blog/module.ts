@@ -44,4 +44,5 @@ export const blogModule: ModuleManifest = {
   ],
 
   routePrefixes: ['/blog', '/blog-comments'],
+  routes: ['blog', 'blog-comments'],
 };
