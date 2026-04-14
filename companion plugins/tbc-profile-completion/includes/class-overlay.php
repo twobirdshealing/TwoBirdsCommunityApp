@@ -2,7 +2,7 @@
 /**
  * Overlay Class
  * Injects a persistent profile-completion overlay on FC portal pages
- * for users with incomplete profiles. No shortcode page needed.
+ * for users with incomplete profiles.
  *
  * @package TBC_ProfileCompletion
  */
@@ -13,15 +13,15 @@ namespace TBCPcom;
 
 defined('ABSPATH') || exit;
 
-class Shortcode {
+class Overlay {
 
-    /** @var ProfileGate|null */
-    private ?ProfileGate $gate = null;
+    private ProfileGate $gate;
+
+    public function __construct(ProfileGate $gate) {
+        $this->gate = $gate;
+    }
 
     private function gate(): ProfileGate {
-        if (!$this->gate) {
-            $this->gate = new ProfileGate();
-        }
         return $this->gate;
     }
 
@@ -134,53 +134,12 @@ class Shortcode {
             return;
         }
 
-        // Don't redirect if on a page with the shortcode (legacy support)
-        global $post;
-        if ($post && (has_shortcode($post->post_content, 'tbc_registration')
-            || has_shortcode($post->post_content, 'tbc_profile_completion'))) {
-            return;
-        }
-
         // Redirect to community portal (overlay will show there)
         $community_url = $this->get_community_url();
         if ($community_url) {
             wp_safe_redirect($community_url);
             exit;
         }
-    }
-
-    /**
-     * Portal redirect for the SPA.
-     * Hook: fluent_community/before_js_loaded
-     *
-     * Not needed with overlay approach — overlay shows on portal pages directly.
-     * Kept as no-op for hook compatibility.
-     */
-    public function maybe_inject_portal_redirect(): void {
-        // Overlay handles this — no redirect needed
-    }
-
-    /**
-     * Legacy shortcode support — renders the overlay div.
-     * Not needed for the overlay approach, but kept for backwards compat.
-     */
-    public function render_shortcode($atts = []) {
-        if (!is_user_logged_in() || $this->gate()->is_complete()) {
-            return '';
-        }
-
-        $config = $this->build_config();
-
-        $css_file = TBC_PCOM_DIR . 'assets/css/profile-completion.css';
-        $output = '';
-        if (file_exists($css_file)) {
-            $output .= '<style id="tbc-pcom-css">' . file_get_contents($css_file) . '</style>';
-        }
-
-        $output .= '<script>var tbcPcomConfig = ' . wp_json_encode($config) . ';</script>';
-        $output .= '<script src="' . esc_url(TBC_PCOM_URL . 'assets/js/profile-completion.js?ver=' . TBC_PCOM_VERSION) . '" defer="defer"></script>';
-
-        return $output;
     }
 
     // =========================================================================
@@ -211,8 +170,7 @@ class Shortcode {
             $xprofile = \FluentCommunity\App\Models\XProfile::where('user_id', $user->ID)->first();
             if ($xprofile) {
                 $existing['bio'] = $xprofile->short_description ?? '';
-                $raw_avatar = $xprofile->avatar ?? '';
-                $existing['avatar'] = ProfileGate::is_placeholder_avatar($raw_avatar) ? '' : $raw_avatar;
+                $existing['avatar'] = ProfileGate::uploaded_avatar_url($xprofile);
 
                 $meta = $xprofile->meta ?? [];
                 if (is_string($meta)) {
@@ -243,10 +201,8 @@ class Shortcode {
             }
         }
 
-        $rest_namespace = defined('TBC_CA_REST_NAMESPACE') ? TBC_CA_REST_NAMESPACE : TBC_PCOM_REST_NAMESPACE;
-
         return [
-            'restUrl'         => rest_url($rest_namespace . '/'),
+            'restUrl'         => rest_url(TBC_PCOM_REST_NAMESPACE . '/'),
             'fcRestUrl'       => $fc_rest_url,
             'restNonce'       => wp_create_nonce('wp_rest'),
             'communityUrl'    => $this->get_community_url(),

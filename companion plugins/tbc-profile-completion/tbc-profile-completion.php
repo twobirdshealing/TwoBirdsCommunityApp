@@ -2,8 +2,8 @@
 /**
  * Plugin Name: TBC Profile Completion
  * Plugin URI:  https://twobirdscode.com
- * Description: Profile completion gate for Fluent Community registration. Requires bio and avatar before users can access the community. Hooks into tbc-community-app's registration flow.
- * Version:     1.2.9
+ * Description: Profile completion gate for Fluent Community registration. Requires bio and avatar before users can access the community. Self-contained: registers its own REST routes under /tbc-pcom/v1.
+ * Version:     1.0.0
  * Author:      Two Birds Code
  * Author URI:  https://twobirdscode.com
  * Text Domain: tbc-pcom
@@ -19,7 +19,7 @@
 
 defined('ABSPATH') or die('No direct script access allowed');
 
-define('TBC_PCOM_VERSION', '1.2.9');
+define('TBC_PCOM_VERSION', '1.0.0');
 define('TBC_PCOM_FILE', __FILE__);
 define('TBC_PCOM_DIR', plugin_dir_path(__FILE__));
 define('TBC_PCOM_URL', plugin_dir_url(__FILE__));
@@ -45,10 +45,10 @@ add_action('plugins_loaded', function () {
     }
 
     require_once TBC_PCOM_DIR . 'includes/class-profile-gate.php';
-    require_once TBC_PCOM_DIR . 'includes/class-shortcode.php';
+    require_once TBC_PCOM_DIR . 'includes/class-overlay.php';
 
     $gate = new TBCPcom\ProfileGate();
-    $shortcode = new TBCPcom\Shortcode();
+    $overlay = new TBCPcom\Overlay($gate);
 
     // ── Advertise profile completion capability in /app-config ────────
     add_filter('tbc_ca_registration_config', function ($config) {
@@ -72,27 +72,22 @@ add_action('plugins_loaded', function () {
         \FluentCommunity\App\Models\XProfile::saved([$gate, 'reevaluate_from_model_event']);
     }
 
-    // ── Profile completion status + complete endpoints ────────────────
-    // These hook into tbc-community-app's /auth/register/status and /auth/register/complete
-    add_filter('tbc_ca_profile_status', [$gate, 'filter_profile_status'], 10, 2);
-    add_filter('tbc_ca_complete_registration', [$gate, 'filter_complete_registration'], 10, 2);
+    // ── REST routes: GET /tbc-pcom/v1/status, POST /tbc-pcom/v1/complete ─
+    add_action('rest_api_init', [$gate, 'register_routes']);
 
     // ── X-TBC-Profile-Incomplete response header ─────────────────────
     add_filter('rest_post_dispatch', [$gate, 'add_incomplete_header'], 10, 3);
 
     // ── Overlay: inject on FC portal pages for incomplete users ──────
-    add_action('fluent_community/portal_head', [$shortcode, 'inject_portal_css']);
-    add_action('fluent_community/portal_footer', [$shortcode, 'inject_portal_js']);
+    add_action('fluent_community/portal_head', [$overlay, 'inject_portal_css']);
+    add_action('fluent_community/portal_footer', [$overlay, 'inject_portal_js']);
 
     // ── Overlay: inject on non-portal FC pages (auth pages) ──────────
-    add_action('wp_head', [$shortcode, 'maybe_inject_auth_css']);
-    add_action('wp_footer', [$shortcode, 'maybe_inject_auth_js']);
+    add_action('wp_head', [$overlay, 'maybe_inject_auth_css']);
+    add_action('wp_footer', [$overlay, 'maybe_inject_auth_js']);
 
     // ── Redirect non-FC pages to portal (overlay shows there) ────────
-    add_action('template_redirect', [$shortcode, 'maybe_redirect_incomplete_registration']);
-
-    // ── Legacy shortcode support ──────────────────────────────────────
-    add_shortcode('tbc_profile_completion', [$shortcode, 'render_shortcode']);
+    add_action('template_redirect', [$overlay, 'maybe_redirect_incomplete_registration']);
 
     // ── Disable FC native onboarding widget when our gate is active ──
     // FC uses auth_user.compilation_score (typo is theirs) to show

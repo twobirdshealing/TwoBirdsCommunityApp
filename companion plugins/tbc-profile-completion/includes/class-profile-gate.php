@@ -123,14 +123,13 @@ class ProfileGate {
     public static function get_missing_fields($xprofile, array $overrides = []): array {
         $missing = [];
 
-        $bio    = $overrides['short_description'] ?? ($xprofile->short_description ?? '');
-        $avatar = $overrides['avatar'] ?? ($xprofile->avatar ?? '');
+        $bio = $overrides['short_description'] ?? ($xprofile->short_description ?? '');
 
         if (self::get_option('require_bio', true) && empty($bio)) {
             $missing[] = 'bio';
         }
 
-        if (self::get_option('require_avatar', true) && self::is_placeholder_avatar($avatar)) {
+        if (self::get_option('require_avatar', true) && !self::has_real_avatar($xprofile, $overrides)) {
             $missing[] = 'avatar';
         }
 
@@ -138,18 +137,39 @@ class ProfileGate {
     }
 
     /**
-     * Check if an avatar URL is empty or Fluent Community's default placeholder.
+     * Whether the user has actually uploaded an avatar (vs. FC's auto-generated
+     * Gravatar / ui-avatars / placeholder fallback). Delegates to FC's native
+     * XProfile::hasCustomAvatar(), which reads the raw `avatar` column directly.
+     *
+     * @param mixed $xprofile  FluentCommunity XProfile model instance.
+     * @param array $overrides Optional pre-save overrides; if 'avatar' is present
+     *                         it takes precedence over the model's stored value.
      */
-    public static function is_placeholder_avatar(string $avatar): bool {
-        if (empty($avatar)) {
-            return true;
+    public static function has_real_avatar($xprofile, array $overrides = []): bool {
+        if (array_key_exists('avatar', $overrides)) {
+            return !empty($overrides['avatar']);
         }
 
-        if (str_contains($avatar, 'fluent-community/assets/images/placeholder')) {
-            return true;
+        if (!$xprofile) {
+            return false;
         }
 
-        return false;
+        if (method_exists($xprofile, 'hasCustomAvatar')) {
+            return (bool) $xprofile->hasCustomAvatar();
+        }
+
+        // Fallback for FC versions older than 2.1.x that pre-date hasCustomAvatar().
+        // Read the raw column directly so we don't trip on getAvatarAttribute()'s
+        // Gravatar/ui-avatars fallback URL.
+        return !empty($xprofile->getRawOriginal('avatar'));
+    }
+
+    public static function uploaded_avatar_url($xprofile): string {
+        if (!$xprofile) {
+            return '';
+        }
+        $raw = $xprofile->getRawOriginal('avatar');
+        return (is_string($raw) && $raw !== '') ? $raw : '';
     }
 
     // =========================================================================
@@ -158,28 +178,34 @@ class ProfileGate {
 
     /**
      * Filter: fluent_community/update_profile_data (priority 99).
-     * Catches POST /profile (bio, social links, website).
+     * FC signature: apply_filters('fluent_community/update_profile_data', $updateData, $data, $xProfile)
+     *   - $updateData : array of fields about to be persisted (first_name, last_name,
+     *                   short_description, website)
+     *   - $data       : full POST body (may include other fields)
+     *   - $xProfile   : the XProfile model being updated
      */
-    public function reevaluate_on_profile_update($data, $xprofile, $user) {
-        if (!$user || !self::get_option('enabled', true)) {
-            return $data;
+    public function reevaluate_on_profile_update($updateData, $data, $xprofile) {
+        if (!self::get_option('enabled', true) || !$xprofile) {
+            return $updateData;
         }
 
-        $user_id = $user->ID;
+        $user_id = $xprofile->user_id ?? null;
+        if (!$user_id) {
+            return $updateData;
+        }
 
         if (isset($this->reevaluated_users[$user_id])) {
-            return $data;
+            return $updateData;
         }
         $this->reevaluated_users[$user_id] = true;
 
+        // Build overrides from the data being saved so we re-evaluate against the
+        // post-save state, not the stale pre-save model. Avatar isn't in $updateData
+        // (FC only persists name + bio + website here), so the reevaluate_from_model_event
+        // hook handles avatar changes separately.
         $overrides = [];
-        if (is_array($data)) {
-            if (array_key_exists('short_description', $data)) {
-                $overrides['short_description'] = $data['short_description'];
-            }
-            if (array_key_exists('avatar', $data)) {
-                $overrides['avatar'] = $data['avatar'];
-            }
+        if (is_array($updateData) && array_key_exists('short_description', $updateData)) {
+            $overrides['short_description'] = $updateData['short_description'];
         }
 
         $flag = get_user_meta($user_id, TBC_PCOM_META_REGISTRATION_COMPLETE, true);
@@ -195,7 +221,7 @@ class ProfileGate {
             }
         }
 
-        return $data;
+        return $updateData;
     }
 
     /**
@@ -228,14 +254,40 @@ class ProfileGate {
     }
 
     // =========================================================================
-    // REST Filter Hooks (tbc-community-app delegates to us)
+    // REST API
     // =========================================================================
 
     /**
-     * Filter: tbc_ca_profile_status.
-     * Adds profile completion data to the status response.
+     * Register REST routes for the profile-completion gate.
+     * Hooked on rest_api_init from the plugin bootstrap.
+     *
+     * Routes:
+     *   GET  /tbc-pcom/v1/status   — Profile completion status (authenticated)
+     *   POST /tbc-pcom/v1/complete — Mark profile complete (authenticated)
      */
-    public function filter_profile_status($response, $user_id) {
+    public function register_routes(): void {
+        register_rest_route(TBC_PCOM_REST_NAMESPACE, '/status', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'handle_status'],
+            'permission_callback' => 'is_user_logged_in',
+        ]);
+
+        register_rest_route(TBC_PCOM_REST_NAMESPACE, '/complete', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'handle_complete'],
+            'permission_callback' => 'is_user_logged_in',
+        ]);
+    }
+
+    /**
+     * GET /tbc-pcom/v1/status
+     * Returns whether the current user's profile is complete, the list of
+     * missing required fields, and the user's current profile values so the
+     * mobile app can pre-fill its profile-completion form.
+     */
+    public function handle_status(\WP_REST_Request $request) {
+        $user_id = get_current_user_id();
+
         $missing = [];
         $existing = [
             'bio'          => '',
@@ -251,8 +303,7 @@ class ProfileGate {
                 $missing = self::get_missing_fields($xprofile);
 
                 $existing['bio']    = $xprofile->short_description ?? '';
-                $raw_avatar = $xprofile->avatar ?? '';
-                $existing['avatar'] = self::is_placeholder_avatar($raw_avatar) ? '' : $raw_avatar;
+                $existing['avatar'] = self::uploaded_avatar_url($xprofile);
 
                 $meta = $xprofile->meta ?? [];
                 if (is_string($meta)) {
@@ -271,18 +322,26 @@ class ProfileGate {
 
         $is_complete = !self::get_option('enabled', true) || empty($missing);
 
-        return [
+        // Seed the per-request cache so the rest_post_dispatch hook
+        // (add_incomplete_header) doesn't re-query XProfile on this response.
+        $this->completion_cache[$user_id] = $is_complete;
+
+        return new \WP_REST_Response([
             'profile_complete' => $is_complete,
             'missing'          => $missing,
             'existing'         => $existing,
-        ];
+        ], 200);
     }
 
     /**
-     * Filter: tbc_ca_complete_registration.
-     * Validates required fields before marking registration complete.
+     * POST /tbc-pcom/v1/complete
+     * Validates required fields and marks the user's profile complete.
+     * Returns 422 with a missing-fields list if the gate's requirements
+     * aren't met yet.
      */
-    public function filter_complete_registration($response, $user_id) {
+    public function handle_complete(\WP_REST_Request $request) {
+        $user_id = get_current_user_id();
+
         if (class_exists('\FluentCommunity\App\Models\XProfile')) {
             $xprofile = \FluentCommunity\App\Models\XProfile::where('user_id', $user_id)->first();
             if ($xprofile) {

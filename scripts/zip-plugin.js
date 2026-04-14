@@ -13,7 +13,8 @@
 //
 // Examples:
 //   node scripts/zip-plugin.js tbc-community-app
-//     -> dist/plugins/tbc-community-app.zip
+//     -> companion plugins/tbc-community-app/tbc-community-app-1.0.0.zip
+//        (version parsed from the plugin's main PHP header)
 //
 //   node scripts/zip-plugin.js tbc-youtube dist/plugins/tbc-youtube.zip
 //     -> dist/plugins/tbc-youtube.zip
@@ -29,6 +30,14 @@ const path = require('path');
 const { createZip } = require('../setup/lib/http-helpers');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
+
+function readPluginVersion(sourceDir, pluginName) {
+  const mainPhp = path.join(sourceDir, `${pluginName}.php`);
+  if (!fs.existsSync(mainPhp)) return null;
+  const header = fs.readFileSync(mainPhp, 'utf8').slice(0, 4096);
+  const match = header.match(/^[\s*]*Version:\s*([^\s*\r\n]+)/mi);
+  return match ? match[1].trim() : null;
+}
 
 function zipPlugin(sourceDir, outputZip) {
   if (!fs.existsSync(sourceDir) || !fs.statSync(sourceDir).isDirectory()) {
@@ -49,6 +58,7 @@ function zipPlugin(sourceDir, outputZip) {
       if (entry.isDirectory()) {
         walk(full);
       } else {
+        if (entry.name.toLowerCase().endsWith('.zip')) continue;
         const rel = path.relative(sourceDir, full).split(path.sep).join('/');
         files.push({
           path: `${rootName}/${rel}`,
@@ -90,9 +100,13 @@ function main() {
   } else {
     // Named mode: first arg is plugin name, resolve against companion plugins/
     sourceDir = path.join(REPO_ROOT, 'companion plugins', first);
-    outputZip = args[1]
-      ? (path.isAbsolute(args[1]) ? args[1] : path.join(REPO_ROOT, args[1]))
-      : path.join(REPO_ROOT, 'dist', 'plugins', `${first}.zip`);
+    if (args[1]) {
+      outputZip = path.isAbsolute(args[1]) ? args[1] : path.join(REPO_ROOT, args[1]);
+    } else {
+      const version = readPluginVersion(sourceDir, first);
+      const suffix = version ? `-${version}` : '';
+      outputZip = path.join(sourceDir, `${first}${suffix}.zip`);
+    }
   }
 
   zipPlugin(sourceDir, outputZip);

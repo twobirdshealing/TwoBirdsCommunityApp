@@ -6,7 +6,7 @@
  * they can access the community.
  *
  * Config via window.tbcPcomConfig (set by PHP):
- *   - restUrl:        tbc-ca/v1/ base
+ *   - restUrl:        tbc-pcom/v1/ base
  *   - fcRestUrl:      fluent-community/v2/ base
  *   - restNonce:      WP REST nonce
  *   - communityUrl:   FC portal URL
@@ -405,7 +405,7 @@
     }
 
     function markComplete() {
-        return fetch(restUrl + 'auth/register/complete', {
+        return fetch(restUrl + 'complete', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

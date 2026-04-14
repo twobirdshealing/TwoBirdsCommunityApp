@@ -108,8 +108,6 @@
   <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
   <tr><td>GET</td><td><code>/auth/register/fields</code></td><td>No</td><td>Field definitions + server config (FC native custom fields, add-on capabilities)</td></tr>
   <tr><td>POST</td><td><code>/auth/register</code></td><td>No</td><td>Create user account (returns JWT). Add-ons hook <code>tbc_ca_pre_register</code> to add verification steps.</td></tr>
-  <tr><td>GET</td><td><code>/auth/register/status</code></td><td>Yes</td><td>Check profile completion status (missing fields, existing data)</td></tr>
-  <tr><td>POST</td><td><code>/auth/register/complete</code></td><td>Yes</td><td>Mark registration as complete</td></tr>
 </table>
 
 <h3>Authentication Endpoints</h3>

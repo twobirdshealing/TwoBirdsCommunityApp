@@ -3,6 +3,9 @@
 # dependencies
 node_modules/
 
+# Built companion plugin zips (output of scripts/zip-plugin.js)
+companion plugins/*/*.zip
+
 # Expo
 .expo/
 dist/

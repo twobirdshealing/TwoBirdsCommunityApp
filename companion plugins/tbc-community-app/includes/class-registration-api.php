@@ -12,8 +12,6 @@
  * Endpoints:
  *   GET  /tbc-ca/v1/auth/register/fields  — Registration form field definitions
  *   POST /tbc-ca/v1/auth/register         — Submit registration
- *   GET  /tbc-ca/v1/auth/register/status  — Profile completion status (authenticated)
- *   POST /tbc-ca/v1/auth/register/complete — Mark registration complete (authenticated)
  *
  * @package TBC_Community_App
  */
@@ -66,21 +64,6 @@ class TBC_CA_Registration_API {
             'permission_callback' => '__return_true',
         ]);
 
-        register_rest_route(TBC_CA_REST_NAMESPACE, '/auth/register/status', [
-            'methods'             => 'GET',
-            'callback'            => [$this, 'handle_status'],
-            'permission_callback' => function () {
-                return is_user_logged_in();
-            },
-        ]);
-
-        register_rest_route(TBC_CA_REST_NAMESPACE, '/auth/register/complete', [
-            'methods'             => 'POST',
-            'callback'            => [$this, 'handle_complete'],
-            'permission_callback' => function () {
-                return is_user_logged_in();
-            },
-        ]);
     }
 
     // =========================================================================
@@ -421,91 +404,6 @@ class TBC_CA_Registration_API {
     }
 
     // =========================================================================
-    // GET /auth/register/status — Profile completion status
-    // =========================================================================
-
-    /**
-     * Returns profile completion status. Delegates to add-on plugins via filter.
-     * Without tbc-profile-completion, always returns complete.
-     */
-    public function handle_status(\WP_REST_Request $request) {
-        $user_id = get_current_user_id();
-
-        $status = [
-            'profile_complete' => true,
-            'missing'          => [],
-            'existing'         => [
-                'bio'          => '',
-                'website'      => '',
-                'social_links' => new \stdClass(),
-                'avatar'       => '',
-                'cover_photo'  => '',
-            ],
-        ];
-
-        // Populate existing profile data from FC XProfile
-        if (class_exists('FluentCommunity\App\Models\XProfile')) {
-            $xprofile = \FluentCommunity\App\Models\XProfile::where('user_id', $user_id)->first();
-            if ($xprofile) {
-                $status['existing']['bio'] = $xprofile->short_description ?? '';
-                $raw_avatar = $xprofile->avatar ?? '';
-                $status['existing']['avatar'] = self::is_placeholder_avatar($raw_avatar) ? '' : $raw_avatar;
-
-                $meta = $xprofile->meta ?? [];
-                if (is_string($meta)) {
-                    $meta = maybe_unserialize($meta);
-                }
-                if (is_array($meta)) {
-                    $status['existing']['website']     = $meta['website'] ?? '';
-                    $status['existing']['cover_photo'] = $meta['cover_photo'] ?? '';
-                    if (!empty($meta['social_links']) && is_array($meta['social_links'])) {
-                        $status['existing']['social_links'] = $meta['social_links'];
-                    }
-                }
-            }
-        }
-
-        /**
-         * Filter profile completion status.
-         * tbc-profile-completion hooks here to check required fields and set profile_complete.
-         *
-         * @param array $status  Status array with profile_complete, missing, existing.
-         * @param int   $user_id Current user ID.
-         */
-        $status = apply_filters('tbc_ca_profile_status', $status, $user_id);
-
-        return new \WP_REST_Response($status, 200);
-    }
-
-    // =========================================================================
-    // POST /auth/register/complete — Mark registration complete
-    // =========================================================================
-
-    /**
-     * Mark registration as complete. Delegates to add-on plugins via action.
-     * Without tbc-profile-completion, this is a no-op that returns success.
-     */
-    public function handle_complete(\WP_REST_Request $request) {
-        $user_id = get_current_user_id();
-
-        /**
-         * Validate and mark profile as complete.
-         * tbc-profile-completion hooks here to validate required fields
-         * and set _tbc_registration_complete meta.
-         *
-         * @param null|\WP_REST_Response $response null to proceed, WP_REST_Response to return early.
-         * @param int $user_id Current user ID.
-         */
-        $response = apply_filters('tbc_ca_complete_registration', null, $user_id);
-
-        if ($response instanceof \WP_REST_Response) {
-            return $response;
-        }
-
-        return new \WP_REST_Response(['success' => true], 200);
-    }
-
-    // =========================================================================
     // Helpers
     // =========================================================================
 
@@ -589,16 +487,6 @@ class TBC_CA_Registration_API {
         }
 
         return true;
-    }
-
-    /**
-     * Check if an avatar URL is a Fluent placeholder.
-     */
-    private static function is_placeholder_avatar(string $url): bool {
-        if (empty($url)) {
-            return true;
-        }
-        return strpos($url, 'fcom_placeholder') !== false || strpos($url, 'fluent-community/assets') !== false;
     }
 
     /**

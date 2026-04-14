@@ -303,7 +303,7 @@ interface PasswordResetResponse {
 <p>Add-on modules can register response headers via the module system. The API client intercepts these headers on every authenticated response and stores the values for the module to act on. See <a href="module-system.html#registration-types">Module System &rarr; ResponseHeaderMapping</a> for details.</p>
 
 <div class="callout callout-warn">
-  <strong>Add-on, not core.</strong> The profile-completion endpoints (<code>/auth/register/status</code>, <code>/auth/register/complete</code>) and the login-time gate screen are provided by the profile-completion module and its companion WordPress plugin. They are not part of the base registration API.
+  <strong>Add-on, not core.</strong> The profile-completion endpoints (<code>GET /tbc-pcom/v1/status</code>, <code>POST /tbc-pcom/v1/complete</code>) and the login-time gate screen are provided by the profile-completion module and its companion WordPress plugin. They live under their own REST namespace (<code>tbc-pcom/v1</code>) and are not part of the base registration API.
 </div>
 
 <!-- ================================================================== -->
