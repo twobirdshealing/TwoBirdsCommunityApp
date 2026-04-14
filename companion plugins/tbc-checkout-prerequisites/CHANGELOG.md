@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.7.29
+- Entry Review: approving/disapproving an entry now also marks it read in Gravity Forms (flips the native `is_read` flag via `GFFormsModel::update_entry_property`), so reviewed entries no longer show as bold/unread in the GF entries list
+
 ## 3.7.28
 - Fix GF form broken after AJAX step navigation — use full page navigation for form steps since Gravity Forms JS (`gform` global) is only available when GF enqueues scripts on initial page load, not via AJAX
 - Add `tbc-cp-form-step` class to form step indicators for JS detection

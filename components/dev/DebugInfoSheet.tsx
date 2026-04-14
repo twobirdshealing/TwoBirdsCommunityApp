@@ -76,7 +76,39 @@ export function DebugInfoSheet({ visible, onClose }: DebugInfoSheetProps) {
         );
       }
     } catch (e: any) {
-      Alert.alert('Check failed', e?.message || String(e));
+      // The native UpdatesModule throws a generic wrapper ("Failed to check for update")
+      // and swallows the real cause. Unwrap every level we can, and also read the
+      // native expo-updates log buffer directly — that contains the underlying error
+      // code (e.g. UpdateCodeSigningError, UpdateServerUnreachable, InitializationError)
+      // even when the JS-side error object doesn't.
+      const parts: string[] = [];
+      if (e?.message) parts.push(`Message: ${e.message}`);
+      if (e?.code) parts.push(`Code: ${e.code}`);
+      if (e?.cause?.message) parts.push(`Cause: ${e.cause.message}`);
+      if (e?.cause?.code) parts.push(`Cause code: ${e.cause.code}`);
+      if (e?.cause?.cause?.message) parts.push(`Inner: ${e.cause.cause.message}`);
+      if (e?.stack) {
+        parts.push(`\nStack:\n${String(e.stack).split('\n').slice(0, 6).join('\n')}`);
+      }
+      try {
+        const logs = await Updates.readLogEntriesAsync(60 * 60 * 1000);
+        const serious = logs.filter(
+          (l) => l.level === 'error' || l.level === 'warn' || l.level === 'fatal',
+        );
+        if (serious.length > 0) {
+          parts.push('\nNative logs (last hour):');
+          for (const entry of serious.slice(-5)) {
+            parts.push(`[${entry.level}] ${entry.code}: ${entry.message}`);
+            if (entry.stacktrace && entry.stacktrace.length > 0) {
+              parts.push(`  ${entry.stacktrace.slice(0, 3).join(' | ')}`);
+            }
+          }
+        }
+      } catch {
+        // readLogEntriesAsync itself can fail; ignore and show what we have.
+      }
+      const body = parts.length > 0 ? parts.join('\n') : String(e);
+      Alert.alert('Check failed', body);
     } finally {
       setChecking(false);
     }

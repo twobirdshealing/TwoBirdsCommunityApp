@@ -6,7 +6,6 @@
 # CHANGELOG.md with categorized commits (Added / Fixed / Changed).
 #
 # Usage: bash scripts/update-changelog.sh
-#        npm run changelog
 #
 # Environment variables (optional, set by create-white-label.sh):
 #   CHANGELOG_AUTO=1            Skip all interactive prompts (force regenerate)
@@ -189,4 +188,4 @@ fi
 
 echo ""
 echo "CHANGELOG.md updated with v$VERSION entry."
-echo "Review it, then run: npm run snapshot"
+echo "Review it, then run: bash scripts/create-white-label.sh"

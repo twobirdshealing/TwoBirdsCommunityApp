@@ -10,7 +10,6 @@
 //
 // Usage:
 //   node scripts/zip-plugin.js <plugin-name> [output-path]
-//   npm run zip-plugin -- <plugin-name> [output-path]
 //
 // Examples:
 //   node scripts/zip-plugin.js tbc-community-app

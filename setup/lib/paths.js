@@ -42,7 +42,9 @@ const PATHS = {
   ascApiKeyFile: path.join(PROJECT_DIR, 'asc-api-key.p8'),
   manifest: path.join(PROJECT_DIR, 'manifest.json'),
   licenseFile: path.join(PROJECT_DIR, 'setup', '.license'),
-  backupsDir: path.join(PROJECT_DIR, 'setup', '.backups'),
+  coreFilesManifest: path.join(PROJECT_DIR, 'setup', '.core-files.json'),
+  corePackageJson: path.join(PROJECT_DIR, 'setup', '.core-package.json'),
+  notesMd: path.join(PROJECT_DIR, 'NOTES.md'),
   tempDir: path.join(PROJECT_DIR, 'setup', '.temp'),
   logsDir: path.join(PROJECT_DIR, 'setup', 'logs'),
   submissionsLog: path.join(PROJECT_DIR, 'setup', 'logs', 'build-submissions.json'),
@@ -115,17 +117,8 @@ const VALID_OTA_CHANNELS = ['development', 'preview', 'simulator', 'production']
 const VALID_OTA_PLATFORMS = ['ios', 'android', 'all'];
 
 // ---------------------------------------------------------------------------
-// Update System — Backup & Restore
-// ---------------------------------------------------------------------------
-
-/** Directories and patterns to exclude from backups */
-const BACKUP_EXCLUDES = ['node_modules', '.expo', '.git', 'setup/.backups', 'setup/.temp', 'ios', 'android', 'web-build', 'dist'];
-
-// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
-
-const BACKUP_ID_PATTERN = /^v[\d.]+-\d+$/;
 
 module.exports = {
   DASHBOARD_VERSION,
@@ -142,6 +135,4 @@ module.exports = {
   OTA_GROUP_ID_PATTERN,
   VALID_OTA_CHANNELS,
   VALID_OTA_PLATFORMS,
-  BACKUP_EXCLUDES,
-  BACKUP_ID_PATTERN,
 };

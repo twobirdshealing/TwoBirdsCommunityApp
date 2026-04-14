@@ -2,6 +2,19 @@
 
 All notable changes to the Fluent Starter theme.
 
+## 1.0.60
+
+- Universal portal wrapping: ALL frontend templates (singular, archive, search, 404, CPTs) now auto-render inside the FluentCommunity portal frame — no per-feature hacks needed
+- Added FluentCart single product + taxonomy archive rendering inside the portal frame via FC's own action hooks
+- Added search results, 404, and generic archive rendering branches in `fluent_starter_render_theme_content()` — search and archive branches delegate to existing `template-parts/content-search.php` / `content-archive.php` / `content-none.php` partials for consistent markup with `search.php` and `archive.php`; 404 branch mirrors the richer `error-404` block from `404.php`
+- Widened `fluent_community/template_slug` filter to wrap everything by default (skips admin/feed/embed/ajax/cron and pages with explicit non-frame templates)
+- Disabled FluentCart's auto `the_content` single product injection to prevent double-render
+- Frame content CSS enqueue widened to cover all singular/archive/search/404 pages (and gated on the integration toggle)
+- Deprecates the need for any plugin-level template wrapping hacks (e.g. FluentCart, future add-ons)
+- Renamed Customizer section "Blog Integration" → "Portal Frame Integration" to reflect site-wide scope
+- "Enable Portal Frame Integration" toggle now functional: when off, template filter bails and the site renders with default WordPress layout
+- Renamed helper `fluent_starter_blog_integration_enabled()` → `fluent_starter_frame_integration_enabled()` (setting ID `fluent_starter_blog_integration` preserved so saved values carry over)
+
 ## 1.0.53
 
 - Removed `fluent_starter_content_handled` filter — plugins now hook directly into Fluent Community's own `fluent_community/theme_content` action

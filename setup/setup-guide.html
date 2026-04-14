@@ -2225,7 +2225,7 @@ export const MODULES: ModuleManifest[] = [
 <div class="guide-section" id="sec-updates-tab">
 <h2 id="updates-tab">Updates Tab</h2>
 
-<p>The <strong>Updates</strong> tab in the setup dashboard handles license activation, version checking, applying updates, and backup/restore. This is the recommended way to keep your app up to date.</p>
+<p>The <strong>Updates</strong> tab in the setup dashboard handles license activation, version checking, and applying updates. The separate <strong>Snapshot</strong> tab handles exporting and importing your buyer state for cloning to a new install or recovering from a bad change.</p>
 
 <h3>License Activation</h3>
 <p>When you purchase the app from <a href="https://twobirdscode.com">twobirdscode.com</a>, you receive a license key.</p>
@@ -2247,50 +2247,54 @@ export const MODULES: ModuleManifest[] = [
 
 <h3>Applying Updates</h3>
 <ol>
-  <li>Click <strong>Backup &amp; Update</strong> when an update is available</li>
-  <li>The dashboard automatically creates a backup of your current state before applying anything</li>
-  <li>The update package is downloaded from the license server and applied</li>
-  <li>Only <strong>core files</strong> are updated &mdash; your customizations are never overwritten</li>
+  <li>Click <strong>Update</strong> when an update is available</li>
+  <li>The dashboard captures an identity snapshot of your current state to a temp location outside the project</li>
+  <li>It reads <code>setup/.core-files.json</code> &mdash; the manifest of every file the current core shipped &mdash; and deletes only those files. Anything you own (custom modules, assets, credentials, NOTES.md, .git, custom code) is never touched.</li>
+  <li>The new core zip is extracted wholesale into the project</li>
+  <li>Your buyer state is re-injected into the new core's hybrid files (<code>app.json</code>, <code>package.json</code>, <code>eas.json</code>, <code>constants/config.ts</code>) from the snapshot</li>
+  <li><code>npm install</code> runs automatically to pick up any new dependencies</li>
 </ol>
 
-<p>Protected files that are <strong>never overwritten</strong> by an update:</p>
+<p>The dashboard preserves all of these automatically across updates:</p>
 <ul>
-  <li><code>constants/config.ts</code> &mdash; your app name, site URL</li>
-  <li><code>app.json</code> &mdash; your bundle IDs, app name, icons, EAS config</li>
-  <li><code>eas.json</code> &mdash; your build profiles and site URL</li>
-  <li><code>app.config.ts</code> &mdash; your fallback values and deep link paths</li>
-  <li><code>package.json</code> &mdash; your package name and any added dependencies</li>
+  <li><code>constants/config.ts</code> &mdash; your app name, site URL, the 28 config values</li>
+  <li><code>app.json</code> &mdash; your bundle IDs, version, splash colors, notification color, permissions</li>
+  <li><code>eas.json</code> &mdash; your Apple ID, ASC API key path, Google Play key path</li>
+  <li><code>package.json</code> &mdash; any dependencies you added are merged into the new core's package.json</li>
   <li><code>assets/images/</code> &mdash; your branding assets</li>
   <li><code>modules/</code> &mdash; your custom modules</li>
   <li><code>google-services.json</code> / <code>GoogleService-Info.plist</code> &mdash; your Firebase configs</li>
+  <li><code>NOTES.md</code> &mdash; your project notes</li>
+  <li><code>setup/.license</code>, <code>setup/.module-licenses.json</code></li>
 </ul>
 
 <div class="callout">
-  <strong>After updating:</strong> Run <code>npm install</code> to pick up any new or updated dependencies. If the dashboard itself was updated, restart it with <code>npm run dashboard</code>.
+  <strong>After updating:</strong> If the dashboard itself was updated, restart it with <code>npm run dashboard</code>. <code>npm install</code> runs automatically.
 </div>
 
-<h3>Manual Upload</h3>
-<p>If you received an update package directly (e.g., via email or download), you can apply it manually:</p>
+<h3>Manual Upload &amp; Rollback</h3>
+<p>If you received an update package directly (e.g., via email or download), or if you want to roll back to an older version, upload the zip manually:</p>
 <ul>
   <li>Click <strong>Upload Package</strong> in the Updates tab</li>
   <li>Select a <code>.zip</code> update file (e.g. <code>core-update-3.5.0.zip</code>)</li>
-  <li>The same backup and protected-file logic applies &mdash; your customizations are safe</li>
+  <li>The same flow runs &mdash; your buyer state is preserved automatically</li>
+  <li><strong>This is also how you roll back.</strong> The flow handles forward updates, sideways reinstalls, and backward rollbacks identically. Just upload the version you want.</li>
 </ul>
 
-<h3>Backup &amp; Restore</h3>
+<h3>Snapshot Tab &mdash; Export / Import for Cloning</h3>
+<p>The <strong>Snapshot</strong> tab lets you export your complete buyer state as a single zip file and import it onto a fresh install. Use it for:</p>
 <ul>
-  <li>An automatic backup is created before every update, stored in <code>setup/.backups/</code></li>
-  <li>The dashboard lists available backups with dates and sizes</li>
-  <li>Click <strong>Restore</strong> on any backup to roll back to that state</li>
-  <li>The last 3 backups are kept; older ones are auto-pruned</li>
+  <li>Moving your app to a new machine</li>
+  <li>Cloning your app for a sister site</li>
+  <li>Recovering from a change you regret</li>
 </ul>
+<p>You don't need to take a snapshot before every update &mdash; updates preserve your state automatically. Snapshots are a deliberate, rare-use tool for the cases above.</p>
 
 <h3>manifest.json</h3>
 <p>The <code>manifest.json</code> file in the project root contains metadata used by the update system:</p>
 <ul>
   <li>Product version number</li>
   <li>Update server URL</li>
-  <li>List of protected paths (files that are never overwritten)</li>
   <li>Core companion plugins list</li>
 </ul>
 

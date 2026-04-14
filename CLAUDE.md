@@ -1,5 +1,7 @@
 Community App — React Native (Expo), iOS + Android, built on WordPress + Fluent Community.
 
+> **AI agents — read this first:** Before acting on anything in this file, check whether `NOTES.md` exists at the project root and read it. `NOTES.md` is buyer-owned and contains project-specific instructions, conventions, in-progress work, and overrides that take precedence over the general guidance in this file. If a rule in `NOTES.md` conflicts with a rule here, follow `NOTES.md`. This file (`CLAUDE.md`) is core-owned and gets overwritten on core updates; `NOTES.md` is preserved.
+
 ## About This Project
 
 This is a white-label community app powered by [Fluent Community](https://fluentcommunity.co). It connects to your WordPress site and provides a native mobile experience for your community — feed, messaging, profiles, spaces, courses, and more.
@@ -33,26 +35,19 @@ This is a white-label community app powered by [Fluent Community](https://fluent
 
 ## Core Files — Do Not Edit
 
-The following directories and files are **core** and will be **overwritten when you apply updates**:
+The dashboard owns a precise list of every file it ships (stored in `setup/.core-files.json`). On update, it deletes exactly those files, extracts the new core, then re-applies your snapshot. **The rule is simple:**
 
-- `app/` — Screen routes and navigation
-- `components/` — Shared UI components
-- `services/` — API clients, auth, push notifications
-- `contexts/` — React context providers
-- `hooks/` — Custom React hooks
-- `utils/` — Utility functions
-- `types/` — TypeScript type definitions
-- `constants/colors.ts` — Theme color definitions (overridden by Fluent sync)
+- **Core files** (anything in `setup/.core-files.json`) get replaced on every update. Don't edit them — your edits will be lost. The main core directories are: `app/`, `components/`, `services/`, `contexts/`, `hooks/`, `utils/`, `types/`, `constants/colors.ts`, `companion plugins/`, `setup/docs/`, `setup/lib/`, `setup/frontend/`, `setup/dashboard.js`, `setup/setup-guide.html`, plus root files `manifest.json`, `CLAUDE.md`, and `setup/.core-files.json` itself.
+- **Anything else is yours.** Any file or folder you put anywhere in the project — custom modules, branding, credentials, notes, extra docs, custom scripts, `.env` files, anything — survives every update untouched. There's no approved list. If the dashboard didn't ship the file, the dashboard won't delete it.
 
-**Safe to edit** (protected during updates):
-- `constants/config.ts` — Your app name, site URL
-- `app.json` — Bundle IDs, EAS config, permissions
-- `eas.json` — Build profiles, submit config
-- `app.config.ts` — Fallback values
-- `assets/images/` — Your branding assets
-- `modules/` — Your custom modules
+**A few core files have buyer values injected after each update** (the file itself comes from core, but the dashboard re-applies your settings on top):
+- `constants/config.ts` — the 30 config values (app name, site URL, etc.)
+- `app.json` — top-level expo fields (bundle IDs, version) and nested splash/notification colors
+- `eas.json` — Apple ID, ASC API key path, Google Play key path
+- `package.json` — your buyer-added `dependencies` and `devDependencies` merged in (core's deps win on conflicts so core can upgrade shared packages safely)
+- `modules/_registry.ts` — your import block between the `// YOUR MODULES` markers
 
-> **Source of truth:** `manifest.json` → `protectedPaths` defines exactly which files are preserved during updates. Everything else is core and gets overwritten.
+> **Custom project notes:** Put your own notes, conventions, in-progress work, or AI-agent instructions in `NOTES.md` at the project root. `CLAUDE.md` is core-owned and gets overwritten on updates; `NOTES.md` is preserved forever and is read by AI agents per the directive at the top of this file.
 
 > **Warning:** If you modify core files, your changes will be lost when applying a core update. If you need custom behavior, build it as a module instead.
 
@@ -140,123 +135,3 @@ After completing a task, tell the user whether their change is OTA-safe or requi
 ## Build File Filtering — `.easignore`
 
 `.easignore` controls which files EAS uploads during builds. Add any files or folders you don't want included in your app builds to this file. Git is not required — the dashboard handles this automatically.
-
----
-
-<!-- ====================================================================== -->
-<!-- Your Instructions — Add project-specific notes and preferences below  -->
-<!-- Everything below this marker is stripped from white-label snapshots    -->
-<!-- CUSTOM_INSTRUCTIONS_BELOW -->
-
-## Site: Two Birds Church
-
-Site: https://community.twobirdschurch.com
-Dev brand: Two Birds Code (twobirdscode.com) — TBC
-
-### Dev Workflow
-
-**This repo is both our live production app AND the development source for the white-label product.** All coding happens here. When we hit a milestone, we run `npm run snapshot` to generate a clean snapshot at `../TBC-Community-App (White Lable)/` with site-specific values replaced by placeholders. Never edit the white-label folder directly — it gets overwritten each snapshot.
-
-**Architecture goal:** Keep core clean, fast, and stable — only update it for Fluent Community compatibility. New features go in as modules so they don't interfere with core code.
-
-> **Buyer-facing setup documentation lives in `setup/setup-guide.html`.**
-> When making changes to config files, module system, or plugin structure, keep docs in sync.
-
-### Additional Quick Commands
-
-| Command | What it does |
-|---|---|
-| `npm run snapshot` | Create white-label snapshot (`bash scripts/create-white-label.sh`) |
-| `npm run changelog` | Generate/update CHANGELOG.md from git history since last version bump |
-
-### Add-on Modules
-
-Blog module — available as a paid add-on, not part of the snapshot.
-
-Book Club module — available as a paid add-on, not part of the snapshot.
-
-YouTube module — available as a paid add-on, not part of the snapshot.
-
-### Site-Specific Modules (not sold)
-
-Calendar module — custom to Two Birds Church, not a public add-on.
-
-Donate module — custom to Two Birds Church, not a public add-on.
-
-Donor module — custom to Two Birds Church, not a public add-on.
-
-Admin module — custom to Two Birds Church, not a public add-on.
-
-### Add-on Modules Companion Plugins
-
-- **tbc-youtube** — YouTube channel integration with server-side caching (companion to youtube module)
-- **tbc-book-club** — Book club audiobook player with meetings (companion to bookclub module)
-- **tbc-calendar-fluent** — Our private calendar plugin that links to the calendar module
-
-### Reference Plugins (outside repo)
-
-Fluent Community/Cart/Messaging plugin source code kept at `../../playground/Refrence plugins ONLY/` (outside the project directory) for dev reference. Not part of the product, not tracked in git.
-
-### Site-Specific Plugins (in companion folder — not sold)
-Donation addons, donor dashboard, messaging center, checkout prerequisites, participant frontend, message roles, entry review — these are Two Birds Church site-specific plugins kept in `companion plugins/` for reference. Not part of the product and excluded from the white-label snapshot.
-
-### Versioning — Core vs App (decoupled)
-
-There are two independent version numbers. They are **not** kept in sync:
-
-- **Core version** (`manifest.json` → `version`) — The version of the white-label product we sell. Controlled entirely by us. Buyers see it as a badge in the dashboard header to confirm which update they have. Starts at `1.0.0` for the commercial launch and grows as we ship core updates (`1.0.1`, `1.1.0`, etc.). Bumped via `npm run snapshot`'s interactive prompt.
-- **Our Two Birds Church app version** (`app.json` + `package.json`) — The version of *our own* TBC church app for our App Store submissions. Bump it via the dashboard or manually when we submit a build. Completely independent of the core version.
-- **Buyer's app version** (`app.json` + `package.json` in their project) — Each buyer's own App Store version, starting at `1.0.0`. The snapshot sed-replaces our version values with `1.0.0` in staging, so buyers always start fresh regardless of where our TBC app is.
-
-The snapshot script only bumps `manifest.json` when we release a new core version — it deliberately does not touch our `package.json` or `app.json`. For our own TBC church app releases, bump `package.json` and `app.json` separately via the dashboard's version buttons.
-
-### White-Label Snapshot
-
-After a version bump, ask the user if we should create a new white-label snapshot.
-
-The snapshot script copies this app to the white-label folder with all site-specific values replaced by generic placeholders. It does NOT modify this repo — only writes to the target folder.
-
-**To run:** `npm run snapshot`
-
-**What it does:**
-1. Copies project to `../TBC-Community-App (White Lable)/` (excludes node_modules, .git, modules, companion plugins)
-2. Copies only core companion plugins (allowlist: tbc-community-app)
-3. Copies only module infrastructure (`_registry.ts`, `_types.ts`) — no module folders
-4. Replaces Two Birds-specific values with placeholders in config.ts, app.json, eas.json, app.config.ts, package.json
-5. Removes Firebase configs, adds FIREBASE_SETUP.md guide
-6. Strips site-specific section from CLAUDE.md
-7. Verifies no site-specific references remain
-
-**What ships in the base white-label product:**
-- Core app (all screens, services, components)
-- Core companion plugin: tbc-community-app
-
-**Sold separately as add-ons (NOT in white-label):**
-- tbc-otp plugin (phone OTP verification), tbc-profile-completion plugin (profile completion gate)
-- Blog module, YouTube module + tbc-youtube plugin, Book Club module + tbc-book-club plugin
-
-**Two Birds site-specific (never sold):**
-- Calendar, Donate, Donor modules
-
-### Dev Rules
-
-Before every native build (`eas build`), run `npx expo install --check` to check for patch updates. If outdated, run `npx expo install --fix` before building. Patch updates often include native crash fixes that can only ship via a new build, not OTA.
-
-We use both `.easignore` and `.gitignore`. `.easignore` is a superset — it has everything in `.gitignore` plus non-app files (setup/, companion plugins/, scripts/, docs) that we track in git but EAS doesn't need. When adding a pattern to `.gitignore`, also add it to `.easignore`. Buyers only get `.easignore` (snapshot excludes `.gitignore`).
-
-After fixes or completed tasks ask user if we want to run /simplify
-
-When working on companion plugins after updates/fixes/changes, update the version number on the plugin or theme and update changelog. If changelog is missing add one. Always update version to bust cache even on small updates.
-
-### Testing
-
-Current test credentials — ask for fresh token:
-```
-curl -s -X POST "https://community.twobirdschurch.com/wp-json/tbc-ca/v1/auth/login" -H "Content-Type: application/json" -d '{"username":"bluejay","password":"sapo"}' | python3 -m json.tool
-```
-
-Don't try running commands yourself — give them to me and wait for response. If unsure, always ask for an API response to understand the full picture.
-
-Server runs Ubuntu — use `python3` not `python` for curl JSON formatting (e.g. `| python3 -m json.tool`)
-
-All agents run opus

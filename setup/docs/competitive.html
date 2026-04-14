@@ -48,7 +48,7 @@
 </div>
 
 <div class="callout-success callout">
-  <strong>Built for developers and agencies.</strong> You get source code, a local setup dashboard, and comprehensive documentation &mdash; not a managed service. The dashboard handles configuration, asset management, builds, module installation, and one-click updates with automatic backup/restore. You publish to your own App Store and Play Store accounts and charge your clients whatever you want.
+  <strong>Built for developers and agencies.</strong> You get source code, a local setup dashboard, and comprehensive documentation &mdash; not a managed service. The dashboard handles configuration, asset management, builds, module installation, and one-click updates that preserve all buyer state automatically. You publish to your own App Store and Play Store accounts and charge your clients whatever you want.
 </div>
 
 <!-- ================================================================ -->
@@ -319,7 +319,7 @@
 <h3>Setup &amp; Maintenance</h3>
 <ul>
   <li><strong>Local setup dashboard</strong> &mdash; full web GUI for configuration, asset management, builds, updates, and module installation. No competitor offers this. Buyers configure their app through a visual interface instead of editing JSON files.</li>
-  <li><strong>One-click updates</strong> &mdash; enter license key, click update. Automatic backup before every update, automatic restore if something goes wrong. Protected files (config, assets, modules) are never overwritten. No git knowledge required.</li>
+  <li><strong>One-click updates</strong> &mdash; enter license key, click update. Manifest-driven cleanup deletes only the previous core's files, then identity restore re-injects buyer values. Buyer files (config, assets, modules, NOTES.md, custom code) are never touched. To roll back, upload an older zip via the same flow. No git knowledge required.</li>
   <li><strong>Module import via dashboard</strong> &mdash; upload a <code>.zip</code> module package, dashboard handles extraction, registration, and route stub creation. Add features without touching code.</li>
   <li><strong>Build management</strong> &mdash; trigger EAS builds, view history, submit to App Store Connect, download Android bundles &mdash; all from the dashboard.</li>
 </ul>

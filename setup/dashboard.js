@@ -43,18 +43,17 @@ if (fs.existsSync(_nextDashboard)) {
 // Load modules
 // ---------------------------------------------------------------------------
 
-const { PROJECT_DIR, PORT, PATHS, VALID_PLATFORMS, VALID_PROFILES, BUILD_ID_PATTERN, BACKUP_ID_PATTERN, isPlaceholder } = require('./lib/paths');
+const { PROJECT_DIR, PORT, PATHS, VALID_PLATFORMS, VALID_PROFILES, BUILD_ID_PATTERN, isPlaceholder } = require('./lib/paths');
 const { fileExists, readJsonSafe, getSiteUrl, resolveUploadPath, ensurePath } = require('./lib/file-utils');
 const { readProjectState } = require('./lib/state');
 const { writeConfigValues } = require('./lib/config-writer');
 const { checkConnectivity, parseMultipart, httpsRequest } = require('./lib/http-helpers');
-const { runCommand, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission, getSubmissionsUrl } = require('./lib/eas');
+const { runCommand, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission, getSubmissionsUrl, validateEasArtifactUrl, streamEasArtifact } = require('./lib/eas');
 const { getOTAStatus, pushOTAUpdate, listOTAUpdates, deleteOTAUpdate } = require('./lib/ota');
 const { getInstalledModules, toggleModule, removeModule, exportModule, importModule } = require('./lib/modules');
 const {
   readLicense, writeLicense, readManifest, validateLicense, deactivateLicense,
   readModuleLicenses, writeModuleLicense, removeModuleLicense,
-  createBackup, listBackups, restoreFromBackup, deleteBackup, pruneBackups,
   applyUpdateFromZip, downloadUpdate, isUpdateInProgress, setUpdateInProgress,
 } = require('./lib/updates');
 const { loadPresets, savePresets, addPreset, removePreset, validateProjectPath, listDirectory } = require('./lib/app-presets');
@@ -437,20 +436,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // --- Manual Backup ---
-
-    if (pathname === '/api/backups/create' && req.method === 'POST') {
-      try {
-        const manifest = readManifest();
-        const result = createBackup(manifest.version || '0.0.0');
-        jsonResponse(res, { ok: true, label: result.label });
-      } catch (err) {
-        jsonResponse(res, { ok: false, error: err.message }, 500);
-      }
-      return;
-    }
-
-    // --- Identity (Backup & Restore) ---
+    // --- Identity (Snapshot Export & Import) ---
 
     if (pathname === '/api/identity/preview' && req.method === 'GET') {
       try {
@@ -482,6 +468,11 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/identity/import' && req.method === 'POST') {
       try {
+        const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+        if (contentLength > 50 * 1024 * 1024) {
+          jsonResponse(res, { ok: false, error: 'Snapshot zip too large (max 50MB)' }, 413);
+          return;
+        }
         const parts = await parseMultipart(req);
         const filePart = parts.find(p => p.filename);
         if (!filePart) { jsonResponse(res, { ok: false, error: 'No file uploaded' }, 400); return; }
@@ -497,6 +488,24 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/builds' && req.method === 'GET') {
       const result = await getEasBuilds();
       jsonResponse(res, result);
+      return;
+    }
+
+    if (pathname === '/api/builds/download' && req.method === 'GET') {
+      const artifactUrl = url.searchParams.get('url');
+      const rawName = url.searchParams.get('filename') || 'build';
+      if (!artifactUrl) { jsonResponse(res, { ok: false, error: 'Missing url' }, 400); return; }
+      const check = validateEasArtifactUrl(artifactUrl);
+      if (!check.ok) { jsonResponse(res, check, 400); return; }
+      const safeName = rawName.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 120);
+      try {
+        await streamEasArtifact(artifactUrl, safeName, res);
+      } catch (err) {
+        if (!res.headersSent) jsonResponse(res, { ok: false, error: 'Download failed: ' + err.message }, 502);
+        // Mid-transfer failure: destroy the socket so the browser sees a
+        // truncated response instead of a silently-short "successful" file.
+        else try { res.destroy(); } catch {}
+      }
       return;
     }
 
@@ -759,15 +768,11 @@ const server = http.createServer(async (req, res) => {
 
       setUpdateInProgress(true);
       try {
-        const manifest = readManifest();
-        const backup = createBackup(manifest.version);
         const key = readLicense();
         const zipBuffer = await downloadUpdate(downloadUrl, key);
         const result = applyUpdateFromZip(zipBuffer);
-        pruneBackups(3);
-
         finalizeUpdate(result);
-        jsonResponse(res, { ok: true, backup: backup.label, ...result });
+        jsonResponse(res, { ok: true, ...result });
       } catch (err) {
         jsonResponse(res, { ok: false, error: 'Update failed: ' + err.message }, 500);
       } finally {
@@ -776,7 +781,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // --- Updates: Manual upload ---
+    // --- Updates: Manual upload (also serves as rollback — upload any version's zip) ---
     if (pathname === '/api/updates/upload' && req.method === 'POST') {
       if (isUpdateInProgress()) { jsonResponse(res, { ok: false, error: 'An update is already in progress' }, 409); return; }
       setUpdateInProgress(true);
@@ -791,54 +796,14 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const manifest = readManifest();
-        const backup = createBackup(manifest.version);
-
         const result = applyUpdateFromZip(filePart.data);
-        pruneBackups(3);
-
         finalizeUpdate(result);
-        jsonResponse(res, { ok: true, backup: backup.label, ...result });
+        jsonResponse(res, { ok: true, ...result });
       } catch (err) {
         jsonResponse(res, { ok: false, error: 'Upload update failed: ' + err.message }, 500);
       } finally {
         setUpdateInProgress(false);
       }
-      return;
-    }
-
-    // --- Updates: Backups ---
-    if (pathname === '/api/updates/backups' && req.method === 'GET') {
-      jsonResponse(res, { backups: listBackups() });
-      return;
-    }
-
-    if (pathname === '/api/updates/rollback' && req.method === 'POST') {
-      const body = JSON.parse(await readBody(req));
-      const backupId = body.backupId;
-      if (!backupId) { jsonResponse(res, { ok: false, error: 'Backup ID is required' }, 400); return; }
-      if (!BACKUP_ID_PATTERN.test(backupId)) { jsonResponse(res, { ok: false, error: 'Invalid backup ID' }, 400); return; }
-      try {
-        restoreFromBackup(backupId);
-        jsonResponse(res, { ok: true, restored: backupId });
-      } catch (err) {
-        jsonResponse(res, { ok: false, error: 'Restore failed: ' + err.message }, 500);
-      }
-      return;
-    }
-
-    if (pathname === '/api/updates/backups/prune' && req.method === 'POST') {
-      const deleted = pruneBackups(3);
-      jsonResponse(res, { ok: true, deleted });
-      return;
-    }
-
-    if (pathname === '/api/updates/backups/delete' && req.method === 'POST') {
-      const body = JSON.parse(await readBody(req));
-      const backupId = body.backupId;
-      if (!backupId || !BACKUP_ID_PATTERN.test(backupId)) { jsonResponse(res, { ok: false, error: 'Invalid backup ID' }, 400); return; }
-      deleteBackup(backupId);
-      jsonResponse(res, { ok: true });
       return;
     }
 

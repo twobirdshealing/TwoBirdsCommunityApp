@@ -2,9 +2,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const { PROJECT_DIR, PATHS, BACKUP_EXCLUDES } = require('./paths');
+const { PROJECT_DIR, PATHS } = require('./paths');
 const { readJsonSafe, getSiteUrl } = require('./file-utils');
 const { httpsRequest, parseZip } = require('./http-helpers');
+const identity = require('./identity');
 
 // ---------------------------------------------------------------------------
 // Concurrency guard — prevent overlapping update operations
@@ -29,7 +30,7 @@ function writeLicense(key) {
 }
 
 function readManifest() {
-  return readJsonSafe(PATHS.manifest) || { version: '0.0.0', buyerFiles: [], hybridFiles: [] };
+  return readJsonSafe(PATHS.manifest) || { version: '0.0.0' };
 }
 
 // ---------------------------------------------------------------------------
@@ -118,172 +119,97 @@ async function deactivateLicense(key) {
 }
 
 // ---------------------------------------------------------------------------
-// Update System — Backup & Restore
+// Update System — Apply Update (manifest-driven clean install)
+// ---------------------------------------------------------------------------
+//
+// Flow:
+//   1. Capture identity to OS temp dir (outside project, untouchable)
+//   2. Read setup/.core-files.json — the list of files the current core shipped.
+//      Delete each one. Then walk affected parent dirs and remove any that
+//      are now empty. (Bootstrap path: if the manifest is missing on first
+//      update from this system, skip step 2 and just extract over.)
+//   3. Extract the new core zip wholesale into the project. Every file lands
+//      fresh, including the new setup/.core-files.json baked into the zip.
+//   4. Apply identity from the temp zip — writes user files (assets,
+//      credentials, modules, NOTES.md) and injects hybrid file values
+//      (28 config values, deps merge, eas credentials).
+//
+// Files the buyer owns (.git, node_modules, NOTES.md, custom modules,
+// reference docs, .env, anything they put at the project root) are never
+// touched because they're not in setup/.core-files.json.
 // ---------------------------------------------------------------------------
 
-/** Recursively copy a directory, skipping excluded paths */
-function copyDirRecursive(src, dest, excludes, baseDir) {
-  if (!fs.existsSync(src)) return;
-  fs.mkdirSync(dest, { recursive: true });
-  const entries = fs.readdirSync(src, { withFileTypes: true });
-  for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    const relPath = path.relative(baseDir, srcPath).replace(/\\/g, '/');
-
-    if (excludes.some((ex) => relPath === ex || relPath.startsWith(ex + '/'))) continue;
-
-    if (entry.isDirectory()) {
-      copyDirRecursive(srcPath, destPath, excludes, baseDir);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
+/** Path-traversal guard: returns true if abs resolves inside PROJECT_DIR. */
+function isUnderProjectDir(abs) {
+  return abs === PROJECT_DIR || abs.startsWith(PROJECT_DIR + path.sep);
 }
 
-function createBackup(currentVersion) {
-  const timestamp = Date.now();
-  const label = `v${currentVersion}-${timestamp}`;
-  const backupDir = path.join(PATHS.backupsDir, label);
-  fs.mkdirSync(backupDir, { recursive: true });
-  copyDirRecursive(PROJECT_DIR, backupDir, BACKUP_EXCLUDES, PROJECT_DIR);
-  // Cache the backup size so listBackups() doesn't need to re-walk the tree
-  const size = getDirSize(backupDir);
-  fs.writeFileSync(path.join(backupDir, '.size'), String(size));
-  return { label, path: backupDir };
-}
-
-function listBackups() {
-  if (!fs.existsSync(PATHS.backupsDir)) return [];
-  const dirs = fs.readdirSync(PATHS.backupsDir, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => {
-      const parts = d.name.match(/^v(.+)-(\d+)$/);
-      const ts = parts ? parseInt(parts[2]) : fs.statSync(path.join(PATHS.backupsDir, d.name)).mtimeMs;
-      return {
-        id: d.name,
-        version: parts ? parts[1] : d.name,
-        timestamp: ts,
-        date: new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-        sizeMB: '?',
-      };
-    })
-    .sort((a, b) => b.timestamp - a.timestamp);
-
-  // Read cached sizes and app version from each backup
-  for (const backup of dirs) {
+/** Delete files listed in the previous core's manifest, then prune empty parent dirs. */
+function deletePreviousCoreFiles(manifestList) {
+  if (!Array.isArray(manifestList)) return { deleted: 0, dirsRemoved: 0 };
+  let deleted = 0;
+  const affectedDirs = new Set();
+  for (const rel of manifestList) {
+    if (typeof rel !== 'string' || !rel || rel.includes('..')) continue;
+    const abs = path.resolve(PROJECT_DIR, rel);
+    if (!isUnderProjectDir(abs)) continue;
     try {
-      const sizeFile = path.join(PATHS.backupsDir, backup.id, '.size');
-      const totalSize = fs.existsSync(sizeFile)
-        ? parseInt(fs.readFileSync(sizeFile, 'utf8'), 10)
-        : getDirSize(path.join(PATHS.backupsDir, backup.id));
-      backup.sizeMB = (totalSize / (1024 * 1024)).toFixed(1);
-    } catch { backup.sizeMB = '?'; }
-    const appJson = readJsonSafe(path.join(PATHS.backupsDir, backup.id, 'app.json'));
-    backup.appVersion = appJson?.expo?.version || '';
+      fs.rmSync(abs, { force: true });
+      deleted++;
+      let parent = path.dirname(abs);
+      while (parent !== PROJECT_DIR && isUnderProjectDir(parent)) {
+        affectedDirs.add(parent);
+        parent = path.dirname(parent);
+      }
+    } catch { /* skip files we can't delete (open handles, permission) */ }
   }
-  return dirs;
-}
-
-function getDirSize(dirPath) {
-  let total = 0;
-  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(dirPath, entry.name);
-    if (entry.isDirectory()) {
-      total += getDirSize(fullPath);
-    } else {
-      total += fs.statSync(fullPath).size;
-    }
+  // Sort by true depth (segment count) so deepest dirs collapse first
+  const sortedDirs = Array.from(affectedDirs)
+    .sort((a, b) => b.split(path.sep).length - a.split(path.sep).length);
+  let dirsRemoved = 0;
+  for (const dir of sortedDirs) {
+    try { fs.rmdirSync(dir); dirsRemoved++; } catch { /* not empty or already gone */ }
   }
-  return total;
+  return { deleted, dirsRemoved };
 }
 
-function restoreFromBackup(backupId) {
-  const backupDir = path.join(PATHS.backupsDir, backupId);
-  if (!fs.existsSync(backupDir)) throw new Error('Backup not found: ' + backupId);
-
-  // Copy all files from backup to project root, overwriting (skip .size cache file)
-  copyDirRecursive(backupDir, PROJECT_DIR, ['.size'], backupDir);
-  return { restored: true, backupId };
-}
-
-function deleteBackup(backupId) {
-  const backupDir = path.join(PATHS.backupsDir, backupId);
-  if (!fs.existsSync(backupDir)) return;
-  fs.rmSync(backupDir, { recursive: true, force: true });
-}
-
-/** Keep only the N most recent backups, delete older ones */
-function pruneBackups(keep = 3) {
-  const backups = listBackups();
-  const toDelete = backups.slice(keep);
-  for (const b of toDelete) deleteBackup(b.id);
-  return toDelete.length;
-}
-
-// ---------------------------------------------------------------------------
-// Update System — Apply Update
-// ---------------------------------------------------------------------------
-
-/**
- * Check if a file path matches a buyer-owned file or directory.
- * Buyer files are never overwritten during updates.
- */
-function isBuyerFile(filePath, buyerFiles) {
-  const normalized = filePath.replace(/\\/g, '/');
-  for (const p of buyerFiles) {
-    if (p.endsWith('/')) {
-      if (normalized.startsWith(p) || normalized === p.slice(0, -1)) return true;
-    } else {
-      if (normalized === p) return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Apply a core update from a ZIP buffer.
- *
- * Identity-preserving flow:
- *   1. Auto-export buyer identity (config values, assets, credentials, module imports)
- *   2. Extract all files from zip (skip buyer-owned files, write hybrid + core files)
- *   3. Update manifest.json version
- *   4. Restore buyer identity into fresh hybrid files
- *   5. Clean up temp identity file
- *
- * Returns { filesWritten, filesSkipped, dashboardUpdated, newVersion }
- */
 function applyUpdateFromZip(zipBuffer) {
-  const identity = require('./identity');
-  const manifest = readManifest();
-  const buyerFiles = manifest.buyerFiles || [];
-
   const files = parseZip(zipBuffer);
 
-  // --- Step 1: Auto-export identity BEFORE any writes ---
-  let savedIdentity;
+  // --- Step 1: Capture identity to temp BEFORE any project mutation ---
+  let identityTempPath;
   try {
-    savedIdentity = identity.createIdentityZip();
+    identityTempPath = identity.saveIdentityTemp(identity.createIdentityZip());
   } catch (err) {
-    throw new Error('Failed to capture buyer identity before update: ' + err.message);
+    throw new Error('Failed to capture identity before update: ' + err.message);
   }
 
+  const recoveryHint = ' — your identity snapshot is at ' + identityTempPath +
+    ' (import it manually from the Snapshot tab to recover)';
+
+  // --- Step 2: Manifest-driven cleanup of previous core files ---
+  // Bootstrap path: no manifest yet (first update from this system), skip cleanup
+  // — the new zip's manifest becomes the baseline for next update.
+  let cleanupStats = { deleted: 0, dirsRemoved: 0 };
+  try {
+    const prevManifest = readJsonSafe(PATHS.coreFilesManifest);
+    if (prevManifest) cleanupStats = deletePreviousCoreFiles(prevManifest);
+  } catch (err) {
+    throw new Error('Cleanup failed: ' + err.message + recoveryHint);
+  }
+
+  // --- Step 3: Extract new core zip wholesale ---
   let filesWritten = 0;
   let filesSkipped = 0;
   let dashboardUpdated = false;
   let newVersion = null;
 
-  const updateManifest = files.find((f) => f.path === 'manifest.json');
-
-  // --- Step 2: Extract files ---
-  for (const file of files) {
+  try {
+    for (const file of files) {
       const relPath = file.path;
-
       if (relPath.endsWith('/')) continue;
-      if (relPath === 'manifest.json') continue;
 
-      // Dashboard self-update
+      // Dashboard self-update — write to .next.js so the next launch swaps it in
       if (relPath === 'setup/dashboard.js') {
         const destPath = path.join(PROJECT_DIR, 'setup', 'dashboard.next.js');
         fs.mkdirSync(path.dirname(destPath), { recursive: true });
@@ -293,46 +219,43 @@ function applyUpdateFromZip(zipBuffer) {
         continue;
       }
 
-      // Skip buyer-owned files (never touched)
-      if (isBuyerFile(relPath, buyerFiles)) {
-        filesSkipped++;
-        continue;
-      }
-
-      // Path traversal guard
       const destPath = path.resolve(PROJECT_DIR, relPath);
-      if (!destPath.startsWith(PROJECT_DIR + path.sep) && destPath !== PROJECT_DIR) {
-        filesSkipped++;
-        continue;
-      }
+      if (!isUnderProjectDir(destPath)) { filesSkipped++; continue; }
       fs.mkdirSync(path.dirname(destPath), { recursive: true });
       fs.writeFileSync(destPath, file.data);
       filesWritten++;
-    }
 
-    // --- Step 3: Update manifest.json version ---
-    if (updateManifest) {
-      try {
-        const um = JSON.parse(updateManifest.data.toString());
-        if (um.version) {
-          newVersion = um.version;
-          const localManifest = readManifest();
-          localManifest.version = um.version;
-          if (um.dashboardVersion) localManifest.dashboardVersion = um.dashboardVersion;
-          if (um.buyerFiles) localManifest.buyerFiles = um.buyerFiles;
-          if (um.hybridFiles) localManifest.hybridFiles = um.hybridFiles;
-          fs.writeFileSync(PATHS.manifest, JSON.stringify(localManifest, null, 2) + '\n');
-        }
-      } catch { /* ignore */ }
+      // Read the new version directly from the manifest entry (avoids a re-read from disk)
+      if (relPath === 'manifest.json') {
+        try { newVersion = JSON.parse(file.data.toString()).version || null; } catch {}
+      }
     }
+  } catch (err) {
+    throw new Error('Extract failed: ' + err.message + recoveryHint);
+  }
 
-    // --- Step 4: Restore buyer identity ---
-    const restoreResult = identity.applyIdentityZip(savedIdentity);
-    if (!restoreResult.ok) {
-      throw new Error('Identity restore failed: ' + restoreResult.error);
+  // --- Step 4: Snapshot the new core's package.json as the baseline for next snapshot's deps diff ---
+  // Done BEFORE identity restore so the baseline reflects what core just shipped, before
+  // buyer's added deps get merged in.
+  try {
+    const freshPkgJson = readJsonSafe(PATHS.packageJson);
+    if (freshPkgJson) {
+      fs.writeFileSync(PATHS.corePackageJson, JSON.stringify(freshPkgJson, null, 2) + '\n');
     }
+  } catch { /* baseline is best-effort — missing it just means next snapshot captures full deps */ }
 
-  return { filesWritten, filesSkipped, dashboardUpdated, newVersion };
+  // --- Step 5: Apply identity from the temp zip ---
+  let restoreResult;
+  try {
+    restoreResult = identity.applyIdentityZip(identity.loadIdentityTemp(identityTempPath));
+    if (!restoreResult.ok) throw new Error(restoreResult.error || 'unknown error');
+  } catch (err) {
+    throw new Error('Identity restore failed: ' + err.message + recoveryHint);
+  }
+
+  identity.cleanupIdentityTemp(identityTempPath);
+
+  return { filesWritten, filesSkipped, dashboardUpdated, newVersion, cleanupStats, restoreResult };
 }
 
 /**
@@ -364,11 +287,6 @@ module.exports = {
   removeModuleLicense,
   validateLicense,
   deactivateLicense,
-  createBackup,
-  listBackups,
-  restoreFromBackup,
-  deleteBackup,
-  pruneBackups,
   applyUpdateFromZip,
   downloadUpdate,
 };

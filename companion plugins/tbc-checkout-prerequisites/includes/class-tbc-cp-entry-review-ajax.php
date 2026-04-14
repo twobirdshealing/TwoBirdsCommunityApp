@@ -122,6 +122,7 @@ class TBC_CP_Entry_Review_Ajax {
         }
 
         gform_update_meta($entry_id, 'is_approved', $approval_status);
+        GFFormsModel::update_entry_property($entry_id, 'is_read', 1);
         do_action('tbc_cp_entry_approval_updated', $entry_id, $approval_status);
 
         $labels = [

@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Checkout Prerequisites
  * Plugin URI: https://twobirdscode.com
  * Description: Displays prerequisite steps customers must complete before checkout
- * Version: 3.7.28
+ * Version: 3.7.29
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  * Text Domain: tbc-checkout-prerequisites
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('TBC_CP_VERSION', '3.7.28');
+define('TBC_CP_VERSION', '3.7.29');
 define('TBC_CP_DIR', plugin_dir_path(__FILE__));
 define('TBC_CP_URL', plugin_dir_url(__FILE__));
 

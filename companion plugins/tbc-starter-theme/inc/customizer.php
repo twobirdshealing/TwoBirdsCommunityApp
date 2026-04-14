@@ -69,17 +69,17 @@ function fluent_starter_customize_register($wp_customize) {
     ));
 
     // ==========================================================================
-    // Blog Integration Section
+    // Portal Frame Integration Section
     // ==========================================================================
 
     $wp_customize->add_section('fluent_starter_blog_section', array(
-        'title'       => __('Blog Integration', 'fluent-starter'),
-        'description' => __('Settings for blog display within Fluent Community frame.', 'fluent-starter'),
+        'title'       => __('Portal Frame Integration', 'fluent-starter'),
+        'description' => __('Wrap all frontend pages (posts, pages, archives, products, search, 404) inside the Fluent Community portal frame.', 'fluent-starter'),
         'panel'       => 'fluent_starter_panel',
         'priority'    => 20,
     ));
 
-    // Enable Blog Integration
+    // Enable Portal Frame Integration
     $wp_customize->add_setting('fluent_starter_blog_integration', array(
         'default'           => true,
         'sanitize_callback' => 'fluent_starter_sanitize_checkbox',
@@ -87,13 +87,13 @@ function fluent_starter_customize_register($wp_customize) {
     ));
 
     $wp_customize->add_control('fluent_starter_blog_integration', array(
-        'label'       => __('Enable Blog Integration', 'fluent-starter'),
-        'description' => __('Display blog posts, archives, and single posts within Fluent Community frame.', 'fluent-starter'),
+        'label'       => __('Enable Portal Frame Integration', 'fluent-starter'),
+        'description' => __('When enabled, every frontend page is rendered inside the Fluent Community portal (sidebar + nav). When disabled, pages render with the default WordPress layout.', 'fluent-starter'),
         'section'     => 'fluent_starter_blog_section',
         'type'        => 'checkbox',
     ));
 
-    // Blog Template
+    // Frame Template
     $wp_customize->add_setting('fluent_starter_blog_template', array(
         'default'           => 'frame',
         'sanitize_callback' => 'fluent_starter_sanitize_template_choice',
@@ -101,8 +101,8 @@ function fluent_starter_customize_register($wp_customize) {
     ));
 
     $wp_customize->add_control('fluent_starter_blog_template', array(
-        'label'       => __('Blog Template', 'fluent-starter'),
-        'description' => __('Choose the Fluent Community frame template for blog pages.', 'fluent-starter'),
+        'label'       => __('Frame Template', 'fluent-starter'),
+        'description' => __('Choose the Fluent Community frame width used to wrap frontend pages.', 'fluent-starter'),
         'section'     => 'fluent_starter_blog_section',
         'type'        => 'select',
         'choices'     => array(
@@ -164,11 +164,13 @@ function fluent_starter_sanitize_template_choice($choice) {
 // ==========================================================================
 
 /**
- * Check if blog Fluent integration is enabled
+ * Check if portal frame integration is enabled
+ *
+ * When enabled, all frontend pages are wrapped in the Fluent Community portal.
  *
  * @return bool
  */
-function fluent_starter_blog_integration_enabled() {
+function fluent_starter_frame_integration_enabled() {
     return (bool) get_theme_mod('fluent_starter_blog_integration', true);
 }
 

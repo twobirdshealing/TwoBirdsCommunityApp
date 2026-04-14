@@ -34,6 +34,15 @@ add_filter('fluent_community/is_supported_theme', function($supported, $themeNam
 }, 10, 2);
 
 /**
+ * Disable FluentCart's auto the_content product page injection
+ *
+ * Since we render FluentCart products ourselves inside the portal frame via
+ * fluent_starter_render_theme_content(), FluentCart's internal the_content
+ * filter would otherwise double-inject the product header/related products.
+ */
+add_filter('fluent_cart/disable_auto_single_product_page', '__return_true');
+
+/**
  * Dark mode cookie synchronization
  *
  * Ensures dark mode state is shared between Fluent Community portal and theme pages
@@ -250,18 +259,31 @@ add_action('wp_loaded', function() {
 }, 20);
 
 /**
- * Blog template routing for Fluent Community frame
+ * Universal template routing for Fluent Community frame
  *
- * Forces blog pages (posts, archives) into the Fluent Community frame
- * when blog integration is enabled in the Customizer.
+ * Wraps ALL frontend WordPress templates in the Fluent Community portal frame:
+ * singular posts/pages, all CPTs (including FluentCart products), archives,
+ * taxonomies, search, 404. The frame provides the portal sidebar/nav, and
+ * fluent_starter_render_theme_content() handles the inner rendering per type.
  */
 add_filter('fluent_community/template_slug', function ($templateSlug) {
-    if (fluent_starter_blog_integration_enabled()) {
-        if (is_singular('post') || is_home() || is_category() || is_tag() || is_author()) {
-            return fluent_starter_get_blog_template();
-        }
+    // Bail if portal frame integration is disabled in the Customizer
+    if (!fluent_starter_frame_integration_enabled()) {
+        return $templateSlug;
     }
-    return $templateSlug;
+
+    // Skip admin, feeds, embeds, REST, cron, AJAX — never wrap these
+    if (is_admin() || is_feed() || is_embed() || wp_doing_ajax() || wp_doing_cron()) {
+        return $templateSlug;
+    }
+
+    // Skip if a specific page has explicitly picked a non-frame template
+    if (is_page() && $templateSlug && !in_array($templateSlug, ['fluent-community-frame.php', 'fluent-community-frame-full.php'], true)) {
+        return $templateSlug;
+    }
+
+    // Wrap everything frontend in the portal
+    return fluent_starter_get_blog_template();
 });
 
 /**
@@ -275,19 +297,83 @@ add_filter('fluent_community/template_slug', function ($templateSlug) {
  * @param string $wrapperType The wrapper type ('default' or 'full')
  */
 function fluent_starter_render_theme_content($themeName, $wrapperType = 'default') {
-    // Blog archive (home, category, tag, author)
-    if (fluent_starter_blog_integration_enabled() && (is_home() || is_category() || is_tag() || is_author())) {
+    if (is_singular('fluent-products')) {
+        $post_id = get_the_ID();
+        echo '<div class="fct-single-product-wrap fluent-starter-frame-content">';
+        do_action('fluent_cart/product/render_product_header', $post_id);
+        echo '<div class="fct-product-description">';
+        the_content();
+        echo '</div>';
+        do_action('fluent_cart/product/after_product_content', $post_id);
+        echo '</div>';
+        return;
+    }
+
+    if (is_tax(['product-categories', 'product-brands']) || is_post_type_archive('fluent-products')) {
+        echo do_shortcode('[fluent_cart_products]');
+        return;
+    }
+
+    if (is_home() || is_category() || is_tag() || is_author()) {
         echo do_shortcode('[fluent_blog posts_per_page="12"]');
         return;
     }
 
-    // Single blog post
-    if (fluent_starter_blog_integration_enabled() && is_singular('post')) {
+    if (is_singular('post')) {
         fluent_starter_render_single_post();
         return;
     }
 
-    // Regular page content (fallback)
+    if (is_search()) {
+        ?>
+        <div class="wp_content_wrapper fluent-starter-frame-content">
+            <h1 class="entry-title"><?php printf(esc_html__('Search Results for: %s', 'fluent-starter'), '<span>' . get_search_query() . '</span>'); ?></h1>
+            <?php if (have_posts()) : ?>
+                <div class="fs-search-results">
+                    <?php while (have_posts()) : the_post(); ?>
+                        <?php get_template_part('template-parts/content', 'search'); ?>
+                    <?php endwhile; ?>
+                </div>
+            <?php else : ?>
+                <?php get_template_part('template-parts/content', 'none'); ?>
+            <?php endif; ?>
+        </div>
+        <?php
+        return;
+    }
+
+    if (is_404()) {
+        ?>
+        <div class="wp_content_wrapper fluent-starter-frame-content">
+            <div class="error-404">
+                <h1 class="error-title"><?php esc_html_e('404', 'fluent-starter'); ?></h1>
+                <h2 class="error-subtitle"><?php esc_html_e('Page Not Found', 'fluent-starter'); ?></h2>
+                <p class="error-message">
+                    <?php esc_html_e('The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.', 'fluent-starter'); ?>
+                </p>
+                <a href="<?php echo esc_url(home_url('/')); ?>" class="button button-primary">
+                    <?php esc_html_e('Go to Homepage', 'fluent-starter'); ?>
+                </a>
+            </div>
+        </div>
+        <?php
+        return;
+    }
+
+    if (is_archive()) {
+        ?>
+        <div class="wp_content_wrapper fluent-starter-frame-content">
+            <?php the_archive_title('<h1 class="entry-title">', '</h1>'); ?>
+            <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
+                <?php get_template_part('template-parts/content', 'archive'); ?>
+            <?php endwhile; else : ?>
+                <?php get_template_part('template-parts/content', 'none'); ?>
+            <?php endif; ?>
+        </div>
+        <?php
+        return;
+    }
+
     if (have_posts()) {
         while (have_posts()) {
             the_post();
@@ -473,8 +559,8 @@ add_action('fluent_community/enqueue_global_assets', function($useDefaultTheme) 
         FLUENT_STARTER_VERSION
     );
 
-    // Blog styles (archive and single post within frame)
-    if (is_home() || is_archive() || is_single() || is_search()) {
+    // Frame content styles — only load when portal frame integration is on
+    if (fluent_starter_frame_integration_enabled() && (is_home() || is_archive() || is_singular() || is_search() || is_404())) {
         wp_enqueue_style(
             'fluent-starter-blog',
             FLUENT_STARTER_URI . '/assets/css/blog.css',

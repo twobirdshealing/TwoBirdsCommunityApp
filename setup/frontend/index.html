@@ -555,7 +555,7 @@
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'builds' }" x-on:click="switchTab('builds')">Builds</button>
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'ota' }" x-on:click="switchTab('ota')">OTA Updates</button>
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'updates' }" x-on:click="switchTab('updates')">Updates</button>
-  <button class="tab-btn" x-bind:class="{ active: activeTab === 'backup' }" x-on:click="switchTab('backup')">Backup</button>
+  <button class="tab-btn" x-bind:class="{ active: activeTab === 'backup' }" x-on:click="switchTab('backup')">Snapshot</button>
 </div>
 
 <!-- Quick Commands Toolbar -->
@@ -1533,7 +1533,7 @@
             </template>
             <!-- Download button -->
             <template x-if="normStatus(build) === 'finished' && build.artifacts && build.artifacts.buildUrl">
-              <a class="btn btn-sm" x-bind:href="build.artifacts.buildUrl" target="_blank" rel="noopener" x-text="isIosBuild(build) ? 'Download .ipa' : 'Download .aab'"></a>
+              <a class="btn btn-sm" x-bind:href="getBuildDownloadUrl(build)" x-text="isIosBuild(build) ? 'Download .ipa' : 'Download .aab'"></a>
             </template>
             <!-- Submit to store button (production builds only) -->
             <template x-if="normStatus(build) === 'finished' && !isInternalBuild(build) && isStoreConfigured(build)">
@@ -1748,13 +1748,10 @@
       <!-- Applying -->
       <div x-show="updateState.state === 'applying'" class="update-progress">
         <div class="step" x-bind:class="updateState.step >= 1 ? (updateState.step > 1 ? 'done' : 'active') : ''">
-          <span x-text="updateState.step > 1 && updateState.backupName ? 'Backed up' : 'Backing up...'"></span>
+          <span x-text="updateState.step > 1 ? 'Downloaded' : 'Downloading...'"></span>
         </div>
-        <div class="step" x-bind:class="updateState.step >= 2 ? (updateState.step > 2 ? 'done' : 'active') : ''">
-          <span x-text="updateState.step > 2 ? 'Downloaded' : 'Downloading...'"></span>
-        </div>
-        <div class="step" x-bind:class="updateState.step >= 3 ? 'done' : ''">
-          <span x-text="updateState.step >= 3 ? updateState.filesWritten + ' files updated' : 'Applying...'"></span>
+        <div class="step" x-bind:class="updateState.step >= 2 ? 'done' : ''">
+          <span x-text="updateState.step >= 2 ? updateState.filesWritten + ' files updated' : 'Applying...'"></span>
         </div>
       </div>
       <!-- Done -->
@@ -1874,7 +1871,7 @@
   </template>
 </div>
 
-<!-- ============== Backup Tab ============== -->
+<!-- ============== Snapshot Tab ============== -->
 <div class="tab-content" x-bind:class="{ active: activeTab === 'backup' }">
   <!-- Full identity preview -->
   <div class="card">
@@ -1884,9 +1881,8 @@
         <button class="btn btn-sm" x-on:click="loadBackupPreview()" x-bind:disabled="backupPreviewLoading"
                 x-text="backupPreviewLoading ? 'Loading...' : 'Refresh'">Refresh</button>
         <button class="btn btn-sm" x-on:click="$refs.identityImportInput.click()" x-bind:disabled="backupImporting"
-                x-text="backupImporting ? 'Restoring...' : 'Restore'">Restore</button>
-        <button class="btn btn-sm btn-primary" x-on:click="createManualBackup()" x-bind:disabled="manualBackupRunning"
-                x-text="manualBackupRunning ? 'Creating...' : 'Create Backup'">Create Backup</button>
+                x-text="backupImporting ? 'Importing...' : 'Import Snapshot'">Import Snapshot</button>
+        <a class="btn btn-sm btn-primary" href="/api/identity/export" download>Export Snapshot</a>
         <input type="file" accept=".zip" x-ref="identityImportInput" style="display:none"
                x-on:change="uploadIdentityImport($event)">
       </div>
@@ -1900,7 +1896,8 @@
               Identity details — <span x-text="Object.keys(backupIdentity.config).length"></span> config values,
               <span x-text="backupIdentity.assets.length"></span> assets,
               <span x-text="backupIdentity.activeModuleIds.length"></span> modules,
-              <span x-text="(backupIdentity.coreLicense ? 1 : 0) + Object.keys(backupIdentity.moduleLicenses || {}).length"></span> licenses
+              <span x-text="Object.keys(backupIdentity.dependencies || {}).length + Object.keys(backupIdentity.devDependencies || {}).length"></span> deps,
+              <span x-text="(backupIdentity.coreLicense ? 1 : 0) + Object.keys(backupIdentity.moduleLicenses || {}).length"></span> licenses<template x-if="backupIdentity.notesMd">, NOTES.md</template>
             </span>
             <span style="font-size:11px;margin-left:auto" x-text="validation.pass + ' pass / ' + validation.fail + ' fail / ' + validation.warn + ' warn'"
                   x-bind:style="validation.fail > 0 ? 'color:var(--red)' : validation.warn > 0 ? 'color:var(--orange, #e67e22)' : 'color:var(--green)'"></span>
@@ -1972,6 +1969,55 @@
             </table>
           </div>
 
+          <!-- Package Deps (buyer-added vs core baseline) -->
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
+            Package Deps <span style="font-weight:400" x-text="'(' + (Object.keys(backupIdentity.dependencies || {}).length + Object.keys(backupIdentity.devDependencies || {}).length) + ' buyer-added)'"></span>
+          </div>
+          <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px">
+            <template x-if="(Object.keys(backupIdentity.dependencies || {}).length + Object.keys(backupIdentity.devDependencies || {}).length) === 0">
+              <div style="padding:10px 12px;font-size:12px;color:var(--text-muted);font-style:italic">No buyer-added packages &mdash; your <code>package.json</code> matches the core baseline.</div>
+            </template>
+            <table style="width:100%;font-size:12px;border-collapse:collapse">
+              <template x-for="[name, ver] in Object.entries(backupIdentity.dependencies || {})" :key="'dep-'+name">
+                <tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:6px 8px;width:24px">
+                    <span class="status-icon status-pass" style="font-size:14px"><ion-icon name="checkmark-circle"></ion-icon></span>
+                  </td>
+                  <td style="padding:6px 8px;font-family:var(--font-mono)" x-text="name"></td>
+                  <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:var(--text-secondary)" x-text="ver"></td>
+                  <td style="padding:6px 8px;width:60px;text-align:right;font-size:10px;color:var(--text-muted)">dep</td>
+                </tr>
+              </template>
+              <template x-for="[name, ver] in Object.entries(backupIdentity.devDependencies || {})" :key="'devdep-'+name">
+                <tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:6px 8px;width:24px">
+                    <span class="status-icon status-pass" style="font-size:14px"><ion-icon name="checkmark-circle"></ion-icon></span>
+                  </td>
+                  <td style="padding:6px 8px;font-family:var(--font-mono)" x-text="name"></td>
+                  <td style="padding:6px 8px;text-align:right;font-family:var(--font-mono);color:var(--text-secondary)" x-text="ver"></td>
+                  <td style="padding:6px 8px;width:60px;text-align:right;font-size:10px;color:var(--text-muted)">devDep</td>
+                </tr>
+              </template>
+            </table>
+          </div>
+
+          <!-- Project Notes (NOTES.md) -->
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Project Notes</div>
+          <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px">
+            <table style="width:100%;font-size:12px;border-collapse:collapse">
+              <tr>
+                <td style="padding:6px 8px;width:24px">
+                  <span class="status-icon" x-bind:class="backupIdentity.notesMd ? 'status-pass' : 'status-warn'" style="font-size:14px">
+                    <ion-icon x-bind:name="backupIdentity.notesMd ? 'checkmark-circle' : 'remove-circle-outline'"></ion-icon>
+                  </span>
+                </td>
+                <td style="padding:6px 8px"><code>NOTES.md</code></td>
+                <td style="padding:6px 8px;text-align:right;color:var(--text-secondary)"
+                    x-text="backupIdentity.notesMd ? (backupIdentity.notesMd.length.toLocaleString() + ' chars captured') : 'Not present (optional buyer notes file)'"></td>
+              </tr>
+            </table>
+          </div>
+
           <!-- Licenses -->
           <div style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Licenses</div>
           <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px">
@@ -2019,34 +2065,13 @@
     </div>
   </div>
 
-  <!-- Backups -->
-  <div class="card">
-    <div class="card-header">
-      <h3>Backups</h3>
-    </div>
-    <div class="card-body">
-      <template x-if="backups.length === 0">
-        <p class="no-backups">No backups yet. Click "Create Backup" above or backups are created automatically before each core update.</p>
-      </template>
-      <template x-for="b in backups" :key="b.id">
-        <div class="backup-card">
-          <div class="backup-info">
-            <div class="backup-version">
-              <span x-text="'Core v' + b.version"></span>
-              <span x-show="b.appVersion" class="backup-app-version" x-text="'· App v' + b.appVersion"></span>
-            </div>
-            <div class="backup-meta" x-text="b.date + ' · ' + b.sizeMB + ' MB'"></div>
-          </div>
-          <div class="backup-actions">
-            <a class="btn btn-sm" x-bind:href="'/api/identity/export'" download>Download</a>
-            <button class="btn btn-sm" x-on:click="restoreBackup(b.id, b.version)">Restore</button>
-            <button class="btn btn-sm btn-danger-subtle" x-on:click="deleteOneBackup(b.id)">Delete</button>
-          </div>
-        </div>
-      </template>
-    </div>
+  <!-- Explainer -->
+  <div style="margin-top:16px;padding:12px 16px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;color:var(--text-secondary);line-height:1.6">
+    <strong style="color:var(--text-primary)">About snapshots.</strong>
+    Snapshots are for cloning this app to a new install or recovering from a bad change.
+    You don't need to take one before every core update &mdash; updates preserve your settings automatically.
+    To roll back to an older core version, upload that version's zip in the Updates tab.
   </div>
-
 
 </div>
 
@@ -2271,9 +2296,8 @@ document.addEventListener('alpine:init', () => {
     modLicenseInputs: {},
     moduleUpdates: {},
 
-    // Backup (Identity)
+    // Snapshot (Identity)
     identityDetailsOpen: false,
-    manualBackupRunning: false,
     backupTabLoaded: false,
     backupIdentity: null,
     backupPreviewLoading: false,
@@ -2287,9 +2311,8 @@ document.addEventListener('alpine:init', () => {
     licenseKeyInput: '',
     licenseStatus: { state: 'checking', cssClass: 'checking', plan: '', expiry: '', error: '' },
     updateChecking: false,
-    updateState: { state: 'no-license', currentVersion: '', version: '', date: '', sizeMB: '', changelog: '', downloadUrl: '', error: '', errorTitle: '', step: 0, backupName: '', filesWritten: 0, depsChanged: false, dashboardUpdated: false },
-    backups: [],
-    manualUpdate: { showUpload: true, state: 'idle', fileName: '', filesWritten: 0, backupName: '', newVersion: '', depsChanged: false, error: '' },
+    updateState: { state: 'no-license', currentVersion: '', version: '', date: '', sizeMB: '', changelog: '', downloadUrl: '', error: '', errorTitle: '', step: 0, filesWritten: 0, depsChanged: false, dashboardUpdated: false },
+    manualUpdate: { showUpload: true, state: 'idle', fileName: '', filesWritten: 0, newVersion: '', depsChanged: false, error: '' },
 
     // App Switcher
     appSwitcherOpen: false,
@@ -2841,6 +2864,22 @@ bumpVersion(type) {
       return '';
     },
 
+    getBuildDownloadUrl(build) {
+      var artifact = build.artifacts && build.artifacts.buildUrl;
+      if (!artifact) return '';
+      var name = (this.config.appName || this.config.slug || 'app').replace(/\s+/g, '-');
+      var version = build.appVersion || build.version || '';
+      var profile = build.buildProfile || build.profile || '';
+      var platform = this.isIosBuild(build) ? 'ios' : 'android';
+      var ext = this.isIosBuild(build) ? 'ipa' : 'aab';
+      var parts = [name];
+      if (version) parts.push('v' + version);
+      parts.push(platform);
+      if (profile) parts.push(profile);
+      var filename = parts.join('-') + '.' + ext;
+      return '/api/builds/download?url=' + encodeURIComponent(artifact) + '&filename=' + encodeURIComponent(filename);
+    },
+
     getOtaPageUrl(group) {
       var id = group.group || group.id;
       if (!id) return '';
@@ -3153,22 +3192,8 @@ bumpVersion(type) {
       return { tab: tab, section: section };
     },
 
-    async createManualBackup() {
-      this.manualBackupRunning = true;
-      try {
-        var res = await fetch('/api/backups/create', { method: 'POST' });
-        var data = await res.json();
-        if (data.ok) {
-          this.showToast('Backup created: ' + data.label, 'success');
-          this.loadBackups();
-        } else this.showToast('Backup failed: ' + (data.error || 'Unknown error'), 'error');
-      } catch (err) { this.showToast('Backup error: ' + err.message, 'error'); }
-      finally { this.manualBackupRunning = false; }
-    },
-
     async loadBackupTab() {
       await this.loadBackupPreview();
-      this.loadBackups();
       this.backupTabLoaded = true;
     },
 
@@ -3565,17 +3590,16 @@ bumpVersion(type) {
     },
 
     async applyLicenseUpdate(downloadUrl, version) {
-      if (!confirm('This will:\n\n1. Backup your current project\n2. Download v' + version + '\n3. Apply the update\n\nProtected (NOT overwritten):\n  - Config, Assets, Modules, Firebase configs\n\nOverwritten:\n  - All other source files\n\nA backup is created first. Proceed?')) return;
-      this.setUpdateState( { state: 'applying', step: 1, backupName: '', filesWritten: 0, depsChanged: false, dashboardUpdated: false });
+      if (!confirm('Update to v' + version + '?\n\nYour config, branding, credentials, modules, and NOTES.md are preserved automatically.\nCore files will be replaced with the new version.\n\nTo roll back later, you can upload an older zip in this same tab.')) return;
+      this.setUpdateState( { state: 'applying', step: 1, filesWritten: 0, depsChanged: false, dashboardUpdated: false });
       try {
         var res = await this.postJson('/api/updates/apply', { downloadUrl });
         var data = await res.json();
         if (data.error) throw new Error(data.error);
-        this.setUpdateState( { state: 'done', step: 3, backupName: data.backup, filesWritten: data.filesWritten, dashboardUpdated: !!data.dashboardUpdated });
-        await this.loadBackups();
+        this.setUpdateState( { state: 'done', step: 2, filesWritten: data.filesWritten, dashboardUpdated: !!data.dashboardUpdated });
         this.installDeps();
       } catch (err) {
-        this.setUpdateState( { state: 'error', errorTitle: 'Update failed:', error: err.message + ' — Your backup is safe. Use the Backups section below to restore if needed.' });
+        this.setUpdateState( { state: 'error', errorTitle: 'Update failed:', error: err.message });
       }
     },
 
@@ -3595,7 +3619,7 @@ bumpVersion(type) {
       if (!file.name.toLowerCase().endsWith('.zip')) {
         this.showToast('Please upload a .zip file', 'error'); return;
       }
-      if (!confirm('Apply update from "' + file.name + '"?\n\nCore files will be overwritten. Config, assets, and modules are preserved.\nA backup is created first.')) return;
+      if (!confirm('Apply update from "' + file.name + '"?\n\nYour config, branding, credentials, modules, and NOTES.md are preserved automatically. Core files will be replaced with the version in this zip — works for forward updates and rollbacks.')) return;
       this.setManualState({ showUpload: false, state: 'uploading', fileName: file.name, error: '' });
       try {
         var formData = new FormData();
@@ -3603,43 +3627,13 @@ bumpVersion(type) {
         var res = await fetch('/api/updates/upload', { method: 'POST', body: formData });
         var data = await res.json();
         if (data.error) throw new Error(data.error);
-        this.setManualState({ state: 'done', filesWritten: data.filesWritten, backupName: data.backup, newVersion: data.newVersion || '', depsChanged: !!data.depsChanged });
+        this.setManualState({ state: 'done', filesWritten: data.filesWritten, newVersion: data.newVersion || '', depsChanged: !!data.depsChanged });
         this.showToast('Update applied!', 'success');
         if (data.newVersion) this.config.coreVersion = data.newVersion;
-        await this.loadBackups();
         if (data.depsChanged) this.installDeps();
       } catch (err) {
         this.setManualState({ state: 'error', showUpload: true, error: err.message });
       }
-    },
-
-    // Backups
-    async loadBackups() {
-      try {
-        var res = await fetch('/api/updates/backups');
-        var data = await res.json();
-        this.backups = data.backups || [];
-      } catch (err) { this.backups = []; }
-    },
-
-    async restoreBackup(backupId, version) {
-      if (!confirm('Restore your project to v' + version + '?\n\nThis will overwrite current files with the backup.')) return;
-      try {
-        var res = await this.postJson('/api/updates/rollback', { backupId });
-        var data = await res.json();
-        if (data.error) throw new Error(data.error);
-        this.showToast('Restored to v' + version, 'success');
-        await this.loadState();
-      } catch (err) { this.showToast('Restore failed: ' + err.message, 'error'); }
-    },
-
-    async deleteOneBackup(backupId) {
-      if (!confirm('Delete this backup? This cannot be undone.')) return;
-      try {
-        await this.postJson('/api/updates/backups/delete', { backupId });
-        this.showToast('Backup deleted', 'success');
-        await this.loadBackups();
-      } catch (err) { this.showToast('Error: ' + err.message, 'error'); }
     },
 
     // =========================================================================

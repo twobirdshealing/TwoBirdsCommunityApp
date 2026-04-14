@@ -231,7 +231,7 @@
   </tr>
   <tr class="row-app">
     <td>Setup Dashboard &amp; Update System <span class="tag tag-app">APP EXTRA</span></td>
-    <td>Full-featured local web dashboard for buyer onboarding, configuration, builds, updates, and module management. Seven tabs covering the entire app lifecycle. Zero npm dependencies. One-click updates with automatic backup/restore. See <a href="#setup-dashboard">dedicated section below</a>.</td>
+    <td>Full-featured local web dashboard for buyer onboarding, configuration, builds, updates, and module management. Seven tabs covering the entire app lifecycle. Zero npm dependencies. One-click updates with manifest-driven cleanup that preserves all buyer files automatically. See <a href="#setup-dashboard">dedicated section below</a>.</td>
     <td>Operations</td>
   </tr>
 </table>
@@ -274,7 +274,7 @@
   </tr>
   <tr>
     <td><strong>Updates</strong></td>
-    <td>License activation, update checking, one-click core updates with automatic backup, manual package upload, and backup management. <a href="#update-system">See full details below.</a></td>
+    <td>License activation, update checking, one-click core updates that preserve buyer state automatically, and manual zip upload (which doubles as the rollback path &mdash; upload any version's zip). <a href="#update-system">See full details below.</a></td>
   </tr>
   <tr>
     <td><strong>Status</strong></td>
@@ -289,19 +289,20 @@
 <ol>
   <li><strong>License activation</strong> &mdash; buyer enters their license key (received on purchase). The dashboard validates it against the license server and activates it, linking it to their site URL. License key stored locally in <code>setup/.license</code>.</li>
   <li><strong>Update checking</strong> &mdash; automatically checks for new versions when the tab opens. Shows current version vs. latest, with full changelog. Manual "Check Now" button.</li>
-  <li><strong>One-click update</strong> &mdash; "Backup &amp; Update" downloads the update package, creates a full backup of the current state, and applies only core files. Buyer customizations (config, assets, bundle IDs, modules, Firebase configs) are <strong>never overwritten</strong>. A confirmation dialog lists exactly which files will be updated and which are protected.</li>
-  <li><strong>Dependency merging</strong> &mdash; if the update includes new npm dependencies, they're merged into the buyer's <code>package.json</code> (preserving their name, version, and scripts). Dashboard prompts to run <code>npm install</code> after.</li>
+  <li><strong>One-click update</strong> &mdash; downloads the update package, captures an identity snapshot of the current buyer state to OS temp, reads <code>setup/.core-files.json</code> to delete only the previous core's files (touching nothing the buyer owns), extracts the new core wholesale, then re-injects user values into hybrid files (<code>app.json</code>, <code>package.json</code>, <code>eas.json</code>, <code>constants/config.ts</code>) from the snapshot. Pure user files (assets, modules, credentials, NOTES.md) are restored verbatim.</li>
+  <li><strong>Manifest-driven cleanup</strong> &mdash; the dashboard only deletes files it knows it shipped. <code>.git</code>, <code>node_modules</code>, custom modules, NOTES.md, reference docs, and anything else the buyer added are never touched, because they're not in <code>setup/.core-files.json</code>.</li>
+  <li><strong>Dependency merging</strong> &mdash; the buyer's <code>dependencies</code> and <code>devDependencies</code> objects are captured in the identity snapshot and merged into the new core's <code>package.json</code> via <code>Object.assign</code>. Buyer's entries override conflicts. <code>npm install</code> runs automatically after the update completes.</li>
   <li><strong>Dashboard self-update</strong> &mdash; if the update includes a new dashboard version, it's written as <code>dashboard.next.js</code>. On next launch, the dashboard swaps itself and restarts automatically.</li>
-  <li><strong>Manual upload</strong> &mdash; buyers can also apply updates from a <code>.zip</code> file (for air-gapped environments or manual delivery).</li>
-  <li><strong>Backup &amp; restore</strong> &mdash; automatic backup before every update in <code>setup/.backups/</code>. Dashboard lists all backups with dates and sizes. One-click restore to roll back. Auto-prunes to keep only the last 3 backups.</li>
+  <li><strong>Manual upload &amp; rollback</strong> &mdash; buyers can apply any version's zip (for air-gapped environments, manual delivery, or rollbacks). The same flow handles forward updates, sideways reinstalls, and backward rollbacks &mdash; just upload the zip you want.</li>
+  <li><strong>Snapshot tab</strong> &mdash; export the complete buyer state as an identity zip and import it onto a fresh install for true app cloning. Used for moving an app to a new machine, cloning to a sister site, or recovering from a bad change.</li>
 </ol>
 
 <h4>Technical Details</h4>
 <ul>
   <li><strong>Zero dependencies</strong> &mdash; built entirely on Node.js built-ins (<code>http</code>, <code>fs</code>, <code>path</code>, <code>https</code>, <code>zlib</code>). No npm install, no framework, no bundler. Entry point: <code>setup/dashboard.js</code>, with modular helpers in <code>setup/lib/</code>, routes in <code>setup/routes/</code>, and frontend in <code>setup/frontend/</code>.</li>
   <li><strong>Custom zip engine</strong> &mdash; core updates and module packages both ship as <code>.zip</code>. Reads and writes via hand-written central-directory + local-file-header parsers on top of built-in <code>zlib</code> (<code>deflateRawSync</code> / <code>inflateRawSync</code>) and a CRC-32 table. No third-party archive libraries.</li>
-  <li><strong>Protected paths</strong> &mdash; defined in <code>manifest.json</code>. The update system checks this list before writing any file. Includes: <code>config.ts</code>, <code>app.json</code>, <code>eas.json</code>, <code>app.config.ts</code>, <code>package.json</code>, <code>assets/images/</code>, Firebase configs, <code>modules/</code>, and the license/backup files.</li>
-  <li><strong>Manifest-driven</strong> &mdash; <code>manifest.json</code> contains the product version, update server URL, protected paths list, and core plugin list. Updated automatically when an update is applied.</li>
+  <li><strong>Core file manifest</strong> &mdash; <code>setup/.core-files.json</code> lists every file the currently-installed core shipped. Generated by the snapshot script when building a core zip. The update flow reads it to know exactly what to delete on the next update &mdash; ensures buyer files (anything not in the manifest) are never touched. Replaces the older "protected paths" approach with a precise, drift-proof footprint.</li>
+  <li><strong>Identity snapshot</strong> &mdash; the dashboard's <code>extractIdentity</code> walks all hybrid files and captures buyer-controlled values (28 config fields, branding assets, credentials, license files, modules, NOTES.md, eas.json credentials, package.json deps). Used both internally on every update and exposed as the user-facing Snapshot tab for cloning apps.</li>
 </ul>
 
 <!-- ================================================================ -->

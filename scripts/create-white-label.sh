@@ -25,45 +25,6 @@ ZIP_PLUGIN_JS="$SCRIPT_DIR/zip-plugin.js"
 # Allowlist: only these companion plugins ship with the base product
 CORE_PLUGINS=("tbc-community-app")
 
-# Buyer files: 100% buyer-owned, never touched during updates
-BUYER_FILES=(
-  "constants/config.ts"
-  "assets/images/"
-  "google-services.json"
-  "GoogleService-Info.plist"
-  "asc-api-key.p8"
-  "google-play-service-account.json"
-  "setup/.license"
-  "setup/.module-licenses.json"
-  "setup/.backups/"
-  "setup/.temp/"
-  "setup/dashboard.next.js"
-  "manifest.json"
-  "CLAUDE.md"
-)
-
-# Hybrid files: contain both core structure and buyer values.
-# During updates: buyer values extracted -> file replaced -> values injected back
-HYBRID_FILES=(
-  "app.json"
-  "eas.json"
-  "app.config.ts"
-  "package.json"
-  "modules/_registry.ts"
-)
-
-# Helper: generate JSON array from a bash array
-generate_json_array() {
-  local -n arr=$1
-  local indent="${2:-    }"
-  local last=$(( ${#arr[@]} - 1 ))
-  for i in "${!arr[@]}"; do
-    local comma=","
-    [ "$i" -eq "$last" ] && comma=""
-    echo "${indent}\"${arr[$i]}\"${comma}"
-  done
-}
-
 # Helper: generate manifest.json with a given version
 # NOTE: updateUrl points at twobirdscode.com on purpose — that is the
 # white-label license/update server we run for buyers, not a Two Birds Church
@@ -77,12 +38,6 @@ generate_manifest() {
   "version": "${version}",
   "dashboardVersion": 1,
   "updateUrl": "https://www.twobirdscode.com/wp-json/tbc-license/v1/check",
-  "buyerFiles": [
-$(generate_json_array BUYER_FILES "    ")
-  ],
-  "hybridFiles": [
-$(generate_json_array HYBRID_FILES "    ")
-  ],
   "corePlugins": [
     "tbc-community-app"
   ]
@@ -246,8 +201,10 @@ tar -cf - \
   --exclude='modules' \
   --exclude='setup/.app-presets.json' \
   --exclude='setup/logs' \
+  --exclude='setup/.core-files.json' \
   --exclude='asc-api-key.p8' \
   --exclude='google-play-service-account.json' \
+  --exclude='NOTES.md' \
   -C "$SOURCE_DIR" . | tar -xf - -C "$STAGING_DIR"
 
 # Zip only core companion plugins (allowlist — new plugins won't leak in).
@@ -342,13 +299,13 @@ sed -i \
   "$STAGING_DIR/app.config.ts"
 
 # --- package.json ---
+# Internal-only scripts (snapshot, zip-plugin, changelog, reset-project) are not in
+# the source package.json — we invoke them directly via `bash scripts/X.sh` and
+# `node scripts/X.js`, so there are no ghost entries for the buyer to trip on.
 sed -i \
   -e 's|"name": "twobirdscommunity"|"name": "community-app"|' \
   -e 's|"version": "[^"]*"|"version": "1.0.0"|' \
   -e 's|https://staging.twobirdschurch.com|https://staging.yoursite.com|g' \
-  -e '/"snapshot":/d' \
-  -e '/"zip-plugin":/d' \
-  -e '/"changelog":/d' \
   "$STAGING_DIR/package.json"
 
 # Fix trailing commas in JSON (sed deletes can leave them) — single node spawn
@@ -434,11 +391,7 @@ rm -f "$STAGING_DIR/assets/images/splash_screen_img.png"
 rm -f "$STAGING_DIR/assets/images/login_logo.png"
 rm -f "$STAGING_DIR/assets/images/login_background_img.png"
 
-# Strip site-specific section from CLAUDE.md (keep marker, remove content below it)
-if [ -f "$STAGING_DIR/CLAUDE.md" ]; then
-  sed -i '/<!-- CUSTOM_INSTRUCTIONS_BELOW -->/q' "$STAGING_DIR/CLAUDE.md"
-  echo "" >> "$STAGING_DIR/CLAUDE.md"
-fi
+# CLAUDE.md is now pure core — TBC-specific content lives in NOTES.md (excluded from snapshot)
 
 # Remove any backup or temp files (single find traversal)
 find "$STAGING_DIR" \( -name "*.orig" -o -name ".DS_Store" -o -name "nul" \) -delete 2>/dev/null || true
@@ -505,6 +458,31 @@ FIND_EXCLUDES+=( ! -path './package-lock.json' )
 cd "$STAGING_DIR"
 rm -f "$FINAL_ZIP"
 
+find . -type f "${FIND_EXCLUDES[@]}" > /tmp/tbc-core-files.txt
+
+# Snapshot package.json as setup/.core-package.json — the deps baseline for the
+# dashboard's snapshot system. Used by extractIdentity to compute "buyer-added" deps
+# as a diff vs the core's shipped deps.
+mkdir -p "$STAGING_DIR/setup"
+cp "$STAGING_DIR/package.json" "$STAGING_DIR/setup/.core-package.json"
+
+# Write setup/.core-files.json — the manifest of every file this core ships.
+# The dashboard's update flow reads this on the NEXT update to know exactly
+# which previous-core files to delete (cleanup is precise — buyer files like
+# .git, NOTES.md, custom modules, and anything they added are never touched).
+node -e '
+  var fs = require("fs");
+  var list = fs.readFileSync("/tmp/tbc-core-files.txt", "utf8")
+    .split("\n").filter(Boolean).map(function(p) { return p.replace(/^\.\//, ""); });
+  // Include both manifest files in the list so they get cleaned up on next update
+  for (var extra of ["setup/.core-files.json", "setup/.core-package.json"]) {
+    if (list.indexOf(extra) === -1) list.push(extra);
+  }
+  list.sort();
+  fs.writeFileSync(process.argv[1], JSON.stringify(list, null, 2) + "\n");
+' "$STAGING_DIR/setup/.core-files.json"
+
+# Re-run find so the file list passed to the zipper now includes both manifest files
 find . -type f "${FIND_EXCLUDES[@]}" > /tmp/tbc-core-files.txt
 
 # Build the core-update zip with our zero-dep Node zip engine — same createZip()
