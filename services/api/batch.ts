@@ -41,11 +41,13 @@ interface BatchPayload {
 
 /**
  * Send multiple REST requests in a single HTTP call.
- * Returns an array of individual responses (one per request, in order).
+ * Returns the standard ApiResponse — caller decides how to react to failure.
+ * Expected failure modes (auth expired, network timeout) route through the
+ * normal `{success: false}` path and should not be treated as crashes.
  */
 export async function batchRequest(
   requests: BatchRequest[],
-): Promise<BatchResponseItem[]> {
+): Promise<ApiResponse<BatchResponseItem[]>> {
   log.debug('batch request', { count: requests.length, paths: requests.map(r => r.path) });
   const response = await request<BatchPayload>('/batch', {
     method: 'POST',
@@ -54,8 +56,7 @@ export async function batchRequest(
   });
 
   if (!response.success) {
-    log.error(response.error?.message, 'batch failed');
-    throw new Error(response.error?.message || 'Batch request failed');
+    return response;
   }
 
   const failures = response.data.responses.filter(r => r.status >= 400);
@@ -66,7 +67,7 @@ export async function batchRequest(
     });
   }
 
-  return response.data.responses;
+  return { success: true, data: response.data.responses };
 }
 
 /**

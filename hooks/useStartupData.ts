@@ -121,6 +121,11 @@ export function useStartupData({
 
     log.debug('Firing startup batch...');
 
+    const fallbackToCache = () => {
+      const cached = getJSON(FEATURES_CACHE_KEY);
+      setStatus(cached ? 'success' : 'error');
+    };
+
     try {
       // Build batch paths — conditional paths use cached features from previous session.
       // On first launch defaults are all OFF (conservative), so no wasted 404s.
@@ -135,7 +140,7 @@ export function useStartupData({
         ...(getFeatureFlag('courses') ? [{ path: '/fluent-community/v2/courses?type=enrolled&per_page=5' }] : []),
       ];
 
-      const responses = await batchRequest(batchPaths);
+      const result = await batchRequest(batchPaths);
 
       // Bail if the user logged out or the hook unmounted while we were waiting.
       if (!isMountedRef.current || !hasRun.current) {
@@ -143,6 +148,15 @@ export function useStartupData({
         return;
       }
 
+      // Expected failures (expired auth, network timeout, server down) — not
+      // a bug, don't spam Sentry.
+      if (!result.success) {
+        log.warn('Batch request failed', { error: result.error.message });
+        fallbackToCache();
+        return;
+      }
+
+      const responses = result.data;
       log.debug('Batch returned', { count: responses.length });
 
       // -- Distribute core data --
@@ -220,11 +234,10 @@ export function useStartupData({
       }
     } catch (err) {
       if (!isMountedRef.current || !hasRun.current) return;
-      log.error(err, 'Startup batch failed');
-      // Batch failed — fall back to cached features from a previous session if any,
-      // otherwise show the retry screen.
-      const cached = getJSON(FEATURES_CACHE_KEY);
-      setStatus(cached ? 'success' : 'error');
+      // Unexpected error distributing batch results (real bug — worth Sentry).
+      // Network/auth failures are handled above via the ApiResponse path.
+      log.error(err, 'Startup batch distribution failed');
+      fallbackToCache();
     }
   }, [username, onAppConfig, onProfileUpdate, onUnreadNotifications, onUnreadMessages, queryClient]);
 
