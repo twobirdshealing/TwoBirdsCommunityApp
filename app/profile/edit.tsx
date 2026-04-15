@@ -291,9 +291,7 @@ export default function EditProfileScreen() {
       if (profile?.can_change_email && formData.email.trim()) {
         payload.email = formData.email.trim();
       }
-      if (profile?.can_change_username && formData.username.trim()) {
-        payload.username = formData.username.trim();
-      }
+      payload.username = (formData.username || username).trim();
 
       // Preserve admin-managed fields (server resets these if omitted for moderators)
       if (profile?.is_verified !== undefined) {

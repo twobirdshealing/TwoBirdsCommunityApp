@@ -1,17 +1,20 @@
 // =============================================================================
-// PROFILE COMPLETION STEPS - Bio + avatar form
+// PROFILE COMPLETION - Single-page form
 // =============================================================================
-// Moved from components/profile/ProfileCompletionSteps.tsx into the
-// profile-completion module. Used by both the registration step and login gate.
+// Mirrors the Fluent Community web portal's completion popup: avatar + cover,
+// bio, optional social links, and a single Complete Profile button. Used by
+// both the registration step and the login gate.
 // =============================================================================
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { withOpacity } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,10 +28,6 @@ import { completeRegistration, type ProfileExistingData } from '../services/prof
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import { hapticMedium } from '@/utils/haptics';
 
-// -----------------------------------------------------------------------------
-// Types
-// -----------------------------------------------------------------------------
-
 interface ProfileCompletionStepsProps {
   username: string;
   displayName: string;
@@ -37,10 +36,6 @@ interface ProfileCompletionStepsProps {
   avatarRequired?: boolean;
   bioRequired?: boolean;
 }
-
-// -----------------------------------------------------------------------------
-// Component
-// -----------------------------------------------------------------------------
 
 export function ProfileCompletionSteps({
   username,
@@ -54,87 +49,34 @@ export function ProfileCompletionSteps({
   const { colors: themeColors } = useTheme();
   const socialProviders = useSocialProviders();
 
-  const [step, setStep] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  // Step 1 state
   const [bio, setBio] = useState(existing?.bio || '');
-  const [website, setWebsite] = useState(existing?.website || '');
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>(
     existing?.social_links && typeof existing.social_links === 'object'
       ? { ...existing.social_links }
       : {}
   );
-  const [saving, setSaving] = useState(false);
+  const [socialOpen, setSocialOpen] = useState(
+    !!(existing?.social_links && Object.values(existing.social_links).some(v => v))
+  );
 
-  // Step 2 state
   const [avatarUri, setAvatarUri] = useState<string | null>(existing?.avatar || null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [coverUri, setCoverUri] = useState<string | null>(existing?.cover_photo || null);
   const [uploadingCover, setUploadingCover] = useState(false);
 
-  // ---------------------------------------------------------------------------
-  // Step 1: Save bio + social
-  // ---------------------------------------------------------------------------
-
-  const handleSaveBio = useCallback(async () => {
-    hapticMedium();
-
-    const bioTrimmed = bio.trim();
-    if (bioRequired && !bioTrimmed) {
-      setError('Please write a short bio before continuing.');
-      return;
+  const nameParts = useMemo(() => {
+    let first = currentUser?.firstName || '';
+    let last = currentUser?.lastName || '';
+    if (!first && displayName) {
+      const parts = displayName.trim().split(/\s+/);
+      first = parts[0] || '';
+      last = parts.slice(1).join(' ') || '';
     }
-
-    setSaving(true);
-    setError(null);
-
-    try {
-      let firstName = currentUser?.firstName || '';
-      let lastName = currentUser?.lastName || '';
-      if (!firstName && displayName) {
-        const parts = displayName.trim().split(/\s+/);
-        firstName = parts[0] || '';
-        lastName = parts.slice(1).join(' ') || '';
-      }
-
-      const profileData: Record<string, any> = {
-        username,
-        user_id: currentUser?.id,
-        first_name: firstName,
-        last_name: lastName,
-        short_description: bioTrimmed,
-      };
-
-      const websiteTrimmed = website.trim();
-      if (websiteTrimmed) {
-        profileData.website = websiteTrimmed;
-      }
-
-      const trimmedLinks = Object.fromEntries(
-        Object.entries(socialLinks).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim()])
-      );
-      if (Object.keys(trimmedLinks).length > 0) {
-        profileData.social_links = trimmedLinks;
-      }
-
-      const response = await updateProfile(username, profileData);
-
-      if (response.success) {
-        setStep(2);
-      } else {
-        setError('Could not save profile. Please try again.');
-      }
-    } catch {
-      setError('Could not save profile. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  }, [bio, bioRequired, website, socialLinks, username, displayName, currentUser]);
-
-  // ---------------------------------------------------------------------------
-  // Step 2: Avatar + Cover
-  // ---------------------------------------------------------------------------
+    return { first, last };
+  }, [currentUser?.firstName, currentUser?.lastName, displayName]);
 
   const handlePickAvatar = useCallback(() => {
     showAvatarPicker({
@@ -182,202 +124,190 @@ export function ProfileCompletionSteps({
     });
   }, [username]);
 
-  const handleFinish = useCallback(async () => {
+  const handleSubmit = useCallback(async () => {
     hapticMedium();
 
+    const bioTrimmed = bio.trim();
+    if (bioRequired && !bioTrimmed) {
+      setError('Please write a short bio before continuing.');
+      return;
+    }
     if (avatarRequired && !avatarUri) {
       setError('Please add a profile photo before continuing.');
       return;
     }
 
-    const success = await completeRegistration();
-    if (!success) {
-      setError('Please complete all required fields before continuing.');
-      return;
+    setSaving(true);
+    setError(null);
+
+    try {
+      const profileData: Record<string, any> = {
+        username,
+        user_id: currentUser?.id,
+        first_name: nameParts.first,
+        last_name: nameParts.last,
+        short_description: bioTrimmed,
+      };
+
+      const trimmedLinks = Object.fromEntries(
+        Object.entries(socialLinks).filter(([, v]) => v.trim()).map(([k, v]) => [k, v.trim()])
+      );
+      if (Object.keys(trimmedLinks).length > 0) {
+        profileData.social_links = trimmedLinks;
+      }
+
+      const response = await updateProfile(username, profileData);
+      if (!response.success) {
+        setError('Could not save profile. Please try again.');
+        setSaving(false);
+        return;
+      }
+
+      const marked = await completeRegistration();
+      if (!marked) {
+        setError('Please complete all required fields before continuing.');
+        setSaving(false);
+        return;
+      }
+
+      onComplete();
+    } catch {
+      setError('Could not save profile. Please try again.');
+    } finally {
+      setSaving(false);
     }
+  }, [
+    bio,
+    bioRequired,
+    avatarRequired,
+    avatarUri,
+    socialLinks,
+    username,
+    nameParts,
+    currentUser?.id,
+    onComplete,
+  ]);
 
-    onComplete();
-  }, [onComplete, avatarRequired, avatarUri]);
-
-  // ---------------------------------------------------------------------------
-  // Step indicator
-  // ---------------------------------------------------------------------------
-
-  const renderStepIndicator = () => (
-    <View style={styles.stepIndicator}>
-      {[1, 2].map((i) => (
-        <View
-          key={i}
-          style={[
-            styles.stepDot,
-            { backgroundColor: i <= step ? themeColors.primary : themeColors.border },
-            i === step && styles.stepDotActive,
-          ]}
-        />
-      ))}
-    </View>
-  );
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
+  const canSubmit =
+    !saving &&
+    !uploadingAvatar &&
+    !uploadingCover &&
+    (!bioRequired || !!bio.trim()) &&
+    (!avatarRequired || !!avatarUri);
 
   return (
     <>
-      {renderStepIndicator()}
+      <ProfilePhotoPicker
+        avatarSource={avatarUri}
+        coverSource={coverUri}
+        fallbackName={displayName || username || 'U'}
+        onAvatarPress={handlePickAvatar}
+        onCoverPress={handlePickCover}
+        avatarUploading={uploadingAvatar}
+        coverUploading={uploadingCover}
+      />
 
-      <Text style={[styles.formTitle, { color: themeColors.text }]}>
-        {step === 1 ? 'About You' : 'Personalize'}
+      <Text style={[styles.greeting, { color: themeColors.text }]}>
+        {nameParts.first ? `Welcome, ${nameParts.first}!` : 'Welcome!'}
+      </Text>
+      <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
+        Complete your profile to join the community
       </Text>
 
       {error && (
-        <View style={[styles.errorContainer, { backgroundColor: themeColors.errorLight, borderColor: withOpacity(themeColors.error, 0.3) }]}>
+        <View
+          style={[
+            styles.errorContainer,
+            {
+              backgroundColor: themeColors.errorLight,
+              borderColor: withOpacity(themeColors.error, 0.3),
+            },
+          ]}
+        >
           <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
         </View>
       )}
 
-      {step === 1 ? (
-        <>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
-              Tell people a little about yourself
-            </Text>
-          </View>
+      <View style={styles.inputContainer}>
+        <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
+          About You{bioRequired && <Text style={{ color: themeColors.error }}> *</Text>}
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            styles.bioInput,
+            {
+              backgroundColor: themeColors.background,
+              borderColor: themeColors.border,
+              color: themeColors.text,
+            },
+          ]}
+          value={bio}
+          onChangeText={setBio}
+          placeholder="Tell us a little about yourself..."
+          placeholderTextColor={themeColors.textTertiary}
+          multiline
+          maxLength={500}
+          textAlignVertical="top"
+        />
+        <Text style={[styles.charCount, { color: themeColors.textTertiary }]}>
+          {bio.length}/500
+        </Text>
+      </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={[styles.fieldLabel, { color: themeColors.text }]}>
-              Bio{bioRequired && <Text style={{ color: themeColors.error }}> *</Text>}
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                styles.bioInput,
-                {
-                  backgroundColor: themeColors.background,
-                  borderColor: themeColors.border,
-                  color: themeColors.text,
-                },
-              ]}
-              value={bio}
-              onChangeText={setBio}
-              placeholder="A few words about yourself..."
-              placeholderTextColor={themeColors.textTertiary}
-              multiline
-              maxLength={500}
-              textAlignVertical="top"
-            />
-          </View>
+      <TouchableOpacity
+        style={styles.socialToggle}
+        onPress={() => setSocialOpen(o => !o)}
+        activeOpacity={0.7}
+      >
+        <Feather
+          name={socialOpen ? 'minus' : 'plus'}
+          size={16}
+          color={themeColors.primary}
+        />
+        <Text style={[styles.socialToggleText, { color: themeColors.primary }]}>
+          {socialOpen ? 'Hide social links' : 'Add social links'}
+        </Text>
+      </TouchableOpacity>
 
-          <View style={styles.inputContainer}>
-            <Text style={[styles.fieldLabel, { color: themeColors.text }]}>Website</Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: themeColors.background,
-                  borderColor: themeColors.border,
-                  color: themeColors.text,
-                },
-              ]}
-              value={website}
-              onChangeText={setWebsite}
-              placeholder="https://yourwebsite.com"
-              placeholderTextColor={themeColors.textTertiary}
-              keyboardType="url"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-
+      {socialOpen && (
+        <View style={styles.socialContainer}>
           <SocialLinksForm
             providers={socialProviders}
             values={socialLinks}
-            onChange={(key, value) => setSocialLinks(prev => ({ ...prev, [key]: value }))}
+            onChange={(key, value) =>
+              setSocialLinks(prev => ({ ...prev, [key]: value }))
+            }
           />
-
-          <Button
-            title="Save & Continue"
-            onPress={handleSaveBio}
-            loading={saving}
-            style={styles.buttonMargin}
-          />
-          {!bioRequired && !bio.trim() && (
-            <Button
-              title="Skip for now"
-              variant="text"
-              onPress={() => setStep(2)}
-              style={styles.skipButton}
-            />
-          )}
-        </>
-      ) : (
-        <>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
-              {(avatarUri || coverUri) ? 'Update your profile photo and cover image' : 'Add a profile photo and cover image'}
-            </Text>
-          </View>
-
-          <ProfilePhotoPicker
-            avatarSource={avatarUri}
-            coverSource={coverUri}
-            fallbackName={displayName || username || 'U'}
-            onAvatarPress={handlePickAvatar}
-            onCoverPress={handlePickCover}
-            avatarUploading={uploadingAvatar}
-            coverUploading={uploadingCover}
-          />
-
-          <Button
-            title={avatarUri ? 'Done' : (avatarRequired ? 'Add a profile photo' : 'Skip for now')}
-            variant={avatarUri ? 'primary' : 'secondary'}
-            onPress={handleFinish}
-            disabled={uploadingAvatar || uploadingCover}
-            style={styles.buttonMargin}
-          />
-        </>
+        </View>
       )}
+
+      <Button
+        title="Complete Profile"
+        onPress={handleSubmit}
+        loading={saving}
+        disabled={!canSubmit}
+        style={styles.buttonMargin}
+      />
     </>
   );
 }
 
-// -----------------------------------------------------------------------------
-// Styles
-// -----------------------------------------------------------------------------
-
 const styles = StyleSheet.create({
-  stepIndicator: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    gap: spacing.sm,
-  },
-  stepDot: {
-    width: 8,
-    height: 8,
-    borderRadius: sizing.borderRadius.sm,
-  },
-  stepDotActive: {
-    width: 24,
-    borderRadius: sizing.borderRadius.sm,
-  },
-  formTitle: {
+  greeting: {
     fontSize: typography.size.xl,
     fontWeight: typography.weight.bold,
     textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  sectionHeader: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginTop: spacing.lg,
   },
   subtitle: {
     fontSize: typography.size.sm,
     textAlign: 'center',
+    marginTop: spacing.xs,
+    marginBottom: spacing.xl,
   },
   inputContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   fieldLabel: {
     fontSize: typography.size.sm,
@@ -395,6 +325,25 @@ const styles = StyleSheet.create({
     minHeight: 100,
     paddingTop: spacing.md,
   },
+  charCount: {
+    fontSize: typography.size.xs,
+    textAlign: 'right',
+    marginTop: spacing.xs,
+  },
+  socialToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  socialToggleText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+  socialContainer: {
+    marginBottom: spacing.md,
+  },
   errorContainer: {
     borderWidth: 1,
     borderRadius: sizing.borderRadius.md,
@@ -407,8 +356,5 @@ const styles = StyleSheet.create({
   },
   buttonMargin: {
     marginTop: spacing.md,
-  },
-  skipButton: {
-    marginTop: spacing.xs,
   },
 });
