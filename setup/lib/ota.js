@@ -100,11 +100,21 @@ function groupUpdates(raw) {
       entry.createdAt = u.createdAt;
     }
   }
-  return Array.from(byGroup.values()).sort((a, b) => {
+  const sorted = Array.from(byGroup.values()).sort((a, b) => {
     const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
     const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
     return tb - ta;
   });
+  // Tag the newest non-empty entry per branch as currently serving.
+  const seenBranches = new Set();
+  for (const entry of sorted) {
+    if (!entry.branch) continue;
+    if (!seenBranches.has(entry.branch)) {
+      entry.isServing = true;
+      seenBranches.add(entry.branch);
+    }
+  }
+  return sorted;
 }
 
 /** List recent OTA updates (grouped by push). */
@@ -121,32 +131,6 @@ async function listOTAUpdates() {
       return { ok: true, updates: [], runtimeVersions: [] };
     }
     return diagnoseEasError(err);
-  }
-}
-
-/** Read the current live state of a branch — what clients are actually being served. */
-async function getBranchStatus(channel) {
-  if (!VALID_OTA_CHANNELS.includes(channel)) return { ok: false, error: 'Invalid channel' };
-  try {
-    const output = await runCommand(['eas', 'branch:view', channel, '--json', '--non-interactive'], 20000);
-    const parsed = JSON.parse(output);
-    // `eas branch:view` returns { id, name, updates: [...] }. Latest update is first.
-    const rawUpdates = parsed?.updates?.currentPage || parsed?.updates || [];
-    const grouped = groupUpdates(rawUpdates);
-    const latest = grouped[0] || null;
-    return {
-      ok: true,
-      branch: parsed?.name || channel,
-      latest,
-      isRollBackToEmbedded: !!latest?.isRollBackToEmbedded,
-      hasAnyUpdates: grouped.length > 0,
-    };
-  } catch (err) {
-    const msg = (err.message || '').toLowerCase();
-    if (msg.includes('not found') || msg.includes('could not find') || msg.includes('no branch')) {
-      return { ok: true, branch: channel, latest: null, isRollBackToEmbedded: false, hasAnyUpdates: false };
-    }
-    return { ok: false, error: err.message };
   }
 }
 
@@ -186,4 +170,4 @@ async function deleteOTAUpdate(groupId) {
   }
 }
 
-module.exports = { getOTAStatus, pushOTAUpdate, listOTAUpdates, getBranchStatus, republishUpdate, deleteOTAUpdate };
+module.exports = { getOTAStatus, pushOTAUpdate, listOTAUpdates, republishUpdate, deleteOTAUpdate };

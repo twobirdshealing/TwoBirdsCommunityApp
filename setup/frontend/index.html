@@ -1593,51 +1593,6 @@
     </div>
   </div>
 
-  <!-- Branch Status Card -->
-  <div class="card">
-    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-      <h3>Branch Status</h3>
-      <button class="btn btn-sm" x-on:click="loadBranchStatus()" x-bind:disabled="otaBranchStatusLoading">Refresh</button>
-    </div>
-    <div class="card-body">
-      <p style="font-size:13px;color:var(--text-muted);margin:0 0 12px 0">What EAS is actually serving to your installed builds right now. Check this before pushing, and after any delete.</p>
-      <div class="field-group" style="margin-bottom:12px">
-        <div class="field">
-          <label>Channel to inspect</label>
-          <select x-model="otaStatusChannel" x-on:change="loadBranchStatus()">
-            <template x-for="ch in otaChannelOptions" :key="ch.value">
-              <option x-bind:value="ch.value" x-text="ch.label"></option>
-            </template>
-          </select>
-        </div>
-      </div>
-
-      <div class="loading" x-show="otaBranchStatusLoading"><span class="spinner"></span> Reading branch...</div>
-
-      <div x-show="!otaBranchStatusLoading && otaBranchStatus.isRollBackToEmbedded" class="ota-banner error" style="margin-bottom:8px">
-        <strong>Rollback-to-embedded marker active on this branch.</strong><br>
-        All installed builds on this channel are running the bundled JS (the debug menu will show <em>Bundle source: Embedded</em>). To recover, push a fresh update below or click <strong>Republish</strong> on a known-good update in the history. Do NOT delete again — that's what put the marker here.
-      </div>
-
-      <div x-show="!otaBranchStatusLoading && !otaBranchStatus.isRollBackToEmbedded && otaBranchStatus.latest" class="ota-banner success" style="margin-bottom:8px">
-        <strong>● Serving:</strong> <span x-text="getOtaMessage(otaBranchStatus.latest)"></span><br>
-        <span style="font-size:12px;opacity:.85">
-          runtimeVersion <span x-text="otaBranchStatus.latest && otaBranchStatus.latest.runtimeVersion || '?'"></span>
-          · <span x-text="(otaBranchStatus.latest && otaBranchStatus.latest.platforms || []).join(' + ') || 'all'"></span>
-          · <span x-text="otaBranchStatus.latest && otaBranchStatus.latest.createdAt ? formatDate(otaBranchStatus.latest.createdAt) : ''"></span>
-        </span>
-      </div>
-
-      <div x-show="!otaBranchStatusLoading && !otaBranchStatus.hasAnyUpdates" class="ota-banner info">
-        No updates on this branch yet. Installed builds are running the embedded bundle that shipped with the app — that's normal until you push your first OTA.
-      </div>
-
-      <div x-show="!otaBranchStatusLoading && otaBranchStatus.versionMismatch" class="ota-banner warning" style="margin-top:8px">
-        <strong>Heads up:</strong> your installed build is v<span x-text="otaBranchStatus.currentVersion"></span>, but the latest update on this branch is for v<span x-text="otaBranchStatus.latest && otaBranchStatus.latest.runtimeVersion"></span>. Devices on v<span x-text="otaBranchStatus.currentVersion"></span> will ignore it and fall back to the embedded bundle. Push a new update while <code>app.json.version</code> is set to the installed build's version.
-      </div>
-    </div>
-  </div>
-
   <!-- Push Update Card -->
   <div class="card">
     <div class="card-header"><h3>Push Update</h3></div>
@@ -1712,11 +1667,11 @@
 
       <div x-show="!otaHistoryLoading && filteredOtaHistory.length > 0" style="display:grid;gap:8px">
         <template x-for="group in filteredOtaHistory" :key="group.group || group.id">
-          <div style="padding:12px;border-radius:8px;background:var(--bg-tertiary);display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div x-bind:style="'padding:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;' + (group.isRollBackToEmbedded ? 'background:var(--red-bg);border:1px solid var(--red);' : (group.isServing ? 'background:var(--green-bg);border:1px solid var(--green);' : 'background:var(--bg-tertiary);'))">
             <div style="flex:1;min-width:0">
-              <div style="font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+              <div style="font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                 <template x-if="group.isRollBackToEmbedded">
-                  <span style="background:var(--red);color:#fff;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600">⚠ ROLLBACK MARKER</span>
+                  <span style="color:var(--red);font-size:11px;font-weight:600">⚠ ROLLBACK MARKER</span>
                 </template>
                 <span x-text="getOtaMessage(group)"></span>
               </div>
@@ -2384,9 +2339,6 @@ document.addEventListener('alpine:init', () => {
     otaHistoryRuntimeVersions: [],
     otaHistoryRuntimeFilter: '',
     otaHistoryBranchFilter: '',
-    otaStatusChannel: 'production',
-    otaBranchStatus: { latest: null, isRollBackToEmbedded: false, hasAnyUpdates: false, versionMismatch: false, currentVersion: '' },
-    otaBranchStatusLoading: false,
     otaDeleteModal: { open: false, group: null },
     otaCurrentVersion: '',
 
@@ -3485,7 +3437,7 @@ bumpVersion(type) {
     // =========================================================================
     async loadOTATab() {
       await this.loadOTAChannels();
-      await Promise.all([this.loadOTAHistory(), this.loadBranchStatus()]);
+      await this.loadOTAHistory();
       this.otaLoaded = true;
     },
 
@@ -3512,35 +3464,8 @@ bumpVersion(type) {
         });
         self.otaChannelOptions = opts;
         self.otaChannel = opts.length > 0 ? opts[0].value : '';
-        self.otaStatusChannel = opts.length > 0 ? opts[0].value : '';
         self.otaCurrentVersion = data.currentVersion || '';
       } catch (_) {}
-    },
-
-    async loadBranchStatus() {
-      if (!this.otaStatusChannel) return;
-      this.otaBranchStatusLoading = true;
-      try {
-        var res = await fetch('/api/ota/branch-status?channel=' + encodeURIComponent(this.otaStatusChannel));
-        var data = await res.json();
-        if (!data.ok) {
-          this.otaBranchStatus = { latest: null, isRollBackToEmbedded: false, hasAnyUpdates: false, versionMismatch: false, currentVersion: this.otaCurrentVersion };
-          return;
-        }
-        var latest = data.latest || null;
-        var mismatch = !!(latest && this.otaCurrentVersion && latest.runtimeVersion && latest.runtimeVersion !== this.otaCurrentVersion);
-        this.otaBranchStatus = {
-          latest: latest,
-          isRollBackToEmbedded: !!data.isRollBackToEmbedded,
-          hasAnyUpdates: !!data.hasAnyUpdates,
-          versionMismatch: mismatch,
-          currentVersion: this.otaCurrentVersion,
-        };
-      } catch (_) {
-        this.otaBranchStatus = { latest: null, isRollBackToEmbedded: false, hasAnyUpdates: false, versionMismatch: false, currentVersion: this.otaCurrentVersion };
-      } finally {
-        this.otaBranchStatusLoading = false;
-      }
     },
 
     async loadOTAHistory() {
@@ -3620,7 +3545,7 @@ bumpVersion(type) {
         var data = await res.json();
         if (data.ok) {
           this.showToast('Republished to ' + branch, 'success');
-          await Promise.all([this.loadOTAHistory(), this.loadBranchStatus()]);
+          await this.loadOTAHistory();
         } else {
           this.showToast('Republish failed: ' + (data.error || 'Unknown error'), 'error');
         }
@@ -3644,7 +3569,7 @@ bumpVersion(type) {
         var data = await res.json();
         if (data.ok) {
           this.showToast('Update deleted. Branch now has a rollback-to-embedded marker — push or republish to clear it.', 'success');
-          await Promise.all([this.loadOTAHistory(), this.loadBranchStatus()]);
+          await this.loadOTAHistory();
         } else {
           this.showToast('Delete failed: ' + (data.error || 'Unknown error'), 'error');
         }
