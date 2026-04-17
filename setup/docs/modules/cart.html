@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community App &mdash; Cart Module</title>
+<link rel="stylesheet" href="../docs-theme.css">
+<script src="../docs-theme.js"></script>
+</head>
+<body>
+
+<div class="docs-nav">
+  <a href="index.html">&larr; All Modules</a>
+</div>
+
+<h1>Cart Module <span class="tag addon">Sold Separately</span></h1>
+<p class="subtitle">Native WooCommerce cart with bottom sheet UI</p>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-number">cart</span>
+    <span class="stat-label">Module ID</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">2.0.0</span>
+    <span class="stat-label">Version</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">tbc-cart</span>
+    <span class="stat-label">Companion Plugin</span>
+  </div>
+</div>
+
+<div class="callout">
+  <strong>Companion plugin required.</strong> Install the <code>tbc-cart</code> WordPress plugin on a WooCommerce-enabled site. The plugin provides a lightweight REST API around the WooCommerce cart and keeps the app's header badge in sync via the <code>X-TBC-Cart-Count</code> response header.
+</div>
+
+<div class="callout callout-warn">
+  <strong>Requires WooCommerce.</strong> Your WordPress site must have WooCommerce installed, active, and configured with at least one payment gateway. Payments are processed by WooCommerce &mdash; this module is a cart surface only.
+</div>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#registration">Module Registration</a></li>
+    <li><a href="#file-structure">File Structure</a></li>
+    <li><a href="#api">API Endpoints</a></li>
+    <li><a href="#header-sync">Header Badge Sync</a></li>
+    <li><a href="#setup">Setup</a></li>
+  </ol>
+</nav>
+
+<!-- ================================================================== -->
+<h2 id="registration">Module Registration</h2>
+
+<p>The cart module manifest registers the following extension points:</p>
+
+<h3>Header Icon</h3>
+<table>
+  <tr><th>Property</th><th>Value</th></tr>
+  <tr><td>ID</td><td><code>cart</code></td></tr>
+  <tr><td>Icon</td><td><code>cart-outline</code></td></tr>
+  <tr><td>Order</td><td><code>30</code></td></tr>
+  <tr><td>Accessibility Label</td><td>Cart</td></tr>
+  <tr><td>Badge Count Source</td><td><code>useCartCount</code> hook</td></tr>
+  <tr><td>On Press</td><td>Opens the cart bottom sheet via <code>useCartSheet</code></td></tr>
+</table>
+
+<h3>Provider</h3>
+<p><code>CartProvider</code> is registered at order <code>50</code> and wraps the app so any screen can call <code>useCartCount</code> / <code>useCartSheet</code>.</p>
+
+<h3>Response Headers</h3>
+<p>The module listens for <code>X-TBC-Cart-Count</code> on every authenticated API response and stores it in a shared context key (<code>cartCount</code>). See <a href="#header-sync">Header Badge Sync</a>.</p>
+
+<h3>Access</h3>
+<p>The cart module does <strong>not</strong> register a tab or menu item. Users access it through the cart icon in the top header, which opens a native bottom sheet.</p>
+
+<!-- ================================================================== -->
+<h2 id="file-structure">File Structure</h2>
+
+<pre><code>modules/cart/
+  <span class="file-path">module.ts</span>              &larr; Module manifest (header icon, provider, response header)
+  <span class="file-path">CartContext.tsx</span>        &larr; CartProvider + useCartCount / useCartSheet hooks
+  <span class="file-path">components/</span>             &larr; Cart bottom sheet UI
+  <span class="file-path">services/</span>               &larr; Authenticated API client calls
+  <span class="file-path">types.ts</span>                &larr; TypeScript types</code></pre>
+
+<!-- ================================================================== -->
+<h2 id="api">API Endpoints</h2>
+
+<p>All endpoints live under the <code>tbc-cart/v1</code> namespace and require authentication (<code>permission_callback =&gt; 'is_user_logged_in'</code>).</p>
+
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+  <tr><td><code>GET</code></td><td><code>tbc-cart/v1/count</code></td><td>Lightweight cart item count (reads persistent-cart user meta directly &mdash; no WC session load)</td></tr>
+  <tr><td><code>GET</code></td><td><code>tbc-cart/v1/cart</code></td><td>Full cart contents, totals, coupons, and WooCommerce display settings</td></tr>
+  <tr><td><code>PATCH</code></td><td><code>tbc-cart/v1/cart/items/:key</code></td><td>Update item quantity (<code>quantity: 0</code> removes the item)</td></tr>
+  <tr><td><code>DELETE</code></td><td><code>tbc-cart/v1/cart/items/:key</code></td><td>Remove a specific line item</td></tr>
+  <tr><td><code>POST</code></td><td><code>tbc-cart/v1/cart/coupons</code></td><td>Apply a coupon code (<code>{ code: string }</code>)</td></tr>
+  <tr><td><code>DELETE</code></td><td><code>tbc-cart/v1/cart/coupons/:code</code></td><td>Remove an applied coupon</td></tr>
+</table>
+
+<div class="callout">
+  <strong>Why two cart endpoints?</strong> <code>/count</code> is a hot path called on every request to keep the header badge live &mdash; it reads from the persistent cart user meta without initializing the full WooCommerce session. <code>/cart</code> is called only when the user opens the bottom sheet and needs full line items, totals, and coupons.
+</div>
+
+<!-- ================================================================== -->
+<h2 id="header-sync">Header Badge Sync</h2>
+
+<p>The cart icon's badge count stays in sync automatically via an HTTP response header. On every authenticated API call, the <code>tbc-cart</code> plugin injects:</p>
+
+<pre><code>X-TBC-Cart-Count: 3</code></pre>
+
+<p>The module declares this header in its <code>responseHeaders</code> manifest entry, and the core response-header interceptor parses it and writes <code>cartCount</code> into the shared context. <code>useCartCount</code> reads from that context, so the badge updates whenever <em>any</em> network call completes &mdash; no polling required.</p>
+
+<p>Invalid or negative values are coerced to <code>0</code> by the module's transform function.</p>
+
+<!-- ================================================================== -->
+<h2 id="setup">Setup</h2>
+
+<h3>1. Install &amp; configure WooCommerce</h3>
+<ul>
+  <li>Install WooCommerce on your WordPress site.</li>
+  <li>Run the WooCommerce setup wizard (store address, currency, etc.).</li>
+  <li>Enable at least one payment gateway under <strong>WooCommerce &rarr; Settings &rarr; Payments</strong> (Stripe, PayPal, Square, etc.).</li>
+  <li>Add at least one product so there's something to add to cart.</li>
+</ul>
+
+<h3>2. Install the companion plugin</h3>
+<p>Upload and activate the <code>tbc-cart</code> plugin on your WordPress site (found in <span class="file-path">companion plugins/tbc-cart/</span>). If WooCommerce is missing, you'll see an admin notice prompting you to install it.</p>
+
+<h3>3. (Optional) Embed WooCommerce into Fluent Community</h3>
+<p>Under <strong>TBC Community App &rarr; Cart Settings</strong>, you can optionally enable:</p>
+<ul>
+  <li><strong>Fluent Community shop frame</strong> &mdash; iframes the WC shop and checkout inside the FC portal so members stay in the community UI while browsing.</li>
+  <li><strong>Mini-cart slide-out</strong> &mdash; classic WooCommerce mini-cart overlay inside the portal.</li>
+</ul>
+<p>Neither of these affects the mobile app &mdash; the app always uses the REST API endpoints above.</p>
+
+<h3>4. Enable the module</h3>
+<p>Register the cart module in <span class="file-path">modules/_registry.ts</span>:</p>
+<pre><code>import { cartModule } from './cart/module';
+
+// Add to the modules array:
+cartModule,</code></pre>
+
+<h3>5. Test</h3>
+<p>Launch the app and log in. Add a product to the cart through the WordPress site (or via the shop frame if you enabled it). On the next authenticated API call, the cart icon in the app's top header should show a badge with the item count. Tapping the icon opens the cart bottom sheet.</p>
+
+<hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">
+<p style="margin-top: 16px; color: var(--fcom-secondary-text, var(--tbc-doc-text-secondary)); font-size: 0.9em;">
+  <a href="index.html">All Modules</a> &middot;
+  <a href="../module-system.html">Module System</a> &middot;
+  <a href="../companion-plugins.html">Companion Plugins</a>
+</p>
+</body>
+</html>

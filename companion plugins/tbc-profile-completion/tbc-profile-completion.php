@@ -3,7 +3,7 @@
  * Plugin Name: TBC Profile Completion
  * Plugin URI:  https://twobirdscode.com
  * Description: Profile completion gate for Fluent Community registration. Requires bio and avatar before users can access the community. Self-contained: registers its own REST routes under /tbc-pcom/v1.
- * Version:     1.0.1
+ * Version:     1.1.0
  * Author:      Two Birds Code
  * Author URI:  https://twobirdscode.com
  * Text Domain: tbc-pcom
@@ -19,7 +19,10 @@
 
 defined('ABSPATH') or die('No direct script access allowed');
 
-define('TBC_PCOM_VERSION', '1.0.1');
+// TBC_PCOM_VERSION is auto-derived from the plugin header so the header is the
+// single source of truth; filemtime() handles asset cache busting.
+$tbc_pcom_header = get_file_data(__FILE__, ['Version' => 'Version']);
+define('TBC_PCOM_VERSION', $tbc_pcom_header['Version']);
 define('TBC_PCOM_FILE', __FILE__);
 define('TBC_PCOM_DIR', plugin_dir_path(__FILE__));
 define('TBC_PCOM_URL', plugin_dir_url(__FILE__));
@@ -89,20 +92,14 @@ add_action('plugins_loaded', function () {
     // ── Redirect non-FC pages to portal (overlay shows there) ────────
     add_action('template_redirect', [$overlay, 'maybe_redirect_incomplete_registration']);
 
-    // ── Disable FC native onboarding widget when our gate is active ──
-    // FC uses auth_user.compilation_score (typo is theirs) to show
-    // "Complete your profile (X%)" button. Force it to 100 so it hides.
+    // Disable FC's native "Complete your profile (X%)" widget. FC reads
+    // auth.compilation_score (sic — their typo); forcing 100 hides the button.
     if (TBCPcom\ProfileGate::get_option('disable_fc_onboarding', true)) {
         add_filter('fluent_community/portal_vars', function ($vars) {
             $vars['features']['is_onboarding_enabled'] = false;
-
-            // Force compilation_score to 100 — hides FC's "Complete your profile (X%)" button.
-            // FC stores auth user data under 'auth' key (not 'auth_user').
-            // FC's typo: "compilation_score" not "completion_score".
             if (isset($vars['auth'])) {
                 $vars['auth']['compilation_score'] = 100;
             }
-
             return $vars;
         }, 999);
     }

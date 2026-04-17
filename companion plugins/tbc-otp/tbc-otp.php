@@ -3,7 +3,7 @@
  * Plugin Name: TBC OTP Verification
  * Plugin URI:  https://twobirdscode.com
  * Description: Phone OTP verification via Twilio for Fluent Community registration.
- * Version:     1.4.4
+ * Version:     1.0.0
  * Author:      Two Birds Code
  * Author URI:  https://twobirdscode.com
  * Text Domain: tbc-otp
@@ -19,7 +19,10 @@
 
 defined('ABSPATH') or die('No direct script access allowed');
 
-define('TBC_OTP_VERSION', '1.4.4');
+// TBC_OTP_VERSION is auto-derived from the plugin header so the header is the
+// single source of truth; filemtime() handles asset cache busting.
+$tbc_otp_header = get_file_data(__FILE__, ['Version' => 'Version']);
+define('TBC_OTP_VERSION', $tbc_otp_header['Version']);
 define('TBC_OTP_FILE', __FILE__);
 define('TBC_OTP_DIR', plugin_dir_path(__FILE__));
 define('TBC_OTP_URL', plugin_dir_url(__FILE__));
@@ -73,12 +76,9 @@ add_action('plugins_loaded', function () {
     // AJAX interception for web registration (FC portal)
     add_action('wp_ajax_nopriv_fcom_user_registration', [$reg_hook, 'intercept_web_registration'], 6);
 
-    // Frontend: inject OTP modal JS/CSS on FC auth & portal pages
+    // Frontend: inject OTP modal JS/CSS on FC's auth registration page
     $frontend = new TBCOTP\Frontend();
-    add_action('wp_head', [$frontend, 'maybe_inject_auth_css']);
-    add_action('wp_footer', [$frontend, 'maybe_inject_auth_js']);
-    add_action('fluent_community/portal_head', [$frontend, 'inject_portal_css']);
-    add_action('fluent_community/portal_footer', [$frontend, 'inject_portal_js']);
+    add_action('wp_enqueue_scripts', [$frontend, 'maybe_enqueue_auth_assets']);
 
     // Admin
     if (is_admin()) {
@@ -110,22 +110,24 @@ add_action('plugins_loaded', function () {
  * Activation hook
  */
 register_activation_hook(__FILE__, function () {
+    // autoload=yes only for options read on every front-end request.
+    // Twilio credentials and blocked-number list are read only during OTP flows.
     $defaults = [
-        'twilio_sid'                       => '',
-        'twilio_token'                     => '',
-        'verify_service_sid'               => '',
-        'enable_registration_verification' => true,
-        'enable_voice_fallback'            => false,
-        'enable_email_2fa'                 => false,
-        'restrict_duplicates'              => false,
-        'blocked_numbers'                  => '',
-        'phone_field_slug'                 => '',
+        'twilio_sid'                       => ['', 'no'],
+        'twilio_token'                     => ['', 'no'],
+        'verify_service_sid'               => ['', 'no'],
+        'blocked_numbers'                  => ['', 'no'],
+        'enable_registration_verification' => [true, 'yes'],
+        'enable_voice_fallback'            => [false, 'yes'],
+        'enable_email_2fa'                 => [false, 'yes'],
+        'restrict_duplicates'              => [false, 'yes'],
+        'phone_field_slug'                 => ['', 'yes'],
     ];
 
-    foreach ($defaults as $key => $value) {
+    foreach ($defaults as $key => [$value, $autoload]) {
         $option_name = TBC_OTP_OPTION_PREFIX . $key;
         if (false === get_option($option_name)) {
-            add_option($option_name, $value);
+            add_option($option_name, $value, '', $autoload);
         }
     }
 });

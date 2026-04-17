@@ -21,106 +21,59 @@ class Overlay {
         $this->gate = $gate;
     }
 
-    private function gate(): ProfileGate {
-        return $this->gate;
-    }
-
-    /**
-     * Check if overlay should show for current user.
-     */
     private function should_show_overlay(): bool {
-        if (!is_user_logged_in()) {
-            return false;
-        }
-
-        if ($this->gate()->is_complete()) {
-            return false;
-        }
-
-        return true;
+        return is_user_logged_in() && !$this->gate->is_complete();
     }
 
-    /**
-     * Inject CSS into the FC portal <head>.
-     * Hook: fluent_community/portal_head
-     */
+    private function inject_css(): void {
+        echo '<style id="tbc-pcom-css">' . file_get_contents(TBC_PCOM_DIR . 'assets/css/profile-completion.css') . '</style>';
+    }
+
+    private function inject_js(): void {
+        $config = $this->build_config();
+        $js_path = TBC_PCOM_DIR . 'assets/js/profile-completion.js';
+        $ver = file_exists($js_path) ? (string) filemtime($js_path) : TBC_PCOM_VERSION;
+        ?>
+        <script>var tbcPcomConfig = <?php echo wp_json_encode($config); ?>;</script>
+        <script src="<?php echo esc_url(TBC_PCOM_URL . 'assets/js/profile-completion.js'); ?>?v=<?php echo esc_attr($ver); ?>" defer="defer"></script>
+        <?php
+    }
+
+    // Hook: fluent_community/portal_head
     public function inject_portal_css(): void {
-        if (!$this->should_show_overlay()) {
-            return;
-        }
-
-        $css_file = TBC_PCOM_DIR . 'assets/css/profile-completion.css';
-        if (file_exists($css_file)) {
-            echo '<style id="tbc-pcom-css">' . file_get_contents($css_file) . '</style>';
+        if ($this->should_show_overlay()) {
+            $this->inject_css();
         }
     }
 
-    /**
-     * Inject config + JS into the FC portal footer.
-     * Hook: fluent_community/portal_footer
-     */
+    // Hook: fluent_community/portal_footer
     public function inject_portal_js(): void {
-        if (!$this->should_show_overlay()) {
-            return;
+        if ($this->should_show_overlay()) {
+            $this->inject_js();
         }
-
-        $config = $this->build_config();
-        ?>
-        <script>var tbcPcomConfig = <?php echo wp_json_encode($config); ?>;</script>
-        <script src="<?php echo esc_url(TBC_PCOM_URL . 'assets/js/profile-completion.js'); ?>?v=<?php echo esc_attr(TBC_PCOM_VERSION); ?>" defer="defer"></script>
-        <?php
     }
 
-    /**
-     * Inject CSS on non-portal FC pages via wp_head.
-     * Hook: wp_head
-     */
+    // Hook: wp_head — non-portal FC pages (auth)
     public function maybe_inject_auth_css(): void {
-        if (!$this->should_show_overlay()) {
-            return;
-        }
-
-        // Only on FC-related pages
-        if (!$this->is_fc_page()) {
-            return;
-        }
-
-        $css_file = TBC_PCOM_DIR . 'assets/css/profile-completion.css';
-        if (file_exists($css_file)) {
-            echo '<style id="tbc-pcom-css">' . file_get_contents($css_file) . '</style>';
+        if ($this->should_show_overlay() && $this->is_fc_page()) {
+            $this->inject_css();
         }
     }
 
-    /**
-     * Inject config + JS on non-portal FC pages via wp_footer.
-     * Hook: wp_footer
-     */
+    // Hook: wp_footer — non-portal FC pages (auth)
     public function maybe_inject_auth_js(): void {
-        if (!$this->should_show_overlay()) {
-            return;
+        if ($this->should_show_overlay() && $this->is_fc_page()) {
+            $this->inject_js();
         }
-
-        if (!$this->is_fc_page()) {
-            return;
-        }
-
-        $config = $this->build_config();
-        ?>
-        <script>var tbcPcomConfig = <?php echo wp_json_encode($config); ?>;</script>
-        <script src="<?php echo esc_url(TBC_PCOM_URL . 'assets/js/profile-completion.js'); ?>?v=<?php echo esc_attr(TBC_PCOM_VERSION); ?>" defer="defer"></script>
-        <?php
     }
 
-    /**
-     * Redirect incomplete users away from non-FC pages to the portal.
-     * Hook: template_redirect
-     */
+    // Hook: template_redirect — send incomplete users to the portal so the overlay shows.
     public function maybe_redirect_incomplete_registration(): void {
         if (!is_user_logged_in()) {
             return;
         }
 
-        if ($this->gate()->is_complete()) {
+        if ($this->gate->is_complete()) {
             return;
         }
 
@@ -142,23 +95,11 @@ class Overlay {
         }
     }
 
-    // =========================================================================
-    // Helpers
-    // =========================================================================
-
-    /**
-     * Build the JS config object.
-     */
     private function build_config(): array {
         $user = wp_get_current_user();
 
-        // Get FC REST URL
-        $fc_rest_url = '';
-        if (defined('FLUENT_COMMUNITY_PLUGIN_VERSION')) {
-            $fc_rest_url = rest_url('fluent-community/v2/');
-        }
+        $fc_rest_url = defined('FLUENT_COMMUNITY_PLUGIN_VERSION') ? rest_url('fluent-community/v2/') : '';
 
-        // Load existing profile data
         $existing = [
             'bio'         => '',
             'avatar'      => '',
@@ -186,7 +127,6 @@ class Overlay {
             }
         }
 
-        // Get FC's enabled social providers
         $social_providers = [];
         if (class_exists('\FluentCommunity\App\Services\ProfileHelper')) {
             $fc_providers = \FluentCommunity\App\Services\ProfileHelper::socialLinkProviders(true);
@@ -195,7 +135,9 @@ class Overlay {
                     $social_providers[] = [
                         'key'         => $key,
                         'label'       => $provider['title'] ?? $key,
-                        'placeholder' => !empty($provider['domain']) ? $provider['domain'] . 'username' : '',
+                        'placeholder' => $provider['placeholder'] ?? '',
+                        'domain'      => $provider['domain'] ?? '',
+                        'icon_svg'    => $provider['icon_svg'] ?? '',
                     ];
                 }
             }
@@ -217,27 +159,14 @@ class Overlay {
         ];
     }
 
-    /**
-     * Check if we're on an FC-related page.
-     */
     private function is_fc_page(): bool {
-        // FC auth pages
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         if (isset($_GET['fcom_action'])) {
             return true;
         }
-
-        // FC portal pages (detected by fluent_community hooks firing)
-        if (did_action('fluent_community/portal_head')) {
-            return true;
-        }
-
-        return false;
+        return did_action('fluent_community/portal_head') > 0;
     }
 
-    /**
-     * Get the Fluent Community portal URL.
-     */
     private function get_community_url(): string {
         if (class_exists('\FluentCommunity\App\Services\Helper')) {
             return \FluentCommunity\App\Services\Helper::baseUrl();
@@ -245,9 +174,6 @@ class Overlay {
         return home_url('/');
     }
 
-    /**
-     * Get the site logo URL.
-     */
     private function get_site_logo_url(): string {
         if (class_exists('\FluentCommunity\App\Services\Helper')
             && method_exists('\FluentCommunity\App\Services\Helper', 'generalSettings')

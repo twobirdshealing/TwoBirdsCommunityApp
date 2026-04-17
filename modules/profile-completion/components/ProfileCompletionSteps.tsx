@@ -197,6 +197,13 @@ export function ProfileCompletionSteps({
 
   return (
     <>
+      <Text style={[styles.greeting, { color: themeColors.text }]}>
+        {nameParts.first ? `Welcome, ${nameParts.first}!` : 'Welcome!'}
+      </Text>
+      <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
+        Complete your profile to join the community
+      </Text>
+
       <ProfilePhotoPicker
         avatarSource={avatarUri}
         coverSource={coverUri}
@@ -206,13 +213,6 @@ export function ProfileCompletionSteps({
         avatarUploading={uploadingAvatar}
         coverUploading={uploadingCover}
       />
-
-      <Text style={[styles.greeting, { color: themeColors.text }]}>
-        {nameParts.first ? `Welcome, ${nameParts.first}!` : 'Welcome!'}
-      </Text>
-      <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
-        Complete your profile to join the community
-      </Text>
 
       {error && (
         <View
@@ -298,13 +298,12 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xl,
     fontWeight: typography.weight.bold,
     textAlign: 'center',
-    marginTop: spacing.lg,
+    marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: typography.size.sm,
     textAlign: 'center',
-    marginTop: spacing.xs,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   inputContainer: {
     marginBottom: spacing.md,

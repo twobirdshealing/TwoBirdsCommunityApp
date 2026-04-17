@@ -8,16 +8,13 @@
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, BackHandler, ImageBackground, ScrollView, StyleSheet, View } from 'react-native';
-import { Image } from 'expo-image';
+import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, sizing } from '@/constants/layout';
-import { getLogoSource } from '@/constants/config';
+import { spacing } from '@/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { withOpacity } from '@/constants/colors';
 import { ProfileCompletionSteps } from '../components/ProfileCompletionSteps';
 import { checkProfileComplete, type ProfileExistingData } from '../services/profileCompletion';
 
@@ -25,11 +22,10 @@ export default function LoginGateScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { colors: themeColors, branding, isDark } = useTheme();
+  const { colors: themeColors } = useTheme();
   const [existing, setExisting] = useState<ProfileExistingData | undefined>();
   const [missingFields, setMissingFields] = useState<string[] | undefined>();
   const [loading, setLoading] = useState(true);
-  const logoSource = getLogoSource(branding, isDark);
 
   const avatarRequired = useMemo(
     () => missingFields?.includes('avatar') ?? true,
@@ -54,11 +50,7 @@ export default function LoginGateScreen() {
   }, []);
 
   return (
-    <ImageBackground
-      source={require('@/assets/images/login_background_img.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
+    <View style={[styles.screen, { backgroundColor: themeColors.background }]}>
       <KeyboardAvoidingView
         style={[styles.container, { paddingTop: insets.top }]}
         behavior="padding"
@@ -68,41 +60,27 @@ export default function LoginGateScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
-            {logoSource && (
-              <Image
-                source={logoSource}
-                style={styles.logo}
-                contentFit="contain"
-                cachePolicy="memory-disk"
-                transition={200}
-              />
-            )}
-          </View>
-
-          <View style={[styles.formCard, { backgroundColor: withOpacity(themeColors.surface, 0.95) }]}>
-            {loading ? (
-              <ActivityIndicator color={themeColors.primary} style={{ paddingVertical: spacing.xl }} />
-            ) : (
-              <ProfileCompletionSteps
-                username={user?.username || ''}
-                displayName={user?.displayName || ''}
-                onComplete={() => router.replace('/(tabs)')}
-                existing={existing}
-                avatarRequired={avatarRequired}
-              />
-            )}
-          </View>
+          {loading ? (
+            <ActivityIndicator color={themeColors.primary} style={{ paddingVertical: spacing.xl }} />
+          ) : (
+            <ProfileCompletionSteps
+              username={user?.username || ''}
+              displayName={user?.displayName || ''}
+              onComplete={() => router.replace('/(tabs)')}
+              existing={existing}
+              avatarRequired={avatarRequired}
+            />
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
       <View style={{ height: insets.bottom }} />
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: {
+  screen: {
     flex: 1,
   },
 
@@ -112,28 +90,7 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.xl,
-    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xl,
-  },
-
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-
-  logo: {
-    width: 80,
-    height: 80,
-  },
-
-  formCard: {
-    borderRadius: sizing.borderRadius.lg,
-    padding: spacing.xl,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
   },
 });

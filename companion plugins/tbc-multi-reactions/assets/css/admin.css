@@ -123,70 +123,6 @@
     font-size: 13px;
 }
 
-/* === Live Preview === */
-.tbc-mr-live-preview {
-    background: var(--fcom-secondary-bg, #f0f2f5);
-    border-radius: 8px;
-    padding: 20px 24px;
-}
-
-.tbc-mr-preview-post {
-    color: var(--fcom-primary-text, #19283a);
-}
-
-.tbc-mr-preview-reactions-bar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.tbc-mr-preview-icons {
-    display: flex;
-    align-items: center;
-}
-
-.tbc-mr-preview-icon {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--fcom-active-bg, var(--fcom-secondary-content-bg, #e8eaed));
-    object-fit: contain;
-    box-sizing: content-box;
-    padding: 0;
-}
-
-.tbc-mr-preview-count {
-    color: var(--fcom-secondary-text, #65676B);
-    font-size: 14px;
-    margin-left: 4px;
-}
-
-/* Dark mode override for preview toggle */
-.tbc-mr-preview-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 13px;
-    color: #646970;
-}
-
-.tbc-mr-preview-toggle button {
-    background: none;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 3px 10px;
-    cursor: pointer;
-    font-size: 12px;
-    color: #646970;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-
-.tbc-mr-preview-toggle button.active {
-    background: #2271b1;
-    border-color: #2271b1;
-    color: #fff;
-}
-
 /* === Reactions Grid (Cards) === */
 .tbc-mr-reactions-grid {
     display: grid;
@@ -304,18 +240,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
-}
-
-/* Add New card */
-.tbc-mr-card-add {
-    border-style: dashed;
-    cursor: pointer;
-    background: transparent;
-}
-
-.tbc-mr-card-add:hover {
-    background: #f0f6fc;
-    border-color: #2271b1;
 }
 
 /* === Modal === */
@@ -588,10 +512,6 @@
 /* === Actions bar === */
 .tbc-mr-actions {
     margin-top: 20px;
-}
-
-.tbc-mr-reset-form {
-    margin-top: 12px;
 }
 
 /* === Responsive === */

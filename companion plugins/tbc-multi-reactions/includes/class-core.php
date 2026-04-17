@@ -55,76 +55,55 @@ class Core {
     }
 
     private function init_hooks() {
-        // FC portal integration
         add_action('fluent_community/portal_head', [$this->frontend, 'enqueue_styles']);
         add_action('fluent_community/portal_footer', [$this->frontend, 'inject_reactions_script'], 99);
         add_action('fluent_community/headless/footer', [$this->frontend, 'inject_reactions_script'], 99);
-        add_filter('fluent_community/portal_vars', [$this->frontend, 'add_reactions_config']);
 
-        // Admin hooks
         add_action('admin_menu', [$this->admin, 'add_admin_menu']);
         add_action('admin_init', [$this->admin, 'register_settings']);
         add_action('admin_enqueue_scripts', [$this->admin, 'admin_assets']);
 
-        // REST API endpoints (unified for web + mobile app)
         add_action('rest_api_init', [$this, 'register_rest_routes']);
-
-        // Keep icon upload as AJAX (admin-only, uses $_FILES)
         add_action('wp_ajax_tbc_mr_upload_icon', [$this, 'handle_icon_upload']);
 
-        // Track reaction types via FC hooks
         add_action('fluent_community/feed/react_added', [$this, 'track_feed_reaction'], 10, 2);
-        // Patch notification text with correct reaction verb (runs AFTER FC's handler at priority 10)
+        // Runs AFTER FC's NotificationEventHandler::handleNewFeedReact() at priority 10.
         add_action('fluent_community/feed/react_added', [$this, 'patch_reaction_notification'], 20, 2);
-        // FC 2.2.01+ passes 1 arg: $feed (not $reaction)
+        // FC 2.2.01+ passes 1 arg ($feed), not 2 ($reaction, $feed).
         add_action('fluent_community/feed/react_removed', [$this, 'clear_reaction_cache_on_removal'], 10, 1);
 
-        // Intercept REST API to capture reaction type before FC processes it
         add_filter('rest_request_before_callbacks', [$this, 'store_pending_reaction_type'], 10, 3);
-
-        // Track comment reactions (no FC hook exists for comments)
+        // No FC hook exists for comment reactions, so we intercept the REST response.
         add_filter('rest_request_after_callbacks', [$this, 'track_comment_reaction'], 10, 3);
 
-        // Inject reaction data into FC API responses
         add_filter('fluent_community/feeds_api_response', [$this->api, 'inject_reaction_data_into_feeds'], 10, 2);
         add_filter('fluent_community/feed_api_response', [$this->api, 'inject_reaction_data_into_feed'], 10, 2);
         add_filter('fluent_community/comments_query_response', [$this->api, 'inject_reaction_data_into_comments'], 10, 2);
         add_filter('fluent_community/reactions_api_response', [$this->api, 'format_reactions_response'], 10, 3);
 
-        // Inject reaction type into notifications API
         add_filter('fluent_community/notifications_api_response', [$this->api, 'inject_reaction_type_into_notifications'], 10, 2);
         add_filter('fluent_community/unread_notifications_api_response', [$this->api, 'inject_reaction_type_into_unread_notifications'], 10, 2);
 
-        // Intercept activities API for list view
         add_filter('rest_request_after_callbacks', [$this->api, 'intercept_activities_api_response'], 10, 3);
 
-        // Sync fluent-messaging chat reaction emojis with our configured set
         add_filter('fluent_messaging/allowed_reaction_emojis', [$this, 'filter_chat_reaction_emojis']);
     }
 
-    /**
-     * Register REST API routes
-     * Namespace: tbc-multi-reactions/v1
-     * Auth: Web uses cookie (automatic), App uses JWT Bearer token
-     */
     public function register_rest_routes() {
         $namespace = 'tbc-multi-reactions/v1';
 
-        // GET /config - Get enabled reaction types (public)
         register_rest_route($namespace, '/config', [
             'methods'             => 'GET',
             'callback'            => [$this->api, 'rest_get_config'],
             'permission_callback' => '__return_true',
         ]);
 
-        // POST /swap - Swap reaction type on existing reaction (auth required)
         register_rest_route($namespace, '/swap', [
             'methods'             => 'POST',
             'callback'            => [$this->api, 'rest_swap_reaction'],
             'permission_callback' => function() { return is_user_logged_in(); },
         ]);
 
-        // GET /breakdown/{object_type}/{object_id} - Get reaction breakdown (public)
         register_rest_route($namespace, '/breakdown/(?P<object_type>[a-z]+)/(?P<object_id>\d+)', [
             'methods'             => 'GET',
             'callback'            => [$this->api, 'rest_get_breakdown'],
@@ -135,7 +114,6 @@ class Core {
             ],
         ]);
 
-        // GET /breakdown/{object_type}/{object_id}/users - Get breakdown with users (public)
         register_rest_route($namespace, '/breakdown/(?P<object_type>[a-z]+)/(?P<object_id>\d+)/users', [
             'methods'             => 'GET',
             'callback'            => [$this->api, 'rest_get_breakdown_users'],
@@ -147,9 +125,6 @@ class Core {
         ]);
     }
 
-    /**
-     * Handle icon upload via AJAX
-     */
     public function handle_icon_upload() {
         check_ajax_referer('tbc_mr_nonce', 'nonce');
 
@@ -170,9 +145,6 @@ class Core {
         wp_send_json_success($result);
     }
 
-    /**
-     * Store pending reaction type from REST request header before FC processes it
-     */
     public function store_pending_reaction_type($response, $handler, $request) {
         $route = $request->get_route();
 
@@ -184,11 +156,9 @@ class Core {
             return $response;
         }
 
-        // Read reaction type from our custom header
         $react_type = $request->get_header('X-TBC-Reaction-Type');
 
         if (empty($react_type)) {
-            // Fallback: check body for react_type
             $raw_body = $request->get_body();
             if (empty($raw_body)) {
                 return $response;
@@ -202,14 +172,12 @@ class Core {
             $react_type = sanitize_text_field($react_type);
         }
 
-        // Validate reaction type
         $enabled_reactions = self::get_enabled_reactions();
         $valid_types = array_column($enabled_reactions, 'id');
         if (!in_array($react_type, $valid_types)) {
             return $response;
         }
 
-        // Determine object ID and type from route
         $object_id = null;
         $object_type = null;
 
@@ -239,9 +207,6 @@ class Core {
         return $response;
     }
 
-    /**
-     * Track feed reaction type after FC creates the reaction
-     */
     public function track_feed_reaction($reaction, $feed) {
         $pending = get_option('tbc_mr_pending_reaction');
 
@@ -263,15 +228,11 @@ class Core {
             $pending['reaction_type']
         );
 
-        // Store for notification patcher (runs at priority 20)
         $this->last_tracked_reaction_type = $pending['reaction_type'];
 
         delete_option('tbc_mr_pending_reaction');
     }
 
-    /**
-     * Track comment reaction type after FC processes the comment reaction
-     */
     public function track_comment_reaction($response, $handler, $request) {
         $route = $request->get_route();
 
@@ -325,9 +286,8 @@ class Core {
     }
 
     /**
-     * Patch notification text after FC creates it with hardcoded "loved"
-     * Runs AFTER FC's NotificationEventHandler::handleNewFeedReact() (priority 20 vs FC's 10)
-     * Replaces "loved" with "reacted with {Name} to" using the reaction's display name
+     * Replaces FC's hardcoded "loved" verb with "reacted with {Name} to" so the
+     * notification reflects the actual reaction type chosen by the user.
      */
     public function patch_reaction_notification($reaction, $feed) {
         $reaction_type = $this->last_tracked_reaction_type;
@@ -337,7 +297,6 @@ class Core {
             return;
         }
 
-        // Look up the reaction display name from config
         $name = $reaction_type;
         foreach (self::get_enabled_reactions() as $r) {
             if ($r['id'] === $reaction_type) {
@@ -358,21 +317,10 @@ class Core {
         $notification->save();
     }
 
-    /**
-     * Clear cache when a reaction is removed
-     * FC 2.2.01+ fires with 1 arg: $feed (Feed model)
-     */
     public function clear_reaction_cache_on_removal($feed) {
         Database::clear_reaction_breakdown_cache($feed->id, 'feed');
     }
 
-    /**
-     * Filter fluent-messaging chat reaction emojis to match our configured set.
-     * Replaces Fluent's default 6 emojis with whatever emojis are configured in our admin.
-     *
-     * @param array $emojis Default emoji array from Fluent Messaging
-     * @return array Filtered emoji array
-     */
     public function filter_chat_reaction_emojis($emojis) {
         $enabled = self::get_enabled_reactions();
         if (empty($enabled)) {
@@ -384,10 +332,24 @@ class Core {
     }
 
     /**
-     * Get enabled reaction types with config
+     * Build the slim reaction config shape used by all injected JS (posts, comments, chat).
      *
      * @return array
      */
+    public static function build_js_reaction_config() {
+        $config = [];
+        foreach (self::get_enabled_reactions() as $r) {
+            $config[] = [
+                'id'       => $r['id'],
+                'name'     => $r['name'],
+                'emoji'    => $r['emoji'] ?? null,
+                'icon_url' => $r['icon_url'] ?? null,
+                'color'    => $r['color'] ?? null,
+            ];
+        }
+        return $config;
+    }
+
     public static function get_enabled_reactions() {
         $settings = get_option('tbc_mr_settings', []);
         $reaction_types = isset($settings['reaction_types']) ? $settings['reaction_types'] : [];
@@ -403,7 +365,6 @@ class Core {
         $result = [];
         foreach ($enabled as $id => $reaction) {
             $reaction['id'] = $id;
-            // Decode HTML entities back to emoji characters
             if (isset($reaction['emoji'])) {
                 $reaction['emoji'] = html_entity_decode($reaction['emoji'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
             }

@@ -1,7 +1,6 @@
 <?php
 /**
- * Posts Class
- * Feed/post reaction picker (inline JS injected into portal footer)
+ * Feed/post reaction picker — inline JS injected into the FC portal footer.
  *
  * @package TBC_Multi_Reactions
  */
@@ -12,11 +11,6 @@ defined('ABSPATH') || exit;
 
 class Posts {
 
-    public function __construct() {}
-
-    /**
-     * Inject the feed reactions script
-     */
     public function inject_posts_script() {
         $settings = get_option('tbc_mr_settings', []);
         if (empty($settings['enabled'])) {
@@ -24,18 +18,7 @@ class Posts {
         }
 
         $enabled_reactions = Core::get_enabled_reactions();
-
-        // Build reaction config with icon_url for JS
-        $js_reactions = [];
-        foreach ($enabled_reactions as $r) {
-            $js_reactions[] = [
-                'id'       => $r['id'],
-                'name'     => $r['name'],
-                'emoji'    => $r['emoji'] ?? null,
-                'icon_url' => $r['icon_url'] ?? null,
-                'color'    => $r['color'],
-            ];
-        }
+        $js_reactions = Core::build_js_reaction_config();
 
         $rest_url = rest_url('fluent-community/v2/feeds/');
         $tbc_rest_url = rest_url('tbc-multi-reactions/v1/');
@@ -55,7 +38,7 @@ class Posts {
 
             function escHtml(s) { const d = document.createElement('div'); d.appendChild(document.createTextNode(s || '')); return d.innerHTML; }
 
-            // --- Read-only XHR response interception (populates caches from FC's own API calls) ---
+            // Populate caches by reading FC's own feed/activities API responses as they fly past.
             const origOpen = XMLHttpRequest.prototype.open;
             const origSend = XMLHttpRequest.prototype.send;
 
@@ -85,7 +68,6 @@ class Posts {
                 return origSend.apply(this, arguments);
             };
 
-            // --- Process feed API response ---
             function processFeedResponse(response) {
                 let feeds = null;
                 if (response.feeds && response.feeds.data) feeds = response.feeds.data;
@@ -142,7 +124,6 @@ class Posts {
                 });
             }
 
-            // --- Utilities ---
             function debounce(fn, ms) {
                 let t; return function(...a) { clearTimeout(t); t = setTimeout(() => fn.apply(this, a), ms); };
             }
@@ -163,7 +144,6 @@ class Posts {
                 return null;
             }
 
-            // --- Emoji summary ---
             function updateEmojiSummary(feedId) {
                 const fd = window.tbcMrFeedData[feedId];
                 if (!fd || !fd.reaction_breakdown) {
@@ -174,7 +154,7 @@ class Posts {
                         if (data.breakdown) {
                             window.tbcMrFeedData[feedId] = { reaction_breakdown: data.breakdown || [], reaction_total: data.total || 0 };
                         }
-                        // Update button icon from API response (safety net for XHR timing)
+                        // Safety net: update button icon from this API response in case the XHR interceptor missed the initial load.
                         if (data.user_reaction_type) {
                             const r = reactions.find(x => x.id === data.user_reaction_type);
                             if (r) {
@@ -223,7 +203,6 @@ class Posts {
                 el.style.display = 'inline-flex';
             }
 
-            // --- Process reaction buttons ---
             function processAllReactionButtons() {
                 const sels = ['.fcom_reaction i.el-icon svg', '.fcom_reaction_list i.el-icon svg', '.feed_actions button i.el-icon svg'];
                 document.querySelectorAll(sels.join(',')).forEach(svg => {
@@ -243,20 +222,17 @@ class Posts {
                 if (button.hasAttribute('data-tbc-mr-processed')) return;
                 button.setAttribute('data-tbc-mr-processed', 'true');
 
-                // Skip comment buttons
                 if (button.closest('.fcom_comments_react, .each_comment, .comment_item')) return;
 
                 const feedId = getFeedId(button);
                 const hasReacted = button.classList.contains('react_active');
                 const defaultR = reactions[0] || { emoji: '👍', name: 'Like', icon_url: null };
 
-                // Wrapper
                 const wrapper = document.createElement('div');
                 wrapper.className = 'tbc-mr-wrapper';
                 wrapper.style.cssText = 'display:inline-flex;align-items:center;';
                 wrapper.setAttribute('data-feed-id', feedId || '');
 
-                // Single button icon
                 const single = document.createElement('span');
                 single.className = 'tbc-mr-single';
                 single.style.cssText = 'cursor:pointer;display:inline-flex;align-items:center;';
@@ -277,7 +253,6 @@ class Posts {
                     wrapper.setAttribute('data-active-type', currentR.id);
                 }
 
-                // Dropdown picker
                 const dropdown = document.createElement('div');
                 dropdown.className = 'tbc-mr-dropdown';
                 dropdown.style.cssText = 'position:fixed;border-radius:8px;padding:8px;display:none;gap:4px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:99999;background:var(--fcom-primary-bg,#fff);border:1px solid var(--fcom-primary-border,#e1e4e8);';
@@ -300,7 +275,6 @@ class Posts {
                     dropdown.appendChild(rb);
                 });
 
-                // Position dropdown
                 function posDropdown() {
                     const rect = single.getBoundingClientRect();
                     dropdown.style.left = rect.left + 'px';
@@ -312,13 +286,11 @@ class Posts {
                     if (dr.top < 10) { dropdown.style.top = (rect.bottom + 8) + 'px'; dropdown.style.transform = 'none'; }
                 }
 
-                // Hover to show picker
                 let hoverT;
                 wrapper.addEventListener('mouseenter', () => { hoverT = setTimeout(() => { dropdown.style.display = 'flex'; posDropdown(); }, 300); });
                 wrapper.addEventListener('mouseleave', () => { clearTimeout(hoverT); setTimeout(() => { if (!dropdown.matches(':hover')) dropdown.style.display = 'none'; }, 200); });
                 dropdown.addEventListener('mouseleave', () => { dropdown.style.display = 'none'; });
 
-                // Click for quick react/unreact
                 single.addEventListener('click', function(e) {
                     e.stopPropagation();
                     const cur = feedId && window.tbcMrUserReactions[feedId];
@@ -333,7 +305,6 @@ class Posts {
                 wrapper.appendChild(single);
                 document.body.appendChild(dropdown);
 
-                // Hide original SVG
                 const svg = button.querySelector('svg');
                 if (svg) svg.style.display = 'none';
 
@@ -341,16 +312,13 @@ class Posts {
                 if (iconEl) iconEl.appendChild(wrapper);
                 else button.insertBefore(wrapper, button.firstChild);
 
-                // Create summary
                 createSummary(button, feedId);
             }
 
-            // --- Handle reaction click ---
             function handleClick(button, feedId, reaction, single, wrapper) {
                 const cur = feedId && window.tbcMrUserReactions[feedId];
                 const hasReacted = cur || button.classList.contains('react_active');
 
-                // Same reaction = remove
                 if (cur && cur.type === reaction.id) {
                     window.tbcMrSetIcon(single, reactions[0], 35);
                     single.classList.add('tbc-mr-inactive');
@@ -368,7 +336,6 @@ class Posts {
                     return;
                 }
 
-                // Swap reaction
                 if (cur && cur.type !== reaction.id) {
                     window.tbcMrSetIcon(single, reaction, 35);
                     single.classList.add('tbc-mr-active');
@@ -385,7 +352,6 @@ class Posts {
                     return;
                 }
 
-                // New reaction
                 window.tbcMrSetIcon(single, reaction, 35);
                 single.classList.add('tbc-mr-active');
                 single.classList.remove('tbc-mr-inactive');
@@ -400,7 +366,6 @@ class Posts {
                 }).then(() => { button.classList.add('react_active'); delete window.tbcMrFeedData[feedId]; debouncedSummary(feedId); });
             }
 
-            // --- Summary ---
             function createSummary(button, feedId) {
                 if (!feedId) return;
                 const container = button.closest('.feed_outer, .fcom_feed_list, [id^="feed_id_"]');
@@ -415,11 +380,9 @@ class Posts {
                 summary.style.cssText = 'display:inline-flex;align-items:center;cursor:pointer;gap:0;';
                 summary.addEventListener('click', () => showModal(feedId));
 
-                // Hide FC's original avatars
                 const avatars = reactionsEl.querySelector('.reactions_avatars');
                 if (avatars) avatars.style.display = 'none';
 
-                // Hide FC's "X likes" text and intercept clicks
                 const countEl = container.querySelector('.fcom_reactions_count');
                 if (countEl) {
                     countEl.querySelectorAll('span').forEach(s => {
@@ -436,7 +399,6 @@ class Posts {
                 else debouncedSummary(feedId);
             }
 
-            // --- Breakdown modal ---
             function showModal(feedId) {
                 const modal = document.createElement('div');
                 modal.className = 'tbc-mr-modal';
@@ -473,7 +435,6 @@ class Posts {
                 data.breakdown.forEach(r => { html += '<button class="tbc-mr-tab" data-tab="' + r.type + '">' + iconHtml(r) + ' ' + r.count + '</button>'; });
                 html += '</div><div class="tbc-mr-panels">';
 
-                // All panel
                 const all = [];
                 data.breakdown.forEach(r => (r.users||[]).forEach(u => all.push({...u, icon_url: r.icon_url, emoji: r.emoji})));
                 html += '<div class="tbc-mr-panel active" data-panel="all">' + userList(all, iconHtml) + '</div>';
@@ -501,7 +462,6 @@ class Posts {
                 }).join('');
             }
 
-            // --- Init ---
             processAllReactionButtons();
             const obs = new MutationObserver(debounce(processAllReactionButtons, 100));
             obs.observe(document.body, { childList: true, subtree: true });

@@ -1,8 +1,6 @@
 <?php
 /**
- * Comments Class
- * Comment reaction picker - THE FIX vs fca which only swaps icon
- * This provides an actual dropdown picker for comments with proper API calls
+ * Comment reaction picker with a real dropdown and API calls.
  *
  * @package TBC_Multi_Reactions
  */
@@ -13,28 +11,13 @@ defined('ABSPATH') || exit;
 
 class Comments {
 
-    public function __construct() {}
-
-    /**
-     * Inject comments reaction script
-     */
     public function inject_comments_script() {
         $settings = get_option('tbc_mr_settings', []);
         if (empty($settings['enabled'])) {
             return;
         }
 
-        $enabled_reactions = Core::get_enabled_reactions();
-        $js_reactions = [];
-        foreach ($enabled_reactions as $r) {
-            $js_reactions[] = [
-                'id'       => $r['id'],
-                'name'     => $r['name'],
-                'emoji'    => $r['emoji'] ?? null,
-                'icon_url' => $r['icon_url'] ?? null,
-                'color'    => $r['color'],
-            ];
-        }
+        $js_reactions = Core::build_js_reaction_config();
 
         $tbc_rest_url = rest_url('tbc-multi-reactions/v1/');
         $wp_nonce = wp_create_nonce('wp_rest');
@@ -52,14 +35,11 @@ class Comments {
 
             function escHtml(s) { const d = document.createElement('div'); d.appendChild(document.createTextNode(s || '')); return d.innerHTML; }
 
-            // Track comment reactions: commentId -> {type, ...}
             const commentReactions = {};
-            // Track comment breakdown data: commentId -> {reaction_breakdown, reaction_total}
             window.tbcMrCommentData = window.tbcMrCommentData || {};
-            // Ordered comment IDs per feed for position-based matching
+            // Ordered comment IDs per feed — FC's comment API doesn't always return stable IDs, so we fall back to position-based matching when reacting in a nested reply chain.
             window.tbcMrCommentIds = window.tbcMrCommentIds || {};
 
-            // --- Read-only XHR response interception (populates caches from FC's own API calls) ---
             const prevOpen = XMLHttpRequest.prototype.open;
             const prevSend = XMLHttpRequest.prototype.send;
 
@@ -717,7 +697,7 @@ class Comments {
             }
         </style>
         <style>
-        <?php foreach ($enabled_reactions as $r):
+        <?php foreach ($js_reactions as $r):
             $hex = ltrim($r['color'] ?? '#1877F2', '#');
             $rgb_r = hexdec(substr($hex, 0, 2));
             $rgb_g = hexdec(substr($hex, 2, 2));

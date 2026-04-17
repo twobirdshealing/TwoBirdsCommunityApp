@@ -21,7 +21,6 @@ global $wpdb;
 
 // Remove options
 delete_option('tbc_ca_settings');
-delete_option('tbc_ca_version');
 delete_option('tbc_ca_jwt_secret');
 
 // Drop custom tables

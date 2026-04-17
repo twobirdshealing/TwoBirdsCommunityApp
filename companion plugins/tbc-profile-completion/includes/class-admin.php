@@ -14,6 +14,7 @@ class Admin {
 
     public function __construct() {
         add_action('wp_ajax_tbc_pcom_save_uninstall_pref', [$this, 'ajax_save_uninstall_pref']);
+        add_action('admin_init', [$this, 'fix_checkbox_saves'], 99);
     }
 
     /**
@@ -71,9 +72,6 @@ class Admin {
         foreach ($options as $key) {
             register_setting('tbc_pcom_settings', TBC_PCOM_OPTION_PREFIX . $key);
         }
-
-        // Fix unchecked checkboxes
-        add_action('admin_init', [$this, 'fix_checkbox_saves'], 99);
     }
 
     /**
@@ -111,11 +109,13 @@ class Admin {
             return;
         }
 
+        $css_path = TBC_PCOM_DIR . 'assets/css/admin.css';
+
         wp_enqueue_style(
             'tbc-pcom-admin',
             TBC_PCOM_URL . 'assets/css/admin.css',
             [],
-            TBC_PCOM_VERSION
+            file_exists($css_path) ? (string) filemtime($css_path) : TBC_PCOM_VERSION
         );
     }
 

@@ -88,7 +88,7 @@ export function ProfilePhotoPicker({
       >
         <Avatar
           source={avatarSource}
-          size="xl"
+          size="xxl"
           fallback={fallbackName}
         />
         {avatarUploading ? (
@@ -118,8 +118,8 @@ const styles = StyleSheet.create({
 
   coverContainer: {
     width: '100%',
-    height: 120,
-    borderRadius: sizing.borderRadius.md,
+    height: 180,
+    borderRadius: sizing.borderRadius.sm,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   },
 
   avatarWrapper: {
-    marginTop: -40,
+    marginTop: -60,
     borderRadius: sizing.borderRadius.full,
     borderWidth: 4,
     position: 'relative',

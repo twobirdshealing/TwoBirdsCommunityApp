@@ -317,22 +317,12 @@
     }
 
     function getPhoneValue() {
-        // Try by name attribute (FC custom field slug)
+        if (!phoneSlug) return '';
         var input = document.querySelector(
             '.fcom_signup_form [name="' + phoneSlug + '"], ' +
             '.fcom_registration_form [name="' + phoneSlug + '"], ' +
             '.fcom_onboard_form [name="' + phoneSlug + '"]'
         );
-
-        // Fallback: any tel input in the registration form
-        if (!input) {
-            input = document.querySelector(
-                '.fcom_signup_form input[type="tel"], ' +
-                '.fcom_registration_form input[type="tel"], ' +
-                '.fcom_onboard_form input[type="tel"]'
-            );
-        }
-
         return input ? input.value.trim() : '';
     }
 
@@ -348,12 +338,9 @@
     }
 
     function showFormError(message) {
-        // Try to show error near the phone field, fall back to alert
-        var phoneInput = document.querySelector(
-            '[name="' + phoneSlug + '"], ' +
-            '.fcom_signup_form input[type="tel"], ' +
-            '.fcom_registration_form input[type="tel"]'
-        );
+        var phoneInput = phoneSlug
+            ? document.querySelector('[name="' + phoneSlug + '"]')
+            : null;
 
         if (phoneInput) {
             // Remove any existing OTP error

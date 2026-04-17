@@ -1,10 +1,7 @@
 <?php
 /**
  * Frontend Class
- * Enqueues the OTP registration interceptor on FC's auth pages.
- *
- * Uses FluentCommunity's portal hooks when available, plus wp_footer
- * for the auth registration page (portal hooks don't fire on auth pages).
+ * Injects the OTP registration interceptor on FC's auth registration page.
  *
  * @package TBC_OTP
  */
@@ -33,70 +30,40 @@ class Frontend {
     }
 
     /**
-     * Inject CSS on the auth registration page via wp_head.
+     * Enqueue the OTP modal CSS + registration JS on FC's auth registration page.
      */
-    public function maybe_inject_auth_css(): void {
+    public function maybe_enqueue_auth_assets(): void {
         if (!$this->is_registration_page() || !$this->is_otp_enabled()) {
             return;
         }
-        ?>
-        <link rel="stylesheet"
-              href="<?php echo esc_url(TBC_OTP_URL . 'assets/css/otp-modal.css'); ?>?v=<?php echo esc_attr(TBC_OTP_VERSION); ?>"
-              media="screen"/>
-        <?php
+
+        $css_path = TBC_OTP_DIR . 'assets/css/otp-modal.css';
+        $js_path  = TBC_OTP_DIR . 'assets/js/registration-otp.js';
+
+        wp_enqueue_style(
+            'tbc-otp-modal',
+            TBC_OTP_URL . 'assets/css/otp-modal.css',
+            [],
+            file_exists($css_path) ? (string) filemtime($css_path) : TBC_OTP_VERSION
+        );
+
+        wp_enqueue_script(
+            'tbc-otp-registration',
+            TBC_OTP_URL . 'assets/js/registration-otp.js',
+            [],
+            file_exists($js_path) ? (string) filemtime($js_path) : TBC_OTP_VERSION,
+            [
+                'strategy'  => 'defer',
+                'in_footer' => true,
+            ]
+        );
+
+        wp_localize_script('tbc-otp-registration', 'tbcOtpReg', [
+            'rest_url'      => rest_url(TBC_OTP_REST_NAMESPACE . '/otp/'),
+            'rest_nonce'    => wp_create_nonce('wp_rest'),
+            'voice_enabled' => (bool) Helpers::get_option('enable_voice_fallback', false),
+            'phone_slug'    => Helpers::get_phone_slug(),
+        ]);
     }
 
-    /**
-     * Inject JS on the auth registration page via wp_footer.
-     */
-    public function maybe_inject_auth_js(): void {
-        if (!$this->is_registration_page() || !$this->is_otp_enabled()) {
-            return;
-        }
-        ?>
-        <script>
-            var tbcOtpReg = <?php echo wp_json_encode([
-                'rest_url'      => rest_url(TBC_OTP_REST_NAMESPACE . '/otp/'),
-                'rest_nonce'    => wp_create_nonce('wp_rest'),
-                'voice_enabled' => (bool) Helpers::get_option('enable_voice_fallback', false),
-                'phone_slug'    => Helpers::get_phone_slug(),
-            ]); ?>;
-        </script>
-        <script src="<?php echo esc_url(TBC_OTP_URL . 'assets/js/registration-otp.js'); ?>?v=<?php echo esc_attr(TBC_OTP_VERSION); ?>" defer="defer"></script>
-        <?php
-    }
-
-    /**
-     * Inject CSS into the FC portal <head> (for in-portal registration if applicable).
-     */
-    public function inject_portal_css(): void {
-        if (!$this->is_otp_enabled()) {
-            return;
-        }
-        ?>
-        <link rel="stylesheet"
-              href="<?php echo esc_url(TBC_OTP_URL . 'assets/css/otp-modal.css'); ?>?v=<?php echo esc_attr(TBC_OTP_VERSION); ?>"
-              media="screen"/>
-        <?php
-    }
-
-    /**
-     * Inject JS config + script into the FC portal footer.
-     */
-    public function inject_portal_js(): void {
-        if (!$this->is_otp_enabled()) {
-            return;
-        }
-        ?>
-        <script>
-            var tbcOtpReg = <?php echo wp_json_encode([
-                'rest_url'      => rest_url(TBC_OTP_REST_NAMESPACE . '/otp/'),
-                'rest_nonce'    => wp_create_nonce('wp_rest'),
-                'voice_enabled' => (bool) Helpers::get_option('enable_voice_fallback', false),
-                'phone_slug'    => Helpers::get_phone_slug(),
-            ]); ?>;
-        </script>
-        <script src="<?php echo esc_url(TBC_OTP_URL . 'assets/js/registration-otp.js'); ?>?v=<?php echo esc_attr(TBC_OTP_VERSION); ?>" defer="defer"></script>
-        <?php
-    }
 }

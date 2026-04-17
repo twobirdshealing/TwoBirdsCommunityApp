@@ -22,9 +22,7 @@ class TBC_CA_Push_Firebase {
         return self::$instance;
     }
 
-    private function __construct() {
-        // Nothing to hook for now
-    }
+    private function __construct() {}
 
     /**
      * Send push notification to a user
@@ -35,34 +33,23 @@ class TBC_CA_Push_Firebase {
      * @return array Results of send attempts
      */
     public function send($user_id, $type, $data) {
-        error_log("[TBC Push] send() called for user_id={$user_id}, type={$type}");
-        error_log("[TBC Push] Data: " . json_encode($data));
-
         $preferences = TBC_CA_Push_Preferences::get_instance();
         $devices = TBC_CA_Push_Devices::get_instance();
 
-        // Get unread notification count for app icon badge
         $data['badge'] = $this->get_unread_count($user_id);
 
-        // Check if user has this notification type enabled
         if (!$preferences->is_enabled_for_user($user_id, $type)) {
-            error_log("[TBC Push] SKIPPED: User has disabled type '{$type}'");
             return ['skipped' => 'user_disabled'];
         }
 
-        // Get user's device tokens
         $tokens = $devices->get_tokens_for_user($user_id);
-        error_log("[TBC Push] Found " . count($tokens) . " device(s) for user {$user_id}");
-
         if (empty($tokens)) {
-            error_log("[TBC Push] SKIPPED: No devices registered for user {$user_id}");
             return ['skipped' => 'no_devices'];
         }
 
         $results = [];
 
         foreach ($tokens as $device) {
-            error_log("[TBC Push] Attempting to send to device: platform={$device['platform']}, token=" . substr($device['token'], 0, 30) . "...");
             $result = $this->send_to_token($device['token'], $data, $device['platform']);
             $results[] = [
                 'token' => substr($device['token'], 0, 20) . '...',
@@ -71,14 +58,11 @@ class TBC_CA_Push_Firebase {
                 'error' => $result['error'] ?? null,
             ];
 
-            // Remove invalid tokens
-            if (!$result['success'] && isset($result['invalid_token']) && $result['invalid_token']) {
-                error_log("[TBC Push] Removing invalid token: " . substr($device['token'], 0, 20) . "...");
+            if (!$result['success'] && !empty($result['invalid_token'])) {
                 $devices->remove_invalid_token($device['token']);
             }
         }
 
-        error_log("[TBC Push] Final results: " . json_encode($results));
         return $results;
     }
 
@@ -86,10 +70,6 @@ class TBC_CA_Push_Firebase {
      * Send notification to a specific token using Expo Push API
      */
     private function send_to_token($token, $data, $platform = 'ios') {
-        error_log("[TBC Push] send_to_token() called");
-        error_log("[TBC Push] Token: " . substr($token, 0, 50) . "...");
-        error_log("[TBC Push] Platform: {$platform}");
-
         $title = $data['title'] ?? '';
         $body = $data['body'] ?? '';
         $custom_data = $data['data'] ?? [];
@@ -108,13 +88,10 @@ class TBC_CA_Push_Firebase {
             $payload['data'] = $custom_data;
         }
 
-        // Platform-specific settings
         if ($platform === 'android') {
             $payload['channelId'] = 'default';
             $payload['priority'] = 'high';
         }
-
-        error_log("[TBC Push] Expo Payload: " . json_encode($payload));
 
         $response = wp_remote_post($this->expo_url, [
             'headers' => [
@@ -126,7 +103,6 @@ class TBC_CA_Push_Firebase {
         ]);
 
         if (is_wp_error($response)) {
-            error_log("[TBC Push] WP Error: " . $response->get_error_message());
             return [
                 'success' => false,
                 'error' => $response->get_error_message(),
@@ -134,52 +110,26 @@ class TBC_CA_Push_Firebase {
         }
 
         $status_code = wp_remote_retrieve_response_code($response);
-        $response_body = wp_remote_retrieve_body($response);
-        error_log("[TBC Push] Expo Response Code: {$status_code}");
-        error_log("[TBC Push] Expo Response Body: {$response_body}");
+        $body = json_decode(wp_remote_retrieve_body($response), true);
 
-        $body = json_decode($response_body, true);
-
-        // Expo returns 200 with data array
-        if ($status_code === 200 && isset($body['data'])) {
+        if ($status_code === 200 && isset($body['data']['status'])) {
             $push_data = $body['data'];
 
-            // Expo wraps single push in data directly, batch in data array
-            if (isset($push_data['status'])) {
-                // Single push response
-                if ($push_data['status'] === 'ok') {
-                    error_log("[TBC Push] SUCCESS! Ticket ID: " . ($push_data['id'] ?? 'unknown'));
-                    return ['success' => true];
-                } else {
-                    // Error response
-                    $error_message = $push_data['message'] ?? 'Unknown Expo error';
-                    $error_details = $push_data['details'] ?? null;
-
-                    error_log("[TBC Push] Expo Error: {$error_message}");
-                    if ($error_details) {
-                        error_log("[TBC Push] Error details: " . json_encode($error_details));
-                    }
-
-                    // Check for invalid token errors
-                    $invalid_token = false;
-                    if (isset($error_details['error'])) {
-                        $error_type = $error_details['error'];
-                        if (in_array($error_type, ['DeviceNotRegistered', 'InvalidCredentials'])) {
-                            $invalid_token = true;
-                        }
-                    }
-
-                    return [
-                        'success' => false,
-                        'error' => $error_message,
-                        'invalid_token' => $invalid_token,
-                    ];
-                }
+            if ($push_data['status'] === 'ok') {
+                return ['success' => true];
             }
+
+            $error_details = $push_data['details'] ?? null;
+            $invalid_token = isset($error_details['error'])
+                && in_array($error_details['error'], ['DeviceNotRegistered', 'InvalidCredentials'], true);
+
+            return [
+                'success' => false,
+                'error' => $push_data['message'] ?? 'Unknown Expo error',
+                'invalid_token' => $invalid_token,
+            ];
         }
 
-        // Unexpected response
-        error_log("[TBC Push] Unexpected response format");
         return [
             'success' => false,
             'error' => 'Unexpected response from Expo',
@@ -199,8 +149,6 @@ class TBC_CA_Push_Firebase {
         if (empty($queue)) {
             return [];
         }
-
-        error_log("[TBC Push Batch] Processing queue of " . count($queue) . " notification(s)");
 
         $preferences = TBC_CA_Push_Preferences::get_instance();
         $devices = TBC_CA_Push_Devices::get_instance();
@@ -265,11 +213,8 @@ class TBC_CA_Push_Firebase {
         }
 
         if (empty($payloads)) {
-            error_log("[TBC Push Batch] No payloads to send after filtering");
             return [];
         }
-
-        error_log("[TBC Push Batch] Sending " . count($payloads) . " payload(s) via batch API");
 
         // Send in chunks of 100 (Expo limit)
         $all_results = [];
@@ -284,7 +229,6 @@ class TBC_CA_Push_Firebase {
             if (isset($result['results']) && is_array($result['results'])) {
                 foreach ($result['results'] as $i => $item_result) {
                     if (!$item_result['success'] && !empty($item_result['invalid_token']) && isset($meta_chunk[$i])) {
-                        error_log("[TBC Push Batch] Removing invalid token: " . substr($meta_chunk[$i]['token'], 0, 20) . "...");
                         $devices->remove_invalid_token($meta_chunk[$i]['token']);
                     }
                 }
@@ -307,8 +251,6 @@ class TBC_CA_Push_Firebase {
             return ['success' => false, 'error' => 'empty_payloads'];
         }
 
-        error_log("[TBC Push Batch] send_batch() called with " . count($payloads) . " payload(s)");
-
         $response = wp_remote_post($this->expo_url, [
             'headers' => [
                 'Content-Type' => 'application/json',
@@ -319,7 +261,6 @@ class TBC_CA_Push_Firebase {
         ]);
 
         if (is_wp_error($response)) {
-            error_log("[TBC Push Batch] WP Error: " . $response->get_error_message());
             return [
                 'success' => false,
                 'error' => $response->get_error_message(),
@@ -327,13 +268,9 @@ class TBC_CA_Push_Firebase {
         }
 
         $status_code = wp_remote_retrieve_response_code($response);
-        $response_body = wp_remote_retrieve_body($response);
-        error_log("[TBC Push Batch] Expo Response Code: {$status_code}");
-
-        $body = json_decode($response_body, true);
+        $body = json_decode(wp_remote_retrieve_body($response), true);
 
         if ($status_code !== 200 || !isset($body['data'])) {
-            error_log("[TBC Push Batch] Unexpected response: {$response_body}");
             return [
                 'success' => false,
                 'error' => 'Unexpected response from Expo',
@@ -354,25 +291,17 @@ class TBC_CA_Push_Firebase {
                 $results[] = ['success' => true];
             } else {
                 $error_count++;
-                $error_message = $item['message'] ?? 'Unknown error';
                 $error_details = $item['details'] ?? null;
-                $invalid_token = false;
-
-                if (isset($error_details['error'])) {
-                    if (in_array($error_details['error'], ['DeviceNotRegistered', 'InvalidCredentials'])) {
-                        $invalid_token = true;
-                    }
-                }
+                $invalid_token = isset($error_details['error'])
+                    && in_array($error_details['error'], ['DeviceNotRegistered', 'InvalidCredentials'], true);
 
                 $results[] = [
                     'success' => false,
-                    'error' => $error_message,
+                    'error' => $item['message'] ?? 'Unknown error',
                     'invalid_token' => $invalid_token,
                 ];
             }
         }
-
-        error_log("[TBC Push Batch] Batch complete: {$success_count} success, {$error_count} errors");
 
         return [
             'success' => $error_count === 0,

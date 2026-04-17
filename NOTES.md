@@ -109,7 +109,95 @@ We use both `.easignore` and `.gitignore`. `.easignore` is a superset — it has
 
 After fixes or completed tasks ask user if we want to run /simplify
 
-When working on companion plugins after updates/fixes/changes, update the version number on the plugin or theme and update changelog. If changelog is missing add one. Always update version to bust cache even on small updates.
+When working on companion plugins after updates/fixes/changes, update the changelog. If changelog is missing add one. Bump the plugin version number for **real releases** (feature work, buyer-visible changes) — small JS/CSS tweaks don't need a version bump because cache busting is handled by `filemtime()` on enqueues (see "Companion Plugin Cache Busting" below).
+
+### Plugin + Theme Versioning and Cache Busting
+
+**One source of truth per package.** The plugin header comment (or theme's `style.css` header) is where you bump the version for a real release. Everything else auto-derives. Browser cache busting on JS/CSS is handled by `filemtime()` on every enqueue, so tweaking a file does NOT need a version bump.
+
+#### Plugins — auto-derive the version constant from the plugin header
+
+In each plugin's main bootstrap file, define the `*_VERSION` constant by reading it from the plugin header via `get_file_data()`:
+
+```php
+// Single source of truth is the "Version:" line in the plugin header comment.
+// No fallback literal — WP's get_file_data() always returns the keys you ask for
+// (empty string if the header can't be parsed), so a hardcoded fallback would be
+// silent drift: it'd lie about the version if the header ever broke.
+$my_plugin_header = get_file_data(__FILE__, ['Version' => 'Version']);
+define('MY_PLUGIN_VERSION', $my_plugin_header['Version']);
+```
+
+Why: one place to bump, constant still exists for any code that references it (REST version output, filemtime fallback, etc.). No drift possible.
+
+Plugins with no non-cache-buster uses of their version constant (pure filemtime fallback only): the constant is optional, but auto-deriving is still recommended for consistency across the codebase.
+
+#### Themes — read from `style.css` via `wp_get_theme()`
+
+Themes don't need a version constant at all. `style.css` is parsed by WP and accessible anywhere via `wp_get_theme()->get('Version')` (cached internally by WP). Use that directly in filemtime fallbacks — no constant required.
+
+#### Cache busting on enqueued assets
+
+Any shipped JS/CSS enqueued via `wp_enqueue_script` / `wp_enqueue_style` should use `filemtime()` on the 4th arg:
+
+```php
+$css_path = MY_PLUGIN_DIR . 'assets/css/admin.css';
+$js_path  = MY_PLUGIN_DIR . 'assets/js/admin.js';
+
+wp_enqueue_style(
+    'my-plugin-admin',
+    MY_PLUGIN_URL . 'assets/css/admin.css',
+    [],
+    file_exists($css_path) ? (string) filemtime($css_path) : MY_PLUGIN_VERSION
+);
+
+wp_enqueue_script(
+    'my-plugin-admin',
+    MY_PLUGIN_URL . 'assets/js/admin.js',
+    [],
+    file_exists($js_path) ? (string) filemtime($js_path) : MY_PLUGIN_VERSION,
+    true
+);
+```
+
+For themes, swap the fallback to `wp_get_theme()->get('Version')`:
+
+```php
+$base_path = FLUENT_STARTER_DIR . '/assets/css/base.css';
+wp_enqueue_style(
+    'fluent-starter-base',
+    FLUENT_STARTER_URI . '/assets/css/base.css',
+    [],
+    file_exists($base_path) ? (string) filemtime($base_path) : wp_get_theme()->get('Version')
+);
+```
+
+**Rules:**
+- Use the `*_DIR` (filesystem path) constant — **not** `*_URL` — to resolve the physical file. `filemtime()` on a URL returns `false`.
+- Cast to `(string)` — matches what WP core does and keeps the type clean.
+- **Always keep the fallback.** If the file is missing, you get a valid cache buster instead of `false` (which WP would turn into the current WP version).
+- **Never hand-roll `?v=...` query strings on `<link>`/`<script>` tags** — always route through `wp_enqueue_*`. If you need to conditionally inject, do the condition check inside a `wp_enqueue_scripts` callback; `wp_enqueue_*` works fine from there.
+- **Do NOT apply to vendored third-party libs** (e.g. `vendor/some-lib.min.js`). Their mtime only changes when you update the dependency, which the plugin/theme version already tracks.
+- **Do NOT apply to remote CDN URLs** — `filemtime()` on a URL returns `false`.
+- **Skip for core-registered handles** (`wp-color-picker`, `jquery-ui-sortable`, `comment-reply`, etc.) — WP owns their versioning.
+- After applying or editing assets, re-zip the plugin with `node scripts/zip-plugin.js <plugin-name>`.
+
+**Verify it's working:** open the admin/frontend page, view source, confirm `?ver=` on your JS/CSS URL is a 10-digit Unix timestamp (e.g. `?ver=1744723891`) instead of the plugin/theme version string. Edit the file, hard-reload — the `ver` should change.
+
+**When to bump the plugin/theme header version:** real releases only — feature work, API changes, buyer-visible changes, anything that goes in the CHANGELOG. Small JS/CSS tweaks never need a bump.
+
+#### Status across shipping plugins + themes
+
+| Package | Auto-derive version | filemtime enqueues | Notes |
+|---|---|---|---|
+| tbc-community-app | ✅ | ✅ | |
+| tbc-otp | ✅ | ✅ | Manual `<link>`/`<script>` tags converted to `wp_enqueue_*` with a registration-page check inside `wp_enqueue_scripts`. |
+| tbc-profile-completion | ✅ | ✅ | |
+| tbc-multi-reactions | ✅ | ✅ | |
+| tbc-cart | ✅ | ✅ | Only one enqueued asset (`woocommerce.css`); mini-cart CSS/JS is inline `<style>`/`<script>` via `wp_head`/`wp_footer` so no cache busting needed on those. |
+| tbc-license-server | n/a | n/a | No enqueues, orphaned constant dropped. Version lives only in the plugin header. |
+| tbc-youtube | n/a | n/a | No enqueues, orphaned constant dropped. Version lives only in the plugin header. |
+| tbc-starter-theme | n/a (reads `style.css`) | ✅ | No version constant — `wp_get_theme()->get('Version')` used in filemtime fallbacks. |
 
 ### Testing
 

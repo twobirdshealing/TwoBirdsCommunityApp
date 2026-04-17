@@ -22,22 +22,22 @@ class Frontend {
         $this->chat = $chat;
     }
 
-    /**
-     * Enqueue styles in portal head
-     */
     public function enqueue_styles() {
         $settings = get_option('tbc_mr_settings', []);
         if (empty($settings['enabled'])) {
             return;
         }
 
-        wp_enqueue_style('tbc-mr-reactions', TBC_MR_URL . 'assets/css/reactions.css', [], TBC_MR_VERSION);
+        $css_path = TBC_MR_DIR . 'assets/css/reactions.css';
+        wp_enqueue_style(
+            'tbc-mr-reactions',
+            TBC_MR_URL . 'assets/css/reactions.css',
+            [],
+            file_exists($css_path) ? (string) filemtime($css_path) : TBC_MR_VERSION
+        );
         wp_print_styles('tbc-mr-reactions');
     }
 
-    /**
-     * Inject shared utilities then posts/comments scripts
-     */
     public function inject_reactions_script() {
         $settings = get_option('tbc_mr_settings', []);
         if (empty($settings['enabled'])) {
@@ -47,17 +47,10 @@ class Frontend {
         ?>
         <script>
         (function() {
-            // Global reaction data stores
             window.tbcMrUserReactions = window.tbcMrUserReactions || {};
             window.tbcMrFeedData = window.tbcMrFeedData || {};
             window.tbcMrLastReactionType = null;
 
-            /**
-             * Render a reaction icon (custom icon_url or emoji SVG fallback)
-             * @param {Object} reaction - {icon_url, emoji, name}
-             * @param {number} size - pixel size
-             * @returns {HTMLImageElement|HTMLSpanElement}
-             */
             window.tbcMrRenderIcon = function(reaction, size) {
                 size = size || 24;
                 if (reaction.icon_url) {
@@ -73,7 +66,6 @@ class Frontend {
                     img.style.verticalAlign = 'middle';
                     return img;
                 }
-                // Native emoji fallback
                 if (reaction.emoji) {
                     const span = document.createElement('span');
                     span.textContent = reaction.emoji;
@@ -94,9 +86,6 @@ class Frontend {
                 return span;
             };
 
-            /**
-             * Set icon on an element (replaces contents)
-             */
             window.tbcMrSetIcon = function(el, reaction, size) {
                 if (!el) return;
                 el.innerHTML = '';
@@ -106,60 +95,21 @@ class Frontend {
         </script>
         <?php
 
-        // Inject posts script
         if ($this->posts) {
             $this->posts->inject_posts_script();
         }
 
-        // Inject comments script
         if ($this->comments) {
             $this->comments->inject_comments_script();
         }
 
-        // Inject chat icon replacement script
         if ($this->chat) {
             $this->chat->inject_chat_script();
         }
 
-        // Custom styles for reaction colors
         $this->output_custom_styles();
     }
 
-    /**
-     * Add reactions config to portal JS vars
-     */
-    public function add_reactions_config($vars) {
-        $settings = get_option('tbc_mr_settings', []);
-        if (empty($settings['enabled'])) {
-            return $vars;
-        }
-
-        $enabled = Core::get_enabled_reactions();
-        $reactions = [];
-        foreach ($enabled as $r) {
-            $reactions[] = [
-                'id'       => $r['id'],
-                'icon_url' => $r['icon_url'] ?? null,
-                'emoji'    => $r['emoji'] ?? null,
-                'label'    => $r['name'],
-                'color'    => $r['color'],
-            ];
-        }
-
-        $vars['tbc_multi_reactions'] = [
-            'enabled'   => true,
-            'version'   => TBC_MR_VERSION,
-            'restUrl'   => rest_url('tbc-multi-reactions/v1/'),
-            'wpNonce'   => wp_create_nonce('wp_rest'),
-            'reactions' => $reactions,
-        ];
-
-        return $vars;
-    }
-
-    /**
-     * Output dynamic CSS for reaction colors + dark mode
-     */
     private function output_custom_styles() {
         $enabled = Core::get_enabled_reactions();
         if (empty($enabled)) {

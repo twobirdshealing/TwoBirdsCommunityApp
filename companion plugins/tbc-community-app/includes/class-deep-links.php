@@ -204,7 +204,6 @@ class TBC_CA_Deep_Links {
         $app_store_id = $settings['app_store_id'] ?? '';
         $store_urls   = $settings['store_urls'] ?? [];
         $android_url  = $store_urls['android'] ?? '';
-        $version      = defined('TBC_CA_VERSION') ? TBC_CA_VERSION : '1.0.0';
 
         // iOS native smart banner
         if (!empty($app_store_id)) {
@@ -218,7 +217,6 @@ class TBC_CA_Deep_Links {
 
         // Android custom banner
         ?>
-<!-- TBC Smart Banner v<?php echo esc_html($version); ?> -->
 <style>
 .tbc-app-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:var(--fcom-primary-bg,#fff);border-bottom:1px solid var(--fcom-primary-border,#ddd);padding:10px 16px;align-items:center;gap:12px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.1)}
 .tbc-app-banner.show{display:flex}

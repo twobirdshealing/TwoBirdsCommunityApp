@@ -68,10 +68,6 @@ defined('ABSPATH') || exit;
         <?php submit_button(__('Save Profile Completion Settings', 'tbc-pcom')); ?>
     </form>
 
-    <div class="tbc-pcom-footer" style="margin-top:20px;padding:16px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:6px;">
-        <p><strong><?php esc_html_e('Version:', 'tbc-pcom'); ?></strong> <?php echo esc_html(TBC_PCOM_VERSION); ?></p>
-    </div>
-
     <!-- Data Management -->
     <div class="tbc-pcom-section" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #c3c4c7;">
         <h2><?php esc_html_e('Data Management', 'tbc-pcom'); ?></h2>

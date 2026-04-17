@@ -12,12 +12,10 @@ defined('ABSPATH') || exit;
 
 class Admin {
 
-    public function __construct() {
-        // Empty constructor
-    }
+    public function __construct() {}
 
     /**
-     * Add admin menu — under TBC Community App parent if available, else standalone top-level
+     * Attach under the TBC Community App parent menu when present, otherwise register a top-level menu.
      */
     public function add_admin_menu() {
         if (defined('TBC_CA_PLUGIN_DIR')) {
@@ -42,9 +40,6 @@ class Admin {
         }
     }
 
-    /**
-     * Register settings
-     */
     public function register_settings() {
         register_setting('tbc_mr_settings', 'tbc_mr_settings', [
             'sanitize_callback' => [$this, 'sanitize_settings'],
@@ -54,8 +49,6 @@ class Admin {
     }
 
     /**
-     * Sanitize settings on save
-     *
      * The 6 reaction type IDs are fixed and permanent. Admin can update
      * label, emoji, color, icon, enabled, and order — but cannot add or delete slots.
      */
@@ -79,17 +72,14 @@ class Admin {
         $output = [];
         $output['enabled'] = isset($input['enabled']) && $input['enabled'] === '1';
 
-        // Process submitted reaction types — only accept the 6 fixed keys
         if (isset($input['reaction_types']) && is_array($input['reaction_types'])) {
             foreach ($input['reaction_types'] as $id => $reaction) {
                 $id = sanitize_key($id);
 
-                // Ignore any keys that aren't in our fixed set
                 if (!in_array($id, $fixed_keys, true)) {
                     continue;
                 }
 
-                // Use existing data as base, fall back to defaults
                 if (!isset($reaction_types[$id])) {
                     $reaction_types[$id] = $defaults[$id];
                 }
@@ -116,7 +106,6 @@ class Admin {
                     ? absint($reaction['order'])
                     : ($reaction_types[$id]['order'] ?? 999);
 
-                // Handle icon (FC Media ID)
                 if (isset($reaction['media_id'])) {
                     $media_id = absint($reaction['media_id']);
                     $old_media_id = absint($reaction_types[$id]['media_id'] ?? 0);
@@ -141,14 +130,11 @@ class Admin {
             }
         }
 
-        // Ensure all 6 fixed keys always exist (re-add any missing with defaults)
         foreach ($defaults as $id => $default) {
             if (!isset($reaction_types[$id])) {
                 $reaction_types[$id] = $default;
             }
         }
-
-        // Remove any non-fixed keys that may exist from old data
         $reaction_types = array_intersect_key($reaction_types, $defaults);
 
         $output['reaction_types'] = $reaction_types;
@@ -156,9 +142,6 @@ class Admin {
         return $output;
     }
 
-    /**
-     * Enqueue admin assets
-     */
     public function admin_assets($hook) {
         if (strpos($hook, 'tbc-multi-reactions') === false) {
             return;
@@ -167,18 +150,21 @@ class Admin {
         wp_enqueue_style('wp-color-picker');
         wp_enqueue_script('jquery-ui-sortable');
 
+        $css_path = TBC_MR_DIR . 'assets/css/admin.css';
+        $js_path  = TBC_MR_DIR . 'assets/js/admin.js';
+
         wp_enqueue_style(
             'tbc-mr-admin',
             TBC_MR_URL . 'assets/css/admin.css',
             [],
-            TBC_MR_VERSION
+            file_exists($css_path) ? (string) filemtime($css_path) : TBC_MR_VERSION
         );
 
         wp_enqueue_script(
             'tbc-mr-admin',
             TBC_MR_URL . 'assets/js/admin.js',
             ['jquery', 'wp-color-picker', 'jquery-ui-sortable'],
-            TBC_MR_VERSION,
+            file_exists($js_path) ? (string) filemtime($js_path) : TBC_MR_VERSION,
             true
         );
 
@@ -187,7 +173,6 @@ class Admin {
             'nonce'   => wp_create_nonce('tbc_mr_nonce'),
         ]);
 
-        // Inject FC theme CSS variables for admin page styling
         if (class_exists('\FluentCommunity\App\Functions\Utility')) {
             $css = \FluentCommunity\App\Functions\Utility::getColorCssVariables();
             if ($css) {
@@ -197,10 +182,8 @@ class Admin {
     }
 
     /**
-     * Get the 6 fixed reaction types aligned with Fluent Messaging 2.2.0
-     *
-     * Type IDs are permanent and stored in DB (tbc_mr_reaction_type column).
-     * Labels and emojis are display defaults — admin can customize freely.
+     * The 6 fixed reaction types, aligned with Fluent Messaging 2.2.0.
+     * IDs are permanent (stored in the tbc_mr_reaction_type column).
      */
     public static function get_default_reaction_types() {
         return [
@@ -261,10 +244,6 @@ class Admin {
         ];
     }
 
-    /**
-     * Initialize default settings if they don't exist.
-     * Ensures all 6 fixed reaction keys are present on every load.
-     */
     public static function initialize_default_settings() {
         $defaults = self::get_default_reaction_types();
         $settings = get_option('tbc_mr_settings', false);
@@ -275,45 +254,22 @@ class Admin {
                 'enabled' => false,
             ];
             add_option('tbc_mr_settings', $settings, '', 'yes');
-        } else {
-            $needs_update = false;
+            return $settings;
+        }
 
-            if (empty($settings['reaction_types']) || !is_array($settings['reaction_types'])) {
-                $settings['reaction_types'] = $defaults;
-                $needs_update = true;
-            } else {
-                // Ensure all 6 fixed keys exist, add missing ones with defaults
-                foreach ($defaults as $id => $default) {
-                    if (!isset($settings['reaction_types'][$id])) {
-                        $settings['reaction_types'][$id] = $default;
-                        $needs_update = true;
-                    }
-                }
-                // Remove any non-fixed keys from old data
-                $old_count = count($settings['reaction_types']);
-                $settings['reaction_types'] = array_intersect_key($settings['reaction_types'], $defaults);
-                if (count($settings['reaction_types']) !== $old_count) {
-                    $needs_update = true;
-                }
-            }
-
-            if ($needs_update) {
-                update_option('tbc_mr_settings', $settings);
-            }
+        if (empty($settings['reaction_types']) || !is_array($settings['reaction_types'])) {
+            $settings['reaction_types'] = $defaults;
+            update_option('tbc_mr_settings', $settings);
         }
 
         return $settings;
     }
 
-    /**
-     * Admin page callback
-     */
     public function admin_page() {
         if (!current_user_can('manage_options')) {
             wp_die(esc_html__('You do not have sufficient permissions.', 'tbc-multi-reactions'));
         }
 
-        // Handle manual save
         if (isset($_POST['submit']) && isset($_POST['tbc_mr_settings']) && check_admin_referer('tbc_mr_settings-options')) {
             $sanitized = $this->sanitize_settings(wp_unslash($_POST['tbc_mr_settings'])); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized in sanitize_settings().
             update_option('tbc_mr_settings', $sanitized);

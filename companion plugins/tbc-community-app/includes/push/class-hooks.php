@@ -133,11 +133,8 @@ class TBC_CA_Push_Hooks {
         // ~1500 IDs fit under AS's 8000 char JSON arg limit
         $chunks = array_chunk($filtered_ids, 1500);
 
-        error_log("[TBC Push] Scheduling " . count($filtered_ids) . " notification(s) in " . count($chunks) . " chunk(s), type={$type}");
-
-        foreach ($chunks as $i => $chunk) {
-            $action_id = as_enqueue_async_action('tbc_ca_process_push_batch', [$chunk, $notification_data], 'tbc-community-app');
-            error_log("[TBC Push] AS action created: id=" . var_export($action_id, true) . ", chunk=" . ($i + 1) . "/" . count($chunks) . ", items=" . count($chunk));
+        foreach ($chunks as $chunk) {
+            as_enqueue_async_action('tbc_ca_process_push_batch', [$chunk, $notification_data], 'tbc-community-app');
         }
     }
 
@@ -162,7 +159,6 @@ class TBC_CA_Push_Hooks {
      */
     public function process_push_batch($user_ids, $notification_data) {
         if (empty($user_ids) || !is_array($user_ids) || empty($notification_data)) {
-            error_log("[TBC Push Batch] Empty or invalid args received");
             return;
         }
 
@@ -178,15 +174,9 @@ class TBC_CA_Push_Hooks {
             ];
         }
 
-        error_log("[TBC Push Batch] Processing " . count($queue) . " notification(s), type=" . $notification_data['type']);
-        $start = microtime(true);
-
         $firebase = TBC_CA_Push_Firebase::get_instance();
         $force = !empty($notification_data['force']);
         $results = $firebase->send_queued_notifications($queue, $force);
-
-        $elapsed = round((microtime(true) - $start) * 1000);
-        error_log("[TBC Push Batch] Complete in {$elapsed}ms: " . json_encode($results));
 
         // Log the batch result
         $total_sent = 0;

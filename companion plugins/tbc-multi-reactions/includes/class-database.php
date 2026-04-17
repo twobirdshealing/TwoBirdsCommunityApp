@@ -1,7 +1,6 @@
 <?php
 /**
- * Database Class
- * Adds tbc_mr_reaction_type column to FC's existing fcom_post_reactions table
+ * Adds and queries the tbc_mr_reaction_type column on FC's fcom_post_reactions table.
  *
  * @package TBC_Multi_Reactions
  */
@@ -12,14 +11,10 @@ defined('ABSPATH') || exit;
 
 class Database {
 
-    /**
-     * Add tbc_mr_reaction_type column to fcom_post_reactions table
-     */
     public static function add_reaction_type_column() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'fcom_post_reactions';
 
-        // Check if column already exists
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema inspection during activation.
         $column_exists = $wpdb->get_results(
             $wpdb->prepare(
@@ -36,7 +31,6 @@ class Database {
             return true;
         }
 
-        // Add the column after FC's type column
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- DDL with $wpdb->prefix table name during activation.
         $result = $wpdb->query("ALTER TABLE `{$table_name}`
                 ADD COLUMN `tbc_mr_reaction_type` VARCHAR(50) NULL DEFAULT NULL
@@ -47,25 +41,20 @@ class Database {
             return false;
         }
 
-        // Add index for faster queries
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- DDL with $wpdb->prefix table name.
         $wpdb->query("ALTER TABLE `{$table_name}` ADD INDEX `idx_tbc_mr_reaction_type` (`tbc_mr_reaction_type`)");
 
-        // Set default value for existing like reactions
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Bulk default value set during activation.
+        // Backfill existing FC "like" reactions so they render as our default "like" type instead of showing up blank in breakdowns.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Backfill during activation.
         $wpdb->query("UPDATE `{$table_name}` SET tbc_mr_reaction_type = 'like' WHERE tbc_mr_reaction_type IS NULL AND type = 'like'");
 
         return true;
     }
 
-    /**
-     * Remove tbc_mr_reaction_type column from fcom_post_reactions table (for uninstall)
-     */
     public static function remove_reaction_type_column() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'fcom_post_reactions';
 
-        // Check if table exists
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall cleanup.
         $table_exists = $wpdb->get_var(
             $wpdb->prepare(
@@ -79,7 +68,6 @@ class Database {
             return;
         }
 
-        // Check if column exists before dropping
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall cleanup.
         $column_exists = $wpdb->get_results(
             $wpdb->prepare(
@@ -95,13 +83,6 @@ class Database {
         }
     }
 
-    /**
-     * Get reaction breakdown for a feed or comment
-     *
-     * @param int $object_id
-     * @param string $object_type 'feed' or 'comment'
-     * @return array
-     */
     public static function get_reaction_breakdown($object_id, $object_type) {
         $cache_key = "tbc_mr_{$object_type}_{$object_id}";
         $cached = get_transient($cache_key);
@@ -133,24 +114,10 @@ class Database {
         return $results;
     }
 
-    /**
-     * Clear reaction breakdown cache
-     *
-     * @param int $object_id
-     * @param string $object_type
-     */
     public static function clear_reaction_breakdown_cache($object_id, $object_type) {
         delete_transient("tbc_mr_{$object_type}_{$object_id}");
     }
 
-    /**
-     * Get user's reaction type for an object
-     *
-     * @param int $user_id
-     * @param int $object_id
-     * @param string $object_type
-     * @return string|null
-     */
     public static function get_user_reaction_type($user_id, $object_id, $object_type) {
         global $wpdb;
         $table = $wpdb->prefix . 'fcom_post_reactions';
@@ -167,14 +134,6 @@ class Database {
         ));
     }
 
-    /**
-     * Batch get user reaction types for multiple objects
-     *
-     * @param int $user_id
-     * @param array $object_ids
-     * @param string $object_type
-     * @return array object_id => reaction_type
-     */
     public static function get_user_reaction_types_batch($user_id, $object_ids, $object_type) {
         if (empty($object_ids)) {
             return [];
@@ -214,13 +173,6 @@ class Database {
         return $map;
     }
 
-    /**
-     * Batch get reaction breakdowns for multiple objects
-     *
-     * @param array $object_ids
-     * @param string $object_type
-     * @return array object_id => ['breakdown' => [...], 'total' => int]
-     */
     public static function get_reaction_breakdowns_batch($object_ids, $object_type) {
         $ids = array_map('absint', $object_ids);
         $ids = array_filter($ids);
@@ -249,13 +201,11 @@ class Database {
             ARRAY_A
         );
 
-        // Initialize all requested IDs
         $breakdowns = [];
         foreach ($ids as $id) {
             $breakdowns[$id] = ['breakdown' => [], 'total' => 0];
         }
 
-        // Get reaction configs for enrichment
         $enabled_reactions = Core::get_enabled_reactions();
         $reaction_map = [];
         foreach ($enabled_reactions as $reaction) {
@@ -287,19 +237,12 @@ class Database {
     }
 
     /**
-     * Update reaction type for a user's reaction
-     *
-     * @param int $user_id
-     * @param int $object_id
-     * @param string $object_type
-     * @param string $reaction_type
-     * @return bool
+     * Updates only tbc_mr_reaction_type — never FC's type column, so FC's own heart-reaction bookkeeping stays intact.
      */
     public static function update_reaction_type($user_id, $object_id, $object_type, $reaction_type) {
         global $wpdb;
         $table = $wpdb->prefix . 'fcom_post_reactions';
 
-        // Only update tbc_mr_reaction_type, never touch FC's type column
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Real-time reaction update.
         $result = $wpdb->update(
             $table,

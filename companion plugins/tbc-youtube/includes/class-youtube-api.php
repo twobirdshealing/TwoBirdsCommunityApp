@@ -8,9 +8,6 @@
  *   GET /tbc-yt/v1/playlists/{id}/videos — Videos in a specific playlist
  *   GET /tbc-yt/v1/config               — Module config (channel URL)
  *
- * Also registers backward-compatible routes under tbc-ca/v1/youtube/*
- * for older app versions.
- *
  * Requires a YouTube Data API v3 key configured via:
  *   TBC YouTube Settings → YouTube API Key
  *
@@ -53,68 +50,51 @@ class TBC_YT_API {
     // =========================================================================
 
     public function register_routes() {
-        $routes = $this->get_route_definitions();
-
-        // Primary namespace: tbc-yt/v1
-        foreach ($routes as $path => $args) {
-            register_rest_route(TBC_YT_REST_NAMESPACE, $path, $args);
-        }
-
-        // Backward compat: tbc-ca/v1/youtube/* (for older app versions)
-        $legacy_namespace = defined('TBC_CA_REST_NAMESPACE') ? TBC_CA_REST_NAMESPACE : 'tbc-ca/v1';
-        foreach ($routes as $path => $args) {
-            register_rest_route($legacy_namespace, '/youtube' . $path, $args);
-        }
-    }
-
-    /**
-     * Route definitions shared between both namespaces
-     */
-    private function get_route_definitions() {
-        return [
-            '/latest' => [
-                'methods'             => 'GET',
-                'callback'            => [$this, 'get_latest_videos'],
-                'permission_callback' => '__return_true',
-                'args'                => [
-                    'limit' => [
-                        'default'           => 1,
-                        'sanitize_callback' => 'absint',
-                        'validate_callback' => function ($value) {
-                            return is_numeric($value) && $value >= 1 && $value <= 15;
-                        },
-                    ],
+        register_rest_route(TBC_YT_REST_NAMESPACE, '/latest', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'get_latest_videos'],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'limit' => [
+                    'default'           => 1,
+                    'sanitize_callback' => 'absint',
+                    'validate_callback' => function ($value) {
+                        return is_numeric($value) && $value >= 1 && $value <= 15;
+                    },
                 ],
             ],
-            '/playlists' => [
-                'methods'             => 'GET',
-                'callback'            => [$this, 'get_playlists'],
-                'permission_callback' => '__return_true',
-            ],
-            '/playlists/(?P<id>[a-zA-Z0-9_-]+)/videos' => [
-                'methods'             => 'GET',
-                'callback'            => [$this, 'get_playlist_videos'],
-                'permission_callback' => '__return_true',
-                'args'                => [
-                    'limit' => [
-                        'default'           => 10,
-                        'sanitize_callback' => 'absint',
-                        'validate_callback' => function ($value) {
-                            return is_numeric($value) && $value >= 1 && $value <= 50;
-                        },
-                    ],
-                    'pageToken' => [
-                        'default'           => '',
-                        'sanitize_callback' => 'sanitize_text_field',
-                    ],
+        ]);
+
+        register_rest_route(TBC_YT_REST_NAMESPACE, '/playlists', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'get_playlists'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        register_rest_route(TBC_YT_REST_NAMESPACE, '/playlists/(?P<id>[a-zA-Z0-9_-]+)/videos', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'get_playlist_videos'],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'limit' => [
+                    'default'           => 10,
+                    'sanitize_callback' => 'absint',
+                    'validate_callback' => function ($value) {
+                        return is_numeric($value) && $value >= 1 && $value <= 50;
+                    },
+                ],
+                'pageToken' => [
+                    'default'           => '',
+                    'sanitize_callback' => 'sanitize_text_field',
                 ],
             ],
-            '/config' => [
-                'methods'             => 'GET',
-                'callback'            => [$this, 'get_config'],
-                'permission_callback' => '__return_true',
-            ],
-        ];
+        ]);
+
+        register_rest_route(TBC_YT_REST_NAMESPACE, '/config', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'get_config'],
+            'permission_callback' => '__return_true',
+        ]);
     }
 
     // =========================================================================

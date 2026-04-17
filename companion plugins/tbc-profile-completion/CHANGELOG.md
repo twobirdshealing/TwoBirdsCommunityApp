@@ -1,10 +1,12 @@
 # Changelog
 
-## 1.0.1 — 2026-04-14
+## 1.1.0 — 2026-04-16
 
-Cache-bust release. The overlay JS asset is cached by browsers under `?v=TBC_PCOM_VERSION`, so any browser that loaded 1.0.0's JS before the route move (when the JS still called `auth/register/complete`) would keep serving the stale code against the new `tbc-pcom/v1` namespace and 404. Bumping the plugin version forces every browser to re-fetch the JS.
+### Improved
+- Social links fields now render with provider icon chip, domain prefix, and compact username input — aligned with the TBC native app and Fluent's native profile UI
+- Placeholders now use Fluent's verbatim format (`instagram @username`, `fb_username`, etc.) instead of full URL placeholders
 
-## 1.0.0 — 2026-04-14
+## 1.0.0 — 2026-04-15
 
 Initial release.
 

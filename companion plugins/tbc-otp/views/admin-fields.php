@@ -7,8 +7,11 @@
 
 defined('ABSPATH') || exit;
 
-// FC native field definitions (for phone selector)
-$fc_field_defs = TBCOTP\Admin::get_fc_field_definitions();
+$fc_field_defs       = TBCOTP\Admin::get_fc_field_definitions();
+$cpf_enabled         = TBCOTP\Admin::is_custom_profile_fields_enabled();
+$has_fc_pro          = TBCOTP\Admin::has_fluent_community_pro();
+$phone_slug_setting  = (string) TBCOTP\Helpers::get_option('phone_field_slug', '');
+$needs_phone_setup   = !$cpf_enabled || empty($phone_slug_setting) || empty($fc_field_defs);
 ?>
 
 <div class="wrap tbc-otp-admin">
@@ -95,16 +98,9 @@ $fc_field_defs = TBCOTP\Admin::get_fc_field_definitions();
         <p class="description"><?php esc_html_e('Configure which FC native custom field stores the phone number.', 'tbc-otp'); ?></p>
 
         <table class="form-table">
-            <?php
-            $phone_slug_setting = (string) TBCOTP\Helpers::get_option('phone_field_slug', '');
-            ?>
             <tr>
                 <th scope="row"><label for="tbc_otp_phone_field_slug"><?php esc_html_e('Phone Field', 'tbc-otp'); ?></label></th>
                 <td>
-                    <?php if (empty($fc_field_defs)) : ?>
-                        <p class="description" style="color:#d63638;"><?php esc_html_e('No FC native custom fields found. Create fields in Fluent Community → Settings → Custom Profile Fields.', 'tbc-otp'); ?></p>
-                    <?php endif; ?>
-
                     <select id="tbc_otp_phone_field_slug" name="tbc_otp_phone_field_slug" class="regular-text">
                         <option value="" <?php selected($phone_slug_setting, ''); ?>><?php esc_html_e('— Select a field —', 'tbc-otp'); ?></option>
                         <?php foreach ($fc_field_defs as $fd) :
@@ -117,7 +113,47 @@ $fc_field_defs = TBCOTP\Admin::get_fc_field_definitions();
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <p class="description"><?php esc_html_e('The FC native custom field used for phone number storage and OTP.', 'tbc-otp'); ?></p>
+                    <p class="description">
+                        <?php esc_html_e('The FC native custom field used for phone number storage and OTP.', 'tbc-otp'); ?>
+                        <?php if ($cpf_enabled) : ?>
+                            <a href="<?php echo esc_url(admin_url('admin.php?page=fluent-community#/admin/custom-profile-fields')); ?>" target="_blank">
+                                <?php esc_html_e('Edit in Fluent Community &rarr;', 'tbc-otp'); ?>
+                            </a>
+                        <?php endif; ?>
+                    </p>
+
+                    <?php if ($needs_phone_setup) : ?>
+                        <div class="tbc-otp-phone-setup" style="margin-top:10px;padding:10px 12px;background:#fcf9e8;border-left:4px solid #dba617;">
+                            <?php if (!$cpf_enabled) : ?>
+                                <p style="margin:0 0 8px;">
+                                    <strong><?php esc_html_e("Fluent Community's Custom Profile Fields feature is disabled.", 'tbc-otp'); ?></strong>
+                                    <?php esc_html_e('OTP needs a phone custom field to attach to.', 'tbc-otp'); ?>
+                                </p>
+                            <?php elseif (empty($fc_field_defs)) : ?>
+                                <p style="margin:0 0 8px;">
+                                    <strong><?php esc_html_e('No custom profile fields exist yet.', 'tbc-otp'); ?></strong>
+                                </p>
+                            <?php else : ?>
+                                <p style="margin:0 0 8px;">
+                                    <?php esc_html_e('Pick an existing field above, or let OTP create one for you.', 'tbc-otp'); ?>
+                                </p>
+                            <?php endif; ?>
+
+                            <?php if ($has_fc_pro) : ?>
+                                <button type="button" class="button button-primary" id="tbc-otp-setup-phone-btn"
+                                        data-nonce="<?php echo esc_attr(wp_create_nonce('tbc_otp_setup_phone_field')); ?>">
+                                    <?php esc_html_e('Run one-click phone field setup', 'tbc-otp'); ?>
+                                </button>
+                                <span class="description" style="margin-left:8px;">
+                                    <?php esc_html_e('Enables Custom Profile Fields, creates a Phone field, and links it here.', 'tbc-otp'); ?>
+                                </span>
+                            <?php else : ?>
+                                <p class="description" style="margin:0;color:#d63638;">
+                                    <?php esc_html_e('Custom Profile Fields requires Fluent Community Pro. Install and activate Fluent Community Pro to continue.', 'tbc-otp'); ?>
+                                </p>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                 </td>
             </tr>
             <tr>
@@ -138,15 +174,16 @@ $fc_field_defs = TBCOTP\Admin::get_fc_field_definitions();
             </tr>
         </table>
 
-        <h3><?php esc_html_e('Developer / Testing', 'tbc-otp'); ?></h3>
+        <h2 style="margin-top:30px;padding-top:20px;border-top:1px solid #c3c4c7;"><?php esc_html_e('Data Management', 'tbc-otp'); ?></h2>
         <table class="form-table">
             <tr>
-                <th scope="row"><?php esc_html_e('Disable Rate Limiting', 'tbc-otp'); ?></th>
+                <th scope="row"><?php esc_html_e('Uninstall Behavior', 'tbc-otp'); ?></th>
                 <td>
                     <label>
-                        <input type="checkbox" name="tbc_otp_disable_rate_limit" value="1" <?php checked(1, TBCOTP\Helpers::get_option('disable_rate_limit', false)); ?> />
-                        <?php esc_html_e("Disable FluentCommunity's auth rate limiting (for testing only).", 'tbc-otp'); ?>
+                        <input type="checkbox" name="tbc_otp_delete_data_on_uninstall" value="1" <?php checked(1, TBCOTP\Helpers::get_option('delete_data_on_uninstall', false)); ?> />
+                        <?php esc_html_e('Delete all plugin data when uninstalled', 'tbc-otp'); ?>
                     </label>
+                    <p class="description"><?php esc_html_e('When enabled, uninstalling this plugin permanently removes all settings including Twilio credentials and any in-flight OTP session transients. Leave disabled if you uninstall for testing and want to keep your Twilio configuration.', 'tbc-otp'); ?></p>
                 </td>
             </tr>
         </table>
@@ -155,46 +192,12 @@ $fc_field_defs = TBCOTP\Admin::get_fc_field_definitions();
     </form>
 
     <div class="tbc-otp-footer" style="margin-top:20px;padding:16px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:6px;">
-        <p><strong><?php esc_html_e('Version:', 'tbc-otp'); ?></strong> <?php echo esc_html(TBC_OTP_VERSION); ?></p>
         <p>
             <a href="https://console.twilio.com/us1/develop/verify/overview" target="_blank" class="button button-secondary">
                 <span class="dashicons dashicons-external" style="vertical-align:middle;margin-right:4px;"></span>
                 <?php esc_html_e('View Twilio Verify Logs', 'tbc-otp'); ?>
             </a>
         </p>
-    </div>
-
-    <!-- Data Management -->
-    <div class="tbc-otp-section" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #c3c4c7;">
-        <h2><?php esc_html_e('Data Management', 'tbc-otp'); ?></h2>
-        <table class="form-table">
-            <tr>
-                <th scope="row"><?php esc_html_e('Uninstall Behavior', 'tbc-otp'); ?></th>
-                <td>
-                    <label>
-                        <input type="checkbox"
-                               id="tbc_otp_delete_data_on_uninstall"
-                               name="tbc_otp_delete_data_on_uninstall"
-                               value="1"
-                               <?php checked(get_option('tbc_otp_delete_data_on_uninstall', false)); ?> />
-                        <?php esc_html_e('Delete all plugin data when uninstalled', 'tbc-otp'); ?>
-                    </label>
-                    <p class="description"><?php esc_html_e('When enabled, uninstalling this plugin will permanently remove all OTP settings and Twilio configuration.', 'tbc-otp'); ?></p>
-                    <?php wp_nonce_field('tbc_otp_data_mgmt', 'tbc_otp_data_mgmt_nonce'); ?>
-                    <button type="button" class="button button-secondary" style="margin-top: 8px;" onclick="
-                        var cb = document.getElementById('tbc_otp_delete_data_on_uninstall');
-                        var nonce = document.querySelector('[name=tbc_otp_data_mgmt_nonce]').value;
-                        fetch(ajaxurl, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                            body: 'action=tbc_otp_save_uninstall_pref&value=' + (cb.checked ? '1' : '0') + '&_wpnonce=' + nonce
-                        }).then(function(r) { return r.json(); }).then(function(d) {
-                            if (d.success) { alert('<?php echo esc_js(__('Saved.', 'tbc-otp')); ?>'); }
-                        });
-                    "><?php esc_html_e('Save Preference', 'tbc-otp'); ?></button>
-                </td>
-            </tr>
-        </table>
     </div>
 
 </div>

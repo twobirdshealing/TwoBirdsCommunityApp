@@ -126,23 +126,24 @@ function fluent_starter_docs_enqueue() {
     $docs_dir = fluent_starter_docs_dir();
     $docs_url = content_url('tbc-docs/');
 
-    // Enqueue docs theme CSS if it exists
-    if (file_exists($docs_dir . 'docs-theme.css')) {
+    $docs_css_path = $docs_dir . 'docs-theme.css';
+    $docs_js_path  = $docs_dir . 'docs-theme.js';
+
+    if (file_exists($docs_css_path)) {
         wp_enqueue_style(
             'tbc-docs-theme',
             $docs_url . 'docs-theme.css',
             array(),
-            FLUENT_STARTER_VERSION
+            (string) filemtime($docs_css_path)
         );
     }
 
-    // Enqueue docs theme JS if it exists
-    if (file_exists($docs_dir . 'docs-theme.js')) {
+    if (file_exists($docs_js_path)) {
         wp_enqueue_script(
             'tbc-docs-theme',
             $docs_url . 'docs-theme.js',
             array(),
-            FLUENT_STARTER_VERSION,
+            (string) filemtime($docs_js_path),
             true
         );
     }

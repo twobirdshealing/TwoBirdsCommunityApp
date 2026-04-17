@@ -10,23 +10,16 @@ defined('WP_UNINSTALL_PLUGIN') || exit;
 
 $tbc_mr_settings = get_option('tbc_mr_settings', []);
 
-// Only remove data if the user explicitly opted in
 if (empty($tbc_mr_settings['delete_data_on_uninstall'])) {
     return;
 }
 
-// === Full data removal (user opted in) ===
-
-// Remove settings
 delete_option('tbc_mr_settings');
 delete_option('tbc_mr_pending_reaction');
-delete_option('tbc_mr_db_version');
 
-// Remove the tbc_mr_reaction_type column from FC's table
 require_once __DIR__ . '/includes/class-database.php';
 \TBCMultiReactions\Database::remove_reaction_type_column();
 
-// Delete icon media records and their physical files
 global $wpdb;
 $tbc_mr_media_table = $wpdb->prefix . 'fcom_media_archive';
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall cleanup.
@@ -35,7 +28,6 @@ $tbc_mr_media_exists = $wpdb->get_var(
 );
 
 if ($tbc_mr_media_exists) {
-    // Get file paths before deleting records
     // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name from $wpdb->prefix.
     $tbc_mr_icon_files = $wpdb->get_col($wpdb->prepare("SELECT media_path FROM `{$tbc_mr_media_table}` WHERE object_source = %s", 'tbc_mr_icon'));
     foreach ($tbc_mr_icon_files as $tbc_mr_path) {
@@ -47,7 +39,6 @@ if ($tbc_mr_media_exists) {
     $wpdb->query($wpdb->prepare("DELETE FROM `{$tbc_mr_media_table}` WHERE object_source = %s", 'tbc_mr_icon'));
 }
 
-// Clean up transients
 $tbc_mr_like_transient = $wpdb->esc_like('_transient_tbc_mr_') . '%';
 $tbc_mr_like_timeout = $wpdb->esc_like('_transient_timeout_tbc_mr_') . '%';
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall transient cleanup.

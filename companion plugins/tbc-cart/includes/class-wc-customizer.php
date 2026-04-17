@@ -145,6 +145,32 @@ class TBC_Cart_WC_Settings {
             )
         );
 
+        // Data Management section
+        add_settings_section(
+            'tbc_cart_data_section',
+            __('Data Management', 'tbc-cart'),
+            array($this, 'render_data_section'),
+            'tbc-cart-settings'
+        );
+
+        register_setting('tbc_cart_settings', 'tbc_cart_delete_data_on_uninstall', array(
+            'type'              => 'boolean',
+            'default'           => false,
+            'sanitize_callback' => array($this, 'sanitize_checkbox'),
+        ));
+
+        add_settings_field(
+            'tbc_cart_delete_data_on_uninstall',
+            __('Uninstall Behavior', 'tbc-cart'),
+            array($this, 'render_checkbox'),
+            'tbc-cart-settings',
+            'tbc_cart_data_section',
+            array(
+                'id'          => 'tbc_cart_delete_data_on_uninstall',
+                'default'     => false,
+                'description' => __('Delete all plugin settings when uninstalled. Leave disabled if uninstalling for testing.', 'tbc-cart'),
+            )
+        );
     }
 
     /**
@@ -160,6 +186,10 @@ class TBC_Cart_WC_Settings {
 
     public function render_mini_cart_section() {
         echo '<p>' . esc_html__('Configure the mini cart dropdown in the Fluent Community header.', 'tbc-cart') . '</p>';
+    }
+
+    public function render_data_section() {
+        echo '<p>' . esc_html__('Control what happens to plugin settings when the plugin is uninstalled.', 'tbc-cart') . '</p>';
     }
 
     /**

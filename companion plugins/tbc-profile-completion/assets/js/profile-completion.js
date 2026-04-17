@@ -110,13 +110,18 @@
                 if (cfg.existing && cfg.existing.socialLinks && cfg.existing.socialLinks[sp.key]) {
                     existingVal = cfg.existing.socialLinks[sp.key];
                 }
+                // icon_svg is inline SVG from Fluent Community core — trusted source, not user input.
                 socialInputs +=
                     '<div class="tbc-pcom__social-row">' +
                         '<label class="tbc-pcom__social-label">' + escHtml(sp.label) + '</label>' +
-                        '<input type="text" class="tbc-pcom__input tbc-pcom__social-input" ' +
-                            'name="social_' + escAttr(sp.key) + '" ' +
-                            'placeholder="' + escAttr(sp.placeholder || '') + '" ' +
-                            'value="' + escAttr(existingVal) + '" />' +
+                        '<div class="tbc-pcom__social-field">' +
+                            '<span class="tbc-pcom__social-icon">' + (sp.icon_svg || '') + '</span>' +
+                            '<span class="tbc-pcom__social-prefix">' + escHtml(sp.domain || '') + '</span>' +
+                            '<input type="text" class="tbc-pcom__social-input" ' +
+                                'name="social_' + escAttr(sp.key) + '" ' +
+                                'placeholder="' + escAttr(sp.placeholder || '') + '" ' +
+                                'value="' + escAttr(existingVal) + '" />' +
+                        '</div>' +
                     '</div>';
             }
 
@@ -248,7 +253,6 @@
 
         if (src) {
             preview.innerHTML = '<img src="' + escAttr(src) + '" alt="Profile photo" />';
-            preview.classList.add('tbc-pcom__avatar-img--has-image');
         }
     }
 

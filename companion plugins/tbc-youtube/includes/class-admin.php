@@ -25,30 +25,15 @@ class TBC_YT_Admin {
         add_action('admin_init', [$this, 'register_settings']);
     }
 
-    /**
-     * Add admin menu — under TBC Community App parent if available, else standalone top-level
-     */
     public function add_admin_menu() {
-        if (defined('TBC_CA_PLUGIN_DIR')) {
-            add_submenu_page(
-                'tbc-community-app',
-                __('YouTube', 'tbc-youtube'),
-                __('YouTube', 'tbc-youtube'),
-                'manage_options',
-                'tbc-youtube',
-                [$this, 'admin_page']
-            );
-        } else {
-            add_menu_page(
-                __('TBC YouTube', 'tbc-youtube'),
-                __('TBC YouTube', 'tbc-youtube'),
-                'manage_options',
-                'tbc-youtube',
-                [$this, 'admin_page'],
-                'dashicons-youtube',
-                32
-            );
-        }
+        add_submenu_page(
+            'tbc-community-app',
+            __('YouTube', 'tbc-youtube'),
+            __('YouTube', 'tbc-youtube'),
+            'manage_options',
+            'tbc-youtube',
+            [$this, 'admin_page']
+        );
     }
 
     /**
@@ -206,9 +191,6 @@ class TBC_YT_Admin {
                         </tr>
                     </tbody>
                 </table>
-                <p class="description" style="margin-top: 8px;">
-                    <?php _e('Legacy endpoints under <code>/wp-json/tbc-ca/v1/youtube/*</code> are also registered for backward compatibility.', 'tbc-youtube'); ?>
-                </p>
 
                 <hr />
                 <h2><?php _e('Data Management', 'tbc-youtube'); ?></h2>

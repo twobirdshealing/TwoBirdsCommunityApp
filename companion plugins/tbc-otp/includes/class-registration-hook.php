@@ -1,15 +1,7 @@
 <?php
 /**
  * Registration Hook Class
- * Intercepts registration to inject OTP phone verification.
- *
- * App registration: hooks tbc_ca_pre_register filter in tbc-community-app's
- * POST /auth/register endpoint. Returns an OTP-required response to interrupt
- * registration when phone verification is needed, or null to let it proceed.
- *
- * Web registration: hooks wp_ajax_nopriv_fcom_user_registration at priority 6
- * (before FC's handler at priority 10) to intercept FC's native AJAX registration
- * and inject OTP verification into the flow.
+ * Gates registration on phone OTP verification.
  *
  * @package TBC_OTP
  */
@@ -54,7 +46,7 @@ class RegistrationHook {
             return null;
         }
 
-        $session_key = sanitize_text_field($data['tbc_otp_session_key'] ?? $data['tbc_reg_session_key'] ?? '');
+        $session_key = sanitize_text_field($data['tbc_otp_session_key'] ?? '');
 
         // Session already verified — let registration proceed
         if (!empty($session_key) && Helpers::is_verified($session_key)) {
@@ -174,7 +166,7 @@ class RegistrationHook {
         }
 
         // phpcs:ignore WordPress.Security.NonceVerification.Missing
-        $session_key = sanitize_text_field($_POST['tbc_otp_session_key'] ?? $_POST['tbc_reg_session_key'] ?? '');
+        $session_key = sanitize_text_field($_POST['tbc_otp_session_key'] ?? '');
 
         // Verified session — consume it and let FC proceed
         if (!empty($session_key) && Helpers::is_verified($session_key)) {

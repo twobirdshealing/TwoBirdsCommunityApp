@@ -19,9 +19,7 @@ class TBC_CA_Push_Preferences {
         return self::$instance;
     }
 
-    private function __construct() {
-        // Nothing to hook for now
-    }
+    private function __construct() {}
 
     /**
      * Get user's notification preferences

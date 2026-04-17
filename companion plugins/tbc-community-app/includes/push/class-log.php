@@ -134,14 +134,10 @@ class TBC_CA_Push_Log {
         $table = $this->table();
         $cutoff = gmdate('Y-m-d H:i:s', strtotime("-{$days} days"));
 
-        $deleted = $wpdb->query($wpdb->prepare(
+        $wpdb->query($wpdb->prepare(
             "DELETE FROM {$table} WHERE created_at < %s",
             $cutoff
         ));
-
-        if ($deleted > 0) {
-            error_log("[TBC Push Log] Cleaned up {$deleted} entries older than {$days} days");
-        }
     }
 
     /**

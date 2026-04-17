@@ -136,15 +136,8 @@ class ProfileGate {
         return $missing;
     }
 
-    /**
-     * Whether the user has actually uploaded an avatar (vs. FC's auto-generated
-     * Gravatar / ui-avatars / placeholder fallback). Delegates to FC's native
-     * XProfile::hasCustomAvatar(), which reads the raw `avatar` column directly.
-     *
-     * @param mixed $xprofile  FluentCommunity XProfile model instance.
-     * @param array $overrides Optional pre-save overrides; if 'avatar' is present
-     *                         it takes precedence over the model's stored value.
-     */
+    // FC's hasCustomAvatar() reads the raw column, skipping the Gravatar /
+    // ui-avatars fallback URL returned by getAvatarAttribute().
     public static function has_real_avatar($xprofile, array $overrides = []): bool {
         if (array_key_exists('avatar', $overrides)) {
             return !empty($overrides['avatar']);
@@ -154,14 +147,7 @@ class ProfileGate {
             return false;
         }
 
-        if (method_exists($xprofile, 'hasCustomAvatar')) {
-            return (bool) $xprofile->hasCustomAvatar();
-        }
-
-        // Fallback for FC versions older than 2.1.x that pre-date hasCustomAvatar().
-        // Read the raw column directly so we don't trip on getAvatarAttribute()'s
-        // Gravatar/ui-avatars fallback URL.
-        return !empty($xprofile->getRawOriginal('avatar'));
+        return (bool) $xprofile->hasCustomAvatar();
     }
 
     public static function uploaded_avatar_url($xprofile): string {

@@ -34,7 +34,19 @@
     <li><a href="#theme-context">ThemeContext &amp; Caching</a></li>
     <li><a href="#with-opacity">withOpacity Helper</a></li>
     <li><a href="#webview-theme">WebView Theme Injection</a></li>
-    <li><a href="#companion-plugins">Companion Plugin CSS</a></li>
+    <li><a href="#companion-plugins">Companion Plugins &amp; WordPress Themes</a>
+      <ol style="margin-top:4px">
+        <li><a href="#wp-php-setup">PHP Setup</a></li>
+        <li><a href="#wp-dark-mode">How Dark Mode Works</a></li>
+        <li><a href="#wp-css-pattern">CSS Pattern &amp; Fallbacks</a></li>
+        <li><a href="#wp-mapping">Hardcoded &rarr; Variable Mapping</a></li>
+        <li><a href="#wp-components">Component Patterns</a></li>
+        <li><a href="#wp-status-colors">Status Colors (Non-Themed)</a></li>
+        <li><a href="#wp-css-template">CSS File Template</a></li>
+        <li><a href="#wp-mistakes">Common Mistakes</a></li>
+        <li><a href="#wp-checklist">Theming Checklist</a></li>
+      </ol>
+    </li>
     <li><a href="#intentional-static">Intentionally Static Colors</a></li>
     <li><a href="#rules">Rules</a></li>
   </ol>
@@ -455,11 +467,86 @@ backgroundColor: withOpacity(colors.error, 0.1)</code></pre>
 injectedJavaScriptBeforeContentLoaded={getThemeInjectionScript(isDark)}</code></pre>
 
 <!-- ================================================================== -->
-<h2 id="companion-plugins">11. Companion Plugin CSS</h2>
+<h2 id="companion-plugins">11. Companion Plugins &amp; WordPress Themes</h2>
 
-<p>WordPress companion plugins and themes must use Fluent CSS variables with fallbacks to stay theme-compatible.</p>
+<p>WordPress companion plugins and themes must use Fluent Community's <code>--fcom-*</code> CSS variables to stay in sync with the admin's color customizer &mdash; including automatic light/dark mode switching.</p>
 
-<h3>CSS pattern for companion plugins</h3>
+<!-- ---------------------------------- -->
+<h3 id="wp-php-setup">11.1 PHP Setup</h3>
+
+<p>The <code>--fcom-*</code> variables are injected as inline CSS by Fluent Community's <code>fluent_community/enqueue_global_assets</code> action. This loads <code>global.css</code>, <code>theme-default.css</code>, the color scheme CSS (light + dark), and the dark mode detection script.</p>
+
+<pre><code>// In your wp_enqueue_scripts callback, before your own styles:
+public function maybe_enqueue_assets() {
+    // Load Fluent Community global styles + color variables (light/dark)
+    if (did_action('fluent_community/enqueue_global_assets') === 0) {
+        do_action('fluent_community/enqueue_global_assets', true);
+    }
+
+    // Now enqueue your plugin CSS &mdash; variables are available
+    wp_enqueue_style('my-plugin', MY_PLUGIN_URL . 'css/my-plugin.css', [], MY_VERSION);
+}</code></pre>
+
+<p>What this does:</p>
+<ol>
+  <li>Enqueues <code>global.css</code> and <code>theme-default.css</code> from Fluent Community</li>
+  <li>Calls <code>Utility::getColorCssVariables()</code> which generates inline CSS setting all <code>--fcom-*</code> variables on <code>body</code> (light) and <code>html.dark body</code> (dark)</li>
+  <li>Enqueues <code>portal_general.js</code> which handles the dark mode <code>html.dark</code> class toggle</li>
+</ol>
+
+<div class="callout callout-warn">
+  <strong>Guard with <code>did_action()</code></strong> &mdash; If the page already uses the Fluent Community template (like portal pages), the action has already fired. The guard prevents double-loading.
+</div>
+
+<!-- ---------------------------------- -->
+<h3 id="wp-dark-mode">11.2 How Dark Mode Works</h3>
+
+<p>Fluent's customizer lets users pick light + dark color schemes. <code>Utility::getColorCssVariables()</code> generates CSS for both:</p>
+
+<pre><code>/* Light (always present) */
+body {
+    --fcom-primary-bg: #FFFFFF;
+    --fcom-primary-text: #19283a;
+    /* ... */
+}
+
+/* Dark (auto-generated from customizer dark scheme) */
+html.dark body {
+    --fcom-primary-bg: #1d1e1f;
+    --fcom-primary-text: #E5EAF3;
+    /* ... values depend on chosen dark scheme */
+}</code></pre>
+
+<p><code>portal_general.js</code> checks <code>localStorage('fcom_global_storage')</code> and adds/removes the <code>html.dark</code> class. Your CSS uses <code>var(--fcom-primary-bg, #fff)</code> &mdash; the variable handles both modes automatically.</p>
+
+<table>
+  <tr><th>Anti-pattern</th><th>Why it's wrong</th></tr>
+  <tr><td>Writing <code>html.dark .my-thing { background: #1d1e1f; }</code></td><td>Hardcoded dark values won't sync if user picks a different dark scheme in customizer</td></tr>
+  <tr><td>Duplicating every rule with <code>html.dark</code> overrides</td><td>The variables already flip automatically &mdash; one rule handles both modes</td></tr>
+  <tr><td>Using <code>@media (prefers-color-scheme: dark)</code></td><td>Fluent uses <code>html.dark</code> class, not the OS media query</td></tr>
+</table>
+
+<p>What you <strong>do</strong> need to override in dark mode (minimal):</p>
+<pre><code>/* 1. Native form elements need color-scheme for browser rendering */
+html.dark .my-wrapper select,
+html.dark .my-wrapper input {
+    color-scheme: dark;
+}
+
+/* 2. box-shadow needs higher opacity on dark backgrounds */
+html.dark .my-card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* 3. Semantic colors with hardcoded dark text (e.g. #856404)
+      may need lightening since they sit on dark backgrounds */
+html.dark .my-warning-banner {
+    color: #ffc107;  /* lighten the dark-amber */
+}</code></pre>
+
+<!-- ---------------------------------- -->
+<h3 id="wp-css-pattern">11.3 CSS Pattern &amp; Fallbacks</h3>
+
 <pre><code>/* CORRECT &mdash; Works with or without Fluent */
 .my-component {
     background: var(--fcom-primary-bg, #ffffff);
@@ -472,23 +559,11 @@ injectedJavaScriptBeforeContentLoaded={getThemeInjectionScript(isDark)}</code></
     background: var(--fcom-primary-bg);
 }</code></pre>
 
-<h3>Dark mode</h3>
-<p>Dark mode is activated via the <code>html.dark</code> class on the document root. Colors using <code>--fcom-*</code> variables auto-switch. Only override shadows, overlays, and hover effects:</p>
-<pre><code>/* Light mode (default) */
-.my-card {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+<div class="callout callout-warn">
+  <strong>Always use fallbacks.</strong> If Fluent Community is deactivated or the action didn't fire, the fallback keeps your plugin looking correct. Without a fallback, the property inherits or uses the initial value (often transparent or black), which breaks the layout.
+</div>
 
-/* Dark mode &mdash; only override what changes */
-html.dark .my-card {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-
-html.dark .my-item:hover {
-    background: rgba(255,255,255,0.05);
-}</code></pre>
-
-<h3>Quick reference: Fluent variable &rarr; typical use</h3>
+<h4>Quick reference: Fluent variable &rarr; typical use</h4>
 <table>
   <tr><th>Use case</th><th>Variable</th></tr>
   <tr><td>Card background</td><td><code>var(--fcom-primary-bg, #ffffff)</code></td></tr>
@@ -503,9 +578,332 @@ html.dark .my-item:hover {
   <tr><td>Input focus ring</td><td><code>var(--fcom-text-link, #2271b1)</code></td></tr>
 </table>
 
-<div class="callout">
-  <strong>Full CSS guide:</strong> See <span class="file-path">companion plugins/tbc-starter-theme/fluent-theme-integration-guide.md</span> for component examples (buttons, cards, forms, navigation, badges) and a complete CSS file template.
+<!-- ---------------------------------- -->
+<h3 id="wp-mapping">11.4 Hardcoded &rarr; Variable Mapping</h3>
+
+<p>Use this table when converting existing CSS. Find the hardcoded value on the left, replace with the right.</p>
+
+<table>
+  <tr><th>Instead of&hellip;</th><th>Use&hellip;</th></tr>
+  <tr><td><code>#fff</code> / <code>white</code> (backgrounds)</td><td><code>var(--fcom-primary-bg, #fff)</code></td></tr>
+  <tr><td><code>#f8f9fa</code> / <code>#f0f2f5</code> / <code>#f9f9f9</code> / <code>#f1f1f1</code> (subtle bg)</td><td><code>var(--fcom-secondary-bg, #f0f2f5)</code></td></tr>
+  <tr><td><code>#e9ecef</code> / <code>#f0f3f5</code> (hover bg)</td><td><code>var(--fcom-active-bg, #f0f3f5)</code></td></tr>
+  <tr><td><code>#19283a</code> / <code>#1e1e1e</code> / <code>#333</code> / <code>#000</code> (text)</td><td><code>var(--fcom-primary-text, #19283a)</code></td></tr>
+  <tr><td><code>#525866</code> / <code>#555</code> / <code>#666</code> (muted text)</td><td><code>var(--fcom-secondary-text, #525866)</code></td></tr>
+  <tr><td><code>#959595</code> / <code>#999</code> / <code>#888</code> (dim text)</td><td><code>var(--fcom-text-off, #959595)</code></td></tr>
+  <tr><td><code>#2271b1</code> (links)</td><td><code>var(--fcom-text-link, #2271b1)</code></td></tr>
+  <tr><td><code>#e3e8ee</code> / <code>#ddd</code> / <code>#e0e0e0</code> / <code>#e9ecef</code> (borders)</td><td><code>var(--fcom-primary-border, #e3e8ee)</code></td></tr>
+  <tr><td><code>#ccc</code> / <code>#9CA3AF</code> (strong borders)</td><td><code>var(--fcom-secondary-border, #9CA3AF)</code></td></tr>
+  <tr><td><code>#2B2E33</code> (button bg)</td><td><code>var(--fcom-primary-button, #2B2E33)</code></td></tr>
+  <tr><td><code>#fff</code> (button text)</td><td><code>var(--fcom-primary-button-text, #fff)</code></td></tr>
+</table>
+
+<!-- ---------------------------------- -->
+<h3 id="wp-components">11.5 Component Patterns</h3>
+
+<h4>Cards / Boxes</h4>
+<pre><code>.my-card {
+    background: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.my-card:hover {
+    background: var(--fcom-active-bg, #f0f3f5);
+}
+
+html.dark .my-card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}</code></pre>
+
+<h4>Buttons</h4>
+<pre><code>.my-btn {
+    background: var(--fcom-primary-button, #2B2E33);
+    color: var(--fcom-primary-button-text, #fff);
+    border: 1px solid var(--fcom-primary-button, #2B2E33);
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+}
+
+.my-btn:hover {
+    filter: brightness(1.1);
+}
+
+.my-btn.secondary {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    color: var(--fcom-secondary-text, #525866);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+}</code></pre>
+
+<h4>Form Inputs</h4>
+<pre><code>.my-input {
+    background-color: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: 6px;
+    color: inherit;
+    padding: 6px 10px;
+}
+
+.my-input:focus {
+    border-color: var(--fcom-text-link, #2271b1);
+    outline: none;
+}
+
+.my-input::placeholder {
+    color: var(--fcom-secondary-text, #525866);
+}
+
+/* Native elements need color-scheme in dark mode */
+html.dark .my-wrap select,
+html.dark .my-wrap input {
+    color-scheme: dark;
+}</code></pre>
+
+<h4>Tables</h4>
+<pre><code>.my-table {
+    background: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.my-table thead {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+}
+
+.my-table th {
+    color: var(--fcom-secondary-text, #525866);
+    border-bottom: 2px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.my-table td {
+    border-bottom: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.my-table a {
+    color: var(--fcom-text-link, #2271b1);
+}</code></pre>
+
+<h4>Navigation / Tabs</h4>
+<pre><code>.my-nav {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+}
+
+.my-nav-item {
+    color: var(--fcom-secondary-text, #525866);
+}
+
+.my-nav-item:hover {
+    color: var(--fcom-primary-text, #19283a);
+    background: var(--fcom-active-bg, #f0f3f5);
+}
+
+.my-nav-item.active {
+    background: var(--fcom-text-link, #2271b1);
+    color: #ffffff;
+}</code></pre>
+
+<h4>Links</h4>
+<pre><code>.my-link {
+    color: var(--fcom-text-link, #2271b1);
+    text-decoration: none;
+}
+
+.my-link:hover {
+    text-decoration: underline;
+}</code></pre>
+
+<h4>Badges / Tags</h4>
+<pre><code>/* Use rgba so they work on any background (light AND dark) */
+.my-badge-success {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.my-badge-danger {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.my-badge-warning {
+    background: rgba(255, 193, 7, 0.1);
+    color: #856404;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+/* Lighten dark text in warning badges for dark mode */
+html.dark .my-badge-warning {
+    color: #ffc107;
+}
+
+/* Neutral badge uses theme */
+.my-badge-neutral {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    color: var(--fcom-secondary-text, #525866);
+}</code></pre>
+
+<!-- ---------------------------------- -->
+<h3 id="wp-status-colors">11.6 Status Colors (Non-Themed)</h3>
+
+<p>Some colors should <strong>not</strong> change with theme &mdash; status indicators, alerts, brand badges. Use solid backgrounds with white text so they're readable on any surface.</p>
+
+<pre><code>/* Success / Available &mdash; Always green */
+.status-success {
+    background: linear-gradient(to bottom, #28a745, #34ce57);
+    color: #ffffff;
+}
+
+/* Error / Closed &mdash; Always red */
+.status-error {
+    background: linear-gradient(to bottom, #FF4B47, #FF6B65);
+    color: #ffffff;
+}
+
+/* Info / Open &mdash; Always blue */
+.status-info {
+    background: linear-gradient(to bottom, #345BFF, #527DFF);
+    color: #ffffff;
+}
+
+/* Warning &mdash; Always amber */
+.status-warning {
+    background: linear-gradient(to bottom, #f0ad4e, #ec971f);
+    color: #ffffff;
+}</code></pre>
+
+<div class="callout callout-success">
+  <strong>Themed vs fixed:</strong> If the color carries <em>semantic meaning</em> (success, error, brand), keep it fixed. If it's a <em>surface</em> (background, border, text), use <code>--fcom-*</code> variables.
 </div>
+
+<!-- ---------------------------------- -->
+<h3 id="wp-css-template">11.7 CSS File Template</h3>
+
+<p>Copy this structure when starting a new plugin or theme stylesheet:</p>
+
+<pre><code>/**
+ * Plugin Name &mdash; Frontend Styles
+ * Fluent Community Theme Compatible
+ */
+
+/* ==========================================================================
+   Custom Variables (plugin-specific, not colors)
+   ========================================================================== */
+
+:root {
+    --my-plugin-gap: 1rem;
+    --my-plugin-radius: 8px;
+}
+
+/* ==========================================================================
+   Base Styles (uses Fluent variables &mdash; works in light AND dark)
+   ========================================================================== */
+
+.my-plugin-wrap {
+    color: var(--fcom-primary-text, #19283a);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.my-plugin-card {
+    background: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    border-radius: var(--my-plugin-radius);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.my-plugin-header {
+    background: var(--fcom-secondary-bg, #f0f2f5);
+    border-bottom: 1px solid var(--fcom-primary-border, #e3e8ee);
+}
+
+.my-plugin-link {
+    color: var(--fcom-text-link, #2271b1);
+}
+
+.my-plugin-button {
+    background: var(--fcom-primary-button, #2B2E33);
+    color: var(--fcom-primary-button-text, #fff);
+}
+
+.my-plugin-meta {
+    color: var(--fcom-secondary-text, #525866);
+}
+
+.my-plugin-input {
+    background-color: var(--fcom-primary-bg, #fff);
+    border: 1px solid var(--fcom-primary-border, #e3e8ee);
+    color: inherit;
+}
+
+/* ==========================================================================
+   Dark Mode &mdash; Only override what variables can't handle
+   ========================================================================== */
+
+html.dark .my-plugin-card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+html.dark .my-plugin-wrap select,
+html.dark .my-plugin-wrap input {
+    color-scheme: dark;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .my-plugin-card {
+        border-radius: 0;
+    }
+}
+
+/* ==========================================================================
+   Accessibility
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .my-plugin-card,
+    .my-plugin-button {
+        animation: none !important;
+        transition: none !important;
+    }
+}</code></pre>
+
+<!-- ---------------------------------- -->
+<h3 id="wp-mistakes">11.8 Common Mistakes</h3>
+
+<table>
+  <tr><th>Mistake</th><th>Fix</th></tr>
+  <tr><td>No fallback values: <code>var(--fcom-primary-bg)</code></td><td>Always use <code>var(--fcom-primary-bg, #fff)</code></td></tr>
+  <tr><td>Same shadows in dark mode</td><td>Increase shadow opacity: <code>rgba(0,0,0,0.3)</code> for dark</td></tr>
+  <tr><td>Hardcoded white/black text</td><td>Use <code>--fcom-primary-text</code> / <code>--fcom-secondary-text</code></td></tr>
+  <tr><td>Hardcoding dark mode colors: <code>html.dark { background: #1d1e1f }</code></td><td>Won't sync if user picks a different dark scheme &mdash; use variables instead</td></tr>
+  <tr><td>Duplicating every rule with <code>html.dark</code> overrides</td><td>Variables flip automatically &mdash; only override shadows, form <code>color-scheme</code>, and hardcoded semantic text</td></tr>
+  <tr><td>Using <code>@media (prefers-color-scheme: dark)</code></td><td>Fluent uses <code>html.dark</code> class, not the OS media query</td></tr>
+  <tr><td>Using <code>!important</code> on colors</td><td>Breaks theme customization &mdash; avoid unless absolutely necessary</td></tr>
+  <tr><td>Explicit text color on inputs</td><td>Use <code>color: inherit</code> &mdash; inherits from themed parent</td></tr>
+</table>
+
+<!-- ---------------------------------- -->
+<h3 id="wp-checklist">11.9 Theming Checklist</h3>
+
+<table>
+  <tr><th>#</th><th>Task</th></tr>
+  <tr><td>1</td><td>Add <code>do_action('fluent_community/enqueue_global_assets', true)</code> in enqueue callback (with <code>did_action</code> guard)</td></tr>
+  <tr><td>2</td><td>Replace all hardcoded background colors with <code>--fcom-primary-bg</code> / <code>--fcom-secondary-bg</code> / <code>--fcom-active-bg</code></td></tr>
+  <tr><td>3</td><td>Replace all hardcoded text colors with <code>--fcom-primary-text</code> / <code>--fcom-secondary-text</code> / <code>--fcom-text-off</code> / <code>--fcom-text-link</code></td></tr>
+  <tr><td>4</td><td>Replace all hardcoded border colors with <code>--fcom-primary-border</code> / <code>--fcom-secondary-border</code></td></tr>
+  <tr><td>5</td><td>Replace button colors with <code>--fcom-primary-button</code> / <code>--fcom-primary-button-text</code></td></tr>
+  <tr><td>6</td><td>Use <code>rgba()</code> for semantic status badges (success/danger/warning) so they work on any background</td></tr>
+  <tr><td>7</td><td>Add <code>html.dark .my-wrap select, input { color-scheme: dark; }</code> for native form elements</td></tr>
+  <tr><td>8</td><td>Check any hardcoded dark text colors in banners/badges &mdash; lighten under <code>html.dark</code> if needed</td></tr>
+  <tr><td>9</td><td>Use <code>color: inherit</code> on inputs/selects instead of explicit text color</td></tr>
+  <tr><td>10</td><td>Add <code>html.dark</code> shadow overrides (increase <code>rgba</code> opacity) for elevated elements</td></tr>
+  <tr><td>11</td><td>Include fallback values on every <code>var(--fcom-*)</code></td></tr>
+  <tr><td>12</td><td>Test in Fluent customizer with different light + dark schemes to confirm sync</td></tr>
+</table>
 
 <!-- ================================================================== -->
 <h2 id="intentional-static">12. Intentionally Static Colors</h2>

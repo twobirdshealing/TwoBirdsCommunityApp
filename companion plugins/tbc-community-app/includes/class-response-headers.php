@@ -82,10 +82,7 @@ class TBC_CA_Response_Headers {
      * Only returns true when the flag is explicitly '0' (gated by tbc-registration's re-evaluation hook).
      */
     private function is_profile_incomplete($user_id) {
-        // Cheap check first: meta read is object-cached after first hit
-        $meta_key = defined('TBC_REG_META_REGISTRATION_COMPLETE') ? TBC_REG_META_REGISTRATION_COMPLETE : '_tbc_registration_complete';
-        $flag = get_user_meta($user_id, $meta_key, true);
-        // '' (empty/missing) = legacy user (not gated), '1' = complete — fast exit for 99% of users
+        $flag = get_user_meta($user_id, '_tbc_registration_complete', true);
         if ($flag !== '0') {
             return false;
         }

@@ -56,11 +56,12 @@ class TBC_CA_Admin {
             return;
         }
 
+        $css_path = TBC_CA_PLUGIN_DIR . 'assets/admin/admin.css';
         wp_enqueue_style(
             'tbc-ca-admin',
             TBC_CA_PLUGIN_URL . 'assets/admin/admin.css',
             [],
-            TBC_CA_VERSION
+            file_exists($css_path) ? (string) filemtime($css_path) : TBC_CA_VERSION
         );
 
         wp_add_inline_script('jquery-core', '

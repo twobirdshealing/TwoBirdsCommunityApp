@@ -10,7 +10,6 @@ defined('ABSPATH') || exit;
 
 $tbc_mr_reaction_types = isset($settings['reaction_types']) ? $settings['reaction_types'] : [];
 
-// Sort by order
 uasort($tbc_mr_reaction_types, function($a, $b) {
     return ($a['order'] ?? 999) - ($b['order'] ?? 999);
 });
@@ -23,7 +22,6 @@ uasort($tbc_mr_reaction_types, function($a, $b) {
     <form method="post" action="options.php" id="tbc-mr-settings-form">
         <?php settings_fields('tbc_mr_settings'); ?>
 
-        <!-- Global Settings -->
         <div class="tbc-mr-section">
             <h2><?php esc_html_e('Settings', 'tbc-multi-reactions'); ?></h2>
             <div class="tbc-mr-settings-grid">
@@ -49,7 +47,6 @@ uasort($tbc_mr_reaction_types, function($a, $b) {
             </div>
         </div>
 
-        <!-- Reactions -->
         <div class="tbc-mr-section">
             <h2><?php esc_html_e('Reactions', 'tbc-multi-reactions'); ?></h2>
             <p class="description"><?php esc_html_e('Drag to reorder. Click the edit icon to configure each reaction.', 'tbc-multi-reactions'); ?></p>
@@ -61,7 +58,6 @@ uasort($tbc_mr_reaction_types, function($a, $b) {
                     $tbc_mr_is_enabled = !empty($tbc_mr_reaction['enabled']);
                 ?>
                 <div class="tbc-mr-card<?php echo $tbc_mr_is_enabled ? '' : ' tbc-mr-card-disabled'; ?>" data-id="<?php echo esc_attr($id); ?>">
-                    <!-- Hidden form fields -->
                     <input type="hidden" name="tbc_mr_settings[reaction_types][<?php echo esc_attr($id); ?>][order]" class="tbc-mr-order" value="<?php echo esc_attr($tbc_mr_order); ?>" />
                     <input type="hidden" name="tbc_mr_settings[reaction_types][<?php echo esc_attr($id); ?>][name]" class="tbc-mr-data-name" value="<?php echo esc_attr($tbc_mr_reaction['name'] ?? ''); ?>" />
                     <input type="hidden" name="tbc_mr_settings[reaction_types][<?php echo esc_attr($id); ?>][emoji]" class="tbc-mr-data-emoji" value="<?php echo esc_attr($tbc_mr_emoji); ?>" />
@@ -103,7 +99,6 @@ uasort($tbc_mr_reaction_types, function($a, $b) {
 
 </div>
 
-<!-- Reaction Editor Modal -->
 <div id="tbc-mr-modal" class="tbc-mr-modal" style="display:none;">
     <div class="tbc-mr-modal-overlay"></div>
     <div class="tbc-mr-modal-panel">
@@ -113,19 +108,16 @@ uasort($tbc_mr_reaction_types, function($a, $b) {
         </div>
         <div class="tbc-mr-modal-body">
             <div class="tbc-mr-modal-left">
-                <!-- Tabs -->
                 <div class="tbc-mr-tabs">
                     <button type="button" class="tbc-mr-tab tbc-mr-tab-active" data-tab="emoji"><?php esc_html_e('Emoji', 'tbc-multi-reactions'); ?></button>
                     <button type="button" class="tbc-mr-tab" data-tab="custom"><?php esc_html_e('Custom', 'tbc-multi-reactions'); ?></button>
                 </div>
 
-                <!-- Emoji Tab -->
                 <div class="tbc-mr-tab-content tbc-mr-tab-emoji tbc-mr-tab-visible">
                     <p class="description"><?php esc_html_e('Paste or type an emoji character.', 'tbc-multi-reactions'); ?></p>
                     <input type="text" id="tbc-mr-modal-emoji" class="tbc-mr-modal-emoji-input" placeholder="<?php esc_attr_e('Paste emoji here...', 'tbc-multi-reactions'); ?>" />
                 </div>
 
-                <!-- Custom Tab -->
                 <div class="tbc-mr-tab-content tbc-mr-tab-custom">
                     <div class="tbc-mr-upload-area" id="tbc-mr-upload-area">
                         <div class="tbc-mr-upload-preview" id="tbc-mr-upload-preview">
@@ -141,13 +133,11 @@ uasort($tbc_mr_reaction_types, function($a, $b) {
             </div>
 
             <div class="tbc-mr-modal-right">
-                <!-- Preview -->
                 <div class="tbc-mr-modal-preview-box">
                     <div class="tbc-mr-modal-preview-icon" id="tbc-mr-modal-preview-icon"></div>
                     <div class="tbc-mr-modal-preview-name" id="tbc-mr-modal-preview-name"></div>
                 </div>
 
-                <!-- Settings -->
                 <div class="tbc-mr-modal-settings">
                     <div class="tbc-mr-modal-field">
                         <label><?php esc_html_e('Label', 'tbc-multi-reactions'); ?> <span class="tbc-mr-char-count" id="tbc-mr-char-count">0/12</span></label>

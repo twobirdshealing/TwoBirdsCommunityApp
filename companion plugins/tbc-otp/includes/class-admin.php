@@ -13,22 +13,7 @@ defined('ABSPATH') || exit;
 class Admin {
 
     public function __construct() {
-        add_action('wp_ajax_tbc_otp_save_uninstall_pref', [$this, 'ajax_save_uninstall_pref']);
-    }
-
-    /**
-     * AJAX handler: save uninstall data preference
-     */
-    public function ajax_save_uninstall_pref() {
-        check_ajax_referer('tbc_otp_data_mgmt');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error('Unauthorized', 403);
-        }
-
-        $value = isset($_POST['value']) && $_POST['value'] === '1';
-        update_option('tbc_otp_delete_data_on_uninstall', $value);
-        wp_send_json_success();
+        add_action('wp_ajax_tbc_otp_setup_phone_field', [$this, 'ajax_setup_phone_field']);
     }
 
     /**
@@ -64,8 +49,9 @@ class Admin {
         $options = [
             'twilio_sid', 'twilio_token', 'verify_service_sid',
             'enable_registration_verification', 'enable_voice_fallback',
-            'enable_email_2fa', 'disable_rate_limit',
-            'restrict_duplicates', 'blocked_numbers', 'phone_field_slug',
+            'enable_email_2fa', 'restrict_duplicates',
+            'blocked_numbers', 'phone_field_slug',
+            'delete_data_on_uninstall',
         ];
 
         foreach ($options as $key) {
@@ -123,8 +109,8 @@ class Admin {
             'enable_registration_verification',
             'enable_voice_fallback',
             'enable_email_2fa',
-            'disable_rate_limit',
             'restrict_duplicates',
+            'delete_data_on_uninstall',
         ];
 
         foreach ($checkboxes as $key) {
@@ -144,18 +130,21 @@ class Admin {
             return;
         }
 
+        $css_path = TBC_OTP_DIR . 'assets/css/admin.css';
+        $js_path  = TBC_OTP_DIR . 'assets/js/admin.js';
+
         wp_enqueue_style(
             'tbc-otp-admin',
             TBC_OTP_URL . 'assets/css/admin.css',
             [],
-            TBC_OTP_VERSION
+            file_exists($css_path) ? (string) filemtime($css_path) : TBC_OTP_VERSION
         );
 
         wp_enqueue_script(
             'tbc-otp-admin',
             TBC_OTP_URL . 'assets/js/admin.js',
             [],
-            TBC_OTP_VERSION,
+            file_exists($js_path) ? (string) filemtime($js_path) : TBC_OTP_VERSION,
             true
         );
     }
@@ -176,6 +165,14 @@ class Admin {
      * Queries fcom_meta table for custom_profile_fields config.
      */
     public static function get_fc_field_definitions(): array {
+        $config = self::get_fc_profile_fields_config();
+        return $config['fields'] ?? [];
+    }
+
+    /**
+     * Read the raw custom_profile_fields option.
+     */
+    private static function get_fc_profile_fields_config(): array {
         if (!class_exists('FluentCommunity\App\Models\Meta')) {
             return [];
         }
@@ -185,7 +182,120 @@ class Admin {
         if (!$meta) {
             return [];
         }
-        $config = $meta->value;
-        return $config['fields'] ?? [];
+        return is_array($meta->value) ? $meta->value : [];
+    }
+
+    /**
+     * Is FC's Custom Profile Fields feature enabled?
+     * Uses the same detection pattern as tbc-community-app Features tab.
+     */
+    public static function is_custom_profile_fields_enabled(): bool {
+        if (!class_exists('FluentCommunity\App\Services\Helper')) {
+            return false;
+        }
+        return (bool) \FluentCommunity\App\Services\Helper::isFeatureEnabled('custom_profile_fields');
+    }
+
+    /**
+     * Is Fluent Community Pro active? Custom Profile Fields requires Pro.
+     */
+    public static function has_fluent_community_pro(): bool {
+        return defined('FLUENT_COMMUNITY_PRO') && FLUENT_COMMUNITY_PRO;
+    }
+
+    /**
+     * AJAX handler: one-click phone field setup.
+     *
+     * Mirrors exactly what FC Pro's own "Save Custom Profile Fields" admin
+     * action does: runs the existing config through FC's native sanitizers,
+     * writes via Utility::updateOption, flips the feature flag, and runs
+     * migrateCustomFieldsToXProfile when enabling for the first time. We then
+     * save the OTP phone_field_slug so verification works immediately.
+     *
+     * Using FC's own service methods (not hand-built payloads) means the
+     * config FC ends up with is identical to what its native UI produces —
+     * no drift if FC adds new fields to the schema.
+     */
+    public function ajax_setup_phone_field() {
+        check_ajax_referer('tbc_otp_setup_phone_field', '_wpnonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Unauthorized.', 'tbc-otp')], 403);
+        }
+
+        if (!self::has_fluent_community_pro()
+            || !class_exists('FluentCommunityPro\App\Services\ProfileFieldsService')
+            || !class_exists('FluentCommunity\App\Functions\Utility')) {
+            wp_send_json_error([
+                'message' => __('Custom Profile Fields requires Fluent Community Pro. Please install and activate Fluent Community Pro and try again.', 'tbc-otp'),
+            ], 400);
+        }
+
+        $service = '\FluentCommunityPro\App\Services\ProfileFieldsService';
+        $utility = '\FluentCommunity\App\Functions\Utility';
+
+        $existing = $service::getConfig(true);
+        $groups   = $existing['groups'] ?? [];
+        $fields   = $existing['fields'] ?? [];
+
+        $phone_slug = '_phone';
+        $has_phone  = false;
+        foreach ($fields as $field) {
+            if (($field['slug'] ?? '') === $phone_slug) {
+                $has_phone = true;
+                break;
+            }
+        }
+
+        if (!$has_phone) {
+            $fields[] = [
+                'slug'        => $phone_slug,
+                'label'       => __('Phone', 'tbc-otp'),
+                'type'        => 'text',
+                'placeholder' => '+1 214 555 1234',
+                'is_required' => true,
+                'is_enabled'  => true,
+                'privacy'     => 'private',
+                'group'       => '_additional_info',
+            ];
+        }
+
+        // Run groups + fields through FC's own sanitizers — these guarantee the
+        // default `_additional_info` system group is present, normalize slugs,
+        // and produce a config byte-identical to what FC's native Save produces.
+        $formattedGroups = $service::sanitizeProfileFieldGroups($groups);
+        $validGroupSlugs = array_column($formattedGroups, 'slug');
+        $formattedFields = $service::sanitizeProfileFields($fields, $validGroupSlugs);
+
+        $config = [
+            'is_enabled' => 'yes',
+            'groups'     => $formattedGroups,
+            'fields'     => $formattedFields,
+        ];
+
+        $utility::updateOption('custom_profile_fields', $config);
+
+        // Mirror ProAdminController::saveCustomProfileFields: migrate xprofile
+        // table only when flipping from disabled → enabled, then write the
+        // feature flag back to fluent_community_features.
+        $featureConfig   = $utility::getFeaturesConfig();
+        $isPrevDisabled  = ($featureConfig['custom_profile_fields'] ?? 'no') !== 'yes';
+
+        if ($isPrevDisabled) {
+            $service::migrateCustomFieldsToXProfile();
+        }
+
+        $featureConfig['custom_profile_fields'] = 'yes';
+        $utility::updateOption('fluent_community_features', $featureConfig);
+
+        Helpers::update_option('phone_field_slug', $phone_slug);
+
+        wp_send_json_success([
+            'slug'    => $phone_slug,
+            'created' => !$has_phone,
+            'message' => $has_phone
+                ? __('Phone field already existed — enabled Custom Profile Fields and linked it to OTP.', 'tbc-otp')
+                : __('Created Phone field, enabled Custom Profile Fields, and linked it to OTP.', 'tbc-otp'),
+        ]);
     }
 }

@@ -41,15 +41,13 @@ class TBC_Cart_WC_Assets {
         add_action('wp_footer', array($this, 'gallery_thumb_sync'), 20);
     }
 
-    /**
-     * Enqueue WooCommerce stylesheet
-     */
     private function enqueue_wc_stylesheet() {
+        $css_path = TBC_CART_PLUGIN_DIR . 'assets/css/woocommerce.css';
         wp_enqueue_style(
             'tbc-cart-woocommerce',
             TBC_CART_PLUGIN_URL . 'assets/css/woocommerce.css',
             array(),
-            TBC_CART_VERSION
+            file_exists($css_path) ? (string) filemtime($css_path) : TBC_CART_VERSION
         );
     }
 

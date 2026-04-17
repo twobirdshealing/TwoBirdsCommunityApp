@@ -143,38 +143,6 @@ class Helpers {
         return (string) self::get_option('phone_field_slug', '');
     }
 
-    /**
-     * Get the wp_usermeta key that stores the phone (for password recovery lookup).
-     */
-    public static function get_phone_meta_key(): string {
-        return '_tbc_otp_phone';
-    }
-
-    /**
-     * Get a user's phone value from FC native custom fields.
-     */
-    public static function get_phone_value(int $user_id): string {
-        return self::get_fc_custom_field($user_id, self::get_phone_slug());
-    }
-
-    /**
-     * Read a single custom field value from fcom_xprofile.custom_fields JSON.
-     */
-    public static function get_fc_custom_field(int $user_id, string $slug): string {
-        if (!class_exists('FluentCommunity\App\Models\XProfile')) {
-            return '';
-        }
-        $xprofile = \FluentCommunity\App\Models\XProfile::where('user_id', $user_id)->first();
-        if (!$xprofile) {
-            return '';
-        }
-        $fields = $xprofile->custom_fields;
-        if (!is_array($fields)) {
-            return '';
-        }
-        return (string) ($fields[$slug] ?? '');
-    }
-
     // =========================================================================
     // Options
     // =========================================================================

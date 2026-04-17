@@ -21,7 +21,6 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('TBC_LICENSE_VERSION', '1.0.0');
 define('TBC_LICENSE_REST_NAMESPACE', 'tbc-license/v1');
 
 // Allow tar.gz/gz uploads in WordPress (needed for FluentCart update packages)

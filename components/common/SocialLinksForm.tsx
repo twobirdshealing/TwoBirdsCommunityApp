@@ -26,15 +26,20 @@ export function SocialLinksForm({ providers, values, onChange }: SocialLinksForm
     <>
       {providers.map(({ key, title, placeholder, domain }) => (
         <View key={key} style={styles.container}>
-          <View style={styles.labelRow}>
-            <Ionicons name={getProviderIcon(key) as any} size={18} color={colors.textSecondary} />
-            <Text style={[styles.label, { color: colors.text }]}>{title}</Text>
-          </View>
+          <Text style={[styles.label, { color: colors.text }]}>{title}</Text>
           <View style={[styles.inputRow, {
             backgroundColor: colors.background,
             borderColor: colors.border,
           }]}>
-            <Text style={[styles.prefix, { color: colors.textTertiary }]}>{domain}</Text>
+            <View style={[styles.iconChip, { backgroundColor: colors.backgroundSecondary }]}>
+              <Ionicons name={getProviderIcon(key) as any} size={16} color={colors.textSecondary} />
+            </View>
+            <Text
+              style={[styles.prefix, { color: colors.textTertiary }]}
+              numberOfLines={1}
+            >
+              {domain}
+            </Text>
             <TextInput
               style={[styles.input, { color: colors.text }]}
               value={values[key] || ''}
@@ -60,16 +65,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
 
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-
   label: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold,
+    marginBottom: spacing.xs,
   },
 
   inputRow: {
@@ -80,15 +79,24 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
+  iconChip: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+
   prefix: {
     fontSize: typography.size.xs,
-    paddingLeft: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.xs,
+    flexShrink: 0,
   },
 
   input: {
     flex: 1,
-    fontSize: typography.size.md,
+    minWidth: 0,
+    fontSize: typography.size.sm,
     paddingHorizontal: spacing.xs,
     paddingVertical: spacing.sm + 2,
   },

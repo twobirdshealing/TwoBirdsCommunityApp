@@ -3,7 +3,7 @@
  * Plugin Name: TBC Multi Reactions
  * Plugin URI: https://twobirdscode.com
  * Description: Enhanced multi-reaction system for Fluent Community with custom uploadable icons (PNG/SVG/GIF/WEBP). Replaces the default heart reaction with a multi-reaction picker on posts and comments. Injects reaction data into API responses for mobile app compatibility.
- * Version: 1.5.5
+ * Version: 1.0.0
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  * Text Domain: tbc-multi-reactions
@@ -21,15 +21,15 @@
 
 defined('ABSPATH') or die('No direct script access allowed');
 
-define('TBC_MR_VERSION', '1.5.5');
+// TBC_MR_VERSION is auto-derived from the plugin header so the header is the
+// single source of truth; filemtime() handles asset cache busting.
+$tbc_mr_header = get_file_data(__FILE__, ['Version' => 'Version']);
+define('TBC_MR_VERSION', $tbc_mr_header['Version']);
 define('TBC_MR_FILE', __FILE__);
 define('TBC_MR_DIR', plugin_dir_path(__FILE__));
 define('TBC_MR_URL', plugin_dir_url(__FILE__));
 define('TBC_MR_BASENAME', plugin_basename(__FILE__));
 
-/**
- * Check if Fluent Community is active
- */
 function tbc_mr_check_dependencies() {
     if (!class_exists('\FluentCommunity\App\Services\Helper') ||
         !class_exists('\FluentCommunity\App\Hooks\Handlers\PortalHandler') ||
@@ -46,9 +46,6 @@ function tbc_mr_check_dependencies() {
     return true;
 }
 
-/**
- * Initialize plugin
- */
 add_action('plugins_loaded', function() {
     if (!tbc_mr_check_dependencies()) {
         return;
@@ -58,9 +55,6 @@ add_action('plugins_loaded', function() {
     TBCMultiReactions\Core::instance();
 }, 20);
 
-/**
- * Activation hook
- */
 register_activation_hook(__FILE__, function() {
     require_once TBC_MR_DIR . 'includes/class-database.php';
     require_once TBC_MR_DIR . 'includes/class-admin.php';
@@ -69,9 +63,6 @@ register_activation_hook(__FILE__, function() {
     TBCMultiReactions\Admin::initialize_default_settings();
 });
 
-/**
- * Deactivation hook
- */
 register_deactivation_hook(__FILE__, function() {
     flush_rewrite_rules();
 });

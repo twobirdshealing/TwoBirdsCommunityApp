@@ -4,7 +4,7 @@ Tags: reactions, emoji, fluent-community, multi-reaction, comments
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -101,38 +101,21 @@ Yes. You can add unlimited custom reaction types with custom names, emoji, icons
 
 == Changelog ==
 
-= 1.2.0 =
-* Inject reaction type data (tbc_reaction_type, icon_url, emoji) into notifications API response
-* Uses FC's native notifications_api_response and unread_notifications_api_response filters
-* App notification icon now shows the actual reaction icon (custom image or emoji) instead of always a heart
-
-= 1.1.0 =
-* Fix: Notification text now reflects the actual reaction type instead of always showing "loved"
-* Patches Fluent Community's hardcoded notification verb after creation using the Notification model
-* Adds reaction verb mapping (liked, loved, laughed at, reacted to) with fallback for custom types
-
 = 1.0.0 =
 * Initial public release
 * Multi-reaction picker for posts and comments
-* Custom icon uploads (PNG, JPG, SVG, GIF, WebP)
-* Animated emoji support (GIF, animated WebP)
-* Automatic WebP conversion
-* Full REST API with 5 endpoints
-* API response enrichment for mobile app compatibility
-* Light and dark mode support
-* Fluent Community theme integration
-* Drag-and-drop admin panel
-* Reaction breakdown modal with user lists
-* Transient caching and batch database operations
-* Clean uninstall handler
+* Custom icon uploads (PNG, JPG, SVG, GIF, WebP) with animated GIF/WebP support
+* Automatic WebP conversion for static uploads
+* Full REST API (config, swap, breakdown, breakdown users)
+* API response enrichment for Fluent Community feeds, comments, notifications, and activities
+* Mobile app compatibility via JWT Bearer authentication
+* Fluent Community theme integration with light/dark mode
+* Drag-and-drop admin panel with per-reaction editor modal
+* Reaction breakdown modal with tabbed user lists
+* Transient caching and batched database operations
+* Optional full data removal on uninstall
 
 == Upgrade Notice ==
-
-= 1.2.0 =
-Notification icons now show the actual reaction type (custom icon or emoji) instead of always a heart.
-
-= 1.1.0 =
-Notification text now correctly shows the reaction type (e.g. "liked", "laughed at") instead of always "loved".
 
 = 1.0.0 =
 Initial release.

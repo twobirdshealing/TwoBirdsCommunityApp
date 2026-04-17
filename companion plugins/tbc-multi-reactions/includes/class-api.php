@@ -1,7 +1,6 @@
 <?php
 /**
- * API Class
- * Handles REST API endpoints and FC API response injection
+ * REST API endpoints and Fluent Community API response injection.
  *
  * @package TBC_Multi_Reactions
  */
@@ -12,12 +11,6 @@ defined('ABSPATH') || exit;
 
 class Api {
 
-    public function __construct() {}
-
-    /**
-     * Inject reaction data into feeds collection API response
-     * Hook: fluent_community/feeds_api_response
-     */
     public function inject_reaction_data_into_feeds($data, $request_data) {
         $settings = get_option('tbc_mr_settings', []);
         if (empty($settings['enabled'])) {
@@ -49,11 +42,9 @@ class Api {
             $feed_ids[] = $data['sticky']['id'];
         }
 
-        // Batch fetch breakdowns
         $breakdowns = Database::get_reaction_breakdowns_batch($feed_ids, 'feed');
         $comment_breakdowns = !empty($comment_ids) ? Database::get_reaction_breakdowns_batch($comment_ids, 'comment') : [];
 
-        // Batch fetch user reaction types
         $user_reaction_map = [];
         $comment_reaction_map = [];
 
@@ -70,12 +61,10 @@ class Api {
             $config_map[$r['id']] = $r;
         }
 
-        // Annotate each feed
         foreach ($data['feeds']['data'] as &$feed) {
             $fid = $feed['id'] ?? null;
             if (!$fid) continue;
 
-            // Breakdown
             if (isset($breakdowns[$fid])) {
                 $feed['reaction_breakdown'] = $breakdowns[$fid]['breakdown'];
                 $feed['reaction_total'] = $breakdowns[$fid]['total'];
@@ -84,7 +73,6 @@ class Api {
                 $feed['reaction_total'] = 0;
             }
 
-            // User reaction
             if (isset($user_reaction_map[$fid])) {
                 $type = $user_reaction_map[$fid];
                 $cfg = $config_map[$type] ?? null;
@@ -95,13 +83,11 @@ class Api {
                 $feed['user_reaction_type'] = null;
             }
 
-            // Annotate comments
             if (isset($feed['comments']) && is_array($feed['comments'])) {
                 foreach ($feed['comments'] as &$comment) {
                     $cid = $comment['id'] ?? null;
                     if (!$cid) continue;
 
-                    // Comment reaction breakdown
                     if (isset($comment_breakdowns[$cid])) {
                         $comment['reaction_breakdown'] = $comment_breakdowns[$cid]['breakdown'];
                         $comment['reaction_total'] = $comment_breakdowns[$cid]['total'];
@@ -123,7 +109,6 @@ class Api {
             }
         }
 
-        // Annotate sticky
         if (isset($data['sticky']['id'])) {
             $sid = $data['sticky']['id'];
             if (isset($breakdowns[$sid])) {
@@ -144,10 +129,6 @@ class Api {
         return $data;
     }
 
-    /**
-     * Inject reaction data into single feed API response
-     * Hook: fluent_community/feed_api_response
-     */
     public function inject_reaction_data_into_feed($data, $request_data) {
         $settings = get_option('tbc_mr_settings', []);
         if (empty($settings['enabled'])) {
@@ -183,10 +164,6 @@ class Api {
         return $data;
     }
 
-    /**
-     * Inject reaction data into comments API response
-     * Hook: fluent_community/comments_query_response
-     */
     public function inject_reaction_data_into_comments($comments, $feed) {
         $settings = get_option('tbc_mr_settings', []);
         if (empty($settings['enabled'])) {
@@ -215,7 +192,6 @@ class Api {
             return $comments;
         }
 
-        // Batch fetch comment breakdowns (for all users, not just logged in)
         $comment_breakdowns = Database::get_reaction_breakdowns_batch($comment_ids, 'comment');
 
         $reaction_map = [];
@@ -228,14 +204,13 @@ class Api {
             $config_map[$r['id']] = $r;
         }
 
-        // Use index-based iteration so modifications apply to the original
+        // Iterate by key so writes apply back to the original collection/array.
         foreach ($items as $key => $comment) {
             $cid = is_object($comment) ? ($comment->id ?? null) : ($comment['id'] ?? null);
             if (!$cid) continue;
 
             $data = [];
 
-            // Comment reaction breakdown
             if (isset($comment_breakdowns[$cid])) {
                 $data['reaction_breakdown'] = $comment_breakdowns[$cid]['breakdown'];
                 $data['reaction_total'] = $comment_breakdowns[$cid]['total'];
@@ -254,7 +229,6 @@ class Api {
                 $data['user_reaction_type'] = null;
             }
 
-            // Eloquent models use property assignment, arrays use key assignment
             if ($is_collection) {
                 foreach ($data as $k => $v) {
                     $comments[$key]->$k = $v;
@@ -269,10 +243,6 @@ class Api {
         return $comments;
     }
 
-    /**
-     * Format reactions popup response
-     * Hook: fluent_community/reactions_api_response
-     */
     public function format_reactions_response($response, $reactions, $request_data) {
         $settings = get_option('tbc_mr_settings', []);
         if (empty($settings['enabled'])) {
@@ -300,10 +270,6 @@ class Api {
         return $response;
     }
 
-    /**
-     * Intercept activities API to add reaction data
-     * Hook: rest_request_after_callbacks
-     */
     public function intercept_activities_api_response($response, $handler, $request) {
         $route = $request->get_route();
         if (!$route || strpos($route, '/fluent-community/v2/activities') === false) {
@@ -329,7 +295,6 @@ class Api {
         $feed_ids = [];
         $feed_slugs_to_lookup = [];
 
-        // First pass: collect feed IDs and slugs
         foreach ($data['activities']['data'] as $i => $activity) {
             if (isset($activity['feed_id'])) {
                 $feed_ids[] = intval($activity['feed_id']);
@@ -341,7 +306,6 @@ class Api {
             }
         }
 
-        // Batch lookup slugs
         if (!empty($feed_slugs_to_lookup)) {
             $slugs = array_keys($feed_slugs_to_lookup);
             $feeds = \FluentCommunity\App\Models\Feed::whereIn('slug', $slugs)->select('id', 'slug')->get();
@@ -398,14 +362,6 @@ class Api {
         return $response;
     }
 
-    // =========================================================================
-    // REST API Handlers (unified for web + mobile app)
-    // =========================================================================
-
-    /**
-     * GET /tbc-multi-reactions/v1/config
-     * Returns enabled reaction types configuration
-     */
     public function rest_get_config(\WP_REST_Request $request) {
         $enabled = Core::get_enabled_reactions();
         $reactions = [];
@@ -430,11 +386,6 @@ class Api {
         ], 200);
     }
 
-    /**
-     * POST /tbc-multi-reactions/v1/swap
-     * Swap reaction type on an existing reaction
-     * Body: { object_id, object_type, reaction_type }
-     */
     public function rest_swap_reaction(\WP_REST_Request $request) {
         $params = $request->get_json_params();
 
@@ -446,7 +397,6 @@ class Api {
             return new \WP_REST_Response(['message' => 'Invalid object ID.'], 400);
         }
 
-        // Validate reaction type
         $enabled = Core::get_enabled_reactions();
         $valid_ids = array_column($enabled, 'id');
         if (!in_array($reaction_type, $valid_ids)) {
@@ -455,7 +405,6 @@ class Api {
 
         $user_id = get_current_user_id();
 
-        // Verify user has an existing reaction
         global $wpdb;
         $table = $wpdb->prefix . 'fcom_post_reactions';
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Real-time reaction check for swap operation.
@@ -484,10 +433,6 @@ class Api {
         return new \WP_REST_Response(['message' => 'Failed to update.'], 500);
     }
 
-    /**
-     * GET /tbc-multi-reactions/v1/breakdown/{object_type}/{object_id}
-     * Get reaction breakdown for a single item
-     */
     public function rest_get_breakdown(\WP_REST_Request $request) {
         $object_id   = absint($request->get_param('object_id'));
         $object_type = sanitize_text_field($request->get_param('object_type'));
@@ -512,10 +457,6 @@ class Api {
         return new \WP_REST_Response($response, 200);
     }
 
-    /**
-     * GET /tbc-multi-reactions/v1/breakdown/{object_type}/{object_id}/users
-     * Get breakdown with user details
-     */
     public function rest_get_breakdown_users(\WP_REST_Request $request) {
         $object_id   = absint($request->get_param('object_id'));
         $object_type = sanitize_text_field($request->get_param('object_type'));
@@ -537,7 +478,6 @@ class Api {
             $object_id, $object_type
         ), ARRAY_A);
 
-        // Bulk fetch users via FC XProfile for native avatars & URLs
         $user_ids   = array_unique(array_column($reactions, 'user_id'));
         $xprofiles  = [];
         $users_data = [];
@@ -548,14 +488,13 @@ class Api {
                     $xprofiles[$xp->user_id] = $xp;
                 }
             }
-            // WP fallback for any users not in XProfile
+            // WP fallback: surface display_name/nicename for any users missing from FC's XProfile table.
             $users = get_users(['include' => $user_ids, 'fields' => ['ID', 'display_name', 'user_nicename']]);
             foreach ($users as $user) {
                 $users_data[$user->ID] = $user;
             }
         }
 
-        // Group by type
         $grouped = [];
         foreach ($reactions as $row) {
             $type = $row['tbc_mr_reaction_type'];
@@ -603,14 +542,6 @@ class Api {
         ], 200);
     }
 
-    // =========================================================================
-    // Notification API Injection
-    // =========================================================================
-
-    /**
-     * Inject reaction type data into paginated notifications API response
-     * Hook: fluent_community/notifications_api_response
-     */
     public function inject_reaction_type_into_notifications($data, $request_data) {
         $settings = get_option('tbc_mr_settings', []);
         if (empty($settings['enabled'])) {
@@ -621,7 +552,7 @@ class Api {
             return $data;
         }
 
-        // Paginated response: notifications is a LengthAwarePaginator
+        // FC returns a LengthAwarePaginator for the paginated endpoint, not a plain array.
         $items = $data['notifications'];
         $is_paginator = is_object($items) && method_exists($items, 'items');
         $notifications = $is_paginator ? $items->items() : (is_array($items) ? $items : []);
@@ -631,10 +562,6 @@ class Api {
         return $data;
     }
 
-    /**
-     * Inject reaction type data into unread notifications API response
-     * Hook: fluent_community/unread_notifications_api_response
-     */
     public function inject_reaction_type_into_unread_notifications($data, $request_data) {
         $settings = get_option('tbc_mr_settings', []);
         if (empty($settings['enabled'])) {
@@ -654,11 +581,9 @@ class Api {
     }
 
     /**
-     * Enrich notification objects with reaction type data
-     * Modifies objects in-place (Eloquent models passed by reference)
+     * Enriches notification objects in place (Eloquent models passed by reference).
      */
     private function enrich_notifications_with_reaction_type($notifications) {
-        // Collect feed_id + src_user_id pairs for react notifications
         $lookups = [];
         foreach ($notifications as $notification) {
             $action = is_object($notification) ? $notification->action : ($notification['action'] ?? '');
@@ -676,7 +601,6 @@ class Api {
             return;
         }
 
-        // Batch lookup: get reaction type for each src_user_id + feed_id pair
         $reaction_types = [];
         foreach ($lookups as $l) {
             $key = $l['src_user_id'] . '_' . $l['feed_id'];
@@ -685,13 +609,11 @@ class Api {
             }
         }
 
-        // Build config map
         $config_map = [];
         foreach (Core::get_enabled_reactions() as $r) {
             $config_map[$r['id']] = $r;
         }
 
-        // Enrich each react notification
         foreach ($notifications as $notification) {
             $action = is_object($notification) ? $notification->action : ($notification['action'] ?? '');
             if ($action !== 'feed/react_added') {
@@ -716,7 +638,6 @@ class Api {
                 $enrichment['tbc_reaction_name']     = $cfg['name'] ?? $type;
             }
 
-            // Eloquent models use property assignment
             if (is_object($notification)) {
                 foreach ($enrichment as $k => $v) {
                     $notification->$k = $v;
@@ -725,11 +646,6 @@ class Api {
         }
     }
 
-    // --- Helpers ---
-
-    /**
-     * Find reaction config by type ID
-     */
     private function find_reaction_config($type) {
         foreach (Core::get_enabled_reactions() as $r) {
             if ($r['id'] === $type) {
@@ -739,9 +655,6 @@ class Api {
         return null;
     }
 
-    /**
-     * Enrich raw breakdown rows with reaction config
-     */
     private function enrich_breakdown($rows) {
         $enabled = Core::get_enabled_reactions();
         $map = [];

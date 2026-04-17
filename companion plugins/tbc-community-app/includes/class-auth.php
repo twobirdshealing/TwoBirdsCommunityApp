@@ -357,17 +357,7 @@ class TBC_CA_Auth {
     // Secret Key
     // =========================================================================
 
-    /**
-     * Get the JWT signing secret.
-     * Prefers JWT_AUTH_SECRET_KEY constant (backward compat), falls back to auto-generated key.
-     *
-     * @return string The secret key.
-     */
     private function get_secret_key() {
-        if (defined('JWT_AUTH_SECRET_KEY') && !empty(JWT_AUTH_SECRET_KEY)) {
-            return JWT_AUTH_SECRET_KEY;
-        }
-
         $key = get_option('tbc_ca_jwt_secret');
         if (empty($key)) {
             $key = wp_generate_password(64, true, true);

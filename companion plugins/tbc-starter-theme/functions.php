@@ -12,8 +12,11 @@ if (!defined('ABSPATH')) {
 
 /**
  * Theme Constants
+ *
+ * No version constant — style.css is the single source of truth. Enqueue cache
+ * busters come from filemtime() on shipped assets; the defensive fallback reads
+ * the header via wp_get_theme()->get('Version').
  */
-define('FLUENT_STARTER_VERSION', '1.0.59');
 define('FLUENT_STARTER_DIR', get_template_directory());
 define('FLUENT_STARTER_URI', get_template_directory_uri());
 
