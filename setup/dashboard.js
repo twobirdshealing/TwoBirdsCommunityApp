@@ -51,6 +51,7 @@ const { checkConnectivity, parseMultipart, httpsRequest } = require('./lib/http-
 const { runCommand, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission, getSubmissionsUrl, validateEasArtifactUrl, streamEasArtifact } = require('./lib/eas');
 const { getOTAStatus, pushOTAUpdate, listOTAUpdates, republishUpdate, deleteOTAUpdate } = require('./lib/ota');
 const { getInstalledModules, toggleModule, removeModule, exportModule, importModule } = require('./lib/modules');
+const { readLauncherItems, writeLauncherItems, getAvailableRoutes } = require('./lib/launcher-menu');
 const {
   readLicense, writeLicense, readManifest, validateLicense, deactivateLicense,
   readModuleLicenses, writeModuleLicense, removeModuleLicense,
@@ -433,6 +434,22 @@ const server = http.createServer(async (req, res) => {
       if (!moduleId) { jsonResponse(res, { ok: false, error: 'moduleId required' }, 400); return; }
       removeModuleLicense(moduleId);
       jsonResponse(res, { ok: true });
+      return;
+    }
+
+    // --- Launcher Menu ---
+    if (pathname === '/api/launcher-menu' && req.method === 'GET') {
+      jsonResponse(res, { ok: true, items: readLauncherItems(), routes: getAvailableRoutes() });
+      return;
+    }
+
+    if (pathname === '/api/launcher-menu' && req.method === 'POST') {
+      const body = await readBody(req);
+      let items;
+      try { items = JSON.parse(body).items; } catch { jsonResponse(res, { ok: false, error: 'Invalid JSON' }, 400); return; }
+      if (!Array.isArray(items)) { jsonResponse(res, { ok: false, error: 'items must be an array' }, 400); return; }
+      const result = writeLauncherItems(items);
+      jsonResponse(res, result);
       return;
     }
 

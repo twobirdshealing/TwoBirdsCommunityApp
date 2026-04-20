@@ -4,7 +4,7 @@ const fs   = require('fs');
 const path = require('path');
 
 const { PATHS }                    = require('./paths');
-const { fileExists, extractTsValue, getPluginVersion } = require('./file-utils');
+const { fileExists, extractTsValue, getPluginVersion, readFileNormalized } = require('./file-utils');
 const { createZip, parseZip }      = require('./http-helpers');
 
 // ---------------------------------------------------------------------------
@@ -44,8 +44,10 @@ function parseModuleManifest(moduleDir) {
   if (!fileExists(moduleTs)) return null;
   const content = fs.readFileSync(moduleTs, 'utf8');
 
-  // Read the exported identifier from the file (source of truth) rather than
-  // deriving it from the folder name — the two can drift on hyphenated names.
+  // Dashboard-generated modules have an items.json source file — they're
+  // managed by their own dashboard tab, not the modules list
+  if (fileExists(path.join(moduleDir, 'items.json'))) return null;
+
   const exportMatch = content.match(/export\s+const\s+(\w+)\s*:\s*ModuleManifest\b/);
   const exportName = exportMatch ? exportMatch[1] : null;
 
@@ -114,7 +116,7 @@ function getInstalledModules() {
 
   // Read registry to see which are active
   const registryContent = fileExists(PATHS.registryTs)
-    ? fs.readFileSync(PATHS.registryTs, 'utf8') : '';
+    ? readFileNormalized(PATHS.registryTs) : '';
 
   for (const dir of dirs) {
     const moduleDir = path.join(PATHS.modulesDir, dir);
@@ -204,7 +206,7 @@ function toggleModule(moduleId, active, mod) {
     return { ok: false, error: `Could not find an "export const <name>: ModuleManifest" declaration in ${mod.folder}/module.ts` };
   }
 
-  let content = fs.readFileSync(PATHS.registryTs, 'utf8');
+  let content = readFileNormalized(PATHS.registryTs);
   const { exportName } = mod;
 
   if (active && !mod.active) {

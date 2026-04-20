@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": "admin",
+      "label": "Admin",
+      "icon": "shield-outline",
+      "linkType": "webview",
+      "url": "https://community.twobirdschurch.com/tbc-admin/",
+      "showInLauncher": true,
+      "showInTabBar": false,
+      "openInBrowser": false,
+      "hideKey": "admin",
+      "iconColor": "warning",
+      "iconBackground": "warning"
+    }
+  ]
+}

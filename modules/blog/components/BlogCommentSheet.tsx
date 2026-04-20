@@ -396,8 +396,8 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
 
   return (
     <>
-      <KeyboardAvoidingView behavior="padding" style={styles.modalContainer}>
       <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.surface }]} edges={['top']}>
+      <KeyboardAvoidingView behavior="padding" style={styles.modalContainer}>
         {/* Header */}
         <PageHeader left={<HeaderIconButton icon="close" onPress={onClose} />} center={<HeaderTitle>Comments</HeaderTitle>} />
 
@@ -493,8 +493,8 @@ export function BlogCommentSheet({ postId, onClose }: BlogCommentSheetProps) {
           </View>
         </View>
 
-      </SafeAreaView>
       </KeyboardAvoidingView>
+      </SafeAreaView>
       <View style={{ height: insets.bottom, backgroundColor: themeColors.surface }} />
 
     {/* Comment Options Menu */}

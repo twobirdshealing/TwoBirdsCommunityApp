@@ -90,4 +90,8 @@ function ensurePath(obj, ...keys) {
   return o;
 }
 
-module.exports = { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, getPluginVersion, findPluginConfig, resolveUploadPath, ensurePath };
+function readFileNormalized(p) {
+  return fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
+}
+
+module.exports = { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, getPluginVersion, findPluginConfig, resolveUploadPath, ensurePath, readFileNormalized };

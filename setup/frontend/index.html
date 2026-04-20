@@ -365,6 +365,11 @@
     .license-input-group .input { max-width: none; }
     .backup-card { flex-direction: column; gap: 8px; align-items: flex-start; }
   }
+  .launcher-ghost { opacity: 0.4; }
+  .launcher-drag-handle:active { cursor: grabbing; }
+  .launcher-row { display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius); margin-bottom:8px; background:var(--bg-primary); transition:border-color 0.15s; }
+  .launcher-row.active { border-color: var(--accent); }
+  .launcher-disabled { opacity: 0.4; }
   .qr-modal-backdrop { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:2000; display:flex; align-items:center; justify-content:center; }
   .qr-modal { background:var(--bg-primary); border:1px solid var(--border); border-radius:var(--radius); padding:24px; max-width:400px; width:90%; position:relative; text-align:center; }
   .qr-modal-close { position:absolute; top:8px; right:12px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-secondary); }
@@ -446,6 +451,7 @@
 </style>
 <script src="/lib/alpine.min.js" defer></script>
 <script async src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 <script type="module" src="https://unpkg.com/ionicons@7.4.0/dist/ionicons/ionicons.esm.js"></script>
 <script nomodule src="https://unpkg.com/ionicons@7.4.0/dist/ionicons/ionicons.js"></script>
 </head>
@@ -552,6 +558,7 @@
 <div class="tab-bar">
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'config' }" x-on:click="switchTab('config')">Config</button>
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'assets' }" x-on:click="switchTab('assets')">Assets</button>
+  <button class="tab-btn" x-bind:class="{ active: activeTab === 'launcher' }" x-on:click="switchTab('launcher')">Launcher Menu</button>
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'builds' }" x-on:click="switchTab('builds')">Builds</button>
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'ota' }" x-on:click="switchTab('ota')">OTA Updates</button>
   <button class="tab-btn" x-bind:class="{ active: activeTab === 'updates' }" x-on:click="switchTab('updates')">Updates</button>
@@ -1364,6 +1371,256 @@
             </template>
             <a class="btn btn-sm" x-bind:href="'/api/modules/export/' + encodeURIComponent(mod.id)" download>Export</a>
             <button class="btn btn-sm btn-danger-subtle" x-on:click="removeMod(mod.id, mod.name)">Remove</button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+
+<!-- ============== Launcher Menu Tab ============== -->
+<div class="tab-content" x-bind:class="{ active: activeTab === 'launcher' }">
+  <div class="card">
+    <div class="card-header">
+      <h3>Launcher Menu</h3>
+      <button class="btn btn-sm btn-primary" x-on:click="launcherAddItem()">+ Add Item</button>
+    </div>
+    <div class="card-body">
+      <p style="color:var(--text-secondary);font-size:13px;margin:0 0 16px 0">
+        Add menu items to the launcher grid and tab bar. Drag to reorder. Changes are saved as a module &mdash; OTA-safe, no server dependency.
+      </p>
+
+      <!-- Tab count warning -->
+      <template x-if="launcherTabCount >= 7">
+        <div style="background:var(--orange-bg, rgba(230,126,34,0.1));border:1px solid var(--orange, #e67e22);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--orange, #e67e22)">
+          Your tab bar has <span x-text="launcherTabCount"></span> items &mdash; consider hiding some to keep the UI clean on smaller phones.
+        </div>
+      </template>
+
+      <!-- Empty state -->
+      <template x-if="launcherLoaded && launcherItems.length === 0 && launcherEditing === null">
+        <div style="text-align:center;padding:40px 0">
+          <div style="font-size:24px;margin-bottom:12px;color:var(--text-muted)">&#10024;</div>
+          <div style="color:var(--text-secondary);margin-bottom:16px">No launcher items yet</div>
+          <p style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0">Add menu buttons that open URLs or app pages from the launcher grid.</p>
+          <button class="btn btn-primary" x-on:click="launcherAddItem()">+ Add your first item</button>
+        </div>
+      </template>
+
+      <!-- Item list -->
+      <div x-ref="launcherList">
+        <template x-for="(item, idx) in launcherItems" :key="item.id">
+          <div class="launcher-row" x-bind:class="{ active: launcherEditing === idx }" x-bind:data-idx="idx">
+            <!-- Drag handle -->
+            <span class="launcher-drag-handle" style="cursor:grab;color:var(--text-muted);font-size:16px;user-select:none" title="Drag to reorder">&#9776;</span>
+            <!-- Icon preview -->
+            <span style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0" x-bind:class="item.enabled === false ? 'launcher-disabled' : ''"
+                  x-bind:style="'background:' + (launcherColorValue(item.iconBackground) || 'var(--bg-secondary)') + '22'">
+              <ion-icon x-bind:name="item.icon || 'help-outline'" style="font-size:18px"
+                        x-bind:style="'color:' + (launcherColorValue(item.iconColor) || 'var(--text-secondary)')"></ion-icon>
+            </span>
+            <!-- Enable toggle -->
+            <input type="checkbox" x-model="item.enabled" x-on:change="launcherToggleItem(idx)"
+                   style="width:16px;height:16px;cursor:pointer;flex-shrink:0" title="Enable / disable this item">
+            <!-- Label + meta -->
+            <div style="flex:1;min-width:0" x-bind:style="item.enabled === false ? 'opacity:0.4' : ''">
+              <div style="font-weight:500;font-size:14px" x-text="item.label || 'Untitled'"></div>
+              <div style="font-size:11px;color:var(--text-muted);display:flex;gap:8px;flex-wrap:wrap;margin-top:2px">
+                <span x-text="item.url || item.path || ''"></span>
+                <template x-if="item.hideKey"><span>&middot; hideKey: <span x-text="item.hideKey"></span></span></template>
+              </div>
+            </div>
+            <!-- Placement + type -->
+            <div style="display:flex;gap:4px;flex-shrink:0;align-items:center">
+              <template x-if="item.showInLauncher !== false">
+                <span style="font-size:10px;padding:3px 8px;border-radius:4px;background:var(--green, #22c55e);color:#fff;text-transform:uppercase;font-weight:600;letter-spacing:0.3px">Launcher</span>
+              </template>
+              <template x-if="item.showInTabBar">
+                <span style="font-size:10px;padding:3px 8px;border-radius:4px;background:var(--accent);color:#fff;text-transform:uppercase;font-weight:600;letter-spacing:0.3px">Tab Bar</span>
+              </template>
+              <span style="font-size:10px;color:var(--text-muted);margin-left:4px" x-text="'· ' + (item.linkType === 'webview' ? 'WebView' : item.linkType === 'external' ? (item.openInBrowser ? 'Browser' : 'External') : 'Route')"></span>
+            </div>
+            <!-- Actions -->
+            <div style="display:flex;gap:4px;flex-shrink:0">
+              <button class="btn btn-sm" x-on:click="launcherEditItem(idx)" x-text="launcherEditing === idx ? 'Close' : 'Edit'"></button>
+              <button class="btn btn-sm btn-danger-subtle" x-on:click="launcherDeleteItem(idx)" title="Delete">&times;</button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Editor (inline, shown below the list when editing) -->
+      <template x-if="launcherEditing !== null">
+        <div style="border:1px solid var(--accent);border-radius:var(--radius);padding:20px;margin-top:12px;background:var(--bg-primary)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h4 style="margin:0" x-text="launcherEditing === -1 ? 'Add Item' : 'Edit Item'"></h4>
+            <button class="btn btn-sm" x-on:click="launcherEditing = null">&times;</button>
+          </div>
+
+          <!-- Label -->
+          <div class="field" style="margin-bottom:12px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">Label *</label>
+            <input type="text" x-model="launcherDraft.label" placeholder="e.g. Shop, Resources, Support" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:14px">
+          </div>
+
+          <!-- Icon picker -->
+          <div class="field" style="margin-bottom:12px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">Icon</label>
+            <!-- Search -->
+            <input type="text" x-model="launcherIconSearch" placeholder="Search icons or type custom name..." style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:13px;margin-bottom:8px">
+            <!-- Icon grid -->
+            <div style="display:flex;flex-wrap:wrap;gap:4px;max-height:180px;overflow-y:auto;padding:4px">
+              <template x-for="ic in launcherFilteredIcons()" :key="ic">
+                <button type="button" style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:2px solid transparent;cursor:pointer;background:var(--bg-secondary);transition:all 0.1s"
+                        x-bind:style="launcherDraft.icon === ic ? 'border-color:var(--accent);background:var(--accent-bg, rgba(99,102,241,0.1))' : ''"
+                        x-on:click="launcherDraft.icon = ic" x-bind:title="ic">
+                  <ion-icon x-bind:name="ic" style="font-size:20px;color:var(--text-primary)"></ion-icon>
+                </button>
+              </template>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+              Selected: <code x-text="launcherDraft.icon || 'none'"></code>
+            </div>
+          </div>
+
+          <!-- Link type -->
+          <div class="field" style="margin-bottom:12px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">Link Type</label>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
+                <input type="radio" value="webview" x-model="launcherDraft.linkType"> In-app WebView
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
+                <input type="radio" value="external" x-model="launcherDraft.linkType"> External URL
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
+                <input type="radio" value="internal" x-model="launcherDraft.linkType"> Internal Route
+              </label>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+              <template x-if="launcherDraft.linkType === 'webview'">
+                <span>Opens a page on your WordPress site with the user's session (authenticated). Best for WP admin, membership pages, forms.</span>
+              </template>
+              <template x-if="launcherDraft.linkType === 'external'">
+                <span>Opens any URL without WordPress authentication. Good for third-party sites, social pages, partner links.</span>
+              </template>
+              <template x-if="launcherDraft.linkType === 'internal'">
+                <span>Navigates to an existing screen in the app. Select from installed routes below.</span>
+              </template>
+            </div>
+          </div>
+
+          <!-- URL / Path -->
+          <div class="field" style="margin-bottom:12px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px"
+                   x-text="launcherDraft.linkType === 'internal' ? 'Route Path *' : 'URL *'"></label>
+            <!-- Internal route: dropdown + custom input -->
+            <template x-if="launcherDraft.linkType === 'internal'">
+              <div>
+                <select x-model="launcherDraft.url" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:13px">
+                  <option value="">Select a route...</option>
+                  <template x-for="r in launcherRoutes" :key="r.path">
+                    <option x-bind:value="r.path" x-text="r.label + ' (' + r.path + ')'"></option>
+                  </template>
+                  <option value="__custom__">Custom path...</option>
+                </select>
+                <template x-if="launcherDraft.url === '__custom__' || (launcherDraft.url && !launcherRoutes.find(r => r.path === launcherDraft.url))">
+                  <input type="text" x-model="launcherDraft.url" placeholder="/custom-route"
+                         style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:14px;margin-top:6px"
+                         x-init="if (launcherDraft.url === '__custom__') launcherDraft.url = ''">
+                </template>
+              </div>
+            </template>
+            <!-- URL input for webview/external -->
+            <template x-if="launcherDraft.linkType !== 'internal'">
+              <input type="text" x-model="launcherDraft.url"
+                     x-bind:placeholder="'https://example.com/page/'"
+                     style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:14px">
+            </template>
+          </div>
+
+          <!-- Open in browser toggle (external only) -->
+          <template x-if="launcherDraft.linkType === 'external'">
+            <div class="field" style="margin-bottom:12px">
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">Open behavior</label>
+              <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <!-- x-on:change forces boolean type — Alpine coerces x-model radio values to strings -->
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
+                  <input type="radio" x-bind:value="false" x-model="launcherDraft.openInBrowser" x-on:change="launcherDraft.openInBrowser = false"> Open inside app
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
+                  <input type="radio" x-bind:value="true" x-model="launcherDraft.openInBrowser" x-on:change="launcherDraft.openInBrowser = true"> Open in Safari / Chrome
+                </label>
+              </div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+                <template x-if="!launcherDraft.openInBrowser">
+                  <span>Opens in a WebView inside the app (no authentication). User stays in the app.</span>
+                </template>
+                <template x-if="launcherDraft.openInBrowser">
+                  <span>Opens in the device's default browser. User leaves the app temporarily.</span>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- Show in checkboxes -->
+          <div class="field" style="margin-bottom:12px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">Show in</label>
+            <div style="display:flex;gap:16px">
+              <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
+                <input type="checkbox" x-model="launcherDraft.showInLauncher"> Launcher grid
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer">
+                <input type="checkbox" x-model="launcherDraft.showInTabBar"> Tab bar
+              </label>
+            </div>
+          </div>
+
+          <!-- Color pickers -->
+          <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
+            <div class="field" style="flex:1;min-width:150px">
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">Icon Color</label>
+              <select x-model="launcherDraft.iconColor" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:13px">
+                <option value="">Default</option>
+                <template x-for="c in LAUNCHER_COLOR_OPTIONS" :key="c.value"><option x-bind:value="c.value" x-text="c.label"></option></template>
+              </select>
+            </div>
+            <div class="field" style="flex:1;min-width:150px">
+              <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">Icon Background</label>
+              <select x-model="launcherDraft.iconBackground" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:13px">
+                <option value="">Default</option>
+                <template x-for="c in LAUNCHER_COLOR_OPTIONS" :key="c.value"><option x-bind:value="c.value" x-text="c.label"></option></template>
+              </select>
+            </div>
+          </div>
+
+          <!-- Visibility key -->
+          <div class="field" style="margin-bottom:12px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">Visibility Key <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+            <input type="text" x-model="launcherDraft.hideKey" placeholder="e.g. shop"
+                   style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:14px">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+              WP admins can hide this item by adding this key to <strong>TBC Community App &rarr; Visibility &rarr; hide_menu[]</strong>.
+            </div>
+          </div>
+
+          <!-- ID -->
+          <div class="field" style="margin-bottom:16px">
+            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px">ID</label>
+            <input type="text" x-model="launcherDraft.id"
+                   x-bind:placeholder="launcherDraft.label ? launcherSlugify(launcherDraft.label) : 'auto-generated from label'"
+                   style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-primary);color:var(--text-primary);font-size:14px;font-family:var(--font-mono)">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+              Leave blank to auto-generate from label. Must be unique across all items.
+            </div>
+          </div>
+
+          <!-- Save / Cancel -->
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-sm" x-on:click="launcherEditing = null">Cancel</button>
+            <button class="btn btn-sm btn-primary" x-on:click="launcherSaveItem()" x-bind:disabled="!launcherDraft.label || !launcherDraft.url || launcherSaving">
+              <span x-text="launcherSaving ? 'Saving...' : (launcherEditing === -1 ? 'Add Item' : 'Save Item')"></span>
+            </button>
           </div>
         </div>
       </template>
@@ -2356,6 +2613,16 @@ document.addEventListener('alpine:init', () => {
     backupImportResult: null,
     backupImportError: '',
 
+    // Launcher Menu
+    launcherItems: [],
+    launcherLoaded: false,
+    launcherSaving: false,
+    launcherEditing: null, // index of item being edited, or -1 for new item
+    launcherDraft: {},
+    launcherIconSearch: '',
+    launcherTabCount: 0, // total tab count (core + module + custom)
+    launcherRoutes: [], // available internal routes from app/
+
     // Updates
     updatesLoaded: false,
     license: { hasLicense: false, valid: false, key: '' },
@@ -2513,6 +2780,7 @@ document.addEventListener('alpine:init', () => {
       this.$watch('headerTitle', (val) => { document.title = val; });
       // Lazy load tabs
       this.$watch('activeTab', (tab) => {
+        if (tab === 'launcher' && !this.launcherLoaded) this.loadLauncherMenu();
         if (tab === 'builds' && !this.buildsLoaded) this.loadBuilds();
         if (tab === 'builds' && !this.presetLoaded) this.loadPreset();
         if (tab === 'ota' && !this.otaLoaded) this.loadOTATab();
@@ -3847,6 +4115,176 @@ bumpVersion(type) {
       if (!startPath) startPath = navigator.platform.indexOf('Win') !== -1 ? 'C:\\' : '/';
       this.folderBrowser = { open: true, pathInput: startPath, currentPath: '', parent: '', entries: [], hasAppJson: false, loading: false, error: '', sep: '/' };
       this.browseTo(startPath);
+    },
+
+    // =========================================================================
+    // Launcher Menu
+    // =========================================================================
+    LAUNCHER_ICONS: [
+      'home-outline', 'cart-outline', 'heart-outline', 'chatbubble-outline', 'calendar-outline',
+      'document-text-outline', 'globe-outline', 'shield-outline', 'star-outline', 'gift-outline',
+      'trophy-outline', 'people-outline', 'book-outline', 'camera-outline', 'videocam-outline',
+      'musical-notes-outline', 'mail-outline', 'call-outline', 'map-outline', 'location-outline',
+      'compass-outline', 'briefcase-outline', 'school-outline', 'bulb-outline', 'flag-outline',
+      'bookmark-outline', 'bookmarks-outline', 'pricetag-outline', 'ribbon-outline', 'rocket-outline',
+      'flash-outline', 'flame-outline', 'leaf-outline', 'paw-outline', 'game-controller-outline',
+      'headset-outline', 'help-circle-outline', 'information-circle-outline', 'newspaper-outline',
+      'cash-outline', 'card-outline', 'wallet-outline', 'lock-closed-outline', 'key-outline',
+      'settings-outline', 'construct-outline', 'hammer-outline', 'medal-outline', 'megaphone-outline',
+      'storefront-outline', 'fitness-outline', 'restaurant-outline', 'cafe-outline', 'pizza-outline',
+      'car-outline', 'bicycle-outline', 'airplane-outline', 'train-outline', 'bus-outline',
+    ],
+
+    LAUNCHER_COLORS: {
+      primary: '#6366f1', accent: '#8b5cf6', error: '#ef4444', warning: '#f59e0b',
+      success: '#22c55e', info: '#3b82f6', textSecondary: '#6b7280',
+    },
+
+    LAUNCHER_COLOR_OPTIONS: [
+      { value: 'primary', label: 'Primary' }, { value: 'accent', label: 'Accent' },
+      { value: 'error', label: 'Red / Error' }, { value: 'warning', label: 'Orange / Warning' },
+      { value: 'success', label: 'Green / Success' }, { value: 'info', label: 'Blue / Info' },
+      { value: 'textSecondary', label: 'Gray / Secondary' },
+    ],
+
+    launcherSlugify(str) {
+      return (str || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    },
+
+    launcherColorValue(token) {
+      return this.LAUNCHER_COLORS[token] || '';
+    },
+
+    launcherFilteredIcons() {
+      var q = (this.launcherIconSearch || '').toLowerCase().trim();
+      if (!q) return this.LAUNCHER_ICONS;
+      return this.LAUNCHER_ICONS.filter(function(ic) { return ic.indexOf(q) !== -1; });
+    },
+
+    async loadLauncherMenu() {
+      try {
+        var res = await fetch('/api/launcher-menu');
+        var data = await res.json();
+        this.launcherItems = data.items || [];
+        this.launcherRoutes = data.routes || [];
+        this.launcherLoaded = true;
+        this.launcherUpdateTabCount();
+        // Init drag-reorder after DOM renders
+        this.$nextTick(() => this.launcherInitSortable());
+      } catch (err) {
+        this.showToast('Failed to load launcher menu: ' + err.message, 'error');
+      }
+    },
+
+    _launcherSortable: null,
+    launcherInitSortable() {
+      if (this._launcherSortable) { this._launcherSortable.destroy(); this._launcherSortable = null; }
+      var el = this.$refs.launcherList;
+      if (!el || typeof Sortable === 'undefined') return;
+      var self = this;
+      this._launcherSortable = Sortable.create(el, {
+        handle: '.launcher-drag-handle',
+        animation: 150,
+        ghostClass: 'launcher-ghost',
+        onEnd: function(evt) {
+          if (evt.oldIndex === evt.newIndex) return;
+          var item = self.launcherItems.splice(evt.oldIndex, 1)[0];
+          self.launcherItems.splice(evt.newIndex, 0, item);
+          if (self.launcherEditing !== null && self.launcherEditing >= 0) {
+            if (self.launcherEditing === evt.oldIndex) self.launcherEditing = evt.newIndex;
+            else if (evt.oldIndex < self.launcherEditing && evt.newIndex >= self.launcherEditing) self.launcherEditing--;
+            else if (evt.oldIndex > self.launcherEditing && evt.newIndex <= self.launcherEditing) self.launcherEditing++;
+          }
+          self.launcherSaveAll();
+        },
+      });
+    },
+
+    launcherUpdateTabCount() {
+      // Core tabs: 3 (Home, Activity, Spaces) + module tabs from installed modules
+      var coreTabCount = 3;
+      var moduleTabCount = (this.modules || []).filter(function(m) { return m.active && m.hasTab; }).length;
+      var customTabCount = this.launcherItems.filter(function(i) { return i.showInTabBar; }).length;
+      this.launcherTabCount = coreTabCount + moduleTabCount + customTabCount;
+    },
+
+    launcherAddItem() {
+      this.launcherEditing = -1;
+      this.launcherIconSearch = '';
+      this.launcherDraft = {
+        id: '', label: '', icon: 'globe-outline', linkType: 'webview', url: '',
+        enabled: true, showInLauncher: true, showInTabBar: false, openInBrowser: false,
+        hideKey: '', iconColor: '', iconBackground: '',
+      };
+    },
+
+    launcherEditItem(idx) {
+      if (this.launcherEditing === idx) { this.launcherEditing = null; return; }
+      this.launcherEditing = idx;
+      this.launcherIconSearch = '';
+      var item = this.launcherItems[idx];
+      this.launcherDraft = {
+        id: item.id || '', label: item.label || '', icon: item.icon || 'globe-outline',
+        linkType: item.linkType || 'webview', url: item.url || '',
+        enabled: item.enabled !== false, showInLauncher: item.showInLauncher !== false,
+        showInTabBar: item.showInTabBar === true, openInBrowser: item.openInBrowser === true,
+        hideKey: item.hideKey || '', iconColor: item.iconColor || '', iconBackground: item.iconBackground || '',
+      };
+    },
+
+    launcherToggleItem(idx) {
+      this.launcherUpdateTabCount();
+      this.launcherSaveAll();
+    },
+
+    launcherDeleteItem(idx) {
+      var name = this.launcherItems[idx]?.label || 'this item';
+      if (!confirm('Remove "' + name + '" from the launcher?\n\nThis will take effect after the next OTA update or dev build.')) return;
+      this.launcherItems.splice(idx, 1);
+      if (this.launcherEditing === idx) this.launcherEditing = null;
+      else if (this.launcherEditing !== null && this.launcherEditing > idx) this.launcherEditing--;
+      this.launcherUpdateTabCount();
+      this.launcherSaveAll();
+    },
+
+    launcherSaveItem() {
+      var d = this.launcherDraft;
+      if (!d.label || !d.url || d.url === '__custom__') return;
+      if (!d.id) d.id = this.launcherSlugify(d.label);
+      var self = this;
+      var existing = this.launcherItems.findIndex(function(item, i) {
+        return item.id === d.id && i !== self.launcherEditing;
+      });
+      if (existing !== -1 && this.launcherEditing !== existing) {
+        this.showToast('ID "' + d.id + '" is already used by another item.', 'error');
+        return;
+      }
+      var item = Object.assign({}, d);
+      if (this.launcherEditing === -1) {
+        this.launcherItems.push(item);
+      } else {
+        this.launcherItems[this.launcherEditing] = item;
+      }
+      this.launcherEditing = null;
+      this.launcherUpdateTabCount();
+      this.launcherSaveAll();
+    },
+
+    async launcherSaveAll() {
+      this.launcherSaving = true;
+      try {
+        var res = await this.postJson('/api/launcher-menu', { items: this.launcherItems });
+        var data = await res.json();
+        if (data.ok) {
+          this.showToast('Launcher menu saved', 'success');
+        } else {
+          this.showToast('Save failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+      } catch (err) {
+        this.showToast('Save failed: ' + err.message, 'error');
+      } finally {
+        this.launcherSaving = false;
+      }
     },
 
     closeFolderBrowser() {
