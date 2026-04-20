@@ -1,5 +1,8 @@
 # Changelog - TBC Messaging Center
 
+## 3.5.2
+- Fix: Settings panel no longer bleeds through under the active tab (CSS specificity tie overrode `.hidden` on the Settings panel, causing "Loading Settings..." to render below every tab)
+
 ## 3.5.1
 - Fix: Clarified supported media types in upload tooltip (jpg, png, gif only — webp not supported by Twilio)
 

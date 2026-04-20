@@ -13,10 +13,12 @@ import { Avatar } from '@/components/common/Avatar';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
 import { ChatInput } from '@/components/message/ChatInput';
+import { ChatReactionPicker } from '@/components/message/ChatReactionPicker';
 import { DateSeparator, MessageBubble } from '@/components/message/MessageBubble';
 import { MediaViewer } from '@/components/media/MediaViewer';
 import { PageHeader } from '@/components/navigation/PageHeader';
 import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
+import { getSlotComponent } from '@/modules/_registry';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -38,6 +40,12 @@ import {
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// -----------------------------------------------------------------------------
+// Slot resolution (cached at module level)
+// -----------------------------------------------------------------------------
+
+const CustomChatPicker = getSlotComponent<React.ComponentProps<typeof ChatReactionPicker>>('chatReactionPicker');
 
 // -----------------------------------------------------------------------------
 // Component
@@ -187,6 +195,7 @@ export default function UserChatScreen() {
           onAvatarPress={() => handleAvatarPress(item)}
           onDelete={isOwn ? chat.handleDeleteMessage : undefined}
           onDefaultReact={reactions.handleDefaultReact}
+          onReactionLongPress={reactions.handleReactionLongPress}
           onReactionPress={reactions.handleReactionPillPress}
           onMenuPress={menu.handleMenuPress}
           onImagePress={menu.handleImagePress}
@@ -380,6 +389,17 @@ export default function UserChatScreen() {
         initialIndex={menu.mediaViewerIndex}
         onClose={menu.closeMediaViewer}
       />
+
+      {/* Reaction Picker (module slot overrides core picker when active) */}
+      {React.createElement(CustomChatPicker || ChatReactionPicker, {
+        visible: reactions.reactionPickerVisible,
+        onSelect: reactions.handleReactionSelect,
+        onClose: reactions.handleReactionPickerClose,
+        currentEmoji: reactions.reactionTargetMessageRef.current
+          ? reactions.getUserReactionType(reactions.reactionTargetMessageRef.current)
+          : null,
+        anchor: reactions.reactionPickerAnchor,
+      })}
     </>
   );
 }

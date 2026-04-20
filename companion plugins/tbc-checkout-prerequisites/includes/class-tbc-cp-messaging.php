@@ -247,7 +247,16 @@ class TBC_CP_Messaging {
         $screening_date = gform_get_meta($entry['id'], 'tbc_cp_phone_screening_date') ?: '';
         if (!empty($screening_date)) {
             $settings = self::get_settings();
-            $formatted_date = date_i18n('l, F j, Y \a\t g:i A', strtotime($screening_date));
+            $ts = function_exists('tbc_cp_parse_schedule_ts') ? tbc_cp_parse_schedule_ts($screening_date) : strtotime($screening_date);
+            $tz_abbr = function_exists('tbc_cp_tz_abbr') ? tbc_cp_tz_abbr($ts) : '';
+            $tz_long = function_exists('tbc_cp_tz_long_name') ? tbc_cp_tz_long_name() : '';
+            $formatted_date = wp_date('l, F j, Y \a\t g:i A', $ts);
+            if ($tz_abbr !== '') {
+                $formatted_date .= ' ' . $tz_abbr;
+                if ($tz_long !== '' && $tz_long !== $tz_abbr) {
+                    $formatted_date .= ' (' . $tz_long . ')';
+                }
+            }
             $calendar_url = function_exists('tbc_cp_calendar_url') ? tbc_cp_calendar_url((int) $entry['id']) : '';
 
             $meeting_info = "Your phone consultation has been scheduled for {$formatted_date}.\n\n";
@@ -262,7 +271,11 @@ class TBC_CP_Messaging {
                 }
             }
             if (!empty($calendar_url)) {
-                $meeting_info .= "\nAdd to your calendar: {$calendar_url}";
+                $meeting_info .= "\n━━━━━━━━━━━━━━━━━━━\n";
+                $meeting_info .= "📅 Add to your calendar\n";
+                $meeting_info .= "Tap the link below to save this call to your phone or computer — you'll get an automatic reminder 1 hour before.\n\n";
+                $meeting_info .= "👉 {$calendar_url}\n";
+                $meeting_info .= "━━━━━━━━━━━━━━━━━━━";
             }
         }
 

@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Checkout Prerequisites
  * Plugin URI: https://twobirdscode.com
  * Description: Displays prerequisite steps customers must complete before checkout
- * Version: 3.7.29
+ * Version: 3.7.30
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  * Text Domain: tbc-checkout-prerequisites
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('TBC_CP_VERSION', '3.7.29');
+define('TBC_CP_VERSION', '3.7.30');
 define('TBC_CP_DIR', plugin_dir_path(__FILE__));
 define('TBC_CP_URL', plugin_dir_url(__FILE__));
 
@@ -246,6 +246,50 @@ function tbc_cp_calendar_url(int $entry_id): string {
         'tbc_calendar' => $entry_id,
         'token' => tbc_cp_calendar_token($entry_id),
     ], home_url('/'));
+}
+
+/**
+ * Parse a datetime-local string (e.g. "2026-04-21T08:00") as wall-clock time
+ * in WordPress's configured timezone. Returns UTC timestamp, or 0 on failure.
+ */
+function tbc_cp_parse_schedule_ts(string $local_datetime): int {
+    if (empty($local_datetime)) {
+        return 0;
+    }
+    try {
+        $dt = new DateTime($local_datetime, wp_timezone());
+        return $dt->getTimestamp();
+    } catch (Exception $e) {
+        return 0;
+    }
+}
+
+/**
+ * Short timezone abbreviation (e.g. "CST"/"CDT") for the given timestamp,
+ * or for "now" if $timestamp is null. Respects DST automatically.
+ */
+function tbc_cp_tz_abbr(?int $timestamp = null): string {
+    $dt = new DateTime('@' . ($timestamp ?? time()));
+    $dt->setTimezone(wp_timezone());
+    return $dt->format('T');
+}
+
+/**
+ * Friendly long name for the WP timezone (e.g. "Central Time").
+ * Falls back to the IANA identifier for zones we haven't mapped.
+ */
+function tbc_cp_tz_long_name(): string {
+    $tz = wp_timezone_string();
+    $map = [
+        'America/Chicago'      => __('Central Time', 'tbc-checkout-prerequisites'),
+        'America/New_York'     => __('Eastern Time', 'tbc-checkout-prerequisites'),
+        'America/Denver'       => __('Mountain Time', 'tbc-checkout-prerequisites'),
+        'America/Phoenix'      => __('Mountain Time', 'tbc-checkout-prerequisites'),
+        'America/Los_Angeles'  => __('Pacific Time', 'tbc-checkout-prerequisites'),
+        'America/Anchorage'    => __('Alaska Time', 'tbc-checkout-prerequisites'),
+        'Pacific/Honolulu'     => __('Hawaii Time', 'tbc-checkout-prerequisites'),
+    ];
+    return $map[$tz] ?? $tz;
 }
 
 register_activation_hook(__FILE__, function() {

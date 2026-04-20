@@ -8,6 +8,9 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { ReactionPicker } from './components/ReactionPicker';
 import { ReactionBreakdownModal } from './components/ReactionBreakdownModal';
+import { ReactionIcon } from './components/ReactionIcon';
+import { useReactionConfig } from './hooks/useReactionConfig';
+import { ChatReactionOverridesProvider } from '@/contexts/ChatReactionOverridesContext';
 import type { ReactionType } from '@/types/feed';
 
 // -----------------------------------------------------------------------------
@@ -47,6 +50,7 @@ export function useMultiReactions(): MultiReactionsContextValue | null {
 export function MultiReactionsProvider({ children }: { children: React.ReactNode }) {
   const [pickerState, setPickerState] = useState<ReactionPickerParams | null>(null);
   const [breakdownState, setBreakdownState] = useState<BreakdownParams | null>(null);
+  const { reactions, getReaction } = useReactionConfig();
 
   const openReactionPicker = useCallback((params: ReactionPickerParams) => setPickerState(params), []);
   const openReactionBreakdown = useCallback((params: BreakdownParams) => setBreakdownState(params), []);
@@ -56,9 +60,25 @@ export function MultiReactionsProvider({ children }: { children: React.ReactNode
     openReactionBreakdown,
   }), [openReactionPicker, openReactionBreakdown]);
 
+  // Chat reaction overrides — maps emoji text to custom icons
+  const chatOverrides = useMemo(() => {
+    if (reactions.length === 0) return null;
+    return {
+      defaultEmoji: reactions[0].emoji,
+      renderIcon: (emoji: string, size: number) => {
+        const config = getReaction(reactions.find(r => r.emoji === emoji)?.id || '');
+        return <ReactionIcon iconUrl={config?.icon_url} emoji={emoji} size={size} />;
+      },
+    };
+  }, [reactions, getReaction]);
+
   return (
     <MultiReactionsContext.Provider value={value}>
-      {children}
+      {chatOverrides ? (
+        <ChatReactionOverridesProvider value={chatOverrides}>
+          {children}
+        </ChatReactionOverridesProvider>
+      ) : children}
 
       {/* Reaction Picker */}
       <ReactionPicker

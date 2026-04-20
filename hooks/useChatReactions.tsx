@@ -5,17 +5,19 @@
 // Uses Fluent's native emoji-based reactions (not multi-reactions module).
 // =============================================================================
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Text } from 'react-native';
 import { ChatMessage } from '@/types/message';
 import { messagesApi } from '@/services/api/messages';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
 import { hapticLight } from '@/utils/haptics';
+import { useChatReactionOverrides } from '@/contexts/ChatReactionOverridesContext';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('ChatReactions');
 
-const DEFAULT_EMOJI = '👍';
+/** The 6 native Fluent Messaging reaction emojis */
+export const NATIVE_CHAT_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🎉'];
 
 // -----------------------------------------------------------------------------
 // Types
@@ -31,6 +33,18 @@ interface UseChatReactionsParams {
 // -----------------------------------------------------------------------------
 
 export function useChatReactions({ currentUserId, setMessages }: UseChatReactionsParams) {
+  // Module overrides (e.g., multi-reactions provides custom icons + default emoji)
+  const overrides = useChatReactionOverrides();
+  const resolvedDefault = overrides?.defaultEmoji || NATIVE_CHAT_EMOJIS[0];
+  const iconRenderer = overrides?.renderIcon || null;
+  // ---------------------------------------------------------------------------
+  // Picker State
+  // ---------------------------------------------------------------------------
+
+  const [reactionPickerVisible, setReactionPickerVisible] = useState(false);
+  const [reactionPickerAnchor, setReactionPickerAnchor] = useState<{ top: number; left: number } | undefined>();
+  const reactionTargetMessageRef = useRef<ChatMessage | null>(null);
+
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
@@ -48,8 +62,9 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
 
   /** Render reaction icon for breakdown pills */
   const renderReactionIcon = useCallback((emoji: string): React.ReactNode => {
-    return <Text style={{ fontSize: 12 }}>{emoji}</Text>;
-  }, []);
+    if (iconRenderer) return iconRenderer(emoji, 22);
+    return <Text style={{ fontSize: 22 }}>{emoji}</Text>;
+  }, [iconRenderer]);
 
   /** Render the user's current reaction (or default) for the reaction button */
   const renderUserReactionIcon = useCallback((message: ChatMessage): (() => React.ReactNode) => {
@@ -58,13 +73,15 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
       if (reactions && currentUserId) {
         for (const [emoji, userIds] of Object.entries(reactions)) {
           if (userIds.includes(currentUserId)) {
-            return <Text style={{ fontSize: 15 }}>{emoji}</Text>;
+            if (iconRenderer) return iconRenderer(emoji, 35);
+            return <Text style={{ fontSize: 35 }}>{emoji}</Text>;
           }
         }
       }
-      return <Text style={{ fontSize: 15 }}>{DEFAULT_EMOJI}</Text>;
+      if (iconRenderer) return iconRenderer(resolvedDefault, 35);
+      return <Text style={{ fontSize: 35 }}>{resolvedDefault}</Text>;
     };
-  }, [currentUserId]);
+  }, [currentUserId, iconRenderer, resolvedDefault]);
 
   // ---------------------------------------------------------------------------
   // Optimistic Updater
@@ -115,7 +132,7 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
   const handleDefaultReact = useCallback(async (message: ChatMessage) => {
     hapticLight();
     const reactions = message.meta?.reactions;
-    let emojiToToggle = DEFAULT_EMOJI;
+    let emojiToToggle = resolvedDefault;
 
     if (reactions && currentUserId) {
       for (const [emoji, userIds] of Object.entries(reactions)) {
@@ -135,7 +152,7 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
     } catch (err) {
       log.error(err, 'Default reaction error');
     }
-  }, [currentUserId, setMessages, makeReactionUpdater]);
+  }, [currentUserId, setMessages, makeReactionUpdater, resolvedDefault]);
 
   /** User taps an existing reaction pill on a message */
   const handleReactionPillPress = useCallback(async (message: ChatMessage, emoji: string) => {
@@ -150,13 +167,52 @@ export function useChatReactions({ currentUserId, setMessages }: UseChatReaction
     }
   }, [setMessages, makeReactionUpdater]);
 
+  /** Long-press smiley button — open reaction picker */
+  const handleReactionLongPress = useCallback((message: ChatMessage, anchor: { top: number; left: number }) => {
+    hapticLight();
+    reactionTargetMessageRef.current = message;
+    setReactionPickerAnchor(anchor);
+    setReactionPickerVisible(true);
+  }, []);
+
+  /** User selects an emoji from the picker */
+  const handleReactionSelect = useCallback(async (emoji: string) => {
+    const message = reactionTargetMessageRef.current;
+    setReactionPickerVisible(false);
+    reactionTargetMessageRef.current = null;
+    if (!message) return;
+
+    try {
+      await optimisticUpdate(
+        setMessages,
+        makeReactionUpdater(message.id, emoji),
+        () => messagesApi.toggleReaction(message.id, emoji),
+      );
+    } catch (err) {
+      log.error(err, 'Reaction select error');
+    }
+  }, [setMessages, makeReactionUpdater]);
+
+  /** Dismiss picker without selecting */
+  const handleReactionPickerClose = useCallback(() => {
+    setReactionPickerVisible(false);
+    reactionTargetMessageRef.current = null;
+  }, []);
+
   return {
     // Helpers
     getUserReactionType,
     renderReactionIcon,
     renderUserReactionIcon,
+    // Picker state
+    reactionPickerVisible,
+    reactionPickerAnchor,
+    reactionTargetMessageRef,
     // Handlers
     handleDefaultReact,
     handleReactionPillPress,
+    handleReactionLongPress,
+    handleReactionSelect,
+    handleReactionPickerClose,
   };
 }

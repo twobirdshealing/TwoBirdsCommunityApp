@@ -13,6 +13,7 @@ import { FeedReactionSlot } from './components/FeedReactionSlot';
 import { FeedBreakdownSlot } from './components/FeedBreakdownSlot';
 import { CommentReactionSlot } from './components/CommentReactionSlot';
 import { CommentBreakdownSlot } from './components/CommentBreakdownSlot';
+import { ChatReactionPickerSlot } from './components/ChatReactionPickerSlot';
 
 export const multiReactionsModule: ModuleManifest = {
   id: 'multi-reactions',
@@ -48,6 +49,12 @@ export const multiReactionsModule: ModuleManifest = {
       slot: 'commentReactionBreakdown',
       priority: 10,
       component: CommentBreakdownSlot,
+    },
+    {
+      id: 'multi-reactions-chat-picker',
+      slot: 'chatReactionPicker',
+      priority: 10,
+      component: ChatReactionPickerSlot,
     },
   ],
 

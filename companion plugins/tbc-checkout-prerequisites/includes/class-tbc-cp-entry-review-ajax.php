@@ -258,10 +258,11 @@ class TBC_CP_Entry_Review_Ajax {
             }
         }
 
+        $ts = !empty($date) ? tbc_cp_parse_schedule_ts($date) : 0;
         wp_send_json_success([
             'date' => $date,
             'note' => $note,
-            'formatted_date' => !empty($date) ? date_i18n('M j, g:i A', strtotime($date)) : '',
+            'formatted_date' => $ts ? wp_date('M j, g:i A', $ts) . ' ' . tbc_cp_tz_abbr($ts) : '',
             'calendar_url' => !empty($date) ? tbc_cp_calendar_url($entry_id) : '',
         ]);
     }

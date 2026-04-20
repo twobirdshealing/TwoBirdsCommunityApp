@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Messaging Center
  * Plugin URI: https://twobirdscode.com
  * Description: Unified messaging system for SMS, calls, voicemail, and scheduling with Fluent Community integration
- * Version: 3.5.1
+ * Version: 3.5.2
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  */
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 define('TBC_MC_URL', plugin_dir_url(__FILE__));
-define('TBC_MC_VERSION', '3.5.1');
+define('TBC_MC_VERSION', '3.5.2');
 define('TBC_MC_PATH', plugin_dir_path(__FILE__));
 
 // Load Twilio SDK

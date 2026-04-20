@@ -71,11 +71,6 @@
     display: none;
 }
 
-.tbc-mc-tab-content[data-content="settings"] {
-    display: block;
-    overflow-y: auto;
-}
-
 /* ===== SHARED STATUS BADGES ===== */
 .tbc-mc-badge {
     display: inline-block;

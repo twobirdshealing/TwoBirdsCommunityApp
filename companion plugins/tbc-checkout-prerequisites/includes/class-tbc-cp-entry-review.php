@@ -498,7 +498,7 @@ class TBC_CP_Entry_Review {
         // Sort
         if ($filter === 'upcoming_calls') {
             foreach ($filtered as &$e) {
-                $e['_sort_ts'] = strtotime($e['phone_screening_date']);
+                $e['_sort_ts'] = tbc_cp_parse_schedule_ts($e['phone_screening_date']);
             }
             unset($e);
             usort($filtered, fn($a, $b) => $a['_sort_ts'] - $b['_sort_ts']);
@@ -588,16 +588,16 @@ class TBC_CP_Entry_Review {
                         <?php if ($data['phone_screening'] === 'required') : ?>
                             <div class="tbc-cp-er-schedule-info" data-entry-id="<?php echo $entry_id; ?>">
                                 <?php if (!empty($data['phone_screening_date'])) :
-                                    $sched_time = strtotime($data['phone_screening_date']);
-                                    $now_local = strtotime(current_time('mysql'));
-                                    $is_overdue = $sched_time < $now_local;
+                                    $sched_time = tbc_cp_parse_schedule_ts($data['phone_screening_date']);
+                                    $is_overdue = $sched_time && $sched_time < time();
                                     $badge_class = $is_overdue ? 'tbc-cp-er-schedule-overdue' : 'tbc-cp-er-schedule-set';
+                                    $sched_label = $sched_time ? wp_date('M j, g:i A', $sched_time) . ' ' . tbc_cp_tz_abbr($sched_time) : '';
                                 ?>
                                     <span class="tbc-cp-er-schedule-badge <?php echo esc_attr($badge_class); ?>">
                                         <?php if ($is_overdue) : ?>
-                                            <?php echo esc_html(__('Overdue', 'tbc-checkout-prerequisites') . ': ' . date_i18n('M j, g:i A', $sched_time)); ?>
+                                            <?php echo esc_html(__('Overdue', 'tbc-checkout-prerequisites') . ': ' . $sched_label); ?>
                                         <?php else : ?>
-                                            &#128222; <?php echo esc_html(date_i18n('M j, g:i A', $sched_time)); ?>
+                                            &#128222; <?php echo esc_html($sched_label); ?>
                                         <?php endif; ?>
                                     </span>
                                     <button type="button" class="tbc-cp-er-schedule-call tbc-cp-er-schedule-edit"
@@ -617,10 +617,12 @@ class TBC_CP_Entry_Review {
                                     </button>
                                 <?php endif; ?>
                             </div>
-                        <?php elseif ($data['phone_screening'] === 'completed' && !empty($data['phone_screening_date'])) : ?>
+                        <?php elseif ($data['phone_screening'] === 'completed' && !empty($data['phone_screening_date'])) :
+                            $was_ts = tbc_cp_parse_schedule_ts($data['phone_screening_date']);
+                        ?>
                             <div class="tbc-cp-er-schedule-info">
                                 <span class="tbc-cp-er-schedule-badge tbc-cp-er-schedule-completed">
-                                    <?php echo esc_html(__('Was', 'tbc-checkout-prerequisites') . ': ' . date_i18n('M j, g:i A', strtotime($data['phone_screening_date']))); ?>
+                                    <?php echo esc_html(__('Was', 'tbc-checkout-prerequisites') . ': ' . ($was_ts ? wp_date('M j, g:i A', $was_ts) . ' ' . tbc_cp_tz_abbr($was_ts) : '')); ?>
                                 </span>
                             </div>
                         <?php endif; ?>
@@ -699,23 +701,23 @@ class TBC_CP_Entry_Review {
     private function render_upcoming_calls_banner(array $form_steps): void {
         $all = $this->load_all_entry_data($form_steps);
         $items = [];
-        $now_local = strtotime(current_time('mysql'));
-        $cutoff_local = $now_local + (48 * 3600);
+        $now = time();
+        $cutoff = $now + (48 * 3600);
 
         foreach ($all as $data) {
             if ($data['phone_screening'] !== 'required' || empty($data['phone_screening_date'])) {
                 continue;
             }
 
-            $sched_time = strtotime($data['phone_screening_date']);
-            if ($sched_time === false || $sched_time > $cutoff_local) {
+            $sched_time = tbc_cp_parse_schedule_ts($data['phone_screening_date']);
+            if (!$sched_time || $sched_time > $cutoff) {
                 continue;
             }
 
             $items[] = [
                 'name' => $data['user_name'],
                 'time' => $sched_time,
-                'overdue' => $sched_time < $now_local,
+                'overdue' => $sched_time < $now,
             ];
         }
 
@@ -727,7 +729,7 @@ class TBC_CP_Entry_Review {
 
         $parts = [];
         foreach ($items as $item) {
-            $formatted = date_i18n('M j, g:i A', $item['time']);
+            $formatted = wp_date('M j, g:i A', $item['time']) . ' ' . tbc_cp_tz_abbr($item['time']);
             if ($item['overdue']) {
                 $parts[] = '<span class="tbc-cp-er-overdue-item">' . esc_html($item['name']) . ' (overdue — ' . esc_html($formatted) . ')</span>';
             } else {
@@ -755,6 +757,17 @@ class TBC_CP_Entry_Review {
                     <div class="tbc-cp-er-schedule-field">
                         <label for="tbc-cp-er-schedule-datetime"><?php esc_html_e('Date & Time', 'tbc-checkout-prerequisites'); ?></label>
                         <input type="datetime-local" id="tbc-cp-er-schedule-datetime" style="width:100%;">
+                        <p class="tbc-cp-er-schedule-tz-hint">
+                            <?php
+                            /* translators: 1: long tz name e.g. "Central Time", 2: short abbr e.g. "CST", 3: current time e.g. "Apr 20, 10:15 AM" */
+                            printf(
+                                esc_html__('All times in %1$s (%2$s). Current time: %3$s %2$s.', 'tbc-checkout-prerequisites'),
+                                esc_html(tbc_cp_tz_long_name()),
+                                esc_html(tbc_cp_tz_abbr()),
+                                esc_html(wp_date('M j, g:i A'))
+                            );
+                            ?>
+                        </p>
                     </div>
                     <div class="tbc-cp-er-schedule-field" style="margin-top: 12px;">
                         <label for="tbc-cp-er-schedule-note"><?php esc_html_e('Note (optional)', 'tbc-checkout-prerequisites'); ?></label>

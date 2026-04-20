@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.7.30
+- Phone screening message: calendar link is now a prominent visually-separated block with emoji callout, clear "tap to save" instruction, and explicit mention of the 1-hour automatic reminder (the ICS file already ships a 1h `VALARM`)
+- Phone screening scheduler is now timezone-aware (single-timezone model — uses WP site timezone, e.g. `America/Chicago` for Two Birds)
+  - Schedule modal shows a hint under the Date & Time field: *"All times in Central Time (CST). Current time: Apr 20, 10:15 AM CST."* so admins in other states know they're entering church-local time
+  - Schedule badges (upcoming, overdue, was) and the Upcoming Calls banner all append the tz abbreviation — e.g. `Apr 21, 8:00 AM CST`
+  - Outgoing FluentChat message now reads: `Your phone consultation has been scheduled for Monday, April 21, 2026 at 8:00 AM CST (Central Time).`
+  - DST is handled automatically — CST in winter, CDT in summer, based on the actual scheduled date
+- Fixed: scheduled times were being parsed as UTC by `strtotime()` and then re-shifted by `date_i18n()`, causing the displayed time to be off by the WP timezone offset (e.g. admin enters 8 AM, message would show 2 AM or 3 AM). Now uses `new DateTime($value, wp_timezone())` + `wp_date()` so the wall-clock value the admin types is the wall-clock value everyone sees.
+- New helpers in `tbc-checkout-prerequisites.php`: `tbc_cp_parse_schedule_ts()`, `tbc_cp_tz_abbr()`, `tbc_cp_tz_long_name()`
+
 ## 3.7.29
 - Entry Review: approving/disapproving an entry now also marks it read in Gravity Forms (flips the native `is_read` flag via `GFFormsModel::update_entry_property`), so reviewed entries no longer show as bold/unread in the GF entries list
 

@@ -553,8 +553,8 @@ const styles = StyleSheet.create({
   },
 
   reactionButton: {
-    width: 32,
-    height: 28,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: sizing.borderRadius.full,
@@ -563,9 +563,9 @@ const styles = StyleSheet.create({
   reactionPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: sizing.borderRadius.md,
     borderWidth: 1,
   },
