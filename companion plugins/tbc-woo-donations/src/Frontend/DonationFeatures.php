@@ -389,6 +389,9 @@ final class DonationFeatures {
 	 */
 	public const GIVE_EXTRA_FEE_ID = 'tbc_don_give_extra';
 
+	/** Order-item meta key that tags a fee as deductible for the donor statement. */
+	public const FEE_TYPE_META_KEY = '_tbc_don_fee_type';
+
 	public function apply_extra_donation( \WC_Cart $cart ): void {
 		if ( is_admin() && ! wp_doing_ajax() ) {
 			return;
@@ -423,7 +426,7 @@ final class DonationFeatures {
 			return;
 		}
 		if ( self::GIVE_EXTRA_FEE_ID === $fee_key || ( isset( $fee->id ) && self::GIVE_EXTRA_FEE_ID === $fee->id ) ) {
-			$item->add_meta_data( '_tbc_don_fee_type', 'give_extra', true );
+			$item->add_meta_data( self::FEE_TYPE_META_KEY, 'give_extra', true );
 		}
 	}
 

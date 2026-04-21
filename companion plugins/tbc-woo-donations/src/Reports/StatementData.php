@@ -2,15 +2,11 @@
 /**
  * Yearly donor statement — data extraction.
  *
- * Pulls a donor's completed WooCommerce orders for a given year and splits them
- * into tax-deductible vs non-deductible for display on the year-end statement.
- *
- * Deductibility rules:
- *   1. Product with `_tbc_don_deductible` meta = 'yes' → deductible (override).
- *   2. Product with `_tbc_don_deductible` meta = 'no'  → not deductible (override).
- *   3. Otherwise, product in the configured deductible category (default: "donation") → deductible.
- *   4. Give Extra fees (tagged `_tbc_don_fee_type = give_extra`) are always deductible.
- *      Historical orders from before fee-tagging existed: match fee name "Extra Donation".
+ * Deductibility rules (in order):
+ *   1. Product `_tbc_don_deductible` meta = 'yes' / 'no'  → explicit override.
+ *   2. Otherwise, product is in the configured deductible category (default: "donation").
+ *   3. Give Extra fees (tagged `_tbc_don_fee_type = give_extra`) are always deductible.
+ *      Historical orders without the meta tag fall back to the "Extra Donation" fee name.
  *
  * @package TBC\WooDonations\Reports
  */
@@ -19,6 +15,7 @@ declare(strict_types=1);
 
 namespace TBC\WooDonations\Reports;
 
+use TBC\WooDonations\Frontend\DonationFeatures;
 use WC_Order;
 use WC_Order_Item_Fee;
 use WC_Order_Item_Product;
@@ -27,24 +24,24 @@ defined( 'ABSPATH' ) || exit;
 
 final class StatementData {
 
+	/** @var array<int, bool> Per-request memo for is_product_deductible(). */
+	private static array $deductible_cache = [];
+
 	/**
 	 * Get every year the donor has completed orders in, newest first.
-	 * Falls back to the current year if the donor has no orders yet.
 	 *
 	 * @return int[]
 	 */
 	public static function get_donor_years( int $user_id ): array {
-		$order_ids = wc_get_orders( [
+		$orders = wc_get_orders( [
 			'customer_id' => $user_id,
 			'status'      => [ 'wc-completed' ],
 			'limit'       => -1,
-			'return'      => 'ids',
 		] );
 
 		$years = [];
-		foreach ( $order_ids as $order_id ) {
-			$order = wc_get_order( $order_id );
-			if ( $order ) {
+		foreach ( $orders as $order ) {
+			if ( $order instanceof WC_Order ) {
 				$years[ (int) $order->get_date_created()->format( 'Y' ) ] = true;
 			}
 		}
@@ -69,21 +66,19 @@ final class StatementData {
 	 * }
 	 */
 	public static function get_yearly_statement( int $user_id, int $year ): array {
-		$order_ids = wc_get_orders( [
+		$orders = wc_get_orders( [
 			'customer_id'  => $user_id,
 			'status'       => [ 'wc-completed' ],
 			'date_created' => "{$year}-01-01...{$year}-12-31",
 			'orderby'      => 'date_created',
 			'order'        => 'ASC',
 			'limit'        => -1,
-			'return'       => 'ids',
 		] );
 
 		$deductible     = [];
 		$non_deductible = [];
 
-		foreach ( $order_ids as $order_id ) {
-			$order = wc_get_order( $order_id );
+		foreach ( $orders as $order ) {
 			if ( ! $order instanceof WC_Order || $order->get_total( 'edit' ) <= 0 ) {
 				continue;
 			}
@@ -172,33 +167,33 @@ final class StatementData {
 	}
 
 	/**
-	 * Product deductibility check. Filterable.
+	 * Product deductibility check. Filterable. Memoized per request.
 	 */
 	public static function is_product_deductible( int $product_id ): bool {
 		if ( $product_id <= 0 ) {
 			return false;
 		}
 
+		if ( isset( self::$deductible_cache[ $product_id ] ) ) {
+			return self::$deductible_cache[ $product_id ];
+		}
+
 		$product = wc_get_product( $product_id );
 		if ( ! $product ) {
-			return false;
+			return self::$deductible_cache[ $product_id ] = false;
 		}
 
-		// Explicit per-product override wins.
 		$override = (string) $product->get_meta( '_tbc_don_deductible' );
-		if ( 'yes' === $override ) {
-			return (bool) apply_filters( 'tbc_don_is_product_deductible', true, $product_id, 'override' );
-		}
-		if ( 'no' === $override ) {
-			return (bool) apply_filters( 'tbc_don_is_product_deductible', false, $product_id, 'override' );
+		if ( 'yes' === $override || 'no' === $override ) {
+			$result = 'yes' === $override;
+			return self::$deductible_cache[ $product_id ] = (bool) apply_filters( 'tbc_don_is_product_deductible', $result, $product_id, 'override' );
 		}
 
-		// Fallback: category slug check.
 		$category = (string) get_option( 'tbc_don_deductible_category', 'donation' );
 		$slugs    = wp_get_post_terms( $product_id, 'product_cat', [ 'fields' => 'slugs' ] );
 		$by_cat   = ! is_wp_error( $slugs ) && in_array( $category, (array) $slugs, true );
 
-		return (bool) apply_filters( 'tbc_don_is_product_deductible', $by_cat, $product_id, 'category' );
+		return self::$deductible_cache[ $product_id ] = (bool) apply_filters( 'tbc_don_is_product_deductible', $by_cat, $product_id, 'category' );
 	}
 
 	/**
@@ -207,11 +202,12 @@ final class StatementData {
 	 * are matched by the "Extra Donation" fee name for backwards compatibility.
 	 */
 	private static function is_fee_deductible( WC_Order_Item_Fee $fee ): bool {
-		if ( 'give_extra' === (string) $fee->get_meta( '_tbc_don_fee_type' ) ) {
+		if ( 'give_extra' === (string) $fee->get_meta( DonationFeatures::FEE_TYPE_META_KEY ) ) {
 			return true;
 		}
 
-		// Historical fallback — match the label used by DonationFeatures::apply_extra_donation().
+		// Historical fallback — match the label used by DonationFeatures::apply_extra_donation()
+		// for orders created before the fee-tagging meta existed.
 		if ( 'Extra Donation' === $fee->get_name() ) {
 			return true;
 		}
