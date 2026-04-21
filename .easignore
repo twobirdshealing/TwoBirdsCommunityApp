@@ -47,6 +47,7 @@ app-example
 setup/
 scripts/
 companion plugins/
+website/
 .claude/
 .vscode/
 CLAUDE.md

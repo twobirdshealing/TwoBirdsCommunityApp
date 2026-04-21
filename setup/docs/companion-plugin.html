@@ -3,77 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Community App — Companion Plugins</title>
+<title>Community App — Companion Plugin</title>
 <link rel="stylesheet" href="docs-theme.css">
 <script src="docs-theme.js"></script>
 </head>
 <body>
 
-<h1>Companion Plugins</h1>
-<p class="subtitle">WordPress plugins and theme that power the app&rsquo;s backend &mdash; REST endpoints, auth, push notifications, and more</p>
+<h1>Companion Plugin</h1>
+<p class="subtitle">TBC Community App &mdash; the WordPress plugin that powers the app&rsquo;s backend: REST endpoints, auth, push notifications, and more</p>
 
 <div class="callout">
-  <strong>Location:</strong> <span class="file-path">companion plugins/</span><br>
-  These plugins are installed on the WordPress site alongside <a href="https://fluentcommunity.com" target="_blank">Fluent Community</a>. The app communicates with them via REST API. Core plugins ship with the white-label product; addon plugins are sold separately.
+  <strong>One plugin, shipped separately.</strong> <code>tbc-community-app.zip</code> is delivered alongside your core update as a standalone download. Install it on your WordPress site (running <a href="https://fluentcommunity.com" target="_blank">Fluent Community</a>) via <strong>Plugins &rarr; Add New &rarr; Upload Plugin</strong>. Add-on modules each ship their own companion plugin as part of the add-on purchase &mdash; see the individual <a href="modules/">module docs</a> for those.
 </div>
 
 <div class="toc">
   <strong>Contents</strong>
   <ol>
-    <li><a href="#overview">Overview &amp; Classification</a></li>
-    <li><a href="#tbc-community-app">TBC Community App</a> <span class="tag required">Core</span></li>
-    <li><a href="#tbc-multi-reactions">TBC Multi Reactions</a> <span class="tag optional">Addon</span></li>
-    <li><a href="#tbc-starter-theme">TBC Starter Theme</a> <span class="tag optional">Addon</span></li>
-    <li><a href="#addon-plugins">Add-on Plugins</a> <span class="tag optional">Addon</span></li>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#plugin-structure">Plugin Structure</a></li>
+    <li><a href="#endpoints">REST Endpoints</a></li>
+    <li><a href="#admin-settings">Admin Settings</a></li>
+    <li><a href="#response-headers">Response Headers</a></li>
+    <li><a href="#rest-fields">REST Fields</a></li>
+    <li><a href="#helpers-hooks">Global Helpers &amp; Extension Hooks</a></li>
     <li><a href="#app-constants">App-Side URL Constants</a></li>
     <li><a href="#installation">Installation</a></li>
   </ol>
 </div>
 
 <!-- ====================================================================== -->
-<h2 id="overview">1. Overview &amp; Classification</h2>
-
-<table>
-  <tr><th>Plugin</th><th>REST Namespace</th><th>Type</th><th>Purpose</th></tr>
-  <tr>
-    <td><strong>tbc-community-app</strong></td>
-    <td><code>tbc-ca/v1</code></td>
-    <td><span class="tag required">Core</span></td>
-    <td>Auth, registration, batch API, push notifications, app config, WebView sessions, deep linking</td>
-  </tr>
-  <tr>
-    <td><strong>tbc-multi-reactions</strong></td>
-    <td><code>tbc-multi-reactions/v1</code></td>
-    <td><span class="tag optional">Addon</span></td>
-    <td>Multi-emoji reactions on posts, comments, and chat messages</td>
-  </tr>
-  <tr>
-    <td><strong>tbc-starter-theme</strong></td>
-    <td>&mdash;</td>
-    <td><span class="tag optional">Addon</span></td>
-    <td>Lightweight WordPress theme optimized for Fluent Community</td>
-  </tr>
-  <tr>
-    <td><em>Add-on plugins</em></td>
-    <td><em>Varies</em></td>
-    <td><span class="tag optional">Addon</span></td>
-    <td>Each add-on module ships with a companion WordPress plugin that provides its REST endpoints. Purchased separately.</td>
-  </tr>
-</table>
-
-<div class="callout callout-success">
-  <strong>White-label product includes:</strong> tbc-community-app (the core plugin). All other plugins and the theme are purchased separately as add-ons.
-</div>
-
-<!-- ====================================================================== -->
-<h2 id="tbc-community-app">2. TBC Community App</h2>
-
-<p><span class="file-path">companion plugins/tbc-community-app/</span> <span class="tag required">Core</span></p>
+<h2 id="overview">1. Overview</h2>
 
 <p>The main bridge plugin. Every app installation requires this. It provides JWT authentication, registration, the batch API, push notifications (via Expo Push API), app configuration delivery, authenticated WebView sessions, deep linking, and response header injection.</p>
 
-<h3>Plugin Structure</h3>
-<p>Version <code>3.49.4</code> &mdash; REST namespace <code>tbc-ca/v1</code>. Classes are autoloaded from <span class="file-path">includes/</span>:</p>
+<p>REST namespace: <code>tbc-ca/v1</code>.</p>
+
+<!-- ====================================================================== -->
+<h2 id="plugin-structure">2. Plugin Structure</h2>
+
+<p>Classes are autoloaded from <span class="file-path">includes/</span>:</p>
 <table>
   <tr><th>File</th><th>Class</th><th>Purpose</th></tr>
   <tr><td><code>class-core.php</code></td><td>TBC_CA_Core</td><td>Initializes all components, settings management</td></tr>
@@ -103,14 +71,17 @@
   <tr><td><code>admin/class-settings.php</code></td><td>TBC_CA_Admin_Settings</td><td>Settings page (8 tabs)</td></tr>
 </table>
 
-<h3>Registration Endpoints</h3>
+<!-- ====================================================================== -->
+<h2 id="endpoints">3. REST Endpoints</h2>
+
+<h3>Registration</h3>
 <table>
   <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
   <tr><td>GET</td><td><code>/auth/register/fields</code></td><td>No</td><td>Field definitions + server config (FC native custom fields, add-on capabilities)</td></tr>
   <tr><td>POST</td><td><code>/auth/register</code></td><td>No</td><td>Create user account (returns JWT). Add-ons hook <code>tbc_ca_pre_register</code> to add verification steps.</td></tr>
 </table>
 
-<h3>Authentication Endpoints</h3>
+<h3>Authentication</h3>
 <table>
   <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
   <tr><td>POST</td><td><code>/auth/login</code></td><td>No</td><td>Login &rarr; returns access + refresh tokens + user profile</td></tr>
@@ -160,25 +131,9 @@
 </table>
 <p>Deep link settings (bundle ID, package name, Apple Team ID, Android SHA256, App Store ID, smart banner toggle) are configured in the admin General tab.</p>
 
-<h3>Response Headers</h3>
-<p>The plugin injects custom headers into every authenticated REST response (any namespace, not just <code>tbc-ca/v1</code>). The mobile app reads these via a global interceptor in <span class="file-path">services/api/client.ts</span>. See <a href="api-client.html#response-headers">API Client &rarr; Response Headers</a>.</p>
-<table>
-  <tr><th>Header</th><th>Value</th><th>Purpose</th></tr>
-  <tr><td><code>X-TBC-Unread-Notifications</code></td><td>Integer</td><td>Fluent Community unread notification count</td></tr>
-  <tr><td><code>X-TBC-Unread-Messages</code></td><td>Integer</td><td>Fluent Messaging unread thread count</td></tr>
-  <tr><td><code>X-TBC-Maintenance</code></td><td><code>0</code> or <code>1</code></td><td>Whether user should see maintenance screen</td></tr>
-  <tr><td><code>X-TBC-Profile-Incomplete</code></td><td><code>0</code> or <code>1</code></td><td>Whether user should be gated for profile completion</td></tr>
-  <tr><td><code>X-TBC-Min-App-Version</code></td><td>Semver string</td><td>Minimum app version (only sent when configured)</td></tr>
-</table>
+<!-- ====================================================================== -->
+<h2 id="admin-settings">4. Admin Settings</h2>
 
-<h3>REST Fields</h3>
-<p>The plugin registers custom REST fields on WP REST API responses to embed Fluent Community data without extra API calls:</p>
-<ul>
-  <li><strong>User objects</strong> (posts via <code>_embed</code>): <code>fcom_avatar</code>, <code>fcom_is_verified</code>, <code>fcom_badge_slugs</code></li>
-  <li><strong>Comment objects</strong>: <code>fcom_author_avatar</code>, <code>fcom_author_is_verified</code>, <code>fcom_author_slug</code>, <code>fcom_author_badge_slugs</code></li>
-</ul>
-
-<h3>Admin Settings</h3>
 <p>The plugin adds a settings page under WP admin with 8 tabs:</p>
 <table>
   <tr><th>Tab</th><th>Settings</th></tr>
@@ -192,7 +147,32 @@
   <tr><td><strong>Tools</strong></td><td>Session management (purge all, revoke per-user), manual push notification sender.</td></tr>
 </table>
 
-<h3>Global Helper Functions</h3>
+<!-- ====================================================================== -->
+<h2 id="response-headers">5. Response Headers</h2>
+
+<p>The plugin injects custom headers into every authenticated REST response (any namespace, not just <code>tbc-ca/v1</code>). The mobile app reads these via a global interceptor in <span class="file-path">services/api/client.ts</span>. See <a href="api-client.html#response-headers">API Client &rarr; Response Headers</a>.</p>
+<table>
+  <tr><th>Header</th><th>Value</th><th>Purpose</th></tr>
+  <tr><td><code>X-TBC-Unread-Notifications</code></td><td>Integer</td><td>Fluent Community unread notification count</td></tr>
+  <tr><td><code>X-TBC-Unread-Messages</code></td><td>Integer</td><td>Fluent Messaging unread thread count</td></tr>
+  <tr><td><code>X-TBC-Maintenance</code></td><td><code>0</code> or <code>1</code></td><td>Whether user should see maintenance screen</td></tr>
+  <tr><td><code>X-TBC-Profile-Incomplete</code></td><td><code>0</code> or <code>1</code></td><td>Whether user should be gated for profile completion</td></tr>
+  <tr><td><code>X-TBC-Min-App-Version</code></td><td>Semver string</td><td>Minimum app version (only sent when configured)</td></tr>
+</table>
+
+<!-- ====================================================================== -->
+<h2 id="rest-fields">6. REST Fields</h2>
+
+<p>The plugin registers custom REST fields on WP REST API responses to embed Fluent Community data without extra API calls:</p>
+<ul>
+  <li><strong>User objects</strong> (posts via <code>_embed</code>): <code>fcom_avatar</code>, <code>fcom_is_verified</code>, <code>fcom_badge_slugs</code></li>
+  <li><strong>Comment objects</strong>: <code>fcom_author_avatar</code>, <code>fcom_author_is_verified</code>, <code>fcom_author_slug</code>, <code>fcom_author_badge_slugs</code></li>
+</ul>
+
+<!-- ====================================================================== -->
+<h2 id="helpers-hooks">7. Global Helpers &amp; Extension Hooks</h2>
+
+<h3>Helper Functions</h3>
 <p>The plugin exposes helper functions for use by other plugins:</p>
 <ul>
   <li><code>tbc_register_push_notification($args)</code> &mdash; Register a push notification type</li>
@@ -212,84 +192,7 @@
 </ul>
 
 <!-- ====================================================================== -->
-<h2 id="tbc-multi-reactions">3. TBC Multi Reactions</h2>
-
-<p><span class="file-path">companion plugins/tbc-multi-reactions/</span> <span class="tag optional">Addon</span></p>
-
-<p>Version <code>1.5.5</code>. Replaces Fluent Community&rsquo;s default single-heart reaction with a multi-emoji reaction system. Supports posts, comments, and chat messages. Reaction icons can be customized in WP admin (PNG, SVG, GIF, WEBP).</p>
-
-<h3>Endpoints</h3>
-<p>Namespace: <code>tbc-multi-reactions/v1</code></p>
-<table>
-  <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
-  <tr><td>GET</td><td><code>/config</code></td><td>No</td><td>Get enabled reaction types and icon URLs</td></tr>
-  <tr><td>POST</td><td><code>/swap</code></td><td>Yes</td><td>Swap reaction type on an existing reaction</td></tr>
-  <tr><td>GET</td><td><code>/breakdown/{object_type}/{object_id}</code></td><td>No</td><td>Get reaction counts by type for a post/comment</td></tr>
-  <tr><td>GET</td><td><code>/breakdown/{object_type}/{object_id}/users</code></td><td>No</td><td>Get reaction breakdown with user details</td></tr>
-</table>
-
-<h3>How It Works</h3>
-<ul>
-  <li>Injects reaction data into Fluent Community&rsquo;s standard feed/comment API responses (no extra API calls needed for basic display)</li>
-  <li>The <code>/config</code> endpoint provides icon URLs so the app can display custom reaction graphics</li>
-  <li>The <code>/swap</code> endpoint lets users change their reaction type without removing and re-adding</li>
-  <li>Controlled by the <code>multi-reactions</code> app module (registered in <code>modules/_registry.ts</code>). When the module is not registered, core falls back to a simple like button</li>
-</ul>
-
-<!-- ====================================================================== -->
-<h2 id="tbc-starter-theme">4. TBC Starter Theme</h2>
-
-<p><span class="file-path">companion plugins/tbc-starter-theme/</span> <span class="tag optional">Addon</span></p>
-
-<p>Version <code>1.0.57</code>. A lightweight WordPress theme (named &ldquo;Fluent Starter&rdquo;) designed for sites running Fluent Community. It stays out of the way on community portal pages (Fluent Community renders its own Vue.js SPA) while providing clean styling for regular WordPress pages.</p>
-
-<h3>Key Features</h3>
-<ul>
-  <li><strong>Zero interference</strong> with Fluent Community&rsquo;s SPA rendering</li>
-  <li><strong>Dark/light mode</strong> sync via CSS variables (bridges WordPress theme to Fluent Community colors)</li>
-  <li><strong>Minimal chrome</strong> &mdash; blank-canvas approach with minimal header/footer</li>
-  <li><strong>Block editor support</strong> for regular WordPress pages</li>
-  <li>Lightweight styling for blog posts and WooCommerce pages</li>
-</ul>
-
-<div class="callout callout-warn">
-  <strong>This theme has no REST endpoints.</strong> It&rsquo;s a visual WordPress theme only &mdash; the app doesn&rsquo;t communicate with it directly. Install it on the site so non-community pages (blog, shop, etc.) look decent.
-</div>
-
-<!-- ====================================================================== -->
-<h2 id="addon-plugins">5. Add-on Plugins</h2>
-
-<p>Each add-on module ships with a companion WordPress plugin that provides its REST endpoints. Add-on plugins are sold separately and come with their matching app module.</p>
-
-<h3>Available Add-ons</h3>
-<table>
-  <tr><th>Plugin</th><th>Namespace</th><th>App Module</th><th>Purpose</th></tr>
-  <tr><td>tbc-otp</td><td><code>tbc-otp/v1</code></td><td>otp</td><td>Phone OTP verification via Twilio. Adds a pre-creation registration step.</td></tr>
-  <tr><td>tbc-profile-completion</td><td><code>tbc-pcom/v1</code></td><td>profile-completion</td><td>Profile completion gate. Requires bio and/or avatar after registration.</td></tr>
-</table>
-
-<h3>How Add-on Plugins Work</h3>
-<ul>
-  <li>Each add-on plugin registers its own REST namespace (e.g., <code>tbc-otp/v1</code>)</li>
-  <li>Plugins hook into the core plugin&rsquo;s filter system (<code>tbc_ca_registration_config</code>, <code>tbc_ca_pre_register</code>, etc.) to extend functionality</li>
-  <li>The matching app module communicates with the plugin&rsquo;s REST endpoints</li>
-  <li>All add-on plugins are completely optional &mdash; the app adapts automatically based on which plugins are active</li>
-</ul>
-
-<h3>Setup Pattern</h3>
-<ol>
-  <li>Install the companion plugin on WordPress and activate it</li>
-  <li>Configure the plugin in WP admin (API keys, content, etc.)</li>
-  <li>Enable the matching app module in <span class="file-path">modules/_registry.ts</span></li>
-  <li>Rebuild the app</li>
-</ol>
-
-<div class="callout">
-  <strong>Completely optional.</strong> Without any add-on plugins, the core app works fully. Add-on plugins extend functionality &mdash; when they&rsquo;re not installed, the corresponding features simply don&rsquo;t appear. The app discovers available add-on capabilities via the <code>/app-config</code> registration config.
-</div>
-
-<!-- ====================================================================== -->
-<h2 id="app-constants">6. App-Side URL Constants</h2>
+<h2 id="app-constants">8. App-Side URL Constants</h2>
 
 <p>The app references plugin APIs via URL constants defined in <span class="file-path">constants/config.ts</span>. All are derived from <code>SITE_URL</code>.</p>
 
@@ -300,7 +203,7 @@ export const TBC_CA_URL  = `${SITE_URL}/wp-json/tbc-ca/v1`;       // Auth, regis
 export const API_URL     = `${SITE_URL}/wp-json/fluent-community/v2`;
 export const WP_REST_URL = `${SITE_URL}/wp-json/wp/v2`;</code></pre>
 
-<p>Module-specific API URLs are defined locally in each module&rsquo;s service files (not as global constants). Each module constructs its own base URL from <code>SITE_URL</code>.</p>
+<p>Add-on module API URLs are defined locally in each module&rsquo;s service files (not as global constants). Each module constructs its own base URL from <code>SITE_URL</code>.</p>
 
 <p>Service files pass these as <code>baseUrl</code> to the <a href="api-client.html">HTTP client</a>:</p>
 <pre><code>// services/api/registration.ts
@@ -311,29 +214,19 @@ const API_BASE = `${SITE_URL}/wp-json/your-plugin/v1`;
 const response = await request('/items', { baseUrl: API_BASE });</code></pre>
 
 <!-- ====================================================================== -->
-<h2 id="installation">7. Installation</h2>
+<h2 id="installation">9. Installation</h2>
 
-<h3>For Buyers (White-Label Setup)</h3>
 <ol>
-  <li>Grab <code>tbc-community-app.zip</code> from the <code>companion plugins/</code> folder of the extracted core-update package</li>
+  <li>Locate <code>tbc-community-app.zip</code> &mdash; shipped alongside your core update as a separate download</li>
   <li>In WordPress admin, go to <strong>Plugins &rarr; Add New &rarr; Upload Plugin</strong> and upload the zip</li>
   <li>Activate the plugin &mdash; no configuration needed, it auto-detects Fluent Community</li>
 </ol>
 
-<h3>For Addon Plugins</h3>
-<ol>
-  <li>Upload the plugin to <code>wp-content/plugins/</code> and activate</li>
-  <li>Configure in WP admin (API keys, content, etc.)</li>
-  <li>Enable the matching app module in <span class="file-path">modules/_registry.ts</span></li>
-  <li>Rebuild the app</li>
-</ol>
-
 <h3>Plugin Updates</h3>
-<p>Plugins are updated manually (upload new version via FTP or WP admin). After updating a plugin:</p>
+<p>To update the plugin, upload the new version via WP admin (or FTP) and reactivate. After updating:</p>
 <ul>
-  <li>Bump the plugin version number in the main PHP file header</li>
-  <li>Update the changelog in the plugin</li>
   <li>Clear any relevant caches on the server</li>
+  <li>Bump the plugin version number in the main PHP file header (if you&rsquo;re customizing)</li>
 </ul>
 
 <div class="callout callout-error">
@@ -345,7 +238,7 @@ const response = await request('/items', { baseUrl: API_BASE });</code></pre>
   <a href="api-client.html">API Client</a> &middot;
   <a href="architecture.html">Architecture</a> &middot;
   <a href="caching-system.html">Caching</a> &middot;
-  Companion Plugins &middot;
+  Companion Plugin &middot;
   <a href="competitive.html">Competitive</a> &middot;
   <a href="components.html">Components</a> &middot;
   <a href="content-creation.html">Content Creation</a> &middot;

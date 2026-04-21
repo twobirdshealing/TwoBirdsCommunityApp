@@ -18,13 +18,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 WHITE_LABEL_ROOT="$(cd "$SOURCE_DIR/.." && pwd)/TBC-Community-App (White Lable)"
 
-# Path to the Node zip helper — same createZip() the dashboard uses.
-# Invoked as: node "$ZIP_PLUGIN_JS" <source-dir> <output-zip>
-ZIP_PLUGIN_JS="$SCRIPT_DIR/zip-plugin.js"
-
-# Allowlist: only these companion plugins ship with the base product
-CORE_PLUGINS=("tbc-community-app")
-
 # Helper: generate manifest.json with a given version
 # NOTE: updateUrl points at twobirdscode.com on purpose — that is the
 # white-label license/update server we run for buyers, not a Two Birds Church
@@ -196,6 +189,7 @@ tar -cf - \
   --exclude='app-example' \
   --exclude='scripts' \
   --exclude='companion plugins' \
+  --exclude='website' \
   --exclude='setup/.backups' \
   --exclude='setup/.temp' \
   --exclude='modules' \
@@ -206,32 +200,6 @@ tar -cf - \
   --exclude='google-play-service-account.json' \
   --exclude='NOTES.md' \
   -C "$SOURCE_DIR" . | tar -xf - -C "$STAGING_DIR"
-
-# Zip only core companion plugins (allowlist — new plugins won't leak in).
-# Each plugin is staged to a temp dir so we can apply white-label sed edits
-# BEFORE zipping, then the zip lands in the snapshot's "companion plugins/"
-# folder ready for buyers to upload via WP Admin -> Plugins -> Add New.
-mkdir -p "$STAGING_DIR/companion plugins"
-PLUGIN_STAGING_DIR="$STAGING_DIR/.plugin-staging"
-mkdir -p "$PLUGIN_STAGING_DIR"
-for plugin in "${CORE_PLUGINS[@]}"; do
-  STAGED="$PLUGIN_STAGING_DIR/$plugin"
-  cp -r "$SOURCE_DIR/companion plugins/$plugin" "$STAGED"
-
-  # Plugin-specific white-label edits on the staged copy
-  if [ "$plugin" = "tbc-community-app" ]; then
-    sed -i \
-      -e "s|define('TBC_CA_APP_USER_AGENT', 'TBCCommunityApp');|define('TBC_CA_APP_USER_AGENT', 'CommunityApp');|" \
-      "$STAGED/tbc-community-app.php"
-  fi
-
-  # Strip dev-only junk from the staged copy (kept out of the shipped zip)
-  find "$STAGED" -name ".claude" -type d -exec rm -rf {} + 2>/dev/null || true
-  find "$STAGED" \( -name "*.orig" -o -name ".DS_Store" -o -name "nul" \) -delete 2>/dev/null || true
-
-  node "$ZIP_PLUGIN_JS" "$STAGED" "$STAGING_DIR/companion plugins/$plugin.zip"
-done
-rm -rf "$PLUGIN_STAGING_DIR"
 
 # Copy only module infrastructure (no module folders — those are add-ons)
 mkdir -p "$STAGING_DIR/modules"
@@ -487,7 +455,7 @@ generate_manifest "$SOURCE_VERSION" "$STAGING_DIR/manifest.json"
 
 # Exclude only build/system paths that should never ship
 FIND_EXCLUDES=()
-FIND_EXCLUDES+=( ! -path './node_modules/*' ! -path './.git/*' ! -path './core-update-*' ! -path './.plugin-staging/*' )
+FIND_EXCLUDES+=( ! -path './node_modules/*' ! -path './.git/*' ! -path './core-update-*' )
 FIND_EXCLUDES+=( ! -path './setup/.temp/*' ! -path './setup/.backups/*' ! -path './setup/.license' ! -path './setup/.app-presets.json' )
 FIND_EXCLUDES+=( ! -path './setup/logs/*' )
 FIND_EXCLUDES+=( ! -path './package-lock.json' )

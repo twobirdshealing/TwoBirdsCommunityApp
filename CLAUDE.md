@@ -15,7 +15,7 @@ This is a white-label community app powered by [Fluent Community](https://fluent
 | **Architecture** | `setup/docs/architecture.html` — App structure, data flow, core systems |
 | **Module System** | `setup/docs/module-system.html` — Full reference with examples |
 | **Theme System** | `setup/docs/theme-system.html` — Color tokens, Fluent CSS sync, usage rules |
-| **Companion Plugins** | `setup/docs/companion-plugins.html` — Plugin descriptions, endpoints, installation |
+| **Companion Plugin** | `setup/docs/companion-plugin.html` — tbc-community-app plugin reference (endpoints, admin settings, install) |
 | **Logging** | `setup/docs/logging.html` — createLogger usage and conventions |
 | **Per-Module Docs** | `setup/docs/modules/` — Individual module setup & configuration |
 | **All Docs** | `setup/docs/` — 25+ HTML files covering every core system in detail |
@@ -37,7 +37,7 @@ This is a white-label community app powered by [Fluent Community](https://fluent
 
 The dashboard owns a precise list of every file it ships (stored in `setup/.core-files.json`). On update, it deletes exactly those files, extracts the new core, then re-applies your snapshot. **The rule is simple:**
 
-- **Core files** (anything in `setup/.core-files.json`) get replaced on every update. Don't edit them — your edits will be lost. The main core directories are: `app/`, `components/`, `services/`, `contexts/`, `hooks/`, `utils/`, `types/`, `constants/colors.ts`, `companion plugins/`, `setup/docs/`, `setup/lib/`, `setup/frontend/`, `setup/dashboard.js`, `setup/setup-guide.html`, plus root files `manifest.json`, `CLAUDE.md`, and `setup/.core-files.json` itself.
+- **Core files** (anything in `setup/.core-files.json`) get replaced on every update. Don't edit them — your edits will be lost. The main core directories are: `app/`, `components/`, `services/`, `contexts/`, `hooks/`, `utils/`, `types/`, `constants/colors.ts`, `setup/docs/`, `setup/lib/`, `setup/frontend/`, `setup/dashboard.js`, `setup/setup-guide.html`, plus root files `manifest.json`, `CLAUDE.md`, and `setup/.core-files.json` itself.
 - **Anything else is yours.** Any file or folder you put anywhere in the project — custom modules, branding, credentials, notes, extra docs, custom scripts, `.env` files, anything — survives every update untouched. There's no approved list. If the dashboard didn't ship the file, the dashboard won't delete it.
 
 **A few core files have buyer values injected after each update** (the file itself comes from core, but the dashboard re-applies your settings on top):
@@ -51,18 +51,6 @@ The dashboard owns a precise list of every file it ships (stored in `setup/.core
 
 > **Warning:** If you modify core files, your changes will be lost when applying a core update. If you need custom behavior, build it as a module instead.
 
-## Companion Plugins
-
-The `companion plugins/` folder contains WordPress plugins. Install these on your WordPress site.
-
-**Core (required):** tbc-community-app (REST endpoints).
-
-**Add-ons (sold separately):** Paired module + plugin packages — the app module lives in `modules/`, the companion plugin lives in `companion plugins/`. Both are required for the feature to work.
-
-See `docs/companion-plugins.html` for full plugin reference including endpoints and installation.
-
-> When working on companion plugins, always update the version number and changelog after changes.
-
 ## Module System
 
 Self-contained features that plug into the app without touching core code. Full reference: `docs/module-system.html`
@@ -70,7 +58,7 @@ Self-contained features that plug into the app without touching core code. Full 
 - **Define** a manifest in `modules/yourmodule/module.ts`
 - **Register** in `modules/_registry.ts` (one line to enable/disable)
 - **Route stub** in `app/(tabs)/` (one-line re-export, only if module has a tab)
-- **Companion plugin** in `companion plugins/` (if module needs a WordPress backend)
+- **Companion plugin** (if module needs a WordPress backend) — ships with the add-on as a standalone zip, installed directly on the buyer&#39;s WordPress site
 
 ## Import Rules — Direct Imports Only
 

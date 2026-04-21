@@ -27,9 +27,9 @@ These are our internal release tooling. They're deliberately NOT registered as `
 | "run snapshot" / "create snapshot" / "snapshot same version" | `bash scripts/create-white-label.sh` (interactive — prompts to keep current core version or bump) |
 | "snapshot and bump version" / "release a new core version" | `bash scripts/create-white-label.sh` then choose the bump option in the interactive prompt |
 | "update changelog" / "regenerate changelog" | `bash scripts/update-changelog.sh` |
-| "zip a plugin" / "package companion plugin X" | `node scripts/zip-plugin.js <plugin-name>` (rare — `create-white-label.sh` already calls this for every core companion plugin during a snapshot, so you usually don't need to run it standalone) |
+| "zip a plugin" / "package companion plugin X" | `node scripts/zip-plugin.js <plugin-name>` |
 
-`scripts/zip-plugin.js` is invoked indirectly by `create-white-label.sh` during every snapshot to bundle the companion plugin folders into installable zips for buyers. It's still active code, just not a top-level command we run by hand often.
+`scripts/zip-plugin.js` is our standalone plugin zipper. Companion plugins ship **separately** from the core snapshot — use this whenever a plugin has a real release to package it for distribution.
 
 ### Add-on Modules
 
@@ -81,18 +81,18 @@ The snapshot script copies this app to the white-label folder with all site-spec
 **To run:** `bash scripts/create-white-label.sh`
 
 **What it does:**
-1. Copies project to `../TBC-Community-App (White Lable)/` (excludes node_modules, .git, modules, companion plugins)
-2. Copies only core companion plugins (allowlist: tbc-community-app)
-3. Copies only module infrastructure (`_registry.ts`, `_types.ts`) — no module folders
-4. Replaces Two Birds-specific values with placeholders in config.ts, app.json, eas.json, app.config.ts, package.json
-5. Removes Firebase configs, adds FIREBASE_SETUP.md guide
-6. NOTES.md is excluded from the snapshot (it's buyer-owned by definition)
-7. Writes `setup/.core-files.json` listing every file shipped in the snapshot (used by the update system to know what to clean up on next update)
-8. Verifies no site-specific references remain
+1. Copies project to `../TBC-Community-App (White Lable)/` (excludes node_modules, .git, modules, companion plugins, website)
+2. Copies only module infrastructure (`_registry.ts`, `_types.ts`) — no module folders
+3. Replaces Two Birds-specific values with placeholders in config.ts, app.json, eas.json, app.config.ts, package.json
+4. Removes Firebase configs, adds FIREBASE_SETUP.md guide
+5. NOTES.md is excluded from the snapshot (it's buyer-owned by definition)
+6. Writes `setup/.core-files.json` listing every file shipped in the snapshot (used by the update system to know what to clean up on next update)
+7. Verifies no site-specific references remain
 
 **What ships in the base white-label product:**
-- Core app (all screens, services, components)
-- Core companion plugin: tbc-community-app
+- Core app (all screens, services, components) only — no companion plugins
+
+Companion plugins ship **separately** as standalone zips via `node scripts/zip-plugin.js <plugin-name>`.
 
 **Sold separately as add-ons (NOT in white-label):**
 - tbc-otp plugin (phone OTP verification), tbc-profile-completion plugin (profile completion gate)
