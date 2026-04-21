@@ -2,7 +2,7 @@
 /**
  * Plugin Name: TBC - Participant Frontend
  * Description: Display WooCommerce event products and attendee management.
- * Version: 4.3.1
+ * Version: 1.0.0
  * Author: Two Birds Code
  *
  * @package TBC_Participant_Frontend
@@ -12,7 +12,17 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('TBC_PF_VERSION', '4.3.1');
+define('TBC_PF_VERSION', '1.0.0');
+
+/**
+ * Cache-busting version for assets.
+ * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
+ * cache without a plugin version bump. Falls back to TBC_PF_VERSION.
+ */
+function tbc_pf_asset_ver($rel_path) {
+    $full = plugin_dir_path(__FILE__) . ltrim($rel_path, '/');
+    return file_exists($full) ? (string) filemtime($full) : TBC_PF_VERSION;
+}
 
 // Fluent Community course IDs (configurable via wp_options, with known defaults)
 define('TBC_PF_COURSE_SAPO_PRE', intval(get_option('tbc_pf_course_sapo_pre', 116)));
@@ -115,7 +125,7 @@ class TBC_PF_Plugin {
         ];
 
         foreach ($styles as $handle => $path) {
-            wp_enqueue_style($handle, $plugin_url . $path, [], TBC_PF_VERSION);
+            wp_enqueue_style($handle, $plugin_url . $path, [], tbc_pf_asset_ver($path));
         }
 
         // Inject Fluent Community CSS variables so --fcom-* tokens resolve in dark mode
@@ -146,7 +156,7 @@ class TBC_PF_Plugin {
             if ($handle === 'tbc-pf-post-settings') {
                 $deps[] = 'easymde';
             }
-            wp_enqueue_script($handle, $plugin_url . $path, $deps, TBC_PF_VERSION, true);
+            wp_enqueue_script($handle, $plugin_url . $path, $deps, tbc_pf_asset_ver($path), true);
             wp_localize_script($handle, 'tbcPFAjax', [
                 'ajaxurl' => admin_url('admin-ajax.php')
             ]);
@@ -156,18 +166,18 @@ class TBC_PF_Plugin {
         wp_enqueue_style('select2', WC()->plugin_url() . '/assets/css/select2.css', [], TBC_PF_VERSION);
         wp_enqueue_script('select2', WC()->plugin_url() . '/assets/js/select2/select2.full.min.js', ['jquery'], TBC_PF_VERSION, true);
 
-        // Enqueue Message Center assets for SMS tab (uses TBC_MC_URL constant from Message Center plugin)
-        if (defined('TBC_MC_URL') && function_exists('tbc_mc_render_sms_form')) {
-            wp_enqueue_style('tbc-mc-scheduler', TBC_MC_URL . 'css/scheduler.css', [], TBC_PF_VERSION);
-            wp_enqueue_style('tbc-mc-sms-center', TBC_MC_URL . 'css/sms-center.css', [], TBC_PF_VERSION);
-            wp_enqueue_style('tbc-mc-template', TBC_MC_URL . 'css/sms-template.css', [], TBC_PF_VERSION);
+        // Enqueue Message Center assets for SMS tab (uses TBC_MC_URL + tbc_mc_asset_ver() from Message Center plugin)
+        if (defined('TBC_MC_URL') && function_exists('tbc_mc_render_sms_form') && function_exists('tbc_mc_asset_ver')) {
+            wp_enqueue_style('tbc-mc-scheduler', TBC_MC_URL . 'css/scheduler.css', [], tbc_mc_asset_ver('css/scheduler.css'));
+            wp_enqueue_style('tbc-mc-sms-center', TBC_MC_URL . 'css/sms-center.css', [], tbc_mc_asset_ver('css/sms-center.css'));
+            wp_enqueue_style('tbc-mc-template', TBC_MC_URL . 'css/sms-template.css', [], tbc_mc_asset_ver('css/sms-template.css'));
 
-            wp_enqueue_script('tbc-mc-helpers', TBC_MC_URL . 'js/sms-helpers.js', ['jquery'], TBC_PF_VERSION, true);
-            wp_enqueue_script('tbc-mc-scheduler', TBC_MC_URL . 'js/scheduler.js', ['jquery', 'tbc-mc-helpers'], TBC_PF_VERSION, true);
-            wp_enqueue_script('tbc-mc-templates', TBC_MC_URL . 'js/templates.js', ['jquery'], TBC_PF_VERSION, true);
-            wp_enqueue_script('tbc-mc-char-counter', TBC_MC_URL . 'js/char-counter.js', ['jquery'], TBC_PF_VERSION, true);
-            wp_enqueue_script('tbc-mc-media-uploader', TBC_MC_URL . 'js/sms-media-uploader.js', ['jquery'], TBC_PF_VERSION, true);
-            wp_enqueue_script('tbc-mc-sms-group', TBC_MC_URL . 'js/sms-group.js', ['jquery', 'tbc-mc-helpers', 'tbc-mc-scheduler'], TBC_PF_VERSION, true);
+            wp_enqueue_script('tbc-mc-helpers', TBC_MC_URL . 'js/sms-helpers.js', ['jquery'], tbc_mc_asset_ver('js/sms-helpers.js'), true);
+            wp_enqueue_script('tbc-mc-scheduler', TBC_MC_URL . 'js/scheduler.js', ['jquery', 'tbc-mc-helpers'], tbc_mc_asset_ver('js/scheduler.js'), true);
+            wp_enqueue_script('tbc-mc-templates', TBC_MC_URL . 'js/templates.js', ['jquery'], tbc_mc_asset_ver('js/templates.js'), true);
+            wp_enqueue_script('tbc-mc-char-counter', TBC_MC_URL . 'js/char-counter.js', ['jquery'], tbc_mc_asset_ver('js/char-counter.js'), true);
+            wp_enqueue_script('tbc-mc-media-uploader', TBC_MC_URL . 'js/sms-media-uploader.js', ['jquery'], tbc_mc_asset_ver('js/sms-media-uploader.js'), true);
+            wp_enqueue_script('tbc-mc-sms-group', TBC_MC_URL . 'js/sms-group.js', ['jquery', 'tbc-mc-helpers', 'tbc-mc-scheduler'], tbc_mc_asset_ver('js/sms-group.js'), true);
 
             wp_localize_script('tbc-mc-helpers', 'tbcMCAjax', [
                 'ajaxurl' => admin_url('admin-ajax.php')

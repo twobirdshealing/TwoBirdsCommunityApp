@@ -164,15 +164,13 @@ textarea {
 select {
     cursor: pointer;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    /* Neutral gray-400 (%239ca3af) is visible on both light and dark backgrounds.
+       Data URLs can't reference currentColor, so one neutral value beats a dark override. */
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
     background-position: right 0.5rem center;
     background-repeat: no-repeat;
     background-size: 1.5em 1.5em;
     padding-right: 2.5rem;
-}
-
-html.dark select {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
 }
 
 /* Checkbox and Radio */
@@ -236,60 +234,36 @@ input[type="radio"] {
     background-color: var(--fs-color-bg-secondary);
 }
 
+/* Status notices use Element Plus tokens that Fluent defines and auto-switches.
+   Light-9 is the palest tint (backgrounds), -light-5 is mid (borders),
+   base is the main color (text). No dark-mode overrides needed. */
+
 .notice-success,
 .alert-success {
-    background-color: #ecfdf5;
-    border-color: #a7f3d0;
-    color: #065f46;
+    background-color: var(--el-color-success-light-9, #ecfdf5);
+    border-color: var(--el-color-success-light-5, #a7f3d0);
+    color: var(--el-color-success, #67c23a);
 }
 
 .notice-warning,
 .alert-warning {
-    background-color: #fffbeb;
-    border-color: #fcd34d;
-    color: #92400e;
+    background-color: var(--el-color-warning-light-9, #fffbeb);
+    border-color: var(--el-color-warning-light-5, #fcd34d);
+    color: var(--el-color-warning, #e6a23c);
 }
 
 .notice-error,
 .alert-error {
-    background-color: #fef2f2;
-    border-color: #fecaca;
-    color: #991b1b;
+    background-color: var(--el-color-danger-light-9, #fef2f2);
+    border-color: var(--el-color-danger-light-5, #fecaca);
+    color: var(--el-color-danger, #f56c6c);
 }
 
 .notice-info,
 .alert-info {
-    background-color: #eff6ff;
-    border-color: #bfdbfe;
-    color: #1e40af;
-}
-
-html.dark .notice-success,
-html.dark .alert-success {
-    background-color: rgba(16, 185, 129, 0.1);
-    border-color: rgba(16, 185, 129, 0.3);
-    color: #6ee7b7;
-}
-
-html.dark .notice-warning,
-html.dark .alert-warning {
-    background-color: rgba(245, 158, 11, 0.1);
-    border-color: rgba(245, 158, 11, 0.3);
-    color: #fcd34d;
-}
-
-html.dark .notice-error,
-html.dark .alert-error {
-    background-color: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.3);
-    color: #fca5a5;
-}
-
-html.dark .notice-info,
-html.dark .alert-info {
-    background-color: rgba(59, 130, 246, 0.1);
-    border-color: rgba(59, 130, 246, 0.3);
-    color: #93c5fd;
+    background-color: var(--el-color-primary-light-9, #eff6ff);
+    border-color: var(--el-color-primary-light-5, #bfdbfe);
+    color: var(--el-color-primary, #409eff);
 }
 
 /* ==========================================================================

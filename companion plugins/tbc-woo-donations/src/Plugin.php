@@ -52,6 +52,7 @@ final class Plugin {
 		Frontend\SuggestedAmounts::instance();
 		Frontend\DonationFeatures::instance();
 		Frontend\DonorWall::instance();
+		Frontend\DonorDashboard::instance();
 
 		// Compatibility modules (loaded conditionally).
 		$this->load_compat_modules();
@@ -149,9 +150,12 @@ final class Plugin {
 
 	/**
 	 * Cache-busting version for assets.
+	 *
+	 * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
+	 * cache without a plugin version bump. Falls back to the plugin version.
 	 */
 	public function asset_version( string $file = '' ): string {
-		if ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG && $file && file_exists( $file ) ) {
+		if ( $file && file_exists( $file ) ) {
 			return (string) filemtime( $file );
 		}
 		return TBC_DON_VERSION;

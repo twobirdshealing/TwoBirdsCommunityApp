@@ -1,26 +1,10 @@
 /**
  * TBC WooCommerce Donations — Frontend Styles
  *
- * Uses Fluent Community CSS variables (--fcom-*) with fallbacks.
- * Dark mode handled via html.dark — only shadow overrides needed
- * since --fcom-* variables auto-switch.
+ * Uses Fluent Community CSS variables (--fcom-*) and Element Plus tokens
+ * (--el-box-shadow-*, --el-color-*) with fallbacks. All auto-switch via
+ * Fluent's html.dark token block — no per-selector dark overrides needed.
  */
-
-/* =========================================================================
-   Shadow Variables (light/dark)
-   ========================================================================= */
-
-:root {
-	--tbc-don-shadow-sm: rgba(0, 0, 0, 0.08);
-	--tbc-don-shadow-md: rgba(0, 0, 0, 0.1);
-	--tbc-don-shadow-lg: rgba(0, 0, 0, 0.15);
-}
-
-html.dark {
-	--tbc-don-shadow-sm: rgba(0, 0, 0, 0.25);
-	--tbc-don-shadow-md: rgba(0, 0, 0, 0.3);
-	--tbc-don-shadow-lg: rgba(0, 0, 0, 0.4);
-}
 
 /* =========================================================================
    Price Input
@@ -132,10 +116,6 @@ html.dark {
 	font-size: 0.9em !important;
 }
 
-html.dark .woocommerce form.variations_form table.variations select {
-	color-scheme: dark;
-}
-
 /* Variation description + price — no card, just clean text */
 .woocommerce div.product form.variations_form .woocommerce-variation-description,
 .woocommerce form.variations_form .woocommerce-variation-description {
@@ -207,7 +187,7 @@ html.dark .woocommerce form.variations_form table.variations select {
 	font-size: 1em !important;
 	cursor: pointer !important;
 	text-align: center !important;
-	box-shadow: 0 2px 5px var(--tbc-don-shadow-md) !important;
+	box-shadow: var(--el-box-shadow-light, 0 2px 5px rgba(0, 0, 0, 0.1)) !important;
 	transition: all 0.15s ease !important;
 	box-sizing: border-box !important;
 	border: none !important;
@@ -220,13 +200,13 @@ html.dark .woocommerce form.variations_form table.variations select {
 .tbc-don-suggested-amount label.tbc-don-btn:hover {
 	filter: brightness(1.1) !important;
 	transform: translateY(-2px) !important;
-	box-shadow: 0 4px 10px var(--tbc-don-shadow-lg) !important;
+	box-shadow: var(--el-box-shadow, 0 4px 10px rgba(0, 0, 0, 0.15)) !important;
 }
 
 .tbc-don-suggested-amount input[type="radio"]:checked + label.tbc-don-btn {
 	filter: brightness(1) !important;
 	transform: scale(0.95) !important;
-	box-shadow: inset 0 3px 8px var(--tbc-don-shadow-lg) !important;
+	box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
 .tbc-don-suggested-amount .amount-text {
@@ -299,7 +279,7 @@ html.dark .woocommerce form.variations_form table.variations select {
 .tbc-don-deposit-container,
 .tbc-don-fee-recovery,
 .tbc-don-give-extra {
-	background: var(--fcom-secondary-bg, #f0f2f5);
+	background: var(--fcom-primary-bg, #f0f2f5);
 	border: 1px solid var(--fcom-primary-border, #e3e8ee);
 	padding: 12px 14px;
 	border-radius: 8px;
@@ -480,10 +460,6 @@ html.dark .woocommerce form.variations_form table.variations select {
 	font-size: 0.95em;
 }
 
-html.dark .tbc-don-guest-card .quantity input.qty {
-	color-scheme: dark;
-}
-
 .tbc-don-guest-label {
 	font-weight: 500;
 	font-size: 0.9em;
@@ -505,13 +481,114 @@ html.dark .tbc-don-guest-card .quantity input.qty {
 }
 
 /* =========================================================================
+   Donor Dashboard Shortcode — [tbc_donor_dashboard]
+   ========================================================================= */
+
+.tbc-don-dashboard {
+	max-width: 1200px;
+	margin: 1rem auto;
+	background-color: var(--fcom-primary-bg, #ffffff);
+	box-shadow: var(--el-box-shadow-light, 0 1px 3px rgba(0, 0, 0, 0.08));
+	border-radius: 8px;
+	padding: 1rem;
+}
+
+.tbc-don-dashboard-welcome {
+	color: var(--fcom-primary-text, #1a1a1a);
+	font-size: 1.25rem;
+	margin: 0 0 1rem;
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid var(--fcom-primary-border, #e3e8ee);
+	font-weight: 500;
+	text-align: center;
+}
+
+.tbc-don-dashboard-summary {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
+	justify-content: center;
+}
+
+.tbc-don-dashboard-summary li {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	background: var(--fcom-secondary-bg, #fafafa);
+	padding: 0.5rem 0.75rem;
+	border-radius: 6px;
+	border: 1px solid var(--fcom-primary-border, #e3e8ee);
+	color: var(--fcom-primary-text, #1a1a1a);
+}
+
+.tbc-don-dashboard-summary strong {
+	color: var(--fcom-secondary-text, #666666);
+	font-size: 0.875rem;
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+.tbc-don-dashboard-report {
+	flex-wrap: wrap;
+}
+
+.tbc-don-dashboard-form {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0;
+}
+
+.tbc-don-dashboard-year {
+	padding: 0.4rem;
+	border: 1px solid var(--fcom-primary-border, #e0e0e0);
+	border-radius: 4px;
+	font-size: 0.875rem;
+	background-color: var(--fcom-primary-bg, #ffffff);
+	color: var(--fcom-primary-text, #1a1a1a);
+	cursor: pointer;
+	min-width: 85px;
+}
+
+.tbc-don-dashboard-btn {
+	background-color: var(--fcom-primary-button, #4a90e2);
+	color: var(--fcom-primary-button-text, #ffffff);
+	padding: 0.4rem 0.85rem;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 0.875rem;
+	font-weight: 500;
+	transition: filter 0.2s ease;
+}
+
+.tbc-don-dashboard-btn:hover { filter: brightness(1.1); }
+
+.tbc-don-dashboard-error {
+	color: var(--el-color-danger, #f56c6c);
+	background-color: var(--el-color-danger-light-9, #fff5f5);
+	border: 1px solid var(--el-color-danger-light-7, #ffe3e3);
+	padding: 0.75rem;
+	border-radius: 6px;
+	font-size: 0.875rem;
+}
+
+@media screen and (max-width: 768px) {
+	.tbc-don-dashboard { margin: 0; border-radius: 0; }
+	.tbc-don-dashboard-summary { flex-direction: column; }
+	.tbc-don-dashboard-summary li { width: 100%; }
+	.tbc-don-dashboard-report { justify-content: space-between; }
+}
+
+@media print {
+	.tbc-don-dashboard { box-shadow: none; margin: 0; padding: 0; }
+	.tbc-don-dashboard-form { display: none; }
+}
+
+/* =========================================================================
    Dark Mode — Native form elements need color-scheme
    ========================================================================= */
 
-html.dark .tbc-don select,
-html.dark .tbc-don input,
-html.dark .tbc-don-give-extra input,
-html.dark .tbc-don-fee-recovery input,
-html.dark .tbc-don-deposit-container input {
-	color-scheme: dark;
-}

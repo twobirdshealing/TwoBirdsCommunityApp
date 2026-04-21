@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Book Club Manager
  * Plugin URI: https://twobirdscode.com
  * Description: Manages and displays book club audiobooks with chapter support, progress tracking, and bookmarks.
- * Version: 2.3.1
+ * Version: 1.0.0
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  *
@@ -14,9 +14,19 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Cache-busting version for assets.
+ * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
+ * cache without a plugin version bump. Falls back to plugin version.
+ */
+function tbc_bc_asset_ver($rel_path) {
+    $full = plugin_dir_path(__FILE__) . ltrim($rel_path, '/');
+    return file_exists($full) ? (string) filemtime($full) : Tbc_Bc_Audiobook::VERSION;
+}
+
 class Tbc_Bc_Audiobook {
     private static $instance = null;
-    const VERSION = '2.3.1';
+    const VERSION = '1.0.0';
     
     public static function get_instance() {
         if (null === self::$instance) {
@@ -91,17 +101,17 @@ class Tbc_Bc_Audiobook {
         wp_enqueue_script('jquery-ui-sortable');
         
         wp_enqueue_style(
-            'tbc-bc-admin-style', 
-            plugins_url('css/admin-style.css', __FILE__), 
-            [], 
-            self::VERSION
+            'tbc-bc-admin-style',
+            plugins_url('css/admin-style.css', __FILE__),
+            [],
+            tbc_bc_asset_ver('css/admin-style.css')
         );
-        
+
         wp_enqueue_script(
-            'tbc-bc-admin-script', 
-            plugins_url('js/admin-script.js', __FILE__), 
-            array('jquery', 'jquery-ui-sortable'), 
-            self::VERSION,
+            'tbc-bc-admin-script',
+            plugins_url('js/admin-script.js', __FILE__),
+            array('jquery', 'jquery-ui-sortable'),
+            tbc_bc_asset_ver('js/admin-script.js'),
             true
         );
 

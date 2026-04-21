@@ -3,7 +3,7 @@
  * Plugin Name: TBC OTP Verification
  * Plugin URI:  https://twobirdscode.com
  * Description: Phone OTP verification via Twilio for Fluent Community registration.
- * Version:     1.0.1
+ * Version:     1.0.0
  * Author:      Two Birds Code
  * Author URI:  https://twobirdscode.com
  * Text Domain: tbc-otp

@@ -3,7 +3,7 @@
 Plugin Name: Two Birds Church - Member Perks
 Plugin URI: https://twobirdschurch.com
 Description: Manage member perks for WooCommerce Subscriptions with renewal-based discounts and role management.
-Version: 2.1.0
+Version: 1.0.0
 Author: Two Birds Code
 Author URI: https://twobirdscode.com
 License: GPL2
@@ -18,9 +18,19 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('WMP_VERSION', '2.1.0');
+define('WMP_VERSION', '1.0.0');
 define('WMP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('WMP_PLUGIN_PATH', plugin_dir_path(__FILE__));
+
+/**
+ * Cache-busting version for assets.
+ * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
+ * cache without a plugin version bump. Falls back to WMP_VERSION.
+ */
+function wmp_asset_ver($rel_path) {
+    $full = WMP_PLUGIN_PATH . ltrim($rel_path, '/');
+    return file_exists($full) ? (string) filemtime($full) : WMP_VERSION;
+}
 
 class WMP_Main {
     
@@ -63,7 +73,7 @@ public function enqueue_frontend_scripts() {
         'wmp-perk-labels',
         WMP_PLUGIN_URL . 'css/perk-labels.css',
         array(),
-        WMP_VERSION
+        wmp_asset_ver('css/perk-labels.css')
     );
 
     // Dashboard styles and scripts only on the shortcode page
@@ -72,7 +82,7 @@ public function enqueue_frontend_scripts() {
             'wmp-perk-dashboard',
             WMP_PLUGIN_URL . 'css/perk-dashboard.css',
             array(),
-            WMP_VERSION
+            wmp_asset_ver('css/perk-dashboard.css')
         );
 
         // Load admin scripts for role management functionality
@@ -80,7 +90,7 @@ public function enqueue_frontend_scripts() {
             'wmp-admin-scripts',
             WMP_PLUGIN_URL . 'js/settings.js',
             array('jquery'),
-            WMP_VERSION,
+            wmp_asset_ver('js/settings.js'),
             true
         );
 
@@ -101,17 +111,17 @@ public function enqueue_frontend_scripts() {
         
         if (strpos($hook, 'member-perks') !== false || in_array($hook, $member_perks_pages)) {
             wp_enqueue_style(
-                'wmp-import-css', 
-                WMP_PLUGIN_URL . 'css/import.css', 
-                array(), 
-                WMP_VERSION
+                'wmp-import-css',
+                WMP_PLUGIN_URL . 'css/import.css',
+                array(),
+                wmp_asset_ver('css/import.css')
             );
-            
+
             wp_enqueue_script(
-                'wmp-admin-scripts', 
-                WMP_PLUGIN_URL . 'js/settings.js', 
-                array('jquery'), 
-                WMP_VERSION, 
+                'wmp-admin-scripts',
+                WMP_PLUGIN_URL . 'js/settings.js',
+                array('jquery'),
+                wmp_asset_ver('js/settings.js'),
                 true
             );
 

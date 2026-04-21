@@ -207,18 +207,6 @@
     color: #ffffff;
 }
 
-html.dark .fs-post-card {
-    box-shadow:
-        0 1px 3px rgba(0, 0, 0, 0.2),
-        0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-html.dark .fs-post-card:hover {
-    box-shadow:
-        0 4px 12px rgba(0, 0, 0, 0.25),
-        0 12px 32px rgba(0, 0, 0, 0.3);
-}
-
 .fs-card-image {
     position: relative;
     aspect-ratio: 16/10;
@@ -851,10 +839,6 @@ html.dark .fs-post-card:hover {
     border-radius: 10px;
 }
 
-html.dark .fs-comments-section .each_comment {
-    background: var(--fcom-secondary-content-bg, #42464D);
-}
-
 .fs-comments-section .comment_wrap {
     display: flex;
     gap: 12px;
@@ -956,11 +940,6 @@ html.dark .fs-comments-section .each_comment {
     box-sizing: border-box;
 }
 
-html.dark .fs-comments-section .comment-respond {
-    background: var(--fcom-secondary-bg, #191B1F);
-    border-color: var(--fcom-primary-border, #42464D);
-}
-
 .fs-comments-section .comment-reply-title {
     font-size: 0.875rem;
     font-weight: 500;
@@ -1035,11 +1014,6 @@ html.dark .fs-comments-section .comment-respond {
     background: var(--fcom-secondary-content-bg, var(--fcom-primary-bg, #ffffff));
     color: var(--fs-color-text, var(--fcom-primary-text, #19283a));
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-html.dark .fs-comments-section .fcom_input {
-    background: var(--fcom-secondary-content-bg, #42464D);
-    border-color: var(--fcom-primary-border, #42464D);
 }
 
 .fs-comments-section .fcom_input:focus {
@@ -1233,16 +1207,6 @@ html.dark .fs-comments-section .fcom_input {
 
 .fs-comments-section .logged-in-as a:hover {
     text-decoration: underline;
-}
-
-/* Dark mode for robust selectors - use secondary-content-bg for contrast */
-html.dark .fs-comments-section #commentform textarea,
-html.dark .fs-comments-section #commentform input[type="text"],
-html.dark .fs-comments-section #commentform input[type="email"],
-html.dark .fs-comments-section #commentform input[type="url"],
-html.dark .fs-comments-section textarea#comment {
-    background: var(--fcom-secondary-content-bg, #42464D);
-    border-color: var(--fcom-primary-border, #42464D);
 }
 
 /* ==========================================================================

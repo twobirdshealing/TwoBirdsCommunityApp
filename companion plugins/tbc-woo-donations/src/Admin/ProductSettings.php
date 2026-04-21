@@ -287,6 +287,19 @@ final class ProductSettings {
 			'description' => __( 'Charge once regardless of quantity (e.g., 2 guests at $20 = $20 total). Shows "# of Guests" label.', 'tbc-woo-donations' ),
 		] );
 
+		woocommerce_wp_select( [
+			'id'          => '_tbc_don_deductible',
+			'label'       => __( 'Tax-Deductible Receipt', 'tbc-woo-donations' ),
+			'value'       => $product->get_meta( '_tbc_don_deductible', true, 'edit' ),
+			'options'     => [
+				''    => __( 'Default (use category rule)', 'tbc-woo-donations' ),
+				'yes' => __( 'Always tax-deductible', 'tbc-woo-donations' ),
+				'no'  => __( 'Never tax-deductible', 'tbc-woo-donations' ),
+			],
+			'desc_tip'    => true,
+			'description' => __( 'Whether this product appears in the deductible section of the year-end donor statement. "Default" uses the category slug configured under WooCommerce > Settings > Donations.', 'tbc-woo-donations' ),
+		] );
+
 		echo '</div>';
 
 		wp_nonce_field( 'tbc_don_save_product', 'tbc_don_product_nonce' );
@@ -339,6 +352,12 @@ final class ProductSettings {
 		// --- Cancellation Policy ---
 		if ( isset( $_POST['_tbc_don_cancellation_policy'] ) ) {
 			$product->update_meta_data( '_tbc_don_cancellation_policy', wp_kses_post( wp_unslash( $_POST['_tbc_don_cancellation_policy'] ) ) );
+		}
+
+		// --- Deductible override (select: '', 'yes', 'no') ---
+		if ( isset( $_POST['_tbc_don_deductible'] ) ) {
+			$value = sanitize_key( wp_unslash( $_POST['_tbc_don_deductible'] ) );
+			$product->update_meta_data( '_tbc_don_deductible', in_array( $value, [ 'yes', 'no' ], true ) ? $value : '' );
 		}
 
 		// --- Suggested Amounts ---

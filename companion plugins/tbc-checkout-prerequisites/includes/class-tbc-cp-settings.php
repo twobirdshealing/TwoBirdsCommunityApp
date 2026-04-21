@@ -31,8 +31,8 @@ class TBC_CP_Settings {
             return;
         }
         
-        wp_enqueue_style('tbc-cp-admin', TBC_CP_URL . 'css/tbc-cp-admin.css', [], TBC_CP_VERSION);
-        wp_enqueue_script('tbc-cp-admin', TBC_CP_URL . 'js/tbc-cp-admin.js', ['jquery', 'jquery-ui-sortable'], TBC_CP_VERSION, true);
+        wp_enqueue_style('tbc-cp-admin', TBC_CP_URL . 'css/tbc-cp-admin.css', [], tbc_cp_asset_ver('css/tbc-cp-admin.css'));
+        wp_enqueue_script('tbc-cp-admin', TBC_CP_URL . 'js/tbc-cp-admin.js', ['jquery', 'jquery-ui-sortable'], tbc_cp_asset_ver('js/tbc-cp-admin.js'), true);
         
         wp_localize_script('tbc-cp-admin', 'tbc_cp_admin', [
             'courses' => $this->get_available_courses(),

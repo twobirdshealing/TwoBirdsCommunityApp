@@ -127,7 +127,7 @@ class Admin {
             'tbc-msgr-admin',
             TBC_MSGR_URL . 'assets/css/admin.css',
             [],
-            TBC_MSGR_VERSION
+            tbc_msgr_asset_ver('assets/css/admin.css')
         );
     }
 

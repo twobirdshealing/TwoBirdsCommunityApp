@@ -318,30 +318,9 @@ class TBC_Cart_WC_Integration {
             font-size: 1.25rem;
             font-weight: 600;
         }
-        /* Dark mode for tabs */
-        html.dark .woocommerce div.product .woocommerce-tabs ul.tabs {
-            border-bottom-color: var(--fcom-secondary-border, #A5A9AD) !important;
-        }
-        html.dark .woocommerce div.product .woocommerce-tabs ul.tabs li a {
-            color: var(--fcom-text-off, #A5A9AD) !important;
-        }
-        html.dark .woocommerce div.product .woocommerce-tabs ul.tabs li a:hover {
-            color: var(--fcom-primary-text, #F0F3F5) !important;
-        }
-        html.dark .woocommerce div.product .woocommerce-tabs ul.tabs li.active a {
-            color: var(--fcom-primary-text, #F0F3F5) !important;
-            border-bottom-color: var(--fcom-text-link, #60a5fa) !important;
-        }
-        html.dark .woocommerce div.product .woocommerce-tabs .woocommerce-Tabs-panel,
-        html.dark .woocommerce div.product .woocommerce-tabs .panel {
-            background: var(--fcom-secondary-bg, #191B1F) !important;
-            border-color: var(--fcom-primary-border, #42464D) !important;
-            color: var(--fcom-primary-text, #F0F3F5) !important;
-        }
-        html.dark .woocommerce div.product .woocommerce-tabs .panel h2,
-        html.dark .woocommerce div.product .woocommerce-tabs .woocommerce-Tabs-panel h2 {
-            color: var(--fcom-primary-text, #F0F3F5);
-        }
+        /* No html.dark overrides needed — the --fcom-* variables auto-switch
+           on <html class="dark"> (set by Fluent on the body), so the base
+           rules above resolve correctly in both modes. */
         /* WooCommerce buttons - all variants */
         .woocommerce .button,
         .woocommerce button.button,
@@ -394,12 +373,7 @@ class TBC_Cart_WC_Integration {
         .woocommerce-account .woocommerce-MyAccount-navigation ul li a:hover { color: var(--fcom-primary-text, #19283a) !important; }
         .woocommerce-account .woocommerce-MyAccount-navigation ul li.is-active a { color: var(--fcom-primary-text, #19283a) !important; border-bottom-color: var(--fcom-text-link, #2271b1) !important; font-weight: 600 !important; }
         .woocommerce-account .woocommerce-MyAccount-content { background: var(--fcom-primary-bg, #ffffff) !important; padding: 24px !important; border: 1px solid var(--fcom-primary-border, #e3e8ee) !important; border-radius: 8px !important; color: var(--fcom-primary-text, #19283a) !important; }
-        /* My Account - dark mode */
-        html.dark .woocommerce-account .woocommerce-MyAccount-navigation ul { border-bottom-color: var(--fcom-secondary-border, #A5A9AD) !important; }
-        html.dark .woocommerce-account .woocommerce-MyAccount-navigation ul li a { color: var(--fcom-text-off, #A5A9AD) !important; }
-        html.dark .woocommerce-account .woocommerce-MyAccount-navigation ul li a:hover { color: var(--fcom-primary-text, #F0F3F5) !important; }
-        html.dark .woocommerce-account .woocommerce-MyAccount-navigation ul li.is-active a { color: var(--fcom-primary-text, #F0F3F5) !important; border-bottom-color: var(--fcom-text-link, #60a5fa) !important; }
-        html.dark .woocommerce-account .woocommerce-MyAccount-content { background: var(--fcom-secondary-bg, #191B1F) !important; border-color: var(--fcom-primary-border, #42464D) !important; color: var(--fcom-primary-text, #F0F3F5) !important; }
+        /* No html.dark overrides for My Account — same variables auto-switch. */
         </style>
         <?php
     }

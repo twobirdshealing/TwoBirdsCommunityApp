@@ -49,6 +49,8 @@
 
 .tbc-mr-emoji:hover {
     will-change: transform;
+    background-color: var(--fcom-active-bg, #f0f3f5);
+    border-radius: 4px;
 }
 
 /* --- Summary icons --- */

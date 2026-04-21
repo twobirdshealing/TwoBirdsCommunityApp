@@ -232,7 +232,7 @@
     background: var(--fcom-secondary-bg, #f0f2f5);
     border: 1px solid var(--fcom-primary-border, #e3e8ee);
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: var(--el-box-shadow-light, 0 2px 4px rgba(0,0,0,0.05));
 }
 
 .tbc-wc-limit-message-content h3 {
@@ -278,7 +278,7 @@
 .tbc-wc-calendar .tbc-wc-month-section {
     background: var(--fcom-secondary-bg, #f0f2f5);
     overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: var(--el-box-shadow-light, 0 2px 4px rgba(0,0,0,0.1));
 }
 
 .tbc-wc-calendar .tbc-wc-month-section h2 {
@@ -313,7 +313,7 @@
 .tbc-wc-calendar .tbc-wc-event-item:hover {
     background-color: var(--fcom-active-bg, rgba(0,0,0,0.05));
     transform: scale(1.02);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    box-shadow: var(--el-box-shadow, 0 5px 15px rgba(0,0,0,0.1));
     z-index: 1;
 }
 
@@ -347,7 +347,7 @@
     border: 2px solid var(--fcom-primary-border, #e3e8ee);
     border-radius: 8px;
     background-color: var(--fcom-primary-bg, #ffffff);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: var(--el-box-shadow-light, 0 2px 4px rgba(0,0,0,0.1));
     margin-right: 10px;
     margin-left: 15px;
     padding: 5px;
@@ -623,23 +623,8 @@
     }
 }
 
-/* ===== DARK MODE OVERRIDES ===== */
-html.dark .tbc-wc-calendar .tbc-wc-month-section {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-
-html.dark .tbc-wc-calendar .tbc-wc-event-item:hover {
-    background-color: rgba(255,255,255,0.05);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-}
-
-html.dark .tbc-wc-calendar .tbc-wc-event-date {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-
-html.dark .tbc-wc-calendar-projection-limit-message {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
+/* No dark-mode overrides needed — --el-box-shadow-* tokens and
+   --fcom-active-bg auto-switch via Fluent's html.dark token block. */
 
 /* ===== SERIES MODE - Full width layout ===== */
 .tbc-wc-series-mode .woocommerce div.product div.summary,

@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.7.31
+- Step bar: current step circle now has a rotating arc ring around it so "in progress" reads distinctly from "completed" at a glance. Reuses the existing `tbc-cp-spin` keyframe — pure CSS, no JS.
+
 ## 3.7.30
 - Phone screening message: calendar link is now a prominent visually-separated block with emoji callout, clear "tap to save" instruction, and explicit mention of the 1-hour automatic reminder (the ICS file already ships a 1h `VALARM`)
 - Phone screening scheduler is now timezone-aware (single-timezone model — uses WP site timezone, e.g. `America/Chicago` for Two Birds)

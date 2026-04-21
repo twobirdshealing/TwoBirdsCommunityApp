@@ -1,0 +1,275 @@
+/**
+ * TBC WooCommerce Calendar - FAQ & Tabs admin styles
+ *
+ * Styles the "FAQ & Tabs" product data panel: sortable tab repeater, type
+ * switcher, nested Q&A repeater.
+ */
+
+/* ===== INTRO / ACTIONS ===== */
+#tbc_wc_extra_tabs_data .tbc-wc-extra-tabs-intro {
+    padding: 12px 20px 0;
+}
+
+#tbc_wc_extra_tabs_data .tbc-wc-extra-tabs-intro .description {
+    margin: 0 0 6px;
+    font-style: normal;
+    color: #50575e;
+}
+
+#tbc_wc_extra_tabs_data .tbc-wc-extra-tabs-actions {
+    padding: 10px 20px 0;
+}
+
+/* ===== TAB CONTAINER & ITEM ===== */
+#tbc_wc_extra_tabs_data .tbc-wc-extra-tabs-container {
+    padding: 10px 20px 0;
+}
+
+.tbc-wc-extra-tab-item {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    margin-bottom: 10px;
+    border-radius: 3px;
+}
+
+.tbc-wc-extra-tab-item.is-sortable-placeholder {
+    background: #f0f6fc;
+    border: 1px dashed #2271b1;
+    height: 48px;
+}
+
+/* ===== HANDLE ===== */
+.tbc-wc-extra-tab-handle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #ccd0d4;
+    cursor: default;
+    user-select: none;
+}
+
+.tbc-wc-extra-tab-handle .tbc-wc-extra-tab-drag {
+    cursor: move;
+    color: #787c82;
+    font-size: 18px;
+}
+
+.tbc-wc-extra-tab-handle .tbc-wc-extra-tab-title-display {
+    font-weight: 600;
+    flex: 1;
+    color: #1e1e1e;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tbc-wc-extra-tab-handle .tbc-wc-extra-tab-type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #e7e9ec;
+    color: #1e1e1e;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.tbc-wc-extra-tab-item[data-type="faq"] .tbc-wc-extra-tab-type-badge {
+    background: #d6ebff;
+    color: #1d4ed8;
+}
+
+.tbc-wc-extra-tab-handle .tbc-wc-extra-tab-toggle {
+    cursor: pointer;
+    color: #787c82;
+    transition: transform 0.15s ease;
+}
+
+.tbc-wc-extra-tab-item.is-open .tbc-wc-extra-tab-handle .tbc-wc-extra-tab-toggle {
+    transform: rotate(180deg);
+}
+
+/* When disabled, fade the handle title slightly */
+.tbc-wc-extra-tab-item:not(.is-enabled) .tbc-wc-extra-tab-title-display {
+    opacity: 0.55;
+}
+
+/* ===== BODY ===== */
+.tbc-wc-extra-tab-body {
+    padding: 14px 16px 8px;
+    display: none;
+}
+
+.tbc-wc-extra-tab-item.is-open .tbc-wc-extra-tab-body {
+    display: block;
+}
+
+/* ===== FORM FIELDS =====
+   Standard WooCommerce .form-field styling already floats labels left with
+   ~150px width. We just need sensible sizes for inputs and room for the
+   wp_editor wrap. No layout overrides — stay native. */
+
+#tbc_wc_extra_tabs_data .form-field input[type="text"],
+#tbc_wc_extra_tabs_data .form-field select {
+    width: 50%;
+}
+
+/* Question inputs in FAQ rows need to fit long questions — override the 50% cap. */
+.tbc-wc-faq-row-body p.form-field input[type="text"] {
+    width: 100%;
+}
+
+#tbc_wc_extra_tabs_data .form-field .description {
+    color: #646970;
+    font-size: 12px;
+    margin-left: 6px;
+}
+
+/* ===== CONTENT EDITOR PANE =====
+   The editor lives outside a .form-field row so it can use the full panel
+   width without fighting WC's floated label layout. */
+.tbc-wc-tab-content-pane {
+    clear: both;
+    margin: 10px 0 14px;
+    padding: 0;
+}
+
+.tbc-wc-tab-editor-wrap .wp-editor-wrap {
+    margin: 0;
+}
+
+.tbc-wc-tab-content-textarea {
+    width: 100%;
+    font-family: Consolas, Monaco, monospace;
+}
+
+/* ===== FAQ PANE / ROWS ===== */
+.tbc-wc-tab-faq-pane {
+    clear: both;
+    margin: 10px 0 14px;
+    padding: 12px;
+    background: #fafafa;
+    border: 1px solid #e5e7eb;
+    border-radius: 3px;
+}
+
+.tbc-wc-faq-rows {
+    min-height: 10px;
+}
+
+.tbc-wc-faq-row {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 3px;
+    margin-bottom: 8px;
+}
+
+.tbc-wc-faq-row.is-sortable-placeholder {
+    background: #f0f6fc;
+    border: 1px dashed #2271b1;
+    height: 40px;
+}
+
+.tbc-wc-faq-row-handle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e5e7eb;
+    user-select: none;
+}
+
+.tbc-wc-faq-row.is-open .tbc-wc-faq-row-handle {
+    border-bottom: 1px solid #ccd0d4;
+}
+
+.tbc-wc-faq-row-handle .tbc-wc-faq-row-drag {
+    cursor: move;
+    color: #787c82;
+}
+
+.tbc-wc-faq-row-handle .tbc-wc-faq-row-title-display {
+    flex: 1;
+    color: #1e1e1e;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tbc-wc-faq-row-handle .tbc-wc-faq-row-toggle {
+    cursor: pointer;
+    color: #787c82;
+    transition: transform 0.15s ease;
+}
+
+.tbc-wc-faq-row.is-open .tbc-wc-faq-row-handle .tbc-wc-faq-row-toggle {
+    transform: rotate(180deg);
+}
+
+.tbc-wc-faq-row-body {
+    padding: 12px 14px;
+    display: none;
+}
+
+.tbc-wc-faq-row.is-open .tbc-wc-faq-row-body {
+    display: block;
+}
+
+.tbc-wc-faq-row-body .form-field {
+    margin-bottom: 10px;
+}
+
+/* FAQ Q&A answer: rendered as a <div> (not <p>) so the wp-editor wrap can
+   nest cleanly. Match WooCommerce's .form-field padding/label float so the
+   label sits alongside the other Q&A fields above. */
+.tbc-wc-faq-answer-field {
+    padding: 5px 20px 5px 162px;
+    margin: 0 0 10px;
+    line-height: 24px;
+}
+
+.tbc-wc-faq-answer-field > label {
+    float: left;
+    width: 150px;
+    padding: 0;
+    margin: 0 0 0 -150px;
+}
+
+.tbc-wc-faq-answer-field .tbc-wc-faq-answer-textarea {
+    width: 100%;
+    min-height: 90px;
+}
+
+.tbc-wc-faq-answer-field .wp-editor-wrap {
+    width: 100%;
+}
+
+.tbc-wc-faq-answer-field::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+/* ===== FOOTER / DELETE LINKS ===== */
+.tbc-wc-extra-tab-footer {
+    margin: 10px 0 0;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+}
+
+#tbc_wc_extra_tabs_data .button-link-delete {
+    color: #b32d2e;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+}
+
+#tbc_wc_extra_tabs_data .button-link-delete:hover {
+    color: #d63638;
+}

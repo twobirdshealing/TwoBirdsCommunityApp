@@ -70,13 +70,13 @@
 
 /* Workflow Banner */
 .tbc-cp-er-workflow-banner {
-    background: rgba(255, 193, 7, 0.1);
-    border: 1px solid rgba(255, 193, 7, 0.3);
+    background: var(--el-color-warning-light-9, rgba(255, 193, 7, 0.1));
+    border: 1px solid var(--el-color-warning-light-5, rgba(255, 193, 7, 0.3));
     border-radius: 8px;
     padding: 12px 16px;
     margin: 0 0 16px;
     font-size: 14px;
-    color: #856404;
+    color: var(--el-color-warning, #e6a23c);
     line-height: 1.5;
 }
 
@@ -313,9 +313,9 @@
 
 /* Consult Notes Button */
 .tbc-cp-er-edit-notes {
-    background: rgba(255, 193, 7, 0.1) !important;
-    border-color: rgba(255, 193, 7, 0.3) !important;
-    color: #856404 !important;
+    background: var(--el-color-warning-light-9, rgba(255, 193, 7, 0.1)) !important;
+    border-color: var(--el-color-warning-light-5, rgba(255, 193, 7, 0.3)) !important;
+    color: var(--el-color-warning, #e6a23c) !important;
     font-weight: 600 !important;
 }
 
@@ -519,9 +519,9 @@
 }
 
 .tbc-cp-er-schedule-set {
-    background: rgba(0, 123, 255, 0.1);
-    color: #0056b3;
-    border: 1px solid rgba(0, 123, 255, 0.3);
+    background: var(--el-color-primary-light-9, rgba(0, 123, 255, 0.1));
+    color: var(--el-color-primary, #409eff);
+    border: 1px solid var(--el-color-primary-light-5, rgba(0, 123, 255, 0.3));
 }
 
 .tbc-cp-er-schedule-overdue {
@@ -618,13 +618,13 @@
 
 /* Upcoming Calls Banner */
 .tbc-cp-er-upcoming-banner {
-    background: rgba(0, 123, 255, 0.1);
-    border: 1px solid rgba(0, 123, 255, 0.3);
+    background: var(--el-color-primary-light-9, rgba(0, 123, 255, 0.1));
+    border: 1px solid var(--el-color-primary-light-5, rgba(0, 123, 255, 0.3));
     border-radius: 8px;
     padding: 10px 16px;
     margin: 0 0 12px;
     font-size: 13px;
-    color: #055160;
+    color: var(--el-color-primary, #409eff);
     line-height: 1.5;
 }
 
@@ -722,44 +722,18 @@
     }
 }
 
-/* Dark mode: color-scheme for native form elements */
-html.dark .tbc-cp-er-wrap {
-    color-scheme: dark;
+/* Toast status colors — use Element Plus tokens that auto-switch light/dark. */
+.tbc-cp-er-toast-success {
+    color: var(--el-color-success, #67c23a);
 }
 
-html.dark .tbc-cp-er-filters select,
-html.dark .tbc-cp-er-filters input[type="text"],
-html.dark .tbc-cp-er-approval-dropdown,
-html.dark .tbc-cp-er-screening-dropdown,
-html.dark .tbc-cp-er-spirit-dropdown,
-html.dark .tbc-cp-er-schedule-field input {
-    color-scheme: dark;
+.tbc-cp-er-toast-error {
+    color: var(--el-color-danger, #f56c6c);
 }
 
-/* Lighten semantic text that would be too dark on dark backgrounds */
-html.dark .tbc-cp-er-workflow-banner {
-    color: #ffc107;
-}
-
-html.dark .tbc-cp-er-upcoming-banner {
-    color: #6db3f2;
-}
-
-html.dark .tbc-cp-er-edit-notes {
-    color: #ffc107 !important;
-}
-
-html.dark .tbc-cp-er-schedule-set {
-    color: #6db3f2;
-}
-
-html.dark .tbc-cp-er-toast-success {
-    color: #a3d9a5;
-}
-
-html.dark .tbc-cp-er-toast-error {
-    color: #f5a0a0;
-}
+/* No other dark-mode overrides needed — Fluent sets color-scheme: dark
+   globally on html.dark, and all status colors above use --el-color-*
+   tokens that auto-switch. */
 
 /* Header row with gear icon */
 .tbc-cp-er-header-row {

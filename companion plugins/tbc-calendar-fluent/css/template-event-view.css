@@ -22,7 +22,7 @@
 .tbc-wc-event-details-price,
 .tbc-wc-event-details-time,
 .tbc-wc-event-details-rsvp {
-    background-color: var(--fcom-secondary-bg, #f0f2f5);
+    background-color: var(--fcom-primary-bg, #f0f2f5);
     border: 1px solid var(--fcom-primary-border, #e3e8ee);
     border-radius: 5px;
     padding: 10px;

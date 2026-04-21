@@ -26,26 +26,18 @@
     background-color: var(--fcom-secondary-bg, #f0f2f5);
     border: 1px solid var(--fcom-primary-border, #e3e8ee);
     border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-html.dark .perk-totals {
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    box-shadow: var(--el-box-shadow-light, 0 2px 5px rgba(0,0,0,0.1));
 }
 
 .no-data {
-    color: #dc3545;
+    color: var(--el-color-danger, #f56c6c);
 }
 
 .member-subscriptions {
     background-color: var(--fcom-primary-bg, #fff);
     border: 1px solid var(--fcom-primary-border, #e3e8ee);
     border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-
-html.dark .member-subscriptions {
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    box-shadow: var(--el-box-shadow-light, 0 2px 5px rgba(0,0,0,0.05));
 }
 
 .level-info {
@@ -69,10 +61,6 @@ html.dark .member-subscriptions {
     border: 1px solid var(--fcom-primary-border, #e3e8ee);
     background-color: var(--fcom-primary-bg, #fff);
     color: inherit;
-}
-
-html.dark .level-select-form select {
-    color-scheme: dark;
 }
 
 /* Tables */
@@ -119,8 +107,4 @@ html.dark .level-select-form select {
     border: 1px solid var(--fcom-primary-border, #e3e8ee);
     background-color: var(--fcom-primary-bg, #fff);
     color: inherit;
-}
-
-html.dark .role-dropdown {
-    color-scheme: dark;
 }

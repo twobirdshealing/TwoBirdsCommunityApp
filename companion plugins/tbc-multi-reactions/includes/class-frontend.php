@@ -123,8 +123,9 @@ class Frontend {
             .tbc-mr-reaction-<?php echo esc_attr($r['id']); ?>.tbc-mr-active { background-color: <?php echo esc_attr($r['color']); ?>15; border-color: <?php echo esc_attr($r['color']); ?>; }
             <?php endforeach; ?>
 
-            html.dark .tbc-mr-dropdown { background-color: #1a1a1a; border-color: #333; }
-            html.dark .tbc-mr-emoji:hover { background-color: #2a2a2a; }
+            /* Dropdown bg + border set via inline style in class-posts.php using
+               --fcom-primary-bg / --fcom-primary-border — auto-switch in dark mode.
+               Emoji hover bg defined in reactions.css using --fcom-active-bg. */
 
             .tbc-mr-summary { visibility: visible !important; opacity: 1 !important; }
             .tbc-mr-summary img { display: inline-block !important; visibility: visible !important; opacity: 1 !important; }

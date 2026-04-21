@@ -3,7 +3,7 @@
  * Plugin Name: TBC Profile Completion
  * Plugin URI:  https://twobirdscode.com
  * Description: Profile completion gate for Fluent Community registration. Requires bio and avatar before users can access the community. Self-contained: registers its own REST routes under /tbc-pcom/v1.
- * Version:     1.1.0
+ * Version:     1.0.0
  * Author:      Two Birds Code
  * Author URI:  https://twobirdscode.com
  * Text Domain: tbc-pcom

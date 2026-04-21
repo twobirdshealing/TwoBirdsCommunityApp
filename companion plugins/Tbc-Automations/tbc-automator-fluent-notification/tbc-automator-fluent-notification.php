@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Automator Send Notification
  * Plugin URI: https://twobirdscode.com
  * Description: Adds a "Send Notification" action to Uncanny Automator — sends native FluentCommunity in-app notifications when automations run.
- * Version: 2.3.1
+ * Version: 1.0.0
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  * Text Domain: tbc-automator-fluent-notification

@@ -215,6 +215,18 @@
     font-weight: 700;
 }
 
+/* Current Step — animated ring */
+.tbc-cp-indicator.current .tbc-cp-indicator-num::before {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border: 2px solid transparent;
+    border-top-color: var(--fcom-text-link, #2271b1);
+    border-radius: 50%;
+    animation: tbc-cp-spin 1s linear infinite;
+    pointer-events: none;
+}
+
 .tbc-cp-indicator:not(.completed):not(.current).tbc-cp-checkout-step .tbc-cp-indicator-title {
     color: var(--fcom-text-off, #959595);
 }

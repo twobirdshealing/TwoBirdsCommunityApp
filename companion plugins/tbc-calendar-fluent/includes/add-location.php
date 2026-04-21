@@ -122,7 +122,7 @@ function tbc_wc_get_inline_map_scripts() {
     $html = '';
 
     // Always load toggle/map JS
-    $js_url = plugins_url('js/google-maps.js', dirname(__FILE__)) . '?ver=' . TBC_WC_VERSION;
+    $js_url = plugins_url('js/google-maps.js', dirname(__FILE__)) . '?ver=' . tbc_wc_asset_ver('js/google-maps.js');
     $html .= '<script src="' . esc_url($js_url) . '"></script>';
 
     // Load Google Maps API if key is configured

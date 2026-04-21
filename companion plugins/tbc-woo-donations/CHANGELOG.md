@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.6.0 — 2026-04-21
+
+### Added — Donor Dashboard & Year-End Statement (merged from tbc-donor-dashboard)
+- New `[tbc_donor_dashboard]` shortcode renders the logged-in donor's lifetime/average/last donation summary and a year-end statement download. `[donor_dashboard]` is kept as an alias for backwards compatibility.
+- Year-end statement opens in a new tab as a print-styled HTML page with a "Print / Save as PDF" button — donors use the browser's native print dialog. Replaces the old TCPDF pipeline entirely (27 MB library + `/uploads/donation-reports/` folder + admin cleanup page all removed).
+- Statement shows two sections: **Tax-Deductible Contributions** (Give Extra fees + products flagged deductible) and **Other Payments** (events, retreats, etc.) with the rationale printed inline so donors don't get confused when the deductible total is less than their total giving.
+- New **WC > Settings > Donations > Donor Statement** section: organization name, tax ID / EIN, footer text, logo attachment ID, and the tax-deductible product category slug (default `donation`).
+- New per-product **Tax-Deductible Receipt** dropdown in the Donations product tab — "Default (use category rule)" / "Always tax-deductible" / "Never tax-deductible". Lets admins override the category-based rule in either direction on any product.
+- Give Extra fees now carry stable `_tbc_don_fee_type = give_extra` order-item meta so statements identify them reliably across translations (was matching the "Extra Donation" string). Historical orders still match by name for backwards compat.
+- Conflict detector now flags the old **TBC - Donor Dashboard** plugin (`TBC_DD_VERSION`) and asks the admin to deactivate it.
+
+### Removed
+- `tbc-donor-dashboard` companion plugin (functionality merged in; delete the old plugin after deploying).
+
 ## 1.5.0 — 2026-04-05
 
 ### Added — Guest Quantity Feature

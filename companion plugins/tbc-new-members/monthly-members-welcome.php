@@ -3,7 +3,7 @@
 Plugin Name: Two Birds Church - New Members
 Plugin URI: https://twobirdschurch.com
 Description: New member tracking dashboard with community stats. Fluent Community native.
-Version: 3.0.0
+Version: 1.0.0
 Author: Two Birds Code
 License: GPL2
 */
@@ -12,7 +12,17 @@ defined('ABSPATH') || exit;
 
 define('TBC_NM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TBC_NM_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('TBC_NM_VERSION', '3.0.0');
+define('TBC_NM_VERSION', '1.0.0');
+
+/**
+ * Cache-busting version for assets.
+ * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
+ * cache without a plugin version bump. Falls back to TBC_NM_VERSION.
+ */
+function tbc_nm_asset_ver($rel_path) {
+    $full = TBC_NM_PLUGIN_DIR . ltrim($rel_path, '/');
+    return file_exists($full) ? (string) filemtime($full) : TBC_NM_VERSION;
+}
 
 require_once TBC_NM_PLUGIN_DIR . 'includes/utilities.php';
 require_once TBC_NM_PLUGIN_DIR . 'includes/class-dashboard.php';
@@ -53,13 +63,13 @@ class TBC_New_Members {
 
         wp_enqueue_script('chartjs', 'https://cdn.jsdelivr.net/npm/chart.js', array(), '3.7.0', true);
 
-        wp_enqueue_style('tbc-nm-dashboard', TBC_NM_PLUGIN_URL . 'css/dashboard.css', array(), TBC_NM_VERSION);
-        wp_enqueue_style('tbc-nm-members', TBC_NM_PLUGIN_URL . 'css/members.css', array(), TBC_NM_VERSION);
-        wp_enqueue_style('tbc-nm-navigation', TBC_NM_PLUGIN_URL . 'css/navigation.css', array(), TBC_NM_VERSION);
+        wp_enqueue_style('tbc-nm-dashboard', TBC_NM_PLUGIN_URL . 'css/dashboard.css', array(), tbc_nm_asset_ver('css/dashboard.css'));
+        wp_enqueue_style('tbc-nm-members', TBC_NM_PLUGIN_URL . 'css/members.css', array(), tbc_nm_asset_ver('css/members.css'));
+        wp_enqueue_style('tbc-nm-navigation', TBC_NM_PLUGIN_URL . 'css/navigation.css', array(), tbc_nm_asset_ver('css/navigation.css'));
 
-        wp_enqueue_script('tbc-nm-dashboard', TBC_NM_PLUGIN_URL . 'js/dashboard.js', array('jquery', 'chartjs'), TBC_NM_VERSION, true);
-        wp_enqueue_script('tbc-nm-members', TBC_NM_PLUGIN_URL . 'js/members.js', array('jquery'), TBC_NM_VERSION, true);
-        wp_enqueue_script('tbc-nm-navigation', TBC_NM_PLUGIN_URL . 'js/navigation.js', array('jquery'), TBC_NM_VERSION, true);
+        wp_enqueue_script('tbc-nm-dashboard', TBC_NM_PLUGIN_URL . 'js/dashboard.js', array('jquery', 'chartjs'), tbc_nm_asset_ver('js/dashboard.js'), true);
+        wp_enqueue_script('tbc-nm-members', TBC_NM_PLUGIN_URL . 'js/members.js', array('jquery'), tbc_nm_asset_ver('js/members.js'), true);
+        wp_enqueue_script('tbc-nm-navigation', TBC_NM_PLUGIN_URL . 'js/navigation.js', array('jquery'), tbc_nm_asset_ver('js/navigation.js'), true);
 
         wp_localize_script('tbc-nm-dashboard', 'tbcMembers', array(
             'apiUrl' => rest_url('tbc-members/v1/'),

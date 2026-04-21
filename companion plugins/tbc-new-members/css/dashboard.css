@@ -16,13 +16,9 @@
     background: var(--fcom-primary-bg, #fff);
     border-radius: 8px;
     margin-bottom: 30px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    box-shadow: var(--el-box-shadow-light, 0 2px 4px rgba(0, 0, 0, 0.04));
     border: 1px solid var(--fcom-primary-border, #e3e8ee);
     overflow: hidden;
-}
-
-html.dark .dashboard-panel {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* Section Header */
@@ -107,12 +103,8 @@ html.dark .dashboard-panel {
     background: var(--fcom-primary-bg, #fff);
     border-radius: 8px;
     padding: 20px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    box-shadow: var(--el-box-shadow-light, 0 2px 4px rgba(0, 0, 0, 0.04));
     border: 1px solid var(--fcom-primary-border, #e3e8ee);
-}
-
-html.dark .stat-card {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .stat-label {

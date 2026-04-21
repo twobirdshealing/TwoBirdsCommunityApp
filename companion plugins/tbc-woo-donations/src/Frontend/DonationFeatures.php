@@ -50,6 +50,10 @@ final class DonationFeatures {
 		add_action( 'woocommerce_cart_calculate_fees', [ $this, 'apply_fee_recovery' ], 20 );
 		add_action( 'woocommerce_cart_calculate_fees', [ $this, 'apply_extra_donation' ], 20 );
 
+		// Tag the Give Extra fee on the order so the donor statement can identify it
+		// reliably (not by translated fee name).
+		add_action( 'woocommerce_checkout_create_order_fee_item', [ $this, 'tag_give_extra_fee_item' ], 10, 3 );
+
 		// One-time purchase: convert subscription to simple.
 		add_filter( 'woocommerce_get_cart_item_from_session', [ $this, 'adjust_one_time_price' ], 10, 1 );
 		add_filter( 'woocommerce_is_subscription', [ $this, 'filter_is_subscription' ], 10, 2 );
@@ -378,6 +382,13 @@ final class DonationFeatures {
 		<?php
 	}
 
+	/**
+	 * Stable, non-translated id for the Give Extra fee. Used at checkout to
+	 * tag the resulting order fee item so year-end donor statements can
+	 * identify it regardless of the site's language.
+	 */
+	public const GIVE_EXTRA_FEE_ID = 'tbc_don_give_extra';
+
 	public function apply_extra_donation( \WC_Cart $cart ): void {
 		if ( is_admin() && ! wp_doing_ajax() ) {
 			return;
@@ -387,10 +398,32 @@ final class DonationFeatures {
 			if ( ! empty( $cart_item['tbc_don_extra_amount'] ) ) {
 				$amount = (float) $cart_item['tbc_don_extra_amount'];
 				if ( $amount > 0 ) {
-					$cart->add_fee( __( 'Extra Donation', 'tbc-woo-donations' ), $amount, false );
+					$cart->fees_api()->add_fee( [
+						'id'     => self::GIVE_EXTRA_FEE_ID,
+						'name'   => __( 'Extra Donation', 'tbc-woo-donations' ),
+						'amount' => $amount,
+					] );
 					break; // Single fee line for the first matching item.
 				}
 			}
+		}
+	}
+
+	/**
+	 * Tag the Give Extra fee on the order so StatementData can identify it
+	 * via meta (`_tbc_don_fee_type = give_extra`) instead of matching the
+	 * translated fee name.
+	 *
+	 * @param \WC_Order_Item_Fee $item
+	 * @param string             $fee_key
+	 * @param object             $fee
+	 */
+	public function tag_give_extra_fee_item( $item, string $fee_key, $fee ): void {
+		if ( ! $item instanceof \WC_Order_Item_Fee ) {
+			return;
+		}
+		if ( self::GIVE_EXTRA_FEE_ID === $fee_key || ( isset( $fee->id ) && self::GIVE_EXTRA_FEE_ID === $fee->id ) ) {
+			$item->add_meta_data( '_tbc_don_fee_type', 'give_extra', true );
 		}
 	}
 

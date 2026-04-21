@@ -32,13 +32,13 @@
     background-color: var(--fcom-primary-bg, #ffffff);
     border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--el-box-shadow, 0 4px 8px rgba(0, 0, 0, 0.4));
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .tbc-wc-featured-event-box:hover {
     transform: translateY(-5px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--el-box-shadow-dark, 0 6px 12px rgba(0, 0, 0, 0.5));
 }
 
 .tbc-wc-featured-event-box a {
@@ -109,7 +109,7 @@
     border: 2px solid var(--fcom-primary-border, #e3e8ee);
     border-radius: 8px;
     padding: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--el-box-shadow-light, 0 2px 4px rgba(0, 0, 0, 0.1));
     background-color: var(--fcom-secondary-bg, #f0f2f5);
     text-align: center;
     display: flex;
@@ -234,15 +234,4 @@
     }
 }
 
-/* ===== DARK MODE OVERRIDES ===== */
-html.dark .tbc-wc-featured-event-box {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-}
-
-html.dark .tbc-wc-featured-event-box:hover {
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6);
-}
-
-html.dark .tbc-wc-featured-event-date {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
+/* No dark-mode shadow overrides needed — --el-box-shadow-* tokens auto-switch. */

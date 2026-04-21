@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Checkout Prerequisites
  * Plugin URI: https://twobirdscode.com
  * Description: Displays prerequisite steps customers must complete before checkout
- * Version: 3.7.30
+ * Version: 1.0.0
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  * Text Domain: tbc-checkout-prerequisites
@@ -15,12 +15,22 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('TBC_CP_VERSION', '3.7.30');
+define('TBC_CP_VERSION', '1.0.0');
 define('TBC_CP_DIR', plugin_dir_path(__FILE__));
 define('TBC_CP_URL', plugin_dir_url(__FILE__));
 
 // Gravity Forms field types to skip when iterating input fields
 define('TBC_CP_SKIP_FIELD_TYPES', ['html', 'section', 'page', 'captcha', 'hidden']);
+
+/**
+ * Cache-busting version for assets.
+ * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
+ * cache without a plugin version bump. Falls back to TBC_CP_VERSION.
+ */
+function tbc_cp_asset_ver($rel_path) {
+    $full = TBC_CP_DIR . ltrim($rel_path, '/');
+    return file_exists($full) ? (string) filemtime($full) : TBC_CP_VERSION;
+}
 
 require_once TBC_CP_DIR . 'includes/class-tbc-cp-settings.php';
 require_once TBC_CP_DIR . 'includes/class-tbc-cp-course-status.php';
@@ -67,13 +77,13 @@ add_action('wp_enqueue_scripts', function() {
         }
     });
 
-    wp_enqueue_style('tbc-cp-navigation', TBC_CP_URL . 'css/tbc-cp-navigation.css', [], TBC_CP_VERSION);
-    wp_enqueue_style('tbc-cp-courses', TBC_CP_URL . 'css/tbc-cp-courses.css', [], TBC_CP_VERSION);
-    wp_enqueue_style('tbc-cp-forms', TBC_CP_URL . 'css/tbc-cp-forms.css', [], TBC_CP_VERSION);
+    wp_enqueue_style('tbc-cp-navigation', TBC_CP_URL . 'css/tbc-cp-navigation.css', [], tbc_cp_asset_ver('css/tbc-cp-navigation.css'));
+    wp_enqueue_style('tbc-cp-courses', TBC_CP_URL . 'css/tbc-cp-courses.css', [], tbc_cp_asset_ver('css/tbc-cp-courses.css'));
+    wp_enqueue_style('tbc-cp-forms', TBC_CP_URL . 'css/tbc-cp-forms.css', [], tbc_cp_asset_ver('css/tbc-cp-forms.css'));
 
-    wp_enqueue_script('tbc-cp-utils', TBC_CP_URL . 'js/tbc-cp-utils.js', ['jquery'], TBC_CP_VERSION, true);
-    wp_enqueue_script('tbc-cp-courses', TBC_CP_URL . 'js/tbc-cp-courses.js', ['jquery', 'tbc-cp-utils'], TBC_CP_VERSION, true);
-    wp_enqueue_script('tbc-cp-navigation', TBC_CP_URL . 'js/tbc-cp-navigation.js', ['jquery', 'tbc-cp-utils'], TBC_CP_VERSION, true);
+    wp_enqueue_script('tbc-cp-utils', TBC_CP_URL . 'js/tbc-cp-utils.js', ['jquery'], tbc_cp_asset_ver('js/tbc-cp-utils.js'), true);
+    wp_enqueue_script('tbc-cp-courses', TBC_CP_URL . 'js/tbc-cp-courses.js', ['jquery', 'tbc-cp-utils'], tbc_cp_asset_ver('js/tbc-cp-courses.js'), true);
+    wp_enqueue_script('tbc-cp-navigation', TBC_CP_URL . 'js/tbc-cp-navigation.js', ['jquery', 'tbc-cp-utils'], tbc_cp_asset_ver('js/tbc-cp-navigation.js'), true);
 
     wp_localize_script('tbc-cp-utils', 'tbc_cp_vars', [
         'ajaxurl' => admin_url('admin-ajax.php'),

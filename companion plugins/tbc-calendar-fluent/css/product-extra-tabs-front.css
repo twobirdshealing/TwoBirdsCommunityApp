@@ -1,0 +1,119 @@
+/**
+ * TBC WooCommerce Calendar - FAQ & Tabs frontend styles
+ *
+ * Uses Fluent Community CSS variables so the accordion inherits the same
+ * theme colors that Fluent applies to its feed, cart, and WC tab panels.
+ *
+ * Key Fluent tokens used:
+ *   --fcom-primary-bg       — page/panel bg (WHITE light / #15202B dark)
+ *   --fcom-secondary-bg     — inset card bg, stands out inside a panel
+ *   --fcom-highlight-bg     — hover accent (same as --fcom-active-bg)
+ *   --fcom-primary-text     — main readable text
+ *   --fcom-secondary-text   — muted text / glyphs
+ *   --fcom-primary-border   — hairline borders
+ *   --fcom-text-link        — link blue
+ *
+ * Fluent's WC tab panel (`.woocommerce-Tabs-panel`) is styled with
+ * `--fcom-primary-bg`, so our FAQ items use `--fcom-secondary-bg` to
+ * contrast correctly in both light and dark modes — same pattern they use
+ * for the `.fs_cart_credits` inset card inside the mini-cart dropdown.
+ */
+
+/* ===== CONTENT TAB ===== */
+.tbc-wc-extra-tab-content {
+    margin-top: 12px;
+    color: var(--fcom-primary-text, #0F1419);
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.tbc-wc-extra-tab-content > *:first-child {
+    margin-top: 0;
+}
+
+.tbc-wc-extra-tab-content a {
+    color: var(--fcom-text-link, #1D9BF0);
+}
+
+/* ===== FAQ ACCORDION ===== */
+.tbc-wc-faq-container {
+    margin: 12px 0 0;
+}
+
+.tbc-wc-faq-item {
+    margin-bottom: 10px;
+    background-color: var(--fcom-secondary-bg, #F7F9FA);
+    border: 1px solid var(--fcom-primary-border, #EFF3F4);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.tbc-wc-faq-question {
+    position: relative;
+    margin: 0;
+    padding: 12px 44px 12px 14px;
+    background-color: transparent;
+    color: var(--fcom-primary-text, #0F1419);
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.tbc-wc-faq-question:hover {
+    background-color: var(--fcom-highlight-bg, #E8F5FD);
+}
+
+.tbc-wc-faq-question.active {
+    background-color: var(--fcom-highlight-bg, #E8F5FD);
+}
+
+.tbc-wc-faq-question::after {
+    content: "+";
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.25rem;
+    font-weight: 400;
+    line-height: 1;
+    color: var(--fcom-secondary-text, #536471);
+}
+
+.tbc-wc-faq-question.active::after {
+    content: "−";
+}
+
+.tbc-wc-faq-answer {
+    display: none;
+    padding: 12px 14px;
+    border-top: 1px solid var(--fcom-primary-border, #EFF3F4);
+    color: var(--fcom-primary-text, #0F1419);
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.tbc-wc-faq-answer > *:first-child {
+    margin-top: 0;
+}
+
+.tbc-wc-faq-answer > *:last-child {
+    margin-bottom: 0;
+}
+
+.tbc-wc-faq-answer a {
+    color: var(--fcom-text-link, #1D9BF0);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .tbc-wc-faq-question {
+        padding: 10px 40px 10px 12px;
+        font-size: 15px;
+    }
+    .tbc-wc-faq-answer {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+}

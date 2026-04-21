@@ -17,12 +17,8 @@
     border-radius: 8px;
     padding: 25px;
     margin-bottom: 30px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    box-shadow: var(--el-box-shadow-light, 0 2px 4px rgba(0, 0, 0, 0.04));
     border: 1px solid var(--fcom-primary-border, #e3e8ee);
-}
-
-html.dark .members-panel.panel {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* Panel Header */
@@ -153,15 +149,6 @@ html.dark .members-panel.panel {
     color: var(--fcom-secondary-text, #525866);
     font-size: 13px;
     white-space: nowrap;
-}
-
-/* Dark mode form elements */
-html.dark .members-table input[type="checkbox"] {
-    color-scheme: dark;
-}
-
-html.dark .members-select-bar input[type="checkbox"] {
-    color-scheme: dark;
 }
 
 /* Empty State */

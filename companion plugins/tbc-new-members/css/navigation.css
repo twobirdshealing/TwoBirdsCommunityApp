@@ -16,13 +16,9 @@
     background: var(--fcom-primary-bg, #fff);
     padding: 5px;
     border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--el-box-shadow-light, 0 1px 3px rgba(0, 0, 0, 0.1));
     margin-bottom: 20px;
     border: 1px solid var(--fcom-primary-border, #e3e8ee);
-}
-
-html.dark .tbc-tabs {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .tab-button {
@@ -135,10 +131,6 @@ html.dark .tbc-tabs {
 .input-group input[type="date"]:focus {
     border-color: var(--fcom-text-link, #2271b1);
     outline: none;
-}
-
-html.dark .input-group input[type="date"] {
-    color-scheme: dark;
 }
 
 /* Primary button */

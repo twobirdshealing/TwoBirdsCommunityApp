@@ -28,10 +28,10 @@ class TBC_CP_Entry_Review {
             do_action('fluent_community/enqueue_global_assets', true);
         }
 
-        wp_enqueue_style('tbc-cp-entry-review', TBC_CP_URL . 'css/tbc-cp-entry-review.css', [], TBC_CP_VERSION);
-        wp_enqueue_style('tbc-cp-navigation', TBC_CP_URL . 'css/tbc-cp-navigation.css', [], TBC_CP_VERSION);
-        wp_enqueue_script('tbc-cp-utils', TBC_CP_URL . 'js/tbc-cp-utils.js', ['jquery'], TBC_CP_VERSION, true);
-        wp_enqueue_script('tbc-cp-entry-review', TBC_CP_URL . 'js/tbc-cp-entry-review.js', ['jquery', 'tbc-cp-utils'], TBC_CP_VERSION, true);
+        wp_enqueue_style('tbc-cp-entry-review', TBC_CP_URL . 'css/tbc-cp-entry-review.css', [], tbc_cp_asset_ver('css/tbc-cp-entry-review.css'));
+        wp_enqueue_style('tbc-cp-navigation', TBC_CP_URL . 'css/tbc-cp-navigation.css', [], tbc_cp_asset_ver('css/tbc-cp-navigation.css'));
+        wp_enqueue_script('tbc-cp-utils', TBC_CP_URL . 'js/tbc-cp-utils.js', ['jquery'], tbc_cp_asset_ver('js/tbc-cp-utils.js'), true);
+        wp_enqueue_script('tbc-cp-entry-review', TBC_CP_URL . 'js/tbc-cp-entry-review.js', ['jquery', 'tbc-cp-utils'], tbc_cp_asset_ver('js/tbc-cp-entry-review.js'), true);
         wp_localize_script('tbc-cp-entry-review', 'tbc_cp_er', [
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce'   => wp_create_nonce('tbc_cp_er_nonce'),
