@@ -1,5 +1,8 @@
 # Changelog
 
+## 4.3.1 - Cleanup
+- **Cleanup:** Removed temporary debug logging (gender field diagnostics) from participant details helpers
+
 ## 4.3.0 - Settings Tab (Event Categories)
 - **New:** Admin-only **⚙️ Settings** tab on the participant list page for choosing which WooCommerce product categories feed the event list
 - **Removed:** Hardcoded product ID allowlist (`[35059, 34696, 34698]`) — products are now pulled by product category via `tax_query` so any product in one of the selected categories shows up automatically

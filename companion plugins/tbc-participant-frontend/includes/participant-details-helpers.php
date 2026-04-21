@@ -211,11 +211,6 @@ function tbc_pf_get_name_column_data($user_id, $fallback_name) {
             }
         }
     }
-    // DEBUG: temporary logging to check actual gender values
-    if (!empty($gender)) {
-        error_log('[TBC PF DEBUG] user_id=' . $user_id . ' gender="' . $gender . '" type=' . gettype($gender));
-    }
-
     if ($gender === 'Male') {
         $gender_class = 'tbc-pf-gender-male';
     } elseif ($gender === 'Female') {
