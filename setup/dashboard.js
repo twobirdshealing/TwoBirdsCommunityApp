@@ -133,6 +133,34 @@ function readBody(req) {
   });
 }
 
+// Flags the EAS status card "update available" when the installed eas-cli is behind
+// npm's latest. Cached 1h so rapid refreshes don't hammer the registry; returns null
+// on failure so the frontend can render a silent fallback instead of an error state.
+
+let _npmLatestEasCache = { version: null, fetchedAt: 0 };
+const NPM_LATEST_TTL = 60 * 60 * 1000;
+
+async function fetchLatestEasCliVersion() {
+  const now = Date.now();
+  if (now - _npmLatestEasCache.fetchedAt < NPM_LATEST_TTL && _npmLatestEasCache.version) {
+    return _npmLatestEasCache.version;
+  }
+  try {
+    const resp = await httpsRequest('https://registry.npmjs.org/eas-cli/latest', { timeout: 5000 });
+    if (resp.statusCode !== 200) return null;
+    const version = JSON.parse(resp.body.toString('utf8')).version || null;
+    if (version) _npmLatestEasCache = { version, fetchedAt: Date.now() };
+    return version;
+  } catch { return null; }
+}
+
+function compareSemver(a, b) {
+  const parse = (v) => (v || '').match(/(\d+)\.(\d+)\.(\d+)/)?.slice(1).map(Number);
+  const pa = parse(a), pb = parse(b);
+  if (!pa || !pb) return 0;
+  return pa[0] - pb[0] || pa[1] - pb[1] || pa[2] - pb[2];
+}
+
 // ---------------------------------------------------------------------------
 // Auto-shutdown: stop the server if no browser heartbeat for 5 minutes
 // ---------------------------------------------------------------------------
@@ -276,23 +304,19 @@ const server = http.createServer(async (req, res) => {
         easVersion = (await runCommand(['eas', '--version'], 10000)).trim();
         easInstalled = true;
       } catch (e) { /* not installed */ }
-      let outdated = false;
+      let outdated = false, latestOnNpm = null, behindLatest = false;
       if (easInstalled) {
-        try {
-          easUser = (await runCommand(['eas', 'whoami'], 10000)).trim().split('\n')[0].trim();
-          easLoggedIn = true;
-        } catch (e) { /* not logged in */ }
-        // Compare installed version against eas.json minimum
-        const easJson = readJsonSafe(PATHS.easJson);
-        const minMatch = (easJson?.cli?.version || '').match(/(\d+)\.(\d+)\.(\d+)/);
-        const curMatch = easVersion.match(/(\d+)\.(\d+)\.(\d+)/);
-        if (minMatch && curMatch) {
-          const min = minMatch.slice(1).map(Number);
-          const cur = curMatch.slice(1).map(Number);
-          outdated = cur[0] < min[0] || (cur[0] === min[0] && (cur[1] < min[1] || (cur[1] === min[1] && cur[2] < min[2])));
-        }
+        const [whoami, npmLatest] = await Promise.all([
+          runCommand(['eas', 'whoami'], 10000).then((r) => r.trim().split('\n')[0].trim()).catch(() => null),
+          fetchLatestEasCliVersion(),
+        ]);
+        if (whoami) { easUser = whoami; easLoggedIn = true; }
+        latestOnNpm = npmLatest;
+        const minVersion = readJsonSafe(PATHS.easJson)?.cli?.version || '';
+        outdated = compareSemver(easVersion, minVersion) < 0;
+        behindLatest = latestOnNpm ? compareSemver(easVersion, latestOnNpm) < 0 : false;
       }
-      jsonResponse(res, { ok: true, installed: easInstalled, version: easVersion, loggedIn: easLoggedIn, user: easUser, outdated });
+      jsonResponse(res, { ok: true, installed: easInstalled, version: easVersion, loggedIn: easLoggedIn, user: easUser, outdated, latestOnNpm, behindLatest });
       return;
     }
 

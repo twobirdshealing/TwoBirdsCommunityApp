@@ -54,11 +54,23 @@ function runCommand(args, timeout = 30000, { env, raw = false, onSpawn } = {}) {
   });
 }
 
-/** Run eas build:list --json and return parsed builds */
+/** Run eas build:list --json and return parsed builds.
+ *  NOTE: with --json, eas-cli writes real error messages to stdout (e.g. slug/projectId
+ *  mismatches) while stderr only carries the upgrade nag + generic "Error: build:list
+ *  command failed." trailer. So on non-zero exit we combine both streams — otherwise the
+ *  actual cause is invisible to the dashboard. */
 async function getEasBuilds() {
   try {
-    const output = await runCommand(['eas', 'build:list', '--json', '--limit', '50', '--non-interactive'], 30000);
-    return { ok: true, builds: JSON.parse(output) };
+    const { stdout, stderr, code } = await runCommand(
+      ['eas', 'build:list', '--json', '--limit', '50', '--non-interactive'],
+      30000,
+      { raw: true }
+    );
+    if (code === 0) {
+      return { ok: true, builds: JSON.parse(stdout) };
+    }
+    const combined = [stdout, stderr].map(s => (s || '').trim()).filter(Boolean).join('\n');
+    return diagnoseEasError(new Error(combined || `Exit code ${code}`));
   } catch (err) {
     return diagnoseEasError(err);
   }

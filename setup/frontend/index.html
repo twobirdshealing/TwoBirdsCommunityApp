@@ -860,8 +860,8 @@
           <span style="font-size:14px" x-text="easStatusText">Checking EAS status...</span>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
-          <button class="btn btn-sm" x-show="showEasInstall" x-on:click="easInstallCli()">Install EAS CLI</button>
-          <button class="btn btn-sm" x-show="showEasUpdate" x-on:click="easInstallCli()">Update EAS CLI</button>
+          <button class="btn btn-sm" x-show="showEasInstall" x-on:click="easInstallCli()" x-bind:disabled="easCliInstalling" x-text="easCliInstalling ? 'Installing...' : 'Install EAS CLI'">Install EAS CLI</button>
+          <button class="btn btn-sm" x-show="showEasUpdate" x-on:click="easInstallCli()" x-bind:disabled="easCliInstalling" x-text="easCliInstalling ? 'Updating...' : 'Update EAS CLI'">Update EAS CLI</button>
           <button class="btn btn-sm" x-show="showEasLogin" x-on:click="easLogin()" x-bind:disabled="easLoginWaiting" x-text="easLoginWaiting ? 'Waiting for login...' : 'Log In to EAS'">Log In to EAS</button>
           <button class="btn btn-sm" x-show="showEasLogout" x-on:click="easLogout()">Log Out</button>
           <button class="btn btn-sm btn-primary" x-show="showEasInit" x-on:click="easInit()">Link Project</button>
@@ -2552,7 +2552,8 @@ document.addEventListener('alpine:init', () => {
     depsOutput: '',
 
     // EAS
-    eas: { installed: false, loggedIn: false, user: '', version: '', outdated: false },
+    eas: { installed: false, loggedIn: false, user: '', version: '', outdated: false, latestOnNpm: null, behindLatest: false },
+    easCliInstalling: false,
     easStatusText: 'Checking EAS status...',
     easStatusColor: 'var(--text-muted)',
     _easLoginPoll: null,
@@ -3251,10 +3252,10 @@ bumpVersion(type) {
         var data = await res.json();
         try { var subData = await subRes.json(); this.buildSubmissions = subData.submissions || {}; this.submissionsUrl = subData.submissionsUrl || ''; } catch(e) { this.buildSubmissions = {}; }
         this.buildsLoaded = true;
-        if (!data.ok) { this.builds = []; this.buildsError = data.error || ''; return; }
+        if (!data.ok) { this.builds = []; this.buildsError = data.error || 'EAS build:list failed'; return; }
         this.builds = data.builds || [];
         this.buildsShown = 10;
-      } catch (err) { this.builds = []; this.buildsError = err.message; }
+      } catch (err) { this.builds = []; this.buildsError = err.message || 'EAS build:list failed'; }
       finally { this.buildsLoading = false; }
     },
 
@@ -3577,10 +3578,14 @@ bumpVersion(type) {
           this.easStatusText = 'EAS CLI v' + data.version + ' — not logged in';
         } else if (data.outdated) {
           this.easStatusColor = 'var(--yellow)';
-          this.easStatusText = 'EAS CLI v' + data.version + ' — update available';
+          this.easStatusText = 'EAS CLI v' + data.version + ' — update required (below project minimum)';
+        } else if (data.behindLatest && data.latestOnNpm) {
+          this.easStatusColor = 'var(--yellow)';
+          this.easStatusText = 'EAS CLI v' + data.version + ' — update available: ' + data.latestOnNpm + ' — logged in as ' + data.user;
         } else {
           this.easStatusColor = 'var(--green)';
-          this.easStatusText = 'EAS CLI v' + data.version + ' — logged in as ' + data.user;
+          var suffix = data.latestOnNpm === null ? ' (latest-version check unavailable)' : '';
+          this.easStatusText = 'EAS CLI v' + data.version + ' — logged in as ' + data.user + suffix;
         }
         // Auto-fill owner
         if (data.loggedIn && (!this.config.easOwner || this.PLACEHOLDERS.indexOf(this.config.easOwner) !== -1)) {
@@ -3593,7 +3598,7 @@ bumpVersion(type) {
     },
 
     get showEasInstall() { return !this.eas.installed; },
-    get showEasUpdate() { return this.eas.installed && this.eas.outdated; },
+    get showEasUpdate() { return this.eas.installed && (this.eas.outdated || this.eas.behindLatest); },
     get showEasLogin() { return this.eas.installed && !this.eas.loggedIn; },
     get showEasLogout() { return this.eas.installed && this.eas.loggedIn; },
     get showEasInit() {
@@ -3603,12 +3608,21 @@ bumpVersion(type) {
     },
 
     async easInstallCli() {
+      if (this.easCliInstalling) return;
+      this.easCliInstalling = true;
+      this.easStatusText = 'Installing EAS CLI (can take 30-120s)...';
+      this.easStatusColor = 'var(--text-muted)';
       try {
         var res = await fetch('/api/eas/install-cli', { method: 'POST' });
         var data = await res.json();
-        if (data.ok) { this.showToast('EAS CLI installed', 'success'); this.easCheckStatus(); }
+        if (data.ok) this.showToast('EAS CLI installed', 'success');
         else this.showToast('Install failed: ' + data.error, 'error');
-      } catch (err) { this.showToast('Install error: ' + err.message, 'error'); }
+      } catch (err) {
+        this.showToast('Install error: ' + err.message, 'error');
+      } finally {
+        this.easCliInstalling = false;
+        await this.easCheckStatus();
+      }
     },
 
     async easLogin() {
