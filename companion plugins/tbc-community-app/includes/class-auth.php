@@ -5,9 +5,13 @@
  * Replaces the third-party "JWT Authentication for WP REST API" plugin.
  *
  * Hooks:
- *   rest_api_init           (priority 0)  — disable cookie auth when Bearer token present
- *   determine_current_user  (priority 99) — decode Bearer token → set WP user
- *   rest_authentication_errors (priority 99) — surface JWT errors to REST responses
+ *   rest_api_init              (priority 0)    — disable cookie auth when Bearer token present
+ *   determine_current_user     (priority 99)   — decode Bearer token → set WP user
+ *   rest_authentication_errors (priority 1000) — surface JWT errors; defensively clear
+ *                                                upstream auth errors when our JWT is valid
+ *                                                (guards against plugins like Uncanny
+ *                                                Automator ≥7.1.0 that globally reject
+ *                                                Bearer tokens they didn't mint themselves)
  *
  * Token model:
  *   Access token  — 1 day,  used in Authorization header for API calls
@@ -27,6 +31,9 @@ class TBC_CA_Auth {
 
     /** @var \WP_Error|null Stored JWT error for rest_authentication_errors filter */
     private $jwt_error = null;
+
+    /** @var bool True when our JWT validator successfully authenticated the current request. */
+    private $jwt_validated = false;
 
     /** User meta key for JTI session tracking */
     const SESSION_META_KEY = '_tbc_jwt_sessions';
@@ -48,7 +55,9 @@ class TBC_CA_Auth {
     private function __construct() {
         // Validate Bearer tokens on REST requests (after other auth plugins)
         add_filter('determine_current_user', [$this, 'determine_current_user'], 99);
-        add_filter('rest_authentication_errors', [$this, 'rest_authentication_errors'], 99);
+        // Run rest_authentication_errors last so we can clear upstream false-positive
+        // rejections when our JWT has already authenticated the request.
+        add_filter('rest_authentication_errors', [$this, 'rest_authentication_errors'], 1000);
 
         // Remove cookie nonce check early when JWT Bearer token is present.
         // Must run at rest_api_init priority 0 — before rest_cookie_collect_status (priority 10)
@@ -109,6 +118,10 @@ class TBC_CA_Auth {
             return 0;
         }
 
+        // Mark this request as JWT-authenticated so rest_authentication_errors()
+        // can override any upstream false-negative rejection from other plugins.
+        $this->jwt_validated = true;
+
         // Rebuild Fluent Community space cache periodically (every 5 min per user).
         // The web portal does this on every page load via PortalHandler, but JWT
         // auth never hits that path. Without this, users added to spaces (e.g. via
@@ -119,12 +132,28 @@ class TBC_CA_Auth {
     }
 
     /**
-     * Surface stored JWT errors so REST responses include proper error codes.
+     * Surface stored JWT errors, and defensively clear upstream auth errors
+     * when our own JWT has already authenticated the request.
+     *
+     * Our contract: if our JWT validates, the user's identity is established —
+     * no other authenticator's verdict should override that. We run at priority
+     * 1000 so any reasonable earlier filter (Uncanny Automator's MCP
+     * Rest_Bearer_Authenticator at 20, Tmeister's JWT Auth at default, etc.)
+     * has already written its error into $error by the time we see it.
+     *
+     * Known offender: Uncanny Automator ≥7.1.0 ships a MCP
+     * `Rest_Bearer_Authenticator` that globally rejects any Bearer token not
+     * minted by its own Token_Manager with `rest_forbidden` / "Invalid or
+     * expired Bearer token." — even on sites that don't use MCP. Our JWT is
+     * valid and this override is how we shrug that off.
      *
      * @param \WP_Error|null|bool $error Existing error, if any.
      * @return \WP_Error|null|bool
      */
     public function rest_authentication_errors($error) {
+        if ($this->jwt_validated && is_wp_error($error)) {
+            return null;
+        }
         if (!empty($error)) {
             return $error;
         }
