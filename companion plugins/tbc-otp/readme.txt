@@ -4,7 +4,7 @@ Tags: otp, twilio, two-factor, registration, fluent-community
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -66,6 +66,10 @@ Twilio charges per verification attempt. Pricing varies by destination country â
 By default, nothing is removed on uninstall â€” your Twilio credentials and settings stay in the database so you can deactivate/reinstall for testing without losing your configuration. If you want a full wipe on uninstall, enable **Delete data on uninstall** on the admin settings page (under Data Management) before deleting the plugin.
 
 == Changelog ==
+
+= 1.0.1 =
+* Remove verbose debug logging (session lifecycle, registration flow chatter)
+* Keep only error and security event logging (Twilio API failures, duplicate/blocked phone, bypass attempts)
 
 = 1.0.0 =
 * Initial public release

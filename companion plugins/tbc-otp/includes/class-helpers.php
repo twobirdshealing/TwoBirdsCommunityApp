@@ -177,7 +177,6 @@ class Helpers {
         $data['created_at'] = $data['created_at'] ?? time();
         $data['verified']   = $data['verified'] ?? false;
         set_transient($key, $data, $ttl);
-        self::log("Session stored: {$key}");
     }
 
     /**
@@ -189,7 +188,6 @@ class Helpers {
         }
         $data = get_transient($key);
         if ($data === false) {
-            self::log("Session expired or missing: {$key}");
             return false;
         }
         return $data;
@@ -202,7 +200,6 @@ class Helpers {
         }
         $data['verified'] = true;
         set_transient($key, $data, $ttl);
-        self::log("Session verified: {$key}");
         return true;
     }
 
@@ -213,6 +210,5 @@ class Helpers {
 
     public static function delete_session(string $key): void {
         delete_transient($key);
-        self::log("Session deleted: {$key}");
     }
 }

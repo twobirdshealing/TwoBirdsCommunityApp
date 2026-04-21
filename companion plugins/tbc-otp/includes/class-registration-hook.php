@@ -42,7 +42,6 @@ class RegistrationHook {
 
         $otp_enabled = (bool) Helpers::get_option('enable_registration_verification', true);
         if (!$otp_enabled) {
-            Helpers::log('OTP registration verification is disabled, skipping');
             return null;
         }
 
@@ -50,7 +49,6 @@ class RegistrationHook {
 
         // Session already verified — let registration proceed
         if (!empty($session_key) && Helpers::is_verified($session_key)) {
-            Helpers::log('OTP session verified, proceeding to user creation');
             Helpers::delete_session($session_key);
             return null;
         }
@@ -59,10 +57,7 @@ class RegistrationHook {
         $phone_slug = Helpers::get_phone_slug();
         $phone_value = $data[$phone_slug] ?? '';
 
-        Helpers::log("Phone slug: '{$phone_slug}', value present: " . (!empty($phone_value) ? 'yes' : 'no'));
-
         if (empty($phone_value)) {
-            Helpers::log('No phone value found in registration data — skipping OTP (' . count($data) . ' fields submitted)');
             return null;
         }
 
@@ -170,7 +165,6 @@ class RegistrationHook {
 
         // Verified session — consume it and let FC proceed
         if (!empty($session_key) && Helpers::is_verified($session_key)) {
-            Helpers::log('Web OTP session verified, letting FC handle registration');
             Helpers::delete_session($session_key);
             return;
         }

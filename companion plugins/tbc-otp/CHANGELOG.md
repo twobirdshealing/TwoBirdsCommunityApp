@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 — 2026-04-21
+
+### Changed
+- Remove verbose debug logging (session lifecycle, registration flow chatter)
+- Keep only error and security event logging (Twilio API failures, duplicate/blocked phone, bypass attempts)
+
 ## 1.0.0 — 2026-04-15
 
 Initial release.
