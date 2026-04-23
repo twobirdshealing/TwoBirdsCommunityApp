@@ -11,7 +11,7 @@
 
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -49,6 +49,18 @@ const SORT_CONFIG: { key: SortOption; label: string; icon: keyof typeof Ionicons
   { key: 'last_activity', label: 'Last Activity', icon: 'time-outline' },
   { key: 'display_name', label: 'Display Name', icon: 'text-outline' },
 ];
+
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+// Members arrive with the user ID in one of several fields depending on which
+// endpoint populated the object. Centralize the fallback chain so every caller
+// resolves the same id. Returns NaN when all fields are missing — callers use
+// Number.isFinite() to decide whether it's safe to use.
+function getMemberId(member: MemberCardData): number {
+  return Number(member.xprofile?.user_id || member.user_id || member.id);
+}
 
 // -----------------------------------------------------------------------------
 // Component
@@ -184,7 +196,7 @@ export default function MemberDirectoryScreen() {
   };
 
   const handleMessagePress = (member: MemberCardData) => {
-    const memberId = Number(member.xprofile?.user_id || member.user_id);
+    const memberId = getMemberId(member);
     const memberName = member.xprofile?.display_name || member.display_name || '';
     const memberAvatar = member.xprofile?.avatar || member.avatar || '';
 
@@ -203,15 +215,21 @@ export default function MemberDirectoryScreen() {
   // Sort Menu Items (for DropdownMenu)
   // ---------------------------------------------------------------------------
 
-  const sortMenuItems: DropdownMenuItem[] = SORT_CONFIG.map((option) => ({
-    key: option.key,
-    label: sortBy === option.key ? `${option.label}  \u2713` : option.label,
-    icon: option.icon,
-    onPress: () => {
-      setSortBy(option.key);
-      setShowSortMenu(false);
-    },
-  }));
+  // Memoized so DropdownMenu does not see fresh array + fresh onPress closures on
+  // every keystroke/scroll tick. Only rebuilds when the active sort changes.
+  const sortMenuItems: DropdownMenuItem[] = useMemo(
+    () =>
+      SORT_CONFIG.map((option) => ({
+        key: option.key,
+        label: sortBy === option.key ? `${option.label}  \u2713` : option.label,
+        icon: option.icon,
+        onPress: () => {
+          setSortBy(option.key);
+          setShowSortMenu(false);
+        },
+      })),
+    [sortBy],
+  );
 
   // ---------------------------------------------------------------------------
   // Render
@@ -279,7 +297,7 @@ export default function MemberDirectoryScreen() {
             data={members}
             contentContainerStyle={{ paddingBottom: insets.bottom }}
             renderItem={({ item }) => {
-              const memberId = Number(item.xprofile?.user_id || item.user_id || item.id);
+              const memberId = getMemberId(item);
               const isSelf = memberId === currentUser?.id;
               return (
                 <MemberCard
@@ -298,7 +316,12 @@ export default function MemberDirectoryScreen() {
                 />
               );
             }}
-            keyExtractor={(item) => (item.user_id || item.id)?.toString() || Math.random().toString()}
+            keyExtractor={(item, index) => {
+              const id = getMemberId(item);
+              // Stable fallback when id is missing — using Math.random() here would
+              // produce a fresh key every render and force the row to remount.
+              return Number.isFinite(id) ? String(id) : `__idx-${index}`;
+            }}
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.5}
             refreshControl={
