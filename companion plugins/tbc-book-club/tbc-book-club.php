@@ -6,6 +6,9 @@
  * Version: 1.0.0
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: tbc-book-club
  *
  * @see CHANGELOG.md for version history
  */
@@ -15,19 +18,17 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Cache-busting version for assets.
- * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
- * cache without a plugin version bump. Falls back to plugin version.
+ * Cache-busting version for assets. Uses filemtime() so CSS/JS edits invalidate
+ * caches without a plugin version bump; returns null (WP omits ?ver=) if missing.
  */
 function tbc_bc_asset_ver($rel_path) {
     $full = plugin_dir_path(__FILE__) . ltrim($rel_path, '/');
-    return file_exists($full) ? (string) filemtime($full) : Tbc_Bc_Audiobook::VERSION;
+    return file_exists($full) ? (string) filemtime($full) : null;
 }
 
 class Tbc_Bc_Audiobook {
     private static $instance = null;
-    const VERSION = '1.0.0';
-    
+
     public static function get_instance() {
         if (null === self::$instance) {
             self::$instance = new self();

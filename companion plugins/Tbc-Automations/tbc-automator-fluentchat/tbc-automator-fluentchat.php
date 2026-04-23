@@ -15,7 +15,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'TBC_AFC_VERSION', '1.0.0' );
 define( 'TBC_AFC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TBC_AFC_URL', plugin_dir_url( __FILE__ ) );
 

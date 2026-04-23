@@ -25,16 +25,13 @@ jQuery(document).ready(function($) {
                         nonce: tbcMC.nonce
                     },
                     success: function(data) {
-                        console.log("AJAX Response:", data);
-
                         if (data.length === 0) {
                             response([{ label: 'No results', value: '' }]);
                         } else {
                             response(data);
                         }
                     },
-                    error: function(xhr, status, error) {
-                        console.log("AJAX Error:", error);
+                    error: function() {
                         response([{ label: 'Error occurred', value: '' }]);
                     }
                 });

@@ -149,15 +149,13 @@ final class Plugin {
 	}
 
 	/**
-	 * Cache-busting version for assets.
-	 *
-	 * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
-	 * cache without a plugin version bump. Falls back to the plugin version.
+	 * Cache-busting version for assets. Uses filemtime() so CSS/JS edits invalidate
+	 * caches without a plugin version bump; returns null (WP omits ?ver=) if missing.
 	 */
-	public function asset_version( string $file = '' ): string {
+	public function asset_version( string $file = '' ): ?string {
 		if ( $file && file_exists( $file ) ) {
 			return (string) filemtime( $file );
 		}
-		return TBC_DON_VERSION;
+		return null;
 	}
 }

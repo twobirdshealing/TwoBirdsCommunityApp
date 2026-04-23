@@ -137,14 +137,14 @@ class Admin {
             'tbc-otp-admin',
             TBC_OTP_URL . 'assets/css/admin.css',
             [],
-            file_exists($css_path) ? (string) filemtime($css_path) : TBC_OTP_VERSION
+            file_exists($css_path) ? (string) filemtime($css_path) : null
         );
 
         wp_enqueue_script(
             'tbc-otp-admin',
             TBC_OTP_URL . 'assets/js/admin.js',
             [],
-            file_exists($js_path) ? (string) filemtime($js_path) : TBC_OTP_VERSION,
+            file_exists($js_path) ? (string) filemtime($js_path) : null,
             true
         );
     }

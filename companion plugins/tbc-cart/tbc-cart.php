@@ -19,10 +19,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// TBC_CART_VERSION is auto-derived from the plugin header so the header is the
-// single source of truth; filemtime() handles asset cache busting.
-$tbc_cart_header = get_file_data(__FILE__, ['Version' => 'Version']);
-define('TBC_CART_VERSION', $tbc_cart_header['Version']);
 define('TBC_CART_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TBC_CART_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TBC_CART_REST_NAMESPACE', 'tbc-cart/v1');

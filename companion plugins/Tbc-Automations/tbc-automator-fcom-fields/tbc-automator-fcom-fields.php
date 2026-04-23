@@ -6,6 +6,7 @@
  * Version: 1.0.0
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
+ * Text Domain: tbc-automator-fcom-fields
  * Requires at least: 6.0
  * Requires PHP: 7.4
  */
@@ -14,7 +15,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'TBC_AFCF_VERSION', '1.0.0' );
 define( 'TBC_AFCF_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TBC_AFCF_URL', plugin_dir_url( __FILE__ ) );
 

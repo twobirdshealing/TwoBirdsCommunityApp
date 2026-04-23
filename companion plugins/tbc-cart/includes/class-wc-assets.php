@@ -47,7 +47,7 @@ class TBC_Cart_WC_Assets {
             'tbc-cart-woocommerce',
             TBC_CART_PLUGIN_URL . 'assets/css/woocommerce.css',
             array(),
-            file_exists($css_path) ? (string) filemtime($css_path) : TBC_CART_VERSION
+            file_exists($css_path) ? (string) filemtime($css_path) : null
         );
     }
 

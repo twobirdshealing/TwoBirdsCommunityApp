@@ -61,7 +61,7 @@ class TBC_CA_Admin {
             'tbc-ca-admin',
             TBC_CA_PLUGIN_URL . 'assets/admin/admin.css',
             [],
-            file_exists($css_path) ? (string) filemtime($css_path) : TBC_CA_VERSION
+            file_exists($css_path) ? (string) filemtime($css_path) : null
         );
 
         wp_add_inline_script('jquery-core', '

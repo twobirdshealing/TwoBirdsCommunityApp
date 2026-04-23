@@ -30,11 +30,15 @@ add_action('admin_menu', 'tbc_wc_add_settings_page');
  * Register all plugin settings
  */
 function tbc_wc_register_settings() {
-    // Google Maps API Key
     register_setting('tbc_wc_calendar_settings', 'tbc_wc_google_maps_api_key', [
         'type' => 'string',
         'default' => '',
         'sanitize_callback' => 'sanitize_text_field'
+    ]);
+    register_setting('tbc_wc_calendar_settings', 'tbc_wc_waitlist_url', [
+        'type' => 'string',
+        'default' => '',
+        'sanitize_callback' => 'esc_url_raw'
     ]);
 }
 add_action('admin_init', 'tbc_wc_register_settings');
@@ -44,6 +48,7 @@ add_action('admin_init', 'tbc_wc_register_settings');
  */
 function tbc_wc_render_settings_page() {
     $google_maps_key = get_option('tbc_wc_google_maps_api_key', '');
+    $waitlist_url    = get_option('tbc_wc_waitlist_url', '');
     ?>
     <div class="wrap">
         <h1>Calendar Settings</h1>
@@ -68,6 +73,28 @@ function tbc_wc_render_settings_page() {
                             <p class="description">
                                 Enter your Google Maps API key to enable location maps on event pages.
                                 <a href="https://developers.google.com/maps/documentation/javascript/get-api-key" target="_blank">Get an API key</a>
+                            </p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>Calendar Toolbar</h2>
+            <table class="form-table" role="presentation">
+                <tbody>
+                    <tr>
+                        <th scope="row">
+                            <label for="tbc_wc_waitlist_url">Waitlist URL</label>
+                        </th>
+                        <td>
+                            <input type="url"
+                                   name="tbc_wc_waitlist_url"
+                                   id="tbc_wc_waitlist_url"
+                                   value="<?php echo esc_attr($waitlist_url); ?>"
+                                   class="regular-text"
+                                   placeholder="https://example.com/waitlist/">
+                            <p class="description">
+                                Optional. If set, a "Waitlist" link appears in the calendar toolbar for logged-in users. Leave blank to hide the link.
                             </p>
                         </td>
                     </tr>

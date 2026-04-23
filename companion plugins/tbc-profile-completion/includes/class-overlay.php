@@ -32,10 +32,10 @@ class Overlay {
     private function inject_js(): void {
         $config = $this->build_config();
         $js_path = TBC_PCOM_DIR . 'assets/js/profile-completion.js';
-        $ver = file_exists($js_path) ? (string) filemtime($js_path) : TBC_PCOM_VERSION;
+        $ver = file_exists($js_path) ? (string) filemtime($js_path) : '';
         ?>
         <script>var tbcPcomConfig = <?php echo wp_json_encode($config); ?>;</script>
-        <script src="<?php echo esc_url(TBC_PCOM_URL . 'assets/js/profile-completion.js'); ?>?v=<?php echo esc_attr($ver); ?>" defer="defer"></script>
+        <script src="<?php echo esc_url(TBC_PCOM_URL . 'assets/js/profile-completion.js'); ?><?php echo $ver ? '?v=' . esc_attr($ver) : ''; ?>" defer="defer"></script>
         <?php
     }
 

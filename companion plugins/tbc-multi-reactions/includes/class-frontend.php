@@ -33,7 +33,7 @@ class Frontend {
             'tbc-mr-reactions',
             TBC_MR_URL . 'assets/css/reactions.css',
             [],
-            file_exists($css_path) ? (string) filemtime($css_path) : TBC_MR_VERSION
+            file_exists($css_path) ? (string) filemtime($css_path) : null
         );
         wp_print_styles('tbc-mr-reactions');
     }

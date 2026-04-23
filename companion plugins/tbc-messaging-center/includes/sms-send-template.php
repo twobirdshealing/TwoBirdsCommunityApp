@@ -32,20 +32,20 @@ function tbc_mc_render_sms_form($nonce_action, $nonce_name, $contact_list_html) 
 
             <!-- Template Dropdown -->
             <div class="tbc-mc-template-dropdown-container">
-                <h3 class="no-margin-bottom">' . esc_html__('Templates', 'twobirdschurch') . '</h3>
-                <label for="template-select">' . esc_html__('Choose:', 'twobirdschurch') . '</label>
+                <h3 class="no-margin-bottom">' . esc_html__('Templates', 'tbc-mc') . '</h3>
+                <label for="template-select">' . esc_html__('Choose:', 'tbc-mc') . '</label>
                 <select name="templates" id="template-select" class="tbc-mc-template-select" onchange="loadTemplate(this)">
                     ' . array_reduce(array_keys($templates), function($options, $value) use ($templates) {
                         $options .= '<option value="' . esc_attr($value) . '">' . esc_html($templates[$value]) . '</option>';
                         return $options;
                     }, '') . '
                 </select>
-                <p class="tooltip no-margin-top no-margin-bottom">' . esc_html__('Select a template or choose "No template" to clear the message.', 'twobirdschurch') . '</p>
+                <p class="tooltip no-margin-top no-margin-bottom">' . esc_html__('Select a template or choose "No template" to clear the message.', 'tbc-mc') . '</p>
             </div>
 
             <!-- Message Textarea -->
-            <h3 class="no-margin-bottom" style="padding-top: 20px;">' . esc_html__('Type Your Message', 'twobirdschurch') . '</h3>
-            <textarea name="sms_message" class="tbc-mc-sms-message" placeholder="' . esc_attr__('Type your message...', 'twobirdschurch') . '"></textarea>
+            <h3 class="no-margin-bottom" style="padding-top: 20px;">' . esc_html__('Type Your Message', 'tbc-mc') . '</h3>
+            <textarea name="sms_message" class="tbc-mc-sms-message" placeholder="' . esc_attr__('Type your message...', 'tbc-mc') . '"></textarea>
 
             <div class="tbc-mc-messagetips-container">
                 <div class="tbc-mc-button-group">
@@ -61,19 +61,19 @@ function tbc_mc_render_sms_form($nonce_action, $nonce_name, $contact_list_html) 
 
             <!-- Media Upload Section -->
             <div class="tbc-mc-media-section">
-                <h3 class="no-margin-bottom">' . esc_html__('Add Media', 'twobirdschurch') . '</h3>
-                <button type="button" class="tbc-mc-media-upload-button"><i class="bb-icon-file-plus"></i> ' . esc_html__('Upload Media', 'twobirdschurch') . '</button>
+                <h3 class="no-margin-bottom">' . esc_html__('Add Media', 'tbc-mc') . '</h3>
+                <button type="button" class="tbc-mc-media-upload-button"><i class="bb-icon-file-plus"></i> ' . esc_html__('Upload Media', 'tbc-mc') . '</button>
                 <div class="tbc-mc-media-preview" style="display: none;">
                     <!-- Multiple media items will be inserted here by JS -->
                 </div>
                 <input type="hidden" name="upload_image" class="tbc-mc-media-url" value="" />
-                <p class="tooltip no-margin-bottom">' . esc_html__('Attach up to 10 images (jpg, png, gif only — webp not supported by Twilio). Keep file sizes small for best results.', 'twobirdschurch') . '</p>
+                <p class="tooltip no-margin-bottom">' . esc_html__('Attach up to 10 images (jpg, png, gif only — webp not supported by Twilio). Keep file sizes small for best results.', 'tbc-mc') . '</p>
             </div>
 
             <!-- MMS Toggle -->
             <div class="tbc-mc-mms-toggle-container">
                 <div class="tbc-mc-mms-toggle-header">
-                    <h3 class="no-margin-bottom">' . esc_html__('Send as MMS', 'twobirdschurch') . '</h3>
+                    <h3 class="no-margin-bottom">' . esc_html__('Send as MMS', 'tbc-mc') . '</h3>
                     <div class="tbc-mc-toggle-wrapper">
                         <input type="checkbox" name="send_as_mms" id="' . $unique_id . '_send_as_mms" class="tbc-mc-toggle-input"/>
                         <label for="' . $unique_id . '_send_as_mms" class="tbc-mc-toggle-container"></label>
@@ -84,7 +84,7 @@ function tbc_mc_render_sms_form($nonce_action, $nonce_name, $contact_list_html) 
             <!-- Log Toggle -->
             <div class="tbc-mc-log-toggle-container">
                 <div class="tbc-mc-log-toggle-header">
-                    <h3 class="no-margin-bottom">' . esc_html__('Show in Log', 'twobirdschurch') . '</h3>
+                    <h3 class="no-margin-bottom">' . esc_html__('Show in Log', 'tbc-mc') . '</h3>
                     <div class="tbc-mc-toggle-wrapper">
                         <input type="checkbox" name="include_in_log" id="' . $unique_id . '_include_in_log" class="tbc-mc-toggle-input"/>
                         <label for="' . $unique_id . '_include_in_log" class="tbc-mc-toggle-container"></label>
@@ -95,7 +95,7 @@ function tbc_mc_render_sms_form($nonce_action, $nonce_name, $contact_list_html) 
             <!-- Opt-Out Toggle -->
             <div class="tbc-mc-opt-out-container">
                 <div class="tbc-mc-opt-out-header">
-                    <h3 class="no-margin-bottom">' . esc_html__('SMS Opt Out', 'twobirdschurch') . '</h3>
+                    <h3 class="no-margin-bottom">' . esc_html__('SMS Opt Out', 'tbc-mc') . '</h3>
                     <div class="tbc-mc-toggle-wrapper">
                         <input type="checkbox" name="include_opt_out" checked="checked" id="' . $unique_id . '_include_opt_out" class="tbc-mc-toggle-input"/>
                         <label for="' . $unique_id . '_include_opt_out" class="tbc-mc-toggle-container"></label>
@@ -109,35 +109,35 @@ function tbc_mc_render_sms_form($nonce_action, $nonce_name, $contact_list_html) 
 
             <!-- Send Timing Section -->
             <div class="tbc-mc-schedule-section">
-                <h3>' . esc_html__('Send Timing', 'twobirdschurch') . '</h3>
+                <h3>' . esc_html__('Send Timing', 'tbc-mc') . '</h3>
                 <div class="tbc-mc-send-timing-container">
                     <div class="tbc-mc-send-timing-options">
                         <label>
                             <input type="radio" name="send_timing" value="now" checked>
-                            <i class="bb-icon-bell-plus"></i> ' . esc_html__('Send Now', 'twobirdschurch') . '
+                            <i class="bb-icon-bell-plus"></i> ' . esc_html__('Send Now', 'tbc-mc') . '
                         </label>
                         <label>
                             <input type="radio" name="send_timing" value="schedule">
-                            <i class="bb-icon-clock"></i> ' . esc_html__('Schedule', 'twobirdschurch') . '
+                            <i class="bb-icon-clock"></i> ' . esc_html__('Schedule', 'tbc-mc') . '
                         </label>
                     </div>
                 </div>
 
                 <!-- Schedule Options -->
                 <div class="tbc-mc-schedule-options">
-                    <h4><i class="bb-icon-calendar"></i> ' . esc_html__('Schedule Options', 'twobirdschurch') . '</h4>
+                    <h4><i class="bb-icon-calendar"></i> ' . esc_html__('Schedule Options', 'tbc-mc') . '</h4>
                     
                     <!-- Message Title - Only for scheduled messages -->
                     <div class="tbc-mc-message-title-container">
-                        <label for="' . $unique_id . '_message_title">' . esc_html__('Message Title (Optional):', 'twobirdschurch') . '</label>
-                        <input type="text" name="message_title" id="' . $unique_id . '_message_title" placeholder="' . esc_attr__('e.g., Weekly Book Club Reminder', 'twobirdschurch') . '" maxlength="100">
-                        <p class="tooltip no-margin-top">' . esc_html__('Give this message a readable name for the scheduler', 'twobirdschurch') . '</p>
+                        <label for="' . $unique_id . '_message_title">' . esc_html__('Message Title (Optional):', 'tbc-mc') . '</label>
+                        <input type="text" name="message_title" id="' . $unique_id . '_message_title" placeholder="' . esc_attr__('e.g., Weekly Book Club Reminder', 'tbc-mc') . '" maxlength="100">
+                        <p class="tooltip no-margin-top">' . esc_html__('Give this message a readable name for the scheduler', 'tbc-mc') . '</p>
                     </div>
                     
                     <div class="tbc-mc-schedule-type-container">
-                        <label for="' . $unique_id . '_schedule_type">' . esc_html__('Schedule Type:', 'twobirdschurch') . '</label>
+                        <label for="' . $unique_id . '_schedule_type">' . esc_html__('Schedule Type:', 'tbc-mc') . '</label>
                         <select name="schedule_type" id="' . $unique_id . '_schedule_type">
-                            <option value="">' . esc_html__('Select schedule type...', 'twobirdschurch') . '</option>
+                            <option value="">' . esc_html__('Select schedule type...', 'tbc-mc') . '</option>
                             ' . array_reduce(array_keys($schedule_types), function($options, $value) use ($schedule_types) {
                                 $options .= '<option value="' . esc_attr($value) . '">' . esc_html($schedule_types[$value]) . '</option>';
                                 return $options;
@@ -149,11 +149,11 @@ function tbc_mc_render_sms_form($nonce_action, $nonce_name, $contact_list_html) 
                     <div class="tbc-mc-schedule-once-options">
                         <div class="tbc-mc-schedule-option-row">
                             <div class="tbc-mc-schedule-option-group">
-                                <label for="' . $unique_id . '_schedule_date">' . esc_html__('Date:', 'twobirdschurch') . '</label>
+                                <label for="' . $unique_id . '_schedule_date">' . esc_html__('Date:', 'tbc-mc') . '</label>
                                 <input type="date" name="schedule_date" id="' . $unique_id . '_schedule_date">
                             </div>
                             <div class="tbc-mc-schedule-option-group">
-                                <label for="' . $unique_id . '_schedule_time">' . esc_html__('Time:', 'twobirdschurch') . '</label>
+                                <label for="' . $unique_id . '_schedule_time">' . esc_html__('Time:', 'tbc-mc') . '</label>
                                 <input type="time" name="schedule_time" id="' . $unique_id . '_schedule_time">
                             </div>
                         </div>
@@ -163,18 +163,18 @@ function tbc_mc_render_sms_form($nonce_action, $nonce_name, $contact_list_html) 
                     <div class="tbc-mc-schedule-recurring-options">
                         <div class="tbc-mc-schedule-option-row">
                             <div class="tbc-mc-schedule-option-group tbc-mc-time-selector">
-                                <label for="' . $unique_id . '_recurring_time">' . esc_html__('Time:', 'twobirdschurch') . '</label>
+                                <label for="' . $unique_id . '_recurring_time">' . esc_html__('Time:', 'tbc-mc') . '</label>
                                 <input type="time" name="schedule_time" id="' . $unique_id . '_recurring_time" value="09:00">
                             </div>
                             <div class="tbc-mc-schedule-option-group tbc-mc-day-selector" style="display: none;">
-                                <label for="' . $unique_id . '_schedule_day">' . esc_html__('Day:', 'twobirdschurch') . '</label>
+                                <label for="' . $unique_id . '_schedule_day">' . esc_html__('Day:', 'tbc-mc') . '</label>
                                 <select name="schedule_day" id="' . $unique_id . '_schedule_day">
                                     <!-- Options populated by JavaScript -->
                                 </select>
                             </div>
                         </div>
                         <div class="tbc-mc-schedule-help-text">
-                            <p class="tooltip">' . esc_html__('Recurring messages will be sent automatically according to the schedule. You can cancel them anytime from the Message Scheduler page.', 'twobirdschurch') . '</p>
+                            <p class="tooltip">' . esc_html__('Recurring messages will be sent automatically according to the schedule. You can cancel them anytime from the Message Scheduler page.', 'tbc-mc') . '</p>
                         </div>
                     </div>
                 </div>
@@ -182,13 +182,13 @@ function tbc_mc_render_sms_form($nonce_action, $nonce_name, $contact_list_html) 
 
             <!-- Contact List Section -->
             <div class="tbc-mc-contact-section">
-                <h3 class="no-margin-bottom">' . esc_html__('Contact List', 'twobirdschurch') . '</h3>
+                <h3 class="no-margin-bottom">' . esc_html__('Contact List', 'tbc-mc') . '</h3>
                 ' . $contact_list_html . '
             </div>
 
             <div class="tbc-mc-sms-center-button-container">
-                <button type="submit" name="send_sms" class="tbc-mc-sms-button" data-original-text="' . esc_attr__('Send', 'twobirdschurch') . '">
-                    <i class="bb-icon-bell-plus"></i> ' . esc_html__('Send', 'twobirdschurch') . '
+                <button type="submit" name="send_sms" class="tbc-mc-sms-button" data-original-text="' . esc_attr__('Send', 'tbc-mc') . '">
+                    <i class="bb-icon-bell-plus"></i> ' . esc_html__('Send', 'tbc-mc') . '
                 </button>
             </div>
         </form>

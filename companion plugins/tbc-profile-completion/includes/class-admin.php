@@ -115,7 +115,7 @@ class Admin {
             'tbc-pcom-admin',
             TBC_PCOM_URL . 'assets/css/admin.css',
             [],
-            file_exists($css_path) ? (string) filemtime($css_path) : TBC_PCOM_VERSION
+            file_exists($css_path) ? (string) filemtime($css_path) : null
         );
     }
 

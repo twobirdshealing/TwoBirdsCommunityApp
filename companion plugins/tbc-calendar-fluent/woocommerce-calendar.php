@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: TBC WooCommerce Calendar
+ * Plugin Name: TBC - WooCommerce Calendar
  * Plugin URI: https://twobirdscode.com
  * Description: Event calendar system - sorts WooCommerce products by event date and displays them in a calendar view.
  * Version: 1.0.0
@@ -17,21 +17,13 @@ if (!defined('ABSPATH')) {
 
 defined('ABSPATH') || exit;
 
-// Plugin version constant
-define('TBC_WC_VERSION', '1.0.0');
-
 /**
- * Cache-busting version for assets.
- *
- * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
- * cache without a plugin version bump. Falls back to TBC_WC_VERSION.
- *
- * @param string $rel_path Asset path relative to the plugin root (e.g. 'css/foo.css').
- * @return string Version string suitable for wp_enqueue_* $ver param.
+ * Cache-busting version for assets. Uses filemtime() so CSS/JS edits invalidate
+ * caches without a plugin version bump; returns null (WP omits ?ver=) if missing.
  */
 function tbc_wc_asset_ver($rel_path) {
     $full = plugin_dir_path(__FILE__) . ltrim($rel_path, '/');
-    return file_exists($full) ? (string) filemtime($full) : TBC_WC_VERSION;
+    return file_exists($full) ? (string) filemtime($full) : null;
 }
 
 // Include files

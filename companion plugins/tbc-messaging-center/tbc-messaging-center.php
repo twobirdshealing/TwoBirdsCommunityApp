@@ -6,6 +6,9 @@
  * Version: 1.0.0
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: tbc-mc
  */
 
 // Prevent direct access
@@ -15,17 +18,15 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 define('TBC_MC_URL', plugin_dir_url(__FILE__));
-define('TBC_MC_VERSION', '1.0.0');
 define('TBC_MC_PATH', plugin_dir_path(__FILE__));
 
 /**
- * Cache-busting version for assets.
- * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
- * cache without a plugin version bump. Falls back to TBC_MC_VERSION.
+ * Cache-busting version for assets. Uses filemtime() so CSS/JS edits invalidate
+ * caches without a plugin version bump; returns null (WP omits ?ver=) if missing.
  */
 function tbc_mc_asset_ver($rel_path) {
     $full = TBC_MC_PATH . ltrim($rel_path, '/');
-    return file_exists($full) ? (string) filemtime($full) : TBC_MC_VERSION;
+    return file_exists($full) ? (string) filemtime($full) : null;
 }
 
 // Load Twilio SDK

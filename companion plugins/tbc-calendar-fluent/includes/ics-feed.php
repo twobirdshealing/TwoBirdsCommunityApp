@@ -188,7 +188,7 @@ function tbc_wc_build_ics_event($event) {
     $CREATED = gmdate('Ymd\THis\Z', $created_ts);
     $LAST_MODIFIED = gmdate('Ymd\THis\Z', $modified_ts);
 
-    $uid = $product_id . '-' . $start_date . '@community.twobirdschurch.com';
+    $uid = $product_id . '-' . $start_date . '@' . ( parse_url( home_url(), PHP_URL_HOST ) ?: 'localhost' );
     
     $sequence = floor($modified_ts / 86400) % 1000;
 

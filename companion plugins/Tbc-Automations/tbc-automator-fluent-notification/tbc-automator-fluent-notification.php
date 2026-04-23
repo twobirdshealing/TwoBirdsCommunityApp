@@ -42,7 +42,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'TBC_AFN_VERSION', '2.3.1' );
 define( 'TBC_AFN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TBC_AFN_URL', plugin_dir_url( __FILE__ ) );
 

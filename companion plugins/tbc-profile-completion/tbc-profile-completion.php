@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: TBC Profile Completion
+ * Plugin Name: TBC - Profile Completion
  * Plugin URI:  https://twobirdscode.com
  * Description: Profile completion gate for Fluent Community registration. Requires bio and avatar before users can access the community. Self-contained: registers its own REST routes under /tbc-pcom/v1.
  * Version:     1.0.0
@@ -19,10 +19,6 @@
 
 defined('ABSPATH') or die('No direct script access allowed');
 
-// TBC_PCOM_VERSION is auto-derived from the plugin header so the header is the
-// single source of truth; filemtime() handles asset cache busting.
-$tbc_pcom_header = get_file_data(__FILE__, ['Version' => 'Version']);
-define('TBC_PCOM_VERSION', $tbc_pcom_header['Version']);
 define('TBC_PCOM_FILE', __FILE__);
 define('TBC_PCOM_DIR', plugin_dir_path(__FILE__));
 define('TBC_PCOM_URL', plugin_dir_url(__FILE__));

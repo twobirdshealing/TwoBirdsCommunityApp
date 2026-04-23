@@ -18,10 +18,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Plugin constants — TBC_CA_VERSION is auto-derived from the plugin header so the
-// header comment above is the single source of truth; filemtime() handles asset cache busting.
-$tbc_ca_header = get_file_data(__FILE__, ['Version' => 'Version']);
-define('TBC_CA_VERSION', $tbc_ca_header['Version']);
 define('TBC_CA_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TBC_CA_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TBC_CA_PLUGIN_FILE', __FILE__);

@@ -15,7 +15,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('TBC_CP_VERSION', '1.0.0');
 define('TBC_CP_DIR', plugin_dir_path(__FILE__));
 define('TBC_CP_URL', plugin_dir_url(__FILE__));
 
@@ -23,13 +22,12 @@ define('TBC_CP_URL', plugin_dir_url(__FILE__));
 define('TBC_CP_SKIP_FIELD_TYPES', ['html', 'section', 'page', 'captcha', 'hidden']);
 
 /**
- * Cache-busting version for assets.
- * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
- * cache without a plugin version bump. Falls back to TBC_CP_VERSION.
+ * Cache-busting version for assets. Uses filemtime() so CSS/JS edits invalidate
+ * caches without a plugin version bump; returns null (WP omits ?ver=) if missing.
  */
 function tbc_cp_asset_ver($rel_path) {
     $full = TBC_CP_DIR . ltrim($rel_path, '/');
-    return file_exists($full) ? (string) filemtime($full) : TBC_CP_VERSION;
+    return file_exists($full) ? (string) filemtime($full) : null;
 }
 
 require_once TBC_CP_DIR . 'includes/class-tbc-cp-settings.php';

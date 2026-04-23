@@ -44,14 +44,14 @@ class Frontend {
             'tbc-otp-modal',
             TBC_OTP_URL . 'assets/css/otp-modal.css',
             [],
-            file_exists($css_path) ? (string) filemtime($css_path) : TBC_OTP_VERSION
+            file_exists($css_path) ? (string) filemtime($css_path) : null
         );
 
         wp_enqueue_script(
             'tbc-otp-registration',
             TBC_OTP_URL . 'assets/js/registration-otp.js',
             [],
-            file_exists($js_path) ? (string) filemtime($js_path) : TBC_OTP_VERSION,
+            file_exists($js_path) ? (string) filemtime($js_path) : null,
             [
                 'strategy'  => 'defer',
                 'in_footer' => true,

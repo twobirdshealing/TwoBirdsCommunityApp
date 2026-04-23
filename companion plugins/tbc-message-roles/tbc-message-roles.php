@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: TBC Message Roles
+ * Plugin Name: TBC - Message Roles
  * Plugin URI:  https://twobirdscode.com
  * Description: Role-based messaging restrictions for Fluent Community. Control which WordPress roles can initiate DMs and send community chat messages.
  * Version:     1.0.0
@@ -19,7 +19,6 @@
 
 defined('ABSPATH') or die('No direct script access allowed');
 
-define('TBC_MSGR_VERSION', '1.0.0');
 define('TBC_MSGR_FILE', __FILE__);
 define('TBC_MSGR_DIR', plugin_dir_path(__FILE__));
 define('TBC_MSGR_URL', plugin_dir_url(__FILE__));
@@ -27,13 +26,12 @@ define('TBC_MSGR_BASENAME', plugin_basename(__FILE__));
 define('TBC_MSGR_OPTION_PREFIX', 'tbc_msgr_');
 
 /**
- * Cache-busting version for assets.
- * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
- * cache without a plugin version bump. Falls back to TBC_MSGR_VERSION.
+ * Cache-busting version for assets. Uses filemtime() so CSS/JS edits invalidate
+ * caches without a plugin version bump; returns null (WP omits ?ver=) if missing.
  */
 function tbc_msgr_asset_ver($rel_path) {
     $full = TBC_MSGR_DIR . ltrim($rel_path, '/');
-    return file_exists($full) ? (string) filemtime($full) : TBC_MSGR_VERSION;
+    return file_exists($full) ? (string) filemtime($full) : null;
 }
 
 /**

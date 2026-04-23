@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: TBC OTP Verification
+ * Plugin Name: TBC - OTP Verification
  * Plugin URI:  https://twobirdscode.com
  * Description: Phone OTP verification via Twilio for Fluent Community registration.
  * Version:     1.0.0
@@ -19,10 +19,6 @@
 
 defined('ABSPATH') or die('No direct script access allowed');
 
-// TBC_OTP_VERSION is auto-derived from the plugin header so the header is the
-// single source of truth; filemtime() handles asset cache busting.
-$tbc_otp_header = get_file_data(__FILE__, ['Version' => 'Version']);
-define('TBC_OTP_VERSION', $tbc_otp_header['Version']);
 define('TBC_OTP_FILE', __FILE__);
 define('TBC_OTP_DIR', plugin_dir_path(__FILE__));
 define('TBC_OTP_URL', plugin_dir_url(__FILE__));

@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: TBC YouTube
+ * Plugin Name: TBC - YouTube
  * Plugin URI: https://twobirdscode.com
  * Description: YouTube channel integration for the TBC Community App. Provides REST API endpoints for fetching channel videos and playlists via YouTube Data API v3 with server-side caching.
  * Version: 1.0.0

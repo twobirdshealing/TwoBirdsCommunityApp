@@ -1,12 +1,13 @@
 <?php
 /*
-Plugin Name: Two Birds Church - Member Perks
-Plugin URI: https://twobirdschurch.com
+Plugin Name: TBC - Member Perks
+Plugin URI: https://twobirdscode.com
 Description: Manage member perks for WooCommerce Subscriptions with renewal-based discounts and role management.
 Version: 1.0.0
 Author: Two Birds Code
 Author URI: https://twobirdscode.com
-License: GPL2
+License: GPL v2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: tbc-member-perks
 Requires at least: 5.0
 Tested up to: 6.4
@@ -18,18 +19,16 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('WMP_VERSION', '1.0.0');
 define('WMP_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('WMP_PLUGIN_PATH', plugin_dir_path(__FILE__));
 
 /**
- * Cache-busting version for assets.
- * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
- * cache without a plugin version bump. Falls back to WMP_VERSION.
+ * Cache-busting version for assets. Uses filemtime() so CSS/JS edits invalidate
+ * caches without a plugin version bump; returns null (WP omits ?ver=) if missing.
  */
 function wmp_asset_ver($rel_path) {
     $full = WMP_PLUGIN_PATH . ltrim($rel_path, '/');
-    return file_exists($full) ? (string) filemtime($full) : WMP_VERSION;
+    return file_exists($full) ? (string) filemtime($full) : null;
 }
 
 class WMP_Main {

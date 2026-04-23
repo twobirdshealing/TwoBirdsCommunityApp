@@ -814,7 +814,6 @@ update_user_meta($user_id, 'sms_sent_today', $sent_today + 1);
 
 ```php
 TBC_MC_URL         // Plugin directory URL
-TBC_MC_VERSION     // Current version number
 TWILIO_SID            // Twilio Account SID
 TWILIO_TOKEN          // Twilio Auth Token
 TWILIO_MESSAGING_SERVICE_SID // Messaging Service SID

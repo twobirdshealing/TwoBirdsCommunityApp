@@ -157,14 +157,14 @@ class Admin {
             'tbc-mr-admin',
             TBC_MR_URL . 'assets/css/admin.css',
             [],
-            file_exists($css_path) ? (string) filemtime($css_path) : TBC_MR_VERSION
+            file_exists($css_path) ? (string) filemtime($css_path) : null
         );
 
         wp_enqueue_script(
             'tbc-mr-admin',
             TBC_MR_URL . 'assets/js/admin.js',
             ['jquery', 'wp-color-picker', 'jquery-ui-sortable'],
-            file_exists($js_path) ? (string) filemtime($js_path) : TBC_MR_VERSION,
+            file_exists($js_path) ? (string) filemtime($js_path) : null,
             true
         );
 

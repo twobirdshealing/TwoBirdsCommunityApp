@@ -25,7 +25,7 @@ function tbc_pf_generate_sms_contact_list($product_id, $event_date) {
 
     if (empty($customers)) {
         return [
-            'html' => '<p>' . esc_html__('No participants found for this event.', 'twobirdschurch') . '</p>',
+            'html' => '<p>' . esc_html__('No participants found for this event.', 'tbc-participant-frontend') . '</p>',
             'total_users' => 0,
             'opted_out_count' => 0
         ];
@@ -36,7 +36,7 @@ function tbc_pf_generate_sms_contact_list($product_id, $event_date) {
     $seen_user_ids = [];
     $seen_phones = [];
 
-    $check_all_html = '<label for="check_all"><input id="check_all" type="checkbox" /> ' . esc_html__('Check/Uncheck All', 'twobirdschurch') . '</label>';
+    $check_all_html = '<label for="check_all"><input id="check_all" type="checkbox" /> ' . esc_html__('Check/Uncheck All', 'tbc-participant-frontend') . '</label>';
     $list_html = '<ul class="tbc-mc-contact-list">';
 
     foreach ($customers as $customer) {
@@ -123,10 +123,10 @@ function tbc_pf_generate_sms_contact_list($product_id, $event_date) {
         $html .= '<div class="tbc-pf-sms-override-container">';
         $html .= '<label for="tbc_pf_override_opt_out" class="tbc-pf-override-label">';
         $html .= '<input type="checkbox" id="tbc_pf_override_opt_out" class="tbc-pf-override-checkbox"> ';
-        $html .= esc_html__('Override Opt-Out', 'twobirdschurch');
+        $html .= esc_html__('Override Opt-Out', 'tbc-participant-frontend');
         $html .= '</label>';
         $html .= '<span class="tbc-pf-override-warning">';
-        $html .= esc_html__('Enables selection of opted-out participants for important messages.', 'twobirdschurch');
+        $html .= esc_html__('Enables selection of opted-out participants for important messages.', 'tbc-participant-frontend');
         $html .= '</span>';
         $html .= '</div>';
     }
@@ -149,7 +149,7 @@ function tbc_pf_generate_sms_contact_list($product_id, $event_date) {
 function tbc_pf_display_sms_tab($product_id, $event_date) {
     if (!function_exists('tbc_mc_render_sms_form')) {
         echo '<div class="tbc-pf-sms-unavailable">';
-        echo '<p>' . esc_html__('The Message Center plugin is required for SMS functionality.', 'twobirdschurch') . '</p>';
+        echo '<p>' . esc_html__('The Message Center plugin is required for SMS functionality.', 'tbc-participant-frontend') . '</p>';
         echo '</div>';
         return;
     }
@@ -160,7 +160,7 @@ function tbc_pf_display_sms_tab($product_id, $event_date) {
 
     if ($contact_list_data['total_users'] > 0) {
         $message = sprintf(
-            esc_html__('%d participants loaded! %d have opted out.', 'twobirdschurch'),
+            esc_html__('%d participants loaded! %d have opted out.', 'tbc-participant-frontend'),
             $contact_list_data['total_users'],
             $contact_list_data['opted_out_count']
         );

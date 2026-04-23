@@ -1,27 +1,28 @@
 <?php
 /*
-Plugin Name: Two Birds Church - New Members
-Plugin URI: https://twobirdschurch.com
+Plugin Name: TBC - New Members
+Plugin URI: https://twobirdscode.com
 Description: New member tracking dashboard with community stats. Fluent Community native.
 Version: 1.0.0
 Author: Two Birds Code
-License: GPL2
+Author URI: https://twobirdscode.com
+License: GPL v2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: tbc-new-members
 */
 
 defined('ABSPATH') || exit;
 
 define('TBC_NM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TBC_NM_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('TBC_NM_VERSION', '1.0.0');
 
 /**
- * Cache-busting version for assets.
- * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
- * cache without a plugin version bump. Falls back to TBC_NM_VERSION.
+ * Cache-busting version for assets. Uses filemtime() so CSS/JS edits invalidate
+ * caches without a plugin version bump; returns null (WP omits ?ver=) if missing.
  */
 function tbc_nm_asset_ver($rel_path) {
     $full = TBC_NM_PLUGIN_DIR . ltrim($rel_path, '/');
-    return file_exists($full) ? (string) filemtime($full) : TBC_NM_VERSION;
+    return file_exists($full) ? (string) filemtime($full) : null;
 }
 
 require_once TBC_NM_PLUGIN_DIR . 'includes/utilities.php';
@@ -108,8 +109,16 @@ class TBC_New_Members {
     }
 }
 
-function tbc_new_members_init() {
-    return TBC_New_Members::get_instance();
-}
-
-add_action('plugins_loaded', 'tbc_new_members_init');
+add_action('plugins_loaded', function () {
+    if (!defined('FLUENT_COMMUNITY_PLUGIN_VERSION')) {
+        add_action('admin_notices', function () {
+            ?>
+            <div class="notice notice-error">
+                <p><?php esc_html_e('TBC - New Members requires Fluent Community to be installed and activated.', 'tbc-new-members'); ?></p>
+            </div>
+            <?php
+        });
+        return;
+    }
+    TBC_New_Members::get_instance();
+});

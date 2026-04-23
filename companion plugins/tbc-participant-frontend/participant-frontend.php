@@ -1,9 +1,14 @@
 <?php
 /**
  * Plugin Name: TBC - Participant Frontend
+ * Plugin URI: https://twobirdscode.com
  * Description: Display WooCommerce event products and attendee management.
  * Version: 1.0.0
  * Author: Two Birds Code
+ * Author URI: https://twobirdscode.com
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: tbc-participant-frontend
  *
  * @package TBC_Participant_Frontend
  */
@@ -12,16 +17,13 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('TBC_PF_VERSION', '1.0.0');
-
 /**
- * Cache-busting version for assets.
- * Uses filemtime() when the file exists so small CSS/JS edits bust the browser
- * cache without a plugin version bump. Falls back to TBC_PF_VERSION.
+ * Cache-busting version for assets. Uses filemtime() so CSS/JS edits invalidate
+ * caches without a plugin version bump; returns null (WP omits ?ver=) if missing.
  */
 function tbc_pf_asset_ver($rel_path) {
     $full = plugin_dir_path(__FILE__) . ltrim($rel_path, '/');
-    return file_exists($full) ? (string) filemtime($full) : TBC_PF_VERSION;
+    return file_exists($full) ? (string) filemtime($full) : null;
 }
 
 // Fluent Community course IDs (configurable via wp_options, with known defaults)
@@ -163,8 +165,8 @@ class TBC_PF_Plugin {
         }
         
         // Enqueue Select2 for searchable dropdowns on frontend
-        wp_enqueue_style('select2', WC()->plugin_url() . '/assets/css/select2.css', [], TBC_PF_VERSION);
-        wp_enqueue_script('select2', WC()->plugin_url() . '/assets/js/select2/select2.full.min.js', ['jquery'], TBC_PF_VERSION, true);
+        wp_enqueue_style('select2', WC()->plugin_url() . '/assets/css/select2.css', [], null);
+        wp_enqueue_script('select2', WC()->plugin_url() . '/assets/js/select2/select2.full.min.js', ['jquery'], null, true);
 
         // Enqueue Message Center assets for SMS tab (uses TBC_MC_URL + tbc_mc_asset_ver() from Message Center plugin)
         if (defined('TBC_MC_URL') && function_exists('tbc_mc_render_sms_form') && function_exists('tbc_mc_asset_ver')) {

@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: TBC Multi Reactions
+ * Plugin Name: TBC - Multi Reactions
  * Plugin URI: https://twobirdscode.com
  * Description: Enhanced multi-reaction system for Fluent Community with custom uploadable icons (PNG/SVG/GIF/WEBP). Replaces the default heart reaction with a multi-reaction picker on posts and comments. Injects reaction data into API responses for mobile app compatibility.
  * Version: 1.0.0
@@ -21,10 +21,6 @@
 
 defined('ABSPATH') or die('No direct script access allowed');
 
-// TBC_MR_VERSION is auto-derived from the plugin header so the header is the
-// single source of truth; filemtime() handles asset cache busting.
-$tbc_mr_header = get_file_data(__FILE__, ['Version' => 'Version']);
-define('TBC_MR_VERSION', $tbc_mr_header['Version']);
 define('TBC_MR_FILE', __FILE__);
 define('TBC_MR_DIR', plugin_dir_path(__FILE__));
 define('TBC_MR_URL', plugin_dir_url(__FILE__));

@@ -223,8 +223,4 @@ $space_roles = [
 
         <?php submit_button(__('Save Settings', 'tbc-msgr')); ?>
     </form>
-
-    <div class="tbc-msgr-footer">
-        <p><strong><?php esc_html_e('Version:', 'tbc-msgr'); ?></strong> <?php echo esc_html(TBC_MSGR_VERSION); ?></p>
-    </div>
 </div>
