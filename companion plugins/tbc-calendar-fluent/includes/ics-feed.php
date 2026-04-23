@@ -188,7 +188,11 @@ function tbc_wc_build_ics_event($event) {
     $CREATED = gmdate('Ymd\THis\Z', $created_ts);
     $LAST_MODIFIED = gmdate('Ymd\THis\Z', $modified_ts);
 
-    $uid = $product_id . '-' . $start_date . '@' . ( parse_url( home_url(), PHP_URL_HOST ) ?: 'localhost' );
+    static $host = null;
+    if ($host === null) {
+        $host = wp_parse_url(home_url(), PHP_URL_HOST) ?: 'localhost';
+    }
+    $uid = $product_id . '-' . $start_date . '@' . $host;
     
     $sequence = floor($modified_ts / 86400) % 1000;
 

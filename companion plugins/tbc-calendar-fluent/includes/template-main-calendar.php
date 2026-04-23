@@ -59,22 +59,23 @@ function tbc_wc_dashboard() {
     $current_view = isset($_GET['calendar_view']) ? sanitize_text_field($_GET['calendar_view']) : 'list';
     $current_view = in_array($current_view, ['list', 'month']) ? $current_view : 'list';
 
+    $waitlist_url = get_option('tbc_wc_waitlist_url', '');
+
     ob_start();
     ?>
-    <?php $waitlist_url = get_option('tbc_wc_waitlist_url', ''); ?>
     <div class="tbc-wc-toolbar">
-        <?php if ($is_logged_in && $waitlist_url): ?>
-        <a href="<?php echo esc_url($waitlist_url); ?>" class="tbc-wc-toolbar-link">
-            <svg class="tbc-wc-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
-            <span><?php echo esc_html__('Waitlist', 'tbc-wc-calendar'); ?></span>
-        </a>
-        <?php endif; ?>
         <?php if ($is_logged_in): ?>
-        <?php if ($has_perk) : ?>
-        <span class="tbc-wc-perk-badge tbc-wc-perk-active">
-            <?php echo esc_html($perk_text); ?>
-        </span>
-        <?php endif; ?>
+            <?php if ($waitlist_url): ?>
+            <a href="<?php echo esc_url($waitlist_url); ?>" class="tbc-wc-toolbar-link">
+                <svg class="tbc-wc-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+                <span><?php echo esc_html__('Waitlist', 'tbc-wc-calendar'); ?></span>
+            </a>
+            <?php endif; ?>
+            <?php if ($has_perk): ?>
+            <span class="tbc-wc-perk-badge tbc-wc-perk-active">
+                <?php echo esc_html($perk_text); ?>
+            </span>
+            <?php endif; ?>
         <?php endif; ?>
 
         <div class="tbc-wc-toolbar-controls">

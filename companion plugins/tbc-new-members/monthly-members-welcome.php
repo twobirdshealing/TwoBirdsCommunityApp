@@ -110,7 +110,8 @@ class TBC_New_Members {
 }
 
 add_action('plugins_loaded', function () {
-    if (!defined('FLUENT_COMMUNITY_PLUGIN_VERSION')) {
+    if (!class_exists('\FluentCommunity\App\Services\Helper') ||
+        !defined('FLUENT_COMMUNITY_PLUGIN_VERSION')) {
         add_action('admin_notices', function () {
             ?>
             <div class="notice notice-error">
