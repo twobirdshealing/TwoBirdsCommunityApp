@@ -91,6 +91,30 @@ function fluent_starter_editor_styles() {
 add_action('after_setup_theme', 'fluent_starter_editor_styles');
 
 /**
+ * Enqueue the block editor sidebar script
+ *
+ * Adds the "Hide page title" toggle to the Page panel in Gutenberg.
+ * Only loads for the `page` post type editor screen.
+ */
+function fluent_starter_block_editor_assets() {
+    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+    if (!$screen || $screen->post_type !== 'page') {
+        return;
+    }
+
+    $sidebar_path = FLUENT_STARTER_DIR . '/assets/js/editor-sidebar.js';
+
+    wp_enqueue_script(
+        'fluent-starter-editor-sidebar',
+        FLUENT_STARTER_URI . '/assets/js/editor-sidebar.js',
+        array('wp-plugins', 'wp-editor', 'wp-edit-post', 'wp-components', 'wp-data', 'wp-element', 'wp-i18n'),
+        file_exists($sidebar_path) ? (string) filemtime($sidebar_path) : wp_get_theme()->get('Version'),
+        true
+    );
+}
+add_action('enqueue_block_editor_assets', 'fluent_starter_block_editor_assets');
+
+/**
  * Add inline dark mode detection script to head
  *
  * This runs immediately to prevent flash of wrong theme

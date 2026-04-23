@@ -77,6 +77,22 @@ function fluent_starter_setup() {
 add_action('after_setup_theme', 'fluent_starter_setup');
 
 /**
+ * Register the "hide title" post meta for pages.
+ */
+function fluent_starter_register_post_meta() {
+    register_post_meta('page', '_tbc_hide_title', array(
+        'show_in_rest'  => true,
+        'single'        => true,
+        'type'          => 'boolean',
+        'default'       => false,
+        'auth_callback' => function () {
+            return current_user_can('edit_pages');
+        },
+    ));
+}
+add_action('init', 'fluent_starter_register_post_meta');
+
+/**
  * Add custom body classes
  */
 function fluent_starter_body_classes($classes) {

@@ -8,6 +8,19 @@
  */
 
 /* ==========================================================================
+   Specificity bumps — titles that sit over hero/card image overlays must
+   stay white in both light and dark modes. Fluent's frame styles every
+   h1/h2/h3 inside .fcom_wp_content to var(--fcom-primary-text), which wins
+   against a bare .fs-*-title { color: #fff } rule (0,1,1 vs 0,1,0). We
+   bump specificity here instead of sprinkling !important everywhere.
+   ========================================================================== */
+.fcom_wp_content .fs-hero-title,
+.fcom_wp_content .fs-card-title,
+.fcom_wp_content .fs-single-title {
+    color: #ffffff;
+}
+
+/* ==========================================================================
    Blog Archive Page
    ========================================================================== */
 
@@ -190,9 +203,7 @@
     overflow: hidden;
     text-decoration: none;
     color: #ffffff;
-    box-shadow:
-        0 1px 3px rgba(0, 0, 0, 0.05),
-        0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--el-box-shadow-lighter, 0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.05));
     transition:
         transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
         box-shadow 0.3s ease;
@@ -200,9 +211,7 @@
 
 .fs-post-card:hover {
     transform: translateY(-4px);
-    box-shadow:
-        0 4px 12px rgba(0, 0, 0, 0.08),
-        0 12px 32px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--el-box-shadow-light, 0 4px 12px rgba(0, 0, 0, 0.08), 0 12px 32px rgba(0, 0, 0, 0.1));
     text-decoration: none;
     color: #ffffff;
 }
@@ -443,7 +452,8 @@
     font-weight: 700;
     line-height: 1.15;
     margin-bottom: var(--fs-spacing-lg);
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    color: #ffffff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .fs-single-meta {
@@ -672,9 +682,9 @@
 }
 
 .fs-share-copy.copied {
-    background: #10b981;
+    background: var(--el-color-success, #10b981);
     color: #ffffff;
-    border-color: #10b981;
+    border-color: var(--el-color-success, #10b981);
 }
 
 @media (max-width: 480px) {
@@ -769,7 +779,7 @@
 
 .fs-post-nav-link:hover {
     background: var(--fs-color-bg);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--el-box-shadow-light, 0 4px 12px rgba(0, 0, 0, 0.1));
     text-decoration: none;
 }
 
@@ -988,7 +998,7 @@
 }
 
 .fs-comments-section .comment-form .required {
-    color: #ef4444;
+    color: var(--el-color-danger, #ef4444);
 }
 
 /* Compact form layout like FC */
@@ -1057,7 +1067,7 @@
 /* Awaiting moderation notice */
 .fs-comments-section .comment-awaiting-moderation {
     font-size: 0.8125rem;
-    color: #f59e0b;
+    color: var(--el-color-warning, #f59e0b);
     font-style: italic;
     margin-bottom: var(--fs-spacing-sm);
 }
@@ -1291,10 +1301,10 @@
     padding: 0;
 }
 
-// .feeds_main.fcom_theme_full .fs-single-content {
-//    max-width: 100%;
-//    padding: 0;
-//  }
+/* .feeds_main.fcom_theme_full .fs-single-content {
+    max-width: 100%;
+    padding: 0;
+} */
 
 .feeds_main.fcom_theme_full .fs-hero-post {
     border-radius: 16px;
@@ -1349,23 +1359,47 @@
    Verified Checkmark
    ========================================================================== */
 
+/* Fluent's SVG uses nonzero fill-rule — the check is a *hole* that reveals
+   whatever's behind it. Native UI sits on --fcom-primary-bg so the hole
+   appears theme-switched; on our blog overlays it would expose the image.
+   The ::before circle mimics primary_bg so the check stays theme-adaptive. */
 .fs-verified {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     vertical-align: middle;
     margin-left: 4px;
-    color: #2563eb;
+    position: relative;
+    width: 16px;
+    height: 16px;
+}
+
+.fs-verified::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px;
+    height: 10px;
+    background: var(--fcom-primary-bg, #ffffff);
+    border-radius: 50%;
+    z-index: 0;
 }
 
 .fs-verified svg {
-    width: 18px;
-    height: 18px;
+    position: relative;
+    z-index: 1;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    fill: #1d9bf0;
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
 }
 
-/* Verified on hero/dark backgrounds */
-.fs-single-hero .fs-verified,
-.fs-hero-content .fs-verified {
-    color: #fff;
+.fs-verified svg:hover {
+    opacity: 1;
 }
 
 /* ==========================================================================

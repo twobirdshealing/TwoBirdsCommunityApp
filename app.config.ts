@@ -4,7 +4,7 @@
 // Reads EXPO_PUBLIC_SITE_URL from eas.json and wires up deep links automatically.
 // =============================================================================
 
-import { ExpoConfig, ConfigContext } from 'expo/config';
+import type { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   // =========================================================================

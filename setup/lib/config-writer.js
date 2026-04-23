@@ -36,7 +36,10 @@ function writeConfigValues(changes) {
         }
       }
       if (changes.slug !== undefined) expo.slug = changes.slug;
-      if (changes.scheme !== undefined) expo.scheme = changes.scheme;
+      if (changes.scheme !== undefined) {
+        // Scheme must match ^[a-z][a-z0-9+.-]*$ or EAS rejects the manifest at publish time.
+        expo.scheme = changes.scheme.toLowerCase().replace(/[^a-z0-9+.-]/g, '').replace(/^[^a-z]+/, '');
+      }
       if (changes.version !== undefined) {
         const v = changes.version;
         expo.version = v;
