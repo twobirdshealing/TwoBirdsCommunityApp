@@ -1,5 +1,5 @@
 // =============================================================================
-// CHURCH DIRECTORY - Global member directory
+// MEMBER DIRECTORY - Global member directory
 // =============================================================================
 // Route: /directory
 // Features:
@@ -54,7 +54,7 @@ const SORT_CONFIG: { key: SortOption; label: string; icon: keyof typeof Ionicons
 // Component
 // -----------------------------------------------------------------------------
 
-export default function ChurchDirectoryScreen() {
+export default function MemberDirectoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user: currentUser } = useAuth();
@@ -62,6 +62,7 @@ export default function ChurchDirectoryScreen() {
 
   // Data state
   const [members, setMembers] = useState<MemberCardData[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +115,10 @@ export default function ChurchDirectoryScreen() {
         setMembers((prev) => [...prev, ...newMembers]);
       } else {
         setMembers(newMembers);
+      }
+
+      if (typeof apiData.members?.total === 'number') {
+        setTotal(apiData.members.total);
       }
 
       // Extract follow state if present
@@ -220,7 +225,7 @@ export default function ChurchDirectoryScreen() {
         {/* Header */}
         <PageHeader
           left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
-          center={<HeaderTitle>Church Directory</HeaderTitle>}
+          center={<HeaderTitle>{total != null ? `All Members (${total.toLocaleString()})` : 'All Members'}</HeaderTitle>}
           right={
             <>
               <Pressable onPress={() => setShowSortMenu(true)} style={styles.menuButton}>
