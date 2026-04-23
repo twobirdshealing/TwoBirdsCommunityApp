@@ -84,7 +84,7 @@ export function useNotificationSettings() {
       const canFetchPush = pushAvailable && pushEnabled && permStatus === 'granted';
 
       const [pushResult, emailResult] = await Promise.all([
-        canFetchPush ? getPushSettings(authToken) : Promise.resolve(null),
+        canFetchPush ? getPushSettings() : Promise.resolve(null),
         getEmailPrefs(user.username),
       ]);
 
@@ -93,7 +93,7 @@ export function useNotificationSettings() {
       if (pushResult && pushResult.success && pushResult.data?.preferences) {
         setPushPrefs(pushResult.data.preferences);
       } else if (pushResult && !pushResult.success) {
-        newError.push = pushResult.error || 'Failed to load push settings';
+        newError.push = pushResult.error.message || 'Failed to load push settings';
       }
 
       if (emailResult.success && emailResult.data) {
@@ -293,7 +293,7 @@ export function useNotificationSettings() {
       async () => {
         const authToken = await getAuthToken();
         if (!authToken) throw new Error('Not authenticated');
-        return updatePushSettings(authToken, { [prefId]: !currentEnabled });
+        return updatePushSettings({ [prefId]: !currentEnabled });
       },
     );
   };

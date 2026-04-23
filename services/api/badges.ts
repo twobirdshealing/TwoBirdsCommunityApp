@@ -9,10 +9,8 @@
 import { getJSON, setJSON } from '@/services/storage';
 import { TBC_CA_URL } from '@/constants/config';
 import type { Badge } from '@/types/user';
-import { createLogger } from '@/utils/logger';
 import { registerCache } from '@/services/cacheRegistry';
-
-const log = createLogger('BadgeAPI');
+import { request } from './client';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -60,27 +58,23 @@ export function loadCachedBadges(): BadgeDefinitions {
  * Always hits network (for background refresh).
  */
 export async function fetchBadgeDefinitions(): Promise<BadgeDefinitions> {
-  try {
-    const response = await fetch(`${TBC_CA_URL}/badge-definitions`, {
-      headers: { 'Accept': 'application/json' },
-    });
+  const result = await request<BadgeDefinitionsResponse>('/badge-definitions', {
+    method: 'GET',
+    baseUrl: TBC_CA_URL,
+  });
 
-    if (!response.ok) return cachedBadges || {};
+  if (!result.success) return cachedBadges || {};
 
-    const data: BadgeDefinitionsResponse = await response.json();
-    if (data.success && data.badges) {
-      cachedBadges = data.badges;
+  const data = result.data;
+  if (data.success && data.badges) {
+    cachedBadges = data.badges;
 
-      // Persist to MMKV for next launch
-      setJSON(BADGE_CACHE_KEY, data.badges);
+    // Persist to MMKV for next launch
+    setJSON(BADGE_CACHE_KEY, data.badges);
 
-      return cachedBadges;
-    }
-    return cachedBadges || {};
-  } catch (error) {
-    log.error(error);
-    return cachedBadges || {};
+    return cachedBadges;
   }
+  return cachedBadges || {};
 }
 
 // -----------------------------------------------------------------------------

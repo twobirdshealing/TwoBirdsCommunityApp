@@ -133,13 +133,13 @@ export async function registerDeviceToken(authToken: string): Promise<boolean> {
   const platform = Platform.OS as 'ios' | 'android';
   log.info('Registering device with backend', { platform });
 
-  const result = await registerDevice(authToken, pushToken, platform);
+  const result = await registerDevice(pushToken, platform);
 
   if (result.success) {
     log.debug('Device registered successfully');
     return true;
   } else {
-    log.debug('Device registration failed:', { error: result.error });
+    log.debug('Device registration failed:', { error: result.error.message });
     return false;
   }
 }
@@ -180,11 +180,11 @@ export async function unregisterDeviceToken(authToken: string): Promise<void> {
   log.debug('Unregistering device from backend...');
 
   try {
-    const result = await unregisterDevice(authToken, storedPushToken);
+    const result = await unregisterDevice(storedPushToken);
     if (result.success) {
       log.debug('Device unregistered successfully');
     } else {
-      log.debug('Device unregistration failed:', { error: result.error });
+      log.debug('Device unregistration failed:', { error: result.error.message });
     }
   } catch (error) {
     log.debug('Error unregistering device:', { error });

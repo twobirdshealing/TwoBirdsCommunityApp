@@ -7,11 +7,8 @@
 // =============================================================================
 
 import { TBC_CA_URL } from '@/constants/config';
-import { getAuthToken } from '@/services/auth';
+import { request } from './client';
 import type { SocialProvider } from './socialProviders';
-import { createLogger } from '@/utils/logger';
-
-const log = createLogger('AppConfigAPI');
 
 // -----------------------------------------------------------------------------
 // Types
@@ -158,20 +155,9 @@ export interface AppConfigResponse {
  * Automatically includes JWT when available (returns can_bypass + visibility).
  */
 export async function getAppConfig(): Promise<AppConfigResponse | null> {
-  try {
-    const token = await getAuthToken();
-    const headers: Record<string, string> = { 'Accept': 'application/json' };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${TBC_CA_URL}/app-config`, { headers });
-    if (!response.ok) return null;
-
-    const data: AppConfigResponse = await response.json();
-    return data.success ? data : null;
-  } catch (error) {
-    log.error(error);
-    return null;
-  }
+  const result = await request<AppConfigResponse>('/app-config', {
+    method: 'GET',
+    baseUrl: TBC_CA_URL,
+  });
+  return result.success && result.data.success ? result.data : null;
 }
