@@ -75,14 +75,6 @@ const REQUIRED_ASSETS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Core companion plugins
-// ---------------------------------------------------------------------------
-
-const CORE_PLUGINS = [
-  { folder: 'tbc-community-app', label: 'TBC Community App', required: true, description: 'Main bridge plugin — auth, registration, push notifications, config, branding, theme sync' },
-];
-
-// ---------------------------------------------------------------------------
 // Placeholders — values that ship in the white-label snapshot for manual editors.
 // The dashboard treats these as empty so fields show as "not yet configured".
 // ---------------------------------------------------------------------------
@@ -126,7 +118,6 @@ module.exports = {
   PORT,
   PATHS,
   REQUIRED_ASSETS,
-  CORE_PLUGINS,
   PLACEHOLDERS,
   isPlaceholder,
   VALID_PLATFORMS,

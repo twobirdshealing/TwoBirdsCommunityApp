@@ -3,40 +3,6 @@ const https = require('https');
 const zlib = require('zlib');
 const { DASHBOARD_VERSION } = require('./paths');
 
-// ---------------------------------------------------------------------------
-// Connectivity Checker
-// ---------------------------------------------------------------------------
-
-async function checkConnectivity(siteUrl) {
-  if (!siteUrl) return { error: 'No EXPO_PUBLIC_SITE_URL configured' };
-  const results = {};
-  const endpoints = [
-    { key: 'site', url: siteUrl, label: 'Site root' },
-    { key: 'wpRest', url: `${siteUrl}/wp-json/`, label: 'WP REST API' },
-    { key: 'fluentApi', url: `${siteUrl}/wp-json/fluent-community/v2`, label: 'Fluent Community API' },
-    { key: 'tbcCa', url: `${siteUrl}/wp-json/tbc-ca/v1`, label: 'TBC Community App plugin' },
-  ];
-  const checks = await Promise.all(endpoints.map(async (ep) => {
-    try {
-      const status = await httpGet(ep.url, 5000);
-      return [ep.key, { url: ep.url, label: ep.label, status, ok: status >= 200 && status < 400 }];
-    } catch (err) {
-      return [ep.key, { url: ep.url, label: ep.label, status: 0, ok: false, error: err.message }];
-    }
-  }));
-  for (const [key, val] of checks) results[key] = val;
-  return results;
-}
-
-function httpGet(url, timeout) {
-  return new Promise((resolve, reject) => {
-    const mod = url.startsWith('https') ? require('https') : require('http');
-    const req = mod.get(url, { timeout }, (res) => { res.resume(); resolve(res.statusCode); });
-    req.on('error', (err) => reject(err));
-    req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
-  });
-}
-
 // CRC-32 lookup table (IEEE 802.3 polynomial, used by ZIP)
 const CRC32_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -298,4 +264,4 @@ function httpsRequest(url, options = {}, redirects = 0) {
   });
 }
 
-module.exports = { checkConnectivity, httpsRequest, parseMultipart, createZip, parseZip };
+module.exports = { httpsRequest, parseMultipart, createZip, parseZip };

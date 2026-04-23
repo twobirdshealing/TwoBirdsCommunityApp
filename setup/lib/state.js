@@ -2,15 +2,15 @@
 
 const fs = require('fs');
 const path = require('path');
-const { PATHS, REQUIRED_ASSETS, CORE_PLUGINS, PROJECT_DIR, isPlaceholder } = require('./paths');
-const { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, getPluginVersion, findPluginConfig } = require('./file-utils');
+const { PATHS, REQUIRED_ASSETS, PROJECT_DIR, isPlaceholder } = require('./paths');
+const { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, findPluginConfig } = require('./file-utils');
 
 // ---------------------------------------------------------------------------
 // State Reader
 // ---------------------------------------------------------------------------
 
 function readProjectState() {
-  const state = { config: {}, assets: [], firebase: {}, plugins: { core: [], addons: [] }, validation: { checks: [], pass: 0, fail: 0, warn: 0 } };
+  const state = { config: {}, assets: [], firebase: {}, validation: { checks: [], pass: 0, fail: 0, warn: 0 } };
 
   // --- app.json ---
   const appJson = readJsonSafe(PATHS.appJson);
@@ -123,12 +123,6 @@ function readProjectState() {
     } catch (_) { /* ignore read errors */ }
   }
 
-  // --- Plugins ---
-  for (const plugin of CORE_PLUGINS) {
-    const version = getPluginVersion(plugin.folder);
-    state.plugins.core.push({ ...plugin, exists: version !== null, version: version || '' });
-  }
-
   // --- Dependencies ---
   state.dependencies = {
     nodeModules: fileExists(path.join(PROJECT_DIR, 'node_modules')),
@@ -166,7 +160,6 @@ function runValidation(state) {
     storeSubmission:  { tab: 'config', section: 'app-store-submission' },
     pushNotifications:{ tab: 'config', section: 'push-notifications' },
     brandingAssets:   { tab: 'assets', section: 'branding-assets' },
-    companionPlugins: { tab: 'updates', section: 'companion-plugins' },
   };
 
   function check(pass, label, category, ref) {
@@ -218,11 +211,6 @@ function runValidation(state) {
     } else {
       check(asset.exists, `${asset.label} exists`, 'Branding Assets', REF.brandingAssets);
     }
-  }
-
-  // --- Companion Plugins ---
-  for (const plugin of state.plugins.core) {
-    check(plugin.exists, `Core plugin installed (${plugin.folder})`, 'Companion Plugins', REF.companionPlugins);
   }
 
   state.validation.checks = checks;

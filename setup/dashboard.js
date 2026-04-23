@@ -47,7 +47,7 @@ const { PROJECT_DIR, PORT, PATHS, VALID_PLATFORMS, VALID_PROFILES, BUILD_ID_PATT
 const { fileExists, readJsonSafe, getSiteUrl, resolveUploadPath, ensurePath } = require('./lib/file-utils');
 const { readProjectState } = require('./lib/state');
 const { writeConfigValues } = require('./lib/config-writer');
-const { checkConnectivity, parseMultipart, httpsRequest } = require('./lib/http-helpers');
+const { parseMultipart, httpsRequest } = require('./lib/http-helpers');
 const { runCommand, getEasBuilds, startEasBuild, submitBuild, cancelBuild, getSubmissions, saveSubmission, getSubmissionsUrl, validateEasArtifactUrl, streamEasArtifact } = require('./lib/eas');
 const { getOTAStatus, pushOTAUpdate, listOTAUpdates, republishUpdate, deleteOTAUpdate } = require('./lib/ota');
 const { getInstalledModules, toggleModule, removeModule, exportModule, importModule } = require('./lib/modules');
@@ -272,13 +272,6 @@ const server = http.createServer(async (req, res) => {
       const changes = JSON.parse(body);
       const results = writeConfigValues(changes);
       jsonResponse(res, { ok: true, results });
-      return;
-    }
-
-    if (pathname === '/api/connectivity' && req.method === 'GET') {
-      const siteUrl = getSiteUrl(readJsonSafe(PATHS.easJson));
-      const results = await checkConnectivity(siteUrl);
-      jsonResponse(res, results);
       return;
     }
 

@@ -209,19 +209,6 @@
   .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); background: rgba(88, 166, 255, 0.05); }
   .drop-zone input[type="file"] { display: none; }
 
-  .check-list { list-style: none; }
-  .check-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
-  .check-item:last-child { border-bottom: none; }
-  .check-item .ref { margin-left: auto; font-size: 11px; color: var(--accent); font-family: var(--font-mono); cursor: pointer; text-decoration: none; white-space: nowrap; }
-  .check-item .ref:hover { text-decoration: underline; }
-
-  .plugin-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
-  .plugin-item:last-child { border-bottom: none; }
-  .plugin-info { flex: 1; }
-  .plugin-name { font-weight: 600; font-size: 14px; }
-  .plugin-desc { font-size: 12px; color: var(--text-secondary); }
-  .plugin-version { font-family: var(--font-mono); font-size: 12px; padding: 2px 8px; border-radius: 10px; background: var(--bg-tertiary); }
-
   /* Module cards */
   .module-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 10px; }
   .module-card-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
@@ -231,11 +218,6 @@
   .module-card-desc { font-size: 13px; color: var(--text-secondary); margin-top: 2px; line-height: 1.5; }
   .module-card-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
   .module-card-meta .meta-tag { font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--bg-tertiary); color: var(--text-muted); }
-  .module-card-plugin { display: flex; align-items: center; gap: 6px; margin-top: 12px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 12px; }
-  .module-card-plugin.plugin-ok { background: color-mix(in srgb, #22c55e 6%, transparent); border-color: color-mix(in srgb, #22c55e 20%, var(--border)); }
-  .module-card-plugin.plugin-missing { background: color-mix(in srgb, #ef4444 6%, transparent); border-color: color-mix(in srgb, #ef4444 20%, var(--border)); }
-  .module-card-plugin .plugin-label { font-weight: 600; color: var(--text-primary); }
-  .module-card-plugin .plugin-hint { color: var(--text-muted); font-size: 11px; margin-left: auto; }
   .module-card-integrations { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
   .module-card-integrations .int-tag { font-size: 10px; padding: 2px 7px; border-radius: 4px; background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); font-weight: 500; letter-spacing: 0.02em; }
   .module-card-vis { margin-top: 10px; font-size: 12px; color: var(--text-muted); }
@@ -245,12 +227,6 @@
   .module-card-status.active { background: color-mix(in srgb, #22c55e 12%, transparent); color: #16a34a; }
   .module-card-status.inactive { background: color-mix(in srgb, #f59e0b 12%, transparent); color: #d97706; }
   .module-card-footer .spacer { flex: 1; }
-
-  .connectivity-grid { display: grid; gap: 8px; }
-  .connectivity-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-primary); border-radius: var(--radius); border: 1px solid var(--border); }
-  .connectivity-label { flex: 1; font-size: 14px; }
-  .connectivity-url { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
-  .connectivity-status { font-family: var(--font-mono); font-size: 12px; }
 
   /* Build cards */
   .build-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
@@ -1230,154 +1206,6 @@
   </div>
 </div>
 
-<!-- Modules tab merged into Updates tab -->
-<div style="display:none">
-  <div class="card">
-    <div class="card-header">
-      <h3>Install Module</h3>
-    </div>
-    <div class="card-body">
-      <div class="drop-zone" style="padding:30px"
-           x-on:click="$refs.moduleImportInput.click()"
-           x-on:dragover.prevent="$el.classList.add('dragover')"
-           x-on:dragleave="$el.classList.remove('dragover')"
-           x-on:drop.prevent="$el.classList.remove('dragover'); importModuleFile($event)">
-        <div style="font-size:16px;margin-bottom:4px">Drop a module package here (.zip)</div>
-        <div style="font-size:12px;color:var(--text-muted)">Or click to browse. The module will be extracted, registered, and ready after your next build.</div>
-        <input type="file" accept=".zip" x-ref="moduleImportInput" style="display:none"
-               x-on:change="importModuleFile($event)">
-      </div>
-    </div>
-  </div>
-
-  <div class="card" id="section-companion-plugins">
-    <div class="card-header"><h3>Core Companion Plugins</h3><span class="badge" style="color:var(--text-muted)">companion plugins/</span></div>
-    <div class="card-body">
-      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">These WordPress plugins are required for the app to work. Install them on your WordPress site.</p>
-      <template x-for="plugin in (plugins.core || [])" :key="plugin.label">
-        <div class="plugin-item">
-          <span class="status-icon" x-bind:class="plugin.exists ? 'status-pass' : 'status-fail'">
-            <ion-icon x-bind:name="plugin.exists ? 'checkmark-circle' : 'close-circle'"></ion-icon>
-          </span>
-          <div class="plugin-info">
-            <div class="plugin-name">
-              <span x-text="plugin.label"></span>
-              <template x-if="plugin.required">
-                <span style="color:var(--red);font-size:11px">(required)</span>
-              </template>
-            </div>
-            <div class="plugin-desc" x-text="plugin.description"></div>
-          </div>
-          <template x-if="plugin.exists">
-            <span class="plugin-version" x-text="'v' + plugin.version"></span>
-          </template>
-          <template x-if="!plugin.exists">
-            <span style="font-size:12px;color:var(--text-muted)">Not bundled</span>
-          </template>
-        </div>
-      </template>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <h3>Installed Modules</h3>
-      <button class="btn btn-sm" x-on:click="loadModules()">Refresh</button>
-    </div>
-    <div class="card-body">
-      <!-- Loading state -->
-      <div class="loading" x-show="modulesLoading"><span class="spinner"></span> Loading modules...</div>
-      <!-- Empty state -->
-      <div x-show="!modulesLoading && modules.length === 0" style="padding:16px;color:var(--text-secondary)">No modules installed. Drop a module package above to install one.</div>
-      <!-- Module cards -->
-      <template x-for="mod in modules" :key="mod.id">
-        <div class="module-card">
-          <div class="module-card-header">
-            <div class="module-card-icon"><ion-icon name="extension-puzzle-outline"></ion-icon></div>
-            <div style="flex:1;min-width:0">
-              <div class="module-card-title">
-                <span x-text="mod.name"></span>
-                <span class="module-card-version" x-text="'v' + (mod.version || '?')"></span>
-              </div>
-              <div class="module-card-desc" x-text="mod.description || mod.folder"></div>
-              <div class="module-card-meta">
-                <template x-if="mod.author && mod.authorUrl">
-                  <a x-bind:href="mod.authorUrl" target="_blank" class="meta-tag" style="color:var(--accent);text-decoration:none" x-text="mod.author"></a>
-                </template>
-                <template x-if="mod.author && !mod.authorUrl">
-                  <span class="meta-tag" x-text="mod.author"></span>
-                </template>
-                <template x-if="mod.license">
-                  <span class="meta-tag" x-text="mod.license"></span>
-                </template>
-                <span class="meta-tag" x-text="mod.fileCount + ' files'"></span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Integrations -->
-          <template x-if="mod.integrations && mod.integrations.length > 0">
-            <div class="module-card-integrations">
-              <template x-for="intg in mod.integrations" :key="intg">
-                <span class="int-tag" x-text="intg"></span>
-              </template>
-            </div>
-          </template>
-
-          <!-- Companion plugin -->
-          <template x-if="mod.companionPlugin && mod.companionExists">
-            <div class="module-card-plugin plugin-ok">
-              <span class="status-icon status-pass"><ion-icon name="checkmark-circle"></ion-icon></span>
-              <span class="plugin-label" x-text="mod.companionPlugin"></span>
-              <template x-if="mod.companionVersion">
-                <span style="font-family:var(--font-mono);color:var(--text-muted)" x-text="'v' + mod.companionVersion"></span>
-              </template>
-              <span class="plugin-hint">Bundled — install on your WordPress site</span>
-            </div>
-          </template>
-          <template x-if="mod.companionPlugin && !mod.companionExists">
-            <div class="module-card-plugin plugin-missing">
-              <span class="status-icon status-fail"><ion-icon name="close-circle"></ion-icon></span>
-              <span class="plugin-label" x-text="mod.companionPlugin"></span>
-              <span style="color:var(--red);font-weight:500">Not found</span>
-              <span class="plugin-hint">Required — add to companion plugins/ folder</span>
-            </div>
-          </template>
-
-          <!-- Visibility keys -->
-          <template x-if="mod.visibilityKeys && mod.visibilityKeys.length > 0">
-            <div class="module-card-vis">
-              <span x-text="'Visibility ' + (mod.visibilityKeys.length > 1 ? 'Keys' : 'Key') + ': '"></span>
-              <template x-for="vk in mod.visibilityKeys" :key="vk">
-                <code x-text="vk"></code>
-              </template>
-              <button class="help-toggle" type="button" title="Toggle help"
-                      x-on:click="modVisHelpOpen[mod.id] = !modVisHelpOpen[mod.id]">?</button>
-              <div class="field-help" x-bind:class="modVisHelpOpen[mod.id] ? 'expanded' : 'collapsed'" style="margin-top:4px">
-                Add <span x-text="mod.visibilityKeys.length > 1 ? 'these keys' : 'this key'"></span> in wp-admin <ion-icon name="arrow-forward-outline" style="font-size:11px;vertical-align:middle"></ion-icon> TBC Community App <ion-icon name="arrow-forward-outline" style="font-size:11px;vertical-align:middle"></ion-icon> UI Visibility <ion-icon name="arrow-forward-outline" style="font-size:11px;vertical-align:middle"></ion-icon> Custom Elements to control who sees this module.
-              </div>
-            </div>
-          </template>
-
-          <!-- Footer with status + actions -->
-          <div class="module-card-footer">
-            <span class="module-card-status" x-bind:class="mod.active ? 'active' : 'inactive'" x-text="mod.active ? 'Active' : 'Inactive'"></span>
-            <div class="spacer"></div>
-            <template x-if="mod.active">
-              <button class="btn btn-sm" x-on:click="toggleMod(mod.id, false)">Deactivate</button>
-            </template>
-            <template x-if="!mod.active">
-              <button class="btn btn-sm btn-primary" x-on:click="toggleMod(mod.id, true)">Activate</button>
-            </template>
-            <a class="btn btn-sm" x-bind:href="'/api/modules/export/' + encodeURIComponent(mod.id)" download>Export</a>
-            <button class="btn btn-sm btn-danger-subtle" x-on:click="removeMod(mod.id, mod.name)">Remove</button>
-          </div>
-        </div>
-      </template>
-    </div>
-  </div>
-</div>
-
 <!-- ============== Launcher Menu Tab ============== -->
 <div class="tab-content" x-bind:class="{ active: activeTab === 'launcher' }">
   <div class="card">
@@ -2078,7 +1906,7 @@
     </div>
 
     <!-- Core companion plugin -->
-    <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)" id="section-companion-plugins">
+    <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)">
       <ion-icon name="information-circle-outline" style="font-size:14px;vertical-align:middle;margin-right:4px"></ion-icon>
       Companion plugin: <strong>tbc-community-app</strong> — install on your WordPress site
     </div>
@@ -2378,60 +2206,6 @@
 
 </div>
 
-<!-- Status tab content kept for validation state — merged into Backup tab -->
-<div style="display:none">
-  <div class="card">
-    <div class="card-header">
-      <h3>Validation Checks</h3>
-      <span class="badge" style="color:var(--text-muted)" x-text="validation.pass + ' pass / ' + validation.fail + ' fail / ' + validation.warn + ' warn'"></span>
-    </div>
-    <div class="card-body">
-      <template x-for="cat in validationCategories" :key="cat.name">
-        <div>
-          <div style="padding:8px 0 4px;font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px" x-text="cat.name"></div>
-          <ul class="check-list">
-            <template x-for="check in cat.checks" :key="check.label">
-              <li class="check-item">
-                <span class="status-icon" x-bind:class="check.pass === 'pass' ? 'status-pass' : check.pass === 'warn' ? 'status-warn' : 'status-fail'">
-                  <ion-icon x-bind:name="check.pass === 'pass' ? 'checkmark-circle' : check.pass === 'warn' ? 'warning' : 'close-circle'"></ion-icon>
-                </span>
-                <span x-text="check.label"></span>
-                <template x-if="check.ref">
-                  <a href="#" class="ref" x-on:click.prevent="goToSection(check.ref)">Go to setting &rarr;</a>
-                </template>
-              </li>
-            </template>
-          </ul>
-        </div>
-      </template>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-header"><h3>Site Connectivity</h3></div>
-    <div class="card-body">
-      <div class="connectivity-grid">
-        <p x-show="connectivityResults.length === 0 && !connectivityChecking" style="color:var(--text-secondary);font-size:13px">Click "Check Connectivity" to test your site URL and API endpoints.</p>
-        <p x-show="connectivityChecking" style="color:var(--text-secondary)"><span class="spinner"></span> Checking endpoints...</p>
-        <template x-for="info in connectivityResults" :key="info.label">
-          <div class="connectivity-row">
-            <span class="status-icon" x-bind:class="info.ok ? 'status-pass' : 'status-fail'">
-              <ion-icon x-bind:name="info.ok ? 'checkmark-circle' : 'close-circle'"></ion-icon>
-            </span>
-            <span class="connectivity-label" x-text="info.label"></span>
-            <span class="connectivity-url" x-text="info.url"></span>
-            <span class="connectivity-status" x-bind:class="info.ok ? 'status-pass' : 'status-fail'"
-                  x-text="info.ok ? info.status : (info.error || 'Failed')"></span>
-          </div>
-        </template>
-      </div>
-      <div class="btn-group">
-        <button class="btn" x-on:click="runConnectivityCheck()" x-bind:disabled="connectivityChecking"
-                x-text="connectivityChecking ? 'Testing...' : 'Check Connectivity'">Check Connectivity</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ============== Toast ============== -->
 <div class="toast" x-show="toast.show" x-bind:class="toast.type" x-text="toast.message"
      x-transition:enter="transition ease-out duration-300"
@@ -2538,9 +2312,6 @@ document.addEventListener('alpine:init', () => {
     loginLogoMode: 'dynamic',
     brandingColors: { splashColorLight: '#ffffff', splashColorDark: '#1a1a1a', notificationColor: '#6366F1' },
     firebase: { android: { exists: false }, ios: { exists: false } },
-
-    // Plugins
-    plugins: { core: [] },
 
     // Validation
     validation: { checks: [], pass: 0, fail: 0, warn: 0 },
@@ -2748,22 +2519,11 @@ document.addEventListener('alpine:init', () => {
     // Cached in refreshValidationCache() — not getters (Alpine getters are uncached)
     buildBlockers: [],
     buildWarnings: [],
-    validationCategories: [],
 
     refreshValidationCache() {
       this.buildBlockers = this.getChecksByStatus('fail');
       this.buildWarnings = this.getChecksByStatus('warn');
-      var cats = {};
-      (this.validation.checks || []).forEach(function(check) {
-        if (!cats[check.category]) cats[check.category] = [];
-        cats[check.category].push(check);
-      });
-      this.validationCategories = Object.entries(cats).map(function(e) { return { name: e[0], checks: e[1] }; });
     },
-
-    // Connectivity
-    connectivityResults: [],
-    connectivityChecking: false,
 
     // =========================================================================
     // Init
@@ -2890,7 +2650,6 @@ document.addEventListener('alpine:init', () => {
         this.brandingColors = state.brandingColors || { splashColorLight: '#ffffff', splashColorDark: '#1a1a1a', notificationColor: '#6366F1' };
         this.firebase = state.firebase || { android: { exists: false }, ios: { exists: false } };
         this.firebaseHelpOpen = { android: !state.firebase?.android?.exists, ios: !state.firebase?.ios?.exists };
-        this.plugins = state.plugins || { core: [] };
         this.validation = state.validation || { checks: [], pass: 0, fail: 0, warn: 0 };
         this.refreshValidationCache();
         this.showDepsBanner = state.dependencies && !state.dependencies.nodeModules;
@@ -3142,24 +2901,6 @@ bumpVersion(type) {
         if (data.ok) { this.showToast(label + ' removed', 'success'); this.loadState(); }
         else this.showToast('Remove failed: ' + data.error, 'error');
       } catch (err) { this.showToast('Remove error: ' + err.message, 'error'); }
-    },
-
-    // =========================================================================
-    // Connectivity
-    // =========================================================================
-    async runConnectivityCheck() {
-      this.connectivityChecking = true;
-      this.connectivityResults = [];
-      try {
-        var res = await fetch('/api/connectivity');
-        var data = await res.json();
-        if (data.error) { this.connectivityResults = []; this.showToast(data.error, 'error'); return; }
-        this.connectivityResults = Object.values(data);
-      } catch (err) {
-        this.showToast('Error: ' + err.message, 'error');
-      } finally {
-        this.connectivityChecking = false;
-      }
     },
 
     // =========================================================================
