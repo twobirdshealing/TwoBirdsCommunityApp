@@ -183,7 +183,7 @@ export default function SpaceMembersScreen() {
         displayName: memberName,
         avatar: memberAvatar,
       },
-    } as any);
+    });
   };
 
 

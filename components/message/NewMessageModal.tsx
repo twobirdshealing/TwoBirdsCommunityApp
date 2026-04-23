@@ -139,7 +139,7 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
         displayName: member.display_name,
         avatar: member.avatar || '',
       },
-    } as any);
+    });
   };
 
   // ---------------------------------------------------------------------------

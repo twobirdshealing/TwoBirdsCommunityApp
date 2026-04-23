@@ -297,7 +297,7 @@ export default function ConnectionsScreen() {
         displayName: memberName,
         avatar: memberAvatar,
       },
-    } as any);
+    });
   };
 
   // ---------------------------------------------------------------------------

@@ -50,7 +50,7 @@ export function CartSummary({
 
   const handleCheckout = () => {
     onClose();
-    router.push({ pathname: '/webview', params: { url: `${SITE_URL}/checkout/`, title: 'Checkout' } } as any);
+    router.push({ pathname: '/webview', params: { url: `${SITE_URL}/checkout/`, title: 'Checkout' } });
   };
 
   const hasDiscount = parseFloat(totals.discount) > 0;

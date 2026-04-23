@@ -174,18 +174,24 @@ export default function MessagesScreen() {
 
   const handleThreadPress = (thread: ChatThread) => {
     const userId = getThreadUserId(thread);
+    // Thread with no resolvable user id can't open a 1:1 chat. Bail loudly
+    // instead of navigating to /messages/user/0 (which loads a broken screen).
+    if (userId == null) {
+      log.warn('Thread has no user id — cannot open chat', { threadId: thread.id });
+      return;
+    }
     const displayName = getThreadDisplayName(thread);
     const avatarUrl = getThreadAvatar(thread);
 
     router.push({
       pathname: '/messages/user/[userId]',
       params: {
-        userId: String(userId || 0),
+        userId: String(userId),
         threadId: String(thread.id),
         displayName: displayName || 'Chat',
         avatar: avatarUrl || '',
       },
-    } as any);
+    });
   };
 
   const handleDeleteThread = (thread: ChatThread) => {

@@ -207,7 +207,7 @@ export default function MemberDirectoryScreen() {
         displayName: memberName,
         avatar: memberAvatar,
       },
-    } as any);
+    });
   };
 
 

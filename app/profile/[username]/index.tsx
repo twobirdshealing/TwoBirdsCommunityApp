@@ -412,7 +412,7 @@ export default function UserProfileScreen() {
         displayName: profile.display_name,
         avatar: profile.avatar || '',
       },
-    } as any);
+    });
   };
 
   const handleEditProfilePress = () => {
