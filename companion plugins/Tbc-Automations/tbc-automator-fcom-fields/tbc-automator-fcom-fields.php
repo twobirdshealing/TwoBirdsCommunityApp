@@ -145,7 +145,7 @@ add_action( 'automator_configuration_complete', function () {
 	require_once TBC_AFCF_DIR . 'includes/triggers/fcom-user-updates-custom-field.php';
 
 	// Register the shared TBC Automations integration (skip if already registered by another TBC Automator plugin).
-	if ( ! \Automator()->get->integration_from_code( 'TBCAUTOMATIONS' ) ) {
+	if ( ! automator_integration_exists( 'TBCAUTOMATIONS' ) ) {
 		\Automator()->register->integration(
 			'TBCAUTOMATIONS',
 			array(

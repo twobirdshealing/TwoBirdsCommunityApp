@@ -23,7 +23,7 @@ class Add_FluentChat_Integration {
 	 * Skips if already registered by another TBC Automator plugin.
 	 */
 	private function add_integration() {
-		if ( \Automator()->get->integration_from_code( self::INTEGRATION ) ) {
+		if ( \automator_integration_exists( self::INTEGRATION ) ) {
 			return;
 		}
 		\Automator()->register->integration(
