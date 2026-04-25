@@ -7,6 +7,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/contexts/ThemeContext';
@@ -198,18 +199,24 @@ export function QuizView({
               const questionResult = result.message[question.slug];
               if (!questionResult) return null;
               const isCorrect = questionResult.is_correct;
+              const badgeColor = isCorrect ? themeColors.success : themeColors.error;
 
               return (
                 <View
                   key={question.slug}
                   style={[styles.resultQuestion, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
                 >
-                  <View style={styles.questionHeader}>
-                    <Ionicons
-                      name={isCorrect ? 'checkmark-circle' : 'close-circle'}
-                      size={20}
-                      color={isCorrect ? themeColors.success : themeColors.error}
+                  {/* Question image */}
+                  {question.image_enabled && question.image_url ? (
+                    <Image
+                      source={{ uri: question.image_url }}
+                      style={styles.questionImage}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                      transition={200}
                     />
+                  ) : null}
+                  <View style={styles.questionHeader}>
                     <Text style={[styles.questionNumber, { color: themeColors.textSecondary }]}>
                       Q{idx + 1}
                     </Text>
@@ -221,9 +228,29 @@ export function QuizView({
                       {question.label.trim()}
                     </Text>
                   )}
+                  <View
+                    style={[
+                      styles.resultBadge,
+                      { backgroundColor: withOpacity(badgeColor, 0.12) },
+                    ]}
+                  >
+                    <Ionicons
+                      name={isCorrect ? 'checkmark-circle' : 'close-circle'}
+                      size={16}
+                      color={badgeColor}
+                    />
+                    <Text style={[styles.resultBadgeText, { color: badgeColor }]}>
+                      {isCorrect ? 'Correct' : 'Incorrect'}
+                    </Text>
+                  </View>
                   <Text style={[styles.yourAnswer, { color: themeColors.textSecondary }]}>
                     Your answer: {Array.isArray(questionResult.user_answer) ? questionResult.user_answer.join(', ') : questionResult.user_answer}
                   </Text>
+                  {question.help_text ? (
+                    <Text style={[styles.helpText, { color: themeColors.textTertiary }]}>
+                      {question.help_text}
+                    </Text>
+                  ) : null}
                 </View>
               );
             })}
@@ -266,6 +293,16 @@ export function QuizView({
           key={question.slug}
           style={[styles.questionCard, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
         >
+          {/* Question image */}
+          {question.image_enabled && question.image_url ? (
+            <Image
+              source={{ uri: question.image_url }}
+              style={styles.questionImage}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={200}
+            />
+          ) : null}
           {/* Question number + label */}
           <View style={styles.questionHeader}>
             <Text style={[styles.questionNumber, { color: themeColors.textTertiary }]}>
@@ -386,6 +423,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
 
+  questionImage: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: sizing.borderRadius.sm,
+  },
+
   questionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -503,6 +546,22 @@ const styles = StyleSheet.create({
     borderRadius: sizing.borderRadius.md,
     padding: spacing.md,
     gap: spacing.xs,
+  },
+
+  resultBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: sizing.borderRadius.sm,
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+  },
+
+  resultBadgeText: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
   },
 
   yourAnswer: {
