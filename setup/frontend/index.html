@@ -1876,22 +1876,21 @@
         <div x-show="updateState.changelog" class="update-changelog" x-html="sanitizeHtml(updateState.changelog)" style="max-height:120px;overflow-y:auto;margin-bottom:8px"></div>
         <button class="btn btn-sm btn-primary" x-on:click="applyLicenseUpdate(updateState.downloadUrl, updateState.version)" x-text="'Update to v' + (updateState.version || '?')"></button>
       </div>
-      <!-- Applying -->
-      <div x-show="updateState.state === 'applying'" class="update-progress">
-        <div class="step" x-bind:class="updateState.step >= 1 ? (updateState.step > 1 ? 'done' : 'active') : ''">
-          <span x-text="updateState.step > 1 ? 'Downloaded' : 'Downloading...'"></span>
+      <!-- Update progress (download → apply → install → ready) -->
+      <div x-show="['applying','installing','ready'].includes(updateState.state)" class="update-progress">
+        <div class="step" x-bind:class="stepClass(1)">
+          <span x-text="updateState.step > 1 ? '✓ Downloaded' : (updateState.step === 1 ? '⟳ Downloading...' : 'Download')"></span>
         </div>
-        <div class="step" x-bind:class="updateState.step >= 2 ? 'done' : ''">
-          <span x-text="updateState.step >= 2 ? updateState.filesWritten + ' files updated' : 'Applying...'"></span>
+        <div class="step" x-bind:class="stepClass(2)">
+          <span x-text="updateState.step > 2 ? '✓ ' + updateState.filesWritten + ' files updated' : (updateState.step === 2 ? '⟳ Applying...' : 'Apply files')"></span>
         </div>
-      </div>
-      <!-- Done -->
-      <div x-show="updateState.state === 'done'" style="color:var(--green)">
-        <ion-icon name="checkmark-circle" style="font-size:14px;vertical-align:middle;margin-right:4px"></ion-icon>
-        Updated to v<span x-text="updateState.version"></span> (<span x-text="updateState.filesWritten"></span> files)
-        <template x-if="updateState.dashboardUpdated">
-          <div style="color:var(--text-secondary);margin-top:4px"><ion-icon name="warning-outline" style="vertical-align:middle"></ion-icon> Dashboard updated — restart with <code>npm run dashboard</code></div>
-        </template>
+        <div class="step" x-bind:class="stepClass(3)">
+          <span x-text="updateState.step > 3 ? '✓ Dependencies installed' : (updateState.step === 3 ? '⟳ Installing dependencies...' : 'Install dependencies')"></span>
+        </div>
+        <div class="step" x-bind:class="stepClass(4)">
+          <span x-show="updateState.step >= 4">✓ Ready! Stop the dashboard (Ctrl+C) and run <code>npm run dashboard</code></span>
+          <span x-show="updateState.step < 4" style="color:var(--text-muted)">Ready to restart</span>
+        </div>
       </div>
       <!-- Checking -->
       <div x-show="updateState.state === 'checking'" style="color:var(--text-muted)"><span class="spinner"></span> Checking...</div>
@@ -2401,7 +2400,7 @@ document.addEventListener('alpine:init', () => {
     licenseKeyInput: '',
     licenseStatus: { state: 'checking', cssClass: 'checking', plan: '', expiry: '', error: '' },
     updateChecking: false,
-    updateState: { state: 'no-license', currentVersion: '', version: '', date: '', sizeMB: '', changelog: '', downloadUrl: '', error: '', errorTitle: '', step: 0, filesWritten: 0, depsChanged: false, dashboardUpdated: false },
+    updateState: { state: 'no-license', currentVersion: '', version: '', date: '', sizeMB: '', changelog: '', downloadUrl: '', error: '', errorTitle: '', step: 0, filesWritten: 0 },
     manualUpdate: { showUpload: true, state: 'idle', fileName: '', filesWritten: 0, newVersion: '', depsChanged: false, error: '' },
 
     // App Switcher
@@ -2591,6 +2590,7 @@ document.addEventListener('alpine:init', () => {
 
     setUpdateState(patch) { this.updateState = Object.assign({}, this.updateState, patch); },
     setManualState(patch) { this.manualUpdate = Object.assign({}, this.manualUpdate, patch); },
+    stepClass(n) { var s = this.updateState.step; return s > n ? 'done' : (s === n ? 'active' : ''); },
 
     // =========================================================================
     // Quick Commands
@@ -3426,33 +3426,43 @@ bumpVersion(type) {
       this.depsInstalling = true;
       this.depsOutput = '';
       this.depsStatusText = 'Installing dependencies... this may take a few minutes';
+      if (this._depsPoll) clearInterval(this._depsPoll);
+      var self = this;
       try {
         var res = await fetch('/api/install-deps', { method: 'POST' });
         var data = await res.json();
-        if (!data.ok) { this.showToast('Install failed: ' + data.error, 'error'); this.depsInstalling = false; return; }
-        var self = this;
-        if (this._depsPoll) clearInterval(this._depsPoll);
-        this._depsPoll = setInterval(async function() {
-          try {
-            var r = await fetch('/api/install-deps/status');
-            var d = await r.json();
-            var tail = (d.output || '').split('\n').slice(-80).join('\n');
-            if (self.depsOutput !== tail) self.depsOutput = tail;
-            if (d.status === 'done') {
-              clearInterval(self._depsPoll);
-              self.depsStatusText = 'Dependencies installed successfully!';
-              self.showToast('Dependencies installed!', 'success');
-              self.depsInstalling = false;
-              await self.loadState();
-            } else if (d.status === 'error') {
-              clearInterval(self._depsPoll);
-              self.depsStatusText = 'Installation failed (exit code ' + d.exitCode + ')';
-              self.showToast('npm install failed', 'error');
-              self.depsInstalling = false;
-            }
-          } catch (err) { clearInterval(self._depsPoll); self.depsInstalling = false; }
-        }, 2000);
-      } catch (err) { this.showToast('Install error: ' + err.message, 'error'); this.depsInstalling = false; }
+        if (!data.ok) throw new Error(data.error || 'install failed to start');
+        await new Promise(function(resolve, reject) {
+          var inFlight = false;
+          self._depsPoll = setInterval(async function() {
+            if (inFlight) return;
+            inFlight = true;
+            try {
+              var r = await fetch('/api/install-deps/status');
+              var d = await r.json();
+              var tail = (d.output || '').split('\n').slice(-80).join('\n');
+              if (self.depsOutput !== tail) self.depsOutput = tail;
+              if (d.status === 'done') {
+                clearInterval(self._depsPoll);
+                await self.loadState();
+                resolve();
+              } else if (d.status === 'error') {
+                clearInterval(self._depsPoll);
+                reject(new Error('npm install failed (exit ' + d.exitCode + ')'));
+              }
+            } catch (err) { clearInterval(self._depsPoll); reject(err); }
+            finally { inFlight = false; }
+          }, 2000);
+        });
+        self.depsStatusText = 'Dependencies installed successfully!';
+        self.showToast('Dependencies installed!', 'success');
+      } catch (err) {
+        self.depsStatusText = 'Installation failed: ' + err.message;
+        self.showToast('Install failed: ' + err.message, 'error');
+        throw err;
+      } finally {
+        self.depsInstalling = false;
+      }
     },
 
     // =========================================================================
@@ -3722,15 +3732,17 @@ bumpVersion(type) {
 
     async applyLicenseUpdate(downloadUrl, version) {
       if (!confirm('Update to v' + version + '?\n\nYour config, branding, credentials, modules, and NOTES.md are preserved automatically.\nCore files will be replaced with the new version.\n\nTo roll back later, you can upload an older zip in this same tab.')) return;
-      this.setUpdateState( { state: 'applying', step: 1, filesWritten: 0, depsChanged: false, dashboardUpdated: false });
+      this.setUpdateState({ state: 'applying', step: 1, filesWritten: 0 });
       try {
         var res = await this.postJson('/api/updates/apply', { downloadUrl });
         var data = await res.json();
         if (data.error) throw new Error(data.error);
-        this.setUpdateState( { state: 'done', step: 2, filesWritten: data.filesWritten, dashboardUpdated: !!data.dashboardUpdated });
-        this.installDeps();
+        // Server combines download + apply in one request, so step 1 → 3 (step 2 marks done implicitly).
+        this.setUpdateState({ state: 'installing', step: 3, filesWritten: data.filesWritten });
+        await this.installDeps();
+        this.setUpdateState({ state: 'ready', step: 4 });
       } catch (err) {
-        this.setUpdateState( { state: 'error', errorTitle: 'Update failed:', error: err.message });
+        this.setUpdateState({ state: 'error', errorTitle: 'Update failed:', error: err.message });
       }
     },
 

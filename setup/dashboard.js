@@ -23,23 +23,6 @@ const path = require('path');
 const { execSync, spawn } = require('child_process');
 
 // ---------------------------------------------------------------------------
-// Self-update: if a dashboard.next.js exists, swap it in and restart
-// ---------------------------------------------------------------------------
-
-const _nextDashboard = path.join(__dirname, 'dashboard.next.js');
-if (fs.existsSync(_nextDashboard)) {
-  try {
-    fs.copyFileSync(_nextDashboard, __filename);
-    fs.unlinkSync(_nextDashboard);
-    console.log('Dashboard updated! Restarting...');
-    spawn(process.argv[0], process.argv.slice(1), { stdio: 'ignore', detached: true, windowsHide: true }).unref();
-    process.exit(0);
-  } catch (err) {
-    console.error('Self-update failed, continuing with current version:', err.message);
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Load modules
 // ---------------------------------------------------------------------------
 

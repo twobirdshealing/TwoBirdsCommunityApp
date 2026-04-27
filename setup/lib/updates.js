@@ -201,23 +201,12 @@ function applyUpdateFromZip(zipBuffer) {
   // --- Step 3: Extract new core zip wholesale ---
   let filesWritten = 0;
   let filesSkipped = 0;
-  let dashboardUpdated = false;
   let newVersion = null;
 
   try {
     for (const file of files) {
       const relPath = file.path;
       if (relPath.endsWith('/')) continue;
-
-      // Dashboard self-update — write to .next.js so the next launch swaps it in
-      if (relPath === 'setup/dashboard.js') {
-        const destPath = path.join(PROJECT_DIR, 'setup', 'dashboard.next.js');
-        fs.mkdirSync(path.dirname(destPath), { recursive: true });
-        fs.writeFileSync(destPath, file.data);
-        dashboardUpdated = true;
-        filesWritten++;
-        continue;
-      }
 
       const destPath = path.resolve(PROJECT_DIR, relPath);
       if (!isUnderProjectDir(destPath)) { filesSkipped++; continue; }
@@ -255,7 +244,7 @@ function applyUpdateFromZip(zipBuffer) {
 
   identity.cleanupIdentityTemp(identityTempPath);
 
-  return { filesWritten, filesSkipped, dashboardUpdated, newVersion, cleanupStats, restoreResult };
+  return { filesWritten, filesSkipped, newVersion, cleanupStats, restoreResult };
 }
 
 /**
