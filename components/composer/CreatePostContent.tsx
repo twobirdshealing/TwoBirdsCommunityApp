@@ -329,7 +329,7 @@ export function CreatePostContent({
           media_preview: {
             image: gifAttachment.image,
             type: 'image',
-            provider: 'inline', // Server converts 'inline' to 'giphy' on save
+            provider: 'giphy',
             width: gifAttachment.width,
             height: gifAttachment.height,
           },

@@ -190,7 +190,7 @@ submitData.meta = {
   media_preview: {
     image: gifUrl,
     type: 'image',
-    provider: 'inline',  // Server converts to 'giphy'
+    provider: 'giphy',
     width: gifWidth,
     height: gifHeight,
   },
@@ -361,7 +361,7 @@ interface GiphyGif {
 }</code></pre>
 
 <div class="callout callout-warn">
-  <strong>GIF provider naming.</strong> GIFs are submitted with <code>provider: 'inline'</code> but the server converts this to <code>'giphy'</code> on save. When reading feed data, check for <code>provider === 'giphy'</code>, not <code>'inline'</code>.
+  <strong>GIF provider naming.</strong> GIFs are submitted with <code>provider: 'giphy'</code>, matching the native FluentCommunity web app. The server's <code>processFeedMetaData</code> only persists <code>media_preview</code> when <code>provider == 'giphy'</code>; the <code>updateFeed</code> path has no fallback, so any other value silently drops the GIF on edit. When reading feed data, also check for <code>provider === 'giphy'</code>.
 </div>
 
 <!-- ================================================================== -->

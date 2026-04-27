@@ -330,7 +330,7 @@ survey: {
     media_preview: {
       image: string;       // GIF URL
       type: 'image';
-      provider: 'inline';  // Server converts 'inline' to 'giphy' on save
+      provider: 'giphy';
       width: number;
       height: number;
     }
@@ -472,7 +472,7 @@ survey: {
 
   <li><strong>Server enforces posting permissions.</strong> The composer doesn't pre-check whether the user can post in a space. If the user lacks permission, the API returns an error and the composer shows an alert. Don't add client-side permission checks that could get out of sync with the server.</li>
 
-  <li><strong>GIF provider is <code>'inline'</code> on submit.</strong> The composer sends <code>provider: 'inline'</code> in <code>meta.media_preview</code>. The server converts this to <code>'giphy'</code> on save. When loading for edit, check for <code>provider === 'giphy'</code>.</li>
+  <li><strong>GIF provider is <code>'giphy'</code> on submit.</strong> The composer sends <code>provider: 'giphy'</code> in <code>meta.media_preview</code>, matching what the native FluentCommunity web app sends. The server's <code>processFeedMetaData</code> requires <code>provider == 'giphy'</code> to persist the GIF — anything else is silently dropped (and the <code>updateFeed</code> path has no fallback shim, so edits would lose the GIF).</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

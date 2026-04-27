@@ -280,7 +280,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         media_preview: {
           image: gifAttachment.image,
           type: 'image' as const,
-          provider: 'inline', // Server converts to 'giphy'
+          provider: 'giphy',
           width: gifAttachment.width,
           height: gifAttachment.height,
         },
