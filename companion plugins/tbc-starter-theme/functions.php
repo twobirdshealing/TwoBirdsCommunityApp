@@ -77,6 +77,21 @@ function fluent_starter_reading_time($post_id = null) {
 }
 
 /**
+ * Cache-busting version string for a shipped theme asset
+ *
+ * Returns the file's mtime when present, otherwise falls back to the theme
+ * version. Use this in every wp_enqueue_* call so small CSS/JS edits don't
+ * require a theme version bump.
+ *
+ * @param string $relative_path Path relative to the theme root (e.g. 'assets/css/base.css')
+ * @return string
+ */
+function fluent_starter_asset_ver($relative_path) {
+    $abs = FLUENT_STARTER_DIR . '/' . ltrim($relative_path, '/');
+    return file_exists($abs) ? (string) filemtime($abs) : wp_get_theme()->get('Version');
+}
+
+/**
  * Check if current page uses Fluent Community frame template
  *
  * @return bool

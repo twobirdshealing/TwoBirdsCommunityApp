@@ -2,6 +2,14 @@
 
 All notable changes to the Fluent Starter theme.
 
+## 1.0.1 — Maintenance
+
+- Fix Gutenberg "Hide page title" sidebar registration on WP 6.5+ where `wp.editor.PluginDocumentSettingPanel` was removed — prefer `wp.editPost.PluginDocumentSettingPanel` and drop the `wp.editor` capability gate
+- Refactor the sidebar's `useSelect` to return a primitive boolean instead of the whole `meta` object, avoiding panel re-renders on unrelated meta edits
+- Tighten `_tbc_hide_title` post-meta `auth_callback` to per-post `current_user_can('edit_post', $post_id)` (canonical signature, drops the over-permissive `edit_pages` capability check)
+- Scope the Fluent Community CSS variable bridge to `body` / `html.dark body` (instead of `:root` / `html.dark`) so theme defaults in `base.css` are no longer shadowed by the compat layer
+- Add `fluent_starter_asset_ver()` helper and route every `wp_enqueue_*` call through it — single source of truth for the `filemtime()` cache-busting fallback
+
 ## 1.0.0 — Initial release
 
 - Blank-canvas WordPress theme purpose-built for Fluent Community — gets out of the way on portal SPA pages, minimal styling elsewhere

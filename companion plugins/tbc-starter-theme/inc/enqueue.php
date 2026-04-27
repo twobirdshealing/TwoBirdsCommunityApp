@@ -16,19 +16,13 @@ if (!defined('ABSPATH')) {
  * Enqueue frontend scripts and styles
  */
 function fluent_starter_scripts() {
-    $compat_path     = FLUENT_STARTER_DIR . '/assets/css/fluent-compat.css';
-    $base_path       = FLUENT_STARTER_DIR . '/assets/css/base.css';
-    $components_path = FLUENT_STARTER_DIR . '/assets/css/components.css';
-    $blog_path       = FLUENT_STARTER_DIR . '/assets/css/blog.css';
-    $theme_js_path   = FLUENT_STARTER_DIR . '/assets/js/theme.js';
-
     // Fluent Community compatibility styles load everywhere (including auth pages)
     if (fluent_starter_has_fluent_community()) {
         wp_enqueue_style(
             'fluent-starter-fluent-compat',
             FLUENT_STARTER_URI . '/assets/css/fluent-compat.css',
             array(),
-            file_exists($compat_path) ? (string) filemtime($compat_path) : wp_get_theme()->get('Version')
+            fluent_starter_asset_ver('assets/css/fluent-compat.css')
         );
     }
 
@@ -42,14 +36,14 @@ function fluent_starter_scripts() {
         'fluent-starter-base',
         FLUENT_STARTER_URI . '/assets/css/base.css',
         array(),
-        file_exists($base_path) ? (string) filemtime($base_path) : wp_get_theme()->get('Version')
+        fluent_starter_asset_ver('assets/css/base.css')
     );
 
     wp_enqueue_style(
         'fluent-starter-components',
         FLUENT_STARTER_URI . '/assets/css/components.css',
         array('fluent-starter-base'),
-        file_exists($components_path) ? (string) filemtime($components_path) : wp_get_theme()->get('Version')
+        fluent_starter_asset_ver('assets/css/components.css')
     );
 
     if (is_home() || is_archive() || is_single() || is_search()) {
@@ -57,7 +51,7 @@ function fluent_starter_scripts() {
             'fluent-starter-blog',
             FLUENT_STARTER_URI . '/assets/css/blog.css',
             array('fluent-starter-base', 'fluent-starter-components'),
-            file_exists($blog_path) ? (string) filemtime($blog_path) : wp_get_theme()->get('Version')
+            fluent_starter_asset_ver('assets/css/blog.css')
         );
     }
 
@@ -65,7 +59,7 @@ function fluent_starter_scripts() {
         'fluent-starter-theme',
         FLUENT_STARTER_URI . '/assets/js/theme.js',
         array(),
-        file_exists($theme_js_path) ? (string) filemtime($theme_js_path) : wp_get_theme()->get('Version'),
+        fluent_starter_asset_ver('assets/js/theme.js'),
         array(
             'strategy' => 'defer',
             'in_footer' => true,
@@ -97,18 +91,16 @@ add_action('after_setup_theme', 'fluent_starter_editor_styles');
  * Only loads for the `page` post type editor screen.
  */
 function fluent_starter_block_editor_assets() {
-    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+    $screen = get_current_screen();
     if (!$screen || $screen->post_type !== 'page') {
         return;
     }
 
-    $sidebar_path = FLUENT_STARTER_DIR . '/assets/js/editor-sidebar.js';
-
     wp_enqueue_script(
         'fluent-starter-editor-sidebar',
         FLUENT_STARTER_URI . '/assets/js/editor-sidebar.js',
-        array('wp-plugins', 'wp-editor', 'wp-edit-post', 'wp-components', 'wp-data', 'wp-element', 'wp-i18n'),
-        file_exists($sidebar_path) ? (string) filemtime($sidebar_path) : wp_get_theme()->get('Version'),
+        array('wp-plugins', 'wp-edit-post', 'wp-components', 'wp-data', 'wp-element', 'wp-i18n'),
+        fluent_starter_asset_ver('assets/js/editor-sidebar.js'),
         true
     );
 }

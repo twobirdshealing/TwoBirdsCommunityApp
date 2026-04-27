@@ -1,12 +1,12 @@
 (function (wp) {
-    if (!wp || !wp.plugins || !wp.editor) {
+    if (!wp || !wp.plugins) {
         return;
     }
 
     var registerPlugin = wp.plugins.registerPlugin;
     var PluginDocumentSettingPanel =
-        (wp.editor && wp.editor.PluginDocumentSettingPanel) ||
-        (wp.editPost && wp.editPost.PluginDocumentSettingPanel);
+        (wp.editPost && wp.editPost.PluginDocumentSettingPanel) ||
+        (wp.editor && wp.editor.PluginDocumentSettingPanel);
     var ToggleControl = wp.components.ToggleControl;
     var useSelect = wp.data.useSelect;
     var useDispatch = wp.data.useDispatch;
@@ -26,12 +26,12 @@
             return null;
         }
 
-        var meta = useSelect(function (select) {
-            return select('core/editor').getEditedPostAttribute('meta') || {};
+        var hidden = useSelect(function (select) {
+            var meta = select('core/editor').getEditedPostAttribute('meta');
+            return !!(meta && meta._tbc_hide_title);
         }, []);
 
         var editPost = useDispatch('core/editor').editPost;
-        var hidden = !!meta._tbc_hide_title;
 
         return createElement(
             PluginDocumentSettingPanel,

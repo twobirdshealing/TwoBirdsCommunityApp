@@ -535,30 +535,25 @@ add_action('fluent_community/portal_head', function() {
  * (e.g., pages using FluentCommunity Frame template)
  */
 add_action('fluent_community/enqueue_global_assets', function($useDefaultTheme) {
-    $base_path       = FLUENT_STARTER_DIR . '/assets/css/base.css';
-    $components_path = FLUENT_STARTER_DIR . '/assets/css/components.css';
-    $compat_path     = FLUENT_STARTER_DIR . '/assets/css/fluent-compat.css';
-    $blog_path       = FLUENT_STARTER_DIR . '/assets/css/blog.css';
-
     wp_enqueue_style(
         'fluent-starter-base',
         FLUENT_STARTER_URI . '/assets/css/base.css',
         array(),
-        file_exists($base_path) ? (string) filemtime($base_path) : wp_get_theme()->get('Version')
+        fluent_starter_asset_ver('assets/css/base.css')
     );
 
     wp_enqueue_style(
         'fluent-starter-components',
         FLUENT_STARTER_URI . '/assets/css/components.css',
         array('fluent-starter-base'),
-        file_exists($components_path) ? (string) filemtime($components_path) : wp_get_theme()->get('Version')
+        fluent_starter_asset_ver('assets/css/components.css')
     );
 
     wp_enqueue_style(
         'fluent-starter-fluent-compat',
         FLUENT_STARTER_URI . '/assets/css/fluent-compat.css',
         array('fluent-starter-base'),
-        file_exists($compat_path) ? (string) filemtime($compat_path) : wp_get_theme()->get('Version')
+        fluent_starter_asset_ver('assets/css/fluent-compat.css')
     );
 
     // Frame content styles — only load when portal frame integration is on
@@ -567,7 +562,7 @@ add_action('fluent_community/enqueue_global_assets', function($useDefaultTheme) 
             'fluent-starter-blog',
             FLUENT_STARTER_URI . '/assets/css/blog.css',
             array('fluent-starter-base', 'fluent-starter-components'),
-            file_exists($blog_path) ? (string) filemtime($blog_path) : wp_get_theme()->get('Version')
+            fluent_starter_asset_ver('assets/css/blog.css')
         );
     }
 

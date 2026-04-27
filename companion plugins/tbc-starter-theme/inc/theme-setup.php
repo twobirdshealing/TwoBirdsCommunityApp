@@ -85,8 +85,8 @@ function fluent_starter_register_post_meta() {
         'single'        => true,
         'type'          => 'boolean',
         'default'       => false,
-        'auth_callback' => function () {
-            return current_user_can('edit_pages');
+        'auth_callback' => function ($allowed, $meta_key, $post_id) {
+            return current_user_can('edit_post', $post_id);
         },
     ));
 }

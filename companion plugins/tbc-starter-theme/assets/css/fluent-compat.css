@@ -13,7 +13,7 @@
    Map Fluent Community CSS Variables to Theme Variables
    ========================================================================== */
 
-:root {
+body {
     /* Background colors */
     --fs-color-bg: var(--fcom-primary-bg, #ffffff);
     --fs-color-bg-secondary: var(--fcom-secondary-bg, #f0f2f5);
@@ -41,7 +41,7 @@
 }
 
 /* Dark mode - inherit from Fluent Community */
-html.dark {
+html.dark body {
     --fs-color-bg: var(--fcom-primary-bg, #2B2E33);
     --fs-color-bg-secondary: var(--fcom-secondary-bg, #191B1F);
     --fs-color-bg-light: var(--fcom-light-bg, #2B303B);
