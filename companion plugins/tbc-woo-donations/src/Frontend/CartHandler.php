@@ -173,7 +173,7 @@ final class CartHandler {
 		$price = $cart_item_data['tbc_don_price'] ?? Helpers::get_posted_price( $product );
 
 		try {
-			$this->validate_price( $product, $price );
+			Helpers::validate_price( $product, $price );
 		} catch ( Exception $e ) {
 			if ( $e->getMessage() ) {
 				wc_add_notice(
@@ -207,7 +207,7 @@ final class CartHandler {
 			}
 
 			try {
-				$this->validate_price( $cart_item['data'], $cart_item['tbc_don_price'] );
+				Helpers::validate_price( $cart_item['data'], $cart_item['tbc_don_price'] );
 			} catch ( Exception $e ) {
 				if ( $e->getMessage() ) {
 					wc_add_notice(
@@ -221,50 +221,6 @@ final class CartHandler {
 					);
 				}
 			}
-		}
-	}
-
-	/**
-	 * Core price validation logic.
-	 *
-	 * @throws Exception On validation failure.
-	 */
-	public function validate_price( WC_Product $product, string|float $price, string $period = '' ): void {
-
-		$price = (float) $price;
-
-		// Must be a positive number.
-		if ( ! is_finite( $price ) || $price < 0 ) {
-			throw new Exception( esc_html__( 'Please enter a valid, positive number.', 'tbc-woo-donations' ) );
-		}
-
-		$minimum = Helpers::get_minimum_price( $product );
-		$maximum = Helpers::get_maximum_price( $product );
-		$hidden  = Helpers::is_minimum_hidden( $product );
-
-		// Minimum check.
-		if ( $minimum > 0 && $price < $minimum ) {
-			if ( $hidden ) {
-				throw new Exception( esc_html__( 'Please enter a higher amount.', 'tbc-woo-donations' ) );
-			}
-			throw new Exception(
-				sprintf(
-					/* translators: %s minimum price */
-					esc_html__( 'Please enter at least %s.', 'tbc-woo-donations' ),
-					wc_price( $minimum )
-				)
-			);
-		}
-
-		// Maximum check.
-		if ( $maximum > 0 && $price > $maximum ) {
-			throw new Exception(
-				sprintf(
-					/* translators: %s maximum price */
-					esc_html__( 'Please enter less than or equal to %s.', 'tbc-woo-donations' ),
-					wc_price( $maximum )
-				)
-			);
 		}
 	}
 

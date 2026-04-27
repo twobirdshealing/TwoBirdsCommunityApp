@@ -589,6 +589,54 @@
 }
 
 /* =========================================================================
+   Edit Subscription Amount — My Account → View Subscription
+
+   The form lives inside a <table class="shop_table order_details"> so it
+   inherits the same dark-card / row styling the surrounding "Subscription
+   totals" and "Related orders" tables get from the active theme. Only
+   form-specific tweaks (symbol overlay, hint, action row) are styled here.
+   ========================================================================= */
+
+.tbc-don-edit-sub-description {
+	color: var(--fcom-secondary-text, #586374);
+	font-style: italic;
+}
+
+.tbc-don-edit-sub-input-wrap {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+}
+
+.tbc-don-edit-sub-symbol {
+	position: absolute;
+	left: 12px;
+	color: var(--fcom-secondary-text, #586374);
+	pointer-events: none;
+}
+
+.tbc-don-edit-sub-input-wrap input[type="number"] {
+	padding: 8px 12px 8px 28px;
+	font-size: 1em;
+	width: 160px;
+	background: var(--fcom-primary-bg, #ffffff);
+	color: inherit;
+	border: 1px solid var(--fcom-primary-border, #e3e8ee);
+	border-radius: 6px;
+}
+
+.tbc-don-edit-sub-hint {
+	display: inline-block;
+	margin-left: 0.75em;
+	color: var(--fcom-secondary-text, #586374);
+	font-size: 0.9em;
+}
+
+.tbc-don-edit-sub-actions {
+	text-align: right;
+}
+
+/* =========================================================================
    Dark Mode — Native form elements need color-scheme
    ========================================================================= */
 

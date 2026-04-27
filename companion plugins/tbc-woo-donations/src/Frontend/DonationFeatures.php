@@ -50,9 +50,10 @@ final class DonationFeatures {
 		add_action( 'woocommerce_cart_calculate_fees', [ $this, 'apply_fee_recovery' ], 20 );
 		add_action( 'woocommerce_cart_calculate_fees', [ $this, 'apply_extra_donation' ], 20 );
 
-		// Tag the Give Extra fee on the order so the donor statement can identify it
-		// reliably (not by translated fee name).
-		add_action( 'woocommerce_checkout_create_order_fee_item', [ $this, 'tag_give_extra_fee_item' ], 10, 3 );
+		// Tag donation fees on the order with a stable type meta so other code
+		// (donor statements, subscription edit-amount) can identify them
+		// reliably without depending on translated fee names.
+		add_action( 'woocommerce_checkout_create_order_fee_item', [ $this, 'tag_donation_fee_item' ], 10, 3 );
 
 		// One-time purchase: convert subscription to simple.
 		add_filter( 'woocommerce_get_cart_item_from_session', [ $this, 'adjust_one_time_price' ], 10, 1 );
@@ -324,12 +325,19 @@ final class DonationFeatures {
 		<?php
 	}
 
+	/**
+	 * Stable, non-translated id for the Fee Recovery (cover-the-fee) fee.
+	 * Used at checkout to tag the order fee item so the subscription
+	 * edit-amount feature can find it without depending on translated names.
+	 */
+	public const FEE_RECOVERY_FEE_ID = 'tbc_don_fee_recovery';
+
 	public function apply_fee_recovery( \WC_Cart $cart ): void {
 		if ( is_admin() && ! wp_doing_ajax() ) {
 			return;
 		}
 
-		$pct       = 0.035;
+		$pct       = Helpers::FEE_RECOVERY_RATE;
 		$total_fee = 0.0;
 
 		foreach ( $cart->get_cart() as $cart_item ) {
@@ -350,7 +358,11 @@ final class DonationFeatures {
 		}
 
 		if ( $total_fee > 0 ) {
-			$cart->add_fee( __( 'Donation Fee (3.5%)', 'tbc-woo-donations' ), $total_fee, false );
+			$cart->fees_api()->add_fee( [
+				'id'     => self::FEE_RECOVERY_FEE_ID,
+				'name'   => __( 'Donation Fee (3.5%)', 'tbc-woo-donations' ),
+				'amount' => $total_fee,
+			] );
 		}
 	}
 
@@ -413,20 +425,29 @@ final class DonationFeatures {
 	}
 
 	/**
-	 * Tag the Give Extra fee on the order so StatementData can identify it
-	 * via meta (`_tbc_don_fee_type = give_extra`) instead of matching the
-	 * translated fee name.
+	 * Tag donation fees on the order with `_tbc_don_fee_type` meta so
+	 * downstream code (StatementData, Subscriptions edit-amount) can match
+	 * fees by stable id rather than translated display name.
 	 *
 	 * @param \WC_Order_Item_Fee $item
 	 * @param string             $fee_key
 	 * @param object             $fee
 	 */
-	public function tag_give_extra_fee_item( $item, string $fee_key, $fee ): void {
+	public function tag_donation_fee_item( $item, string $fee_key, $fee ): void {
 		if ( ! $item instanceof \WC_Order_Item_Fee ) {
 			return;
 		}
-		if ( self::GIVE_EXTRA_FEE_ID === $fee_key || ( isset( $fee->id ) && self::GIVE_EXTRA_FEE_ID === $fee->id ) ) {
-			$item->add_meta_data( self::FEE_TYPE_META_KEY, 'give_extra', true );
+
+		$id = $fee->id ?? $fee_key;
+
+		$type = match ( $id ) {
+			self::GIVE_EXTRA_FEE_ID    => 'give_extra',
+			self::FEE_RECOVERY_FEE_ID  => 'fee_recovery',
+			default                    => null,
+		};
+
+		if ( $type ) {
+			$item->add_meta_data( self::FEE_TYPE_META_KEY, $type, true );
 		}
 	}
 

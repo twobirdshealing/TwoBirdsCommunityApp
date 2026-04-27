@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace TBC\WooDonations\API;
 
 use TBC\WooDonations\Helpers;
-use TBC\WooDonations\Frontend\CartHandler;
 use WC_Product;
 
 defined( 'ABSPATH' ) || exit;
@@ -39,7 +38,7 @@ final class StoreAPI {
 			);
 		}
 
-		CartHandler::instance()->validate_price( $product, $price );
+		Helpers::validate_price( $product, $price );
 	}
 
 	/**
@@ -50,7 +49,7 @@ final class StoreAPI {
 			return;
 		}
 
-		CartHandler::instance()->validate_price( $cart_item['data'], $cart_item['tbc_don_price'] );
+		Helpers::validate_price( $cart_item['data'], $cart_item['tbc_don_price'] );
 	}
 
 	/**

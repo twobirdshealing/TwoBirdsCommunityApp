@@ -3,7 +3,7 @@
  * Plugin Name: TBC - WooCommerce Donations
  * Plugin URI:  https://twobirdscode.com/
  * Description: Complete donation product system for WooCommerce — name-your-price, suggested amounts, deposits, fee recovery, donor wall, and more.
- * Version:     1.0.0
+ * Version:     1.1.0
  * Author:      Two Birds Code
  * Author URI:  https://twobirdscode.com/
  *

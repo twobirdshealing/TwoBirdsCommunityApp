@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0 — 2026-04-27
+
+### Added — Edit Recurring Donation Amount (restored from NYP)
+- Donors can now change the recurring amount on an active donation subscription themselves from **My Account → My Subscriptions → View Subscription**. An inline "Change donation amount" form appears under the subscription details with min/max validation, ownership check, and nonce protection. No checkout, no charge today — the new amount applies on the next renewal.
+- If the donor originally opted in to "Cover the Donation Fee (3.5%)", the existing fee line item is recalculated to 3.5% of the new amount so renewals stay correct. Donors who didn't opt in stay opted out.
+- Editable on `active` and `on-hold` subscriptions; the form is hidden on cancelled / expired / pending-cancel statuses, on multi-line-item subscriptions (out of scope for v1), and for non-owners.
+- Subscription gets an order note on each change: `"Donation amount changed from $25.00 to $40.00 by donor."`
+- This restores the equivalent feature from the original WooCommerce Name Your Price plugin, which used WCS Switching for gateway portability. We use direct line-item mutation instead — verified compatible with the Action Scheduler renewal model used by Payment Plugins for Braintree (each renewal is a fresh order created from current line-item totals, so updating subtotals locally is sufficient).
+
+### Changed
+- `Helpers::FEE_RECOVERY_RATE` constant introduced as the single source of truth for the 3.5% fee rate. Replaces the hardcoded literal in `DonationFeatures::apply_fee_recovery()` and is also used by the new subscription edit feature.
+
 ## 1.6.0 — 2026-04-21
 
 ### Added — Donor Dashboard & Year-End Statement (merged from tbc-donor-dashboard)

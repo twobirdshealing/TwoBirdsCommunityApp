@@ -18,6 +18,13 @@ defined( 'ABSPATH' ) || exit;
 final class Helpers {
 
 	/**
+	 * Fee-recovery rate applied when a donor opts to "cover the processing fee".
+	 * Single source of truth — used both at cart time and when a recurring
+	 * donation amount is edited from the customer dashboard.
+	 */
+	public const FEE_RECOVERY_RATE = 0.035;
+
+	/**
 	 * Product types that can be individual donation products.
 	 *
 	 * @var string[]
@@ -151,6 +158,51 @@ final class Helpers {
 
 	public static function is_minimum_hidden( WC_Product $product ): bool {
 		return wc_string_to_bool( (string) $product->get_meta( '_tbc_don_hide_minimum' ) );
+	}
+
+	/**
+	 * Validate a donation price against a product's min/max rules.
+	 *
+	 * @throws \Exception On validation failure. Caller should catch and surface
+	 *                    the message to the user (cart notice / Store API error).
+	 */
+	public static function validate_price( WC_Product $product, string|float $price ): void {
+
+		$price = (float) $price;
+
+		// Must be a positive number.
+		if ( ! is_finite( $price ) || $price < 0 ) {
+			throw new \Exception( esc_html__( 'Please enter a valid, positive number.', 'tbc-woo-donations' ) );
+		}
+
+		$minimum = self::get_minimum_price( $product );
+		$maximum = self::get_maximum_price( $product );
+		$hidden  = self::is_minimum_hidden( $product );
+
+		// Minimum check.
+		if ( $minimum > 0 && $price < $minimum ) {
+			if ( $hidden ) {
+				throw new \Exception( esc_html__( 'Please enter a higher amount.', 'tbc-woo-donations' ) );
+			}
+			throw new \Exception(
+				sprintf(
+					/* translators: %s minimum price */
+					esc_html__( 'Please enter at least %s.', 'tbc-woo-donations' ),
+					wc_price( $minimum )
+				)
+			);
+		}
+
+		// Maximum check.
+		if ( $maximum > 0 && $price > $maximum ) {
+			throw new \Exception(
+				sprintf(
+					/* translators: %s maximum price */
+					esc_html__( 'Please enter less than or equal to %s.', 'tbc-woo-donations' ),
+					wc_price( $maximum )
+				)
+			);
+		}
 	}
 
 	// -------------------------------------------------------------------------
