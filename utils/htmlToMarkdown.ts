@@ -106,12 +106,16 @@ export function htmlToMarkdown(html: string): string {
   // composer sends. TipTap's autolink plugin only fires after a whitespace
   // trigger, so URLs at the end of a post can ship as bare text and
   // Parsedown's setUrlsLinked(false) then leaves them un-linked. Lookbehind
-  // avoids re-wrapping URLs already preceded by <, [, or ( (autolinks or
-  // markdown links). Trailing sentence punctuation is captured separately
-  // so it stays outside the link.
+  // avoids re-wrapping URLs already preceded by <, [, ( (autolinks or
+  // markdown links) or a word char. Trailing sentence punctuation is
+  // stripped in a callback so it stays outside the link.
   md = md.replace(
-    /(?<![<\[\(])\b(https?:\/\/[^\s<>()\[\].,;:!?]+)([.,;:!?]*)/g,
-    '<$1>$2',
+    /(?<![<\[\(\w])(https?:\/\/[^\s<>()\[\]]+)/g,
+    (_match, url: string) => {
+      const trimmed = url.replace(/[.,;:!?]+$/, '');
+      const trail = url.slice(trimmed.length);
+      return `<${trimmed}>${trail}`;
+    },
   );
 
   // 7. Clean up whitespace
