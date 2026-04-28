@@ -101,6 +101,19 @@ export function htmlToMarkdown(html: string): string {
   md = md.replace(/&#39;/g, "'");
   md = md.replace(/&nbsp;/g, ' ');
 
+  // 6.5. Wrap bare URLs in <URL> markdown autolink form so Parsedown's
+  // inlineUrlTag rule renders them as <a> tags. Matches what the FC web
+  // composer sends. TipTap's autolink plugin only fires after a whitespace
+  // trigger, so URLs at the end of a post can ship as bare text and
+  // Parsedown's setUrlsLinked(false) then leaves them un-linked. Lookbehind
+  // avoids re-wrapping URLs already preceded by <, [, or ( (autolinks or
+  // markdown links). Trailing sentence punctuation is captured separately
+  // so it stays outside the link.
+  md = md.replace(
+    /(?<![<\[\(])\b(https?:\/\/[^\s<>()\[\].,;:!?]+)([.,;:!?]*)/g,
+    '<$1>$2',
+  );
+
   // 7. Clean up whitespace
   md = md.replace(/\n{3,}/g, '\n\n'); // collapse 3+ newlines to 2
   md = md.trim();
