@@ -32,6 +32,9 @@ export interface Course {
   lessonsCount: number;
   studentsCount: number; // 0 if hide_members_count=yes
 
+  // FC 2.4.0+: per-course admin flag (replaces global hasCourseCreatorAccess check)
+  is_course_admin?: boolean;
+
   // Detail endpoint only
   creator?: CourseInstructor;
   lockscreen_config?: CourseLockscreenConfig;

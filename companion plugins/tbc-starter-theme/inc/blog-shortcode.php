@@ -136,15 +136,17 @@ function fluent_starter_blog_shortcode($atts) {
                 <!-- Pagination -->
                 <?php if ($query->max_num_pages > 1) : ?>
                     <nav class="fs-pagination">
-                        <?php
-                        echo paginate_links(array(
-                            'total' => $query->max_num_pages,
-                            'current' => max(1, get_query_var('paged')),
-                            'mid_size' => 2,
-                            'prev_text' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>',
-                            'next_text' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>',
-                        ));
-                        ?>
+                        <div class="nav-links">
+                            <?php
+                            echo paginate_links(array(
+                                'total' => $query->max_num_pages,
+                                'current' => max(1, get_query_var('paged')),
+                                'mid_size' => 2,
+                                'prev_text' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>',
+                                'next_text' => '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>',
+                            ));
+                            ?>
+                        </div>
                     </nav>
                 <?php endif; ?>
             <?php endif; ?>

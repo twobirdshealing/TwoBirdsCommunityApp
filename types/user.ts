@@ -15,6 +15,7 @@ export interface XProfile {
   display_name: string;
   avatar: string | null;
   short_description: string | null;
+  short_description_rendered?: string; // FC 2.4.0+: server-rendered HTML version of short_description
   total_points: number;
   is_verified: number;  // 0 or 1
   status: 'active' | 'suspended' | 'banned';

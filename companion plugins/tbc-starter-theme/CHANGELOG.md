@@ -2,6 +2,10 @@
 
 All notable changes to the Fluent Starter theme.
 
+## 1.0.2 — Maintenance
+
+- Fix `[fluent_blog]` shortcode pagination rendering as full-width vertically-stacked bars — wrap `paginate_links()` output in `<div class="nav-links">` to match WP's standard pagination markup, so the existing `.fs-pagination .nav-links` flex container styles take effect
+
 ## 1.0.1 — Maintenance
 
 - Fix Gutenberg "Hide page title" sidebar registration on WP 6.5+ where `wp.editor.PluginDocumentSettingPanel` was removed — prefer `wp.editPost.PluginDocumentSettingPanel` and drop the `wp.editor` capability gate

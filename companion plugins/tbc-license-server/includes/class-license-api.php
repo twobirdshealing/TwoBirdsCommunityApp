@@ -80,15 +80,10 @@ class TBC_License_API {
             ], 200);
         }
 
-        $expiry = null;
-        if (!empty($fc_result['expiration_date']) && $fc_result['expiration_date'] !== 'lifetime') {
-            $expiry = date('Y-m-d', strtotime($fc_result['expiration_date']));
-        }
-
         return new WP_REST_Response([
             'valid'     => true,
             'plan'      => $this->extract_plan($fc_result),
-            'expiresAt' => $expiry,
+            'expiresAt' => $this->extract_expiry($fc_result),
             'name'      => $fc_result['product_title'] ?? '',
         ], 200);
     }
@@ -140,23 +135,21 @@ class TBC_License_API {
             ], 200);
         }
 
-        $expiry = null;
-        if (!empty($fc_result['expiration_date']) && $fc_result['expiration_date'] !== 'lifetime') {
-            $expiry = date('Y-m-d', strtotime($fc_result['expiration_date']));
-        }
-
         $response = [
-            'valid'         => true,
-            'plan'          => $this->extract_plan($fc_result),
-            'expiresAt'     => $expiry,
-            'latest'        => null,
-            'moduleUpdates' => [],
+            'valid'     => true,
+            'plan'      => $this->extract_plan($fc_result),
+            'expiresAt' => $this->extract_expiry($fc_result),
+            'latest'    => null,
+            'modules'   => [],
         ];
 
         // Check for core update
         $response['latest'] = $this->check_version($core_product_id, $license_key, $site_url, $current_version);
 
-        // Check for module updates
+        // Validate each installed module + check for its update.
+        // Always emit one entry per module — the dashboard renders both the
+        // license row (plan/expiry) and the update row (up-to-date / available)
+        // from this same per-module record, mirroring how core is rendered.
         if (is_array($installed_modules)) {
             foreach ($installed_modules as $mod) {
                 $mod_id      = sanitize_text_field($mod['id'] ?? '');
@@ -167,7 +160,10 @@ class TBC_License_API {
 
                 // Resolve product ID from the module's license key
                 $mod_product_id = $this->get_product_id_from_key($mod_key);
-                if (!$mod_product_id) continue;
+                if (!$mod_product_id) {
+                    $response['modules'][] = $this->module_error_entry($mod_id, 'License key not found.');
+                    continue;
+                }
 
                 // Validate module license
                 $mod_fc = $this->call_fluentcart('activate_license', [
@@ -176,14 +172,24 @@ class TBC_License_API {
                     'item_id'     => $mod_product_id,
                 ]);
 
-                if (empty($mod_fc['success']) || ($mod_fc['status'] ?? '') !== 'valid') continue;
-
-                $mod_latest = $this->check_version($mod_product_id, $mod_key, $site_url, $mod_version);
-                if ($mod_latest) {
-                    $mod_latest['id'] = $mod_id;
-                    $mod_latest['name'] = $mod_fc['product_title'] ?? $mod_id;
-                    $response['moduleUpdates'][] = $mod_latest;
+                if (!$mod_fc) {
+                    $response['modules'][] = $this->module_error_entry($mod_id, 'Could not reach license system.');
+                    continue;
                 }
+
+                if (empty($mod_fc['success']) || ($mod_fc['status'] ?? '') !== 'valid') {
+                    $response['modules'][] = $this->module_error_entry($mod_id, $this->translate_error($mod_fc));
+                    continue;
+                }
+
+                $response['modules'][] = [
+                    'id'             => $mod_id,
+                    'valid'          => true,
+                    'plan'           => $this->extract_plan($mod_fc),
+                    'expiresAt'      => $this->extract_expiry($mod_fc),
+                    'currentVersion' => $mod_version,
+                    'latest'         => $this->check_version($mod_product_id, $mod_key, $site_url, $mod_version),
+                ];
             }
         }
 
@@ -285,5 +291,16 @@ class TBC_License_API {
             return strtolower($fc_result['variation_title']);
         }
         return 'core';
+    }
+
+    private function extract_expiry($fc_result) {
+        if (!empty($fc_result['expiration_date']) && $fc_result['expiration_date'] !== 'lifetime') {
+            return date('Y-m-d', strtotime($fc_result['expiration_date']));
+        }
+        return null;
+    }
+
+    private function module_error_entry($mod_id, $error) {
+        return ['id' => $mod_id, 'valid' => false, 'error' => $error];
     }
 }

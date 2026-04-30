@@ -30,9 +30,8 @@ class FluentChat_Send_DM {
 			'integration'        => Add_FluentChat_Integration::INTEGRATION,
 			'code'               => self::ACTION_CODE,
 			'sentence'           => sprintf(
-				'Send {{a direct message:%1$s}} from {{a specific user:%2$s}} to {{a specific user:%3$s}}',
+				'Send {{a direct message:%1$s}} to {{a specific user:%2$s}}',
 				self::MESSAGE_GROUP,
-				self::SENDER_KEY,
 				self::RECIPIENT_KEY
 			),
 			'select_option_name' => 'Send {{a direct message}} to {{a specific user}}',
@@ -52,17 +51,6 @@ class FluentChat_Send_DM {
 		return \Automator()->utilities->keep_order_of_options(
 			array(
 				'options_group' => array(
-					self::SENDER_KEY => array(
-						\Automator()->helpers->recipe->field->text_field(
-							self::SENDER_KEY,
-							esc_attr__( 'Sender user ID', 'tbc-automator-fluentchat' ),
-							true,
-							'text',
-							'',
-							false,
-							esc_attr__( 'WordPress user ID of the sender. Use a token like {{User ID}} or enter a specific ID (e.g. 1 for the main admin).', 'tbc-automator-fluentchat' )
-						),
-					),
 					self::RECIPIENT_KEY => array(
 						\Automator()->helpers->recipe->field->text_field(
 							self::RECIPIENT_KEY,
@@ -75,6 +63,15 @@ class FluentChat_Send_DM {
 						),
 					),
 					self::MESSAGE_GROUP => array(
+						\Automator()->helpers->recipe->field->text_field(
+							self::SENDER_KEY,
+							esc_attr__( 'Sender user ID (optional)', 'tbc-automator-fluentchat' ),
+							true,
+							'text',
+							'',
+							false,
+							esc_attr__( 'WordPress user ID of the sender. Defaults to site admin (user ID 1) if empty.', 'tbc-automator-fluentchat' )
+						),
 						\Automator()->helpers->recipe->field->text(
 							array(
 								'option_code'      => self::ACTION_META,
@@ -103,8 +100,9 @@ class FluentChat_Send_DM {
 			$message      = \Automator()->parse->text( $action_data['meta'][ self::ACTION_META ] ?? '', $recipe_id, $user_id, $args );
 			$message      = do_shortcode( $message );
 
+			// Default to site admin (user ID 1) if sender is empty.
 			if ( empty( $sender_id ) ) {
-				return $this->complete_with_error( $user_id, $action_data, $recipe_id, 'Sender user ID is empty or invalid.' );
+				$sender_id = 1;
 			}
 
 			if ( empty( $recipient_id ) ) {

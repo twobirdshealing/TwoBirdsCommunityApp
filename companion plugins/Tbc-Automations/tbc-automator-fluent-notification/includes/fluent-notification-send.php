@@ -70,6 +70,15 @@ class Fluent_Notification_Send {
 						),
 					),
 					self::CONTENT_GROUP => array(
+						\Automator()->helpers->recipe->field->text_field(
+							self::SENDER_KEY,
+							esc_attr__( 'Sender user ID (optional)', 'tbc-automator-fluent-notification' ),
+							true,
+							'text',
+							'',
+							false,
+							esc_attr__( 'WordPress user ID of the sender. Defaults to site admin (user ID 1) if empty.', 'tbc-automator-fluent-notification' )
+						),
 						\Automator()->helpers->recipe->field->text(
 							array(
 								'option_code'      => self::ACTION_META,
@@ -78,17 +87,17 @@ class Fluent_Notification_Send {
 								'supports_tokens'  => true,
 								'supports_tinymce' => true,
 								'required'         => true,
-								'description'      => esc_attr__( 'The notification text shown in the bell. Supports tokens and merge tags. Use <b>bold</b> for emphasis.', 'tbc-automator-fluent-notification' ),
+								'description'      => esc_attr__( 'The notification text shown in the bell. Supports tokens and merge tags from the trigger.', 'tbc-automator-fluent-notification' ),
 							)
 						),
 						\Automator()->helpers->recipe->field->text_field(
 							self::TITLE_KEY,
-							esc_attr__( 'Push notification title (optional)', 'tbc-automator-fluent-notification' ),
+							esc_attr__( 'Notification title (optional)', 'tbc-automator-fluent-notification' ),
 							true,
 							'text',
 							'',
 							false,
-							esc_attr__( 'Short title for the push notification (e.g. "Order Cancelled"). If empty, defaults to "New Notification".', 'tbc-automator-fluent-notification' )
+							esc_attr__( 'Optional title shown in bold at the start of the in-app notification. Also used as the push notification title for users with the TBC Mobile App installed. If empty, no bold prefix appears in the bell and pushes default to "New Notification".', 'tbc-automator-fluent-notification' )
 						),
 						array(
 							'option_code'           => self::ROUTE_TYPE_KEY,
@@ -152,15 +161,6 @@ class Fluent_Notification_Send {
 							'supports_tokens'    => true,
 							'description'        => esc_attr__( 'The lesson slug within the course.', 'tbc-automator-fluent-notification' ),
 							'dynamic_visibility' => self::visibility_for( array( 'view_lesson' ) ),
-						),
-						\Automator()->helpers->recipe->field->text_field(
-							self::SENDER_KEY,
-							esc_attr__( 'Sender user ID (optional)', 'tbc-automator-fluent-notification' ),
-							true,
-							'text',
-							'',
-							false,
-							esc_attr__( 'WordPress user ID whose avatar and name appear on the notification. Defaults to site admin (user ID 1) if empty.', 'tbc-automator-fluent-notification' )
 						),
 					),
 				),
