@@ -4,13 +4,16 @@
 // Route: /courses
 // Features:
 // - Toggle between "All Courses" and "My Courses" (enrolled)
-// - Search courses by name
+// - Search courses by name (debounced)
 // - Infinite scroll with pull-to-refresh
+//
+// Data layer: TanStack Query useInfiniteQuery — pages cached + persisted (MMKV),
+// so re-entry renders instantly from cache while revalidating in background.
 // =============================================================================
 
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -23,6 +26,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTabContentPadding } from '@/contexts/BottomOffsetContext';
 
 import { CourseCard } from '@/components/course/CourseCard';
@@ -34,13 +38,16 @@ import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { coursesApi } from '@/services/api/courses';
-import { Course, CourseCategory } from '@/types/course';
+import { useDebounce } from '@/hooks/useDebounce';
+import type { Course, CoursesListResponse } from '@/types/course';
 
 // -----------------------------------------------------------------------------
 // Tab type
 // -----------------------------------------------------------------------------
 
 type CourseTab = 'all' | 'enrolled';
+
+const PER_PAGE = 15;
 
 // -----------------------------------------------------------------------------
 // Component
@@ -52,118 +59,82 @@ export default function CoursesListScreen() {
   const { colors: themeColors } = useTheme();
   const tabContentPadding = useTabContentPadding();
 
-  // Data state
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-
   // Tab, Search & Categories
   const [activeTab, setActiveTab] = useState<CourseTab>('all');
   const [search, setSearch] = useState('');
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [categories, setCategories] = useState<CourseCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
+  // Debounce search so we don't fire a request on every keystroke
+  const debouncedSearch = useDebounce(search.trim(), 400);
+
   // ---------------------------------------------------------------------------
-  // Fetch Courses
+  // Infinite Query
   // ---------------------------------------------------------------------------
 
-  // Use a ref so fetchCourses always reads the latest search without being recreated
-  const searchRef = useRef(search);
-  searchRef.current = search;
+  const queryKey = useMemo(
+    () => ['courses', activeTab, activeCategory, debouncedSearch] as const,
+    [activeTab, activeCategory, debouncedSearch],
+  );
 
-  const fetchCourses = useCallback(async (pageNum: number = 1, shouldAppend: boolean = false) => {
-    try {
-      if (pageNum === 1) {
-        if (shouldAppend) return; // prevent double-fetch
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
-
-      const currentSearch = searchRef.current.trim();
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    refetch,
+    error,
+  } = useInfiniteQuery<CoursesListResponse, Error>({
+    queryKey,
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const page = pageParam as number;
       const response = await coursesApi.getCourses({
-        page: pageNum,
-        per_page: 15,
+        page,
+        per_page: PER_PAGE,
         sort_by: 'alphabetical',
-        with_categories: pageNum === 1,
+        with_categories: page === 1,
         ...(activeTab === 'enrolled' && { type: 'enrolled' }),
-        ...(currentSearch && { search: currentSearch }),
+        ...(debouncedSearch && { search: debouncedSearch }),
         ...(activeCategory && { topic_slug: activeCategory }),
       });
-
       if (!response.success) {
-        setError(response.error?.message || 'Failed to load courses');
-        return;
+        throw new Error(response.error?.message || 'Failed to load courses');
       }
+      return response.data;
+    },
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.courses.next_page_url) return undefined;
+      return lastPage.courses.current_page + 1;
+    },
+  });
 
-      const { courses: paginatedCourses, course_categories } = response.data;
-      const newCourses = paginatedCourses.data;
+  // Flatten paginated results — Query gives us pages[], we need a flat list
+  const courses: Course[] = useMemo(
+    () => data?.pages.flatMap((p) => p.courses.data) ?? [],
+    [data],
+  );
 
-      // Store categories from first page fetch
-      if (course_categories && course_categories.length > 0 && pageNum === 1) {
-        setCategories(course_categories);
-      }
+  // Categories only come back on page 1
+  const categories = data?.pages[0]?.course_categories ?? [];
 
-      if (shouldAppend) {
-        setCourses((prev) => [...prev, ...newCourses]);
-      } else {
-        setCourses(newCourses);
-      }
-
-      setHasMore(paginatedCourses.next_page_url != null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [activeTab, activeCategory]);
-
-  // Initial fetch & refetch on tab/category change
-  useEffect(() => {
-    setPage(1);
-    setHasMore(true);
-    setCourses([]);
-    fetchCourses(1, false);
-  }, [activeTab, activeCategory, fetchCourses]);
-
-  // Clean up search timeout on unmount
-  useEffect(() => {
-    return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
-  }, []);
-
-  // Debounced search
-  const handleSearchChange = (text: string) => {
-    setSearch(text);
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(() => {
-      setPage(1);
-      setHasMore(true);
-      setCourses([]);
-      fetchCourses(1, false);
-    }, 400);
-  };
+  // Initial-load state vs. refresh state — courses.length distinguishes them
+  const showInitialLoading = isLoading && courses.length === 0;
+  const isRefreshing = isFetching && !isFetchingNextPage && courses.length > 0;
+  const errorMessage = error instanceof Error ? error.message : null;
 
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
 
   const handleRefresh = () => {
-    setPage(1);
-    setHasMore(true);
-    fetchCourses(1, false);
+    refetch();
   };
 
   const handleLoadMore = () => {
-    if (!loading && !refreshing && hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchCourses(nextPage, true);
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
   };
 
@@ -216,13 +187,13 @@ export default function CoursesListScreen() {
               placeholder="Search courses..."
               placeholderTextColor={themeColors.textTertiary}
               value={search}
-              onChangeText={handleSearchChange}
+              onChangeText={setSearch}
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="search"
             />
             {search.length > 0 && (
-              <Pressable onPress={() => { setSearch(''); handleSearchChange(''); }}>
+              <Pressable onPress={() => setSearch('')}>
                 <Ionicons name="close-circle" size={18} color={themeColors.textTertiary} />
               </Pressable>
             )}
@@ -272,17 +243,17 @@ export default function CoursesListScreen() {
         )}
 
         {/* Error State */}
-        {error && !loading && courses.length === 0 && (
-          <ErrorMessage message={error} onRetry={handleRefresh} />
+        {errorMessage && courses.length === 0 && (
+          <ErrorMessage message={errorMessage} onRetry={handleRefresh} />
         )}
 
         {/* Loading State */}
-        {loading && courses.length === 0 && !error && (
+        {showInitialLoading && !errorMessage && (
           <LoadingSpinner message="Loading courses..." />
         )}
 
         {/* Courses List */}
-        {(courses.length > 0 || (!loading && !error)) && (
+        {(courses.length > 0 || (!showInitialLoading && !errorMessage)) && (
           <FlashList
             data={courses}
             renderItem={({ item }) => (
@@ -293,24 +264,24 @@ export default function CoursesListScreen() {
             onEndReachedThreshold={0.5}
             refreshControl={
               <RefreshControl
-                refreshing={refreshing}
+                refreshing={isRefreshing}
                 onRefresh={handleRefresh}
                 tintColor={themeColors.primary}
                 colors={[themeColors.primary]}
               />
             }
             ListEmptyComponent={
-              !loading && !error ? (
+              !showInitialLoading && !errorMessage ? (
                 <EmptyState
                   icon="school-outline"
                   message={activeTab === 'enrolled'
                     ? 'You haven\'t enrolled in any courses yet'
-                    : search ? 'No courses found' : 'No courses available'}
+                    : debouncedSearch ? 'No courses found' : 'No courses available'}
                 />
               ) : null
             }
             ListFooterComponent={
-              loading && page > 1 ? (
+              isFetchingNextPage ? (
                 <View style={styles.footerLoader}>
                   <ActivityIndicator size="small" color={themeColors.primary} />
                 </View>

@@ -5,7 +5,7 @@
 // Modal, because RN Modal creates an Android Dialog that blocks WebView touches.
 // =============================================================================
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -24,7 +24,6 @@ import * as Clipboard from 'expo-clipboard';
 import { hapticLight, hapticWarning } from '@/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFeatures } from '@/contexts/AppConfigContext';
 import { spacing, typography, sizing } from '@/constants/layout';
@@ -46,11 +45,11 @@ import { GifPickerModal } from '@/components/composer/GifPickerModal';
 import { GifAttachment } from '@/types/gif';
 import { MediaViewer } from '@/components/media/MediaViewer';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
-import { HtmlContent } from '@/components/common/HtmlContent';
 import { CommentItem } from './CommentItem';
 import { useAuth } from '@/contexts/AuthContext';
 import { SITE_URL } from '@/constants/config';
 import { createLogger } from '@/utils/logger';
+import { useAppQuery } from '@/hooks/useAppQuery';
 
 const log = createLogger('Comments');
 
@@ -71,22 +70,25 @@ interface AttachedImage {
   height: number;
 }
 
+// Cache shape for TanStack Query — fetcher pre-flattens replies into the list
+// so the UI can consume `comments` directly without any per-render walking.
+interface CommentsCache {
+  comments: Comment[];
+  sticky_comment: Comment | null;
+}
+
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
 export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: CommentSheetProps) {
-  const router = useRouter();
   const { user } = useAuth();
   const { colors: themeColors } = useTheme();
   const features = useFeatures();
   const { width: windowWidth } = useWindowDimensions();
   // Comment content width: window - list padding(16*2) - avatar(32) - avatar margin(12)
   const commentContentWidth = windowWidth - spacing.lg * 2 - sizing.avatar.sm - spacing.md;
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [stickyComment, setStickyComment] = useState<Comment | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
 
   // Comment input state
@@ -114,52 +116,46 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   const commentEditor = useThemedEditor({ placeholder: 'Write a comment...' });
 
   // ---------------------------------------------------------------------------
-  // Fetch Comments
+  // Comments Query — TanStack Query handles fetch, cache, MMKV persistence,
+  // and refetch on app focus. Re-entering a post renders comments instantly
+  // from cache while a background revalidation runs.
   // ---------------------------------------------------------------------------
 
-  const fetchComments = async () => {
-    if (!postId) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await commentsApi.getComments(postId);
-
+  const {
+    data,
+    isLoading: loading,
+    error: queryError,
+    mutate: mutateComments,
+    refresh: refreshComments,
+  } = useAppQuery<CommentsCache>({
+    cacheKey: `tbc_comments_${postId ?? 'none'}`,
+    enabled: !!postId,
+    fetcher: async () => {
+      const response = await commentsApi.getComments(postId!);
       if (!response.success) {
-        setError(response.error?.message || 'Failed to load comments');
-        return;
+        throw new Error(response.error?.message || 'Failed to load comments');
       }
 
-      // Handle pinned comment (FC 2.2.01+)
-      setStickyComment(response.data.sticky_comment || null);
-
-      // Flatten nested comments for display
-      const allComments: Comment[] = [];
-
-      response.data.comments?.forEach((comment: Comment) => {
-        allComments.push(comment);
-        // Add replies after parent
-        if (comment.replies && comment.replies.length > 0) {
-          comment.replies.forEach((reply: Comment) => {
-            allComments.push(reply);
-          });
+      // Flatten parent + replies (FC nests one level only) so the UI can
+      // render the list with no per-render walking.
+      const flat: Comment[] = [];
+      for (const c of response.data.comments ?? []) {
+        flat.push(c);
+        if (c.replies?.length) {
+          for (const r of c.replies) flat.push(r);
         }
-      });
+      }
 
-      setComments(allComments);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return {
+        comments: flat,
+        sticky_comment: response.data.sticky_comment ?? null,
+      };
+    },
+  });
 
-  useEffect(() => {
-    if (postId) {
-      fetchComments();
-    }
-  }, [postId]);
+  const comments = data?.comments ?? [];
+  const stickyComment = data?.sticky_comment ?? null;
+  const error = queryError ? queryError.message : null;
 
   // ---------------------------------------------------------------------------
   // Handle Image Pick
@@ -247,12 +243,18 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         });
 
         if (response.success) {
-          // Update local state
-          setComments(prev => prev.map(c =>
-            c.id === editingComment.id
-              ? { ...c, message: markdown, message_rendered: html }
-              : c
-          ));
+          // Patch the cached comment in place — covers both regular list and sticky slot.
+          mutateComments((prev) => prev ? {
+            ...prev,
+            comments: prev.comments.map(c =>
+              c.id === editingComment.id
+                ? { ...c, message: markdown, message_rendered: html }
+                : c
+            ),
+            sticky_comment: prev.sticky_comment?.id === editingComment.id
+              ? { ...prev.sticky_comment, message: markdown, message_rendered: html }
+              : prev.sticky_comment,
+          } : prev);
           commentEditor.setContent('');
           setEditingComment(null);
         } else {
@@ -309,8 +311,8 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
         setAttachedImages([]);
         setGifAttachment(null);
         setReplyingTo(null);
-        // Refresh comments
-        fetchComments();
+        // Refetch so the new comment shows up with its server-assigned id, timestamp, etc.
+        refreshComments();
         cacheEvents.emit(CACHE_EVENTS.FEEDS);
       } else {
         throw new Error(response.error?.message || 'Failed to post comment');
@@ -361,50 +363,55 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
 
     const hasReacted = !!(comment.has_user_react || comment.user_reaction_type);
     const currentType = comment.user_reaction_type || null;
-    const isSameType = hasReacted && currentType === reactionType;
-    const willRemove = isSameType;
+    const willRemove = hasReacted && currentType === reactionType;
 
-    // Optimistic update
-    setComments(prevComments =>
-      prevComments.map(c => {
-        if (c.id !== comment.id) return c;
+    // Pure transform applied to both the list and the sticky slot — keeps cache writes symmetrical.
+    const applyReactionToggle = (c: Comment): Comment => {
+      if (c.id !== comment.id) return c;
+      const currentCount = typeof c.reactions_count === 'string'
+        ? parseInt(c.reactions_count, 10)
+        : c.reactions_count || 0;
 
-        const currentCount = typeof c.reactions_count === 'string'
-          ? parseInt(c.reactions_count, 10)
-          : c.reactions_count || 0;
+      if (willRemove) {
+        return {
+          ...c,
+          has_user_react: false,
+          user_reaction_type: null,
+          user_reaction_icon_url: null,
+          user_reaction_name: null,
+          reactions_count: currentCount - 1,
+          reaction_total: currentCount - 1,
+        };
+      }
+      return {
+        ...c,
+        has_user_react: true,
+        user_reaction_type: reactionType,
+        user_reaction_icon_url: null,
+        user_reaction_name: null,
+        reactions_count: hasReacted ? currentCount : currentCount + 1,
+        reaction_total: hasReacted ? currentCount : currentCount + 1,
+      };
+    };
 
-        if (willRemove) {
-          return {
-            ...c,
-            has_user_react: false,
-            user_reaction_type: null,
-            user_reaction_icon_url: null,
-            user_reaction_name: null,
-            reactions_count: currentCount - 1,
-            reaction_total: currentCount - 1,
-          };
-        } else {
-          return {
-            ...c,
-            has_user_react: true,
-            user_reaction_type: reactionType,
-            user_reaction_icon_url: null,
-            user_reaction_name: null,
-            reactions_count: hasReacted ? currentCount : currentCount + 1,
-            reaction_total: hasReacted ? currentCount : currentCount + 1,
-          };
-        }
-      })
-    );
+    // Optimistic update — both list and sticky slot
+    mutateComments((prev) => prev ? {
+      ...prev,
+      comments: prev.comments.map(applyReactionToggle),
+      sticky_comment: prev.sticky_comment ? applyReactionToggle(prev.sticky_comment) : prev.sticky_comment,
+    } : prev);
 
     try {
       await commentsApi.reactToComment(postId, comment.id, willRemove);
     } catch (err) {
       log.error(err, 'Reaction error');
-      // Revert on error
-      setComments(prevComments =>
-        prevComments.map(c => c.id === comment.id ? comment : c)
-      );
+      // Restore the original comment on failure
+      const restoreOriginal = (c: Comment): Comment => c.id === comment.id ? comment : c;
+      mutateComments((prev) => prev ? {
+        ...prev,
+        comments: prev.comments.map(restoreOriginal),
+        sticky_comment: prev.sticky_comment ? restoreOriginal(prev.sticky_comment) : prev.sticky_comment,
+      } : prev);
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update reaction');
     }
   };
@@ -499,8 +506,12 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
               const response = await commentsApi.deleteComment(postId, comment.id);
 
               if (response.success) {
-                // Remove from local state
-                setComments(prev => prev.filter(c => c.id !== comment.id));
+                // Drop from list, and clear the sticky slot if the pinned comment was deleted.
+                mutateComments((prev) => prev ? {
+                  ...prev,
+                  comments: prev.comments.filter(c => c.id !== comment.id),
+                  sticky_comment: prev.sticky_comment?.id === comment.id ? null : prev.sticky_comment,
+                } : prev);
                 cacheEvents.emit(CACHE_EVENTS.FEEDS);
               } else {
                 Alert.alert('Error', response.error?.message || 'Failed to delete');
@@ -531,7 +542,9 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
     try {
       const response = await commentsApi.pinComment(postId, comment.id, !isPinned);
       if (response.success) {
-        fetchComments(); // Refresh to get updated sticky state
+        // Pin/unpin moves the comment between the regular list and the sticky slot
+        // and the server picks the new ordering — refetch for authoritative state.
+        refreshComments();
       } else {
         Alert.alert('Error', response.error?.message || 'Failed to update pin');
       }
@@ -597,7 +610,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
             ) : error ? (
               <View style={styles.centered}>
                 <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-                <Button title="Try Again" onPress={fetchComments} style={styles.retryButton} />
+                <Button title="Try Again" onPress={refreshComments} style={styles.retryButton} />
               </View>
             ) : comments.length === 0 && !stickyComment ? (
               <View style={styles.centered}>

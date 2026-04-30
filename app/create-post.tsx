@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CreatePostContent, ComposerSubmitData } from '@/components/composer/CreatePostContent';
@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Feed } from '@/types/feed';
 import { feedsApi } from '@/services/api/feeds';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
+import { useAppQuery } from '@/hooks/useAppQuery';
 
 export default function CreatePostScreen() {
   const { spaceSlug, spaceName, editId } = useLocalSearchParams<{
@@ -17,22 +18,34 @@ export default function CreatePostScreen() {
   const router = useRouter();
   const { colors: themeColors } = useTheme();
 
-  // Edit mode: fetch feed data by ID
-  const [editFeed, setEditFeed] = useState<Feed | null>(null);
-  const [loading, setLoading] = useState(!!editId);
-
-  useEffect(() => {
-    if (!editId) return;
-    feedsApi.getFeedById(Number(editId)).then(res => {
-      if (res.success && res.data?.feed) {
-        setEditFeed(res.data.feed);
-      } else {
-        Alert.alert('Error', 'Could not load post for editing');
-        router.back();
+  // Edit mode: fetch feed data by ID via TanStack Query (cached + persisted).
+  // Re-entry to the same edit screen renders the form instantly from cache.
+  const {
+    data: editFeed,
+    isLoading: loading,
+    error: loadError,
+  } = useAppQuery<Feed>({
+    cacheKey: `tbc_feed_edit_${editId || 'none'}`,
+    enabled: !!editId,
+    fetcher: async () => {
+      const res = await feedsApi.getFeedById(Number(editId));
+      if (!res.success) {
+        throw new Error(res.error?.message || 'Could not load post for editing');
       }
-      setLoading(false);
-    });
-  }, [editId]);
+      if (!res.data?.feed) {
+        throw new Error('Could not load post for editing');
+      }
+      return res.data.feed;
+    },
+  });
+
+  // Bail out on load failure — same UX as before, but now actually catches
+  // network errors (the previous .then-only chain swallowed them).
+  useEffect(() => {
+    if (!loadError) return;
+    Alert.alert('Error', 'Could not load post for editing');
+    router.back();
+  }, [loadError, router]);
 
   // Submit handler
   const handleSubmit = async (data: ComposerSubmitData) => {

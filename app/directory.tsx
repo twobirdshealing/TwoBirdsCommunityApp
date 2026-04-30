@@ -3,15 +3,18 @@
 // =============================================================================
 // Route: /directory
 // Features:
-// - Search members by name/username
+// - Search members by name/username (debounced)
 // - Sort via gear menu: Joining Date (default), Last Activity, Display Name
 // - Infinite scroll with pull-to-refresh
 // - Follow/unfollow, message, view profile
+//
+// Data layer: TanStack Query useInfiniteQuery — pages cached + persisted (MMKV),
+// so re-entry renders instantly from cache while revalidating in background.
 // =============================================================================
 
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -22,6 +25,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useInfiniteQuery } from '@tanstack/react-query';
 
 import { MemberCard, type MemberCardData } from '@/components/member/MemberCard';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
@@ -37,6 +41,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { membersApi } from '@/services/api/members';
 import { useFeatures } from '@/contexts/AppConfigContext';
 import { useFollowToggle } from '@/hooks/useFollowToggle';
+import { useDebounce } from '@/hooks/useDebounce';
+import type { MembersListResponse } from '@/types/space';
 
 // -----------------------------------------------------------------------------
 // Sort Options
@@ -49,6 +55,8 @@ const SORT_CONFIG: { key: SortOption; label: string; icon: keyof typeof Ionicons
   { key: 'last_activity', label: 'Last Activity', icon: 'time-outline' },
   { key: 'display_name', label: 'Display Name', icon: 'text-outline' },
 ];
+
+const PER_PAGE = 20;
 
 // -----------------------------------------------------------------------------
 // Helpers
@@ -72,119 +80,107 @@ export default function MemberDirectoryScreen() {
   const { user: currentUser } = useAuth();
   const { colors: themeColors } = useTheme();
 
-  // Data state
-  const [members, setMembers] = useState<MemberCardData[]>([]);
-  const [total, setTotal] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-
   // Search & Sort
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('created_at');
   const [showSortMenu, setShowSortMenu] = useState(false);
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedSearch = useDebounce(search.trim(), 400);
 
   // Features & Follow state
   const features = useFeatures();
-  const { followMap, setFollowMap, followLoadingMap, handleFollowPress, handleNotifyPress, isFollowing, isNotifyOn, isFollowLoading } = useFollowToggle();
+  const { setFollowMap, handleFollowPress, handleNotifyPress, isFollowing, isNotifyOn, isFollowLoading } = useFollowToggle();
 
   // ---------------------------------------------------------------------------
-  // Fetch Members
+  // Infinite Query
   // ---------------------------------------------------------------------------
 
-  const fetchMembers = async (pageNum: number = 1, shouldAppend: boolean = false) => {
-    if ((loading || refreshing) && pageNum !== 1) return;
+  const queryKey = useMemo(
+    () => ['members', sortBy, debouncedSearch] as const,
+    [sortBy, debouncedSearch],
+  );
 
-    try {
-      if (pageNum === 1) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
-
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    refetch,
+    error,
+  } = useInfiniteQuery<MembersListResponse, Error>({
+    queryKey,
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const page = pageParam as number;
       const response = await membersApi.getMembers({
-        page: pageNum,
-        per_page: 20,
+        page,
+        per_page: PER_PAGE,
         sort_by: sortBy,
-        ...(search.trim() && { search: search.trim() }),
+        ...(debouncedSearch && { search: debouncedSearch }),
       });
-
       if (!response.success) {
-        setError(response.error?.message || 'Failed to load members');
-        return;
+        throw new Error(response.error?.message || 'Failed to load members');
       }
+      return response.data;
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const m = lastPage.members;
+      const pageData = m?.data || [];
+      // API may not include next_page_url — fall back to length check (full page = probably more)
+      const hasMore = m?.next_page_url != null || pageData.length === PER_PAGE;
+      if (!hasMore) return undefined;
+      return (m?.current_page ?? allPages.length) + 1;
+    },
+  });
 
-      const apiData = response.data;
+  // Flatten pages into one list for FlashList
+  const members: MemberCardData[] = useMemo(
+    () => data?.pages.flatMap((p) => p.members?.data ?? []) ?? [],
+    [data],
+  );
 
-      // Extract members from nested structure: { members: { data: [...] } }
-      const newMembers: MemberCardData[] = apiData.members?.data || [];
+  // Total comes from page 1 (or any page that has it)
+  const total = data?.pages[0]?.members?.total ?? data?.pages[0]?.meta?.total ?? null;
 
-      if (shouldAppend) {
-        setMembers((prev) => [...prev, ...newMembers]);
-      } else {
-        setMembers(newMembers);
-      }
-
-      if (typeof apiData.members?.total === 'number') {
-        setTotal(apiData.members.total);
-      }
-
-      // Extract follow state if present
-      if (apiData.current_user_follows) {
-        setFollowMap(prev => ({ ...prev, ...apiData.current_user_follows }));
-      }
-
-      // Check if more pages exist
-      const hasMorePages = apiData.members?.next_page_url != null || newMembers.length === 20;
-      setHasMore(hasMorePages);
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  // Initial fetch & refetch on sort change
+  // Merge follow state from each page into useFollowToggle's local map.
+  // Returns the previous reference unchanged when nothing differs so we don't
+  // churn followMap identity on every refetch (which would re-render every consumer).
   useEffect(() => {
-    setPage(1);
-    setHasMore(true);
-    fetchMembers(1, false);
-  }, [sortBy]);
-
-  // Debounced search
-  const handleSearchChange = (text: string) => {
-    setSearch(text);
-    if (searchTimeout.current) {
-      clearTimeout(searchTimeout.current);
+    if (!data) return;
+    const merged: Record<number, number> = {};
+    for (const page of data.pages) {
+      if (page.current_user_follows) {
+        Object.assign(merged, page.current_user_follows);
+      }
     }
-    searchTimeout.current = setTimeout(() => {
-      setPage(1);
-      setHasMore(true);
-      fetchMembers(1, false);
-    }, 400);
-  };
+    if (Object.keys(merged).length === 0) return;
+    setFollowMap((prev) => {
+      for (const k in merged) {
+        if (prev[k] !== merged[k]) {
+          return { ...prev, ...merged };
+        }
+      }
+      return prev;
+    });
+  }, [data, setFollowMap]);
+
+  // Initial-load state vs. refresh state
+  const showInitialLoading = isLoading && members.length === 0;
+  const isRefreshing = isFetching && !isFetchingNextPage && members.length > 0;
+  const errorMessage = error instanceof Error ? error.message : null;
 
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
 
   const handleRefresh = () => {
-    setPage(1);
-    setHasMore(true);
-    fetchMembers(1, false);
+    refetch();
   };
 
   const handleLoadMore = () => {
-    if (!loading && !refreshing && hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchMembers(nextPage, true);
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
   };
 
@@ -221,7 +217,7 @@ export default function MemberDirectoryScreen() {
     () =>
       SORT_CONFIG.map((option) => ({
         key: option.key,
-        label: sortBy === option.key ? `${option.label}  \u2713` : option.label,
+        label: sortBy === option.key ? `${option.label}  ✓` : option.label,
         icon: option.icon,
         onPress: () => {
           setSortBy(option.key);
@@ -268,13 +264,13 @@ export default function MemberDirectoryScreen() {
               placeholder="Search Members..."
               placeholderTextColor={themeColors.textTertiary}
               value={search}
-              onChangeText={handleSearchChange}
+              onChangeText={setSearch}
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="search"
             />
             {search.length > 0 && (
-              <Pressable onPress={() => { setSearch(''); handleSearchChange(''); }}>
+              <Pressable onPress={() => setSearch('')}>
                 <Ionicons name="close-circle" size={18} color={themeColors.textTertiary} />
               </Pressable>
             )}
@@ -282,17 +278,17 @@ export default function MemberDirectoryScreen() {
         </View>
 
         {/* Error State */}
-        {error && !loading && members.length === 0 && (
-          <ErrorMessage message={error} onRetry={handleRefresh} />
+        {errorMessage && members.length === 0 && (
+          <ErrorMessage message={errorMessage} onRetry={handleRefresh} />
         )}
 
         {/* Loading State */}
-        {loading && members.length === 0 && !error && (
+        {showInitialLoading && !errorMessage && (
           <LoadingSpinner message="Loading members..." />
         )}
 
         {/* Members List */}
-        {(members.length > 0 || (!loading && !error)) && (
+        {(members.length > 0 || (!showInitialLoading && !errorMessage)) && (
           <FlashList
             data={members}
             contentContainerStyle={{ paddingBottom: insets.bottom }}
@@ -326,22 +322,22 @@ export default function MemberDirectoryScreen() {
             onEndReachedThreshold={0.5}
             refreshControl={
               <RefreshControl
-                refreshing={refreshing}
+                refreshing={isRefreshing}
                 onRefresh={handleRefresh}
                 tintColor={themeColors.primary}
                 colors={[themeColors.primary]}
               />
             }
             ListEmptyComponent={
-              !loading && !error ? (
+              !showInitialLoading && !errorMessage ? (
                 <EmptyState
                   icon="people-outline"
-                  message={search ? 'No members found' : 'No members yet'}
+                  message={debouncedSearch ? 'No members found' : 'No members yet'}
                 />
               ) : null
             }
             ListFooterComponent={
-              loading && page > 1 ? (
+              isFetchingNextPage ? (
                 <View style={styles.footerLoader}>
                   <ActivityIndicator size="small" color={themeColors.primary} />
                 </View>

@@ -5,7 +5,7 @@
 // Fetches current profile, renders editable form, saves via single POST
 // =============================================================================
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -26,6 +26,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { profilesApi, patchProfileMedia } from '@/services/api/profiles';
 import { showAvatarPicker, showCoverPicker } from '@/utils/avatarPicker';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
+import { useAppQuery } from '@/hooks/useAppQuery';
 import { Profile, NativeCustomField } from '@/types/user';
 import { SocialLinksForm } from '@/components/common/SocialLinksForm';
 import { ProfilePhotoPicker } from '@/components/common/ProfilePhotoPicker';
@@ -67,8 +68,6 @@ export default function EditProfileScreen() {
   const username = currentUser?.username || '';
 
   // State
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -95,61 +94,73 @@ export default function EditProfileScreen() {
   const [selectModalField, setSelectModalField] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
-  // Load Profile
+  // Load Profile (TanStack Query — instant render from cache + revalidate)
   // ---------------------------------------------------------------------------
 
-  useEffect(() => {
-    if (!username) return;
-
-    (async () => {
-      try {
-        setLoading(true);
-        const response = await profilesApi.getProfile(username);
-
-        if (response.success && response.data.profile) {
-          const p = response.data.profile;
-          setProfile(p);
-
-          // Pre-populate custom fields from FC native custom_field_groups
-          // Note: can't reuse the memoized nativeFieldsMap here — this runs in an async
-          // callback before setProfile, so the memo hasn't updated yet.
-          const customValues: Record<string, any> = {};
-          if (p.custom_field_groups) {
-            for (const group of p.custom_field_groups) {
-              for (const field of group.fields) {
-                if (!field.is_enabled) continue;
-                customValues[field.slug] = field.value || '';
-              }
-            }
-          }
-
-          // Build social links from profile data using dynamic provider keys
-          const profileSocial = p.social_links || p.meta?.social_links || {};
-          const sl: Record<string, string> = {};
-          for (const provider of providers) {
-            sl[provider.key] = profileSocial[provider.key] || '';
-          }
-
-          setFormData({
-            first_name: p.first_name || '',
-            last_name: p.last_name || '',
-            email: p.email || '',
-            username: p.username || '',
-            short_description: p.short_description || '',
-            website: p.website || p.meta?.website || '',
-            social_links: sl,
-            custom_fields: customValues,
-          });
-        }
-      } catch (err) {
-        log.error(err, 'Failed to load profile for edit');
-        Alert.alert('Error', 'Failed to load profile.');
-        router.back();
-      } finally {
-        setLoading(false);
+  const {
+    data: profile,
+    isLoading: loading,
+    error: loadError,
+    mutate: mutateProfile,
+  } = useAppQuery<Profile>({
+    cacheKey: `tbc_profile_edit_${username}`,
+    enabled: !!username,
+    fetcher: async () => {
+      const response = await profilesApi.getProfile(username);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to load profile');
       }
-    })();
-  }, [username]);
+      if (!response.data.profile) {
+        throw new Error('Failed to load profile');
+      }
+      return response.data.profile;
+    },
+  });
+
+  // Surface load failure once, then bail out — same UX as before
+  useEffect(() => {
+    if (!loadError) return;
+    log.error(loadError, 'Failed to load profile for edit');
+    Alert.alert('Error', 'Failed to load profile.');
+    router.back();
+  }, [loadError, router]);
+
+  // Populate form data once when profile first arrives. We deliberately do NOT
+  // rebuild the form on later refetches — that would wipe the user's edits.
+  const formInitializedRef = useRef(false);
+  useEffect(() => {
+    if (!profile || formInitializedRef.current) return;
+
+    // Pre-populate custom fields from FC native custom_field_groups
+    const customValues: Record<string, any> = {};
+    if (profile.custom_field_groups) {
+      for (const group of profile.custom_field_groups) {
+        for (const field of group.fields) {
+          if (!field.is_enabled) continue;
+          customValues[field.slug] = field.value || '';
+        }
+      }
+    }
+
+    // Build social links from profile data using dynamic provider keys
+    const profileSocial = profile.social_links || profile.meta?.social_links || {};
+    const sl: Record<string, string> = {};
+    for (const provider of providers) {
+      sl[provider.key] = profileSocial[provider.key] || '';
+    }
+
+    setFormData({
+      first_name: profile.first_name || '',
+      last_name: profile.last_name || '',
+      email: profile.email || '',
+      username: profile.username || '',
+      short_description: profile.short_description || '',
+      website: profile.website || profile.meta?.website || '',
+      social_links: sl,
+      custom_fields: customValues,
+    });
+    formInitializedRef.current = true;
+  }, [profile, providers]);
 
   // ---------------------------------------------------------------------------
   // Field helpers
@@ -205,9 +216,7 @@ export default function EditProfileScreen() {
         }
         setAvatarUploading(false);
         setLocalAvatar(null);
-        if (profile) {
-          setProfile({ ...profile, avatar: remoteUrl });
-        }
+        mutateProfile((prev) => (prev ? { ...prev, avatar: remoteUrl } : prev));
         await updateUser({ avatar: remoteUrl });
         cacheEvents.emit(CACHE_EVENTS.PROFILE);
       },
@@ -235,9 +244,7 @@ export default function EditProfileScreen() {
         }
         setCoverUploading(false);
         setLocalCover(null);
-        if (profile) {
-          setProfile({ ...profile, cover_photo: remoteUrl });
-        }
+        mutateProfile((prev) => (prev ? { ...prev, cover_photo: remoteUrl } : prev));
         cacheEvents.emit(CACHE_EVENTS.PROFILE);
       },
       onError: (message) => {
