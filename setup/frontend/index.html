@@ -873,6 +873,52 @@
     </div>
   </div>
 
+  <div class="card" id="section-ota-updates">
+    <div class="card-header"><h3>OTA Updates</h3><span class="badge" style="color:var(--text-muted)">app.json</span></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-secondary);margin:0 0 16px 0">
+        Push JS-only updates to users without a store build. The URL below is baked into your native build by <code>expo-updates</code> — if it doesn't match your EAS Project ID, devices can't fetch updates from this build.
+      </p>
+      <template x-if="!config.easProjectId">
+        <div style="padding:12px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);font-size:13px;color:var(--text-muted)">
+          Set up your EAS Project ID in <strong>Build Service</strong> above first. The OTA URL is auto-derived from it.
+        </div>
+      </template>
+      <template x-if="config.easProjectId">
+        <div>
+          <div class="field-group">
+            <div class="field">
+              <label>Updates URL <span class="file-hint">expo.updates.url</span></label>
+              <input type="text" x-bind:value="config.easUpdatesUrl" readonly class="locked">
+              <template x-if="otaUrlOk">
+                <span class="derive-hint">Auto-derived from EAS Project ID</span>
+              </template>
+              <template x-if="!otaUrlOk">
+                <div class="field-alert" style="color:var(--red,#dc2626)">
+                  <ion-icon name="alert-circle-outline" style="font-size:12px;vertical-align:middle"></ion-icon>
+                  URL doesn't match your EAS Project ID — click <strong>Re-sync OTA Settings</strong> to fix.
+                </div>
+              </template>
+            </div>
+            <div class="field">
+              <label>Runtime Version Policy <span class="file-hint">expo.runtimeVersion</span></label>
+              <input type="text" x-bind:value="config.runtimeVersionPolicy" readonly class="locked">
+            </div>
+            <div class="field">
+              <label>Branch</label>
+              <input type="text" value="production" readonly class="locked">
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn btn-sm" x-on:click="otaResync()" x-bind:disabled="otaResyncing"
+                    x-text="otaResyncing ? 'Syncing...' : 'Re-sync OTA Settings'">Re-sync OTA Settings</button>
+            <span class="derive-hint" style="margin-left:8px">Re-derives <code>updates.url</code> from your EAS Project ID. Required after a manual <code>app.json</code> edit.</span>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
   <div class="card" id="section-app-store-submission">
     <div class="card-header"><h3>App Store Submission</h3><span class="badge" style="color:var(--text-muted)">eas.json</span></div>
     <div class="card-body">
@@ -1879,7 +1925,7 @@
       <!-- Update progress (download → apply → install → ready) -->
       <div x-show="['applying','installing','ready'].includes(updateState.state)" class="update-progress">
         <div class="step" x-bind:class="stepClass(1)">
-          <span x-text="updateState.step > 1 ? '✓ Downloaded' : (updateState.step === 1 ? '⟳ Downloading...' : 'Download')"></span>
+          <span x-text="updateState.step > 1 ? '✓ ' + (updateState.source === 'manual' ? 'Uploaded' : 'Downloaded') : (updateState.step === 1 ? '⟳ ' + (updateState.source === 'manual' ? 'Uploading...' : 'Downloading...') : 'Download')"></span>
         </div>
         <div class="step" x-bind:class="stepClass(2)">
           <span x-text="updateState.step > 2 ? '✓ ' + updateState.filesWritten + ' files updated' : (updateState.step === 2 ? '⟳ Applying...' : 'Apply files')"></span>
@@ -1894,14 +1940,6 @@
       </div>
       <!-- Checking -->
       <div x-show="updateState.state === 'checking'" style="color:var(--text-muted)"><span class="spinner"></span> Checking...</div>
-      <!-- Manual update status -->
-      <div x-show="manualUpdate.state === 'uploading'" style="color:var(--text-muted)"><span class="spinner"></span> Applying <span x-text="manualUpdate.fileName"></span>...</div>
-      <div x-show="manualUpdate.state === 'done'" style="color:var(--green)">
-        <ion-icon name="checkmark-circle" style="font-size:14px;vertical-align:middle;margin-right:4px"></ion-icon>
-        <span x-text="manualUpdate.filesWritten + ' files updated'"></span>
-        <template x-if="manualUpdate.newVersion"> — v<span x-text="manualUpdate.newVersion"></span></template>
-      </div>
-      <div x-show="manualUpdate.state === 'error'" style="color:var(--red)" x-text="'Upload failed: ' + manualUpdate.error"></div>
     </div>
 
     <!-- Core companion plugin -->
@@ -1955,25 +1993,13 @@
       <template x-if="mod.companionPlugin">
         <div style="padding:6px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)">
           <ion-icon name="information-circle-outline" style="font-size:14px;vertical-align:middle;margin-right:4px"></ion-icon>
-          WP Plugin: <strong x-text="mod.companionPlugin"></strong> — install on your WordPress site
+          Companion plugin: <strong x-text="mod.companionPlugin"></strong> — install on your WordPress site
         </div>
       </template>
 
-      <!-- Module update available -->
-      <template x-if="moduleUpdates[mod.id]">
-        <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px" class="update-available">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            <span style="color:var(--accent);font-weight:600" x-text="'Update available: v' + moduleUpdates[mod.id].version"></span>
-            <span style="color:var(--text-muted)" x-text="moduleUpdates[mod.id].date || ''"></span>
-          </div>
-          <div x-show="moduleUpdates[mod.id].changelog" style="max-height:80px;overflow-y:auto;font-size:11px;color:var(--text-secondary);margin-bottom:6px" x-html="sanitizeHtml(moduleUpdates[mod.id].changelog)"></div>
-          <button class="btn btn-sm btn-primary" x-on:click="$refs.installModuleInput.click()" x-text="'Update to v' + moduleUpdates[mod.id].version">Update</button>
-        </div>
-      </template>
-
-      <!-- Module license -->
+      <!-- Module license (mirrors core license row) -->
       <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <template x-if="!moduleLicenses[mod.id]">
+        <template x-if="!mls(mod.id).state">
           <div style="display:flex;align-items:center;gap:8px;flex:1">
             <input type="text" class="input" placeholder="License key (optional)" spellcheck="false"
                    x-model="modLicenseInputs[mod.id]"
@@ -1981,15 +2007,38 @@
             <button class="btn btn-sm btn-primary" x-on:click="activateModuleLicense(mod.id)">Activate</button>
           </div>
         </template>
-        <template x-if="moduleLicenses[mod.id]">
+        <template x-if="mls(mod.id).state">
           <div style="display:flex;align-items:center;gap:8px;flex:1">
-            <span style="color:var(--green)">
-              <ion-icon name="checkmark-circle" style="font-size:14px;vertical-align:middle"></ion-icon> Licensed
+            <span x-show="mls(mod.id).state === 'checking'" style="color:var(--text-muted)">Checking...</span>
+            <span x-show="mls(mod.id).state === 'valid'" style="color:var(--green)">
+              <ion-icon name="checkmark-circle" style="font-size:14px;vertical-align:middle"></ion-icon>
+              Licensed<span x-show="mls(mod.id).plan" x-text="' · ' + mls(mod.id).plan"></span><span x-show="mls(mod.id).expiry" x-text="' · Expires ' + mls(mod.id).expiry"></span>
             </span>
+            <span x-show="mls(mod.id).state === 'invalid'" style="color:var(--red)" x-text="mls(mod.id).error"></span>
             <button class="btn btn-sm btn-danger-subtle" x-on:click="removeModuleLicense(mod.id)">Remove</button>
           </div>
         </template>
       </div>
+
+      <!-- Module update status (mirrors core update status row; only shown when licensed) -->
+      <template x-if="mls(mod.id).state">
+        <div style="padding:8px 16px;border-top:1px solid var(--border);font-size:12px">
+          <div x-show="mus(mod.id).state === 'checking'" style="color:var(--text-muted)"><span class="spinner"></span> Checking...</div>
+          <div x-show="mus(mod.id).state === 'up-to-date'" style="color:var(--green)">
+            <ion-icon name="checkmark-circle" style="font-size:14px;vertical-align:middle;margin-right:4px"></ion-icon>
+            Up to date
+          </div>
+          <div x-show="mus(mod.id).state === 'error'" style="color:var(--red)" x-text="mus(mod.id).error"></div>
+          <div x-show="mus(mod.id).state === 'available'" class="update-available">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="color:var(--accent);font-weight:600" x-text="'Update available: v' + (mus(mod.id).version || '?')"></span>
+              <span style="color:var(--text-muted)" x-text="mus(mod.id).date || ''"></span>
+            </div>
+            <div x-show="mus(mod.id).changelog" x-html="sanitizeHtml(mus(mod.id).changelog)" style="max-height:120px;overflow-y:auto;margin-bottom:8px;font-size:11px;color:var(--text-secondary)"></div>
+            <button class="btn btn-sm btn-primary" x-on:click="$refs.installModuleInput.click()" x-text="'Update to v' + (mus(mod.id).version || '?')"></button>
+          </div>
+        </div>
+      </template>
       <div class="module-card-footer">
         <template x-if="mod.active"><button class="btn btn-sm" x-on:click="toggleMod(mod.id, false)">Deactivate</button></template>
         <template x-if="!mod.active"><button class="btn btn-sm btn-primary" x-on:click="toggleMod(mod.id, true)">Activate</button></template>
@@ -2369,11 +2418,20 @@ document.addEventListener('alpine:init', () => {
     otaHistoryBranchFilter: '',
     otaDeleteModal: { open: false, group: null },
     otaCurrentVersion: '',
+    otaResyncing: false,
+    get otaUrlOk() {
+      var pid = this.config.easProjectId || '';
+      var url = this.config.easUpdatesUrl || '';
+      return !!pid && url === 'https://u.expo.dev/' + pid;
+    },
 
-    // Module licenses + updates
-    moduleLicenses: {},
-    modLicenseInputs: {},
-    moduleUpdates: {},
+    // Module licenses + updates — single source of truth per module.
+    // Seeded with `state: 'checking'` by loadModuleLicenses (one entry per saved
+    // key in setup/.module-licenses.json), then populated with real values by
+    // /api/updates/check via showUpdateStatusFromData. Activation pre-populates
+    // license sub-state from the /activate response so there's no Checking flicker.
+    modLicenseInputs: {},  // bound input values for the activate flow
+    moduleStatus: {},      // { [modId]: { license: { state: ''|'checking'|'valid'|'invalid', plan, expiry, error }, update: { state: 'checking'|'up-to-date'|'available'|'error', version, date, changelog, downloadUrl, error } } }
 
     // Snapshot (Identity)
     identityDetailsOpen: false,
@@ -2400,8 +2458,7 @@ document.addEventListener('alpine:init', () => {
     licenseKeyInput: '',
     licenseStatus: { state: 'checking', cssClass: 'checking', plan: '', expiry: '', error: '' },
     updateChecking: false,
-    updateState: { state: 'no-license', currentVersion: '', version: '', date: '', sizeMB: '', changelog: '', downloadUrl: '', error: '', errorTitle: '', step: 0, filesWritten: 0 },
-    manualUpdate: { showUpload: true, state: 'idle', fileName: '', filesWritten: 0, newVersion: '', depsChanged: false, error: '' },
+    updateState: { state: 'no-license', currentVersion: '', version: '', date: '', sizeMB: '', changelog: '', downloadUrl: '', error: '', errorTitle: '', step: 0, filesWritten: 0, source: '' },
 
     // App Switcher
     appSwitcherOpen: false,
@@ -2589,8 +2646,14 @@ document.addEventListener('alpine:init', () => {
     },
 
     setUpdateState(patch) { this.updateState = Object.assign({}, this.updateState, patch); },
-    setManualState(patch) { this.manualUpdate = Object.assign({}, this.manualUpdate, patch); },
     stepClass(n) { var s = this.updateState.step; return s > n ? 'done' : (s === n ? 'active' : ''); },
+
+    // Per-module accessors. mls's empty default state ('') doubles as the
+    // "no license saved" signal — the markup uses `mls(mod.id).state` as the
+    // input-vs-license-row toggle. mus defaults to 'checking' since the update
+    // row only renders when licensed (so the missing-entry case is mid-fetch).
+    mls(modId) { var s = this.moduleStatus[modId]; return (s && s.license) || { state: '', plan: '', expiry: '', error: '' }; },
+    mus(modId) { var s = this.moduleStatus[modId]; return (s && s.update)  || { state: 'checking', version: '', date: '', changelog: '', downloadUrl: '', error: '' }; },
 
     // =========================================================================
     // Quick Commands
@@ -2618,6 +2681,9 @@ document.addEventListener('alpine:init', () => {
         this.originalValues.googlePlayTrack = state.config.googlePlayTrack || 'production';
         this.config.googlePlayKeyExists = state.config.googlePlayKeyExists || false;
         this.config.ascApiKeyExists = state.config.ascApiKeyExists || false;
+        // Read-only OTA fields — derived from app.json by state.js, displayed (locked) in the OTA Updates card
+        this.config.easUpdatesUrl = state.config.easUpdatesUrl || '';
+        this.config.runtimeVersionPolicy = state.config.runtimeVersionPolicy || '';
         // Auto-derive empty fields (don't set originalValues — so saveConfig detects them as changes)
         var self = this;
         Object.entries(this.deriveMap()).forEach(function(entry) {
@@ -3203,7 +3269,20 @@ bumpVersion(type) {
       try {
         var res = await fetch('/api/modules/licenses');
         var data = await res.json();
-        if (data.ok) this.moduleLicenses = data.licenses || {};
+        if (!data.ok) return;
+        // Seed a 'checking' placeholder for every saved key so the license row
+        // shows "Checking..." until /api/updates/check fills in plan/expiry.
+        // The guard avoids clobbering entries the bulk check has already populated
+        // (loadModuleLicenses and checkForUpdates fire concurrently on tab open).
+        var keys = data.licenses || {};
+        for (var modId in keys) {
+          if (!this.moduleStatus[modId]) {
+            this.moduleStatus[modId] = {
+              license: { state: 'checking', plan: '', expiry: '', error: '' },
+              update:  { state: 'checking', version: '', date: '', changelog: '', downloadUrl: '', error: '' }
+            };
+          }
+        }
       } catch {}
     },
 
@@ -3218,9 +3297,17 @@ bumpVersion(type) {
         });
         var data = await res.json();
         if (data.ok) {
-          this.moduleLicenses[modId] = key;
           this.modLicenseInputs[modId] = '';
+          // Pre-populate license sub-state from the activate response (server
+          // already validated against FluentCart) so the user sees the real
+          // "Licensed · plan · Expires …" immediately, no Checking flicker.
+          // Update sub-state stays 'checking' until the follow-up bulk check returns.
+          this.moduleStatus[modId] = {
+            license: { state: 'valid', plan: data.plan || '', expiry: data.expiresAt || '', error: '' },
+            update:  { state: 'checking', version: '', date: '', changelog: '', downloadUrl: '', error: '' }
+          };
           this.showToast('License activated for ' + modId, 'success');
+          this.checkForUpdates();
         } else this.showToast(data.error || 'Failed', 'error');
       } catch (err) { this.showToast('Error: ' + err.message, 'error'); }
     },
@@ -3232,7 +3319,7 @@ bumpVersion(type) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ moduleId: modId })
         });
-        delete this.moduleLicenses[modId];
+        delete this.moduleStatus[modId];
         this.showToast('License removed for ' + modId, 'success');
       } catch (err) { this.showToast('Error: ' + err.message, 'error'); }
     },
@@ -3543,6 +3630,24 @@ bumpVersion(type) {
       return [];
     },
 
+    async otaResync() {
+      this.otaResyncing = true;
+      try {
+        var res = await this.postJson('/api/ota/configure', {});
+        var data = await res.json();
+        if (data.ok) {
+          this.showToast('OTA settings synced', 'success');
+          this.loadState();
+        } else {
+          this.showToast('Sync failed: ' + (data.error || 'unknown'), 'error');
+        }
+      } catch (err) {
+        this.showToast('Sync error: ' + err.message, 'error');
+      } finally {
+        this.otaResyncing = false;
+      }
+    },
+
     async pushOTA() {
       if (!this.otaMessage.trim()) { this.showToast('Please enter a message describing what changed', 'error'); return; }
       if (!confirm('Push an OTA update to the "' + this.otaChannel + '" environment (' + this.otaPlatform + ')?\n\nThis will immediately push your current code to all users on this environment.')) return;
@@ -3685,6 +3790,10 @@ bumpVersion(type) {
     },
 
     showUpdateStatusFromData(data) {
+      // Reset per-module status up front so stale entries don't linger when
+      // the core license becomes invalid (server short-circuits before the
+      // module loop) or when modules are removed between checks.
+      this.moduleStatus = {};
       if (!data.valid) {
         this.setUpdateState( { state: 'error', errorTitle: 'License Error:', error: data.error || 'Invalid license' });
         return;
@@ -3703,11 +3812,26 @@ bumpVersion(type) {
           downloadUrl: latest.downloadUrl
         });
       }
-      // Store module updates keyed by module ID
-      this.moduleUpdates = {};
-      if (data.moduleUpdates) {
-        for (var mu of data.moduleUpdates) {
-          this.moduleUpdates[mu.id] = mu;
+      // Per-module license + update status. Server returns one entry per
+      // installed module the dashboard sent — entries always include license
+      // status (valid/invalid + plan/expiry), and `latest` is null when up-to-date.
+      var modules = data.modules || [];
+      for (var m of modules) {
+        if (!m || !m.id) continue;
+        if (m.valid) {
+          var update = m.latest
+            ? { state: 'available', version: m.latest.version, date: m.latest.date || 'recently', changelog: m.latest.changelog || '', downloadUrl: m.latest.downloadUrl || '', error: '' }
+            : { state: 'up-to-date', version: '', date: '', changelog: '', downloadUrl: '', error: '' };
+          this.moduleStatus[m.id] = {
+            license: { state: 'valid', plan: m.plan || '', expiry: m.expiresAt || '', error: '' },
+            update:  update
+          };
+        } else {
+          var err = m.error || 'License is not valid';
+          this.moduleStatus[m.id] = {
+            license: { state: 'invalid', plan: '', expiry: '', error: err },
+            update:  { state: 'error', version: '', date: '', changelog: '', downloadUrl: '', error: err }
+          };
         }
       }
     },
@@ -3732,7 +3856,7 @@ bumpVersion(type) {
 
     async applyLicenseUpdate(downloadUrl, version) {
       if (!confirm('Update to v' + version + '?\n\nYour config, branding, credentials, modules, and NOTES.md are preserved automatically.\nCore files will be replaced with the new version.\n\nTo roll back later, you can upload an older zip in this same tab.')) return;
-      this.setUpdateState({ state: 'applying', step: 1, filesWritten: 0 });
+      this.setUpdateState({ state: 'applying', step: 1, filesWritten: 0, source: 'license' });
       try {
         var res = await this.postJson('/api/updates/apply', { downloadUrl });
         var data = await res.json();
@@ -3763,19 +3887,19 @@ bumpVersion(type) {
         this.showToast('Please upload a .zip file', 'error'); return;
       }
       if (!confirm('Apply update from "' + file.name + '"?\n\nYour config, branding, credentials, modules, and NOTES.md are preserved automatically. Core files will be replaced with the version in this zip — works for forward updates and rollbacks.')) return;
-      this.setManualState({ showUpload: false, state: 'uploading', fileName: file.name, error: '' });
+      this.setUpdateState({ state: 'applying', step: 1, filesWritten: 0, source: 'manual' });
       try {
         var formData = new FormData();
         formData.append('file', file);
         var res = await fetch('/api/updates/upload', { method: 'POST', body: formData });
         var data = await res.json();
         if (data.error) throw new Error(data.error);
-        this.setManualState({ state: 'done', filesWritten: data.filesWritten, newVersion: data.newVersion || '', depsChanged: !!data.depsChanged });
-        this.showToast('Update applied!', 'success');
         if (data.newVersion) this.config.coreVersion = data.newVersion;
-        if (data.depsChanged) this.installDeps();
+        this.setUpdateState({ state: 'installing', step: 3, filesWritten: data.filesWritten });
+        await this.installDeps();
+        this.setUpdateState({ state: 'ready', step: 4 });
       } catch (err) {
-        this.setManualState({ state: 'error', showUpload: true, error: err.message });
+        this.setUpdateState({ state: 'error', errorTitle: 'Update failed:', error: err.message });
       }
     },
 

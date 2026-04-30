@@ -24,6 +24,10 @@ function readProjectState() {
     state.config.androidPackage = expo.android?.package || '';
     state.config.easOwner = expo.owner || '';
     state.config.easProjectId = expo.extra?.eas?.projectId || '';
+    // OTA updates URL — derived from projectId by config-writer, but read here
+    // so the dashboard can surface drift (placeholder, mismatched, missing)
+    state.config.easUpdatesUrl = expo.updates?.url || '';
+    state.config.runtimeVersionPolicy = expo.runtimeVersion?.policy || '';
   }
 
   // --- eas.json ---
@@ -157,6 +161,7 @@ function runValidation(state) {
     appIdentity:      { tab: 'config', section: 'app-identity' },
     wordpressSite:    { tab: 'config', section: 'wordpress-site' },
     buildService:     { tab: 'config', section: 'build-service' },
+    otaUpdates:       { tab: 'config', section: 'ota-updates' },
     storeSubmission:  { tab: 'config', section: 'app-store-submission' },
     pushNotifications:{ tab: 'config', section: 'push-notifications' },
     brandingAssets:   { tab: 'assets', section: 'branding-assets' },
@@ -188,6 +193,15 @@ function runValidation(state) {
   // --- Build Service ---
   check(!isPlaceholder(c.easOwner), 'EAS owner is set', 'Build Service', REF.buildService);
   check(!isPlaceholder(c.easProjectId), 'EAS project ID is set', 'Build Service', REF.buildService);
+
+  // --- OTA Updates ---
+  // updates.url is baked into native at build time. If it doesn't match the projectId-derived
+  // value (or holds the placeholder), the device cannot fetch OTAs from this build.
+  if (c.easProjectId) {
+    const expectedUpdatesUrl = `https://u.expo.dev/${c.easProjectId}`;
+    const updatesUrlOk = c.easUpdatesUrl === expectedUpdatesUrl;
+    check(updatesUrlOk, 'OTA updates URL matches EAS project ID', 'OTA Updates', REF.otaUpdates);
+  }
 
   // --- App Store Submission ---
   checkWarn(isPlaceholder(c.appleId), 'Apple ID not set (needed for iOS submission)', 'App Store Submission', REF.storeSubmission);

@@ -56,6 +56,12 @@ function writeConfigValues(changes) {
         if (!expo.extra) expo.extra = {};
         if (!expo.extra.eas) expo.extra.eas = {};
         expo.extra.eas.projectId = changes.easProjectId;
+        // Keep updates.url in sync — `expo-updates` bakes this into native at build time.
+        // EAS CLI's `eas init` writes projectId but not updates.url (that's a separate
+        // command, `eas update:configure`, which we don't run). Identity restore also
+        // only writes projectId. Both flows funnel through here, so both stay in sync.
+        if (!expo.updates) expo.updates = {};
+        expo.updates.url = `https://u.expo.dev/${changes.easProjectId}`;
       }
       // Splash screen colors
       if (changes.splashColorLight !== undefined || changes.splashColorDark !== undefined) {

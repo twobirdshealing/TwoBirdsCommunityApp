@@ -344,6 +344,10 @@ const server = http.createServer(async (req, res) => {
         const freshExpo = JSON.parse(fs.readFileSync(PATHS.appJson, 'utf8'));
         const newOwner = (freshExpo.expo && freshExpo.expo.owner) || '';
         const newProjectId = (freshExpo.expo && freshExpo.expo.extra && freshExpo.expo.extra.eas && freshExpo.expo.extra.eas.projectId) || '';
+        // EAS CLI wrote projectId/owner directly; funnel through the writer so
+        // expo.updates.url gets derived (eas init doesn't set it — that's a
+        // separate command, `eas update:configure`, which we don't run).
+        if (newProjectId) writeConfigValues({ easProjectId: newProjectId });
         jsonResponse(res, { ok: true, owner: newOwner, projectId: newProjectId, output: initOutput });
       } catch (e) {
         jsonResponse(res, { ok: false, error: e.stderr || e.message });
@@ -421,7 +425,7 @@ const server = http.createServer(async (req, res) => {
           return;
         }
         writeModuleLicense(moduleId, licenseKey);
-        jsonResponse(res, { ok: true, plan: data.plan, name: data.name });
+        jsonResponse(res, { ok: true, plan: data.plan, name: data.name, expiresAt: data.expiresAt });
       } catch (err) {
         jsonResponse(res, { ok: false, error: 'Could not validate: ' + err.message });
       }
@@ -636,6 +640,19 @@ const server = http.createServer(async (req, res) => {
       console.log(`  Republishing OTA group ${groupId} to ${targetBranch}...`);
       const result = await republishUpdate(groupId || '', targetBranch || '');
       jsonResponse(res, result);
+      return;
+    }
+
+    if (pathname === '/api/ota/configure' && req.method === 'POST') {
+      // Manual safety valve for buyers whose app.json drifted out of sync.
+      // Identity restore and `eas init` already funnel through the writer.
+      const projectId = readProjectState().config.easProjectId;
+      if (!projectId) {
+        jsonResponse(res, { ok: false, error: 'Set up your EAS Project ID first.' }, 400);
+        return;
+      }
+      writeConfigValues({ easProjectId: projectId });
+      jsonResponse(res, { ok: true, easUpdatesUrl: `https://u.expo.dev/${projectId}` });
       return;
     }
 
