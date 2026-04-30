@@ -903,6 +903,7 @@
             <div class="field">
               <label>Runtime Version Policy <span class="file-hint">expo.runtimeVersion</span></label>
               <input type="text" x-bind:value="config.runtimeVersionPolicy" readonly class="locked">
+              <span class="derive-hint"><code>appVersion</code>: OTAs only reach builds with the same <code>expo.version</code>. Bump the version → 1.0.8 builds stop receiving newer OTAs.</span>
             </div>
             <div class="field">
               <label>Branch</label>
@@ -912,7 +913,7 @@
           <div style="margin-top:12px">
             <button class="btn btn-sm" x-on:click="otaResync()" x-bind:disabled="otaResyncing"
                     x-text="otaResyncing ? 'Syncing...' : 'Re-sync OTA Settings'">Re-sync OTA Settings</button>
-            <span class="derive-hint" style="margin-left:8px">Re-derives <code>updates.url</code> from your EAS Project ID. Required after a manual <code>app.json</code> edit.</span>
+            <span class="derive-hint" style="margin-left:8px">Click if the URL above shows red.</span>
           </div>
         </div>
       </template>
