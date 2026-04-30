@@ -132,6 +132,8 @@ interface FeedCardProps {
   onEdit?: (feed: Feed) => void;
   onDelete?: (feed: Feed) => void;
   onPin?: (feed: Feed) => void;
+  /** Toggle the priority field (Featured Posts sidebar widget). Same admin/mod gate as onPin. */
+  onPinToSidebar?: (feed: Feed) => void;
   canModerate?: boolean; // If true, shows Edit/Delete/Pin for any post (admin/mod)
   variant?: 'compact' | 'full';  // compact = list view (truncated), full = single post view
 }
@@ -151,6 +153,7 @@ export const FeedCard = React.memo(function FeedCard({
   onEdit,
   onDelete,
   onPin,
+  onPinToSidebar,
   canModerate = false,
   variant = 'compact',
 }: FeedCardProps) {
@@ -169,6 +172,8 @@ export const FeedCard = React.memo(function FeedCard({
   const isOwner = user?.id === Number(feed.user_id);
   const isSticky = feed.is_sticky === true || feed.is_sticky === 1;
   const canPin = !!onPin; // If onPin is passed, user can pin
+  const isPinnedToSidebar = feed.priority === 1;
+  const canPinToSidebar = !!onPinToSidebar;
   const canEditOrDelete = isOwner || canModerate;
   
   const spaceName = feed.space?.title || null;
@@ -231,9 +236,12 @@ export const FeedCard = React.memo(function FeedCard({
         canEditOrDelete,
         canPin,
         isSticky,
+        canPinToSidebar,
+        isPinnedToSidebar,
         onEdit: onEdit ? () => onEdit(feed) : undefined,
         onDelete: onDelete ? () => onDelete(feed) : undefined,
         onPin: onPin ? () => onPin(feed) : undefined,
+        onPinToSidebar: onPinToSidebar ? () => onPinToSidebar(feed) : undefined,
       });
     });
   };

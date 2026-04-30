@@ -65,8 +65,14 @@ export interface Space {
     display_name: string;
   };
 
-  // Detail endpoint only — not present in list responses
-  permissions?: Record<string, boolean>;
+  // Detail endpoint only — not present in list responses.
+  // Computed by FluentCommunity's FeedsHelper based on space settings + user role.
+  // Index signature kept open because FC may add new permission keys over time.
+  permissions?: {
+    can_view_documents?: boolean;
+    can_upload_documents?: boolean;
+    [key: string]: boolean | undefined;
+  };
   membership?: {
     ID: number;
     display_name: string;
@@ -80,6 +86,11 @@ export interface Space {
   };
   topics?: Record<string, unknown>[];
   header_links?: { title: string; route: { name: string } }[];
+
+  // Group chat thread ID — present when the space has chat enabled
+  // (settings.group_chat_support === 'yes' AND the chat thread was created).
+  // Used to deep-link from the space gear menu's "Chat" item to /messages/space/{id}.
+  chat_thread_id?: number | null;
 
   // Lock screen config — returned for non-members of private spaces
   lockscreen_config?: LockScreenConfig | null;
@@ -115,6 +126,7 @@ export interface SpaceSettings {
   document_library?: 'yes' | 'no';
   document_access?: 'members_only' | 'public';
   document_upload?: 'members_only' | 'admin_only';
+  group_chat_support?: 'yes' | 'no';
   disable_post_sort_by?: 'yes' | 'no';
   default_post_sort_by?: string;
   onboard_redirect_url?: string;

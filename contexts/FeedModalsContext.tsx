@@ -28,9 +28,14 @@ export interface MenuParams {
   canEditOrDelete: boolean;
   canPin: boolean;
   isSticky: boolean;
+  // Sidebar-pin (priority field) — drives the space's "Featured Posts" widget.
+  // Distinct from is_sticky (top-of-feed pin); same admin/moderator gate.
+  canPinToSidebar: boolean;
+  isPinnedToSidebar: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
   onPin?: () => void;
+  onPinToSidebar?: () => void;
 }
 
 export interface MediaViewerParams {
@@ -96,7 +101,19 @@ export function FeedModalsProvider({ children }: { children: React.ReactNode }) 
 
   const getMenuItems = (): DropdownMenuItem[] => {
     if (!menuState) return [];
-    const { feed, isOwner, canEditOrDelete, canPin, isSticky, onEdit, onDelete, onPin } = menuState;
+    const {
+      feed,
+      isOwner,
+      canEditOrDelete,
+      canPin,
+      isSticky,
+      canPinToSidebar,
+      isPinnedToSidebar,
+      onEdit,
+      onDelete,
+      onPin,
+      onPinToSidebar,
+    } = menuState;
 
     const handleCopyLink = async () => {
       const url = `${SITE_URL}/portal/post/${feed.slug}`;
@@ -118,6 +135,15 @@ export function FeedModalsProvider({ children }: { children: React.ReactNode }) 
         label: isSticky ? 'Unpin from Top' : 'Pin to Top',
         icon: 'pin-outline',
         onPress: () => { setMenuState(null); onPin?.(); },
+      });
+    }
+
+    if (canPinToSidebar) {
+      items.push({
+        key: 'pinSidebar',
+        label: isPinnedToSidebar ? 'Unpin from sidebar' : 'Pin to sidebar',
+        icon: 'star-outline',
+        onPress: () => { setMenuState(null); onPinToSidebar?.(); },
       });
     }
 

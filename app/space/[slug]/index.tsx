@@ -192,6 +192,34 @@ export default function SpacePage() {
   };
 
   // ---------------------------------------------------------------------------
+  // Sidebar-Pin Handler (priority field — drives Featured Posts widget)
+  // ---------------------------------------------------------------------------
+  // Same admin/mod gate as handlePin (server enforces). Distinct from sticky:
+  // priority=1 surfaces in the space gear menu's Featured Posts sheet, not
+  // top-of-feed. Emits CACHE_EVENTS.FEEDS so useSpaceActivities refetches.
+
+  const handlePinToSidebar = async (feed: Feed) => {
+    const newPinnedState = feed.priority !== 1;
+    try {
+      const response = await optimisticUpdate(
+        setFeeds,
+        prev => prev.map(f =>
+          f.id === feed.id ? { ...f, priority: newPinnedState ? 1 : 0 } : f
+        ),
+        () => feedsApi.togglePriority(feed.id, newPinnedState),
+      );
+      if (response.success) {
+        cacheEvents.emit(CACHE_EVENTS.FEEDS);
+      } else {
+        Alert.alert('Error', response.error?.message || 'Failed to update sidebar pin');
+      }
+    } catch (err) {
+      log.error(err, 'Sidebar-pin toggle error');
+      Alert.alert('Error', 'Failed to pin post to sidebar');
+    }
+  };
+
+  // ---------------------------------------------------------------------------
   // Leave Space Handler (for SpaceMenu)
   // ---------------------------------------------------------------------------
 
@@ -283,10 +311,10 @@ export default function SpacePage() {
         left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
         center={<HeaderTitle>{space?.title || 'Space'}</HeaderTitle>}
         right={
-          slug ? (
+          space ? (
             <SpaceMenu
-              slug={slug}
-              role={space?.membership?.pivot?.role || space?.role}
+              space={space}
+              role={space.membership?.pivot?.role || space.role}
               onLeaveSuccess={handleLeaveSuccess}
             />
           ) : undefined
@@ -324,6 +352,7 @@ export default function SpacePage() {
           onEdit={handleEdit}
           onDelete={handleDelete}
           onPin={canPinResult ? handlePin : undefined}
+          onPinToSidebar={canPinResult ? handlePinToSidebar : undefined}
           canModerate={canPinResult}
           ListHeaderComponent={
             space ? (

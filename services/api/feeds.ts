@@ -225,10 +225,27 @@ export async function updateFeed(id: number, data: Partial<CreateFeedData>) {
 
 export async function toggleSticky(id: number, isSticky: boolean) {
   log.debug('toggleSticky', { id, isSticky: isSticky ? 1 : 0 });
-  
+
   // Use PATCH for partial update (doesn't require all fields)
   return patch<{ message: string; data: Feed }>(`${ENDPOINTS.FEEDS}/${id}`, {
     is_sticky: isSticky ? 1 : 0,
+    query_timestamp: Date.now(),
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Toggle Sidebar-Pin (priority field)
+// -----------------------------------------------------------------------------
+// Distinct from is_sticky: priority=1 surfaces the post in the space's
+// "Featured Posts" sidebar widget; is_sticky=1 pins it to the top of the feed.
+// Server requires community_admin or community_moderator on the post's space.
+// No server-side cap — ActivityController limits to 5 on read.
+
+export async function togglePriority(id: number, isPinned: boolean) {
+  log.debug('togglePriority', { id, priority: isPinned ? 1 : 0 });
+
+  return patch<{ message: string; data: Feed }>(`${ENDPOINTS.FEEDS}/${id}`, {
+    priority: isPinned ? 1 : 0,
     query_timestamp: Date.now(),
   });
 }
@@ -350,6 +367,7 @@ export const feedsApi = {
   createFeed,
   updateFeed,
   toggleSticky,
+  togglePriority,
   deleteFeed,
   reactToFeed,
   toggleBookmark,

@@ -37,6 +37,7 @@ interface FeedListProps {
   onEdit?: (feed: Feed) => void;
   onDelete?: (feed: Feed) => void;
   onPin?: (feed: Feed) => void;  // Pin callback
+  onPinToSidebar?: (feed: Feed) => void;  // Sidebar (Featured Posts) pin callback — same admin/mod gate
   canModerate?: boolean; // If true, shows Edit/Delete for any post (admin/mod)
   onLoadMore?: () => void;
   onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
@@ -64,6 +65,7 @@ export function FeedList({
   onEdit,
   onDelete,
   onPin,
+  onPinToSidebar,
   canModerate = false,
   onLoadMore,
   onScroll,
@@ -116,6 +118,7 @@ export function FeedList({
       onEdit={onEdit}
       onDelete={onDelete}
       onPin={onPin}
+      onPinToSidebar={onPinToSidebar}
       canModerate={canModerate}
     />
   );
