@@ -22,7 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacesApi } from '@/services/api/spaces';
-import { SpaceGroupOption } from '@/types/space';
+import type { Space, SpaceGroupOption } from '@/types/space';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('SpaceSelector');
@@ -30,16 +30,6 @@ const log = createLogger('SpaceSelector');
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
-
-interface Space {
-  id: number;
-  title: string;
-  slug: string;
-  logo?: string | null;
-  privacy?: string;
-  parent_id?: number | string | null;
-  serial?: string | number;
-}
 
 interface SpaceSelectorProps {
   selectedSpaceSlug: string | null;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -20,6 +20,7 @@ import { ComposerToolbar } from './ComposerToolbar';
 import { MarkdownToolbar } from './MarkdownToolbar';
 import { SpaceSelector } from './SpaceSelector';
 import { MediaPreview } from './MediaPreview';
+import { DocumentPreview } from './DocumentPreview';
 import { VideoAttachModal } from './VideoAttachModal';
 import { VideoPreview } from './VideoPreview';
 import { GifPickerModal } from './GifPickerModal';
@@ -29,11 +30,15 @@ import { PollPreview } from './PollPreview';
 import type { PollData } from './PollBuilderSheet';
 import { MediaItem, mediaApi } from '@/services/api/media';
 import { OembedData } from '@/services/api/feeds';
+import { documentsApi, SpaceDocumentFile } from '@/services/api/documents';
+import { spacesApi } from '@/services/api/spaces';
 import { Feed } from '@/types/feed';
+import type { Space } from '@/types/space';
 import { GifAttachment } from '@/types/gif';
 import { htmlToMarkdown } from '@/utils/htmlToMarkdown';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { createLogger } from '@/utils/logger';
 
 const log = createLogger('CreatePost');
@@ -45,7 +50,9 @@ const log = createLogger('CreatePost');
 export interface ComposerSubmitData {
   message: string;
   title?: string;
-  content_type: 'text' | 'markdown';
+  // 'document' is a separate FC content type — its files live in
+  // meta.document_lists and it cannot be combined with images/video/GIF/poll.
+  content_type: 'text' | 'markdown' | 'document';
   space?: string;
   media_images?: Array<{
     url: string;
@@ -166,6 +173,47 @@ export function CreatePostContent({
   const [pollData, setPollData] = useState<PollData | null>(initialPoll);
   const [selectedSpaceSlug, setSelectedSpaceSlug] = useState<string | null>(effectiveSpaceSlug || null);
   const [selectedSpaceName, setSelectedSpaceName] = useState<string | null>(effectiveSpaceName || null);
+  // Full Space record (with permissions) for the currently selected space.
+  // Needed to gate the document-upload button on space.permissions.can_upload_documents.
+  // The /spaces list endpoint returns spaces without permissions, so we hydrate
+  // via getSpaceBySlug whenever the slug changes.
+  const [selectedSpace, setSelectedSpace] = useState<Space | null>(null);
+  const [documentAttachments, setDocumentAttachments] = useState<SpaceDocumentFile[]>([]);
+  // Tracks whether the in-flight upload is a document (vs. an image) — drives
+  // which preview shows the spinner. `isUploading` stays shared so the toolbar
+  // spinner / disabled state still works for both flows.
+  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Hydrate selectedSpace from the detail endpoint when the slug changes.
+  // FC's list endpoint omits `permissions`, so we fetch detail to learn
+  // whether the current user can upload documents in this space.
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    const slug = selectedSpaceSlug;
+    if (!slug) {
+      setSelectedSpace(null);
+      return;
+    }
+    // If we already have the detail for this slug, skip.
+    if (selectedSpace && selectedSpace.slug === slug && selectedSpace.permissions) {
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const result = await spacesApi.getSpaceBySlug(slug);
+      if (cancelled) return;
+      if (result.success) {
+        setSelectedSpace(result.data.space);
+      } else {
+        log.warn('Failed to fetch space detail for upload gating', { slug });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally only re-run on slug change
+  }, [selectedSpaceSlug]);
 
   // ---------------------------------------------------------------------------
   // Derived values
@@ -174,6 +222,10 @@ export function CreatePostContent({
   const showSpaceSelector = !effectiveSpaceSlug && !isEditing;
   const actualSubmitLabel = isEditing ? 'Save' : 'Post';
   const canSubmit = !isSubmitting && !isUploading;
+  const canUploadDocs = !!selectedSpace?.permissions?.can_upload_documents;
+  const hasDocs = documentAttachments.length > 0;
+  const hasOtherMedia =
+    attachments.length > 0 || !!videoAttachment || !!gifAttachment || !!pollData;
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -182,6 +234,9 @@ export function CreatePostContent({
   const handleSpaceSelect = (slug: string, name: string) => {
     setSelectedSpaceSlug(slug);
     setSelectedSpaceName(name);
+    // Detail (with permissions) is fetched by the effect on slug change —
+    // no need to seed selectedSpace from the list response here, since the
+    // list payload omits permissions and the effect will overwrite it anyway.
   };
 
   const handleImagePicker = async () => {
@@ -236,6 +291,61 @@ export function CreatePostContent({
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
+  // ---------------------------------------------------------------------------
+  // Document Picker — mirrors the image flow but uses expo-document-picker and
+  // posts to FC Pro's POST /documents/upload (multipart with space_id + file).
+  // Gated upstream by `canUploadDocs` derived from space.permissions.
+  // ---------------------------------------------------------------------------
+
+  const handleDocumentPick = async () => {
+    if (!selectedSpace) {
+      Alert.alert('Select a Space', 'Pick the space you want to post documents in first.');
+      return;
+    }
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        multiple: true,
+        copyToCacheDirectory: true,
+        // No type filter — FC accepts whatever the buyer's WP MIME allowlist permits.
+        type: '*/*',
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      setIsUploading(true);
+      setIsUploadingDocument(true);
+
+      for (const asset of result.assets) {
+        const fileName = asset.name || asset.uri.split('/').pop() || 'document';
+        const mimeType = asset.mimeType || 'application/octet-stream';
+
+        const response = await documentsApi.uploadDocument(
+          asset.uri,
+          mimeType,
+          fileName,
+          selectedSpace.id
+        );
+
+        if (response.success && response.data) {
+          setDocumentAttachments(prev => [...prev, response.data!]);
+        } else {
+          Alert.alert('Upload Failed', response.error?.message || 'Could not upload document');
+        }
+      }
+    } catch (error) {
+      log.error(error, 'Document picker error');
+      Alert.alert('Error', 'Failed to pick document');
+    } finally {
+      setIsUploading(false);
+      setIsUploadingDocument(false);
+    }
+  };
+
+  const removeDocument = (index: number) => {
+    setDocumentAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleVideoPress = () => setShowVideoModal(true);
 
   const handleVideoAttach = (data: OembedData) => {
@@ -275,7 +385,14 @@ export function CreatePostContent({
     const markdown = htmlToMarkdown(html);
     const plainText = await editor.getText();
 
-    if (!markdown.trim() && attachments.length === 0 && !videoAttachment && !gifAttachment && !pollData) return;
+    if (
+      !markdown.trim() &&
+      attachments.length === 0 &&
+      !videoAttachment &&
+      !gifAttachment &&
+      !pollData &&
+      documentAttachments.length === 0
+    ) return;
 
     // Validate poll options if poll is active
     if (pollData) {
@@ -300,9 +417,14 @@ export function CreatePostContent({
     Keyboard.dismiss();
 
     try {
+      // Document posts are a separate FC content_type. They cannot be combined
+      // with images/video/GIF/poll — the UI's mutual-exclusion gating prevents
+      // that upstream, so we just branch the submit payload here.
+      const isDocumentPost = documentAttachments.length > 0;
+
       const submitData: ComposerSubmitData = {
         message: markdown,
-        content_type: 'markdown',
+        content_type: isDocumentPost ? 'document' : 'markdown',
         space: effectiveSpaceSlug || selectedSpaceSlug || undefined,
       };
 
@@ -310,42 +432,46 @@ export function CreatePostContent({
         submitData.title = title.trim();
       }
 
-      if (attachments.length > 0) {
-        submitData.media_images = attachments.map(item => ({
-          url: item.url,
-          type: 'image',
-          width: 0,
-          height: 0,
-          provider: 'uploader',
-        }));
-      }
-
-      if (videoAttachment) {
-        submitData.media = { type: 'oembed', url: videoAttachment.url };
-      }
-
-      if (gifAttachment) {
-        submitData.meta = {
-          media_preview: {
-            image: gifAttachment.image,
+      if (isDocumentPost) {
+        submitData.meta = { document_lists: documentAttachments };
+      } else {
+        if (attachments.length > 0) {
+          submitData.media_images = attachments.map(item => ({
+            url: item.url,
             type: 'image',
-            provider: 'giphy',
-            width: gifAttachment.width,
-            height: gifAttachment.height,
-          },
-        };
-      }
+            width: 0,
+            height: 0,
+            provider: 'uploader',
+          }));
+        }
 
-      if (pollData) {
-        const filledOptions = pollData.options.filter(o => o.trim());
-        submitData.survey = {
-          type: pollData.type,
-          options: filledOptions.map((label, i) => ({
-            label: label.trim(),
-            slug: `opt_${i + 1}`,
-          })),
-          end_date: pollData.end_date,
-        };
+        if (videoAttachment) {
+          submitData.media = { type: 'oembed', url: videoAttachment.url };
+        }
+
+        if (gifAttachment) {
+          submitData.meta = {
+            media_preview: {
+              image: gifAttachment.image,
+              type: 'image',
+              provider: 'giphy',
+              width: gifAttachment.width,
+              height: gifAttachment.height,
+            },
+          };
+        }
+
+        if (pollData) {
+          const filledOptions = pollData.options.filter(o => o.trim());
+          submitData.survey = {
+            type: pollData.type,
+            options: filledOptions.map((label, i) => ({
+              label: label.trim(),
+              slug: `opt_${i + 1}`,
+            })),
+            end_date: pollData.end_date,
+          };
+        }
       }
 
       await onSubmit(submitData);
@@ -356,6 +482,7 @@ export function CreatePostContent({
       setVideoAttachment(null);
       setGifAttachment(null);
       setPollData(null);
+      setDocumentAttachments([]);
       onClose();
     } catch (error) {
       log.error(error, 'Submit error');
@@ -447,13 +574,23 @@ export function CreatePostContent({
           />
         )}
 
+        {/* Document Preview */}
+        {(hasDocs || isUploadingDocument) && (
+          <DocumentPreview
+            items={documentAttachments}
+            onRemove={removeDocument}
+            isUploading={isUploadingDocument}
+          />
+        )}
+
         <View style={[styles.toolbarArea, { borderTopColor: themeColors.border, backgroundColor: themeColors.surface }]}>
           <MarkdownToolbar editor={editor} />
           <ComposerToolbar
-            onImagePress={handleImagePicker}
-            onVideoPress={handleVideoPress}
-            onGifPress={features.giphy ? handleGifPress : undefined}
-            onPollPress={handlePollPress}
+            onImagePress={hasDocs ? undefined : handleImagePicker}
+            onVideoPress={hasDocs ? undefined : handleVideoPress}
+            onGifPress={!hasDocs && features.giphy ? handleGifPress : undefined}
+            onPollPress={hasDocs ? undefined : handlePollPress}
+            onDocumentPress={canUploadDocs && !hasOtherMedia ? handleDocumentPick : undefined}
             onSubmit={handleSubmit}
             submitLabel={actualSubmitLabel}
             canSubmit={canSubmit}
@@ -462,6 +599,7 @@ export function CreatePostContent({
             hasVideo={videoAttachment !== null}
             hasGif={gifAttachment !== null}
             hasPoll={pollData !== null}
+            hasDocument={hasDocs}
           />
         </View>
       </KeyboardAvoidingView>

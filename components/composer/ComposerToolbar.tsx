@@ -21,10 +21,14 @@ import { hapticMedium } from '@/utils/haptics';
 // -----------------------------------------------------------------------------
 
 interface ComposerToolbarProps {
-  onImagePress: () => void;
+  // Each press handler is optional — passing `undefined` hides the button.
+  // Callers use this to gate buttons by feature flag (giphy) and by the
+  // mutual-exclusion rule between document posts and image/video/GIF/poll.
+  onImagePress?: () => void;
   onVideoPress?: () => void;
   onGifPress?: () => void;
   onPollPress?: () => void;
+  onDocumentPress?: () => void;
   onEmojiPress?: () => void;
   onSubmit: () => void;
   isUploading: boolean;
@@ -34,6 +38,7 @@ interface ComposerToolbarProps {
   hasVideo?: boolean;
   hasGif?: boolean;
   hasPoll?: boolean;
+  hasDocument?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -45,6 +50,7 @@ export function ComposerToolbar({
   onVideoPress,
   onGifPress,
   onPollPress,
+  onDocumentPress,
   onEmojiPress,
   onSubmit,
   isUploading,
@@ -54,6 +60,7 @@ export function ComposerToolbar({
   hasVideo,
   hasGif,
   hasPoll,
+  hasDocument,
 }: ComposerToolbarProps) {
   const { colors: themeColors } = useTheme();
 
@@ -62,21 +69,23 @@ export function ComposerToolbar({
       {/* Left: Action Buttons */}
       <View style={styles.actions}>
         {/* Image Picker */}
-        <AnimatedPressable
-          style={styles.actionButton}
-          onPress={onImagePress}
-          disabled={isUploading}
-        >
-          {isUploading ? (
-            <ActivityIndicator size="small" color={themeColors.primary} />
-          ) : (
-            <Ionicons
-              name="image-outline"
-              size={24}
-              color={themeColors.textSecondary}
-            />
-          )}
-        </AnimatedPressable>
+        {onImagePress && (
+          <AnimatedPressable
+            style={styles.actionButton}
+            onPress={onImagePress}
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <ActivityIndicator size="small" color={themeColors.primary} />
+            ) : (
+              <Ionicons
+                name="image-outline"
+                size={24}
+                color={themeColors.textSecondary}
+              />
+            )}
+          </AnimatedPressable>
+        )}
 
         {/* GIF Picker */}
         {onGifPress && (
@@ -116,6 +125,21 @@ export function ComposerToolbar({
               name="videocam-outline"
               size={24}
               color={hasVideo ? themeColors.primary : themeColors.textSecondary}
+            />
+          </AnimatedPressable>
+        )}
+
+        {/* Document Upload — only shown when the selected space allows it */}
+        {onDocumentPress && (
+          <AnimatedPressable
+            style={styles.actionButton}
+            onPress={onDocumentPress}
+            disabled={isUploading}
+          >
+            <Ionicons
+              name="attach-outline"
+              size={24}
+              color={hasDocument ? themeColors.primary : themeColors.textSecondary}
             />
           </AnimatedPressable>
         )}
