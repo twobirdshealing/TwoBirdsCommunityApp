@@ -851,7 +851,15 @@
               <button class="help-toggle" type="button" x-on:click="toggleFieldHelp('easOwner')" title="Toggle help">?</button>
             </template>
           </label>
-          <input type="text" x-model="config.easOwner" x-on:input="onConfigInput('easOwner')" placeholder="your-eas-owner">
+          <div class="input-lock-wrap">
+            <input type="text" x-model="config.easOwner" x-on:input="onConfigInput('easOwner')"
+                   x-bind:readonly="fieldLocks.easOwner" x-bind:class="{ locked: fieldLocks.easOwner }"
+                   placeholder="your-eas-owner">
+            <button type="button" class="lock-btn" x-on:click="toggleLock('easOwner')"
+                    x-bind:title="fieldLocks.easOwner ? 'Click to edit' : 'Click to lock'">
+              <ion-icon x-bind:name="fieldLocks.easOwner ? 'lock-closed-outline' : 'lock-open-outline'" style="font-size:16px"></ion-icon>
+            </button>
+          </div>
           <div class="field-help" x-bind:class="fieldHelpState.easOwner ? 'expanded' : 'collapsed'" x-html="getFieldHelpHtml('easOwner')"></div>
           <template x-if="fieldRebuildNotices.easOwner">
             <div class="rebuild-notice"><ion-icon name="warning-outline" style="font-size:12px"></ion-icon> Rebuild required after save</div>
@@ -863,7 +871,15 @@
               <button class="help-toggle" type="button" x-on:click="toggleFieldHelp('easProjectId')" title="Toggle help">?</button>
             </template>
           </label>
-          <input type="text" x-model="config.easProjectId" x-on:input="onConfigInput('easProjectId')" placeholder="your-eas-project-id">
+          <div class="input-lock-wrap">
+            <input type="text" x-model="config.easProjectId" x-on:input="onConfigInput('easProjectId')"
+                   x-bind:readonly="fieldLocks.easProjectId" x-bind:class="{ locked: fieldLocks.easProjectId }"
+                   placeholder="your-eas-project-id">
+            <button type="button" class="lock-btn" x-on:click="toggleLock('easProjectId')"
+                    x-bind:title="fieldLocks.easProjectId ? 'Click to edit' : 'Click to lock'">
+              <ion-icon x-bind:name="fieldLocks.easProjectId ? 'lock-closed-outline' : 'lock-open-outline'" style="font-size:16px"></ion-icon>
+            </button>
+          </div>
           <div class="field-help" x-bind:class="fieldHelpState.easProjectId ? 'expanded' : 'collapsed'" x-html="getFieldHelpHtml('easProjectId')"></div>
           <template x-if="fieldRebuildNotices.easProjectId">
             <div class="rebuild-notice"><ion-icon name="warning-outline" style="font-size:12px"></ion-icon> Rebuild required after save</div>
@@ -896,7 +912,7 @@
               <template x-if="!otaUrlOk">
                 <div class="field-alert" style="color:var(--red,#dc2626)">
                   <ion-icon name="alert-circle-outline" style="font-size:12px;vertical-align:middle"></ion-icon>
-                  URL doesn't match your EAS Project ID — click <strong>Re-sync OTA Settings</strong> to fix.
+                  URL doesn't match your EAS Project ID — unlock the field in <strong>Build Service</strong>, re-paste your project ID, and Save.
                 </div>
               </template>
             </div>
@@ -909,11 +925,6 @@
               <label>Branch</label>
               <input type="text" value="production" readonly class="locked">
             </div>
-          </div>
-          <div style="margin-top:12px">
-            <button class="btn btn-sm" x-on:click="otaResync()" x-bind:disabled="otaResyncing"
-                    x-text="otaResyncing ? 'Syncing...' : 'Re-sync OTA Settings'">Re-sync OTA Settings</button>
-            <span class="derive-hint" style="margin-left:8px">Click if the URL above shows red.</span>
           </div>
         </div>
       </template>
@@ -2419,7 +2430,6 @@ document.addEventListener('alpine:init', () => {
     otaHistoryBranchFilter: '',
     otaDeleteModal: { open: false, group: null },
     otaCurrentVersion: '',
-    otaResyncing: false,
     get otaUrlOk() {
       var pid = this.config.easProjectId || '';
       var url = this.config.easUpdatesUrl || '';
@@ -2490,6 +2500,9 @@ document.addEventListener('alpine:init', () => {
       'appleId', 'ascAppId', 'ascApiKeyId', 'ascApiKeyIssuerId', 'packageName', 'appToken'],
     PLACEHOLDERS: ["My Community App","MyCommunityApp","mycommunityapp","My Community","com.yourcompany.communityapp","CommunityApp/1.0","community-app","your-expo-account","YOUR_EAS_PROJECT_ID","https://community.yoursite.com","community.yoursite.com","your-apple-id@example.com","YOUR_ASC_APP_ID"],
     DERIVABLE_FIELDS: ['slug', 'scheme', 'appNameConfig', 'userAgent', 'packageName', 'androidPackage', 'version'],
+    // Locked-by-default once populated — user-set values that should be hard to clobber accidentally.
+    // Click the lock icon to edit. Same UX pattern as DERIVABLE_FIELDS but a different semantic group.
+    LOCKABLE_FIELDS: ['easOwner', 'easProjectId'],
     FIELD_HELP: {
       appName: { text: 'The display name users see on their home screen and in app stores. Keep it short (under 30 chars for app stores).', rebuild: true },
       slug: { text: 'A URL-safe identifier used by Expo for your project. Auto-derived from app name — usually no need to edit manually.', rebuild: true },
@@ -2699,6 +2712,10 @@ document.addEventListener('alpine:init', () => {
         });
         // Lock derived fields
         this.DERIVABLE_FIELDS.forEach(key => {
+          if (this.config[key]) this.fieldLocks[key] = true;
+        });
+        // Lock user-set EAS fields once populated (click lock to edit)
+        this.LOCKABLE_FIELDS.forEach(key => {
           if (this.config[key]) this.fieldLocks[key] = true;
         });
         // Update field help state
@@ -3629,24 +3646,6 @@ bumpVersion(type) {
       if (typeof group.platforms === 'string') return group.platforms.split(',').map(s => s.trim()).filter(Boolean);
       if (group.platform) return [group.platform];
       return [];
-    },
-
-    async otaResync() {
-      this.otaResyncing = true;
-      try {
-        var res = await this.postJson('/api/ota/configure', {});
-        var data = await res.json();
-        if (data.ok) {
-          this.showToast('OTA settings synced', 'success');
-          this.loadState();
-        } else {
-          this.showToast('Sync failed: ' + (data.error || 'unknown'), 'error');
-        }
-      } catch (err) {
-        this.showToast('Sync error: ' + err.message, 'error');
-      } finally {
-        this.otaResyncing = false;
-      }
     },
 
     async pushOTA() {

@@ -643,19 +643,6 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (pathname === '/api/ota/configure' && req.method === 'POST') {
-      // Manual safety valve for buyers whose app.json drifted out of sync.
-      // Identity restore and `eas init` already funnel through the writer.
-      const projectId = readProjectState().config.easProjectId;
-      if (!projectId) {
-        jsonResponse(res, { ok: false, error: 'Set up your EAS Project ID first.' }, 400);
-        return;
-      }
-      writeConfigValues({ easProjectId: projectId });
-      jsonResponse(res, { ok: true, easUpdatesUrl: `https://u.expo.dev/${projectId}` });
-      return;
-    }
-
     // --- File Uploads ---
     if (pathname.startsWith('/api/upload/') && req.method === 'POST') {
       const target = pathname.replace('/api/upload/', '');

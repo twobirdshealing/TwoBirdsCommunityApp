@@ -60,8 +60,11 @@ function writeConfigValues(changes) {
         // EAS CLI's `eas init` writes projectId but not updates.url (that's a separate
         // command, `eas update:configure`, which we don't run). Identity restore also
         // only writes projectId. Both flows funnel through here, so both stay in sync.
+        // Empty projectId clears the URL too — avoids writing the broken `https://u.expo.dev/`.
         if (!expo.updates) expo.updates = {};
-        expo.updates.url = `https://u.expo.dev/${changes.easProjectId}`;
+        expo.updates.url = changes.easProjectId
+          ? `https://u.expo.dev/${changes.easProjectId}`
+          : '';
       }
       // Splash screen colors
       if (changes.splashColorLight !== undefined || changes.splashColorDark !== undefined) {
