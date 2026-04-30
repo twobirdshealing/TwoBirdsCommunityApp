@@ -493,7 +493,9 @@ export function useChatMessages(params: UseChatMessagesParams) {
   // ---------------------------------------------------------------------------
 
   const handleSend = useCallback(async (text: string, attachments?: ChatInputAttachment[]) => {
-    if (!targetUserId) return;
+    // Group/space threads arrive with a thread loaded but no targetUserId.
+    // User threads may have neither yet (still resolving) — bail in that case.
+    if (!thread && !targetUserId) return;
 
     // Capture and clear reply before sending
     const currentReply = replyTo;
@@ -515,8 +517,8 @@ export function useChatMessages(params: UseChatMessagesParams) {
           Alert.alert('Error', (response as any).error?.message || 'Failed to send message');
         }
       } else {
-        // No thread yet — create one
-        const response = await messagesApi.startChatWithUser(targetUserId, text);
+        // No thread yet — create one (user-chat resolution path only)
+        const response = await messagesApi.startChatWithUser(targetUserId!, text);
 
         if (response.success && response.data?.thread) {
           const newThread = response.data.thread;
