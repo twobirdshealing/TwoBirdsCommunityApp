@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { PATHS, REQUIRED_ASSETS, PROJECT_DIR, isPlaceholder } = require('./paths');
-const { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, findPluginConfig } = require('./file-utils');
+const { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, findPluginConfig, buildExpoUpdatesUrl } = require('./file-utils');
 
 // ---------------------------------------------------------------------------
 // State Reader
@@ -198,8 +198,7 @@ function runValidation(state) {
   // updates.url is baked into native at build time. If it doesn't match the projectId-derived
   // value (or holds the placeholder), the device cannot fetch OTAs from this build.
   if (c.easProjectId) {
-    const expectedUpdatesUrl = `https://u.expo.dev/${c.easProjectId}`;
-    const updatesUrlOk = c.easUpdatesUrl === expectedUpdatesUrl;
+    const updatesUrlOk = c.easUpdatesUrl === buildExpoUpdatesUrl(c.easProjectId);
     check(updatesUrlOk, 'OTA updates URL matches EAS project ID', 'OTA Updates', REF.otaUpdates);
   }
 

@@ -32,6 +32,13 @@ function getSiteUrl(easJson) {
   return '';
 }
 
+// Build the Expo Updates manifest URL for a given EAS project ID. Empty in,
+// empty out — avoids writing the broken `https://u.expo.dev/` (trailing slash)
+// when projectId is cleared, which would silently 404 on every device fetch.
+function buildExpoUpdatesUrl(projectId) {
+  return projectId ? `https://u.expo.dev/${projectId}` : '';
+}
+
 function getPluginVersion(pluginFolder) {
   const dir = path.join(PATHS.pluginsDir, pluginFolder);
   const zipFile = path.join(PATHS.pluginsDir, pluginFolder + '.zip');
@@ -94,4 +101,4 @@ function readFileNormalized(p) {
   return fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 }
 
-module.exports = { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, getPluginVersion, findPluginConfig, resolveUploadPath, ensurePath, readFileNormalized };
+module.exports = { fileExists, readJsonSafe, fileSizeKB, extractTsValue, getSiteUrl, buildExpoUpdatesUrl, getPluginVersion, findPluginConfig, resolveUploadPath, ensurePath, readFileNormalized };
