@@ -63,6 +63,14 @@ export const ENDPOINTS = {
   // Members
   MEMBERS: '/members',
 
+  // Space activities — powers the "Featured Posts" + "Recent Activity"
+  // sheets in the space gear menu. One call returns BOTH (pinned + activity).
+  ACTIVITIES: '/activities',
+
+  // Space documents (requires Fluent Community Pro). Endpoint returns 404
+  // when Pro isn't installed — sheet gracefully renders an empty state.
+  DOCUMENTS: '/documents',
+
   // Chat/Messaging (requires Fluent Messaging add-on)
   CHAT_THREADS: '/chat/threads',
   CHAT_THREAD_BY_ID: (threadId: number) => `/chat/threads/${threadId}`,
@@ -76,6 +84,17 @@ export const ENDPOINTS = {
   CHAT_THREAD_DELETE: (threadId: number) => `/chat/threads/delete/${threadId}`,
   CHAT_THREAD_BLOCK: (threadId: number) => `/chat/threads/block/${threadId}`,
   CHAT_THREAD_UNBLOCK: (threadId: number) => `/chat/threads/unblock/${threadId}`,
+
+  // Group threads (Fluent Messaging 2.4.0+)
+  CHAT_GROUPS: '/chat/groups',
+  CHAT_GROUP_BY_ID: (threadId: number) => `/chat/groups/${threadId}`,
+  CHAT_GROUP_DELETE: (threadId: number) => `/chat/groups/${threadId}/delete`,
+  CHAT_GROUP_LEAVE: (threadId: number) => `/chat/groups/${threadId}/leave`,
+  CHAT_GROUP_MEMBERS: (threadId: number) => `/chat/groups/${threadId}/members`,
+  CHAT_GROUP_MEMBER_REMOVE: (threadId: number, memberId: number) =>
+    `/chat/groups/${threadId}/members/${memberId}/remove`,
+  CHAT_GROUP_MEMBER_ADMIN: (threadId: number, memberId: number) =>
+    `/chat/groups/${threadId}/members/${memberId}/admin`,
 
   // Courses (requires Fluent LMS add-on)
   COURSES: '/courses',

@@ -8,13 +8,15 @@
 // =============================================================================
 
 import { MemberCard, MemberCardData } from '@/components/member/MemberCard';
+import { NewGroupForm } from '@/components/message/NewGroupSheet';
 import { ENDPOINTS } from '@/constants/config';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
+import useDebounce from '@/hooks/useDebounce';
 import { get } from '@/services/api/client';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -53,10 +55,17 @@ interface MemberSearchResult {
 // Component
 // -----------------------------------------------------------------------------
 
+type ComposeTab = 'dm' | 'group';
+
 export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
+
+  // Compose mode tab — DM (default) or New Group. The New Group tab is shown
+  // unconditionally; the server enforces moderator gating and surfaces 403 as
+  // a normal error toast if a non-moderator slips through.
+  const [tab, setTab] = useState<ComposeTab>('dm');
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,63 +73,50 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Debounce timer
-  const [debounceTimer, setDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
-
   // ---------------------------------------------------------------------------
-  // Search Members
+  // Debounced Search Members
   // ---------------------------------------------------------------------------
 
-  const searchMembers = useCallback(async (query: string) => {
-    if (query.trim().length < 2) {
+  const debouncedQuery = useDebounce(searchQuery, 300);
+
+  useEffect(() => {
+    const trimmed = debouncedQuery.trim();
+    if (trimmed.length < 2) {
       setMembers([]);
+      setError(null);
       return;
     }
 
+    let cancelled = false;
     setLoading(true);
     setError(null);
 
-    try {
-      // Use plugin's /chat/users endpoint — respects chat permissions, shows recently active
-      const response = await get<{ users: MemberSearchResult[] }>(
-        ENDPOINTS.CHAT_USERS,
-        { search: query.trim() }
-      );
-
-      if (response.success && response.data?.users) {
-        const usersList = Array.isArray(response.data.users) ? response.data.users : [];
-        setMembers(usersList);
-      } else {
+    (async () => {
+      try {
+        const response = await get<{ users: MemberSearchResult[] }>(
+          ENDPOINTS.CHAT_USERS,
+          { search: trimmed }
+        );
+        if (cancelled) return;
+        if (response.success && Array.isArray(response.data?.users)) {
+          setMembers(response.data.users);
+        } else {
+          setMembers([]);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        log.error(err, 'Search error');
+        setError('Failed to search members');
         setMembers([]);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (err) {
-      log.error(err, 'Search error');
-      setError('Failed to search members');
-      setMembers([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    })();
 
-  // ---------------------------------------------------------------------------
-  // Handle Search Input
-  // ---------------------------------------------------------------------------
-
-  const handleSearchChange = (text: string) => {
-    setSearchQuery(text);
-
-    // Clear existing timer
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
-
-    // Set new debounced search
-    const timer = setTimeout(() => {
-      searchMembers(text);
-    }, 300);
-
-    setDebounceTimer(timer);
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery]);
 
   // ---------------------------------------------------------------------------
   // Handle User Selection
@@ -150,10 +146,23 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
     setSearchQuery('');
     setMembers([]);
     setError(null);
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
+    setTab('dm');
     onClose();
+  };
+
+  // ---------------------------------------------------------------------------
+  // Group Created Handler — close + navigate to the new group's detail screen
+  // ---------------------------------------------------------------------------
+
+  const handleGroupCreated = (thread: { id: number; title?: string }) => {
+    handleClose();
+    router.push({
+      pathname: '/messages/group/[threadId]',
+      params: {
+        threadId: String(thread.id),
+        title: thread.title || 'Group',
+      },
+    });
   };
 
   // ---------------------------------------------------------------------------
@@ -209,10 +218,60 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
           <Pressable style={styles.closeButton} onPress={handleClose}>
             <Ionicons name="close" size={24} color={themeColors.text} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: themeColors.text }]}>New Message</Text>
+          <Text style={[styles.headerTitle, { color: themeColors.text }]}>
+            {tab === 'group' ? 'New Group' : 'New Message'}
+          </Text>
           <View style={styles.headerRight} />
         </View>
 
+        {/* Tab toggle — DM / New Group */}
+        <View style={[styles.tabRow, { borderBottomColor: themeColors.border }]}>
+          <Pressable
+            style={[
+              styles.tabBtn,
+              tab === 'dm' && { borderBottomColor: themeColors.primary },
+            ]}
+            onPress={() => setTab('dm')}
+          >
+            <Text
+              style={[
+                styles.tabBtnText,
+                { color: tab === 'dm' ? themeColors.primary : themeColors.textSecondary },
+              ]}
+            >
+              Direct Message
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.tabBtn,
+              tab === 'group' && { borderBottomColor: themeColors.primary },
+            ]}
+            onPress={() => setTab('group')}
+          >
+            <Text
+              style={[
+                styles.tabBtnText,
+                { color: tab === 'group' ? themeColors.primary : themeColors.textSecondary },
+              ]}
+            >
+              New Group
+            </Text>
+          </Pressable>
+        </View>
+
+        {tab === 'group' ? (
+          <NewGroupForm onCreated={handleGroupCreated} />
+        ) : (
+          renderDmBody()
+        )}
+      </View>
+    </Modal>
+  );
+
+  function renderDmBody() {
+    return (
+      <>
         {/* Search Input */}
         <View style={[styles.searchContainer, { backgroundColor: themeColors.backgroundSecondary }]}>
           <Ionicons name="search" size={20} color={themeColors.textSecondary} />
@@ -221,29 +280,24 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
             placeholder="Search for a person..."
             placeholderTextColor={themeColors.textTertiary}
             value={searchQuery}
-            onChangeText={handleSearchChange}
+            onChangeText={setSearchQuery}
             autoCapitalize="none"
             autoCorrect={false}
             autoFocus
           />
           {searchQuery.length > 0 && (
-            <Pressable onPress={() => {
-              setSearchQuery('');
-              setMembers([]);
-            }}>
+            <Pressable onPress={() => { setSearchQuery(''); setMembers([]); }}>
               <Ionicons name="close-circle" size={20} color={themeColors.textSecondary} />
             </Pressable>
           )}
         </View>
 
-        {/* Error Message */}
         {error && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
 
-        {/* Content */}
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={themeColors.primary} />
@@ -259,7 +313,7 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
           <View style={styles.emptyContainer}>
             <Ionicons name="search-outline" size={48} color={themeColors.textTertiary} />
             <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
-              No members found for "{searchQuery}"
+              No members found for &quot;{searchQuery}&quot;
             </Text>
           </View>
         ) : (
@@ -272,9 +326,9 @@ export function NewMessageModal({ visible, onClose }: NewMessageModalProps) {
             keyboardShouldPersistTaps="handled"
           />
         )}
-      </View>
-    </Modal>
-  );
+      </>
+    );
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -359,6 +413,24 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: typography.size.sm,
     textAlign: 'center',
+  },
+
+  tabRow: {
+    flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+
+  tabBtn: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+
+  tabBtnText: {
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
   },
 });
 

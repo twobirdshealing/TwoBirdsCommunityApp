@@ -19,6 +19,8 @@ import {
   getThreadAvatar,
   getThreadBadgeSlugs,
   getThreadDisplayName,
+  isGroupThread,
+  isSpaceThread,
   isThreadVerified,
 } from '@/types/message';
 import { formatRelativeTime, isUserOnline } from '@/utils/formatDate';
@@ -44,6 +46,8 @@ interface ConversationCardProps {
   isUnread?: boolean;
   onPress?: (thread: ChatThread) => void;
   onDelete?: (thread: ChatThread) => void;
+  /** Render a faded variant — used for `left_community_threads`. */
+  faded?: boolean;
 }
 
 // -----------------------------------------------------------------------------
@@ -56,17 +60,24 @@ export const ConversationCard = React.memo(function ConversationCard({
   isUnread = false,
   onPress,
   onDelete,
+  faded = false,
 }: ConversationCardProps) {
   const { colors: themeColors } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
 
   // Get display data from thread.info (v2.2.0)
+  const isGroup = isGroupThread(thread);
+  const isSpace = isSpaceThread(thread);
+  const isMultiParticipant = isGroup || isSpace;
   const displayName = getThreadDisplayName(thread);
-  const avatarUrl = getThreadAvatar(thread);
+  const avatarUrl = getThreadAvatar(thread) || thread.meta?.icon || null;
   const lastMessage = getLastMessage(thread);
-  const verified = isThreadVerified(thread);
-  const badgeSlugs = getThreadBadgeSlugs(thread);
-  const online = isUserOnline(thread.info?.last_activity);
+  // Groups & spaces don't have a single "verified" participant or single badge —
+  // only DMs surface those signals.
+  const verified = isMultiParticipant ? false : isThreadVerified(thread);
+  const badgeSlugs = isMultiParticipant ? [] : getThreadBadgeSlugs(thread);
+  // Online indicator only makes sense for DMs (the single other participant).
+  const online = isMultiParticipant ? false : isUserOnline(thread.info?.last_activity);
 
   // Message preview
   const messagePreview = lastMessage
@@ -80,6 +91,11 @@ export const ConversationCard = React.memo(function ConversationCard({
 
   // Is the last message from current user?
   const isOwnLastMessage = lastMessage && Number(lastMessage.user_id) === currentUserId;
+  // Multi-participant threads (group + space) prefix the sender ("Two Birds: hi");
+  // DM falls back to "You: ".
+  const senderPrefix = isMultiParticipant && lastMessage && !isOwnLastMessage
+    ? lastMessage.xprofile?.display_name
+    : null;
 
   // ---------------------------------------------------------------------------
   // Swipe Delete Action
@@ -121,7 +137,11 @@ export const ConversationCard = React.memo(function ConversationCard({
 
   const cardContent = (
       <AnimatedPressable
-        style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}
+        style={[
+          styles.container,
+          { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border },
+          faded && styles.faded,
+        ]}
         onPress={() => onPress?.(thread)}
       >
         {/* Avatar */}
@@ -154,6 +174,11 @@ export const ConversationCard = React.memo(function ConversationCard({
           <View style={styles.previewRow}>
             {isOwnLastMessage && (
               <Text style={[styles.youPrefix, { color: themeColors.textSecondary }]}>You: </Text>
+            )}
+            {senderPrefix && (
+              <Text style={[styles.youPrefix, { color: themeColors.textSecondary }]} numberOfLines={1}>
+                {senderPrefix}:{' '}
+              </Text>
             )}
             <Text style={[styles.preview, { color: themeColors.textSecondary }]} numberOfLines={1}>
               {messagePreview}
@@ -198,6 +223,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
+  },
+
+  faded: {
+    opacity: 0.55,
   },
 
   content: {

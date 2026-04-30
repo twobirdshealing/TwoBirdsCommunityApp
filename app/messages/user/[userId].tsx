@@ -2,24 +2,17 @@
 // USER CHAT SCREEN - Chat addressed by user ID
 // =============================================================================
 // Route: /messages/user/[userId]
-// Features:
-// - Resolves existing thread with this user, or shows empty compose
-// - First message creates thread via startChatWithUser()
-// - Full chat: message bubbles, send, poll, Pusher real-time
-// - Navigate to participant profile
+// Resolves an existing thread with this user (or shows the empty-compose
+// state for first message). All shared chat scaffolding lives in
+// ChatScreenLayout — this file owns the user-specific header, the chat-level
+// settings menu (block/unblock), and the blocked-thread footer.
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
 import { DropdownMenu } from '@/components/common/DropdownMenu';
 import type { DropdownMenuItem } from '@/components/common/DropdownMenu';
-import { ChatInput } from '@/components/message/ChatInput';
-import { ChatReactionPicker } from '@/components/message/ChatReactionPicker';
-import { DateSeparator, MessageBubble } from '@/components/message/MessageBubble';
-import { MediaViewer } from '@/components/media/MediaViewer';
-import { PageHeader } from '@/components/navigation/PageHeader';
+import { ChatScreenLayout } from '@/components/message/ChatScreenLayout';
 import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
-import { getSlotComponent } from '@/modules/_registry';
-import { Ionicons } from '@expo/vector-icons';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,10 +20,8 @@ import { useChatMessages } from '@/hooks/useChatMessages';
 import { useChatReactions } from '@/hooks/useChatReactions';
 import { useMessageMenu } from '@/hooks/useMessageMenu';
 import { isUserOnline, formatLastActivity } from '@/utils/formatDate';
-import { ChatMessage, getMessagePreview } from '@/types/message';
-import { FlashList } from '@shopify/flash-list';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useRef } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -38,22 +29,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-// -----------------------------------------------------------------------------
-// Slot resolution (cached at module level)
-// -----------------------------------------------------------------------------
-
-const CustomChatPicker = getSlotComponent<React.ComponentProps<typeof ChatReactionPicker>>('chatReactionPicker');
-
-// -----------------------------------------------------------------------------
-// Component
-// -----------------------------------------------------------------------------
 
 export default function UserChatScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { userId, threadId: threadIdParam, displayName, avatar } = useLocalSearchParams<{
     userId: string;
     threadId?: string;
@@ -66,12 +44,7 @@ export default function UserChatScreen() {
   const knownThreadId = threadIdParam ? parseInt(threadIdParam, 10) : null;
   const currentUserId = user?.id || 0;
 
-  // Refs
   const listRef = useRef<any>(null);
-
-  // ---------------------------------------------------------------------------
-  // Hooks
-  // ---------------------------------------------------------------------------
 
   const chat = useChatMessages({
     targetUserId,
@@ -90,8 +63,8 @@ export default function UserChatScreen() {
     listRef,
   });
 
-  // Chat menu (settings gear) state
-  const [chatMenuVisible, setChatMenuVisible] = React.useState(false);
+  // Chat-level menu (settings gear → Block/Unblock)
+  const [chatMenuVisible, setChatMenuVisible] = useState(false);
 
   // ---------------------------------------------------------------------------
   // Header display: prefer threadDetails > intendedUser > route params
@@ -109,17 +82,6 @@ export default function UserChatScreen() {
   const headerOnline = isUserOnline(chat.threadDetails?.info?.last_activity);
   const headerActivity = formatLastActivity(chat.threadDetails?.info?.last_activity);
 
-  // ---------------------------------------------------------------------------
-  // Navigation Handlers
-  // ---------------------------------------------------------------------------
-
-  const handleAvatarPress = (message: ChatMessage) => {
-    const username = message.xprofile?.username;
-    if (username) {
-      router.push(`/profile/${username}` as any);
-    }
-  };
-
   const handleHeaderPress = () => {
     if (headerUsername) {
       router.push(`/profile/${headerUsername}` as any);
@@ -127,10 +89,10 @@ export default function UserChatScreen() {
   };
 
   // ---------------------------------------------------------------------------
-  // Render Header
+  // Header center, footer override, and empty state
   // ---------------------------------------------------------------------------
 
-  const renderHeaderCenter = () => (
+  const headerCenter = (
     <Pressable style={styles.headerCenter} onPress={handleHeaderPress}>
       <Avatar
         source={headerAvatar}
@@ -160,176 +122,53 @@ export default function UserChatScreen() {
     </Pressable>
   );
 
-  // ---------------------------------------------------------------------------
-  // Render Messages
-  // ---------------------------------------------------------------------------
-
-  const getMessageDate = (dateString: string) => {
-    return new Date(dateString).toDateString();
-  };
-
-  const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
-    const isOwn = Number(item.user_id) === currentUserId;
-
-    const prevMessage = index > 0 ? chat.messages[index - 1] : null;
-    const showDateSeparator = !prevMessage ||
-      getMessageDate(item.created_at) !== getMessageDate(prevMessage.created_at);
-
-    const isFirstInGroup = !prevMessage ||
-      Number(prevMessage.user_id) !== Number(item.user_id) ||
-      getMessageDate(item.created_at) !== getMessageDate(prevMessage.created_at);
-
-    const nextMessage = index < chat.messages.length - 1 ? chat.messages[index + 1] : null;
-    const isLastInGroup = !nextMessage ||
-      Number(nextMessage.user_id) !== Number(item.user_id) ||
-      getMessageDate(item.created_at) !== getMessageDate(nextMessage.created_at);
-
-    return (
-      <>
-        {showDateSeparator && <DateSeparator date={item.created_at} />}
-        <MessageBubble
-          message={item}
-          isOwn={isOwn}
-          showAvatar={!isOwn && isFirstInGroup}
-          showTimestamp={isLastInGroup}
-          onAvatarPress={() => handleAvatarPress(item)}
-          onDelete={isOwn ? chat.handleDeleteMessage : undefined}
-          onDefaultReact={reactions.handleDefaultReact}
-          onReactionLongPress={reactions.handleReactionLongPress}
-          onReactionPress={reactions.handleReactionPillPress}
-          onMenuPress={menu.handleMenuPress}
-          onImagePress={menu.handleImagePress}
-          onReplyPress={menu.handleReplyQuotePress}
-          currentUserId={currentUserId}
-          userReactionRenderer={reactions.renderUserReactionIcon(item)}
-          reactionRenderer={reactions.renderReactionIcon}
-        />
-      </>
-    );
-  };
-
-  // ---------------------------------------------------------------------------
-  // Render Empty State (no thread yet)
-  // ---------------------------------------------------------------------------
-
-  const renderEmptyCompose = () => (
-    <View style={styles.emptyContainer}>
-      <Avatar
-        source={headerAvatar}
-        size="lg"
-        fallback={headerName}
-      />
-      <Text style={[styles.emptyName, { color: themeColors.text }]}>
-        {headerName}
+  const blockedFooter = (
+    <View style={[styles.blockedContainer, { borderTopColor: themeColors.border }]}>
+      <Text style={[styles.blockedTitle, { color: themeColors.text }]}>
+        You blocked messages from {headerName}
       </Text>
+      <Text style={[styles.blockedDescription, { color: themeColors.textSecondary }]}>
+        You can&apos;t send or receive messages in this chat unless you unblock the user.
+      </Text>
+      <Pressable
+        style={[styles.unblockButton, { borderColor: themeColors.border }]}
+        onPress={chat.handleUnblockPress}
+        disabled={chat.blockLoading}
+      >
+        {chat.blockLoading ? (
+          <ActivityIndicator size="small" color={themeColors.text} />
+        ) : (
+          <Text style={[styles.unblockButtonText, { color: themeColors.text }]}>Unblock User</Text>
+        )}
+      </Pressable>
+    </View>
+  );
+
+  const emptyCompose = (
+    <View style={styles.emptyContainer}>
+      <Avatar source={headerAvatar} size="lg" fallback={headerName} />
+      <Text style={[styles.emptyName, { color: themeColors.text }]}>{headerName}</Text>
       <Text style={[styles.emptyHint, { color: themeColors.textSecondary }]}>
         Start a chat session with {headerName} by sending the first message.
       </Text>
     </View>
   );
 
-  // ---------------------------------------------------------------------------
-  // Main Render
-  // ---------------------------------------------------------------------------
-
-  const chatAreaContent = (
-    <>
-      {chat.loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={themeColors.primary} />
-        </View>
-      ) : chat.messages.length === 0 ? (
-        renderEmptyCompose()
-      ) : (
-        <FlashList
-          ref={listRef}
-          data={chat.messages}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          ListHeaderComponent={
-            chat.loadingOlder ? (
-              <View style={styles.loadOlderContainer}>
-                <ActivityIndicator size="small" color={themeColors.primary} />
-              </View>
-            ) : chat.hasMore ? (
-              <Pressable style={styles.loadOlderContainer} onPress={chat.loadOlderMessages}>
-                <Text style={[styles.loadOlderText, { color: themeColors.primary }]}>
-                  Load earlier messages
-                </Text>
-              </Pressable>
-            ) : null
-          }
-          onLoad={() => {
-            listRef.current?.scrollToEnd({ animated: false });
-          }}
-          maintainVisibleContentPosition={{ autoscrollToBottomThreshold: 100 }}
-          keyboardDismissMode="interactive"
-          keyboardShouldPersistTaps="handled"
-        />
-      )}
-
-      {/* Blocked State or Input */}
-      {chat.isBlocked ? (
-        <View style={[styles.blockedContainer, { borderTopColor: themeColors.border }]}>
-          <Text style={[styles.blockedTitle, { color: themeColors.text }]}>
-            You blocked messages from {headerName}
-          </Text>
-          <Text style={[styles.blockedDescription, { color: themeColors.textSecondary }]}>
-            You can't send or receive messages in this chat unless you unblock the user.
-          </Text>
-          <Pressable
-            style={[styles.unblockButton, { borderColor: themeColors.border }]}
-            onPress={chat.handleUnblockPress}
-            disabled={chat.blockLoading}
-          >
-            {chat.blockLoading ? (
-              <ActivityIndicator size="small" color={themeColors.text} />
-            ) : (
-              <Text style={[styles.unblockButtonText, { color: themeColors.text }]}>
-                Unblock User
-              </Text>
-            )}
-          </Pressable>
-        </View>
-      ) : (
-        <ChatInput
-          onSend={chat.handleSend}
-          sending={chat.sending}
-          disabled={chat.loading}
-          placeholder={chat.thread ? 'Type a message...' : `Message ${headerName}...`}
-          replyTo={chat.replyTo}
-          onCancelReply={() => chat.setReplyTo(null)}
-        />
-      )}
-    </>
-  );
-
   return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
-
-      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: themeColors.background }]}>
-        {/* Header */}
-        <PageHeader
-          left={<HeaderIconButton icon="chevron-back" onPress={() => router.back()} />}
-          center={renderHeaderCenter()}
-          right={<HeaderIconButton icon="settings-outline" onPress={() => setChatMenuVisible(true)} />}
-        />
-
-        {/* Chat Area */}
-        <KeyboardAvoidingView
-          style={styles.chatArea}
-          behavior="padding"
-        >
-          {chatAreaContent}
-        </KeyboardAvoidingView>
-
-        {/* Bottom safe area - outside KAV so keyboard calc is correct */}
-        <View style={{ height: insets.bottom, backgroundColor: themeColors.surface }} />
-      </View>
-
-      {/* Chat Menu Dropdown (block) */}
+    <ChatScreenLayout
+      chat={chat}
+      reactions={reactions}
+      menu={menu}
+      currentUserId={currentUserId}
+      listRef={listRef}
+      headerCenter={headerCenter}
+      headerRight={
+        <HeaderIconButton icon="settings-outline" onPress={() => setChatMenuVisible(true)} />
+      }
+      footerOverride={chat.isBlocked ? blockedFooter : undefined}
+      inputPlaceholder={chat.thread ? 'Type a message...' : `Message ${headerName}...`}
+      emptyState={emptyCompose}
+    >
       <DropdownMenu
         visible={chatMenuVisible}
         onClose={() => setChatMenuVisible(false)}
@@ -343,80 +182,16 @@ export default function UserChatScreen() {
           },
         ] as DropdownMenuItem[]}
       />
-
-      {/* Message Menu Dropdown (Reply / Delete) */}
-      <DropdownMenu
-        visible={menu.messageMenuVisible}
-        onClose={menu.closeMessageMenu}
-        anchor={menu.messageMenuAnchor}
-        items={[
-          {
-            key: 'reply',
-            label: 'Reply',
-            icon: 'arrow-undo-outline',
-            onPress: () => {
-              menu.closeMessageMenu();
-              if (menu.messageMenuTarget) {
-                chat.setReplyTo({
-                  messageId: menu.messageMenuTarget.id,
-                  previewText: getMessagePreview(menu.messageMenuTarget.text, 80),
-                });
-              }
-            },
-          },
-          ...(menu.messageMenuTarget && Number(menu.messageMenuTarget.user_id) === currentUserId
-            ? [{
-                key: 'delete',
-                label: 'Delete',
-                icon: 'trash-outline' as const,
-                destructive: true,
-                onPress: () => {
-                  const target = menu.messageMenuTarget;
-                  menu.closeMessageMenu();
-                  if (target) {
-                    chat.handleDeleteMessage(target);
-                  }
-                },
-              }]
-            : []),
-        ] as DropdownMenuItem[]}
-      />
-
-      {/* Image Viewer */}
-      <MediaViewer
-        visible={menu.mediaViewerVisible}
-        images={menu.mediaViewerImages}
-        initialIndex={menu.mediaViewerIndex}
-        onClose={menu.closeMediaViewer}
-      />
-
-      {/* Reaction Picker (module slot overrides core picker when active) */}
-      {React.createElement(CustomChatPicker || ChatReactionPicker, {
-        visible: reactions.reactionPickerVisible,
-        onSelect: reactions.handleReactionSelect,
-        onClose: reactions.handleReactionPickerClose,
-        currentEmoji: reactions.reactionTargetMessageRef.current
-          ? reactions.getUserReactionType(reactions.reactionTargetMessageRef.current)
-          : null,
-        anchor: reactions.reactionPickerAnchor,
-      })}
-    </>
+    </ChatScreenLayout>
   );
 }
 
 // -----------------------------------------------------------------------------
-// Styles
+// Styles — only the user-chat-specific bits remain (header chrome, blocked
+// banner, empty-compose). All shared layout styles live in ChatScreenLayout.
 // -----------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-
-  chatArea: {
-    flex: 1,
-  },
-
   headerCenter: {
     flex: 1,
     flexDirection: 'row',
@@ -444,17 +219,6 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
 
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  listContent: {
-    paddingVertical: spacing.md,
-  },
-
-  // Empty compose state
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -475,18 +239,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // Load older messages
-  loadOlderContainer: {
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-  },
-
-  loadOlderText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium,
-  },
-
-  // Blocked state
   blockedContainer: {
     alignItems: 'center',
     paddingVertical: spacing.lg,

@@ -1,9 +1,10 @@
 // =============================================================================
 // PUSHER CONTEXT - Global real-time messaging state
 // =============================================================================
-// Manages Pusher connection lifecycle and provides event subscription hooks.
-// Automatically connects when user is authenticated, disconnects on logout.
-// Reconnects when app returns from background (v2.2.0).
+// Manages Pusher connection lifecycle and exposes typed listener hooks for
+// every server-fired event. Connection state lives in context (`isConnected`);
+// event subscriptions go through the singleton handler registry in
+// services/pusher.ts via the typed `subscribe(event, handler)` primitive.
 // =============================================================================
 
 import { useAppConfig } from '@/contexts/AppConfigContext';
@@ -14,10 +15,9 @@ import {
   initializePusher,
   reconnectPusher,
   setConnectionStateCallback,
-  MessageHandler,
-  onNewMessage,
-  onReaction,
-  ReactionHandler,
+  subscribe,
+  type PusherEventName,
+  type PusherEventHandler,
 } from '@/services/pusher';
 import React, {
   createContext,
@@ -32,18 +32,13 @@ import { useAppFocus } from '@/hooks/useAppFocus';
 import { useTickerPolling } from '@/hooks/useTickerPolling';
 
 // -----------------------------------------------------------------------------
-// Types
+// Context — exposes only connection state. Event subscriptions are independent
+// of context and go through the registry directly via `useChannelEvent`.
 // -----------------------------------------------------------------------------
 
 interface PusherContextType {
   isConnected: boolean;
-  subscribeToMessages: (handler: MessageHandler) => () => void;
-  subscribeToReactions: (handler: ReactionHandler) => () => void;
 }
-
-// -----------------------------------------------------------------------------
-// Context
-// -----------------------------------------------------------------------------
 
 const PusherContext = createContext<PusherContextType | undefined>(undefined);
 
@@ -76,12 +71,10 @@ export function PusherProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isAuthenticated && user?.id && socketConfig) {
-      // Server provided socket config — connect
       initializePusher(user.id, socketConfig).then(success => {
         setIsConnected(success);
       });
     } else if (!isAuthenticated) {
-      // Logout — disconnect and clear
       disconnectPusher();
       clearHandlers();
       setIsConnected(false);
@@ -95,8 +88,6 @@ export function PusherProvider({ children }: { children: React.ReactNode }) {
   // ---------------------------------------------------------------------------
   // Ticker polling — keeps xprofile.last_activity fresh so the server
   // actually broadcasts Pusher events (it skips users inactive >5 min).
-  // Same endpoint the web SPA polls every ~60s.
-  // Only active when socket is configured (no point polling without real-time).
   // ---------------------------------------------------------------------------
 
   useTickerPolling(isAuthenticated && !!user?.id && !!socketConfig);
@@ -104,7 +95,6 @@ export function PusherProvider({ children }: { children: React.ReactNode }) {
   // ---------------------------------------------------------------------------
   // Reconnect on app foreground
   // The server's 5-minute activity gate means backgrounded apps miss pushes.
-  // Only active when socket is configured.
   // ---------------------------------------------------------------------------
 
   useAppFocus(
@@ -114,37 +104,13 @@ export function PusherProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated && !!user?.id && !!socketConfig,
   );
 
-  // ---------------------------------------------------------------------------
-  // Subscription methods
-  // ---------------------------------------------------------------------------
+  const value = useMemo(() => ({ isConnected }), [isConnected]);
 
-  const subscribeToMessages = useCallback((handler: MessageHandler) => {
-    return onNewMessage(handler);
-  }, []);
-
-  const subscribeToReactions = useCallback((handler: ReactionHandler) => {
-    return onReaction(handler);
-  }, []);
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
-
-  const value = useMemo(() => ({
-    isConnected,
-    subscribeToMessages,
-    subscribeToReactions,
-  }), [isConnected, subscribeToMessages, subscribeToReactions]);
-
-  return (
-    <PusherContext.Provider value={value}>
-      {children}
-    </PusherContext.Provider>
-  );
+  return <PusherContext.Provider value={value}>{children}</PusherContext.Provider>;
 }
 
 // -----------------------------------------------------------------------------
-// Hook
+// Hooks
 // -----------------------------------------------------------------------------
 
 export function usePusher() {
@@ -155,34 +121,35 @@ export function usePusher() {
   return context;
 }
 
-// -----------------------------------------------------------------------------
-// Convenience Hooks
-// -----------------------------------------------------------------------------
-
 /**
- * Subscribe to new message events
+ * Subscribe a component to a typed Pusher event for the lifetime of its mount.
+ * Handler identity doesn't matter — `useEffectEvent` keeps the latest closure
+ * stable across renders without re-binding the subscription.
+ *
+ * Most callers should use the named per-event hooks below for readability;
+ * `useChannelEvent` is the underlying primitive when you need a generic.
  */
-export function useNewMessageListener(handler: MessageHandler) {
-  const { subscribeToMessages } = usePusher();
+export function useChannelEvent<K extends PusherEventName>(
+  event: K,
+  handler: PusherEventHandler<K>,
+) {
   const stableHandler = useEffectEvent(handler);
-
-  useEffect(() => {
-    const unsubscribe = subscribeToMessages(stableHandler);
-    return unsubscribe;
-  }, [subscribeToMessages]);
+  useEffect(() => subscribe(event, stableHandler), [event]);
 }
 
-/**
- * Subscribe to reaction events
- */
-export function useReactionListener(handler: ReactionHandler) {
-  const { subscribeToReactions } = usePusher();
-  const stableHandler = useEffectEvent(handler);
+// -----------------------------------------------------------------------------
+// Named convenience hooks — one-liners over useChannelEvent. They exist so
+// call sites read fluently and grep-by-event finds them.
+// -----------------------------------------------------------------------------
 
-  useEffect(() => {
-    const unsubscribe = subscribeToReactions(stableHandler);
-    return unsubscribe;
-  }, [subscribeToReactions]);
-}
+export const useNewMessageListener = (h: PusherEventHandler<'message'>) => useChannelEvent('message', h);
+export const useReactionListener = (h: PusherEventHandler<'reaction'>) => useChannelEvent('reaction', h);
+export const useNewThreadListener = (h: PusherEventHandler<'new_thread'>) => useChannelEvent('new_thread', h);
+export const useThreadUpdatedListener = (h: PusherEventHandler<'thread_updated'>) => useChannelEvent('thread_updated', h);
+export const useGroupMemberAddedListener = (h: PusherEventHandler<'group_member_added'>) => useChannelEvent('group_member_added', h);
+export const useGroupMemberRemovedListener = (h: PusherEventHandler<'group_member_removed'>) => useChannelEvent('group_member_removed', h);
+export const useGroupAdminChangedListener = (h: PusherEventHandler<'group_admin_changed'>) => useChannelEvent('group_admin_changed', h);
+export const useGroupDeletedListener = (h: PusherEventHandler<'group_deleted'>) => useChannelEvent('group_deleted', h);
+export const useGroupRemovedFromListener = (h: PusherEventHandler<'group_removed_from'>) => useChannelEvent('group_removed_from', h);
 
 export default PusherContext;

@@ -82,6 +82,8 @@ interface MemberCardProps {
   showLastActive?: boolean;
   showActions?: boolean;
   compact?: boolean;
+  /** Appended after the display name in muted text — e.g. "(You)" for the current user. */
+  nameSuffix?: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -148,6 +150,7 @@ export const MemberCard = React.memo(function MemberCard({
   showLastActive = true,
   showActions = false,
   compact = false,
+  nameSuffix,
 }: MemberCardProps) {
   const { colors: themeColors } = useTheme();
   const providers = useSocialProviders();
@@ -200,6 +203,11 @@ export const MemberCard = React.memo(function MemberCard({
             badgeSlugs={profile.meta?.badge_slug || member.meta?.badge_slug}
             numberOfLines={1}
           />
+          {nameSuffix ? (
+            <Text style={[styles.nameSuffix, { color: themeColors.textSecondary }]}>
+              {' '}{nameSuffix}
+            </Text>
+          ) : null}
         </View>
 
         {/* Username + Role Badge */}
@@ -365,6 +373,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     marginBottom: 2,
+  },
+
+  nameSuffix: {
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.medium,
   },
 
   usernameRow: {

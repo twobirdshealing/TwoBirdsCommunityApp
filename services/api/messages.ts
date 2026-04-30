@@ -20,8 +20,13 @@ const log = createLogger('MessagesAPI');
 // Get All Threads (Conversations)
 // -----------------------------------------------------------------------------
 
-export async function getThreads() {
-  return get<ThreadsResponse>(ENDPOINTS.CHAT_THREADS);
+/**
+ * Fetch the thread listing. Passing `search` filters server-side across all
+ * thread types (DMs, groups, community/left-community) — the inbox uses this
+ * for live search without paginating the full set client-side.
+ */
+export async function getThreads(params?: { search?: string }) {
+  return get<ThreadsResponse>(ENDPOINTS.CHAT_THREADS, params);
 }
 
 // -----------------------------------------------------------------------------

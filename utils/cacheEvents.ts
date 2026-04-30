@@ -14,6 +14,7 @@ export const CACHE_EVENTS = {
   BOOKMARKS: 'bookmarks',
   SPACES: 'spaces',
   PROFILE: 'profile',
+  THREADS: 'threads',
 } as const;
 
 export type CacheEvent = (typeof CACHE_EVENTS)[keyof typeof CACHE_EVENTS];

@@ -9,6 +9,7 @@
 // =============================================================================
 
 import { Avatar } from '@/components/common/Avatar';
+import { SystemMessage } from '@/components/message/SystemMessage';
 import { withOpacity } from '@/constants/colors';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useAppConfig } from '@/contexts/AppConfigContext';
@@ -87,6 +88,14 @@ export const MessageBubble = React.memo(function MessageBubble({
   const swipeableRef = useRef<Swipeable>(null);
   const reactionBtnRef = useRef<View>(null);
   const menuBtnRef = useRef<View>(null);
+
+  // Group system events ("Two Birds created the group") render as a divider,
+  // not a bubble — bypass the entire bubble + reaction layout.
+  if (message.meta?.system_event) {
+    const text = message.meta.system_text || getMessageText(message.text);
+    return <SystemMessage text={text} />;
+  }
+
   const messageText = getMessageText(message.text);
   const senderName = message.xprofile?.display_name || 'Unknown';
   const avatarUrl = message.xprofile?.avatar || null;

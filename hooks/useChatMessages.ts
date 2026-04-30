@@ -10,33 +10,99 @@ import { Alert } from 'react-native';
 import { ChatMessage, ChatThread, ThreadDetails, IntendedObject } from '@/types/message';
 import type { ChatInputAttachment, ChatInputReplyTo } from '@/components/message/ChatInput';
 import { messagesApi } from '@/services/api/messages';
-import { useNewMessageListener, useReactionListener } from '@/contexts/PusherContext';
+import {
+  useNewMessageListener,
+  useReactionListener,
+  useThreadUpdatedListener,
+  useGroupMemberAddedListener,
+  useGroupMemberRemovedListener,
+  useGroupAdminChangedListener,
+  useGroupDeletedListener,
+  useGroupRemovedFromListener,
+  usePusher,
+} from '@/contexts/PusherContext';
 import { createLogger } from '@/utils/logger';
-import type { PusherMessage, PusherReaction } from '@/services/pusher';
+import type {
+  PusherMessage,
+  PusherReaction,
+  PusherThreadUpdated,
+  PusherGroupMemberAdded,
+  PusherGroupMemberRemoved,
+  PusherGroupAdminChanged,
+  PusherGroupDeleted,
+  PusherGroupRemovedFrom,
+} from '@/services/pusher';
+import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 
 const log = createLogger('ChatMessages');
 
 // -----------------------------------------------------------------------------
-// Types
+// Types — discriminated by `threadType` so each path gets only the inputs it
+// actually uses. The hook narrows on the discriminator internally; callers
+// can't accidentally pass `targetUserId` to a group thread or forget
+// `threadId` for a space chat.
 // -----------------------------------------------------------------------------
 
-interface UseChatMessagesParams {
-  targetUserId: number;
-  knownThreadId: number | null;
+interface BaseChatParams {
   currentUserId: number;
   listRef: React.RefObject<any>;
 }
+
+interface UserChatParams extends BaseChatParams {
+  threadType?: 'user';
+  /** The other user's ID — required to resolve or create the thread. */
+  targetUserId: number;
+  /** When already known (e.g. tapped from a thread row), skips the resolution step. */
+  knownThreadId?: number | null;
+}
+
+interface GroupChatParams extends BaseChatParams {
+  threadType: 'group';
+  /** Group thread ID. */
+  threadId: number;
+  /** Called when the user is removed from / kicked out of the group. The screen should pop. */
+  onGroupExit?: (reason: 'deleted' | 'removed') => void;
+}
+
+interface SpaceChatParams extends BaseChatParams {
+  threadType: 'space';
+  /** Community-space thread ID. */
+  threadId: number;
+}
+
+export type UseChatMessagesParams = UserChatParams | GroupChatParams | SpaceChatParams;
 
 // -----------------------------------------------------------------------------
 // Hook
 // -----------------------------------------------------------------------------
 
-export function useChatMessages({
-  targetUserId,
-  knownThreadId,
-  currentUserId,
-  listRef,
-}: UseChatMessagesParams) {
+export function useChatMessages(params: UseChatMessagesParams) {
+  // Normalize the discriminated union into a flat config — TS narrows once
+  // here, the rest of the hook reads stable fields and never re-discriminates.
+  const cfg = (() => {
+    if (params.threadType === 'group') {
+      return {
+        targetUserId: undefined as number | undefined,
+        knownThreadId: params.threadId,
+        onGroupExit: params.onGroupExit,
+      };
+    }
+    if (params.threadType === 'space') {
+      return {
+        targetUserId: undefined as number | undefined,
+        knownThreadId: params.threadId,
+        onGroupExit: undefined,
+      };
+    }
+    return {
+      targetUserId: params.targetUserId,
+      knownThreadId: params.knownThreadId ?? null,
+      onGroupExit: undefined,
+    };
+  })();
+  const { targetUserId, knownThreadId, onGroupExit } = cfg;
+  const { currentUserId, listRef } = params;
+  const { isConnected: pusherConnected } = usePusher();
   // Core state
   const [thread, setThread] = useState<ChatThread | null>(null);
   const [threadDetails, setThreadDetails] = useState<ThreadDetails | null>(null);
@@ -196,6 +262,120 @@ export function useChatMessages({
   useNewMessageListener(handleNewMessage);
 
   useReactionListener(handleReaction);
+
+  // ---------------------------------------------------------------------------
+  // Group event listeners — patch local thread state in real time.
+  // All seven events fire on the same private-chat_user_{user_id} channel and
+  // also reach the inbox screen, which patches its own cache. We don't emit
+  // CACHE_EVENTS.THREADS for in-list events — that would cause the inbox to
+  // do a full refetch on every member-added event.
+  // group_deleted / group_removed_from DO emit so the inbox can drop the row
+  // even if its own listener missed the payload (defense in depth).
+  // ---------------------------------------------------------------------------
+
+  const applyThreadPatch = (incoming: PusherThreadUpdated['thread'] | undefined, fallbackInfo?: PusherThreadUpdated['info']) => {
+    if (!incoming && !fallbackInfo) return;
+    if (incoming) {
+      setThread(prev => (prev ? { ...prev, ...incoming } : incoming));
+      setThreadDetails(prev => prev ? { ...prev, ...incoming, info: incoming.info ?? prev.info } : prev);
+      return;
+    }
+    if (fallbackInfo) {
+      setThreadDetails(prev => prev ? { ...prev, info: fallbackInfo } : prev);
+    }
+  };
+
+  const handleThreadUpdated = useEffectEvent((data: PusherThreadUpdated) => {
+    const id = data.thread?.id ?? data.thread_id;
+    if (!thread || String(id) !== String(thread.id)) return;
+    applyThreadPatch(data.thread, data.info);
+  });
+
+  const handleGroupMemberAdded = useEffectEvent((data: PusherGroupMemberAdded) => {
+    if (!thread || String(data.thread_id) !== String(thread.id)) return;
+    applyThreadPatch(data.thread);
+  });
+
+  const handleGroupMemberRemoved = useEffectEvent((data: PusherGroupMemberRemoved) => {
+    if (!thread || String(data.thread_id) !== String(thread.id)) return;
+    applyThreadPatch(data.thread);
+  });
+
+  // Server transforms `info.is_admin` for the receiving user, so overlaying
+  // `data.thread` correctly updates the current user's admin flag when they
+  // were the one promoted/demoted.
+  const handleGroupAdminChanged = useEffectEvent((data: PusherGroupAdminChanged) => {
+    if (!thread || String(data.thread_id) !== String(thread.id)) return;
+    applyThreadPatch(data.thread);
+  });
+
+  const handleGroupDeleted = useEffectEvent((data: PusherGroupDeleted) => {
+    cacheEvents.emit(CACHE_EVENTS.THREADS);
+    if (!thread || String(data.thread_id) !== String(thread.id)) return;
+    onGroupExit?.('deleted');
+  });
+
+  const handleGroupRemovedFrom = useEffectEvent((data: PusherGroupRemovedFrom) => {
+    cacheEvents.emit(CACHE_EVENTS.THREADS);
+    if (!thread || String(data.thread_id) !== String(thread.id)) return;
+    onGroupExit?.('removed');
+  });
+
+  useThreadUpdatedListener(handleThreadUpdated);
+  useGroupMemberAddedListener(handleGroupMemberAdded);
+  useGroupMemberRemovedListener(handleGroupMemberRemoved);
+  useGroupAdminChangedListener(handleGroupAdminChanged);
+  useGroupDeletedListener(handleGroupDeleted);
+  useGroupRemovedFromListener(handleGroupRemovedFrom);
+
+  // ---------------------------------------------------------------------------
+  // Polling fallback — when Pusher isn't connected (firewall, flaky network),
+  // poll for new messages every 8s using the lastMessageId cursor. Stops the
+  // moment Pusher reports connected again.
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (pusherConnected) return;
+    if (!thread) return;
+
+    let cancelled = false;
+    const POLL_MS = 8000;
+
+    const tick = async () => {
+      if (cancelled || !thread) return;
+      try {
+        const last = lastMessageIdRef.current;
+        if (last <= 0) return;
+        const response = await messagesApi.getNewMessages(thread.id, last);
+        if (cancelled || !response.success) return;
+        const fresh = response.data.messages || [];
+        if (fresh.length === 0) return;
+
+        let appended = 0;
+        setMessages(prev => {
+          const seen = new Set(prev.map(m => m.id));
+          const additions = fresh.filter(m => !seen.has(m.id));
+          appended = additions.length;
+          if (appended === 0) return prev;
+          return [...prev, ...additions];
+        });
+        if (appended > 0) {
+          lastMessageIdRef.current = Math.max(last, ...fresh.map(m => m.id));
+        }
+      } catch (err) {
+        log.warn('Polling tick failed:', { err });
+      }
+    };
+
+    const handle = setInterval(tick, POLL_MS);
+    // Also run immediately so re-foreground catches up without an 8s delay.
+    tick();
+
+    return () => {
+      cancelled = true;
+      clearInterval(handle);
+    };
+  }, [pusherConnected, thread]);
 
   // ---------------------------------------------------------------------------
   // Load Older Messages (cursor-based pagination)

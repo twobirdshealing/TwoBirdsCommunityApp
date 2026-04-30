@@ -20,6 +20,12 @@ export interface ThreadInfo {
   type: string;
   badge: string | null;
   is_verified: number | boolean;
+
+  // Group threads only (Fluent Messaging 2.4.0+)
+  is_admin?: boolean;            // Current user is admin of this group
+  admin_ids?: number[];          // All admin user IDs in this group
+  can_view_members?: boolean;    // Current user is allowed to see members list
+  can_send_message?: boolean;    // Current user is allowed to send messages
 }
 
 // -----------------------------------------------------------------------------
@@ -47,14 +53,22 @@ export interface ChatThread {
 
   // v2.2.0: Thread info (replaces xprofiles for the other participant)
   info?: ThreadInfo;
-  type?: 'user' | 'community';
-  provider?: string;
+  type?: 'user' | 'community' | 'group';
+  provider?: 'fcom' | 'group' | string;
 
   // Recent messages (preview — these do NOT have xprofile attached)
   messages: ChatMessage[];
 
-  // Space ID if this is a group chat
+  // Space ID if this is a community-space thread (different from group chat)
   space_id?: number | null;
+
+  // Group threads only (Fluent Messaging 2.4.0+)
+  total_members?: number;
+  meta?: {
+    created_by?: number;
+    admin_ids?: number[];
+    icon?: string;
+  };
 }
 
 // -----------------------------------------------------------------------------
@@ -72,11 +86,15 @@ export interface ChatMessage {
   // Sender profile (present on individual messages, NOT on thread preview messages)
   xprofile?: XProfile;
 
-  // Message metadata (reactions, reply info)
+  // Message metadata (reactions, reply info, system events)
   meta?: {
     reactions?: Record<string, number[]>; // { emoji: [user_ids] }
     reply_to?: number;
     reply_text?: string;
+    // Group system events ("Two Birds created the group", "X was added", etc.)
+    // Server-emitted; render as a centered divider line in the chat stream.
+    system_event?: boolean;
+    system_text?: string;
   } | null;
 
   // Attachments (if any)
@@ -104,6 +122,7 @@ export interface ThreadsResponse {
   community_threads: ChatThread[];
   left_community_threads: ChatThread[];
   threads: ChatThread[];
+  group_threads?: ChatThread[];   // Fluent Messaging 2.4.0+
   has_more_threads: boolean;
   selected_thread?: ChatThread;
   intended_object?: IntendedObject;
@@ -120,10 +139,16 @@ export interface ThreadDetails {
   space_id?: number | null;
   message_count?: string | number;
   status?: string;
-  provider?: string;
-  type?: 'user' | 'community';
+  provider?: 'fcom' | 'group' | string;
+  type?: 'user' | 'community' | 'group';
   info?: ThreadInfo;
   blocked_thread?: boolean;
+  total_members?: number;
+  meta?: {
+    created_by?: number;
+    admin_ids?: number[];
+    icon?: string;
+  };
 }
 
 // v2.2.0: Messages are a flat array with cursor-based pagination
@@ -154,6 +179,109 @@ export interface CreateThreadRequest {
 
 export interface SendMessageRequest {
   text: string;
+}
+
+// -----------------------------------------------------------------------------
+// Group Thread Request / Response Types (Fluent Messaging 2.4.0+)
+// -----------------------------------------------------------------------------
+
+export interface CreateGroupRequest {
+  title: string;
+  member_ids: number[];        // Initial members (excluding the creator)
+  icon?: string;               // Optional icon URL — mobile doesn't expose a picker yet
+}
+
+export interface UpdateGroupRequest {
+  title?: string;
+  icon?: string;
+}
+
+export interface AddGroupMembersRequest {
+  member_ids: number[];
+}
+
+export interface SetGroupAdminRequest {
+  is_admin: boolean;
+}
+
+export interface CreateGroupResponse {
+  thread: ChatThread;
+  is_new: boolean;
+}
+
+export interface GroupMutationResponse {
+  success: boolean;
+  thread?: ChatThread;
+  added?: number[];            // present on add-members
+}
+
+/**
+ * Group member as returned by /chat/groups/{id}/members.
+ * Server adds `is_group_admin` onto each xprofile entry.
+ */
+export interface GroupMember extends XProfile {
+  is_group_admin?: boolean;
+}
+
+/**
+ * Paginated members response — matches Laravel paginator shape used elsewhere.
+ */
+export interface GroupMembersResponse {
+  members: {
+    data: GroupMember[];
+    total: number;
+    per_page: number;
+    current_page: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+  };
+  admin_ids: number[];
+}
+
+// -----------------------------------------------------------------------------
+// Group Helpers
+// -----------------------------------------------------------------------------
+
+/**
+ * Canonical "is this a group thread?" check.
+ * `provider === 'group'` is the discriminator. `type` is also set by the server
+ * but we standardize on `provider` so the same predicate works on threads,
+ * messages payloads, and push notification payloads.
+ */
+export function isGroupThread(thread: { provider?: string; type?: string } | null | undefined): boolean {
+  if (!thread) return false;
+  return thread.provider === 'group' || thread.type === 'group';
+}
+
+/**
+ * Whether the current user can perform admin actions on this group.
+ * Buttons / context-menu items the user lacks permission for don't render;
+ * server still rejects with 403 if a stale UI state lets one through.
+ */
+export function isGroupAdmin(thread: ChatThread | ThreadDetails | null | undefined): boolean {
+  return Boolean(thread?.info?.is_admin);
+}
+
+/**
+ * Total member count for a group thread (0 for non-groups).
+ */
+export function getGroupMemberCount(thread: ChatThread | ThreadDetails | null | undefined): number {
+  if (!isGroupThread(thread ?? undefined)) return 0;
+  return Number(thread?.total_members ?? 0);
+}
+
+/**
+ * Canonical "is this a community-space thread?" check.
+ * Community-space threads have `space_id` set (the chat lives inside a Space).
+ * Group threads have `provider === 'group'` and no space_id; DMs have neither.
+ */
+export function isSpaceThread(
+  thread: { space_id?: number | null; provider?: string; type?: string } | null | undefined,
+): boolean {
+  if (!thread) return false;
+  if (isGroupThread(thread)) return false;
+  return Boolean(thread.space_id);
 }
 
 // -----------------------------------------------------------------------------

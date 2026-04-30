@@ -11,7 +11,8 @@
 import { PUSHER_CONFIG } from '@/constants/config';
 import { getAuthToken } from '@/services/auth';
 import type { SocketConfig } from '@/services/api/appConfig';
-import type { ChatMessage } from '@/types/message';
+import type { ChatMessage, ChatThread, ThreadInfo } from '@/types/message';
+import type { XProfile } from '@/types/user';
 import Pusher from 'pusher-js/react-native';
 import type { Channel } from 'pusher-js';
 import { createLogger } from '@/utils/logger';
@@ -38,8 +39,81 @@ export interface PusherReaction {
   reactions: Record<string, number[]>; // { emoji: [user_ids] }
 }
 
-export type MessageHandler = (data: PusherMessage) => void;
-export type ReactionHandler = (data: PusherReaction) => void;
+// -----------------------------------------------------------------------------
+// Group event payloads (Fluent Messaging 2.4.0+)
+// -----------------------------------------------------------------------------
+// All seven events fire on the existing private-chat_user_{user_id} channel —
+// no new channel auth, no protocol changes. Server transforms the thread for
+// the recipient so `info.is_admin` reflects the receiving user's perspective.
+
+export interface PusherNewThread {
+  thread: ChatThread;
+}
+
+export interface PusherThreadUpdated {
+  thread_id?: number | string;
+  thread?: ChatThread;
+  info?: ThreadInfo;
+}
+
+export interface PusherGroupMemberAdded {
+  thread_id: number | string;
+  thread?: ChatThread;
+  added: number[];           // user IDs that were added
+  members?: XProfile[];      // optional — server may include hydrated profiles
+}
+
+export interface PusherGroupMemberRemoved {
+  thread_id: number | string;
+  thread?: ChatThread;
+  user_id: number;
+}
+
+export interface PusherGroupAdminChanged {
+  thread_id: number | string;
+  thread?: ChatThread;
+  user_id: number;
+  is_admin: boolean;
+}
+
+export interface PusherGroupDeleted {
+  thread_id: number | string;
+}
+
+export interface PusherGroupRemovedFrom {
+  thread_id: number | string;
+}
+
+/**
+ * Map of every server-fired Pusher event to its payload type. Adding a new
+ * event = add a single line here, plus include the name in CHANNEL_BIND_EVENTS
+ * (or USER_ONLY_EVENTS / SHARED_EVENTS) below.
+ */
+export interface PusherEventMap {
+  message: PusherMessage;
+  reaction: PusherReaction;
+  new_thread: PusherNewThread;
+  thread_updated: PusherThreadUpdated;
+  group_member_added: PusherGroupMemberAdded;
+  group_member_removed: PusherGroupMemberRemoved;
+  group_admin_changed: PusherGroupAdminChanged;
+  group_deleted: PusherGroupDeleted;
+  group_removed_from: PusherGroupRemovedFrom;
+}
+
+export type PusherEventName = keyof PusherEventMap;
+export type PusherEventHandler<K extends PusherEventName> = (data: PusherEventMap[K]) => void;
+
+// Backwards-compat type aliases — let existing callers keep their named types.
+export type MessageHandler = PusherEventHandler<'message'>;
+export type ReactionHandler = PusherEventHandler<'reaction'>;
+export type NewThreadHandler = PusherEventHandler<'new_thread'>;
+export type ThreadUpdatedHandler = PusherEventHandler<'thread_updated'>;
+export type GroupMemberAddedHandler = PusherEventHandler<'group_member_added'>;
+export type GroupMemberRemovedHandler = PusherEventHandler<'group_member_removed'>;
+export type GroupAdminChangedHandler = PusherEventHandler<'group_admin_changed'>;
+export type GroupDeletedHandler = PusherEventHandler<'group_deleted'>;
+export type GroupRemovedFromHandler = PusherEventHandler<'group_removed_from'>;
 
 // -----------------------------------------------------------------------------
 // Pusher Client Singleton
@@ -51,9 +125,75 @@ let currentUserId: number | null = null;
 let currentSocketConfig: SocketConfig | undefined;
 let connectedAt: number = 0;
 
-// Event handlers registry
-const messageHandlers: Set<MessageHandler> = new Set();
-const reactionHandlers: Set<ReactionHandler> = new Set();
+// Active community-space channel subscriptions. Keyed by space_id so we can
+// diff against the inbox's community_threads[] without reconnecting unchanged
+// channels.
+const spaceChannels = new Map<number, Channel>();
+const desiredSpaceIds = new Set<number>();
+
+// -----------------------------------------------------------------------------
+// Event registry — one Set<Handler> per event, all owned by a typed Map
+// -----------------------------------------------------------------------------
+
+/**
+ * Events bound on the user channel `private-chat_user_{user_id}`. Group events
+ * (new_thread, thread_updated, etc.) only fire here — the server doesn't emit
+ * them on space channels.
+ */
+const USER_CHANNEL_EVENTS: PusherEventName[] = [
+  'message',
+  'reaction',
+  'new_thread',
+  'thread_updated',
+  'group_member_added',
+  'group_member_removed',
+  'group_admin_changed',
+  'group_deleted',
+  'group_removed_from',
+];
+
+/**
+ * Events bound on community-space channels. The plugin only emits message +
+ * reaction here; group events stay user-channel-only.
+ */
+const SPACE_CHANNEL_EVENTS: PusherEventName[] = ['message', 'reaction'];
+
+/**
+ * Single handler registry. `handlers[event]` returns a typed Set whose handler
+ * signature matches the event's payload via the PusherEventMap.
+ */
+type AnyEventHandler = (data: any) => void;
+const handlers: Record<PusherEventName, Set<AnyEventHandler>> = USER_CHANNEL_EVENTS.reduce(
+  (acc, event) => {
+    acc[event] = new Set();
+    return acc;
+  },
+  {} as Record<PusherEventName, Set<AnyEventHandler>>,
+);
+
+function bindEvents(channel: Channel, events: PusherEventName[]): void {
+  for (const event of events) {
+    channel.bind(event, (data: any) => {
+      handlers[event].forEach(h => h(data));
+    });
+  }
+}
+
+/**
+ * Subscribe a typed handler to a Pusher event. Returns an unsubscribe function.
+ * Prefer the per-event hooks in PusherContext (useNewMessageListener, etc.) at
+ * call sites; this is the underlying primitive.
+ */
+export function subscribe<K extends PusherEventName>(
+  event: K,
+  handler: PusherEventHandler<K>,
+): () => void {
+  const set = handlers[event];
+  set.add(handler as AnyEventHandler);
+  return () => {
+    set.delete(handler as AnyEventHandler);
+  };
+}
 
 // Connection state callback — single consumer (PusherContext owns this)
 let connectionStateCallback: ((connected: boolean) => void) | null = null;
@@ -203,28 +343,28 @@ export async function initializePusher(userId: number, socketConfig: SocketConfi
       }, delay);
     });
 
-    // Dev-only: catch ALL events on this channel for diagnostics
+    // Dev-only: catch ALL events on this channel for diagnostics. Only logs
+    // events we don't already have a typed handler for.
     if (__DEV__) {
+      const known = new Set<string>(USER_CHANNEL_EVENTS);
       userChannel.bind_global((eventName: string, data: any) => {
-        if (eventName !== 'message' && eventName !== 'reaction') {
+        if (!known.has(eventName)) {
           log.debug('Channel event', { eventName, dataPreview: JSON.stringify(data).slice(0, 200) });
         }
       });
     }
 
-    // Bind to server-fired events
-    userChannel.bind('message', (data: PusherMessage) => {
-      log.debug('Received message, handlers:', { size: messageHandlers.size });
-      messageHandlers.forEach(handler => handler(data));
-    });
-
-    userChannel.bind('reaction', (data: PusherReaction) => {
-      log.debug('Received reaction, handlers:', { size: reactionHandlers.size });
-      reactionHandlers.forEach(handler => handler(data));
-    });
+    bindEvents(userChannel, USER_CHANNEL_EVENTS);
 
     currentUserId = userId;
     currentSocketConfig = socketConfig;
+
+    // Re-subscribe to any community-space channels that were active before this
+    // (re)connect. The inbox keeps `desiredSpaceIds` filled while it's open.
+    for (const id of desiredSpaceIds) {
+      subscribeToSpaceChannel(id);
+    }
+
     return true;
   } catch (error) {
     log.debug('Initialize error:', { error });
@@ -251,6 +391,8 @@ export function disconnectPusher(): void {
     userChannel = null;
   }
 
+  tearDownSpaceChannels();
+
   if (pusherClient) {
     pusherClient.disconnect();
     pusherClient = null;
@@ -260,15 +402,18 @@ export function disconnectPusher(): void {
   currentSocketConfig = undefined;
   connectedAt = 0;
   // Don't clear handlers here — they're managed by React component lifecycle.
-  // Only clearHandlers() on logout (called from PusherContext).
+  // Don't clear desiredSpaceIds either — reconnect needs it to re-subscribe.
+  // clearHandlers() on logout (called from PusherContext) is what fully resets.
 }
 
 /**
  * Clear all event handlers. Call only on logout.
  */
 export function clearHandlers(): void {
-  messageHandlers.clear();
-  reactionHandlers.clear();
+  for (const event of USER_CHANNEL_EVENTS) {
+    handlers[event].clear();
+  }
+  desiredSpaceIds.clear();
   log.debug('Cleared all handlers');
 }
 
@@ -312,37 +457,113 @@ export async function reconnectPusher(): Promise<boolean> {
     userChannel = null;
   }
 
+  tearDownSpaceChannels();
+
   if (pusherClient) {
     pusherClient.disconnect();
     pusherClient = null;
   }
 
   currentUserId = null;
-  // DO NOT clear handlers — keep existing subscriptions
+  // DO NOT clear handlers or desiredSpaceIds — initializePusher() resubscribes
+  // to space channels using whatever's still in desiredSpaceIds.
 
   return initializePusher(userId, savedSocketConfig);
 }
 
 // -----------------------------------------------------------------------------
-// Event Subscription
+// Event Subscription — typed wrappers that just call subscribe(event, ...).
+// Kept as named exports so call sites read fluently and code-search by event.
 // -----------------------------------------------------------------------------
 
-export function onNewMessage(handler: MessageHandler): () => void {
-  messageHandlers.add(handler);
-  log.debug('Added message handler, total:', { size: messageHandlers.size });
+export const onNewMessage = (h: MessageHandler) => subscribe('message', h);
+export const onReaction = (h: ReactionHandler) => subscribe('reaction', h);
+export const onNewThread = (h: NewThreadHandler) => subscribe('new_thread', h);
+export const onThreadUpdated = (h: ThreadUpdatedHandler) => subscribe('thread_updated', h);
+export const onGroupMemberAdded = (h: GroupMemberAddedHandler) => subscribe('group_member_added', h);
+export const onGroupMemberRemoved = (h: GroupMemberRemovedHandler) => subscribe('group_member_removed', h);
+export const onGroupAdminChanged = (h: GroupAdminChangedHandler) => subscribe('group_admin_changed', h);
+export const onGroupDeleted = (h: GroupDeletedHandler) => subscribe('group_deleted', h);
+export const onGroupRemovedFrom = (h: GroupRemovedFromHandler) => subscribe('group_removed_from', h);
 
-  // Return unsubscribe function
-  return () => {
-    messageHandlers.delete(handler);
-    log.debug('Removed message handler, total:', { size: messageHandlers.size });
-  };
+// -----------------------------------------------------------------------------
+// Community-space channel subscriptions
+// -----------------------------------------------------------------------------
+// Community-space chats live on `private-chat_space_{space_id}` channels and
+// fire the same `message` / `reaction` events as the user channel. The inbox
+// drives the desired subscription set via `setSpaceChannelSubscriptions()`,
+// which diffs against the live set so unchanged channels aren't churned.
+
+function bindSpaceChannel(channel: Channel) {
+  channel.bind('pusher:subscription_succeeded', () => {
+    log.debug('Subscribed to space channel', { name: channel.name });
+  });
+  channel.bind('pusher:subscription_error', (error: any) => {
+    log.debug('Space channel subscription error', { name: channel.name, error });
+  });
+  // Same handler Sets as the user channel — a `message` event from a space
+  // chat reaches every useNewMessageListener subscriber.
+  bindEvents(channel, SPACE_CHANNEL_EVENTS);
 }
 
-export function onReaction(handler: ReactionHandler): () => void {
-  reactionHandlers.add(handler);
-  return () => {
-    reactionHandlers.delete(handler);
-  };
+function subscribeToSpaceChannel(spaceId: number) {
+  if (!pusherClient) return;
+  if (spaceChannels.has(spaceId)) return;
+  const name = `private-chat_space_${spaceId}`;
+  log.debug('Subscribing to space channel', { name });
+  const channel = pusherClient.subscribe(name);
+  bindSpaceChannel(channel);
+  spaceChannels.set(spaceId, channel);
+}
+
+function unsubscribeFromSpaceChannel(spaceId: number) {
+  if (!pusherClient) return;
+  const channel = spaceChannels.get(spaceId);
+  if (!channel) return;
+  pusherClient.unsubscribe(channel.name);
+  spaceChannels.delete(spaceId);
+}
+
+/**
+ * Drive the active community-space channel subscriptions from a list of space
+ * IDs. Adds new subscriptions, removes stale ones, leaves untouched the rest.
+ * Idempotent — call freely whenever the list changes; a no-op call (same set
+ * of IDs as last time) does no work.
+ */
+export function setSpaceChannelSubscriptions(spaceIds: number[]): void {
+  const next = new Set<number>();
+  for (const id of spaceIds) {
+    if (Number.isFinite(id) && id > 0) next.add(Number(id));
+  }
+
+  // Bail when the set is identical — common case: SWR/inbox revalidation that
+  // produces a fresh array reference but the same space IDs.
+  if (next.size === desiredSpaceIds.size) {
+    let same = true;
+    for (const id of next) if (!desiredSpaceIds.has(id)) { same = false; break; }
+    if (same) return;
+  }
+
+  desiredSpaceIds.clear();
+  for (const id of next) desiredSpaceIds.add(id);
+
+  if (!pusherClient) return; // will sync on next initialize/reconnect
+
+  for (const id of desiredSpaceIds) {
+    if (!spaceChannels.has(id)) subscribeToSpaceChannel(id);
+  }
+  for (const id of Array.from(spaceChannels.keys())) {
+    if (!desiredSpaceIds.has(id)) unsubscribeFromSpaceChannel(id);
+  }
+}
+
+function tearDownSpaceChannels() {
+  if (pusherClient) {
+    for (const channel of spaceChannels.values()) {
+      pusherClient.unsubscribe(channel.name);
+    }
+  }
+  spaceChannels.clear();
 }
 
 // -----------------------------------------------------------------------------
@@ -368,6 +589,14 @@ export const pusherService = {
   clearHandlers,
   onNewMessage,
   onReaction,
+  onNewThread,
+  onThreadUpdated,
+  onGroupMemberAdded,
+  onGroupMemberRemoved,
+  onGroupAdminChanged,
+  onGroupDeleted,
+  onGroupRemovedFrom,
+  setSpaceChannelSubscriptions,
   isConnected,
   getConnectionState,
 };

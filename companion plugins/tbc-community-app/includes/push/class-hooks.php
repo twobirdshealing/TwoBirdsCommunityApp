@@ -725,9 +725,13 @@ class TBC_CA_Push_Hooks {
     // =========================================================================
 
     /**
-     * New direct message
+     * New chat message — fires for both 1:1 DMs and group threads.
      * Hook: fluent_messaging/after_add_message — passes ($message)
      * $message is FluentMessaging Message model with thread_id, user_id, text
+     *
+     * Group threads (provider === 'group') deep-link to /messages/group/{thread_id}
+     * so the app opens the correct screen. DMs keep the legacy /messages/user/{sender_id}
+     * route untouched so older app versions don't break.
      */
     public function on_new_direct_message($message) {
         $sender_id = $message->user_id ?? null;
@@ -739,22 +743,39 @@ class TBC_CA_Push_Hooks {
 
         // Get other users in this thread
         global $wpdb;
-        $table = $wpdb->prefix . 'fcom_chat_thread_users';
+        $thread_users_table = $wpdb->prefix . 'fcom_chat_thread_users';
+        $threads_table      = $wpdb->prefix . 'fcom_chat_threads';
 
         // Check if table exists (Fluent Messaging may not be active)
-        $table_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
+        $table_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($thread_users_table)));
         if (!$table_exists) {
             return;
         }
 
         $recipient_ids = $wpdb->get_col($wpdb->prepare(
-            "SELECT user_id FROM {$table} WHERE thread_id = %d AND user_id != %d AND status = 'active'",
+            "SELECT user_id FROM {$thread_users_table} WHERE thread_id = %d AND user_id != %d AND status = 'active'",
             $thread_id,
             $sender_id
         ));
 
         if (empty($recipient_ids)) {
             return;
+        }
+
+        // Detect group thread — provider column is 'group' for group threads,
+        // 'fcom' (or NULL on older installs) for DMs.
+        $is_group = false;
+        $thread_title = '';
+        $threads_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($threads_table)));
+        if ($threads_exists) {
+            $thread_row = $wpdb->get_row($wpdb->prepare(
+                "SELECT provider, title FROM {$threads_table} WHERE id = %d",
+                $thread_id
+            ));
+            if ($thread_row) {
+                $is_group     = ($thread_row->provider === 'group');
+                $thread_title = $thread_row->title ?? '';
+            }
         }
 
         $sender_name = $this->get_display_name($sender_id);
@@ -766,12 +787,25 @@ class TBC_CA_Push_Hooks {
             $text_preview = 'Sent you a message';
         }
 
+        if ($is_group) {
+            // Group push: title shows group name, body shows "<sender>: <text>"
+            $title = $thread_title !== '' ? $thread_title : 'New group message';
+            $body  = $sender_name . ': ' . $text_preview;
+            $route = "/messages/group/{$thread_id}";
+            $type  = 'new_group_message';
+        } else {
+            $title = $sender_name;
+            $body  = $text_preview;
+            $route = "/messages/user/{$sender_id}";
+            $type  = 'new_direct_message';
+        }
+
         $this->send_to_users(
             $recipient_ids,
-            'new_direct_message',
-            $sender_name,
-            $text_preview,
-            "/messages/user/{$sender_id}"
+            $type,
+            $title,
+            $body,
+            $route
         );
     }
 
