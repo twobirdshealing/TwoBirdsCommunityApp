@@ -78,7 +78,7 @@ export function QuizView({
         setLoadingResult(false);
       }
     })();
-  }, [courseId, lessonId]);
+  }, [courseId, lessonId, onQuizResult]);
 
   // ---------------------------------------------------------------------------
   // Answer selection
@@ -131,7 +131,7 @@ export function QuizView({
 
       setResult(response.data.result);
       onQuizResult?.(response.data.result.status === 'passed');
-    } catch (err) {
+    } catch {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);

@@ -35,7 +35,6 @@ import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
 import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { spacing, typography, sizing } from '@/constants/layout';
-import { withOpacity } from '@/constants/colors';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAppQuery } from '@/hooks/useAppQuery';
 import { coursesApi } from '@/services/api/courses';
@@ -103,7 +102,7 @@ export default function CourseDetailScreen() {
       }
 
       setIsPending(true);
-    } catch (err) {
+    } catch {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setRequesting(false);
@@ -134,7 +133,7 @@ export default function CourseDetailScreen() {
         course: { ...prev.course, isEnrolled: true, progress: 0 },
       } : prev);
       refresh();
-    } catch (err) {
+    } catch {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setEnrolling(false);

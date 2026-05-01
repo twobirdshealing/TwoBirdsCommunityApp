@@ -48,7 +48,7 @@ export function SpaceLockScreen({ config, onRequestAccess, isPending, isRequesti
         <View style={[styles.defaultCard, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
           <Ionicons name="time-outline" size={48} color={themeColors.textTertiary} />
           <Text style={[styles.defaultTitle, { color: themeColors.text }]}>
-            You're all set!
+            You&rsquo;re all set!
           </Text>
           <Text style={[styles.defaultDescription, { color: themeColors.textSecondary }]}>
             A team member will review and let you in soon.

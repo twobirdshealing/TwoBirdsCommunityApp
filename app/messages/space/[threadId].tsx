@@ -90,7 +90,7 @@ export default function SpaceChatScreen() {
         isLeft ? (
           <View style={[styles.leftBanner, { borderTopColor: themeColors.border }]}>
             <Text style={[styles.leftBannerText, { color: themeColors.textSecondary }]}>
-              You've left this community chat. Rejoin to send messages.
+              You&rsquo;ve left this community chat. Rejoin to send messages.
             </Text>
             <Pressable
               style={[styles.rejoinButton, { borderColor: themeColors.primary }]}

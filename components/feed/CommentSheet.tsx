@@ -5,7 +5,7 @@
 // Modal, because RN Modal creates an Android Dialog that blocks WebView touches.
 // =============================================================================
 
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -331,7 +331,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   // pre-fill the input with an @mention so the thread reads naturally.
   // ---------------------------------------------------------------------------
 
-  const handleReply = (comment: Comment) => {
+  const handleReply = useCallback((comment: Comment) => {
     hapticLight();
     setReplyingTo(comment);
 
@@ -340,7 +340,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
     if (username) {
       commentEditor.setContent(`<p>@${username} </p>`);
     }
-  };
+  }, [commentEditor]);
 
   const cancelReply = () => {
     setReplyingTo(null);
@@ -358,7 +358,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   // Handle Comment Reaction
   // ---------------------------------------------------------------------------
 
-  const handleCommentReaction = async (comment: Comment, reactionType: string = 'like') => {
+  const handleCommentReaction = useCallback(async (comment: Comment, reactionType: string = 'like') => {
     if (!postId) return;
 
     const hasReacted = !!(comment.has_user_react || comment.user_reaction_type);
@@ -414,13 +414,13 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
       } : prev);
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update reaction');
     }
-  };
+  }, [postId, mutateComments]);
 
   // ---------------------------------------------------------------------------
   // Comment Menu Actions
   // ---------------------------------------------------------------------------
 
-  const handleCommentMenu = (comment: Comment) => {
+  const handleCommentMenu = useCallback((comment: Comment) => {
     hapticLight();
     const ref = menuButtonRefs.current[comment.id];
     if (ref) {
@@ -431,7 +431,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
     } else {
       setMenuComment(comment);
     }
-  };
+  }, [windowWidth]);
 
   const getCommentMenuItems = (): DropdownMenuItem[] => {
     if (!menuComment) return [];

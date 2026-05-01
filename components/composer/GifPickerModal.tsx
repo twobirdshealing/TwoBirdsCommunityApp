@@ -132,6 +132,20 @@ export function GifPickerModal({
   }, [loadingMore, hasMore, fetchGifs]);
 
   // ---------------------------------------------------------------------------
+  // Close and reset (declared before handleSelect — handleSelect calls it)
+  // ---------------------------------------------------------------------------
+
+  const handleClose = useCallback(() => {
+    setQuery('');
+    setGifs([]);
+    setHasMore(true);
+    offsetRef.current = 0;
+    queryRef.current = '';
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    onClose();
+  }, [onClose]);
+
+  // ---------------------------------------------------------------------------
   // Select GIF
   // ---------------------------------------------------------------------------
 
@@ -145,21 +159,7 @@ export function GifPickerModal({
       previewUrl: preview.url,
     });
     handleClose();
-  }, [onSelect]);
-
-  // ---------------------------------------------------------------------------
-  // Close and reset
-  // ---------------------------------------------------------------------------
-
-  const handleClose = useCallback(() => {
-    setQuery('');
-    setGifs([]);
-    setHasMore(true);
-    offsetRef.current = 0;
-    queryRef.current = '';
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    onClose();
-  }, [onClose]);
+  }, [onSelect, handleClose]);
 
   // ---------------------------------------------------------------------------
   // Render GIF cell

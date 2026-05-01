@@ -161,7 +161,7 @@ export function ChatInput({
 
     try {
       await onSend(messageText, messageAttachments.length > 0 ? messageAttachments : undefined);
-    } catch (error) {
+    } catch {
       // Restore on error
       setText(messageText);
       // Note: Attachments are not restored as they've been uploaded

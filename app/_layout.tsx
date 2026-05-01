@@ -5,21 +5,12 @@
 // UnreadCountsProvider shares badge state between TopHeader and this layout.
 // =============================================================================
 
-// Sentry must initialize at module-load time, BEFORE any React code runs,
-// so that errors during provider/hook setup are captured. The DSN is read
-// synchronously from MMKV — first launch with no cached config silently
-// skips init and waits for the next session (acceptable tradeoff vs. the
-// complexity of deferring init to a React effect).
-// Wrapped in try/catch because a failing init must not take down the bundle
-// before React can mount — the whole point of this module is to REPORT
-// crashes, not cause them.
-import { initSentry, wrapWithSentry } from '@/services/sentry';
-import { getCrashReportingConfig } from '@/utils/crashReportingCache';
-try {
-  initSentry(getCrashReportingConfig());
-} catch {
-  // Swallowed on purpose — crash reporting is best-effort at startup.
-}
+// Sentry bootstrap — bare side-effect import MUST be first so initSentry()
+// runs before any other module's top-level code executes (provider / hook
+// setup errors thrown during import are then captured). See
+// services/sentry-bootstrap for the DSN-resolution + try/catch details.
+import '@/services/sentry-bootstrap';
+import { wrapWithSentry } from '@/services/sentry';
 
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ForceUpdateScreen } from '@/components/common/ForceUpdateScreen';
@@ -253,7 +244,7 @@ function RootLayoutNav() {
     } else if (isAuthenticated && segments[0] === 'login') {
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, isLoading, segments, maintenance, maintenanceLoginMode]);
+  }, [isAuthenticated, isLoading, segments, maintenance, maintenanceLoginMode, router]);
 
   // Reset login mode when bypass check completes: can't bypass → back to maintenance
   useEffect(() => {
@@ -301,7 +292,7 @@ function RootLayoutNav() {
     });
 
     return () => subscription.remove();
-  }, [router]);
+  }, [router, features?.push_notifications]);
 
   // ---------------------------------------------------------------------------
   // Maintenance / Coming Soon Gate

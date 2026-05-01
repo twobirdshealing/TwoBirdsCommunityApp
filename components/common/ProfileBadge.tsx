@@ -10,7 +10,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useTheme } from '@/contexts/ThemeContext';
-import { spacing, typography, sizing } from '@/constants/layout';
+import { typography, sizing } from '@/constants/layout';
 import type { Badge } from '@/types/user';
 
 interface ProfileBadgeProps {

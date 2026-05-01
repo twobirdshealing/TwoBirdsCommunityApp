@@ -31,6 +31,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useTabBar } from '@/contexts/TabBarContext';
 import { spacesApi } from '@/services/api/spaces';
 import { useAppQuery } from '@/hooks/useAppQuery';
+import { useStableFallback } from '@/hooks/useStableFallback';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { Space, SpaceGroupOption } from '@/types/space';
 import { createLogger } from '@/utils/logger';
@@ -88,8 +89,10 @@ export default function SpacesScreen() {
     },
   });
 
-  const spaces = data?.spaces || [];
-  const groups = data?.groups || [];
+  // Stabilize the empty-fallback so the tabs/groupedMap useMemo below isn't
+  // re-run every render purely because of `|| []` creating a new identity.
+  const spaces = useStableFallback(data?.spaces, []);
+  const groups = useStableFallback(data?.groups, []);
   const error = fetchError?.message || null;
 
   // ---------------------------------------------------------------------------
@@ -330,7 +333,7 @@ export default function SpacesScreen() {
         {!loading && displayedSpaces.length === 0 && searchQuery.length > 0 && (
           <View style={styles.emptyContainer}>
             <Ionicons name="search-outline" size={48} color={themeColors.textTertiary} style={styles.emptyIcon} />
-            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No spaces match "{searchQuery}"</Text>
+            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>No spaces match &ldquo;{searchQuery}&rdquo;</Text>
             <Text style={[styles.clearSearchButton, { color: themeColors.primary }]} onPress={handleClearSearch}>
               Clear search
             </Text>

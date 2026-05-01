@@ -211,7 +211,7 @@ export default function EditProfileScreen() {
       onSuccess: async (remoteUrl) => {
         try {
           await patchProfileMedia(username, { avatar: remoteUrl });
-        } catch (e) {
+        } catch {
           // Fall through — avatar was uploaded, just assignment failed
         }
         setAvatarUploading(false);
@@ -239,7 +239,7 @@ export default function EditProfileScreen() {
       onSuccess: async (remoteUrl) => {
         try {
           await patchProfileMedia(username, { cover_photo: remoteUrl });
-        } catch (e) {
+        } catch {
           Alert.alert('Upload Failed', 'Failed to save cover photo.');
         }
         setCoverUploading(false);

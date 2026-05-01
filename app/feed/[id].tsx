@@ -110,7 +110,7 @@ export default function SinglePostScreen() {
             try {
               await feedsApi.deleteFeed(feed.id);
               router.back();
-            } catch (err) {
+            } catch {
               Alert.alert('Error', 'Failed to delete post');
             }
           },

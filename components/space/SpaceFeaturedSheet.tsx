@@ -8,7 +8,7 @@
 
 import { Avatar } from '@/components/common/Avatar';
 import { BottomSheet, BottomSheetFlatList } from '@/components/common/BottomSheet';
-import { sizing, spacing, typography } from '@/constants/layout';
+import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSpaceActivities } from '@/hooks/useSpaceActivities';
 import type { PinnedPost } from '@/types/activity';

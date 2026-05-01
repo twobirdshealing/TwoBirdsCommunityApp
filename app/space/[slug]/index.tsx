@@ -81,7 +81,7 @@ export default function SpacePage() {
     } catch (err) {
       log.error(err, 'Failed to load space');
     }
-  }, [slug]);
+  }, [slug, router]);
 
   // ---------------------------------------------------------------------------
   // Fetch Feeds (useCachedData — consistent with all other feed screens)

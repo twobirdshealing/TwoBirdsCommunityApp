@@ -27,6 +27,7 @@ import { messagesApi } from '@/services/api/messages';
 import { setSpaceChannelSubscriptions } from '@/services/pusher';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useStableFallback } from '@/hooks/useStableFallback';
 import { FlashList } from '@shopify/flash-list';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -99,11 +100,14 @@ export default function MessagesScreen() {
     },
   });
 
-  const threads = messagesData?.threads || [];
-  const groupThreads = messagesData?.groupThreads || [];
-  const communityThreads = messagesData?.communityThreads || [];
-  const leftCommunityThreads = messagesData?.leftCommunityThreads || [];
-  const unreadThreadIds = messagesData?.unreadThreadIds || [];
+  // Stabilize the empty-fallback so downstream effects (Pusher channel diff,
+  // search merge, view memo) don't re-run every render purely because `|| []`
+  // produced a new identity.
+  const threads = useStableFallback(messagesData?.threads, []);
+  const groupThreads = useStableFallback(messagesData?.groupThreads, []);
+  const communityThreads = useStableFallback(messagesData?.communityThreads, []);
+  const leftCommunityThreads = useStableFallback(messagesData?.leftCommunityThreads, []);
+  const unreadThreadIds = useStableFallback(messagesData?.unreadThreadIds, []);
   const error = fetchError?.message || null;
 
   // Section expansion state — all expanded by default, mirrors web UI.
@@ -165,14 +169,15 @@ export default function MessagesScreen() {
   }, [debouncedSearch]);
 
   // When a search is active, use its results for the lists; unread IDs always
-  // come from the cached listing (server-search doesn't include them).
-  const view = {
+  // come from the cached listing (server-search doesn't include them). Memoized
+  // so consumers using `view` as a dep don't see a new object every render.
+  const view = useMemo(() => ({
     threads: searchResults?.threads ?? threads,
     groupThreads: searchResults?.groupThreads ?? groupThreads,
     communityThreads: searchResults?.communityThreads ?? communityThreads,
     leftCommunityThreads: searchResults?.leftCommunityThreads ?? leftCommunityThreads,
     unreadThreadIds,
-  };
+  }), [searchResults, threads, groupThreads, communityThreads, leftCommunityThreads, unreadThreadIds]);
 
   // ---------------------------------------------------------------------------
   // Group Pusher events — patch the inbox cache directly so the list stays

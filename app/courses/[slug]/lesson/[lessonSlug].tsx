@@ -239,7 +239,7 @@ export default function LessonViewScreen() {
       if (response.data.is_completed) {
         setShowCelebration(true);
       }
-    } catch (err) {
+    } catch {
       // Revert optimistic update
       setTrack((prev) => {
         if (!prev) return prev;

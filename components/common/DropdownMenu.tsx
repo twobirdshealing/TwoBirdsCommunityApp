@@ -60,7 +60,7 @@ export function DropdownMenu({ visible, onClose, items, topOffset = 100, anchor 
               <AnimatedPressable
                 style={styles.menuItem}
                 onPress={() => {
-                  item.destructive ? hapticWarning() : hapticLight();
+                  if (item.destructive) hapticWarning(); else hapticLight();
                   item.onPress();
                 }}
                 disabled={item.disabled}

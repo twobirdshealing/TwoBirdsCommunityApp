@@ -309,14 +309,14 @@ export default function RegisterScreen() {
 
       setError(errorMsg);
       return errorMsg;
-    } catch (e) {
+    } catch {
       const msg = 'An unexpected error occurred. Please try again.';
       setError(msg);
       return msg;
     } finally {
       setSubmitting(false);
     }
-  }, [formData, validateStep, registerAndLogin, getFieldsForStep, registrationConfig]);
+  }, [formData, validateStep, registerAndLogin, getFieldsForStep, registrationConfig, router, step]);
 
   /** Called by module steps to resubmit the form with extra verification data */
   const handleModuleResubmit = useCallback(async (extras: Record<string, any>) => {
@@ -349,7 +349,7 @@ export default function RegisterScreen() {
       } else {
         return { error: 'Failed to resend code.' };
       }
-    } catch (e) {
+    } catch {
       return { error: 'Failed to resend code.' };
     } finally {
       setSubmitting(false);

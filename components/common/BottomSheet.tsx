@@ -94,7 +94,7 @@ export function SheetInput({
     return <>{children({ ref: inputRef, onFocus: noop as any, onBlur: noop as any })}</>;
   }
 
-  return <SheetInputInner context={context} children={children} />;
+  return <SheetInputInner context={context}>{children}</SheetInputInner>;
 }
 
 // Inner component — always has valid context
@@ -110,9 +110,17 @@ function SheetInputInner({
 
   // Register input node on mount, clean up on unmount.
   // Uses retry loop because findNodeHandle may return null if the native
-  // view isn't ready yet (e.g. after a footer remount).
+  // view isn't ready yet (e.g. after a footer remount). The registered
+  // node handle is captured into a closure variable so cleanup deletes the
+  // exact node we added — by unmount time inputRef.current may already be
+  // cleared by React.
   useEffect(() => {
+    // Capture the Set up-front so cleanup operates on the same instance the
+    // effect mutated — refs themselves are stable, but the lint rule can't
+    // tell. Same reason for capturing registeredNode below.
+    const nodes = textInputNodesRef.current;
     let cancelled = false;
+    let registeredNode: number | null = null;
 
     const register = () => {
       const node = findNodeHandle(inputRef.current);
@@ -120,23 +128,23 @@ function SheetInputInner({
         if (!cancelled) requestAnimationFrame(register);
         return;
       }
-      if (!textInputNodesRef.current.has(node)) {
-        textInputNodesRef.current.add(node);
+      registeredNode = node;
+      if (!nodes.has(node)) {
+        nodes.add(node);
       }
     };
     register();
 
     return () => {
       cancelled = true;
-      const componentNode = findNodeHandle(inputRef.current);
-      if (!componentNode) return;
+      if (registeredNode === null) return;
 
       const keyboardState = animatedKeyboardState.get();
-      if (keyboardState.target === componentNode) {
+      if (keyboardState.target === registeredNode) {
         animatedKeyboardState.set((s: any) => ({ ...s, target: undefined }));
       }
-      if (textInputNodesRef.current.has(componentNode)) {
-        textInputNodesRef.current.delete(componentNode);
+      if (nodes.has(registeredNode)) {
+        nodes.delete(registeredNode);
       }
     };
   }, [textInputNodesRef, animatedKeyboardState]);

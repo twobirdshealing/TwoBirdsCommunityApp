@@ -21,11 +21,14 @@ import { AnimatedPressable } from '@/components/common/AnimatedPressable';
 import { sizing, spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 
-// Try to import YouTube player, fallback if not installed
+// Try to import YouTube player, fallback if not installed.
+// require() is the only option for an optional dependency — `import` is
+// statically hoisted and cannot be wrapped in try/catch.
 let YoutubePlayer: any = null;
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional dep, see comment above
   YoutubePlayer = require('react-native-youtube-iframe').default;
-} catch (e) {
+} catch {
   // Package not installed - will show fallback
 }
 

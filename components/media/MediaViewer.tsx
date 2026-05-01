@@ -183,11 +183,6 @@ export function MediaViewer({
     try {
       setSaving(true);
 
-      // Extract a filename from the URL
-      const urlParts = imageUrl.split('/');
-      const rawName = urlParts[urlParts.length - 1]?.split('?')[0] || 'image.jpg';
-      const fileName = rawName.includes('.') ? rawName : `${rawName}.jpg`;
-
       // Download using new File API (SDK 54)
       const destination = new Directory(Paths.cache);
       const output = await File.downloadFileAsync(imageUrl, destination, { idempotent: true });

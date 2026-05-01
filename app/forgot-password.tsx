@@ -63,7 +63,7 @@ export default function ForgotPasswordScreen() {
       } else {
         setError(result.message || 'Something went wrong. Please try again.');
       }
-    } catch (e) {
+    } catch {
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setSubmitting(false);
@@ -109,7 +109,7 @@ export default function ForgotPasswordScreen() {
                 Forgot Password?
               </Text>
               <Text style={[styles.stepSubtitle, { color: themeColors.textSecondary }]}>
-                Enter your email or username and we'll send you a password reset link.
+                Enter your email or username and we&rsquo;ll send you a password reset link.
               </Text>
             </View>
 

@@ -6,7 +6,7 @@
 // current user can post to, so no extra client-side filtering is needed.
 // =============================================================================
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -61,13 +61,7 @@ export function SpaceSelector({
   // Fetch Spaces
   // ---------------------------------------------------------------------------
 
-  useEffect(() => {
-    if (isOpen && spaces.length === 0) {
-      fetchSpaces();
-    }
-  }, [isOpen]);
-
-  const fetchSpaces = async () => {
+  const fetchSpaces = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch groups and spaces in parallel
@@ -92,7 +86,13 @@ export function SpaceSelector({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && spaces.length === 0) {
+      fetchSpaces();
+    }
+  }, [isOpen, spaces.length, fetchSpaces]);
 
   // ---------------------------------------------------------------------------
   // Filter Spaces by Search

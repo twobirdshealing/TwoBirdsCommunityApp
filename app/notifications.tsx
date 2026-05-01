@@ -182,7 +182,7 @@ export default function NotificationsScreen() {
                 );
                 setUnreadNotifications(0);
               }
-            } catch (err) {
+            } catch {
               Alert.alert('Error', 'Failed to mark notifications as read');
             }
           },
@@ -210,7 +210,7 @@ export default function NotificationsScreen() {
         if (response.success) {
           setUnreadNotifications(response.data.unread_count);
         }
-      } catch (err) {
+      } catch {
         // Silent fail - still navigate
       }
     }
@@ -303,7 +303,7 @@ export default function NotificationsScreen() {
       if (response.success) {
         setUnreadNotifications(response.data.unread_count);
       }
-    } catch (err) {
+    } catch {
       Alert.alert('Error', 'Failed to mark as read');
     }
   };

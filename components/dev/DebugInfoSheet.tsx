@@ -46,15 +46,6 @@ function formatDate(date: Date | null | undefined): string {
   }
 }
 
-function formatHeaders(headers: Record<string, string> | null | undefined): string {
-  if (!headers || Object.keys(headers).length === 0) return '(none)';
-  try {
-    return JSON.stringify(headers);
-  } catch {
-    return '(unreadable)';
-  }
-}
-
 export function DebugInfoSheet({ visible, onClose }: DebugInfoSheetProps) {
   const { colors } = useTheme();
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
@@ -356,7 +347,7 @@ export function DebugInfoSheet({ visible, onClose }: DebugInfoSheetProps) {
                 />
               </View>
               <Text style={[styles.hint, { color: colors.textTertiary }]}>
-                "Reload app" applies any downloaded update immediately, without needing to force-quit.
+                &ldquo;Reload app&rdquo; applies any downloaded update immediately, without needing to force-quit.
               </Text>
             </Section>
           </>
@@ -432,9 +423,9 @@ export function DebugInfoSheet({ visible, onClose }: DebugInfoSheetProps) {
 
             <Section title="How to identify which OTA is running">
               <Text style={[styles.helpText, { color: colors.textSecondary }]}>
-                expo-updates does not expose the OTA message string on the device. To identify which update is currently running, copy the <Text style={{ fontWeight: typography.weight.bold }}>Update ID</Text> above and find the matching entry in the dashboard's Update History list.
+                expo-updates does not expose the OTA message string on the device. To identify which update is currently running, copy the <Text style={{ fontWeight: typography.weight.bold }}>Update ID</Text> above and find the matching entry in the dashboard&rsquo;s Update History list.
                 {'\n\n'}
-                If <Text style={{ fontWeight: typography.weight.bold }}>Bundle source</Text> says "Embedded", no OTA has been applied — the app is running the JS that shipped in the App Store binary.
+                If <Text style={{ fontWeight: typography.weight.bold }}>Bundle source</Text> says &ldquo;Embedded&rdquo;, no OTA has been applied — the app is running the JS that shipped in the App Store binary.
               </Text>
             </Section>
           </>

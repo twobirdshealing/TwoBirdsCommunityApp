@@ -46,13 +46,13 @@ export function PollBuilderSheet({ visible, onClose, onDone, initialData }: Poll
   const [options, setOptions] = useState<string[]>(initialData?.options || ['', '']);
   const [type, setType] = useState<'single_choice' | 'multi_choice'>(initialData?.type || 'single_choice');
 
-  // Reset state when sheet opens with new data
+  // Reset state when sheet opens (or when initialData changes while open).
   useEffect(() => {
     if (visible) {
       setOptions(initialData?.options || ['', '']);
       setType(initialData?.type || 'single_choice');
     }
-  }, [visible]);
+  }, [visible, initialData?.options, initialData?.type]);
 
   const updateOption = (index: number, text: string) => {
     const updated = [...options];

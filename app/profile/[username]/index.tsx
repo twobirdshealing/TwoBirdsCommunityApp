@@ -261,8 +261,7 @@ export default function UserProfileScreen() {
     } else if (activeTab === 'comments' && !commentsState.loaded && !commentsState.loading) {
       fetchComments(1);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps — fetch functions are stable (useCallback), omitted to prevent re-runs on state changes
-  }, [activeTab, profile, username, postsState.loaded, postsState.loading, spacesState.loaded, spacesState.loading, commentsState.loaded, commentsState.loading]);
+  }, [activeTab, profile, username, postsState.loaded, postsState.loading, spacesState.loaded, spacesState.loading, commentsState.loaded, commentsState.loading, fetchPosts, fetchSpaces, fetchComments]);
 
   // ---------------------------------------------------------------------------
   // Posts tab: feed actions + reactions (same pattern as activity.tsx)
@@ -294,7 +293,6 @@ export default function UserProfileScreen() {
   // ---------------------------------------------------------------------------
 
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [coverUploading, setCoverUploading] = useState(false);
 
   // Settings menu state (own profile only)
   const [settingsVisible, setSettingsVisible] = useState(false);
@@ -318,7 +316,7 @@ export default function UserProfileScreen() {
     else if (activeTab === 'comments' && commentsState.loaded) fetchComments(1);
   };
 
-  const handleFollowPress = async () => {
+  const handleFollowPress = useCallback(async () => {
     if (!username || followLoading || isOwnProfile) return;
 
     try {
@@ -345,9 +343,9 @@ export default function UserProfileScreen() {
     } finally {
       setFollowLoading(false);
     }
-  };
+  }, [username, followLoading, isOwnProfile, isFollowing, mutate]);
 
-  const handleEmailNotifyToggle = async () => {
+  const handleEmailNotifyToggle = useCallback(async () => {
     if (!username || !isFollowing) return;
     hapticLight();
     const newLevel = isEmailNotifyOn ? 1 : 2;
@@ -358,9 +356,9 @@ export default function UserProfileScreen() {
       log.error(err, 'Toggle email notification failed');
       mutate(prev => prev ? { ...prev, follow: isEmailNotifyOn ? 2 : 1 } : prev);
     }
-  };
+  }, [username, isFollowing, isEmailNotifyOn, mutate]);
 
-  const handleBlockPress = () => {
+  const handleBlockPress = useCallback(() => {
     if (!username || blockLoading) return;
 
     const action = isBlocked ? 'Unblock' : 'Block';
@@ -401,9 +399,9 @@ export default function UserProfileScreen() {
         },
       },
     ]);
-  };
+  }, [username, blockLoading, isBlocked, profile?.display_name, mutate]);
 
-  const handleMessagePress = () => {
+  const handleMessagePress = useCallback(() => {
     if (!profile) return;
     router.push({
       pathname: '/messages/user/[userId]',
@@ -413,38 +411,35 @@ export default function UserProfileScreen() {
         avatar: profile.avatar || '',
       },
     });
-  };
+  }, [profile, router]);
 
-  const handleEditProfilePress = () => {
+  const handleEditProfilePress = useCallback(() => {
     router.push('/profile/edit');
-  };
+  }, [router]);
 
-  const handleCoverPhotoPress = () => {
+  const handleCoverPhotoPress = useCallback(() => {
     if (!isOwnProfile || !username) return;
 
     showCoverPicker({
       onUploadStart: (localUri) => {
-        setCoverUploading(true);
         mutate(prev => prev ? { ...prev, cover_photo: localUri } : prev);
       },
       onSuccess: async (remoteUrl) => {
         try {
           await patchProfileMedia(username, { cover_photo: remoteUrl });
-        } catch (e) {
+        } catch {
           // Fall through — cover was uploaded, just assignment failed
         }
-        setCoverUploading(false);
         mutate(prev => prev ? { ...prev, cover_photo: remoteUrl } : prev);
       },
       onError: (message) => {
-        setCoverUploading(false);
         refresh();
         Alert.alert('Upload Failed', message);
       },
     });
-  };
+  }, [isOwnProfile, username, mutate, refresh]);
 
-  const handleAvatarPress = () => {
+  const handleAvatarPress = useCallback(() => {
     if (!isOwnProfile || !username) return;
 
     showAvatarPicker({
@@ -455,7 +450,7 @@ export default function UserProfileScreen() {
       onSuccess: async (remoteUrl) => {
         try {
           await patchProfileMedia(username, { avatar: remoteUrl });
-        } catch (e) {
+        } catch {
           // Fall through — avatar was uploaded, just assignment failed
         }
         setAvatarUploading(false);
@@ -468,21 +463,21 @@ export default function UserProfileScreen() {
         Alert.alert('Upload Failed', message);
       },
     });
-  };
+  }, [isOwnProfile, username, mutate, refresh, updateUser]);
 
-  const handleFollowersPress = () => {
+  const handleFollowersPress = useCallback(() => {
     router.push({
       pathname: '/profile/[username]/connections',
       params: { username, initialTab: 'followers' },
     });
-  };
+  }, [router, username]);
 
-  const handleFollowingPress = () => {
+  const handleFollowingPress = useCallback(() => {
     router.push({
       pathname: '/profile/[username]/connections',
       params: { username, initialTab: 'following' },
     });
-  };
+  }, [router, username]);
 
   const handleCommentPostPress = (postId: number, postSlug: string) => {
     router.push({
@@ -624,7 +619,7 @@ export default function UserProfileScreen() {
         onTabChange={setActiveTab}
       />
     </>
-  ), [profile, isOwnProfile, avatarUploading, isBlocked, isFollowing, isEmailNotifyOn, followLoading, blockLoading, visibleTabs, activeTab, themeColors, features.followers]);
+  ), [profile, isOwnProfile, avatarUploading, isBlocked, isFollowing, isEmailNotifyOn, followLoading, blockLoading, visibleTabs, activeTab, themeColors, features.followers, handleAvatarPress, handleBlockPress, handleCoverPhotoPress, handleEmailNotifyToggle, handleFollowPress, handleFollowersPress, handleFollowingPress, handleMessagePress]);
 
   // ---------------------------------------------------------------------------
   // Render: Loading
@@ -686,7 +681,7 @@ export default function UserProfileScreen() {
               <Ionicons name="lock-closed-outline" size={32} color={themeColors.textTertiary} />
               <Text style={[styles.restrictedTitle, { color: themeColors.text }]}>Profile is Private</Text>
               <Text style={[styles.restrictedText, { color: themeColors.textSecondary }]}>
-                This user's profile details are not visible.
+                This user&rsquo;s profile details are not visible.
               </Text>
             </View>
           ) : (

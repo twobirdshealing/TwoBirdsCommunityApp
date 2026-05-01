@@ -145,7 +145,7 @@ export default function LoginScreen() {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: themeColors.textSecondary }]}>
-              Don't have an account?{' '}
+              Don&rsquo;t have an account?{' '}
               <Text
                 style={[styles.footerLink, { color: themeColors.primary }]}
                 onPress={() => router.push('/register')}

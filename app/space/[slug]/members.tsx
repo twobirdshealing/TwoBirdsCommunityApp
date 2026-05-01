@@ -8,13 +8,12 @@
 // - Message and Follow buttons (placeholders)
 // =============================================================================
 
-import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
 import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -73,7 +72,7 @@ export default function SpaceMembersScreen() {
 
   // Features & Follow state
   const features = useFeatures();
-  const { followMap, setFollowMap, followLoadingMap, handleFollowPress, handleNotifyPress, isFollowing, isNotifyOn, isFollowLoading } = useFollowToggle();
+  const { setFollowMap, handleFollowPress, handleNotifyPress, isFollowing, isNotifyOn, isFollowLoading } = useFollowToggle();
 
   // ---------------------------------------------------------------------------
   // Sorted members (admins/facilitators first)
@@ -87,14 +86,21 @@ export default function SpaceMembersScreen() {
   // Fetch Members
   // ---------------------------------------------------------------------------
 
-  const fetchMembers = async (pageNum: number = 1, shouldAppend: boolean = false) => {
-    if ((loading || refreshing) && pageNum !== 1) return;
-    
+  // Per-page in-flight guard. setLoading/setRefreshing batch through React, so
+  // a rapid double-tap on "load more" can race two requests through the
+  // !loading check in handleLoadMore before the first state update lands. The
+  // ref is updated synchronously, so the second call sees inFlight === true
+  // and bails out.
+  const inFlightRef = useRef(false);
+
+  const fetchMembers = useCallback(async (pageNum: number = 1, shouldAppend: boolean = false) => {
     if (!slug) {
       setError('Space not found');
       setLoading(false);
       return;
     }
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
 
     try {
       if (pageNum === 1) {
@@ -139,12 +145,13 @@ export default function SpaceMembersScreen() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      inFlightRef.current = false;
     }
-  };
+  }, [slug, setFollowMap]);
 
   useEffect(() => {
     fetchMembers(1, false);
-  }, [slug]);
+  }, [slug, fetchMembers]);
 
   // ---------------------------------------------------------------------------
   // Handlers

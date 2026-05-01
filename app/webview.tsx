@@ -126,7 +126,7 @@ export default function WebViewScreen() {
     if (sessionUrl && webViewRef.current) {
       webViewRef.current.injectJavaScript(themeInjectionScript);
     }
-  }, [isDark]);
+  }, [sessionUrl, themeInjectionScript]);
 
   // ---------------------------------------------------------------------------
   // Handlers

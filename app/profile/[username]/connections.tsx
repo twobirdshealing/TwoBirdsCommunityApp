@@ -117,7 +117,7 @@ export default function ConnectionsScreen() {
   const sortByRef = useRef(sortBy);
 
   const features = useFeatures();
-  const { followMap, setFollowMap, handleFollowPress, handleNotifyPress, isFollowing, isNotifyOn, isFollowLoading } = useFollowToggle();
+  const { setFollowMap, handleFollowPress, handleNotifyPress, isFollowing, isNotifyOn, isFollowLoading } = useFollowToggle();
 
   // ---------------------------------------------------------------------------
   // State helpers
@@ -208,21 +208,30 @@ export default function ConnectionsScreen() {
         loaded: true,
       }));
     }
-  }, [username]);
+  }, [username, setFollowMap]);
 
   // ---------------------------------------------------------------------------
   // Load active tab on mount / tab switch
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
-    const state = getState(activeTab);
-    if (!state.loaded) {
+    // Inline state lookup so the effect isn't bound to a recreated `getState`
+    // closure each render. The !loaded guard prevents re-fetches after the
+    // tabState updates land.
+    const loaded = activeTab === 'following' ? followingState.loaded : followersState.loaded;
+    if (!loaded) {
       fetchData(activeTab, 1, false);
     }
-  }, [activeTab]);
+  }, [activeTab, followingState.loaded, followersState.loaded, fetchData]);
 
-  // Refetch when sort changes (skip initial mount — activeTab effect handles that)
+  // Refetch when sort changes (skip initial mount — activeTab effect handles that).
+  // activeTab is read via ref so a tab switch doesn't refire this effect — that
+  // would double up with the activeTab effect above.
   const sortMounted = useRef(false);
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
   useEffect(() => {
     if (!sortMounted.current) {
       sortMounted.current = true;
@@ -232,8 +241,8 @@ export default function ConnectionsScreen() {
     // Reset both tabs and refetch active tab
     setFollowingState({ ...INITIAL_TAB_STATE });
     setFollowersState({ ...INITIAL_TAB_STATE });
-    fetchData(activeTab, 1, false);
-  }, [sortBy]);
+    fetchData(activeTabRef.current, 1, false);
+  }, [sortBy, fetchData]);
 
   // Cleanup search timeout on unmount
   useEffect(() => {
