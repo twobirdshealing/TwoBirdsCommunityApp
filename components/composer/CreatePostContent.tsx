@@ -54,13 +54,13 @@ export interface ComposerSubmitData {
   // meta.document_lists and it cannot be combined with images/video/GIF/poll.
   content_type: 'text' | 'markdown' | 'document';
   space?: string;
-  media_images?: Array<{
+  media_images?: {
     url: string;
     type: string;
     width: number;
     height: number;
     provider: string;
-  }>;
+  }[];
   media?: {
     type: 'oembed';
     url: string;

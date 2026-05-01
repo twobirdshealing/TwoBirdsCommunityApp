@@ -102,7 +102,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   const [editingComment, setEditingComment] = useState<Comment | null>(null);
 
   // Comment image viewer state (null = hidden)
-  const [commentMedia, setCommentMedia] = useState<{ images: Array<{ url: string }>; index: number } | null>(null);
+  const [commentMedia, setCommentMedia] = useState<{ images: { url: string }[]; index: number } | null>(null);
   // Menu state
   const [menuComment, setMenuComment] = useState<Comment | null>(null);
   const [reportComment, setReportComment] = useState<Comment | null>(null);
@@ -560,7 +560,7 @@ export function CommentSheet({ postId, feedSlug, onClose, onCommentAdded }: Comm
   // Render comment item (delegated to memoized CommentItem)
   // ---------------------------------------------------------------------------
 
-  const handleImagePress = React.useCallback((images: Array<{ url: string }>, index: number) => {
+  const handleImagePress = React.useCallback((images: { url: string }[], index: number) => {
     setCommentMedia({ images, index });
   }, []);
 

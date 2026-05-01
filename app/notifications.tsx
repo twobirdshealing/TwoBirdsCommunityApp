@@ -15,8 +15,6 @@ import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
 import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { createLogger } from '@/utils/logger';
-
-const log = createLogger('Notifications');
 import { NotificationCard } from '@/components/notification/NotificationCard';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -39,6 +37,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const log = createLogger('Notifications');
 
 // -----------------------------------------------------------------------------
 // Component

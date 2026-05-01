@@ -13,14 +13,14 @@ import { QuickPostBox } from '@/components/composer/QuickPostBox';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTabBar } from '@/contexts/TabBarContext';
 import { createLogger } from '@/utils/logger';
-
-const log = createLogger('Activity');
 import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useAppQuery, useArrayMutate } from '@/hooks/useAppQuery';
 import { useFeedActions } from '@/hooks/useFeedActions';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
 import { CACHE_EVENTS } from '@/utils/cacheEvents';
 import { TabActivityWrapper } from '@/components/common/TabActivityWrapper';
+
+const log = createLogger('Activity');
 
 // -----------------------------------------------------------------------------
 // Component

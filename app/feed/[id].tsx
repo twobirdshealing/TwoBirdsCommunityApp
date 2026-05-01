@@ -14,8 +14,6 @@ import {
   View,
 } from 'react-native';
 import { createLogger } from '@/utils/logger';
-
-const log = createLogger('FeedDetail');
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
@@ -32,6 +30,8 @@ import { useFeedReactions } from '@/hooks/useFeedReactions';
 import { useAppQuery } from '@/hooks/useAppQuery';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
+
+const log = createLogger('FeedDetail');
 
 // -----------------------------------------------------------------------------
 // Component

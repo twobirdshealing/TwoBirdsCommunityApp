@@ -6,8 +6,6 @@ import { FeedList } from '@/components/feed/FeedList';
 import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
 import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { createLogger } from '@/utils/logger';
-
-const log = createLogger('Bookmarks');
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { feedsApi } from '@/services/api/feeds';
@@ -27,6 +25,8 @@ import { useAppQuery, useArrayMutate } from '@/hooks/useAppQuery';
 import { useFeedActions } from '@/hooks/useFeedActions';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { optimisticUpdate } from '@/utils/optimisticUpdate';
+
+const log = createLogger('Bookmarks');
 
 // -----------------------------------------------------------------------------
 // Component

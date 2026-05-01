@@ -15,19 +15,16 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ConversationCard } from '@/components/message/ConversationCard';
 import { ThreadSection } from '@/components/message/ThreadSection';
 import { createLogger } from '@/utils/logger';
-
-const log = createLogger('Messages');
 import { NewMessageModal } from '@/components/message/NewMessageModal';
 import { PageHeader, HeaderTitle } from '@/components/navigation/PageHeader';
 import { HeaderIconButton } from '@/components/navigation/HeaderIconButton';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import { getThreadDisplayName, getThreadAvatar, getThreadUserId, getThreadUsername, isGroupThread, isSpaceThread } from '@/types/message';
+import { getThreadDisplayName, getThreadAvatar, getThreadUserId, getThreadUsername, isGroupThread, isSpaceThread , ChatThread } from '@/types/message';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNewMessageListener, useNewThreadListener, useThreadUpdatedListener, useGroupDeletedListener, useGroupRemovedFromListener } from '@/contexts/PusherContext';
 import { messagesApi } from '@/services/api/messages';
 import { setSpaceChannelSubscriptions } from '@/services/pusher';
-import { ChatThread } from '@/types/message';
 import { cacheEvents, CACHE_EVENTS } from '@/utils/cacheEvents';
 import { useDebounce } from '@/hooks/useDebounce';
 import { FlashList } from '@shopify/flash-list';
@@ -44,6 +41,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const log = createLogger('Messages');
 
 // -----------------------------------------------------------------------------
 // Component

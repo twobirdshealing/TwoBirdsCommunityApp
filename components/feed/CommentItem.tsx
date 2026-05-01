@@ -38,7 +38,7 @@ interface CommentItemProps {
   onMenu: (comment: Comment) => void;
   onReply: (comment: Comment) => void;
   onReaction: (comment: Comment, type: string) => void;
-  onImagePress: (images: Array<{ url: string }>, index: number) => void;
+  onImagePress: (images: { url: string }[], index: number) => void;
   onLinkNavigate?: () => void;
 }
 
@@ -59,7 +59,7 @@ function CommentItemInner({ item, themeColors, commentContentWidth, menuButtonRe
 
   // Check for images in comment - multiple possible locations
   const meta = item.meta || {};
-  let commentImages: Array<{ url: string }> = [];
+  let commentImages: { url: string }[] = [];
 
   if (meta.media_images && Array.isArray(meta.media_images)) {
     commentImages = meta.media_images;
