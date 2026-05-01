@@ -126,7 +126,7 @@ export interface CreateFeedData {
   /** FC routes spaces by slug — pass the slug here, NOT a numeric ID. */
   space?: string;
   type?: 'text' | 'feed';
-  content_type?: 'text' | 'markdown' | 'html';
+  content_type?: 'text' | 'markdown' | 'html' | 'document';
   privacy?: 'public' | 'private';
   status?: 'published' | 'draft';
   featured_image?: string;

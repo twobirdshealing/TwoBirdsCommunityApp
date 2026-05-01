@@ -72,7 +72,7 @@ export function SpaceFeaturedSheet({ visible, onClose, spaceId }: SpaceFeaturedS
       return (
         <View style={styles.centered}>
           <Text style={[styles.emptyText, { color: colors.error }]}>
-            Couldn't load featured posts
+            Couldn&rsquo;t load featured posts
           </Text>
         </View>
       );

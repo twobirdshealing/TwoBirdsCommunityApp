@@ -12,7 +12,7 @@ import { Avatar } from '@/components/common/Avatar';
 import { ENDPOINTS } from '@/constants/config';
 import { spacing, typography, sizing } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
-import useDebounce from '@/hooks/useDebounce';
+import { useDebounce } from '@/hooks/useDebounce';
 import { get } from '@/services/api/client';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';

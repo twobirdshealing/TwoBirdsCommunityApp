@@ -110,7 +110,7 @@ export function SpaceDocumentsSheet({ visible, onClose, spaceId }: SpaceDocument
       return (
         <View style={styles.centered}>
           <Text style={[styles.emptyText, { color: colors.error }]}>
-            Couldn't load documents
+            Couldn&rsquo;t load documents
           </Text>
         </View>
       );

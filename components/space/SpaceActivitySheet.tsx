@@ -76,7 +76,7 @@ export function SpaceActivitySheet({ visible, onClose, spaceId }: SpaceActivityS
       return (
         <View style={styles.centered}>
           <Text style={[styles.emptyText, { color: colors.error }]}>
-            Couldn't load activity
+            Couldn&rsquo;t load activity
           </Text>
         </View>
       );

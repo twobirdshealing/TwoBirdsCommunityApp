@@ -346,7 +346,7 @@ export function GroupInfoSheet({
         ) : (
           <BottomSheetFlatList
             data={members}
-            keyExtractor={(item) => String(item.user_id)}
+            keyExtractor={(item: GroupMember) => String(item.user_id)}
             renderItem={renderMember}
             ListFooterComponent={renderFooter}
             contentContainerStyle={styles.listContent}
