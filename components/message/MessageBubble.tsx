@@ -89,7 +89,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   const reactionBtnRef = useRef<View>(null);
   const menuBtnRef = useRef<View>(null);
 
-  // Group system events ("Two Birds created the group") render as a divider,
+  // Group system events ("Alice created the group") render as a divider,
   // not a bubble — bypass the entire bubble + reaction layout.
   if (message.meta?.system_event) {
     const text = message.meta.system_text || getMessageText(message.text);

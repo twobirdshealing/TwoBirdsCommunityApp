@@ -91,7 +91,7 @@ export const ConversationCard = React.memo(function ConversationCard({
 
   // Is the last message from current user?
   const isOwnLastMessage = lastMessage && Number(lastMessage.user_id) === currentUserId;
-  // Multi-participant threads (group + space) prefix the sender ("Two Birds: hi");
+  // Multi-participant threads (group + space) prefix the sender ("Alice: hi");
   // DM falls back to "You: ".
   const senderPrefix = isMultiParticipant && lastMessage && !isOwnLastMessage
     ? lastMessage.xprofile?.display_name

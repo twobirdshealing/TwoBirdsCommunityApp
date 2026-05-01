@@ -91,7 +91,7 @@ export interface ChatMessage {
     reactions?: Record<string, number[]>; // { emoji: [user_ids] }
     reply_to?: number;
     reply_text?: string;
-    // Group system events ("Two Birds created the group", "X was added", etc.)
+    // Group system events ("Alice created the group", "X was added", etc.)
     // Server-emitted; render as a centered divider line in the chat stream.
     system_event?: boolean;
     system_text?: string;

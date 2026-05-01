@@ -2,7 +2,7 @@
 // SYSTEM MESSAGE - Centered divider for group system events
 // =============================================================================
 // Renders messages with `meta.system_event === true` as a centered tag with
-// horizontal-line dividers on either side. Used for "Two Birds created the
+// horizontal-line dividers on either side. Used for "Alice created the
 // group", "X was added", "Y left the group", etc.
 // =============================================================================
 
