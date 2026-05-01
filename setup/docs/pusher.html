@@ -50,7 +50,7 @@
 <p>Pusher is provided by Fluent Community's <strong>Fluent Messaging</strong> plugin. The app doesn't run its own Pusher server &mdash; it connects to the same Pusher/Soketi instance the web portal uses.</p>
 
 <div class="callout callout-success">
-  <strong>Two events, one channel.</strong> The entire real-time system handles just two event types (<code>message</code> and <code>reaction</code>) on one private channel per user. Everything else (deletions, new threads, read receipts) uses polling fallbacks. Simple by design.
+  <strong>Typed event registry, two channel patterns.</strong> A single <code>PusherEventMap</code> in <span class="file-path">services/pusher.ts</span> declares every event the app cares about. <code>subscribe&lt;K&gt;(event, handler)</code> + <code>bindEvents(channel, names)</code> wire them up; named <code>onX</code> / <code>useXListener</code> wrappers stay one-liners for readable call sites. The user channel (<code>private-chat_user_{id}</code>) carries DM <code>message</code> + <code>reaction</code> plus seven group lifecycle events; community-space chats subscribe to one <code>private-chat_space_{id}</code> per <code>community_threads</code> entry.
 </div>
 
 <!-- ================================================================== -->
@@ -92,22 +92,41 @@ Each registered handler fires (multiple consumers)
 &boxur; Messages screen &rarr; updates thread preview + unread count
 &boxur; TopHeader &rarr; bumps unread badge</div>
 
-<h3>Handler registry pattern</h3>
-<p>The service uses two <code>Set&lt;Function&gt;</code> collections as event registries. Components register handlers on mount and unregister on unmount. This decouples the WebSocket layer from React &mdash; any number of components can listen without the service knowing about React at all.</p>
+<h3>Handler registry pattern (typed)</h3>
+<p>The service uses one <code>Map&lt;event, Set&lt;Handler&gt;&gt;</code> keyed by event name, all generated from a single <code>PusherEventMap</code> interface. Components register handlers on mount and unregister on unmount &mdash; the WebSocket layer stays decoupled from React, and adding a new event is one type entry plus one optional named wrapper.</p>
 
-<pre><code>// services/pusher.ts — handler pattern
-const messageHandlers: Set&lt;MessageHandler&gt; = new Set();
-
-// Components add handlers
-export function onNewMessage(handler: MessageHandler): () =&gt; void {
-  messageHandlers.add(handler);
-  return () =&gt; messageHandlers.delete(handler);  // cleanup
+<pre><code>// services/pusher.ts — typed registry
+export interface PusherEventMap {
+  message: PusherMessage;
+  reaction: PusherReaction;
+  new_thread: PusherNewThread;
+  thread_updated: PusherThreadUpdated;
+  group_member_added: PusherGroupMemberChange;
+  group_member_removed: PusherGroupMemberChange;
+  group_admin_changed: PusherGroupAdminChange;
+  group_deleted: PusherGroupDeleted;
+  group_removed_from: PusherGroupRemovedFrom;
 }
 
-// When event arrives, all handlers fire
-userChannel.bind('message', (data: PusherMessage) =&gt; {
-  messageHandlers.forEach(handler =&gt; handler(data));
-});</code></pre>
+// Generic subscribe<K> — type-safe handler payload, single Set per event
+export function subscribe&lt;K extends keyof PusherEventMap&gt;(
+  event: K,
+  handler: (data: PusherEventMap[K]) =&gt; void,
+): () =&gt; void {
+  let set = handlers.get(event);
+  if (!set) { set = new Set(); handlers.set(event, set); }
+  set.add(handler as Handler);
+  return () =&gt; set!.delete(handler as Handler);
+}
+
+// One bind block per channel
+function bindEvents(channel: PusherChannel, names: (keyof PusherEventMap)[]) {
+  names.forEach((name) =&gt; channel.bind(name, (data: any) =&gt; {
+    handlers.get(name)?.forEach((h) =&gt; h(data));
+  }));
+}</code></pre>
+
+<p>Named call-site wrappers like <code>onNewMessage</code> / <code>useNewMessageListener</code> are one-liners over <code>subscribe('message', ...)</code>. Adding a new event = add the type to <code>PusherEventMap</code>, add the name to <code>bindEvents()</code>&rsquo;s name list for the right channel, and (optionally) export an <code>onX</code> alias. No new Set, no new bind block.</p>
 
 <!-- ================================================================== -->
 <h2 id="config">3. Configuration</h2>
@@ -223,18 +242,25 @@ authorizer: (channel) =&gt; ({
 <h2 id="channels">5. Channels &amp; Auth</h2>
 
 <h3>Channel naming</h3>
-<p>Each user subscribes to one private channel:</p>
+<p>Two private channel patterns &mdash; one always-on per user, plus one per active community-space chat:</p>
 
 <table>
-  <tr><th>Channel</th><th>Pattern</th><th>Who subscribes</th></tr>
+  <tr><th>Channel</th><th>Pattern</th><th>Carries</th><th>Who subscribes</th></tr>
   <tr>
-    <td>DM channel</td>
+    <td>User channel</td>
     <td><code>private-chat_user_{userId}</code></td>
-    <td>The user with that ID (only they can authorize)</td>
+    <td>DM <code>message</code> + <code>reaction</code> &middot; all 7 group lifecycle events</td>
+    <td>The authenticated user, for the lifetime of the session</td>
+  </tr>
+  <tr>
+    <td>Space channel</td>
+    <td><code>private-chat_space_{spaceId}</code></td>
+    <td>Community-space chat <code>message</code> + <code>reaction</code></td>
+    <td>One per <code>community_threads</code> entry returned by <code>/chat/threads</code>; resubscribed when the inbox list changes (with content-equality guard so SWR revalidations don&rsquo;t churn subscriptions)</td>
   </tr>
 </table>
 
-<p>The server also supports space/group channels (<code>private-chat_space_{spaceId}</code>) for community chat, but the app currently uses only user channels for DMs.</p>
+<p>Group threads do <strong>not</strong> have their own channel &mdash; FC sends <em>all</em> group lifecycle events on the recipient&rsquo;s user channel. Group <code>message</code> + <code>reaction</code> events also arrive on the user channel; the consumer (<code>useChatMessages</code>&rsquo;s group branch) filters by <code>thread_id</code>.</p>
 
 <h3>Server-side authorization</h3>
 <p>The auth endpoint at <code>/wp-json/fluent-community/v2/chat/broadcast/auth</code> validates:</p>
@@ -250,7 +276,23 @@ authorizer: (channel) =&gt; ({
 <!-- ================================================================== -->
 <h2 id="events">6. Events</h2>
 
-<p>The server broadcasts two event types. All other data changes (thread creation, message deletion, read receipts) are handled by polling.</p>
+<p>The app subscribes to nine event types across the user channel and any active space channels. Everything else (message deletion, read receipts) still uses polling.</p>
+
+<h3>Event &rarr; channel matrix</h3>
+<table>
+  <tr><th>Event</th><th>User channel</th><th>Space channel</th><th>Hook</th></tr>
+  <tr><td><code>message</code></td><td>&check;</td><td>&check;</td><td><code>useNewMessageListener</code></td></tr>
+  <tr><td><code>reaction</code></td><td>&check;</td><td>&check;</td><td><code>useReactionListener</code></td></tr>
+  <tr><td><code>new_thread</code></td><td>&check;</td><td>&mdash;</td><td><code>useNewThreadListener</code></td></tr>
+  <tr><td><code>thread_updated</code></td><td>&check;</td><td>&mdash;</td><td><code>useThreadUpdatedListener</code></td></tr>
+  <tr><td><code>group_member_added</code></td><td>&check;</td><td>&mdash;</td><td><code>useGroupMemberAddedListener</code></td></tr>
+  <tr><td><code>group_member_removed</code></td><td>&check;</td><td>&mdash;</td><td><code>useGroupMemberRemovedListener</code></td></tr>
+  <tr><td><code>group_admin_changed</code></td><td>&check;</td><td>&mdash;</td><td><code>useGroupAdminChangedListener</code></td></tr>
+  <tr><td><code>group_deleted</code></td><td>&check;</td><td>&mdash;</td><td><code>useGroupDeletedListener</code></td></tr>
+  <tr><td><code>group_removed_from</code></td><td>&check;</td><td>&mdash;</td><td><code>useGroupRemovedFromListener</code></td></tr>
+</table>
+
+<h3>Event payloads</h3>
 
 <h3>message</h3>
 <p>Fired when someone sends a message in a thread the user is part of.</p>
@@ -285,6 +327,9 @@ authorizer: (channel) =&gt; ({
 }</code></pre>
 
 <p>Reactions use a Discord-style format: each emoji key maps to an array of user IDs who reacted with it. Empty arrays are cleaned up server-side when the last user removes their reaction.</p>
+
+<h3>Group lifecycle events</h3>
+<p>The seven group events all carry a <code>thread_id</code> and event-specific fields (e.g., <code>user_id</code> for member changes, <code>is_admin</code> for admin changes). The inbox patches the affected row directly &mdash; no full <code>/chat/threads</code> refetch &mdash; so a busy group doesn&rsquo;t storm the API. <code>useChatMessages</code>&rsquo;s group branch reacts to <code>group_deleted</code> and <code>group_removed_from</code> by closing the chat detail screen.</p>
 
 <!-- ================================================================== -->
 <h2 id="subscribing">7. Subscribing to Events</h2>
@@ -512,10 +557,22 @@ if (current_time('timestamp') - strtotime($xprofile-&gt;last_activity) &lt; 300)
     <td><code>message</code></td>
     <td>Increments unread message badge (filters out own messages)</td>
   </tr>
+  <tr>
+    <td>Inbox</td>
+    <td><span class="file-path">app/messages/index.tsx</span></td>
+    <td>group lifecycle (7)</td>
+    <td>Patches the affected thread row in place (add / update / remove); avoids a full <code>/chat/threads</code> refetch</td>
+  </tr>
+  <tr>
+    <td>Group chat</td>
+    <td><span class="file-path">hooks/useChatMessages.ts</span> (group branch)</td>
+    <td><code>group_deleted</code>, <code>group_removed_from</code></td>
+    <td>Closes the chat detail screen (the user has lost access)</td>
+  </tr>
 </table>
 
 <h3>Pattern: filter by thread_id</h3>
-<p>Most consumers check <code>thread_id</code> before processing. This is important because all DM events arrive on a single channel &mdash; a handler in Thread A shouldn't process messages for Thread B:</p>
+<p>Most consumers check <code>thread_id</code> before processing. This is important because all DM and group events arrive on a single user channel &mdash; a handler in Thread A shouldn't process messages for Thread B:</p>
 
 <pre><code>// hooks/useChatMessages.ts
 useNewMessageListener((data) =&gt; {
@@ -562,7 +619,7 @@ useNewMessageListener((data) =&gt; {
   <li><strong>Auth endpoint is fixed.</strong> It's always <code>{API_URL}/chat/broadcast/auth</code> &mdash; provided by Fluent Messaging. Don't create a custom endpoint. The server's <code>auth_endpoint</code> field is informational only.</li>
   <li><strong>Fresh token per auth.</strong> The authorizer fetches a new JWT each time, not the one captured at init. This handles silent token refresh.</li>
   <li><strong>Dev logging:</strong> <code>Pusher.logToConsole = true</code> is enabled in <code>__DEV__</code> mode for raw WebSocket traffic. Zero-cost in production.</li>
-  <li><strong>No new events.</strong> If you need to add a new real-time event type, add a new handler Set in <code>pusher.ts</code>, bind it to the channel event, create a convenience hook in <code>PusherContext.tsx</code>, and update this doc.</li>
+  <li><strong>Add new events through the typed registry.</strong> Extend <code>PusherEventMap</code> with the new payload type, add the event name to the right channel&rsquo;s <code>bindEvents</code> name list, optionally export an <code>onX</code> / <code>useXListener</code> alias, and update this doc. Don&rsquo;t add a fresh handler Set + bind block &mdash; that&rsquo;s exactly the duplication the registry replaced.</li>
   <li><strong>Reconnect cooldown is 10 seconds.</strong> Don't decrease it &mdash; rapid reconnects waste bandwidth and can trigger Pusher rate limits.</li>
   <li><strong>Connection state logging</strong> uses the <code>Pusher</code> tag via <code>createLogger('Pusher')</code>. Filter console output with <code>[Pusher]</code> to debug connection issues.</li>
 </ol>

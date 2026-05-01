@@ -10,11 +10,11 @@
 <body>
 
 <h1>Content Creation &amp; Composer</h1>
-<p class="subtitle">Rich text editing, media attachments, polls, space selection, and post submission</p>
+<p class="subtitle">Rich text editing, media attachments, documents, polls, space selection, and post submission</p>
 
 <div class="callout">
   <strong>Key files:</strong> <span class="file-path">app/create-post.tsx</span> (screen), <span class="file-path">components/composer/CreatePostContent.tsx</span> (main component)<br>
-  The composer uses 10tap editor for rich text, supports images (up to 4), video embeds, GIFs, and polls. Posts are created and edited through the same screen.
+  The composer uses 10tap editor for rich text, supports images (up to 4), video embeds, GIFs, polls, and document attachments (FC Pro). Posts are created and edited through the same screen.
 </div>
 
 <div class="toc">
@@ -48,12 +48,13 @@
         ├── Title input (optional, max 200 chars)
         ├── RichText / 10tap editor (body text)
         ├── MediaPreview (image thumbnails)
-        ├── VideoPreview / GifPreview / PollPreview
+        ├── VideoPreview / GifPreview / PollPreview / DocumentPreview
         ├── ComposerToolbar (action buttons + submit)
         │     ├── Image picker trigger
         │     ├── GIF picker trigger
         │     ├── Poll builder trigger
         │     ├── Video embed trigger
+        │     ├── Document picker trigger (FC Pro, gated by space permissions)
         │     └── Submit button (Post / Save)
         └── MarkdownToolbar (formatting buttons)
               ├── Bold, Italic, Strikethrough
@@ -70,6 +71,7 @@
   <tr><td>Video embeds</td><td>1 per post</td></tr>
   <tr><td>GIFs</td><td>1 per post</td></tr>
   <tr><td>Poll options</td><td>2&ndash;4 options</td></tr>
+  <tr><td>Documents</td><td>Multiple per post (no fixed cap; mutually exclusive with all other media)</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -210,7 +212,7 @@ router.push({
 <!-- ================================================================== -->
 <h2 id="attachments">6. Attachment Types</h2>
 
-<p>The composer supports four attachment types. All toolbar buttons are always visible; active attachments are indicated by highlighted icons.</p>
+<p>The composer supports five attachment types. Image, video, GIF, and poll buttons are always visible (active state is indicated by a highlighted icon). The document button is conditionally shown based on the selected space&rsquo;s permissions, and documents are <strong>mutually exclusive</strong> with all other media (see <a href="#mutual-exclusion">Mutual Exclusion</a> below).</p>
 
 <h3>Images</h3>
 <ul>
@@ -238,16 +240,36 @@ router.push({
   <li><strong>Attribution:</strong> "Powered by GIPHY" text at bottom of picker</li>
 </ul>
 
+<h3>Documents (FC Pro &mdash; Multipart Upload)</h3>
+<ul>
+  <li><strong>Picker:</strong> <code>expo-document-picker</code> with multi-select; native module so adding/removing this dep requires a new EAS dev client build (not OTA-safe)</li>
+  <li><strong>Upload:</strong> <code>POST /documents/upload</code> (FC Pro) as <code>multipart/form-data</code> with <code>space_id</code> + <code>file</code>; uses the existing JWT, no companion-plugin proxy</li>
+  <li><strong>Preview:</strong> <span class="file-path">components/composer/DocumentPreview.tsx</span> renders vertical file rows; reuses <code>iconForMime</code> from <span class="file-path">utils/mime.ts</span> (same util used by <code>SpaceDocumentsSheet</code>)</li>
+  <li><strong>Permissions:</strong> The button only appears when <code>space.permissions.can_upload_documents</code> is <code>true</code> &mdash; FC&rsquo;s <code>FeedsHelper</code> computes this from <code>settings.document_library</code> + <code>settings.document_upload</code> + the user&rsquo;s role</li>
+  <li><strong>Storage:</strong> Uploaded files become <code>SpaceDocumentFile</code> records (<code>{ id, title, media_key, url, type, size }</code>) attached to <code>meta.document_lists</code> on the post</li>
+</ul>
+
+<h3 id="mutual-exclusion">Mutual Exclusion (when documents are attached)</h3>
+<p>Web FC Pro treats document posts as their own <code>content_type</code>. The mobile composer mirrors this:</p>
+<ul>
+  <li>While documents are attached, the image / GIF / poll / video buttons are <strong>hidden</strong> (<code>onImagePress</code> / etc. are passed <code>undefined</code> to <code>ComposerToolbar</code>)</li>
+  <li>The document button is hidden whenever any other media is attached</li>
+  <li>This matches the FC Pro web rule: a post is either a regular post (text + images / video / GIF / poll) <strong>or</strong> a document post &mdash; never both</li>
+</ul>
+
 <h3>ComposerToolbar</h3>
 <p><span class="file-path">components/composer/ComposerToolbar.tsx</span> renders the bottom action bar with attachment buttons on the left and a Submit button on the right:</p>
 <table>
-  <tr><th>Button</th><th>Action</th><th>Active indicator</th></tr>
-  <tr><td>Image (icon)</td><td>Opens image picker</td><td>Shows spinner while uploading</td></tr>
-  <tr><td>GIF (text badge)</td><td>Opens GIF picker</td><td>Primary color when GIF attached</td></tr>
-  <tr><td>Poll (chart icon)</td><td>Opens poll builder</td><td>Filled icon + primary color when poll attached</td></tr>
-  <tr><td>Video (camera icon)</td><td>Opens video URL sheet</td><td>Primary color when video attached</td></tr>
+  <tr><th>Button</th><th>Action</th><th>Active / visibility</th></tr>
+  <tr><td>Image (icon)</td><td>Opens image picker</td><td>Shows spinner while uploading; hidden if documents attached</td></tr>
+  <tr><td>GIF (text badge)</td><td>Opens GIF picker</td><td>Primary color when GIF attached; hidden if documents attached</td></tr>
+  <tr><td>Poll (chart icon)</td><td>Opens poll builder</td><td>Filled icon + primary color when poll attached; hidden if documents attached</td></tr>
+  <tr><td>Video (camera icon)</td><td>Opens video URL sheet</td><td>Primary color when video attached; hidden if documents attached</td></tr>
+  <tr><td>Document (paperclip icon)</td><td>Opens document picker</td><td>Only when <code>space.permissions.can_upload_documents</code>; hidden if any other media attached</td></tr>
   <tr><td>Submit button</td><td>Posts or saves</td><td>Label: "Post" (new) or "Save" (edit)</td></tr>
 </table>
+
+<p><code>onImagePress</code>, <code>onGifPress</code>, <code>onPollPress</code>, and <code>onVideoPress</code> are now <strong>optional</strong> on <code>ComposerToolbar</code>; passing <code>undefined</code> hides the corresponding button. <code>CreatePostContent</code> uses this to enforce mutual exclusion symmetrically &mdash; the toolbar itself has no awareness of attachment state.</p>
 
 <!-- ================================================================== -->
 <h2 id="polls">7. Polls &amp; Surveys</h2>
@@ -309,7 +331,7 @@ survey: {
 <h3>ComposerSubmitData (what CreatePostContent builds)</h3>
 <pre><code>interface ComposerSubmitData {
   message: string;           // Markdown content (converted from 10tap HTML)
-  content_type: 'text' | 'markdown';  // Always 'markdown' for rich text posts
+  content_type: 'text' | 'markdown' | 'document';  // 'document' when meta.document_lists is present
   title?: string;
   space?: string;            // Space slug
 
@@ -341,6 +363,11 @@ survey: {
     type: 'single_choice' | 'multi_choice';
     options: { label: string; slug: string }[];
     end_date: string;       // Always '' (not yet implemented)
+  };
+
+  // Documents (FC Pro) — set content_type: 'document' when present
+  meta?: {
+    document_lists?: SpaceDocumentFile[];   // { id, title, media_key, url, type, size }
   };
 }</code></pre>
 
@@ -434,6 +461,9 @@ survey: {
   <tr><td><span class="file-path">components/composer/PollBuilderSheet.tsx</span></td><td>Poll creation BottomSheet (options, type toggle)</td></tr>
   <tr><td><span class="file-path">components/composer/PollPreview.tsx</span></td><td>Poll preview card with edit/remove</td></tr>
   <tr><td><span class="file-path">components/composer/MediaPreview.tsx</span></td><td>Horizontal image thumbnail strip with remove buttons</td></tr>
+  <tr><td><span class="file-path">components/composer/DocumentPreview.tsx</span></td><td>Vertical file rows for attached documents (mime icon + name + remove)</td></tr>
+  <tr><td><span class="file-path">utils/mime.ts</span></td><td><code>iconForMime()</code> &mdash; shared with <code>SpaceDocumentsSheet</code></td></tr>
+  <tr><td><span class="file-path">services/api/documents.ts</span></td><td><code>uploadDocument()</code>, document list types (<code>SpaceDocumentFile</code>)</td></tr>
   <tr><td><span class="file-path">components/composer/VideoAttachModal.tsx</span></td><td>Video URL input BottomSheet with oembed fetch</td></tr>
   <tr><td><span class="file-path">components/composer/VideoPreview.tsx</span></td><td>Video embed preview card</td></tr>
   <tr><td><span class="file-path">components/composer/GifPickerModal.tsx</span></td><td>Giphy search BottomSheet with 2-column grid and infinite scroll</td></tr>
@@ -473,6 +503,10 @@ survey: {
   <li><strong>Server enforces posting permissions.</strong> The composer doesn't pre-check whether the user can post in a space. If the user lacks permission, the API returns an error and the composer shows an alert. Don't add client-side permission checks that could get out of sync with the server.</li>
 
   <li><strong>GIF provider is <code>'giphy'</code> on submit.</strong> The composer sends <code>provider: 'giphy'</code> in <code>meta.media_preview</code>, matching what the native FluentCommunity web app sends. The server's <code>processFeedMetaData</code> requires <code>provider == 'giphy'</code> to persist the GIF — anything else is silently dropped (and the <code>updateFeed</code> path has no fallback shim, so edits would lose the GIF).</li>
+
+  <li><strong>Documents are mutually exclusive with all other media.</strong> When <code>meta.document_lists</code> has items, set <code>content_type: 'document'</code> and pass <code>undefined</code> for <code>onImagePress</code> / <code>onGifPress</code> / <code>onPollPress</code> / <code>onVideoPress</code> on <code>ComposerToolbar</code>. The document button is hidden whenever any other media is attached. This mirrors web FC Pro &mdash; a post is either a regular post or a document post, never both.</li>
+
+  <li><strong>Gate the document button on <code>space.permissions.can_upload_documents</code>.</strong> FC&rsquo;s <code>FeedsHelper</code> already computes this from <code>settings.document_library</code> + <code>settings.document_upload</code> + the user&rsquo;s role. Don&rsquo;t re-derive it client-side; just read the boolean.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

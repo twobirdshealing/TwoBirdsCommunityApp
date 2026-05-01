@@ -10,27 +10,32 @@
 <body>
 
 <h1>Messaging &amp; Chat</h1>
-<p class="subtitle">Direct messages, real-time Pusher events, thread resolution, reactions, and blocking</p>
+<p class="subtitle">Direct messages, group chats, community-space chats, real-time Pusher events, reactions, and blocking</p>
 
 <div class="callout">
   <strong>Source files:</strong>
   <span class="file-path">services/api/messages.ts</span> &middot;
+  <span class="file-path">services/api/groups.ts</span> &middot;
+  <span class="file-path">services/api/spaceThreads.ts</span> &middot;
   <span class="file-path">hooks/useChatMessages.ts</span> &middot;
   <span class="file-path">hooks/useChatReactions.tsx</span> &middot;
   <span class="file-path">hooks/useMessageMenu.ts</span> &middot;
   <span class="file-path">types/message.ts</span> &middot;
   <span class="file-path">components/message/</span> &middot;
   <span class="file-path">app/messages/</span><br>
-  Messaging requires the <strong>Fluent Messaging</strong> add-on on the WordPress site. The app feature is gated by the <code>messaging</code> feature flag, controlled in wp-admin &rarr; TBC Community App &rarr; Features tab and accessed via <code>useFeatures()</code>.
+  Messaging requires the <strong>Fluent Messaging</strong> add-on (v2.4.0+) on the WordPress site. The app feature is gated by the <code>messaging</code> feature flag, controlled in wp-admin &rarr; TBC Community App &rarr; Features tab and accessed via <code>useFeatures()</code>.
 </div>
 
 <div class="toc">
   <strong>Contents</strong>
   <ol>
     <li><a href="#overview">How It Works</a></li>
+    <li><a href="#thread-types">Thread Types (DM / Group / Space)</a></li>
     <li><a href="#screens">Screens &amp; Navigation</a></li>
+    <li><a href="#layout">ChatScreenLayout (Shared Scaffold)</a></li>
     <li><a href="#thread-resolution">Thread Resolution</a></li>
     <li><a href="#messages-api">Messages API</a></li>
+    <li><a href="#groups-api">Groups &amp; Space-Threads API</a></li>
     <li><a href="#pagination">Cursor-Based Pagination</a></li>
     <li><a href="#sending">Sending Messages</a></li>
     <li><a href="#realtime">Real-Time (Pusher)</a></li>
@@ -46,33 +51,54 @@
 <!-- ====================================================================== -->
 <h2 id="overview">1. How It Works</h2>
 
-<div class="flow-diagram">Thread List (/messages)
-  &boxvr;&boxh; Fetches all threads + unread IDs in parallel
-  &boxvr;&boxh; Client-side search (name, username, preview)
-  &boxvr;&boxh; Swipe-to-delete threads
-  &boxvr;&boxh; Pusher updates thread previews in real-time
-  &boxvr;&boxh; New Message modal &mdash; search users, tap to start conversation
-  &boxur;&boxh; Tap thread &rarr; Chat screen
+<div class="flow-diagram">Inbox (/messages) &mdash; sectioned: Communities | Groups | DMs
+  &boxvr;&boxh; Server-side search via /chat/threads?search= (debounced)
+  &boxvr;&boxh; Each section is collapsible with its own ThreadSection header
+  &boxvr;&boxh; Communities section also renders left_community_threads (faded)
+  &boxvr;&boxh; Pusher patches preview rows in real-time (no full refetch storm)
+  &boxvr;&boxh; "New" button opens NewMessageModal (DM) or NewGroupSheet (group)
+  &boxur;&boxh; Tap thread &rarr; one of three chat detail screens
 
-Chat Screen (/messages/user/[userId])
-  &boxvr;&boxh; Thread resolution: find existing thread or show "new conversation"
+Chat detail screens (all use ChatScreenLayout)
+  &boxvr;&boxh; /messages/user/[userId]   &mdash; DM (resolves user &rarr; thread)
+  &boxvr;&boxh; /messages/group/[threadId] &mdash; Group chat (GroupInfoSheet, members, admin)
+  &boxur;&boxh; /messages/space/[threadId] &mdash; Community-space chat (SpaceInfoSheet)
+
+Inside every detail screen
   &boxvr;&boxh; Cursor-based message pagination (load older by scrolling up)
   &boxvr;&boxh; Send text + image attachments + reply quotes
   &boxvr;&boxh; Real-time: Pusher appends new messages instantly
+  &boxvr;&boxh; Polling fallback (8s) when Pusher is disconnected
   &boxvr;&boxh; Reactions: emoji picker, optimistic toggle, Pusher sync
+  &boxvr;&boxh; System messages render as centered dividers (meta.system_event)
   &boxvr;&boxh; Context menu: reply, delete (own messages)
-  &boxvr;&boxh; Image lightbox via MediaViewer
-  &boxur;&boxh; Block/unblock thread participants</div>
+  &boxur;&boxh; Image lightbox via MediaViewer</div>
 
-<p>The messaging system is built on Fluent Community&rsquo;s Chat API (v2.2.0). Threads represent conversations between users. Messages are loaded via cursor-based pagination and updated in real-time via Pusher.</p>
+<p>The messaging system is built on Fluent Community&rsquo;s Chat API. The app targets <strong>Fluent Messaging 2.4.0+</strong>, which adds <code>provider</code> on threads (<code>'group'</code> | <code>'fcom'</code>), <code>community_threads</code> in the inbox response, and group-thread Pusher events. Messages are loaded via cursor-based pagination and updated in real-time via Pusher.</p>
 
 <!-- ====================================================================== -->
-<h2 id="screens">2. Screens &amp; Navigation</h2>
+<h2 id="thread-types">2. Thread Types (DM / Group / Space)</h2>
+
+<p>The inbox renders three sections backed by separate fields on the <code>/chat/threads</code> response:</p>
+
+<table>
+  <tr><th>Section</th><th>Source field</th><th>Detail route</th><th>Pusher channel</th><th>Provider</th></tr>
+  <tr><td>Communities</td><td><code>community_threads</code> (+ <code>left_community_threads</code> faded)</td><td><code>/messages/space/[threadId]</code></td><td><code>private-chat_space_{spaceId}</code></td><td><code>'fcom'</code> with <code>space_id</code></td></tr>
+  <tr><td>Groups</td><td><code>threads</code> filtered by <code>provider === 'group'</code></td><td><code>/messages/group/[threadId]</code></td><td><code>private-chat_user_{userId}</code> (group events)</td><td><code>'group'</code></td></tr>
+  <tr><td>DMs</td><td><code>threads</code> filtered by <code>provider !== 'group'</code></td><td><code>/messages/user/[userId]</code></td><td><code>private-chat_user_{userId}</code> (message/reaction events)</td><td><code>'fcom'</code> or <code>null</code></td></tr>
+</table>
+
+<p>The <code>useChatMessages</code> hook accepts a <strong>discriminated union</strong> (<code>UserChatParams | GroupChatParams | SpaceChatParams</code>) that TypeScript narrows once at the top of the hook &mdash; no runtime branching warnings.</p>
+
+<!-- ====================================================================== -->
+<h2 id="screens">3. Screens &amp; Navigation</h2>
 
 <table>
   <tr><th>Route</th><th>Screen</th><th>File</th></tr>
-  <tr><td><code>/messages</code></td><td>Thread list (all conversations)</td><td><span class="file-path">app/messages/index.tsx</span></td></tr>
-  <tr><td><code>/messages/user/[userId]</code></td><td>Chat screen (single conversation)</td><td><span class="file-path">app/messages/user/[userId].tsx</span></td></tr>
+  <tr><td><code>/messages</code></td><td>Sectioned inbox (Communities / Groups / DMs)</td><td><span class="file-path">app/messages/index.tsx</span></td></tr>
+  <tr><td><code>/messages/user/[userId]</code></td><td>DM chat screen</td><td><span class="file-path">app/messages/user/[userId].tsx</span></td></tr>
+  <tr><td><code>/messages/group/[threadId]</code></td><td>Group chat screen + GroupInfoSheet</td><td><span class="file-path">app/messages/group/[threadId].tsx</span></td></tr>
+  <tr><td><code>/messages/space/[threadId]</code></td><td>Community-space chat screen + SpaceInfoSheet</td><td><span class="file-path">app/messages/space/[threadId].tsx</span></td></tr>
 </table>
 
 <h3>Navigation Into Chat</h3>
@@ -100,7 +126,27 @@ router.push({
 });</code></pre>
 
 <!-- ====================================================================== -->
-<h2 id="thread-resolution">3. Thread Resolution</h2>
+<h2 id="layout">4. ChatScreenLayout (Shared Scaffold)</h2>
+
+<p><span class="file-path">components/message/ChatScreenLayout.tsx</span> is the single scaffold shared by all three chat detail screens (DM, group, space). Each screen passes its own <code>useChatMessages</code> result, header, and optional info-sheet override; the layout owns the FlashList, ChatInput, KeyboardAvoidingView, message-level menu, MediaViewer, and ChatReactionPicker. Default avatar tap opens the user&rsquo;s profile.</p>
+
+<pre><code>// app/messages/group/[threadId].tsx (sketch)
+const chat = useChatMessages({ kind: 'group', threadId, currentUserId });
+
+return (
+  &lt;ChatScreenLayout
+    chat={chat}
+    header={&lt;GroupHeader thread={chat.threadDetails} onInfoPress={openInfo} /&gt;}
+    infoSheet={&lt;GroupInfoSheet visible={infoOpen} onClose={closeInfo} /&gt;}
+  /&gt;
+);</code></pre>
+
+<div class="callout callout-success">
+  <strong>Don&rsquo;t fork the chat scaffold.</strong> If a new chat surface appears (e.g., DMs from a course), give it a route that mounts <code>ChatScreenLayout</code> with its own header and info sheet. The reaction picker, message menu, image lightbox, and keyboard handling are wired once and shouldn&rsquo;t be re-implemented per screen.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="thread-resolution">5. Thread Resolution</h2>
 
 <p>The <code>useChatMessages</code> hook handles finding the right thread for a given user ID. This is the most complex part of the messaging system.</p>
 
@@ -138,7 +184,7 @@ router.push({
 </table>
 
 <!-- ====================================================================== -->
-<h2 id="messages-api">4. Messages API</h2>
+<h2 id="messages-api">6. Messages API</h2>
 
 <p><span class="file-path">services/api/messages.ts</span> &mdash; exported as <code>messagesApi</code></p>
 
@@ -167,7 +213,36 @@ router.push({
 </div>
 
 <!-- ====================================================================== -->
-<h2 id="pagination">5. Cursor-Based Pagination</h2>
+<h2 id="groups-api">7. Groups &amp; Space-Threads API</h2>
+
+<h3>Groups (<span class="file-path">services/api/groups.ts</span>, exported as <code>groupsApi</code>)</h3>
+<p>Eight typed endpoints &mdash; CRUD plus member admin actions. All paths match Fluent Messaging 2.4.0 (<code>fluent-messaging/app/Http/Controllers/api.php</code>).</p>
+<table>
+  <tr><th>Function</th><th>Endpoint</th><th>Purpose</th></tr>
+  <tr><td><code>createGroup({ title, members })</code></td><td><code>POST /chat/groups</code></td><td>Create a group thread, optionally seeded with members</td></tr>
+  <tr><td><code>updateGroup(id, { title })</code></td><td><code>POST /chat/groups/{id}</code></td><td>Edit group title (FC uses POST, not PATCH)</td></tr>
+  <tr><td><code>deleteGroup(id)</code></td><td><code>POST /chat/groups/{id}/delete</code></td><td>Delete the group (admin only)</td></tr>
+  <tr><td><code>leaveGroup(id)</code></td><td><code>POST /chat/groups/{id}/leave</code></td><td>Leave the group as the current user</td></tr>
+  <tr><td><code>getGroupMembers(id, { page })</code></td><td><code>GET /chat/groups/{id}/members</code></td><td>Paginated member list</td></tr>
+  <tr><td><code>addGroupMembers(id, userIds)</code></td><td><code>POST /chat/groups/{id}/members</code></td><td>Add one or more members</td></tr>
+  <tr><td><code>removeGroupMember(id, userId)</code></td><td><code>POST /chat/groups/{id}/members/{userId}/remove</code></td><td>Remove a member (admin)</td></tr>
+  <tr><td><code>setGroupAdmin(id, userId, isAdmin)</code></td><td><code>POST /chat/groups/{id}/members/{userId}/admin</code></td><td>Promote / demote admin</td></tr>
+</table>
+
+<h3>Community-space threads (<span class="file-path">services/api/spaceThreads.ts</span>, exported as <code>spaceThreadsApi</code>)</h3>
+<p>Three endpoints &mdash; community spaces handle membership through the space, not the thread, so the thread API is intentionally smaller.</p>
+<table>
+  <tr><th>Function</th><th>Endpoint</th><th>Purpose</th></tr>
+  <tr><td><code>getSpaceThreadMembers(id, { page })</code></td><td><code>GET /chat/threads/{id}/members</code></td><td>Paginated member list (powers SpaceInfoSheet)</td></tr>
+  <tr><td><code>joinSpaceThread(id)</code></td><td><code>POST /chat/threads/join/{id}</code></td><td>Re-join a community thread the user previously left</td></tr>
+  <tr><td><code>leaveSpaceThread(id)</code></td><td><code>POST /chat/threads/leave/{id}</code></td><td>Leave the thread; row moves to <code>left_community_threads</code></td></tr>
+</table>
+
+<h3>System messages</h3>
+<p>FC writes a system message whenever group membership changes (added, removed, promoted, etc.). The server sets <code>meta.system_event = true</code> and <code>meta.system_text = '...'</code> on the message row. The app keys off <code>meta.system_event</code> and renders the row via <span class="file-path">components/message/SystemMessage.tsx</span> as a centered divider with no avatar or bubble.</p>
+
+<!-- ====================================================================== -->
+<h2 id="pagination">8. Cursor-Based Pagination</h2>
 
 <p>Messages use cursor-based pagination (not page numbers). The cursor is the <code>id</code> of the oldest loaded message.</p>
 
@@ -188,7 +263,7 @@ const older = await messagesApi.getMessages(threadId, oldestId);
 <pre><code>const fetchedMessages = (response.data.messages || []).slice().reverse();</code></pre>
 
 <!-- ====================================================================== -->
-<h2 id="sending">6. Sending Messages</h2>
+<h2 id="sending">9. Sending Messages</h2>
 
 <h3>Existing Thread</h3>
 <pre><code>await messagesApi.sendMessage(threadId, text, attachments, replyData);</code></pre>
@@ -226,9 +301,35 @@ await messagesApi.sendMessage(threadId, text, [
 });</code></pre>
 
 <!-- ====================================================================== -->
-<h2 id="realtime">7. Real-Time (Pusher)</h2>
+<h2 id="realtime">10. Real-Time (Pusher)</h2>
 
-<p>New messages and reactions arrive via Pusher on the user&rsquo;s private channel. See <a href="pusher.html">Pusher doc</a> for connection details.</p>
+<p>Three channel patterns and a typed event registry power live updates across DMs, groups, and community-space chats. Full transport details live in the <a href="pusher.html">Pusher doc</a>.</p>
+
+<h3>Channels</h3>
+<table>
+  <tr><th>Channel</th><th>Carries</th><th>Subscriber lifecycle</th></tr>
+  <tr><td><code>private-chat_user_{userId}</code></td><td>DM message + reaction events <strong>and</strong> all 7 group lifecycle events</td><td>Subscribed for the lifetime of the session by <code>PusherContext</code></td></tr>
+  <tr><td><code>private-chat_space_{spaceId}</code></td><td>Community-space message + reaction events</td><td>Subscribed once per <code>community_threads</code> entry; resubscribed when the inbox list changes (with content-equality guard so SWR revalidations don&rsquo;t churn)</td></tr>
+</table>
+
+<h3>Typed event registry</h3>
+<p><span class="file-path">services/pusher.ts</span> exposes a single <code>PusherEventMap</code> interface and a generic <code>subscribe&lt;K&gt;(event, handler)</code> + <code>bindEvents(channel, names)</code>. Handler Sets, bind blocks, and registrar functions all collapsed from nine mechanical repetitions into one factory; the named <code>onX(...)</code> / <code>useXListener(...)</code> wrappers are kept as one-liners so call sites stay readable.</p>
+
+<table>
+  <tr><th>Event</th><th>Channel</th><th>Hook</th><th>Purpose</th></tr>
+  <tr><td><code>message</code></td><td>user, space</td><td><code>useNewMessageListener</code></td><td>New chat message arrives</td></tr>
+  <tr><td><code>reaction</code></td><td>user, space</td><td><code>useReactionListener</code></td><td>Reaction added or removed</td></tr>
+  <tr><td><code>new_thread</code></td><td>user</td><td><code>useNewThreadListener</code></td><td>You were added to a new group</td></tr>
+  <tr><td><code>thread_updated</code></td><td>user</td><td><code>useThreadUpdatedListener</code></td><td>Group title changed</td></tr>
+  <tr><td><code>group_member_added</code></td><td>user</td><td><code>useGroupMemberAddedListener</code></td><td>Someone joined a group you&rsquo;re in</td></tr>
+  <tr><td><code>group_member_removed</code></td><td>user</td><td><code>useGroupMemberRemovedListener</code></td><td>Someone was removed from a group</td></tr>
+  <tr><td><code>group_admin_changed</code></td><td>user</td><td><code>useGroupAdminChangedListener</code></td><td>Admin promoted or demoted</td></tr>
+  <tr><td><code>group_deleted</code></td><td>user</td><td><code>useGroupDeletedListener</code></td><td>The group was deleted</td></tr>
+  <tr><td><code>group_removed_from</code></td><td>user</td><td><code>useGroupRemovedFromListener</code></td><td>You were removed from a group</td></tr>
+</table>
+
+<h3>Polling fallback</h3>
+<p>When Pusher is disconnected, <code>useChatMessages</code> falls back to an 8-second tick that calls <code>getNewMessages(threadId, lastMessageId)</code> with a no-op guard so <code>setMessages</code> doesn&rsquo;t fire when there&rsquo;s nothing new. The cursor (<code>lastMessageIdRef</code>) is the same one Pusher updates, so messages received via polling and via Pusher dedupe automatically.</p>
 
 <h3>Hooks</h3>
 <table>
@@ -284,7 +385,7 @@ useReactionListener(handleReaction);</code></pre>
 </ul>
 
 <!-- ====================================================================== -->
-<h2 id="reactions">8. Message Reactions</h2>
+<h2 id="reactions">11. Message Reactions</h2>
 
 <p><span class="file-path">hooks/useChatReactions.tsx</span></p>
 
@@ -330,7 +431,7 @@ await messagesApi.toggleReaction(messageId, '&#x1f44d;');</code></pre>
 </table>
 
 <!-- ====================================================================== -->
-<h2 id="blocking">9. Block &amp; Unblock</h2>
+<h2 id="blocking">12. Block &amp; Unblock</h2>
 
 <p>Users can block conversations to prevent receiving messages from a specific user.</p>
 
@@ -350,9 +451,28 @@ await messagesApi.unblockThread(threadId);</code></pre>
 <p>Block state is read from <code>threadDetails.blocked_thread</code> in the messages response. The <code>useChatMessages</code> hook tracks it via the <code>isBlocked</code> state variable and provides <code>handleBlockPress(displayName)</code> and <code>handleUnblockPress()</code> handlers that show confirmation alerts.</p>
 
 <!-- ====================================================================== -->
-<h2 id="components">10. UI Components</h2>
+<h2 id="components">13. UI Components</h2>
 
-<p>All messaging components live in <span class="file-path">components/message/</span>.</p>
+<p>All messaging components live in <span class="file-path">components/message/</span>. The 2.4.0 work landed several new primitives in addition to the existing DM components.</p>
+
+<h3>New in 2.4.0</h3>
+<table>
+  <tr><th>Component</th><th>Used by</th><th>Purpose</th></tr>
+  <tr><td><code>ChatScreenLayout</code></td><td>All three chat detail screens</td><td>Shared scaffold &mdash; FlashList, ChatInput, KAV, message menu, MediaViewer, ChatReactionPicker, PageHeader. See <a href="#layout">section 4</a>.</td></tr>
+  <tr><td><code>ThreadSection</code></td><td>Inbox</td><td>Collapsible section header (Communities / Groups / DMs)</td></tr>
+  <tr><td><code>SystemMessage</code></td><td>Group + space chats</td><td>Centered divider for <code>meta.system_event === true</code> rows</td></tr>
+  <tr><td><code>GroupHeader</code></td><td>Group chat detail</td><td>Title + member-count + info button (passed into <code>ChatScreenLayout.header</code>)</td></tr>
+  <tr><td><code>GroupInfoSheet</code></td><td>Group chat detail</td><td>Members list, leave / delete, admin promote/demote, edit title, add members</td></tr>
+  <tr><td><code>SpaceInfoSheet</code></td><td>Space chat detail</td><td>Paginated members, View Community, Leave / Rejoin</td></tr>
+  <tr><td><code>NewGroupSheet</code></td><td>Inbox &ldquo;New&rdquo; button</td><td>Title + multi-user picker; calls <code>createGroup</code></td></tr>
+  <tr><td><code>EditGroupSheet</code></td><td>GroupInfoSheet</td><td>Edit title only (members managed via AddMembersSheet)</td></tr>
+  <tr><td><code>AddMembersSheet</code></td><td>GroupInfoSheet</td><td>Multi-user picker; calls <code>addGroupMembers</code></td></tr>
+  <tr><td><code>MultiSelectUserPicker</code></td><td>NewGroupSheet, AddMembersSheet</td><td>Shared chip-list user search via <code>GET /chat/users?search=</code></td></tr>
+</table>
+
+<p><code>MemberCard</code> grew a <code>nameSuffix</code> prop so info sheets can append <code>(You)</code> to the current user&rsquo;s row without mutating <code>display_name</code>.</p>
+
+<h3>DM components (existing)</h3>
 
 <h3>ChatInput</h3>
 <p><span class="file-path">components/message/ChatInput.tsx</span></p>
@@ -406,7 +526,7 @@ await messagesApi.unblockThread(threadId);</code></pre>
 </ul>
 
 <!-- ====================================================================== -->
-<h2 id="types">11. Data Types</h2>
+<h2 id="types">14. Data Types</h2>
 
 <p><span class="file-path">types/message.ts</span></p>
 
@@ -522,7 +642,7 @@ interface CreateThreadRequest {
 </div>
 
 <!-- ====================================================================== -->
-<h2 id="helpers">12. Helper Functions</h2>
+<h2 id="helpers">15. Helper Functions</h2>
 
 <p>All helpers are in <span class="file-path">types/message.ts</span> and extract info from the v2.2.0 <code>ThreadInfo</code> structure:</p>
 
@@ -553,10 +673,11 @@ interface CreateThreadRequest {
 </table>
 
 <!-- ====================================================================== -->
-<h2 id="rules">13. Rules</h2>
+<h2 id="rules">16. Rules</h2>
 
 <ol>
-  <li><strong>Navigate to chat by user ID, not thread ID.</strong> The <code>useChatMessages</code> hook handles thread resolution. This supports both existing and new conversations.</li>
+  <li><strong>Pick the right route per thread type.</strong> DMs use <code>/messages/user/[userId]</code>, groups use <code>/messages/group/[threadId]</code>, community-space chats use <code>/messages/space/[threadId]</code>. The inbox already routes correctly &mdash; deep-link callers must respect the same split.</li>
+  <li><strong>Navigate DMs by user ID, not thread ID.</strong> Only DMs use this pattern. The <code>useChatMessages</code> DM branch handles thread resolution and supports both existing and new conversations.</li>
   <li><strong>Use <code>messagesApi</code> for all chat API calls.</strong> Don&rsquo;t call endpoints directly. The service handles request building and type safety.</li>
   <li><strong>Use the helper functions for thread data.</strong> Don&rsquo;t access <code>thread.info.title</code> directly &mdash; use <code>getThreadDisplayName(thread)</code>. The helpers handle null checks and fallbacks.</li>
   <li><strong>Strip HTML from message text before display.</strong> Use <code>getMessageText()</code> for full text or <code>getMessagePreview()</code> for truncated previews. Never render raw <code>message.text</code> as plain text.</li>

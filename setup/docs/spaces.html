@@ -10,7 +10,7 @@
 <body>
 
 <h1>Spaces (Groups)</h1>
-<p class="subtitle">Discovery, membership, feeds, lock screens, and space groups</p>
+<p class="subtitle">Discovery, membership, feeds, sidebar widgets, lock screens, and space groups</p>
 
 <div class="callout">
   <strong>Key files:</strong> <span class="file-path">services/api/spaces.ts</span> (API), <span class="file-path">app/(tabs)/spaces.tsx</span> (discovery tab), <span class="file-path">app/space/[slug]/index.tsx</span> (detail screen)<br>
@@ -29,6 +29,8 @@
     <li><a href="#members">Member List</a></li>
     <li><a href="#privacy">Privacy Levels &amp; Lock Screens</a></li>
     <li><a href="#feeds">Space Feeds</a></li>
+    <li><a href="#sidebar-widgets">Sidebar Widgets (Gear Menu)</a></li>
+    <li><a href="#pin-to-sidebar">Pin to Sidebar (Post Action)</a></li>
     <li><a href="#groups">Space Groups</a></li>
     <li><a href="#components">Components</a></li>
     <li><a href="#files">File Reference</a></li>
@@ -136,8 +138,21 @@ interface SpaceGroupOption {
   <tr><td><code>og_image</code></td><td>string</td><td>Open Graph / card preview image URL</td></tr>
   <tr><td><code>layout_style</code></td><td>'timeline'/'grid'</td><td>Feed layout style</td></tr>
   <tr><td><code>members_page_status</code></td><td>'public'/'private'/'members_only'</td><td>Members page visibility</td></tr>
-  <tr><td><code>document_library</code></td><td>'yes'/'no'</td><td>Enable document library</td></tr>
+  <tr><td><code>document_library</code></td><td>'yes'/'no'</td><td>Enable document library (FC Pro)</td></tr>
+  <tr><td><code>document_upload</code></td><td>'admins_only'/'members_only'</td><td>Who may upload documents (FC Pro)</td></tr>
+  <tr><td><code>group_chat_support</code></td><td>'yes'/'no'</td><td>Enable a community-space chat thread (gates the gear-menu Chat action)</td></tr>
   <tr><td><code>onboard_redirect_url</code></td><td>string</td><td>URL to redirect new members to</td></tr>
+</table>
+
+<p>The detail endpoint also returns a top-level <code>chat_thread_id</code> on the Space when <code>group_chat_support === 'yes'</code> &mdash; this is the thread the &ldquo;Chat&rdquo; gear-menu entry routes into (<code>/messages/space/{chat_thread_id}</code>).</p>
+
+<h3>Permissions (computed by FC server-side)</h3>
+<p>The space detail endpoint returns a <code>permissions</code> object with computed booleans the app reads instead of re-deriving rules client-side:</p>
+<table>
+  <tr><th>Permission</th><th>Used by</th></tr>
+  <tr><td><code>can_view_documents</code></td><td>Documents gear-menu entry visibility</td></tr>
+  <tr><td><code>can_upload_documents</code></td><td>Composer document button (see <a href="content-creation.html#attachments">Content Creation</a>)</td></tr>
+  <tr><td><code>community_admin</code>, <code>community_moderator</code>, <code>edit_any_feed</code></td><td>Pin / pin-to-sidebar / featured-post actions</td></tr>
 </table>
 
 <!-- ================================================================== -->
@@ -377,7 +392,43 @@ feedsApi.createFeed({ space: 'general', message: '...', content_type: 'markdown'
 <p>The space detail screen shows a QuickPostBox when the user is a member. Tapping opens the composer with the space pre-selected. Non-members of public spaces see a "Join Space to Post" button instead. Non-members of private/secret spaces see the lock screen.</p>
 
 <!-- ================================================================== -->
-<h2 id="groups">10. Space Groups</h2>
+<h2 id="sidebar-widgets">10. Sidebar Widgets (Gear Menu)</h2>
+
+<p>Web FC has a sidebar on the right of each space that surfaces Documents, Chat, Featured Posts, and Recent Activity. On mobile, these are exposed via the <code>SpaceMenu</code> gear-icon kebab in the page header &mdash; each entry opens its own bottom sheet. All four are powered by <strong>existing</strong> Fluent Community endpoints, so the companion plugin needed no new server work.</p>
+
+<h3>Gear menu entries</h3>
+<table>
+  <tr><th>Entry</th><th>Visible when</th><th>Endpoint</th><th>Sheet</th></tr>
+  <tr><td>Documents</td><td><code>permissions.can_view_documents</code> (FC Pro)</td><td><code>GET /documents?space_id={id}</code></td><td><code>SpaceDocumentsSheet</code></td></tr>
+  <tr><td>Chat</td><td><code>chat_thread_id</code> set <strong>and</strong> <code>settings.group_chat_support === 'yes'</code></td><td>(navigates) <code>/messages/space/{chat_thread_id}</code></td><td>n/a &mdash; routes into the existing space chat screen</td></tr>
+  <tr><td>Featured Posts</td><td>Always (returns empty if none)</td><td><code>GET /activities?context[space_id]={id}&amp;with_pins=1</code> &rarr; <code>pinned_posts</code></td><td><code>SpaceFeaturedSheet</code></td></tr>
+  <tr><td>Recent Activity</td><td>Always</td><td><code>GET /activities?context[space_id]={id}&amp;with_pins=1</code> &rarr; <code>activities.data</code> (filtered to <code>feed_published</code> + <code>comment_added</code>)</td><td><code>SpaceActivitySheet</code></td></tr>
+</table>
+
+<h3>Single round-trip for Featured + Activity</h3>
+<p><code>useSpaceActivities</code> wraps <code>useAppQuery</code> with a stable cache key (<code>tbc_space_activities_{spaceId}</code>). Both Featured and Activity sheets read from the same query &mdash; opening one then the other costs <strong>one</strong> round-trip total because TanStack Query dedupes them. The endpoint already returns both lists in a single response (<code>{ activities: { data }, pinned_posts: [] }</code>), so this is server-aligned, not just client caching.</p>
+
+<h3>Documents sheet</h3>
+<p><code>useSpaceDocuments</code> tolerates 404 / 403 by short-circuiting to an empty list &mdash; this lets the menu entry quietly no-op on free-tier sites where FC Pro isn&rsquo;t installed. Visibility is gated upstream on <code>permissions.can_view_documents</code>, so under normal circumstances the request never fires for unsupported sites.</p>
+
+<h3>Activity deep-links</h3>
+<p>Each activity returns a <code>route</code> object. Recent Activity rows tap into <code>/feed/{feed_id}</code>; <code>comment_added</code> entries also pass <code>?comment_id=</code> when <code>route.query.comment_id</code> is present, so the feed detail screen can scroll to the specific comment.</p>
+
+<!-- ================================================================== -->
+<h2 id="pin-to-sidebar">11. Pin to Sidebar (Post Action)</h2>
+
+<p>Admins and moderators get a third toggle in the post 3-dot menu (next to Pin / Unpin): <strong>Pin to Sidebar</strong> / <strong>Unpin from Sidebar</strong>. This sets <code>feed.priority</code> to <code>1</code> (or back to <code>0</code>) so the post appears in the Featured Posts sheet.</p>
+
+<table>
+  <tr><th>Concept</th><th>Detail</th></tr>
+  <tr><td>Endpoint</td><td><code>PATCH /feeds/{id}</code> with body <code>{ priority: 1 \| 0 }</code></td></tr>
+  <tr><td>Mirrors</td><td>The same <code>toggleSticky</code> pattern in <code>services/api/feeds.ts</code></td></tr>
+  <tr><td>Permission</td><td>Server-side: only mods/admins can set <code>priority</code> (FC&rsquo;s <code>FeedsController::patchFeed</code> restricts non-mods to <code>['comments_disabled']</code>). App-side <code>canPin()</code> mirrors this check.</td></tr>
+  <tr><td>Cache</td><td>Optimistic update + <code>cacheEvents.emit(CACHE_EVENTS.FEEDS)</code> so the Featured Posts sheet refreshes on next open</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 id="groups">12. Space Groups</h2>
 
 <p>Space Groups are categories that organize multiple spaces. They're managed in WordPress admin, not the app.</p>
 
@@ -402,42 +453,54 @@ Ungrouped → "Other Spaces" tab</code></pre>
 </ul>
 
 <!-- ================================================================== -->
-<h2 id="components">11. Components</h2>
+<h2 id="components">13. Components</h2>
 
 <table>
   <tr><th>Component</th><th>File</th><th>Description</th></tr>
   <tr><td>SpaceCard</td><td><span class="file-path">components/space/SpaceCard.tsx</span></td><td>Hero card with 16:9 cover, gradient overlay, title, stats, membership badge</td></tr>
   <tr><td>SpaceInfoHeader</td><td><span class="file-path">components/space/SpaceInfoHeader.tsx</span></td><td>Detail page header with cover, logo, description, quick post box or join CTA</td></tr>
-  <tr><td>SpaceMenu</td><td><span class="file-path">components/space/SpaceMenu.tsx</span></td><td>Settings icon menu (Members, Leave Space, Space Settings for admins)</td></tr>
+  <tr><td>SpaceMenu</td><td><span class="file-path">components/space/SpaceMenu.tsx</span></td><td>Gear-icon kebab: Members, Leave Space, Documents (FC Pro), Chat, Featured Posts, Recent Activity, Space Settings (admins)</td></tr>
+  <tr><td>SpaceDocumentsSheet</td><td><span class="file-path">components/space/SpaceDocumentsSheet.tsx</span></td><td>Bottom sheet listing FC Pro space documents (title + mime icon + size); tolerates 404/403 for non-Pro sites</td></tr>
+  <tr><td>SpaceFeaturedSheet</td><td><span class="file-path">components/space/SpaceFeaturedSheet.tsx</span></td><td>Bottom sheet listing pinned posts (<code>priority === 1</code>); deep-links to <code>/feed/{id}</code></td></tr>
+  <tr><td>SpaceActivitySheet</td><td><span class="file-path">components/space/SpaceActivitySheet.tsx</span></td><td>Bottom sheet listing recent <code>feed_published</code> + <code>comment_added</code> events; deep-links to feed (and to comment when present)</td></tr>
   <tr><td>SpaceLockScreen</td><td><span class="file-path">components/space/SpaceLockScreen.tsx</span></td><td>Lock screen for non-members (pending, custom blocks, default)</td></tr>
   <tr><td>SpaceSelector</td><td><span class="file-path">components/composer/SpaceSelector.tsx</span></td><td>Modal picker for choosing a space when composing posts</td></tr>
 </table>
 
 <!-- ================================================================== -->
-<h2 id="files">12. File Reference</h2>
+<h2 id="files">14. File Reference</h2>
 
 <table>
   <tr><th>File</th><th>Purpose</th></tr>
   <tr><td><span class="file-path">services/api/spaces.ts</span></td><td>All space API functions (CRUD, join, leave, members, groups)</td></tr>
-  <tr><td><span class="file-path">types/space.ts</span></td><td><code>Space</code>, <code>SpaceGroup</code>, <code>SpaceMember</code>, <code>LockScreenConfig</code> types</td></tr>
+  <tr><td><span class="file-path">services/api/activities.ts</span></td><td><code>getSpaceActivities()</code> &mdash; powers Featured Posts + Recent Activity sheets</td></tr>
+  <tr><td><span class="file-path">services/api/documents.ts</span></td><td><code>getSpaceDocuments()</code>, <code>uploadDocument()</code> (FC Pro)</td></tr>
+  <tr><td><span class="file-path">services/api/feeds.ts</span></td><td>Feed API with <code>space</code> slug filter; <code>patchFeed</code> for sticky + pin-to-sidebar</td></tr>
+  <tr><td><span class="file-path">types/space.ts</span></td><td><code>Space</code>, <code>SpaceGroup</code>, <code>SpaceMember</code>, <code>LockScreenConfig</code>, <code>SpaceSettings</code>, <code>SpacePermissions</code></td></tr>
+  <tr><td><span class="file-path">types/activity.ts</span></td><td><code>Activity</code>, <code>ActivitiesResponse</code> (includes <code>pinned_posts</code>)</td></tr>
+  <tr><td><span class="file-path">utils/mime.ts</span></td><td><code>iconForMime()</code> &mdash; shared by SpaceDocumentsSheet and DocumentPreview</td></tr>
+  <tr><td><span class="file-path">hooks/useSpaceActivities.ts</span></td><td>TanStack Query wrapper; stable cache key dedupes Featured + Activity sheets</td></tr>
+  <tr><td><span class="file-path">hooks/useSpaceDocuments.ts</span></td><td>TanStack Query wrapper; tolerates 404/403 when FC Pro isn&rsquo;t installed</td></tr>
   <tr><td><span class="file-path">app/(tabs)/spaces.tsx</span></td><td>Spaces discovery tab with group tabs and search</td></tr>
-  <tr><td><span class="file-path">app/space/[slug]/index.tsx</span></td><td>Space detail screen with feed and info header</td></tr>
+  <tr><td><span class="file-path">app/space/[slug]/index.tsx</span></td><td>Space detail screen with feed, info header, and gear-menu wiring</td></tr>
   <tr><td><span class="file-path">app/space/[slug]/members.tsx</span></td><td>Space member list with role sections</td></tr>
   <tr><td><span class="file-path">app/space/[slug]/_layout.tsx</span></td><td>Stack navigation container for space screens</td></tr>
   <tr><td><span class="file-path">components/space/SpaceCard.tsx</span></td><td>Discovery card (cover + badge + stats)</td></tr>
   <tr><td><span class="file-path">components/space/SpaceInfoHeader.tsx</span></td><td>Detail header (cover + logo + description)</td></tr>
-  <tr><td><span class="file-path">components/space/SpaceMenu.tsx</span></td><td>Members, Leave, and Settings (admin) actions</td></tr>
+  <tr><td><span class="file-path">components/space/SpaceMenu.tsx</span></td><td>Gear-icon kebab (Members, Leave, Documents, Chat, Featured, Activity, Settings)</td></tr>
+  <tr><td><span class="file-path">components/space/SpaceDocumentsSheet.tsx</span></td><td>Documents sheet (FC Pro)</td></tr>
+  <tr><td><span class="file-path">components/space/SpaceFeaturedSheet.tsx</span></td><td>Featured Posts sheet (pinned-priority list)</td></tr>
+  <tr><td><span class="file-path">components/space/SpaceActivitySheet.tsx</span></td><td>Recent Activity sheet (deep-links to feed / comment)</td></tr>
   <tr><td><span class="file-path">components/space/SpaceLockScreen.tsx</span></td><td>Lock screen for restricted spaces</td></tr>
   <tr><td><span class="file-path">components/composer/SpaceSelector.tsx</span></td><td>Space picker for post composer</td></tr>
-  <tr><td><span class="file-path">services/api/feeds.ts</span></td><td>Feed API with <code>space</code> slug filter</td></tr>
   <tr><td><span class="file-path">services/api/profiles.ts</span></td><td><code>getUserSpaces(username)</code> for profile spaces tab</td></tr>
-  <tr><td><span class="file-path">hooks/useAppQuery.ts</span></td><td>MMKV-persisted TanStack Query data hook used by the Spaces tab</td></tr>
-  <tr><td><span class="file-path">utils/cacheEvents.ts</span></td><td><code>CACHE_EVENTS.SPACES</code> for cross-screen invalidation</td></tr>
+  <tr><td><span class="file-path">hooks/useAppQuery.ts</span></td><td>MMKV-persisted TanStack Query data hook used by the Spaces tab and the widget hooks</td></tr>
+  <tr><td><span class="file-path">utils/cacheEvents.ts</span></td><td><code>CACHE_EVENTS.SPACES</code> + <code>CACHE_EVENTS.FEEDS</code> for cross-screen invalidation</td></tr>
   <tr><td><span class="file-path">contexts/AppConfigContext.tsx</span></td><td><code>features.profile_tabs.spaces</code> flag (server-controlled via <code>useFeatures()</code>) &mdash; controls Spaces tab on user profiles</td></tr>
 </table>
 
 <!-- ================================================================== -->
-<h2 id="rules">13. Rules</h2>
+<h2 id="rules">15. Rules</h2>
 
 <ol>
   <li><strong>Always use space slug, not numeric ID.</strong> API calls use the slug (e.g., <code>'general'</code>) for join, leave, members, and feed filtering. The only exception is <code>getSpaceById()</code> which exists for legacy compatibility.</li>
@@ -461,6 +524,12 @@ Ungrouped → "Other Spaces" tab</code></pre>
   <li><strong>Server enforces all access control.</strong> The app doesn't pre-check permissions. If a non-member tries to access a private space's feed, the server returns the lock screen config. Don't add client-side access checks that could get out of sync.</li>
 
   <li><strong>Membership comes from different fields per endpoint.</strong> Discover uses <code>space_pivot</code>, profile uses <code>pivot</code>, detail uses <code>membership.pivot</code>. <code>SpaceCard</code> merges them: <code>const pivot = space.space_pivot ?? space.pivot</code>.</li>
+
+  <li><strong>Read computed permissions, don&rsquo;t re-derive.</strong> The detail endpoint returns <code>permissions.can_view_documents</code> / <code>can_upload_documents</code> / etc. as computed booleans. Gate UI on these directly instead of reconstructing the rule from <code>settings.document_library</code> + <code>settings.document_upload</code> + role &mdash; the server is the source of truth and FC can change the formula.</li>
+
+  <li><strong>Featured + Activity share one query.</strong> Both sheets read from <code>useSpaceActivities</code> with the same cache key. Don&rsquo;t introduce a second fetcher for &ldquo;just pinned posts&rdquo; &mdash; it&rsquo;s already in the response as <code>pinned_posts</code>, and the dedup is what keeps the gear menu cheap.</li>
+
+  <li><strong>Pin to Sidebar uses the <code>priority</code> field, not <code>is_sticky</code>.</strong> They are different concepts on the server (sticky pins to the top of a feed; <code>priority === 1</code> surfaces the post in the sidebar Featured list). Don&rsquo;t conflate them in <code>patchFeed</code> calls.</li>
 </ol>
 
 <hr style="margin-top: 48px; border: none; border-top: 1px solid var(--fcom-primary-border, var(--tbc-doc-border));">

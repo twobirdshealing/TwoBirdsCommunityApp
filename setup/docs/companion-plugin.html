@@ -115,6 +115,16 @@
 </table>
 <p>Push delivery uses <strong>Expo Push API</strong> (no Firebase service account needed on the server). The push feature flag must be enabled in the Features admin tab.</p>
 
+<h4>Chat-message push routing (1:1 / group / space)</h4>
+<p>The <code>fluent_messaging/after_add_message</code> hook in <span class="file-path">push/class-hooks.php</span> reads <code>fcom_chat_threads.provider</code> to decide where to deep-link the notification:</p>
+<table>
+  <tr><th>Thread provider</th><th>Notification deep-link</th></tr>
+  <tr><td><code>'group'</code></td><td><code>/messages/group/{thread_id}</code> (opens group chat with title carried in the payload)</td></tr>
+  <tr><td><code>'fcom'</code> with non-null <code>space_id</code></td><td>Routed by the app to <code>/messages/space/{thread_id}</code> based on the resolved thread record</td></tr>
+  <tr><td><code>'fcom'</code> / <code>NULL</code> (DM)</td><td>Legacy <code>/messages/user/{sender_id}</code> route &mdash; kept untouched so older app versions don&rsquo;t break</td></tr>
+</table>
+<p>This is the only companion-plugin change required for the 2.4.0 group + space chat work. Everything else (CRUD, members, admin actions, real-time) is pure mobile + Fluent Messaging native &mdash; no companion-plugin endpoints needed.</p>
+
 <h3>Account &amp; WebView</h3>
 <table>
   <tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr>
