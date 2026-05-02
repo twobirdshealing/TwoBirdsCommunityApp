@@ -1,13 +1,17 @@
 // =============================================================================
-// FEATURED EVENTS - Instagram stories style with short titles from tags
+// FEATURED EVENTS - Instagram-stories style row of upcoming featured events
 // =============================================================================
 // - Date ABOVE the circle (more visible/prominent)
 // - Uses tags[0] as short title (URL decoded)
 // - 3 items centered evenly across screen
-// - Subtle shimmer animation
+// =============================================================================
+// Note: previously had a Reanimated shimmer ring that cycled across items
+// every 4 seconds. Removed — same Animated.View + useEffect mount pattern
+// as the lesson-completion crash, and decorative-only. Static event circles
+// are clear enough on their own.
 // =============================================================================
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import {
   Dimensions,
   Image,
@@ -17,13 +21,6 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AnimatedPressable } from '@/components/common/AnimatedPressable';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSequence,
-  Easing,
-} from 'react-native-reanimated';
 import { spacing, typography } from '@/constants/layout';
 import { useTheme } from '@/contexts/ThemeContext';
 import { CalendarEvent } from '@/modules/calendar/types/calendar';
@@ -67,7 +64,7 @@ function formatShortDate(dateString: string): string {
 
 function getShortTitle(event: CalendarEvent): string {
   const tag = event.tags?.[0];
-  
+
   if (tag) {
     try {
       const decoded = decodeURIComponent(tag);
@@ -82,7 +79,7 @@ function getShortTitle(event: CalendarEvent): string {
       // Fall through
     }
   }
-  
+
   return event.title.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
 }
 
@@ -92,72 +89,33 @@ function getShortTitle(event: CalendarEvent): string {
 
 interface FeaturedItemProps {
   event: CalendarEvent;
-  index: number;
-  activeIndex: number;
   onPress?: () => void;
 }
 
-function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps) {
+function FeaturedItem({ event, onPress }: FeaturedItemProps) {
   const { colors: themeColors } = useTheme();
   const borderColor = event.calendar_color || themeColors.primary;
-  const isActive = index === activeIndex;
   const shortTitle = getShortTitle(event);
-  
-  const shimmerOpacity = useSharedValue(0);
-  const shimmerRotation = useSharedValue(0);
-  
-  useEffect(() => {
-    if (isActive) {
-      shimmerOpacity.value = withSequence(
-        withTiming(0.4, { duration: 400 }),
-        withTiming(0, { duration: 1000 })
-      );
-      shimmerRotation.value = withTiming(360, { 
-        duration: 1400,
-        easing: Easing.out(Easing.cubic) 
-      });
-    } else {
-      shimmerOpacity.value = 0;
-      shimmerRotation.value = 0;
-    }
-  }, [isActive]);
-  
-  const shimmerStyle = useAnimatedStyle(() => ({
-    opacity: shimmerOpacity.value,
-    transform: [{ rotate: `${shimmerRotation.value}deg` }],
-  }));
-  
+
   return (
     <AnimatedPressable style={styles.item} onPress={onPress}>
-      {/* Date - NOW ON TOP */}
+      {/* Date - on top */}
       <Text style={[styles.itemDate, { color: themeColors.primary }]}>{formatShortDate(event.start)}</Text>
-      
-      {/* Image container with ring */}
-      <View style={styles.imageContainer}>
-        <View style={[styles.imageRing, { borderColor, backgroundColor: themeColors.surface }]}>
-          {event.image ? (
-            <Image source={{ uri: event.image }} style={styles.itemImage} />
-          ) : (
-            <LinearGradient
-              colors={[borderColor, borderColor + '80']}
-              style={styles.itemImage}
-            >
-              <Text style={styles.placeholderEmoji}>📅</Text>
-            </LinearGradient>
-          )}
-        </View>
-        
-        {/* Shimmer overlay */}
-        <Animated.View style={[styles.shimmerRing, shimmerStyle]}>
+
+      {/* Image ring */}
+      <View style={[styles.imageRing, { borderColor, backgroundColor: themeColors.surface }]}>
+        {event.image ? (
+          <Image source={{ uri: event.image }} style={styles.itemImage} />
+        ) : (
           <LinearGradient
-            colors={['transparent', 'rgba(255,255,255,0.8)', 'transparent']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.shimmerGradient}
-          />
-        </Animated.View>
+            colors={[borderColor, borderColor + '80']}
+            style={styles.itemImage}
+          >
+            <Text style={styles.placeholderEmoji}>📅</Text>
+          </LinearGradient>
+        )}
       </View>
-      
+
       {/* Title below image */}
       <View style={styles.titleContainer}>
         <Text style={[styles.itemTitle, { color: themeColors.text }]} numberOfLines={2}>
@@ -174,30 +132,6 @@ function FeaturedItem({ event, index, activeIndex, onPress }: FeaturedItemProps)
 
 export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEventsProps) {
   const { colors: themeColors } = useTheme();
-  const [activeIndexState, setActiveIndexState] = React.useState(-1);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (!events || events.length === 0) return;
-    
-    const cycleShimmer = () => {
-      setActiveIndexState(prev => {
-        let next = Math.floor(Math.random() * events.length);
-        while (next === prev && events.length > 1) {
-          next = Math.floor(Math.random() * events.length);
-        }
-        return next;
-      });
-    };
-    
-    const initialTimeout = setTimeout(cycleShimmer, 2000);
-    intervalRef.current = setInterval(cycleShimmer, 4000);
-    
-    return () => {
-      clearTimeout(initialTimeout);
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [events?.length]);
 
   if (loading || !events || events.length === 0) {
     return null;
@@ -206,12 +140,10 @@ export function FeaturedEvents({ events, onEventPress, loading }: FeaturedEvents
   return (
     <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
       <View style={styles.listContainer}>
-        {events.slice(0, 4).map((item, index) => (
+        {events.slice(0, NUM_ITEMS).map((item) => (
           <FeaturedItem
             key={`featured-${item.product_id}-${item.start}`}
             event={item}
-            index={index}
-            activeIndex={activeIndexState}
             onPress={() => onEventPress?.(item)}
           />
         ))}
@@ -241,7 +173,6 @@ const styles = StyleSheet.create({
     width: ITEM_WIDTH,
   },
 
-  // Date on top - more prominent
   itemDate: {
     fontSize: typography.size.xs,
     fontWeight: typography.weight.bold,
@@ -250,19 +181,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  imageContainer: {
-    position: 'relative',
-    width: IMAGE_SIZE + 8,
-    height: IMAGE_SIZE + 8,
-    marginBottom: spacing.xs,
-  },
-
   imageRing: {
     width: IMAGE_SIZE + 8,
     height: IMAGE_SIZE + 8,
     borderRadius: (IMAGE_SIZE + 8) / 2,
     borderWidth: 3,
     padding: 3,
+    marginBottom: spacing.xs,
   },
 
   itemImage: {
@@ -271,21 +196,6 @@ const styles = StyleSheet.create({
     borderRadius: (IMAGE_SIZE - 4) / 2,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-
-  shimmerRing: {
-    position: 'absolute',
-    top: -3,
-    left: -3,
-    width: IMAGE_SIZE + 14,
-    height: IMAGE_SIZE + 14,
-    borderRadius: (IMAGE_SIZE + 14) / 2,
-    overflow: 'hidden',
-  },
-
-  shimmerGradient: {
-    width: '100%',
-    height: '100%',
   },
 
   placeholderEmoji: {
