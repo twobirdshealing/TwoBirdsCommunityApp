@@ -24,7 +24,6 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import Animated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -87,15 +86,21 @@ export default function LessonViewScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [docsY, setDocsY] = useState(0);
 
-  // Completion animation (success-state pulse only — nav row reveal is static
-  // because animating a freshly-mounted Animated.View races with Fabric's
-  // shadow-node construction and crashes the native renderer on iOS).
-  const completeAnim = useSharedValue(0);
+  // Timer for the post-completion "Completed!" hold — held in a ref so we
+  // can clear it on unmount (e.g., user backs out before the 800 ms elapses).
+  const completeHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (completeHoldTimer.current) clearTimeout(completeHoldTimer.current);
+  }, []);
 
-  const completeAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(completeAnim.value, [0, 0.5, 1], [1, 1.08, 1]) }],
-    opacity: interpolate(completeAnim.value, [0, 1], [0.8, 1]),
-  }));
+  // No Reanimated worklets in the bottom bar. The Mark-as-Complete button is
+  // an AnimatedPressable; if we swap it out for a different component during
+  // its own onPress (the press-in/press-out springs are still in flight),
+  // Reanimated 4.x leaks rAF callbacks whose host functions get freed →
+  // EXC_BAD_ACCESS in AnimationFrameBatchinator::flush on the next display
+  // tick. The button below stays mounted across idle/completing/completed
+  // and only unmounts once we transition to the nav row 800 ms later, well
+  // after every spring has settled.
 
   // ---------------------------------------------------------------------------
   // Fetch Lesson (via course by-slug with intended_lesson_slug)
@@ -188,26 +193,17 @@ export default function LessonViewScreen() {
     return track.completed_lessons.some((id) => String(id) === String(lesson.id));
   }, [track, lesson]);
 
-  // Bottom-bar state machine. Three mutually-exclusive modes — derived once
-  // instead of repeating the same condition cascade across each conditional
-  // render branch below.
-  type BarMode = 'progress' | 'idle' | 'nav';
-  const barMode: BarMode = !track?.isEnrolled
-    ? 'nav'
-    : completing || justCompleted
-      ? 'progress'
-      : isCompleted
-        ? 'nav'
-        : 'idle';
+  // Bottom-bar mode. The Mark-as-Complete button (idle/completing/completed)
+  // is rendered as a single persistent <Button> whose props change as state
+  // moves through the flow — so it never unmounts during its own press.
+  // Only `nav` is a different component (the prev/next row), and we only
+  // get there after the post-completion hold, when nothing is animating.
+  const showNavRow = !track?.isEnrolled || (isCompleted && !completing && !justCompleted);
 
   const handleMarkComplete = async () => {
-    if (!courseId || !lesson || isCompleted) return;
+    if (!courseId || !lesson || isCompleted || completing) return;
     hapticMedium();
     setCompleting(true);
-
-    // No optimistic setTrack — while `completing` is true the bar shows the
-    // progress button (not the nav row), so a local `completed_lessons`
-    // bump would never paint. We just wait for the server response.
 
     try {
       const response = await coursesApi.toggleLessonCompletion(courseId, lesson.id, 'completed');
@@ -220,17 +216,15 @@ export default function LessonViewScreen() {
 
       setTrack(response.data.track);
 
-      // Show success state briefly, then drop straight to nav row (no
-      // re-mount animation — see note on completeAnim above).
+      // Hold the "Completed!" state for 800 ms before dropping to the nav
+      // row. Plain JS setTimeout — no worklet/runOnJS hop, since nothing
+      // here runs on the UI runtime. Tracked in a ref so unmount clears it.
       setJustCompleted(true);
-      completeAnim.value = withTiming(1, { duration: 400 }, (finished) => {
-        if (finished) {
-          runOnJS(setTimeout)(() => {
-            setCompleting(false);
-            setJustCompleted(false);
-          }, 800);
-        }
-      });
+      completeHoldTimer.current = setTimeout(() => {
+        setCompleting(false);
+        setJustCompleted(false);
+        completeHoldTimer.current = null;
+      }, 800);
 
       if (response.data.is_completed) {
         setShowCelebration(true);
@@ -536,43 +530,7 @@ export default function LessonViewScreen() {
 
         {/* Sticky Bottom Bar */}
         <View style={[styles.bottomBar, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border, paddingBottom: insets.bottom }]}>
-          {/* Progress: completing / just-completed animated button */}
-          {barMode === 'progress' && (
-            <Animated.View
-              style={[
-                styles.completeButton,
-                { backgroundColor: justCompleted ? themeColors.success : themeColors.primary },
-                justCompleted ? completeAnimStyle : { opacity: 1 },
-              ]}
-            >
-              {justCompleted ? (
-                <>
-                  <Ionicons name="checkmark-circle" size={20} color={themeColors.textInverse} />
-                  <Text style={[styles.completeButtonText, { color: themeColors.textInverse }]}>
-                    Completed!
-                  </Text>
-                </>
-              ) : (
-                <ActivityIndicator size="small" color={themeColors.textInverse} />
-              )}
-            </Animated.View>
-          )}
-
-          {/* Idle: not yet completed — show Mark as Complete button */}
-          {barMode === 'idle' && (
-            <Button
-              title="Mark as Complete"
-              icon="checkmark-circle-outline"
-              onPress={handleMarkComplete}
-              style={styles.completeButton}
-            />
-          )}
-
-          {/* Nav: completed OR not enrolled — show prev/next row.
-              Plain View (not Animated.View) — animating a freshly-mounted
-              Animated.View races with Fabric's shadow-node setup and crashes
-              the native renderer on iOS. */}
-          {barMode === 'nav' && (
+          {showNavRow ? (
             <View style={styles.navRow}>
               {/* Prev button */}
               <Pressable
@@ -625,6 +583,22 @@ export default function LessonViewScreen() {
                 />
               </Pressable>
             </View>
+          ) : (
+            // Single persistent button — same instance across idle/completing/
+            // completed states. Only its props change. Crucially, it is NOT
+            // unmounted in response to its own press (which would race with
+            // its in-flight press-in/press-out springs and crash on iOS via
+            // a freed worklet host function).
+            <Button
+              title={justCompleted ? 'Completed!' : 'Mark as Complete'}
+              icon={justCompleted ? 'checkmark-circle' : 'checkmark-circle-outline'}
+              loading={completing && !justCompleted}
+              onPress={handleMarkComplete}
+              style={[
+                styles.completeButton,
+                justCompleted && { backgroundColor: themeColors.success, opacity: 1 },
+              ]}
+            />
           )}
         </View>
 
@@ -784,11 +758,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: sizing.borderRadius.md,
     gap: spacing.sm,
-  },
-
-  completeButtonText: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
   },
 
   navRow: {
