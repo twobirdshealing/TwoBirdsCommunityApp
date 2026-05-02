@@ -24,7 +24,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import Animated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { interpolate, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -87,18 +87,14 @@ export default function LessonViewScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [docsY, setDocsY] = useState(0);
 
-  // Completion animation
+  // Completion animation (success-state pulse only — nav row reveal is static
+  // because animating a freshly-mounted Animated.View races with Fabric's
+  // shadow-node construction and crashes the native renderer on iOS).
   const completeAnim = useSharedValue(0);
-  const navAnim = useSharedValue(1);
 
   const completeAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(completeAnim.value, [0, 0.5, 1], [1, 1.08, 1]) }],
     opacity: interpolate(completeAnim.value, [0, 1], [0.8, 1]),
-  }));
-
-  const navAnimStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(navAnim.value, [0, 1], [0, 1]),
-    transform: [{ translateY: interpolate(navAnim.value, [0, 1], [12, 0]) }],
   }));
 
   // ---------------------------------------------------------------------------
@@ -192,46 +188,46 @@ export default function LessonViewScreen() {
     return track.completed_lessons.some((id) => String(id) === String(lesson.id));
   }, [track, lesson]);
 
+  // Bottom-bar state machine. Three mutually-exclusive modes — derived once
+  // instead of repeating the same condition cascade across each conditional
+  // render branch below.
+  type BarMode = 'progress' | 'idle' | 'nav';
+  const barMode: BarMode = !track?.isEnrolled
+    ? 'nav'
+    : completing || justCompleted
+      ? 'progress'
+      : isCompleted
+        ? 'nav'
+        : 'idle';
+
   const handleMarkComplete = async () => {
     if (!courseId || !lesson || isCompleted) return;
     hapticMedium();
     setCompleting(true);
 
-    // Optimistic update
-    setTrack((prev) => {
-      if (!prev) return prev;
-      return { ...prev, completed_lessons: [...prev.completed_lessons, String(lesson.id)] };
-    });
+    // No optimistic setTrack — while `completing` is true the bar shows the
+    // progress button (not the nav row), so a local `completed_lessons`
+    // bump would never paint. We just wait for the server response.
 
     try {
       const response = await coursesApi.toggleLessonCompletion(courseId, lesson.id, 'completed');
 
       if (!response.success) {
-        // Revert optimistic update
-        setTrack((prev) => {
-          if (!prev) return prev;
-          const lessonIdStr = String(lesson.id);
-          return { ...prev, completed_lessons: prev.completed_lessons.filter((id) => String(id) !== lessonIdStr) };
-        });
         Alert.alert('Error', response.error?.message || 'Failed to mark complete');
         setCompleting(false);
         return;
       }
 
-      // Use server track state
       setTrack(response.data.track);
 
-      // Show success state briefly, then animate to nav row
+      // Show success state briefly, then drop straight to nav row (no
+      // re-mount animation — see note on completeAnim above).
       setJustCompleted(true);
-      completeAnim.value = 0;
       completeAnim.value = withTiming(1, { duration: 400 }, (finished) => {
         if (finished) {
-          // After success shown, transition to nav row (delay on JS thread)
           runOnJS(setTimeout)(() => {
             setCompleting(false);
             setJustCompleted(false);
-            navAnim.value = 0;
-            navAnim.value = withSpring(1, { damping: 12, stiffness: 80 });
           }, 800);
         }
       });
@@ -240,12 +236,6 @@ export default function LessonViewScreen() {
         setShowCelebration(true);
       }
     } catch {
-      // Revert optimistic update
-      setTrack((prev) => {
-        if (!prev) return prev;
-        const lessonIdStr = String(lesson.id);
-        return { ...prev, completed_lessons: prev.completed_lessons.filter((id) => String(id) !== lessonIdStr) };
-      });
       Alert.alert('Error', 'Something went wrong');
       setCompleting(false);
     }
@@ -544,11 +534,10 @@ export default function LessonViewScreen() {
           <View style={{ height: 120 }} />
         </ScrollView>
 
-
         {/* Sticky Bottom Bar */}
         <View style={[styles.bottomBar, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border, paddingBottom: insets.bottom }]}>
-          {/* State: Completing / Just completed — animated button */}
-          {track?.isEnrolled && (completing || justCompleted) && (
+          {/* Progress: completing / just-completed animated button */}
+          {barMode === 'progress' && (
             <Animated.View
               style={[
                 styles.completeButton,
@@ -569,8 +558,8 @@ export default function LessonViewScreen() {
             </Animated.View>
           )}
 
-          {/* State: Not completed (idle) — show Mark as Complete button */}
-          {track?.isEnrolled && !isCompleted && !completing && !justCompleted && (
+          {/* Idle: not yet completed — show Mark as Complete button */}
+          {barMode === 'idle' && (
             <Button
               title="Mark as Complete"
               icon="checkmark-circle-outline"
@@ -579,14 +568,12 @@ export default function LessonViewScreen() {
             />
           )}
 
-          {/* State: Completed OR not enrolled — show nav row */}
-          {(!track?.isEnrolled || (isCompleted && !completing && !justCompleted)) && (
-            <Animated.View
-              style={[
-                styles.navRow,
-                isCompleted && navAnimStyle,
-              ]}
-            >
+          {/* Nav: completed OR not enrolled — show prev/next row.
+              Plain View (not Animated.View) — animating a freshly-mounted
+              Animated.View races with Fabric's shadow-node setup and crashes
+              the native renderer on iOS. */}
+          {barMode === 'nav' && (
+            <View style={styles.navRow}>
               {/* Prev button */}
               <Pressable
                 style={[styles.navButton, { backgroundColor: themeColors.backgroundSecondary }]}
@@ -637,7 +624,7 @@ export default function LessonViewScreen() {
                   color={!nextLesson || nextLesson.is_locked ? themeColors.textTertiary : themeColors.primary}
                 />
               </Pressable>
-            </Animated.View>
+            </View>
           )}
         </View>
 
