@@ -22,5 +22,29 @@ export const customLauncherModule: ModuleManifest = {
       iconColor: 'warning',
       iconBackground: 'warning',
     },
+    {
+      id: 'donate',
+      label: 'Donate',
+      icon: 'heart-outline',
+      route: { pathname: '/webview', params: {"url":"https://community.twobirdschurch.com/calendar/donate/","title":"Donate"} },
+      order: 20,
+      hideKey: 'donate',
+      iconColor: 'error',
+      iconBackground: 'error',
+    },
   ],
+
+  tab: {
+    name: 'cl-donate',
+    title: 'Donate',
+    icon: 'heart',
+    iconOutline: 'heart-outline',
+    order: 90,
+    component: () => null,
+    hideMenuKey: 'donate',
+    tabColor: 'error',
+    interceptPress: (router) => {
+      router.push({ pathname: '/webview', params: {"url":"https://community.twobirdschurch.com/calendar/donate/","title":"Donate"} });
+    },
+  },
 };

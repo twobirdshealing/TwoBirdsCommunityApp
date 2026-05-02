@@ -12,6 +12,20 @@
       "hideKey": "admin",
       "iconColor": "warning",
       "iconBackground": "warning"
+    },
+    {
+      "id": "donate",
+      "label": "Donate",
+      "icon": "heart-outline",
+      "linkType": "webview",
+      "url": "https://community.twobirdschurch.com/calendar/donate/",
+      "enabled": true,
+      "showInLauncher": true,
+      "showInTabBar": true,
+      "openInBrowser": false,
+      "hideKey": "donate",
+      "iconColor": "error",
+      "iconBackground": "error"
     }
   ]
 }
