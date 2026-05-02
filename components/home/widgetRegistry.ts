@@ -10,6 +10,7 @@ import type { FeaturesConfig } from '@/services/api/appConfig';
 import type { WidgetRegistration, WidgetComponentProps } from '@/modules/_types';
 import { getModuleWidgets } from '@/modules/_registry';
 import { CoursesWidget } from '@/components/home/CoursesWidget';
+import { NewMembersWidget } from '@/components/home/NewMembersWidget';
 import { isItemHidden } from '@/utils/visibility';
 
 // -----------------------------------------------------------------------------
@@ -26,6 +27,15 @@ const CORE_WIDGETS: WidgetRegistration[] = [
     defaultEnabled: true,
     component: CoursesWidget,
     hideKey: 'courses',
+  },
+  {
+    id: 'new-members',
+    title: 'New Members',
+    icon: 'people-outline',
+    seeAllRoute: '/directory',
+    defaultEnabled: true,
+    component: NewMembersWidget,
+    hideKey: 'new-members',
   },
 ];
 
