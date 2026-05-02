@@ -17,7 +17,6 @@ import { setModules } from './_registry-core';
 
 import { calendarModule } from './calendar/module';
 import { bookclubModule } from './bookclub/module';
-import { donorModule } from './donor/module';
 import { youtubeModule } from './youtube/module';
 import { blogModule } from './blog/module';
 import { otpModule } from './otp/module';
@@ -28,7 +27,6 @@ import { customLauncherModule } from './custom-launcher/module';
 export const MODULES: ModuleManifest[] = [
   calendarModule,
   bookclubModule,
-  donorModule,
   youtubeModule,
   blogModule,
   otpModule,

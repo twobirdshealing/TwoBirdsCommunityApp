@@ -26,6 +26,20 @@
       "hideKey": "donate",
       "iconColor": "error",
       "iconBackground": "error"
+    },
+    {
+      "id": "donor-dashboard",
+      "label": "Donor Dashboard",
+      "icon": "wallet-outline",
+      "linkType": "webview",
+      "url": "https://community.twobirdschurch.com/donor-dashboard/",
+      "enabled": true,
+      "showInLauncher": true,
+      "showInTabBar": false,
+      "openInBrowser": false,
+      "hideKey": "donor_dashboard",
+      "iconColor": "",
+      "iconBackground": ""
     }
   ]
 }

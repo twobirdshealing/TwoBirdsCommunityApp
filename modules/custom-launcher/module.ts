@@ -32,6 +32,14 @@ export const customLauncherModule: ModuleManifest = {
       iconColor: 'error',
       iconBackground: 'error',
     },
+    {
+      id: 'donor-dashboard',
+      label: 'Donor Dashboard',
+      icon: 'wallet-outline',
+      route: { pathname: '/webview', params: {"url":"https://community.twobirdschurch.com/donor-dashboard/","title":"Donor Dashboard"} },
+      order: 30,
+      hideKey: 'donor_dashboard',
+    },
   ],
 
   tab: {
