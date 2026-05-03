@@ -30,6 +30,20 @@ import { storage } from '@/services/storage';
 import { createLogger } from '@/utils/logger';
 import type { WidgetComponentProps } from '@/modules/_types';
 import type { SpaceMember } from '@/types/space';
+import type { XProfile } from '@/types/user';
+
+// The /v2/members endpoint returns flat XProfile-shaped rows (with permalink +
+// optional last_activity), NOT the SpaceMember-with-nested-xprofile shape that
+// the existing MembersListResponse type implies. We accept either shape here
+// — same defensive pattern as app/directory.tsx — so the widget keeps working
+// if either layout shows up.
+type XProfileWithActivity = XProfile & { last_activity?: string };
+type MemberRow = SpaceMember | XProfileWithActivity;
+
+function pickXProfile(m: MemberRow): XProfileWithActivity {
+  const source = 'xprofile' in m ? m.xprofile : m;
+  return source as XProfileWithActivity;
+}
 
 const log = createLogger('NewMembersWidget');
 
@@ -59,12 +73,12 @@ export function NewMembersWidget({ refreshKey, title, icon, onSeeAll }: WidgetCo
   const { colors: themeColors } = useTheme();
   const [sortBy, setSortBy] = useState<SortBy>(readSort);
 
-  const { data, isLoading, error } = useAppQuery<SpaceMember[]>({
+  const { data, isLoading, error } = useAppQuery<MemberRow[]>({
     cacheKey: `tbc_widget_new_members_${sortBy}`,
     fetcher: async () => {
       const response = await membersApi.getMembers({ per_page: 5, sort_by: sortBy });
       if (!response.success) return [];
-      return response.data.members?.data ?? [];
+      return (response.data.members?.data ?? []) as MemberRow[];
     },
     refreshKey,
     refreshOnFocus: false,
@@ -112,29 +126,34 @@ export function NewMembersWidget({ refreshKey, title, icon, onSeeAll }: WidgetCo
           contentContainerStyle={styles.scrollContent}
         >
           {members.map((m) => {
-            // last_activity is conditionally returned by FC (gated by canViewUserProfile),
-            // declared on Profile rather than XProfile — read defensively.
-            const xp = m.xprofile as typeof m.xprofile & { last_activity?: string };
+            // /v2/members returns flat rows in practice; nested xprofile shape
+            // is supported defensively (matches app/directory.tsx pattern).
+            // last_activity can be null for users who've never logged in.
+            const xp = pickXProfile(m);
+            const username = xp.username;
+            if (!username) return null;
+
             const dateIso = sortBy === 'created_at' ? xp.created_at : xp.last_activity;
-            const fallback = (m.xprofile.display_name || m.xprofile.username || '?').charAt(0).toUpperCase();
+            const displayName = xp.display_name || username;
+            const fallback = displayName.charAt(0).toUpperCase();
 
             return (
               <AnimatedPressable
-                key={m.user_id ?? m.id}
+                key={xp.user_id ?? username}
                 style={styles.tile}
                 onPress={() =>
                   router.push({
                     pathname: '/profile/[username]',
-                    params: { username: m.xprofile.username },
+                    params: { username },
                   })
                 }
               >
-                <Avatar source={m.xprofile.avatar} size="lg" fallback={fallback} />
+                <Avatar source={xp.avatar} size="lg" fallback={fallback} />
                 <Text
                   style={[styles.name, { color: themeColors.text }]}
                   numberOfLines={1}
                 >
-                  {m.xprofile.display_name}
+                  {displayName}
                 </Text>
                 {dateIso ? (
                   <Text
