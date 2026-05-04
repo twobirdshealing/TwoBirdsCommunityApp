@@ -118,6 +118,21 @@ class TBC_CA_App_View {
                 padding-top: 0 !important;
             }
 
+            /* Fluent Community left sidebar — force hidden at all viewport widths.
+               FC's own CSS only hides .spaces at <=1024px, so the sidebar leaks on
+               iPad / tablets in the app WebView. The app has native nav at every
+               width, so the sidebar is never wanted in app view. */
+            body.tbc-app-view .spaces,
+            body.tbc-app-view .space_opener,
+            body.tbc-app-view .fhr_head {
+                display: none !important;
+            }
+
+            /* Reclaim the 280px the FC desktop layout reserves for the sidebar */
+            body.tbc-app-view .feed_layout {
+                padding-left: 0 !important;
+            }
+
             /* WordPress admin bar (should be hidden anyway but just in case) */
             body.tbc-app-view #wpadminbar {
                 display: none !important;
