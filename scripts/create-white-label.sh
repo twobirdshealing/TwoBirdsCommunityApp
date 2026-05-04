@@ -300,33 +300,86 @@ echo "  Done."
 
 echo "[3/9] Cleaning module system..."
 
-# Remove module tab stubs from app/(tabs)/
-rm -f "$STAGING_DIR/app/(tabs)/calendar.tsx"
-rm -f "$STAGING_DIR/app/(tabs)/donate.tsx"
+# Strip module-owned files from app/ — derived from each module's manifest.
+# Source of truth: tab.name in module.ts → app/(tabs)/<name>.tsx, and
+# routes[] → app/<entry> (file or dir). Plus a wildcard for custom-launcher's
+# cl-*.tsx stubs (one per buyer's items.json entry — by definition all cl-*
+# stubs are buyer-generated and never belong in the white-label core).
+#
+# Why not reuse setup/lib/modules.js parseModuleManifest/deleteModuleRouteStubs?
+# That helper is buyer-side and assumes tab stub path = '<folder>.tsx', which
+# is true for normal modules but wrong for custom-launcher (folder name is
+# 'custom-launcher' but tab name is e.g. 'cl-donate'). Reading tab.name from
+# the manifest text handles both — this script needs the more general parse.
+TBC_SOURCE_DIR="$SOURCE_DIR" \
+TBC_STAGING_DIR="$STAGING_DIR" \
+node -e '
+  const fs = require("fs");
+  const path = require("path");
+  const sourceModules = path.join(process.env.TBC_SOURCE_DIR, "modules");
+  const stagingApp = path.join(process.env.TBC_STAGING_DIR, "app");
+  if (!fs.existsSync(sourceModules)) return;
 
-# Remove module route stub directories from app/
-rm -rf "$STAGING_DIR/app/blog"
-rm -rf "$STAGING_DIR/app/blog-comments"
-rm -rf "$STAGING_DIR/app/bookclub"
-rm -rf "$STAGING_DIR/app/youtube"
+  const stripped = [];
+  function strip(rel) {
+    fs.rmSync(path.join(stagingApp, rel), { recursive: true, force: true });
+    stripped.push(rel);
+  }
 
-# Remove module login gate route stub
-rm -f "$STAGING_DIR/app/profile-complete.tsx"
+  for (const entry of fs.readdirSync(sourceModules, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith("_")) continue;
+    const manifestPath = path.join(sourceModules, entry.name, "module.ts");
+    if (!fs.existsSync(manifestPath)) continue;
+    const src = fs.readFileSync(manifestPath, "utf8");
 
-# Clean _registry.ts: remove module imports and entries from the MODULES array
-sed -i \
-  -e "/^import { .*Module } from /d" \
-  -e "/^  calendarModule,$/d" \
-  -e "/^  bookclubModule,$/d" \
-  -e "/^  donateModule,$/d" \
-  -e "/^  donorModule,$/d" \
-  -e "/^  youtubeModule,$/d" \
-  -e "/^  blogModule,$/d" \
-  -e "/^  otpModule,$/d" \
-  -e "/^  profileCompletionModule,$/d" \
-  -e "/^  cartModule,$/d" \
-  -e "/^  multiReactionsModule,$/d" \
-  "$STAGING_DIR/modules/_registry.ts"
+    // Convention: tab.name is the first key inside tab: { ... }. Strict match
+    // (no \b...\b lazy-bound) avoids false-ending at a } in a nested object.
+    const tabMatch = src.match(/\btab:\s*\{\s*name:\s*[\x27"]([^\x27"]+)[\x27"]/);
+    if (tabMatch) strip(path.join("(tabs)", tabMatch[1] + ".tsx"));
+
+    const routesMatch = src.match(/\broutes:\s*\[([^\]]*)\]/);
+    if (routesMatch) {
+      for (const m of routesMatch[1].matchAll(/[\x27"]([^\x27"]+)[\x27"]/g)) strip(m[1]);
+    }
+  }
+
+  // Wildcard: any app/(tabs)/cl-*.tsx is a custom-launcher generated stub.
+  const tabsDir = path.join(stagingApp, "(tabs)");
+  if (fs.existsSync(tabsDir)) {
+    for (const f of fs.readdirSync(tabsDir)) {
+      if (f.startsWith("cl-") && f.endsWith(".tsx")) {
+        fs.rmSync(path.join(tabsDir, f), { force: true });
+        stripped.push(path.join("(tabs)", f));
+      }
+    }
+  }
+
+  console.log("  Stripped " + stripped.length + " module-owned path(s) from app/");
+'
+
+# Reset _registry.ts to an empty MODULES list — buyers re-populate via the
+# dashboard. Identity restore re-injects the buyer's saved imports between
+# the // YOUR MODULES / // END YOUR MODULES markers on every update, so this
+# is just the bootstrap state for first install.
+TBC_REGISTRY_TS="$STAGING_DIR/modules/_registry.ts" \
+node -e '
+  const fs = require("fs");
+  const target = process.env.TBC_REGISTRY_TS;
+  const content = fs.readFileSync(target, "utf8");
+  const startIdx = content.indexOf("// YOUR MODULES");
+  const endIdx = content.indexOf("// END YOUR MODULES");
+  if (startIdx === -1 || endIdx === -1) {
+    throw new Error("YOUR MODULES markers not found in _registry.ts");
+  }
+  const afterStart = content.indexOf("\n", startIdx);
+  const emptyBlock =
+    "// This section is yours to edit. Core updates won\x27t touch it.\n" +
+    "// =============================================================================\n\n" +
+    "export const MODULES: ModuleManifest[] = [];\n" +
+    "setModules(MODULES);\n\n" +
+    "// =============================================================================\n";
+  fs.writeFileSync(target, content.substring(0, afterStart + 1) + emptyBlock + content.substring(endIdx));
+'
 
 echo "  Done."
 
