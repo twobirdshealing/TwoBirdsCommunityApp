@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1 — 2026-05-04
+
+- **Add:** Push log now captures the Expo Push API error code and message on the first failure of each batch. New `Reason` column in WP admin → TBC Community App → Push Log shows the rejection cause inline (e.g. `InvalidCredentials`, `DeviceNotRegistered`, `MismatchSenderId`, `TransportError`). Hover the badge for the full Expo message. Previously every failed batch logged only a count, so admins had no signal about *why* pushes weren't delivering — silent failures with no diagnosis path.
+- **Add:** Versioned schema migration. A `tbc_ca_db_version` option is checked on every page load; if it lags the bundled `TBC_CA_DB_VERSION` constant, dbDelta runs to apply pending column additions automatically. Existing installs pick up the new `error_code` / `error_message` columns on the first request after the plugin is updated — no deactivate/reactivate required.
+- **Add:** `send_batch()` now reports realistic `sent` / `errors` / `first_error_code` / `first_error_message` on transport-layer failures (DNS, timeout, non-200 from Expo) instead of zeroes. Push log totals now reflect those failures correctly, with `TransportError` / `UnexpectedResponse` codes for diagnosis.
+- **Update:** Features tab "Push Notifications" description rewritten to call out the two-part setup — Firebase config files in the app **plus** FCM v1 service account / APNs key uploaded to Expo project credentials. Previous text only mentioned the Firebase configs, which silently let buyers ship apps that could never deliver pushes.
+- **Add:** "Test Push to Yourself" card at the top of the Tools tab. Single click sends one push to the admin's most recent device token via the Expo Push API and renders the full response inline — including the Expo error code and a context-specific hint when the credentials aren't configured. Replaces the previous workflow of asking the buyer to run curl on the server.
+- **Scope:** four files — [includes/push/class-log.php](includes/push/class-log.php), [includes/push/class-firebase.php](includes/push/class-firebase.php), [includes/push/class-hooks.php](includes/push/class-hooks.php), [includes/admin/class-settings.php](includes/admin/class-settings.php), plus the bootstrap [tbc-community-app.php](tbc-community-app.php).
+
 ## 1.0.0 — 2026-04-15
 
 Initial release.

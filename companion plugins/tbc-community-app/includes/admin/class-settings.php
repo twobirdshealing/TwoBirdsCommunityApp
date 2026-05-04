@@ -498,7 +498,11 @@ class TBC_CA_Admin_Settings {
                                            <?php checked(!empty($features['push_notifications'])); ?> />
                                     <?php _e('Enable push notifications', 'tbc-ca'); ?>
                                 </label>
-                                <p class="description"><?php _e('Requires Firebase configuration in the app. When disabled, no push tokens are registered and no notifications are sent.', 'tbc-ca'); ?></p>
+                                <p class="description">
+                                    <?php _e('Two-part setup: drop your Firebase config files into the dashboard <strong>and</strong> upload an FCM v1 service account JSON (Android) plus an APNs key (iOS) to your Expo project credentials. Both are required — without them, Expo rejects every push with <code>InvalidCredentials</code>. See the setup guide for the exact steps.', 'tbc-ca'); ?>
+                                    <br>
+                                    <?php _e('When disabled, no push tokens are registered and no notifications are sent.', 'tbc-ca'); ?>
+                                </p>
                             </td>
                         </tr>
                     </table>
@@ -1324,6 +1328,7 @@ class TBC_CA_Admin_Settings {
                     <th><?php _e('Recipients', 'tbc-ca'); ?></th>
                     <th><?php _e('Sent', 'tbc-ca'); ?></th>
                     <th><?php _e('Failed', 'tbc-ca'); ?></th>
+                    <th><?php _e('Reason', 'tbc-ca'); ?></th>
                     <th><?php _e('Source', 'tbc-ca'); ?></th>
                     <th><?php _e('Date', 'tbc-ca'); ?></th>
                 </tr>
@@ -1332,6 +1337,8 @@ class TBC_CA_Admin_Settings {
                 <?php foreach ($entries as $entry):
                     $type_info = $registry->get($entry->type);
                     $type_label = $type_info ? $type_info['label'] : $entry->type;
+                    $error_code = isset($entry->error_code) ? $entry->error_code : null;
+                    $error_message = isset($entry->error_message) ? $entry->error_message : null;
                 ?>
                 <tr>
                     <td><?php echo esc_html($type_label); ?></td>
@@ -1345,6 +1352,15 @@ class TBC_CA_Admin_Settings {
                     <td><?php echo intval($entry->sent); ?></td>
                     <td><?php echo intval($entry->failed) > 0 ? '<span style="color: #b32d2e;">' . intval($entry->failed) . '</span>' : '0'; ?></td>
                     <td>
+                        <?php if (!empty($error_code)): ?>
+                            <span style="background: #fdecec; color: #b32d2e; padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 11px;"
+                                  title="<?php echo esc_attr($error_message ?: $error_code); ?>"><?php echo esc_html($error_code); ?></span>
+                        <?php elseif (intval($entry->failed) > 0): ?>
+                            <em style="color: #999;">—</em>
+                        <?php else: ?>
+                        <?php endif; ?>
+                    </td>
+                    <td>
                         <?php if ($entry->source === 'manual'): ?>
                             <span class="tbc-ca-pro-badge" style="background: #2271b1;"><?php _e('Manual', 'tbc-ca'); ?></span>
                         <?php else: ?>
@@ -1356,6 +1372,12 @@ class TBC_CA_Admin_Settings {
                 <?php endforeach; ?>
             </tbody>
         </table>
+        <p class="description" style="margin-top: 10px;">
+            <?php _e('The <strong>Reason</strong> column shows the Expo Push API error code from the first failure in each batch. Hover for the full message. Common codes:', 'tbc-ca'); ?>
+            <code>InvalidCredentials</code> <?php _e('(missing FCM service account or APNs key on Expo)', 'tbc-ca'); ?>,
+            <code>DeviceNotRegistered</code> <?php _e('(token expired — auto-removed)', 'tbc-ca'); ?>,
+            <code>MismatchSenderId</code> <?php _e('(token built against a different Firebase project)', 'tbc-ca'); ?>.
+        </p>
         <?php
     }
 
@@ -1394,6 +1416,51 @@ class TBC_CA_Admin_Settings {
                 );
             }
         }
+
+        // Send a test push to the current admin's most recent device. Posts
+        // straight to Expo Push API and surfaces the raw response so missing
+        // credentials show up in the admin UI instead of as silent failures.
+        if (isset($_POST['tbc_ca_tool_test_push']) && check_admin_referer('tbc_ca_tools_nonce')) {
+            $this->run_self_test_push();
+        }
+    }
+
+    /**
+     * Send a test push to the current admin user's most recent device token,
+     * then store the full Expo response in a transient for one-shot rendering
+     * in the Tools tab. Bypasses the AS queue so the result is synchronous.
+     */
+    private function run_self_test_push() {
+        global $wpdb;
+        $user_id = get_current_user_id();
+        $device_table = $wpdb->prefix . 'tbc_ca_device_tokens';
+
+        $row = $wpdb->get_row($wpdb->prepare(
+            "SELECT token, platform, created_at FROM {$device_table} WHERE user_id = %d ORDER BY created_at DESC LIMIT 1",
+            $user_id
+        ));
+
+        if (!$row) {
+            set_transient('tbc_ca_test_push_result_' . $user_id, [
+                'ok' => false,
+                'reason' => 'no_token',
+                'message' => __('No device token registered for your account. Open the app on a phone, log in as yourself, and accept the push permission prompt — then come back and try again.', 'tbc-ca'),
+            ], 60);
+            return;
+        }
+
+        $firebase = TBC_CA_Push_Firebase::get_instance();
+        $result = $firebase->test_configuration($row->token);
+
+        set_transient('tbc_ca_test_push_result_' . $user_id, [
+            'ok' => !empty($result['success']),
+            'platform' => $row->platform,
+            'token_preview' => substr($row->token, 0, 30) . '…',
+            'token_age' => $row->created_at,
+            'expo_error' => $result['error'] ?? null,
+            'invalid_token' => !empty($result['invalid_token']),
+            'raw' => $result,
+        ], 60);
     }
 
     /**
@@ -1404,6 +1471,9 @@ class TBC_CA_Admin_Settings {
 
         $meta_key = TBC_CA_Auth::SESSION_META_KEY;
         $now = time();
+
+        // Test Push card — single-click verification of the full Expo push pipeline
+        $this->render_test_push_card();
 
         // Bulk purge button
         ?>
@@ -1480,6 +1550,85 @@ class TBC_CA_Admin_Settings {
                 <?php endforeach; ?>
             </tbody>
         </table>
+        <?php
+    }
+
+    /**
+     * Render the "Test Push" card at the top of the Tools tab.
+     * Shows a button + the result of the most recent test as inline output,
+     * so missing FCM v1 / APNs credentials surface visibly instead of as
+     * silent "0 delivered / N failed" rows in the Push Log.
+     */
+    private function render_test_push_card() {
+        $user_id = get_current_user_id();
+        $result = get_transient('tbc_ca_test_push_result_' . $user_id);
+        if ($result) {
+            delete_transient('tbc_ca_test_push_result_' . $user_id);
+        }
+        ?>
+        <div class="tbc-ca-section" style="border: 1px solid #c3c4c7; padding: 14px 18px; margin-bottom: 24px; background: #fff;">
+            <h3 style="margin-top: 0;"><?php _e('Test Push to Yourself', 'tbc-ca'); ?></h3>
+            <p class="description">
+                <?php _e('Sends one push notification to the most recently registered device for your account, posting straight to the Expo Push API. Use this to confirm setup is complete after uploading Firebase configs and Expo credentials. The full Expo response shows up here — including any error code so you can see exactly what is missing.', 'tbc-ca'); ?>
+            </p>
+            <form method="post" style="margin: 10px 0 0;">
+                <?php wp_nonce_field('tbc_ca_tools_nonce'); ?>
+                <input type="hidden" name="tbc_ca_active_tab" value="tools" />
+                <button type="submit" name="tbc_ca_tool_test_push" value="1" class="button button-primary">
+                    <?php _e('Send Test Push', 'tbc-ca'); ?>
+                </button>
+            </form>
+
+            <?php if ($result): ?>
+                <?php if (!empty($result['ok'])): ?>
+                    <div class="notice notice-success inline" style="margin-top: 14px;">
+                        <p>
+                            <strong><?php _e('Sent successfully.', 'tbc-ca'); ?></strong>
+                            <?php printf(
+                                esc_html__('Expo accepted the push for your %s device (token %s, registered %s). Check your phone — the notification should arrive within seconds.', 'tbc-ca'),
+                                '<code>' . esc_html($result['platform']) . '</code>',
+                                '<code>' . esc_html($result['token_preview']) . '</code>',
+                                '<code>' . esc_html($result['token_age']) . '</code>'
+                            ); ?>
+                        </p>
+                    </div>
+                <?php elseif (($result['reason'] ?? null) === 'no_token'): ?>
+                    <div class="notice notice-warning inline" style="margin-top: 14px;">
+                        <p><?php echo esc_html($result['message']); ?></p>
+                    </div>
+                <?php else: ?>
+                    <div class="notice notice-error inline" style="margin-top: 14px;">
+                        <p>
+                            <strong><?php _e('Push failed.', 'tbc-ca'); ?></strong>
+                            <?php echo esc_html($result['expo_error'] ?? __('Unknown error.', 'tbc-ca')); ?>
+                        </p>
+                        <?php $code = $result['raw']['error_code'] ?? null; if ($code): ?>
+                            <p>
+                                <?php _e('Expo error code:', 'tbc-ca'); ?>
+                                <code><?php echo esc_html($code); ?></code>
+                                <?php if ($code === 'InvalidCredentials'): ?>
+                                    — <?php _e('the FCM v1 service account JSON (Android) or APNs auth key (iOS) is not uploaded for your Expo project. See setup guide → Push Notifications → step 6.', 'tbc-ca'); ?>
+                                <?php elseif ($code === 'DeviceNotRegistered'): ?>
+                                    — <?php _e('the token has expired (app uninstalled, reinstalled, or signed out). It has been removed automatically; reopen the app and log in to register a fresh one.', 'tbc-ca'); ?>
+                                <?php elseif ($code === 'MismatchSenderId'): ?>
+                                    — <?php _e('the installed binary was built against a different Firebase project than the one Expo is pushing through. Run a new eas build with the current google-services.json.', 'tbc-ca'); ?>
+                                <?php endif; ?>
+                            </p>
+                        <?php endif; ?>
+                        <?php if (!empty($result['token_preview'])): ?>
+                            <p style="color: #50575e; font-size: 12px;">
+                                <?php printf(
+                                    esc_html__('Sent to %s token %s registered %s.', 'tbc-ca'),
+                                    '<code>' . esc_html($result['platform']) . '</code>',
+                                    '<code>' . esc_html($result['token_preview']) . '</code>',
+                                    '<code>' . esc_html($result['token_age']) . '</code>'
+                                ); ?>
+                            </p>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
         <?php
     }
 }

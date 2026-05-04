@@ -178,12 +178,19 @@ class TBC_CA_Push_Hooks {
         $force = !empty($notification_data['force']);
         $results = $firebase->send_queued_notifications($queue, $force);
 
-        // Log the batch result
+        // Aggregate batch results. Capture the first non-null error code so the
+        // admin push log surfaces the rejection reason instead of just a count.
         $total_sent = 0;
         $total_failed = 0;
+        $first_error_code = null;
+        $first_error_message = null;
         foreach ($results as $batch_result) {
             $total_sent += $batch_result['sent'] ?? 0;
             $total_failed += $batch_result['errors'] ?? 0;
+            if ($first_error_code === null && !empty($batch_result['first_error_code'])) {
+                $first_error_code = $batch_result['first_error_code'];
+                $first_error_message = $batch_result['first_error_message'] ?? null;
+            }
         }
         $source = $notification_data['source'] ?? 'hook';
         TBC_CA_Push_Log::get_instance()->log(
@@ -193,7 +200,10 @@ class TBC_CA_Push_Hooks {
             count($user_ids),
             $total_sent,
             $total_failed,
-            $source
+            $source,
+            0,
+            $first_error_code,
+            $first_error_message
         );
     }
 

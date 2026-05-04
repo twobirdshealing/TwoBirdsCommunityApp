@@ -1192,13 +1192,57 @@
           <li>If it shows <strong>Disabled</strong>, click the <strong>three-dot menu</strong> (&#8942;) on the right side of that row, then click <strong>Enable</strong>. This may take you to the Google Cloud Console &mdash; click <strong>Enable</strong> there and return to Firebase.</li>
         </ol>
         <div class="callout callout-info" style="margin-top: 8px;">
-          <strong>What about the rest of this page?</strong> You&rsquo;ll see sections for APNs Authentication Keys, APNs Certificates, and Web Push certificates &mdash; <strong>leave these all blank</strong>. The app sends push notifications through Expo&rsquo;s push service, which handles the APNs (Apple) delivery using its own credentials. Firebase is only used for Android delivery via FCM. You also don&rsquo;t need the <strong>Cloud Messaging API (Legacy)</strong> &mdash; that&rsquo;s the old deprecated API.
+          <strong>What about the rest of this page?</strong> You&rsquo;ll see sections for APNs Authentication Keys, APNs Certificates, and Web Push certificates inside the Firebase Cloud Messaging tab &mdash; <strong>leave these all blank</strong>. Apple credentials don&rsquo;t go to Firebase; they get uploaded to Expo separately in the next step. Firebase is only used for Android delivery via FCM. You also don&rsquo;t need the <strong>Cloud Messaging API (Legacy)</strong> &mdash; that&rsquo;s the old deprecated API.
+        </div>
+      </div>
+    </details>
+
+    <details style="margin-top: 8px;">
+      <summary>6. Upload push credentials to Expo (one-time, required for delivery)</summary>
+      <div class="details-content">
+        <p>The Firebase config files you just dropped in only let the device <strong>obtain</strong> a push token. To actually <strong>deliver</strong> pushes, Expo Push API needs its own credentials uploaded under your Expo project: an FCM v1 service account JSON for Android, and an APNs auth key for iOS. Skip this step and Expo will reject every push with <code>InvalidCredentials</code> &mdash; the WP admin Push Log will show 0 delivered / N failed with no obvious cause.</p>
+
+        <h4 style="margin-top: 10px;">Android &mdash; FCM v1 service account (5 minutes)</h4>
+        <ol>
+          <li>In the <a href="https://console.firebase.google.com" target="_blank">Firebase console</a>, open your project &rarr; <strong>gear icon &rarr; Project settings &rarr; Service accounts</strong> tab.</li>
+          <li>Click <strong>Generate new private key</strong> &rarr; confirm. A JSON file downloads &mdash; treat it like a password.</li>
+          <li>Open your project on the Expo dashboard: <code>https://expo.dev/accounts/&lt;your-account&gt;/projects/&lt;your-project&gt;/credentials</code> (or click <strong>Credentials</strong> in the left sidebar after picking your project).</li>
+          <li>Pick the Android application identifier &rarr; under <strong>Service credentials</strong> find <strong>FCM V1 service account key</strong> &rarr; click <strong>Add a service account key</strong> &rarr; upload the JSON.</li>
+        </ol>
+
+        <h4 style="margin-top: 10px;">iOS &mdash; APNs auth key (recommended path)</h4>
+        <ol>
+          <li>Open a terminal in your project folder.</li>
+          <li>Run <code>eas credentials -p ios</code>.</li>
+          <li>Pick your bundle identifier &rarr; <strong>Push Notifications: Manage your Apple Push Notifications Key</strong> &rarr; <strong>Set up your project to use Push Notifications</strong>.</li>
+          <li>If a push key already exists on your Apple team, EAS offers to reuse it. Otherwise it auto-creates and uploads a new one. Either way you&rsquo;re done in one prompt.</li>
+        </ol>
+        <details style="margin-top: 6px;">
+          <summary><em>Manual alternative if you don&rsquo;t want to use <code>eas credentials</code></em></summary>
+          <div class="details-content">
+            <ol>
+              <li><a href="https://developer.apple.com/account/resources/authkeys/list" target="_blank">Apple Developer &rarr; Keys</a> &rarr; click <strong>+</strong> &rarr; check <strong>Apple Push Notifications service (APNs)</strong> &rarr; Continue &rarr; Register.</li>
+              <li>Download the <code>.p8</code> file. Note the <strong>Key ID</strong> and your <strong>Team ID</strong>.</li>
+              <li>On the Expo Credentials page (same URL as Android), pick the iOS bundle identifier &rarr; under <strong>Service credentials</strong> find <strong>Push Key</strong> &rarr; <strong>Add a Push Key</strong> &rarr; upload the <code>.p8</code> with the Key ID and Team ID.</li>
+            </ol>
+          </div>
+        </details>
+
+        <h4 style="margin-top: 10px;">Verify delivery</h4>
+        <p>After both uploads, send a test push to confirm the pipeline works end-to-end. Replace <code>&lt;TOKEN&gt;</code> with a real <code>ExponentPushToken[...]</code> from your <code>wp_tbc_ca_device_tokens</code> table:</p>
+        <pre style="background: #f6f8fa; padding: 10px; border-radius: 4px; overflow: auto;"><code>curl -s -X POST "https://exp.host/--/api/v2/push/send" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -d '{"to":"&lt;TOKEN&gt;","title":"Test","body":"Hello","sound":"default","channelId":"default","priority":"high"}'</code></pre>
+        <p><code>{"data":{"status":"ok",...}}</code> = delivery is working. <code>"status":"error"</code> with <code>"InvalidCredentials"</code> = one of the uploads above is missing or doesn&rsquo;t match the bundle ID.</p>
+        <div class="callout callout-info" style="margin-top: 8px;">
+          <strong>Why this isn&rsquo;t auto-configured.</strong> Expo can&rsquo;t access your Firebase project or your Apple developer account on your behalf &mdash; you have to hand it the credentials yourself, and only once per project. Skipping the step is the #1 reason buyers see &ldquo;0 delivered / N failed&rdquo; in the Push Log with no other signal.
         </div>
       </div>
     </details>
 
     <div class="callout" style="margin-top: 12px;">
-      <strong>Both config files are required.</strong> The app needs <code>google-services.json</code> (Android) and <code>GoogleService-Info.plist</code> (iOS) for push notifications to work on both platforms.
+      <strong>All four pieces are required for push to work:</strong> the two Firebase config files in this dashboard <em>and</em> the FCM v1 service account + APNs key on Expo. Miss any one of them and pushes will register but never deliver.
     </div>
   </div>
 </div>
@@ -1217,7 +1261,15 @@
     <p>In App Store Connect, go to your app &rarr; <strong>General &rarr; App Information</strong>. The <strong>Apple ID</strong> field (a numeric string like <code>1234567890</code>) is your App Store Connect ID.</p>
 
     <h4 style="margin-top: 12px;">Push notifications not working after setup</h4>
-    <p>Both Firebase config files are required &mdash; <code>GoogleService-Info.plist</code> (iOS) and <code>google-services.json</code> (Android). Also verify that <strong>Firebase Cloud Messaging API (V1)</strong> is enabled in your Google Cloud Console. Check the <a href="#companion-plugin">Companion Plugin</a> &rarr; Push Log tab for error details.</p>
+    <p>Open <strong>WP admin &rarr; TBC Community App &rarr; Push Log</strong> and look at the <strong>Reason</strong> column on a recent failed batch. The error code tells you exactly what to fix:</p>
+    <ul>
+      <li><code>InvalidCredentials</code> &mdash; the FCM v1 service account JSON (Android) or APNs key (iOS) is missing on Expo. Re-do <a href="#step-push-notifications">Push Notifications &rarr; step 6</a>.</li>
+      <li><code>DeviceNotRegistered</code> &mdash; the device&rsquo;s token has expired or the app was uninstalled. Token gets auto-removed. User just needs to reopen the app and log in.</li>
+      <li><code>MismatchSenderId</code> &mdash; the installed app was built before the current <code>google-services.json</code> was uploaded, so its FCM sender ID doesn&rsquo;t match the project Expo is pushing through. Run a new <code>eas build</code> and reinstall.</li>
+      <li><code>TransportError</code> / <code>UnexpectedResponse</code> &mdash; the WP server can&rsquo;t reach <code>exp.host</code>. Check outbound HTTPS / firewall.</li>
+    </ul>
+    <p>If the Reason column is empty but the failed count is non-zero, you&rsquo;re still on plugin v1.0.0 &mdash; update the companion plugin to pick up error logging.</p>
+    <p>Other prerequisites: both Firebase config files dropped into the dashboard, <strong>Firebase Cloud Messaging API (V1)</strong> enabled in Google Cloud Console, and the <strong>Push Notifications</strong> feature flag turned on under WP admin &rarr; TBC Community App &rarr; Features.</p>
 
     <h4 style="margin-top: 12px;">Save button doesn't appear or changes don't stick</h4>
     <p>The floating save bar only appears when you make changes. If changes aren't persisting, check your browser console for errors. Try a hard refresh (<code>Ctrl+Shift+R</code>) or a different browser.</p>
@@ -1664,7 +1716,7 @@ export const MODULES: ModuleManifest[] = [
     <h4 style="margin-top: 16px;">App Feature Flags</h4>
     <table>
       <tr><th>Feature</th><th>Default</th><th>Description</th></tr>
-      <tr><td>Push Notifications</td><td>On</td><td>When disabled, no push tokens are registered and no notifications are sent. Requires Firebase configuration in the app.</td></tr>
+      <tr><td>Push Notifications</td><td>On</td><td>When disabled, no push tokens are registered and no notifications are sent. Requires the two-part setup: Firebase config files in the dashboard <em>and</em> FCM v1 service account / APNs key uploaded to Expo project credentials. See the <a href="#step-push-notifications">Push Notifications setup step</a>.</td></tr>
     </table>
 
     <h4 style="margin-top: 16px;">Profile Tabs</h4>

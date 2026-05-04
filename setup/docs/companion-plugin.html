@@ -113,7 +113,7 @@
   <tr><td>GET</td><td><code>/push/settings</code></td><td>Yes</td><td>Get user&rsquo;s notification preferences (grouped by category)</td></tr>
   <tr><td>POST</td><td><code>/push/settings</code></td><td>Yes</td><td>Update notification preferences</td></tr>
 </table>
-<p>Push delivery uses <strong>Expo Push API</strong> (no Firebase service account needed on the server). The push feature flag must be enabled in the Features admin tab.</p>
+<p>Push delivery uses the <strong>Expo Push API</strong> (<code>https://exp.host/--/api/v2/push/send</code>) &mdash; the WordPress plugin only POSTs Expo push tokens, no Firebase or Apple credentials live on the server. The credentials still have to exist somewhere though: the FCM v1 service account JSON and the APNs auth key get uploaded once to <strong>Expo project credentials</strong>, not to WordPress. See the Push Notifications step in the setup guide. The Push Notifications feature flag in the Features admin tab also has to be on.</p>
 
 <h4>Chat-message push routing (1:1 / group / space)</h4>
 <p>The <code>fluent_messaging/after_add_message</code> hook in <span class="file-path">push/class-hooks.php</span> reads <code>fcom_chat_threads.provider</code> to decide where to deep-link the notification:</p>

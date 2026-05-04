@@ -3,7 +3,7 @@
  * Plugin Name: TBC - Community App
  * Plugin URI: https://twobirdscode.com
  * Description: Support plugin for TBC Community App. Provides web sessions for WebView, app-specific styling, deep linking, and push notifications.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Two Birds Code
  * Author URI: https://twobirdscode.com
  * License: GPL v2 or later
@@ -86,9 +86,33 @@ spl_autoload_register(function ($class) {
 add_action('plugins_loaded', 'tbc_ca_init');
 
 function tbc_ca_init() {
+    // Apply pending DB schema upgrades on every load. dbDelta is idempotent and
+    // versioned via the tbc_ca_db_version option, so this is a no-op once the
+    // current schema is in place. Lets us ship column additions to existing
+    // buyer installs without asking them to deactivate/reactivate.
+    tbc_ca_maybe_upgrade_db();
+
     // Load core
     require_once TBC_CA_PLUGIN_DIR . 'includes/class-core.php';
     TBC_CA_Core::get_instance();
+}
+
+// Bump TBC_CA_DB_VERSION whenever a class-*.php create_table() schema changes.
+// On the next page load after a plugin update, tbc_ca_maybe_upgrade_db()
+// reruns dbDelta — which adds new columns without touching existing data —
+// then writes the new version to wp_options.
+const TBC_CA_DB_VERSION = '1.0.1';
+
+function tbc_ca_maybe_upgrade_db() {
+    $stored = get_option('tbc_ca_db_version', '0');
+    if (version_compare($stored, TBC_CA_DB_VERSION, '>=')) {
+        return;
+    }
+
+    require_once TBC_CA_PLUGIN_DIR . 'includes/push/class-log.php';
+    TBC_CA_Push_Log::create_table();
+
+    update_option('tbc_ca_db_version', TBC_CA_DB_VERSION);
 }
 
 // Activation / Deactivation
@@ -119,6 +143,10 @@ function tbc_ca_activate() {
     // Create push log table
     require_once TBC_CA_PLUGIN_DIR . 'includes/push/class-log.php';
     TBC_CA_Push_Log::create_table();
+
+    // Mark the schema at the activation-time version so plugins_loaded's
+    // upgrade routine becomes a no-op on a fresh install.
+    update_option('tbc_ca_db_version', TBC_CA_DB_VERSION);
 
     // Schedule daily cleanup cron
     if (!wp_next_scheduled('tbc_ca_daily_cleanup')) {

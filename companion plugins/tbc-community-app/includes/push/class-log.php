@@ -36,19 +36,21 @@ class TBC_CA_Push_Log {
     /**
      * Log a push notification batch result
      *
-     * @param string $type       Notification type ID
-     * @param string $title      Notification title
-     * @param string $body       Notification body
-     * @param int    $recipients Intended recipient count
-     * @param int    $sent       Successfully sent count
-     * @param int    $failed     Failed send count
-     * @param string $source     'hook' or 'manual'
-     * @param int    $created_by User ID who triggered (0 for hook-triggered)
+     * @param string      $type          Notification type ID
+     * @param string      $title         Notification title
+     * @param string      $body          Notification body
+     * @param int         $recipients    Intended recipient count
+     * @param int         $sent          Successfully sent count
+     * @param int         $failed        Failed send count
+     * @param string      $source        'hook' or 'manual'
+     * @param int         $created_by    User ID who triggered (0 for hook-triggered)
+     * @param string|null $error_code    Expo error code from first failure (e.g. 'InvalidCredentials')
+     * @param string|null $error_message Human-readable Expo error message from first failure
      */
-    public function log($type, $title, $body, $recipients, $sent, $failed, $source = 'hook', $created_by = 0) {
+    public function log($type, $title, $body, $recipients, $sent, $failed, $source = 'hook', $created_by = 0, $error_code = null, $error_message = null) {
         global $wpdb;
 
-        $wpdb->insert($this->table(), [
+        $data = [
             'type'       => sanitize_key($type),
             'title'      => sanitize_text_field($title),
             'body'       => sanitize_textarea_field($body),
@@ -58,7 +60,21 @@ class TBC_CA_Push_Log {
             'source'     => in_array($source, ['hook', 'manual'], true) ? $source : 'hook',
             'created_by' => absint($created_by),
             'created_at' => current_time('mysql'),
-        ], ['%s', '%s', '%s', '%d', '%d', '%d', '%s', '%d', '%s']);
+        ];
+        $formats = ['%s', '%s', '%s', '%d', '%d', '%d', '%s', '%d', '%s'];
+
+        // Only persist error fields when there was an actual failure — keeps
+        // successful rows clean and lets the admin UI filter by NOT NULL.
+        if ($error_code !== null && $error_code !== '') {
+            $data['error_code'] = substr(sanitize_text_field($error_code), 0, 50);
+            $formats[] = '%s';
+        }
+        if ($error_message !== null && $error_message !== '') {
+            $data['error_message'] = sanitize_textarea_field($error_message);
+            $formats[] = '%s';
+        }
+
+        $wpdb->insert($this->table(), $data, $formats);
     }
 
     /**
@@ -148,6 +164,8 @@ class TBC_CA_Push_Log {
         $table_name = $wpdb->prefix . 'tbc_ca_push_log';
         $charset_collate = $wpdb->get_charset_collate();
 
+        // dbDelta is idempotent — on existing tables it adds new columns
+        // (error_code, error_message) without touching existing data.
         $sql = "CREATE TABLE IF NOT EXISTS $table_name (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             type varchar(50) NOT NULL,
@@ -158,6 +176,8 @@ class TBC_CA_Push_Log {
             failed int unsigned NOT NULL DEFAULT 0,
             source varchar(20) NOT NULL DEFAULT 'hook',
             created_by bigint(20) unsigned NOT NULL DEFAULT 0,
+            error_code varchar(50) DEFAULT NULL,
+            error_message text DEFAULT NULL,
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             KEY type (type),

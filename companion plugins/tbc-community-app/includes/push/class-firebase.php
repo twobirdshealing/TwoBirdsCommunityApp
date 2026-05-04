@@ -120,12 +120,16 @@ class TBC_CA_Push_Firebase {
             }
 
             $error_details = $push_data['details'] ?? null;
-            $invalid_token = isset($error_details['error'])
-                && in_array($error_details['error'], ['DeviceNotRegistered', 'InvalidCredentials'], true);
+            $error_code = $error_details['error'] ?? null;
+            $error_message = $push_data['message'] ?? null;
+            $invalid_token = $error_code !== null
+                && in_array($error_code, ['DeviceNotRegistered', 'InvalidCredentials'], true);
 
             return [
                 'success' => false,
-                'error' => $push_data['message'] ?? 'Unknown Expo error',
+                'error' => $error_message ?: 'Unknown Expo error',
+                'error_code' => $error_code,
+                'error_message' => $error_message,
                 'invalid_token' => $invalid_token,
             ];
         }
@@ -133,6 +137,8 @@ class TBC_CA_Push_Firebase {
         return [
             'success' => false,
             'error' => 'Unexpected response from Expo',
+            'error_code' => 'UnexpectedResponse',
+            'error_message' => sprintf('HTTP %d', (int) $status_code),
         ];
     }
 
@@ -248,8 +254,10 @@ class TBC_CA_Push_Firebase {
      */
     public function send_batch($payloads) {
         if (empty($payloads)) {
-            return ['success' => false, 'error' => 'empty_payloads'];
+            return ['success' => false, 'error' => 'empty_payloads', 'sent' => 0, 'errors' => 0, 'results' => []];
         }
+
+        $payload_count = count($payloads);
 
         $response = wp_remote_post($this->expo_url, [
             'headers' => [
@@ -260,10 +268,19 @@ class TBC_CA_Push_Firebase {
             'timeout' => 30,
         ]);
 
+        // Transport-layer failure — count every payload as failed so the push
+        // log totals match reality, and surface the wp_error message so admins
+        // can tell DNS/SSL/timeout issues apart from Expo-rejected sends.
         if (is_wp_error($response)) {
+            $message = $response->get_error_message();
             return [
                 'success' => false,
-                'error' => $response->get_error_message(),
+                'error' => $message,
+                'sent' => 0,
+                'errors' => $payload_count,
+                'results' => [],
+                'first_error_code' => 'TransportError',
+                'first_error_message' => $message,
             ];
         }
 
@@ -271,9 +288,16 @@ class TBC_CA_Push_Firebase {
         $body = json_decode(wp_remote_retrieve_body($response), true);
 
         if ($status_code !== 200 || !isset($body['data'])) {
+            $raw = wp_remote_retrieve_body($response);
+            $message = sprintf('Unexpected response from Expo (HTTP %d): %s', (int) $status_code, substr((string) $raw, 0, 200));
             return [
                 'success' => false,
-                'error' => 'Unexpected response from Expo',
+                'error' => $message,
+                'sent' => 0,
+                'errors' => $payload_count,
+                'results' => [],
+                'first_error_code' => 'UnexpectedResponse',
+                'first_error_message' => $message,
             ];
         }
 
@@ -282,6 +306,8 @@ class TBC_CA_Push_Firebase {
         $results = [];
         $success_count = 0;
         $error_count = 0;
+        $first_error_code = null;
+        $first_error_message = null;
 
         foreach ($data as $item) {
             $status = $item['status'] ?? 'error';
@@ -292,12 +318,21 @@ class TBC_CA_Push_Firebase {
             } else {
                 $error_count++;
                 $error_details = $item['details'] ?? null;
-                $invalid_token = isset($error_details['error'])
-                    && in_array($error_details['error'], ['DeviceNotRegistered', 'InvalidCredentials'], true);
+                $error_code = $error_details['error'] ?? null;
+                $error_message = $item['message'] ?? null;
+                $invalid_token = $error_code !== null
+                    && in_array($error_code, ['DeviceNotRegistered', 'InvalidCredentials'], true);
+
+                if ($first_error_code === null && $error_code !== null) {
+                    $first_error_code = $error_code;
+                    $first_error_message = $error_message;
+                }
 
                 $results[] = [
                     'success' => false,
-                    'error' => $item['message'] ?? 'Unknown error',
+                    'error' => $error_message ?: 'Unknown error',
+                    'error_code' => $error_code,
+                    'error_message' => $error_message,
                     'invalid_token' => $invalid_token,
                 ];
             }
@@ -308,6 +343,8 @@ class TBC_CA_Push_Firebase {
             'sent' => $success_count,
             'errors' => $error_count,
             'results' => $results,
+            'first_error_code' => $first_error_code,
+            'first_error_message' => $first_error_message,
         ];
     }
 
